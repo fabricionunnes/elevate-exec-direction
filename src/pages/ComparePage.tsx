@@ -18,7 +18,8 @@ import {
   Sparkles,
   Home,
   FileText,
-  Target
+  Target,
+  Megaphone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -114,6 +115,19 @@ const products: Product[] = [
     price: "R$ 197",
     priceType: "/usuário/mês",
     link: "/sales-ops"
+  },
+  {
+    id: "ads",
+    name: "UNV Ads",
+    tagline: "Tráfego & Geração de Demanda",
+    icon: Megaphone,
+    color: "bg-green-500",
+    icp: "Empresas gerando demanda qualificada",
+    revenue: "R$ 100k–1M+/mês",
+    team: "Time comercial ativo",
+    price: "R$ 1.500 a R$ 4.000",
+    priceType: "/mês + mídia",
+    link: "/ads"
   }
 ];
 
@@ -136,7 +150,8 @@ const features: Feature[] = [
       "sales-acceleration": "Mensal + Semanal",
       "growth-room": "3 dias intensivos",
       partners: "Board mensal",
-      "sales-ops": false
+      "sales-ops": false,
+      ads: false
     }
   },
   {
@@ -149,7 +164,8 @@ const features: Feature[] = [
       "sales-acceleration": true,
       "growth-room": "Pós-imersão",
       partners: true,
-      "sales-ops": false
+      "sales-ops": false,
+      ads: "Otimização"
     }
   },
   {
@@ -162,7 +178,8 @@ const features: Feature[] = [
       "sales-acceleration": true,
       "growth-room": "90 dias",
       partners: true,
-      "sales-ops": "Via trilhas"
+      "sales-ops": "Via trilhas",
+      ads: false
     }
   },
   // Estrutura
@@ -176,7 +193,8 @@ const features: Feature[] = [
       "sales-acceleration": "Completo",
       "growth-room": "Pré-imersão",
       partners: false,
-      "sales-ops": false
+      "sales-ops": false,
+      ads: "De demanda"
     }
   },
   {
@@ -189,7 +207,8 @@ const features: Feature[] = [
       "sales-acceleration": "Completo",
       "growth-room": "Completo",
       partners: false,
-      "sales-ops": false
+      "sales-ops": false,
+      ads: "Aquisição"
     }
   },
   {
@@ -202,7 +221,8 @@ const features: Feature[] = [
       "sales-acceleration": "Por fase",
       "growth-room": true,
       partners: false,
-      "sales-ops": "Por cargo"
+      "sales-ops": "Por cargo",
+      ads: "Copies"
     }
   },
   {
@@ -215,7 +235,8 @@ const features: Feature[] = [
       "sales-acceleration": "Completas",
       "growth-room": true,
       partners: false,
-      "sales-ops": "Por cargo"
+      "sales-ops": "Por cargo",
+      ads: "CPL/CAC"
     }
   },
   // Treinamento
@@ -229,7 +250,8 @@ const features: Feature[] = [
       "sales-acceleration": "5 fases",
       "growth-room": "3 dias",
       partners: false,
-      "sales-ops": "Trilhas por cargo"
+      "sales-ops": "Trilhas por cargo",
+      ads: false
     }
   },
   {
@@ -242,7 +264,8 @@ const features: Feature[] = [
       "sales-acceleration": false,
       "growth-room": false,
       partners: false,
-      "sales-ops": true
+      "sales-ops": true,
+      ads: false
     }
   },
   {
@@ -255,7 +278,8 @@ const features: Feature[] = [
       "sales-acceleration": "Por vendedor",
       "growth-room": false,
       partners: false,
-      "sales-ops": true
+      "sales-ops": true,
+      ads: false
     }
   },
   // Suporte
@@ -269,7 +293,8 @@ const features: Feature[] = [
       "sales-acceleration": "Máximo",
       "growth-room": "Configurado",
       partners: "Estratégico",
-      "sales-ops": "Por cargo"
+      "sales-ops": "Por cargo",
+      ads: "Ads"
     }
   },
   {
@@ -282,7 +307,51 @@ const features: Feature[] = [
       "sales-acceleration": false,
       "growth-room": false,
       partners: "Elite",
-      "sales-ops": false
+      "sales-ops": false,
+      ads: false
+    }
+  },
+  // Aquisição (nova categoria)
+  {
+    name: "Gestão de Tráfego",
+    description: "Campanhas de mídia paga",
+    category: "Aquisição",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: "Completa"
+    }
+  },
+  {
+    name: "Geração de Leads",
+    description: "Captação de demanda qualificada",
+    category: "Aquisição",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: true
+    }
+  },
+  {
+    name: "Integração Marketing/Vendas",
+    description: "Alinhamento de canais",
+    category: "Aquisição",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: true
     }
   },
   // Experiências
@@ -296,7 +365,8 @@ const features: Feature[] = [
       "sales-acceleration": false,
       "growth-room": "3 dias",
       partners: "Eventos exclusivos",
-      "sales-ops": false
+      "sales-ops": false,
+      ads: false
     }
   },
   {
@@ -309,7 +379,8 @@ const features: Feature[] = [
       "sales-acceleration": "1 convite/ano",
       "growth-room": false,
       partners: "Recorrente",
-      "sales-ops": false
+      "sales-ops": false,
+      ads: false
     }
   },
   {
@@ -322,7 +393,8 @@ const features: Feature[] = [
       "sales-acceleration": false,
       "growth-room": false,
       partners: true,
-      "sales-ops": false
+      "sales-ops": false,
+      ads: false
     }
   }
 ];

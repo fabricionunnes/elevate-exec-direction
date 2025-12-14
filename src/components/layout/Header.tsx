@@ -17,6 +17,7 @@ const navigation = [
       { name: "Growth Room", href: "/growth-room" },
       { name: "UNV Partners", href: "/partners" },
       { name: "Sales Ops", href: "/sales-ops" },
+      { name: "UNV Ads", href: "/ads" },
       { name: "Comparar Produtos", href: "/compare" },
     ],
   },
