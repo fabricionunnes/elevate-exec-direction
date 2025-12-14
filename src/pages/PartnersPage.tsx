@@ -368,7 +368,7 @@ export default function PartnersPage() {
         <div className="container-premium text-center">
           <h2 className="heading-section mb-6">Investimento</h2>
           <p className="text-5xl md:text-6xl font-display font-bold text-accent mb-4">
-            R$ 3.000 – R$ 6.000
+            R$ 3.000
           </p>
           <p className="text-primary-foreground/70 text-lg mb-4">
             Por mês • Aplicação e seleção necessárias

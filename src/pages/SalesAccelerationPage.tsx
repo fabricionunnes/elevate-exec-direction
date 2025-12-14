@@ -543,7 +543,7 @@ export default function SalesAccelerationPage() {
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="heading-section mb-6">Investimento</h2>
             <p className="text-4xl md:text-5xl font-display font-bold text-accent mb-4">
-              R$ 24.000 – R$ 36.000
+              R$ 24.000
             </p>
             <p className="text-primary-foreground/70 text-lg mb-2">
               Programa anual • À vista ou parcelado

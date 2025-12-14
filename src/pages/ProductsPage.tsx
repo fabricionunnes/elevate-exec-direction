@@ -11,7 +11,7 @@ const products = [
       "Construa a fundação da sua operação comercial. Scripts, funil básico, metas e rotinas mínimas de cobrança.",
     icp: "Faturamento R$ 50k–150k/mês • 1–5 vendedores",
     href: "/core",
-    investment: "R$ 997–R$ 1.997",
+    investment: "R$ 1.997",
   },
   {
     name: "UNV Control",
@@ -20,7 +20,7 @@ const products = [
       "Direção recorrente para manter seu time executando com consistência. Check-ins mensais, templates e suporte com IA.",
     icp: "Faturamento R$ 100k–400k/mês",
     href: "/control",
-    investment: "R$ 297–R$ 597/mês",
+    investment: "R$ 297/mês",
   },
   {
     name: "UNV Sales Acceleration",
@@ -29,7 +29,7 @@ const products = [
       "Programa anual de direção comercial. Treinamos, acompanhamos e cobramos seu time para crescimento acelerado e previsível.",
     icp: "Faturamento R$ 150k–1M/mês • 3+ vendedores",
     href: "/sales-acceleration",
-    investment: "R$ 24.000–R$ 36.000/ano",
+    investment: "R$ 24.000/ano",
     highlight: true,
   },
   {
@@ -39,7 +39,7 @@ const products = [
       "Imersão presencial intensiva de 3 dias. Redesenhe sua rota comercial com orientação hands-on e saia com um plano de execução de 90 dias.",
     icp: "Faturamento R$ 150k–600k/mês",
     href: "/growth-room",
-    investment: "R$ 12.000–R$ 20.000",
+    investment: "R$ 12.000",
   },
   {
     name: "UNV Partners",
@@ -48,7 +48,7 @@ const products = [
       "Reuniões de board mensais, cobrança semanal, eventos exclusivos e a Experiência Mansão. Para empresas estabelecidas que buscam mentoria de elite.",
     icp: "Faturamento R$ 300k–2M/mês",
     href: "/partners",
-    investment: "R$ 3.000–R$ 6.000/mês",
+    investment: "R$ 3.000/mês",
   },
   {
     name: "UNV Sales Ops",
@@ -57,7 +57,7 @@ const products = [
       "Padronize seu time comercial em escala. Trilhas de treinamento por cargo, scorecards e suporte IA por função.",
     icp: "Faturamento R$ 200k+/mês • 5+ vendedores",
     href: "/sales-ops",
-    investment: "R$ 97–R$ 297/usuário/mês",
+    investment: "R$ 97/usuário/mês",
   },
 ];
 

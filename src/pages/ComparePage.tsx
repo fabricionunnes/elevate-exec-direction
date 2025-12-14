@@ -46,7 +46,7 @@ const products: Product[] = [
     icp: "Empresas iniciando estruturação",
     revenue: "R$ 50k–150k/mês",
     team: "1–5 vendedores",
-    price: "R$ 997 – R$ 1.997",
+    price: "R$ 1.997",
     priceType: "único",
     link: "/core"
   },
@@ -59,7 +59,7 @@ const products: Product[] = [
     icp: "Empresas que precisam de constância",
     revenue: "R$ 100k–400k/mês",
     team: "Qualquer tamanho",
-    price: "R$ 297 – R$ 597",
+    price: "R$ 297",
     priceType: "/mês",
     link: "/control"
   },
@@ -72,7 +72,7 @@ const products: Product[] = [
     icp: "Empresas prontas para acelerar",
     revenue: "R$ 150k–1M/mês",
     team: "3–20 vendedores",
-    price: "R$ 24k – R$ 36k",
+    price: "R$ 24.000",
     priceType: "/ano",
     link: "/sales-acceleration"
   },
@@ -85,7 +85,7 @@ const products: Product[] = [
     icp: "Empresas que precisam de virada rápida",
     revenue: "R$ 150k–600k/mês",
     team: "Qualquer tamanho",
-    price: "R$ 12k – R$ 20k",
+    price: "R$ 12.000",
     priceType: "único",
     link: "/growth-room"
   },
@@ -98,7 +98,7 @@ const products: Product[] = [
     icp: "Empresas estabelecidas buscando board",
     revenue: "R$ 300k–2M/mês",
     team: "Qualquer tamanho",
-    price: "R$ 3k – R$ 6k",
+    price: "R$ 3.000",
     priceType: "/mês",
     link: "/partners"
   },
@@ -111,7 +111,7 @@ const products: Product[] = [
     icp: "Empresas com times grandes",
     revenue: "R$ 200k+/mês",
     team: "5+ vendedores",
-    price: "R$ 97 – R$ 297",
+    price: "R$ 97",
     priceType: "/usuário/mês",
     link: "/sales-ops"
   }
