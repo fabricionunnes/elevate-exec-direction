@@ -41,10 +41,14 @@ interface FormData {
   revenue: string;
   teamSize: string;
   hasSalesProcess: boolean;
-  mainPain: string;
+  pains: string[];
   biggestChallenge: string;
   urgency: string;
   goals: string;
+  hasTraffic: string;
+  trafficSatisfied: string;
+  hasSocialMedia: string;
+  socialSatisfied: string;
 }
 
 const revenueOptions = [
@@ -312,73 +316,107 @@ const products: Record<string, ProductRecommendation> = {
   }
 };
 
-function getRecommendation(data: FormData): ProductRecommendation {
+function getRecommendations(data: FormData): ProductRecommendation[] {
   const revenue = data.revenue;
-  const pain = data.mainPain;
+  const pains = data.pains;
   const teamSize = data.teamSize;
+  const recommendations: ProductRecommendation[] = [];
+  const addedProducts = new Set<string>();
+
+  const addProduct = (productId: string) => {
+    if (!addedProducts.has(productId) && products[productId]) {
+      addedProducts.add(productId);
+      recommendations.push(products[productId]);
+    }
+  };
+
+  // Social Media - não tem ou não está satisfeito
+  if (data.hasSocialMedia === "nao" || data.socialSatisfied === "nao") {
+    addProduct("social");
+  }
+
+  // Tráfego Pago - não tem ou não está satisfeito
+  if (data.hasTraffic === "nao" || data.trafficSatisfied === "nao") {
+    addProduct("ads");
+  }
 
   // Leadership - liderança fraca
-  if (pain === "lideranca-fraca") {
-    return products.leadership;
+  if (pains.includes("lideranca-fraca")) {
+    addProduct("leadership");
   }
 
   // Autoridade - falta de autoridade
-  if (pain === "autoridade") {
-    return products.social;
+  if (pains.includes("autoridade")) {
+    addProduct("social");
   }
 
   // Poucos leads
-  if (pain === "poucos-leads") {
-    return products.ads;
+  if (pains.includes("poucos-leads")) {
+    addProduct("ads");
   }
 
   // Empresas grandes com time desalinhado
-  if (pain === "time-desalinhado" && (teamSize === "11-20" || teamSize === "20+")) {
-    return products["sales-ops"];
+  if (pains.includes("time-desalinhado") && (teamSize === "11-20" || teamSize === "20+")) {
+    addProduct("sales-ops");
   }
 
   // Alto faturamento
   if (revenue === "acima-1m" || revenue === "500k-1m") {
-    if (pain === "escala" || teamSize === "20+") {
-      return products.partners;
+    if (pains.includes("escala") || teamSize === "20+") {
+      addProduct("partners");
     }
     if (teamSize === "4-10" || teamSize === "11-20") {
-      return products["sales-acceleration"];
+      addProduct("sales-acceleration");
     }
-    return products.mastermind;
+    if (recommendations.length === 0 || (revenue === "acima-1m" && teamSize !== "sozinho")) {
+      addProduct("mastermind");
+    }
   }
 
   // Médio faturamento
   if (revenue === "200k-500k") {
-    if (!data.hasSalesProcess || pain === "sem-processo") {
-      return products["growth-room"];
+    if (!data.hasSalesProcess || pains.includes("sem-processo")) {
+      addProduct("growth-room");
     }
     if (teamSize === "4-10" || teamSize === "11-20") {
-      return products["sales-acceleration"];
+      addProduct("sales-acceleration");
     }
-    return products.control;
+    if (pains.includes("inconsistencia")) {
+      addProduct("control");
+    }
   }
 
   // Faturamento intermediário
   if (revenue === "100k-200k") {
-    if (pain === "inconsistencia") {
-      return products.control;
+    if (pains.includes("inconsistencia")) {
+      addProduct("control");
     }
     if (teamSize !== "sozinho" && teamSize !== "1-3") {
-      return products["sales-acceleration"];
+      addProduct("sales-acceleration");
     }
-    return products.core;
+    if (pains.includes("sem-processo")) {
+      addProduct("core");
+    }
   }
 
   // Baixo faturamento
-  return products.core;
+  if (revenue === "menos-50k" || revenue === "50k-100k") {
+    addProduct("core");
+  }
+
+  // Se não tem nenhuma recomendação, adicionar Core como padrão
+  if (recommendations.length === 0) {
+    addProduct("core");
+  }
+
+  return recommendations;
 }
 
 export default function ClientDiagnosticPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const [recommendation, setRecommendation] = useState<ProductRecommendation | null>(null);
+  const [recommendations, setRecommendations] = useState<ProductRecommendation[]>([]);
   const [formData, setFormData] = useState<FormData>({
     companyName: "",
     contactName: "",
@@ -387,16 +425,29 @@ export default function ClientDiagnosticPage() {
     revenue: "",
     teamSize: "",
     hasSalesProcess: false,
-    mainPain: "",
+    pains: [],
     biggestChallenge: "",
     urgency: "normal",
-    goals: ""
+    goals: "",
+    hasTraffic: "",
+    trafficSatisfied: "",
+    hasSocialMedia: "",
+    socialSatisfied: ""
   });
 
-  const totalSteps = 4;
+  const totalSteps = 5;
 
-  const updateField = (field: keyof FormData, value: string | boolean) => {
+  const updateField = (field: keyof FormData, value: string | boolean | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const togglePain = (painValue: string) => {
+    setFormData(prev => ({
+      ...prev,
+      pains: prev.pains.includes(painValue)
+        ? prev.pains.filter(p => p !== painValue)
+        : [...prev.pains, painValue]
+    }));
   };
 
   const canProceed = () => {
@@ -406,8 +457,10 @@ export default function ClientDiagnosticPage() {
       case 2:
         return formData.revenue && formData.teamSize;
       case 3:
-        return formData.mainPain;
+        return formData.pains.length > 0;
       case 4:
+        return formData.hasTraffic && formData.hasSocialMedia;
+      case 5:
         return formData.urgency;
       default:
         return false;
@@ -417,7 +470,8 @@ export default function ClientDiagnosticPage() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const rec = getRecommendation(formData);
+      const recs = getRecommendations(formData);
+      const productNames = recs.map(r => r.name).join(", ");
       
       const { error } = await supabase.from("client_diagnostics").insert({
         company_name: formData.companyName,
@@ -427,17 +481,17 @@ export default function ClientDiagnosticPage() {
         revenue: formData.revenue,
         team_size: formData.teamSize,
         has_sales_process: formData.hasSalesProcess,
-        main_pain: formData.mainPain,
+        main_pain: formData.pains.join(", "),
         biggest_challenge: formData.biggestChallenge || null,
         urgency: formData.urgency,
-        recommended_product: rec.name,
-        notes: formData.goals || null,
+        recommended_product: productNames,
+        notes: `Tráfego: ${formData.hasTraffic === "sim" ? (formData.trafficSatisfied === "sim" ? "Sim, satisfeito" : "Sim, insatisfeito") : "Não"}. Social: ${formData.hasSocialMedia === "sim" ? (formData.socialSatisfied === "sim" ? "Sim, satisfeito" : "Sim, insatisfeito") : "Não"}. ${formData.goals ? "Objetivos: " + formData.goals : ""}`,
         status: "pending"
       });
 
       if (error) throw error;
 
-      setRecommendation(rec);
+      setRecommendations(recs);
       setCompleted(true);
     } catch (error) {
       console.error("Erro ao enviar:", error);
@@ -447,8 +501,7 @@ export default function ClientDiagnosticPage() {
     }
   };
 
-  if (completed && recommendation) {
-    const Icon = recommendation.icon;
+  if (completed && recommendations.length > 0) {
     return (
       <div className="min-h-screen bg-background">
         {/* Header simples */}
@@ -471,59 +524,78 @@ export default function ClientDiagnosticPage() {
               Diagnóstico Concluído!
             </h1>
             <p className="text-xl text-muted-foreground">
-              {formData.contactName}, analisamos suas respostas e identificamos o produto ideal para você.
+              {formData.contactName}, analisamos suas respostas e identificamos {recommendations.length === 1 ? "o produto ideal" : "os produtos ideais"} para você.
             </p>
           </div>
 
-          {/* Recommendation Card */}
-          <div className="bg-card border-2 border-accent rounded-2xl p-8 md:p-12 mb-8 animate-fade-up" style={{ animationDelay: "0.1s" }}>
-            <div className="flex items-center gap-4 mb-6">
-              <div className={cn("w-16 h-16 rounded-xl flex items-center justify-center", recommendation.color)}>
-                <Icon className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <p className="text-sm text-accent font-medium">Produto Recomendado</p>
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground">{recommendation.name}</h2>
-                <p className="text-muted-foreground">{recommendation.tagline}</p>
-              </div>
-            </div>
+          {/* Recommendations */}
+          <div className="space-y-6">
+            {recommendations.map((rec, index) => {
+              const Icon = rec.icon;
+              return (
+                <div 
+                  key={rec.id} 
+                  className={cn(
+                    "bg-card border-2 rounded-2xl p-6 md:p-8 animate-fade-up",
+                    index === 0 ? "border-accent" : "border-border"
+                  )} 
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <div className="flex items-center gap-4 mb-4">
+                    {index === 0 && (
+                      <span className="absolute -top-3 left-4 px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full">
+                        PRINCIPAL
+                      </span>
+                    )}
+                    <div className={cn("w-14 h-14 rounded-xl flex items-center justify-center", rec.color)}>
+                      <Icon className="h-7 w-7 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl md:text-2xl font-bold text-foreground">{rec.name}</h2>
+                      <p className="text-muted-foreground">{rec.tagline}</p>
+                    </div>
+                  </div>
 
-            <div className="bg-accent/10 border border-accent/20 rounded-xl p-6 mb-8">
-              <p className="text-lg text-foreground">
-                <span className="font-semibold">Por que este produto?</span>
-                <br />
-                <span className="text-muted-foreground">{recommendation.whyRecommended}</span>
-              </p>
-            </div>
+                  <div className="bg-accent/10 border border-accent/20 rounded-xl p-4 mb-6">
+                    <p className="text-foreground">
+                      <span className="font-semibold">Por que este produto?</span>
+                      <br />
+                      <span className="text-muted-foreground text-sm">{rec.whyRecommended}</span>
+                    </p>
+                  </div>
 
-            <div className="grid md:grid-cols-2 gap-8 mb-8">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground mb-4">O que você recebe:</h3>
-                <ul className="space-y-3">
-                  {recommendation.deliverables.map((item, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
-                      <span className="text-muted-foreground">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-foreground mb-4">Ideal para:</h3>
-                <p className="text-muted-foreground">{recommendation.bestFor}</p>
-              </div>
-            </div>
-
-            <p className="text-lg text-foreground">{recommendation.description}</p>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground mb-3">O que você recebe:</h3>
+                      <ul className="space-y-2">
+                        {rec.deliverables.slice(0, 5).map((item, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm">
+                            <CheckCircle className="h-4 w-4 text-accent shrink-0 mt-0.5" />
+                            <span className="text-muted-foreground">{item}</span>
+                          </li>
+                        ))}
+                        {rec.deliverables.length > 5 && (
+                          <li className="text-sm text-accent">+{rec.deliverables.length - 5} mais...</li>
+                        )}
+                      </ul>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground mb-3">Ideal para:</h3>
+                      <p className="text-sm text-muted-foreground">{rec.bestFor}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Next Steps */}
-          <div className="bg-card border border-border rounded-2xl p-8 text-center animate-fade-up" style={{ animationDelay: "0.2s" }}>
+          <div className="bg-card border border-border rounded-2xl p-8 text-center mt-8 animate-fade-up" style={{ animationDelay: "0.3s" }}>
             <Sparkles className="h-10 w-10 text-accent mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-foreground mb-3">Próximos Passos</h3>
             <p className="text-muted-foreground mb-6">
               Em breve nossa equipe entrará em contato pelo WhatsApp para agendar sua reunião de diagnóstico aprofundado.
-              Nessa conversa, vamos entender melhor seu cenário e confirmar se o {recommendation.name} é realmente o melhor caminho.
+              Nessa conversa, vamos entender melhor seu cenário e definir juntos o melhor caminho.
             </p>
             <p className="text-sm text-muted-foreground">
               Obrigado por confiar na UNV. Até breve!
@@ -705,47 +777,49 @@ export default function ClientDiagnosticPage() {
             </div>
           )}
 
-          {/* Step 3: Pain Points */}
+          {/* Step 3: Pain Points (Multiple Selection) */}
           {step === 3 && (
             <div className="space-y-6 animate-fade-in">
               <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold text-foreground mb-2">
-                  Qual sua maior dor hoje?
+                  Quais são suas maiores dores hoje?
                 </h2>
                 <p className="text-muted-foreground">
-                  Selecione o que mais te incomoda no comercial.
+                  Selecione todas que se aplicam ao seu negócio.
                 </p>
               </div>
 
-              <RadioGroup
-                value={formData.mainPain}
-                onValueChange={(v) => updateField("mainPain", v)}
-                className="grid gap-3"
-              >
+              <div className="grid gap-3">
                 {painOptions.map((option) => {
                   const PainIcon = option.icon;
+                  const isSelected = formData.pains.includes(option.value);
                   return (
-                    <div key={option.value} className="flex items-center">
-                      <RadioGroupItem value={option.value} id={`pain-${option.value}`} className="sr-only" />
-                      <Label
-                        htmlFor={`pain-${option.value}`}
-                        className={cn(
-                          "flex-1 flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition-all",
-                          formData.mainPain === option.value
-                            ? "border-accent bg-accent/10"
-                            : "border-border hover:border-accent/50"
-                        )}
-                      >
-                        <PainIcon className={cn(
-                          "h-5 w-5 shrink-0",
-                          formData.mainPain === option.value ? "text-accent" : "text-muted-foreground"
-                        )} />
+                    <div
+                      key={option.value}
+                      onClick={() => togglePain(option.value)}
+                      className={cn(
+                        "flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition-all",
+                        isSelected
+                          ? "border-accent bg-accent/10"
+                          : "border-border hover:border-accent/50"
+                      )}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => togglePain(option.value)}
+                        className="pointer-events-none"
+                      />
+                      <PainIcon className={cn(
+                        "h-5 w-5 shrink-0",
+                        isSelected ? "text-accent" : "text-muted-foreground"
+                      )} />
+                      <span className={isSelected ? "text-foreground" : "text-muted-foreground"}>
                         {option.label}
-                      </Label>
+                      </span>
                     </div>
                   );
                 })}
-              </RadioGroup>
+              </div>
 
               <div>
                 <Label className="mb-2 block">Descreva brevemente seu maior desafio (opcional)</Label>
@@ -759,8 +833,186 @@ export default function ClientDiagnosticPage() {
             </div>
           )}
 
-          {/* Step 4: Urgency & Goals */}
+          {/* Step 4: Traffic & Social Media */}
           {step === 4 && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-foreground mb-2">
+                  Sobre marketing e aquisição
+                </h2>
+                <p className="text-muted-foreground">
+                  Nos ajude a entender sua situação atual.
+                </p>
+              </div>
+
+              {/* Tráfego Pago */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Megaphone className="h-4 w-4 text-accent" />
+                  Você investe em tráfego pago? *
+                </Label>
+                <RadioGroup
+                  value={formData.hasTraffic}
+                  onValueChange={(v) => updateField("hasTraffic", v)}
+                  className="grid grid-cols-2 gap-3"
+                >
+                  <div className="flex items-center">
+                    <RadioGroupItem value="sim" id="traffic-sim" className="sr-only" />
+                    <Label
+                      htmlFor="traffic-sim"
+                      className={cn(
+                        "flex-1 p-4 rounded-lg border cursor-pointer transition-all text-center",
+                        formData.hasTraffic === "sim"
+                          ? "border-accent bg-accent/10"
+                          : "border-border hover:border-accent/50"
+                      )}
+                    >
+                      Sim
+                    </Label>
+                  </div>
+                  <div className="flex items-center">
+                    <RadioGroupItem value="nao" id="traffic-nao" className="sr-only" />
+                    <Label
+                      htmlFor="traffic-nao"
+                      className={cn(
+                        "flex-1 p-4 rounded-lg border cursor-pointer transition-all text-center",
+                        formData.hasTraffic === "nao"
+                          ? "border-accent bg-accent/10"
+                          : "border-border hover:border-accent/50"
+                      )}
+                    >
+                      Não
+                    </Label>
+                  </div>
+                </RadioGroup>
+                
+                {formData.hasTraffic === "sim" && (
+                  <div className="pl-4 border-l-2 border-accent/30 mt-3">
+                    <Label className="mb-2 block text-sm">Está satisfeito com os resultados?</Label>
+                    <RadioGroup
+                      value={formData.trafficSatisfied}
+                      onValueChange={(v) => updateField("trafficSatisfied", v)}
+                      className="grid grid-cols-2 gap-3"
+                    >
+                      <div className="flex items-center">
+                        <RadioGroupItem value="sim" id="traffic-sat-sim" className="sr-only" />
+                        <Label
+                          htmlFor="traffic-sat-sim"
+                          className={cn(
+                            "flex-1 p-3 rounded-lg border cursor-pointer transition-all text-center text-sm",
+                            formData.trafficSatisfied === "sim"
+                              ? "border-accent bg-accent/10"
+                              : "border-border hover:border-accent/50"
+                          )}
+                        >
+                          Sim, satisfeito
+                        </Label>
+                      </div>
+                      <div className="flex items-center">
+                        <RadioGroupItem value="nao" id="traffic-sat-nao" className="sr-only" />
+                        <Label
+                          htmlFor="traffic-sat-nao"
+                          className={cn(
+                            "flex-1 p-3 rounded-lg border cursor-pointer transition-all text-center text-sm",
+                            formData.trafficSatisfied === "nao"
+                              ? "border-accent bg-accent/10"
+                              : "border-border hover:border-accent/50"
+                          )}
+                        >
+                          Não, quero melhorar
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
+              </div>
+
+              {/* Social Media */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-accent" />
+                  Você tem presença ativa em redes sociais? *
+                </Label>
+                <RadioGroup
+                  value={formData.hasSocialMedia}
+                  onValueChange={(v) => updateField("hasSocialMedia", v)}
+                  className="grid grid-cols-2 gap-3"
+                >
+                  <div className="flex items-center">
+                    <RadioGroupItem value="sim" id="social-sim" className="sr-only" />
+                    <Label
+                      htmlFor="social-sim"
+                      className={cn(
+                        "flex-1 p-4 rounded-lg border cursor-pointer transition-all text-center",
+                        formData.hasSocialMedia === "sim"
+                          ? "border-accent bg-accent/10"
+                          : "border-border hover:border-accent/50"
+                      )}
+                    >
+                      Sim
+                    </Label>
+                  </div>
+                  <div className="flex items-center">
+                    <RadioGroupItem value="nao" id="social-nao" className="sr-only" />
+                    <Label
+                      htmlFor="social-nao"
+                      className={cn(
+                        "flex-1 p-4 rounded-lg border cursor-pointer transition-all text-center",
+                        formData.hasSocialMedia === "nao"
+                          ? "border-accent bg-accent/10"
+                          : "border-border hover:border-accent/50"
+                      )}
+                    >
+                      Não
+                    </Label>
+                  </div>
+                </RadioGroup>
+                
+                {formData.hasSocialMedia === "sim" && (
+                  <div className="pl-4 border-l-2 border-accent/30 mt-3">
+                    <Label className="mb-2 block text-sm">Está satisfeito com os resultados?</Label>
+                    <RadioGroup
+                      value={formData.socialSatisfied}
+                      onValueChange={(v) => updateField("socialSatisfied", v)}
+                      className="grid grid-cols-2 gap-3"
+                    >
+                      <div className="flex items-center">
+                        <RadioGroupItem value="sim" id="social-sat-sim" className="sr-only" />
+                        <Label
+                          htmlFor="social-sat-sim"
+                          className={cn(
+                            "flex-1 p-3 rounded-lg border cursor-pointer transition-all text-center text-sm",
+                            formData.socialSatisfied === "sim"
+                              ? "border-accent bg-accent/10"
+                              : "border-border hover:border-accent/50"
+                          )}
+                        >
+                          Sim, satisfeito
+                        </Label>
+                      </div>
+                      <div className="flex items-center">
+                        <RadioGroupItem value="nao" id="social-sat-nao" className="sr-only" />
+                        <Label
+                          htmlFor="social-sat-nao"
+                          className={cn(
+                            "flex-1 p-3 rounded-lg border cursor-pointer transition-all text-center text-sm",
+                            formData.socialSatisfied === "nao"
+                              ? "border-accent bg-accent/10"
+                              : "border-border hover:border-accent/50"
+                          )}
+                        >
+                          Não, quero melhorar
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Urgency & Goals */}
+          {step === 5 && (
             <div className="space-y-6 animate-fade-in">
               <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold text-foreground mb-2">
