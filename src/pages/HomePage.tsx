@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle, MessageCircle } from "lucide-react";
+import { ArrowRight, CheckCircle, MessageCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/layout/Layout";
 import heroBoardroom from "@/assets/hero-boardroom.jpg";
@@ -18,18 +18,21 @@ const products = [
     name: "UNV Core",
     description: "Estruture sua base comercial",
     icp: "R$ 50k–150k/mês",
+    price: "R$ 1.997",
     href: "/core",
   },
   {
     name: "UNV Control",
     description: "Mantenha a constância de execução",
     icp: "R$ 100k–400k/mês",
+    price: "R$ 297/mês",
     href: "/control",
   },
   {
     name: "Sales Acceleration",
     description: "Programa completo de direção comercial",
     icp: "R$ 150k–1M/mês",
+    price: "R$ 24.000/ano",
     href: "/sales-acceleration",
     highlight: true,
   },
@@ -37,18 +40,21 @@ const products = [
     name: "Growth Room",
     description: "Imersão estratégica presencial intensiva",
     icp: "R$ 150k–600k/mês",
+    price: "R$ 12.000",
     href: "/growth-room",
   },
   {
     name: "UNV Partners",
     description: "Mentoria estratégica elite + Experiência Mansão",
     icp: "R$ 300k–2M/mês",
+    price: "R$ 3.000/mês",
     href: "/partners",
   },
   {
     name: "Sales Ops",
     description: "Padronização de times em escala",
     icp: "5+ vendedores",
+    price: "R$ 97/usuário/mês",
     href: "/sales-ops",
   },
 ];
@@ -80,25 +86,36 @@ export default function HomePage() {
   return (
     <Layout>
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center">
+      <section className="relative min-h-screen flex items-center overflow-hidden">
+        {/* Background */}
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${heroBoardroom})` }}
         >
           <div className="absolute inset-0 bg-gradient-overlay" />
         </div>
+        
+        {/* Glow effect */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-glow opacity-50 pointer-events-none" />
 
-        <div className="container-premium relative z-10 py-20">
-          <div className="max-w-3xl">
-            <h1 className="heading-display text-primary-foreground mb-6 opacity-0 animate-fade-up">
-              Atuamos como seu Diretor Comercial.
+        <div className="container-premium relative z-10 py-32">
+          <div className="max-w-4xl">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-full text-primary text-sm font-medium mb-8 opacity-0 animate-fade-up">
+              <Sparkles className="h-4 w-4" />
+              Direção Comercial como Serviço
+            </div>
+            
+            <h1 className="heading-display text-foreground mb-8 opacity-0 animate-fade-up delay-100">
+              Atuamos como seu{" "}
+              <span className="text-gradient-gold">Diretor Comercial.</span>
             </h1>
-            <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8 opacity-0 animate-fade-up delay-100">
+            
+            <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl opacity-0 animate-fade-up delay-200">
               A UNV treina, acompanha e cobra seu time comercial para acelerar
               vendas com método e previsibilidade.
             </p>
 
-            <ul className="space-y-3 mb-10 opacity-0 animate-fade-up delay-200">
+            <ul className="space-y-4 mb-12 opacity-0 animate-fade-up delay-300">
               {[
                 "Treinamento prático do time",
                 "Acompanhamento e cobrança contínua",
@@ -107,15 +124,17 @@ export default function HomePage() {
               ].map((item, i) => (
                 <li
                   key={i}
-                  className="flex items-center gap-3 text-primary-foreground/90"
+                  className="flex items-center gap-4 text-foreground/90"
                 >
-                  <CheckCircle className="h-5 w-5 text-accent flex-shrink-0" />
+                  <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+                    <CheckCircle className="h-4 w-4 text-primary" />
+                  </span>
                   <span>{item}</span>
                 </li>
               ))}
             </ul>
 
-            <div className="flex flex-col sm:flex-row gap-4 opacity-0 animate-fade-up delay-300">
+            <div className="flex flex-col sm:flex-row gap-4 opacity-0 animate-fade-up delay-400">
               <Link to="/apply">
                 <Button variant="hero" size="xl">
                   Aplicar para Diagnóstico
@@ -135,15 +154,20 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+        
+        {/* Bottom gradient fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
       </section>
 
       {/* Problem Section */}
-      <section className="section-padding bg-secondary">
-        <div className="container-premium">
-          <div className="max-w-3xl mx-auto text-center mb-16">
+      <section className="section-padding bg-background relative">
+        <div className="absolute inset-0 bg-gradient-glow opacity-20 pointer-events-none" />
+        
+        <div className="container-premium relative">
+          <div className="max-w-3xl mx-auto text-center mb-20">
             <h2 className="heading-section text-foreground mb-6">
               Seu problema de vendas não é esforço.
-              <span className="block text-accent">É falta de direção.</span>
+              <span className="block text-gradient-gold mt-2">É falta de direção.</span>
             </h2>
             <p className="text-body">
               Sem direção comercial adequada, até times talentosos performam
@@ -155,10 +179,10 @@ export default function HomePage() {
             {problems.map((problem, i) => (
               <div
                 key={i}
-                className="card-premium p-6 hover:border-accent/30 transition-all"
+                className="card-premium p-6 group"
               >
                 <div className="flex gap-4">
-                  <div className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />
+                  <div className="w-3 h-3 rounded-full bg-primary mt-1.5 flex-shrink-0 group-hover:animate-glow-pulse" />
                   <p className="text-foreground font-medium">{problem}</p>
                 </div>
               </div>
@@ -168,14 +192,17 @@ export default function HomePage() {
       </section>
 
       {/* Main Product Highlight */}
-      <section className="section-padding bg-background">
-        <div className="container-premium">
-          <div className="card-highlight p-8 md:p-12 lg:p-16 flex flex-col lg:flex-row gap-8 lg:gap-16 items-center">
+      <section className="section-padding bg-card relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
+        
+        <div className="container-premium relative">
+          <div className="card-highlight p-8 md:p-12 lg:p-16 flex flex-col lg:flex-row gap-12 lg:gap-16 items-center">
             <div className="flex-1">
-              <div className="inline-block px-4 py-1.5 bg-accent/10 text-accent text-sm font-medium rounded-full mb-6">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-full text-primary text-sm font-medium mb-8">
+                <Sparkles className="h-4 w-4" />
                 Programa Principal
               </div>
-              <h2 className="heading-section text-foreground mb-4">
+              <h2 className="heading-section text-foreground mb-6">
                 UNV Sales Acceleration
               </h2>
               <p className="text-body mb-8">
@@ -183,6 +210,9 @@ export default function HomePage() {
                 acelerar seu time de vendas. De quick wins a crescimento
                 sustentável, com cobrança total de execução.
               </p>
+              <div className="text-3xl font-bold text-primary mb-8">
+                R$ 24.000<span className="text-lg font-normal text-muted-foreground">/ano</span>
+              </div>
               <div className="flex flex-wrap gap-4">
                 <Link to="/sales-acceleration">
                   <Button variant="premium" size="lg">
@@ -198,21 +228,24 @@ export default function HomePage() {
               </div>
             </div>
             <div className="flex-1 w-full lg:w-auto">
-              <img
-                src={salesTeam}
-                alt="Time de vendas profissional em escritório moderno"
-                className="rounded-lg shadow-premium w-full h-auto object-cover"
-              />
+              <div className="relative group">
+                <div className="absolute -inset-4 bg-gradient-gold opacity-20 blur-2xl rounded-3xl group-hover:opacity-30 transition-opacity duration-500" />
+                <img
+                  src={salesTeam}
+                  alt="Time de vendas profissional em escritório moderno"
+                  className="relative rounded-2xl shadow-2xl w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                />
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Product Ladder */}
-      <section className="section-padding bg-secondary">
+      <section className="section-padding bg-background relative">
         <div className="container-premium">
-          <div className="text-center mb-16">
-            <h2 className="heading-section text-foreground mb-4">
+          <div className="text-center mb-20">
+            <h2 className="heading-section text-foreground mb-6">
               Encontre Seu Ponto de Entrada
             </h2>
             <p className="text-body max-w-2xl mx-auto">
@@ -222,35 +255,37 @@ export default function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product) => (
+            {products.map((product, index) => (
               <Link
                 key={product.href}
                 to={product.href}
                 className={`group ${
                   product.highlight ? "card-highlight" : "card-premium"
-                } p-6 hover:border-accent/50 transition-all`}
+                } p-6 block`}
+                style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="heading-card text-foreground group-hover:text-accent transition-colors">
+                  <h3 className="heading-card text-foreground group-hover:text-primary transition-colors duration-300">
                     {product.name}
                   </h3>
                   {product.highlight && (
-                    <span className="px-2 py-1 bg-accent/10 text-accent text-xs font-medium rounded">
+                    <span className="px-3 py-1 bg-primary/20 text-primary text-xs font-semibold rounded-full">
                       Destaque
                     </span>
                   )}
                 </div>
                 <p className="text-body mb-4">{product.description}</p>
-                <p className="text-small">ICP: {product.icp}</p>
-                <div className="mt-4 flex items-center text-accent text-sm font-medium">
+                <p className="text-small mb-2">ICP: {product.icp}</p>
+                <p className="text-lg font-bold text-primary">{product.price}</p>
+                <div className="mt-6 flex items-center text-primary text-sm font-semibold">
                   Saiba mais
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-2 transition-transform duration-300" />
                 </div>
               </Link>
             ))}
           </div>
 
-          <div className="text-center mt-12">
+          <div className="text-center mt-16">
             <Link to="/products">
               <Button variant="premium-outline" size="lg">
                 Ver Todos os Produtos
@@ -261,11 +296,13 @@ export default function HomePage() {
       </section>
 
       {/* Process Section */}
-      <section className="section-padding bg-primary text-primary-foreground">
-        <div className="container-premium">
-          <div className="text-center mb-16">
-            <h2 className="heading-section mb-4">Como Começamos</h2>
-            <p className="text-primary-foreground/70 text-lg max-w-2xl mx-auto">
+      <section className="section-padding bg-card relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-glow opacity-20 pointer-events-none" />
+        
+        <div className="container-premium relative">
+          <div className="text-center mb-20">
+            <h2 className="heading-section text-foreground mb-6">Como Começamos</h2>
+            <p className="text-body max-w-2xl mx-auto">
               Um processo de onboarding estruturado garante que entendamos seu
               contexto antes de propor soluções.
             </p>
@@ -273,17 +310,17 @@ export default function HomePage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {processSteps.map((step, i) => (
-              <div key={i} className="text-center lg:text-left">
-                <div className="text-5xl font-display font-bold text-accent/30 mb-4">
+              <div key={i} className="text-center lg:text-left group">
+                <div className="text-6xl font-display font-bold text-primary/20 mb-4 group-hover:text-primary/40 transition-colors duration-300">
                   {step.step}
                 </div>
-                <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
-                <p className="text-primary-foreground/70">{step.description}</p>
+                <h3 className="text-xl font-bold text-foreground mb-3">{step.title}</h3>
+                <p className="text-muted-foreground">{step.description}</p>
               </div>
             ))}
           </div>
 
-          <div className="text-center mt-16">
+          <div className="text-center mt-20">
             <Link to="/apply">
               <Button variant="hero" size="xl">
                 Iniciar Sua Aplicação
