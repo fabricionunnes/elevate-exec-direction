@@ -405,11 +405,16 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div className="text-center mt-20">
-            <Link to="/apply">
+          <div className="text-center mt-20 flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/diagnostico">
               <Button variant="hero" size="xl">
-                Iniciar Sua Aplicação
+                Fazer Diagnóstico Gratuito
                 <ArrowRight className="ml-2" />
+              </Button>
+            </Link>
+            <Link to="/apply">
+              <Button variant="hero-outline" size="xl">
+                Aplicar Direto
               </Button>
             </Link>
           </div>
