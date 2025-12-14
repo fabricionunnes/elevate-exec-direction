@@ -18,6 +18,7 @@ import SocialPage from "./pages/SocialPage";
 import MastermindPage from "./pages/MastermindPage";
 import LeadershipPage from "./pages/LeadershipPage";
 import ForClosersPage from "./pages/ForClosersPage";
+import ClientDiagnosticPage from "./pages/ClientDiagnosticPage";
 import ApplyPage from "./pages/ApplyPage";
 import FAQPage from "./pages/FAQPage";
 import TermsPage from "./pages/TermsPage";
@@ -49,6 +50,8 @@ const App = () => (
           <Route path="/mastermind" element={<MastermindPage />} />
           <Route path="/leadership" element={<LeadershipPage />} />
           <Route path="/for-closers" element={<ForClosersPage />} />
+          <Route path="/diagnostico" element={<ClientDiagnosticPage />} />
+          <Route path="/apply" element={<ApplyPage />} />
           <Route path="/apply" element={<ApplyPage />} />
           <Route path="/faq" element={<FAQPage />} />
           <Route path="/terms" element={<TermsPage />} />
