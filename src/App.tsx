@@ -16,6 +16,7 @@ import ForClosersPage from "./pages/ForClosersPage";
 import ApplyPage from "./pages/ApplyPage";
 import FAQPage from "./pages/FAQPage";
 import TermsPage from "./pages/TermsPage";
+import ComparePage from "./pages/ComparePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/apply" element={<ApplyPage />} />
           <Route path="/faq" element={<FAQPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/compare" element={<ComparePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
