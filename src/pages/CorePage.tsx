@@ -318,7 +318,7 @@ export default function CorePage() {
         <div className="container-premium text-center">
           <h2 className="heading-section mb-6">Investimento</h2>
           <p className="text-5xl md:text-6xl font-display font-bold text-accent mb-4">
-            R$ 997 – R$ 1.997
+            R$ 1.997
           </p>
           <p className="text-primary-foreground/70 text-lg mb-4">
             Investimento único
