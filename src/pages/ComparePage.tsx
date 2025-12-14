@@ -21,6 +21,7 @@ import {
   Target,
   Megaphone,
   Star,
+  Brain,
   X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -187,6 +188,22 @@ const products: Product[] = [
     keyDiff: "Conselho de decisão — grupo ultra seletivo com hot seats e mansão empresarial",
     bestFor: "Empresários que já cresceram e querem decidir melhor com pares à altura",
     notFor: "Quem busca execução, networking frouxo ou palco para ego"
+  },
+  {
+    id: "leadership",
+    name: "UNV Leadership",
+    tagline: "Formação de Liderança",
+    icon: Brain,
+    color: "bg-cyan-500",
+    icp: "Empresas formando líderes intermediários",
+    revenue: "R$ 100k–2M+/mês",
+    team: "Gestores, coordenadores, heads",
+    price: "R$ 1.500",
+    priceType: "/mês por líder ou R$ 15k/ano",
+    link: "/leadership",
+    keyDiff: "Formação de líderes — liderança que sustenta pessoas, performance e crescimento",
+    bestFor: "Empresas onde fundador centraliza, líderes não cobram e execução depende do dono",
+    notFor: "Quem busca motivação, coaching vazio ou RH terceirizado"
   }
 ];
 
@@ -212,7 +229,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: false,
       social: false,
-      mastermind: "Board coletivo"
+      mastermind: "Board coletivo",
+      leadership: false
     }
   },
   {
@@ -228,7 +246,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: "Otimização",
       social: false,
-      mastermind: false
+      mastermind: false,
+      leadership: "Contínuo"
     }
   },
   {
@@ -244,7 +263,8 @@ const features: Feature[] = [
       "sales-ops": "Via trilhas",
       ads: false,
       social: false,
-      mastermind: false
+      mastermind: false,
+      leadership: true
     }
   },
   // Estrutura
@@ -261,7 +281,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: "De demanda",
       social: "Posicionamento",
-      mastermind: false
+      mastermind: false,
+      leadership: "De liderança"
     }
   },
   {
@@ -277,7 +298,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: "Aquisição",
       social: false,
-      mastermind: false
+      mastermind: false,
+      leadership: false
     }
   },
   {
@@ -293,7 +315,8 @@ const features: Feature[] = [
       "sales-ops": "Por cargo",
       ads: "Copies",
       social: "Conteúdo",
-      mastermind: false
+      mastermind: false,
+      leadership: "Feedback"
     }
   },
   {
@@ -309,7 +332,8 @@ const features: Feature[] = [
       "sales-ops": "Por cargo",
       ads: "CPL/CAC",
       social: false,
-      mastermind: false
+      mastermind: false,
+      leadership: "De liderança"
     }
   },
   // Treinamento
@@ -326,7 +350,8 @@ const features: Feature[] = [
       "sales-ops": "Trilhas por cargo",
       ads: false,
       social: false,
-      mastermind: false
+      mastermind: false,
+      leadership: false
     }
   },
   {
@@ -342,7 +367,8 @@ const features: Feature[] = [
       "sales-ops": true,
       ads: false,
       social: false,
-      mastermind: false
+      mastermind: false,
+      leadership: false
     }
   },
   {
@@ -358,7 +384,8 @@ const features: Feature[] = [
       "sales-ops": true,
       ads: false,
       social: false,
-      mastermind: false
+      mastermind: false,
+      leadership: "Por líder"
     }
   },
   // Suporte
@@ -375,7 +402,8 @@ const features: Feature[] = [
       "sales-ops": "Por cargo",
       ads: "Ads",
       social: "Social",
-      mastermind: "Mastermind"
+      mastermind: "Mastermind",
+      leadership: "Leadership"
     }
   },
   {
@@ -391,7 +419,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: false,
       social: false,
-      mastermind: "Ultra seletiva"
+      mastermind: "Ultra seletiva",
+      leadership: false
     }
   },
   // Aquisição
@@ -408,7 +437,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: "Completa",
       social: false,
-      mastermind: false
+      mastermind: false,
+      leadership: false
     }
   },
   {
@@ -424,7 +454,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: true,
       social: "Indireta",
-      mastermind: false
+      mastermind: false,
+      leadership: false
     }
   },
   {
@@ -440,7 +471,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: true,
       social: true,
-      mastermind: false
+      mastermind: false,
+      leadership: false
     }
   },
   // Social
@@ -457,7 +489,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: false,
       social: "Completa",
-      mastermind: false
+      mastermind: false,
+      leadership: false
     }
   },
   {
@@ -473,7 +506,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: false,
       social: true,
-      mastermind: false
+      mastermind: false,
+      leadership: false
     }
   },
   {
@@ -489,7 +523,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: false,
       social: true,
-      mastermind: false
+      mastermind: false,
+      leadership: false
     }
   },
   // Mastermind
@@ -506,7 +541,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: false,
       social: false,
-      mastermind: "Mensal"
+      mastermind: "Mensal",
+      leadership: false
     }
   },
   {
@@ -522,7 +558,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: false,
       social: false,
-      mastermind: "Mensal"
+      mastermind: "Mensal",
+      leadership: false
     }
   },
   {
@@ -538,7 +575,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: false,
       social: false,
-      mastermind: "2x/ano"
+      mastermind: "2x/ano",
+      leadership: false
     }
   },
   // Experiências
@@ -555,7 +593,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: false,
       social: false,
-      mastermind: "Mensais"
+      mastermind: "Mensais",
+      leadership: "Híbrido"
     }
   },
   {
@@ -571,7 +610,8 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: false,
       social: false,
-      mastermind: "Recorrente"
+      mastermind: "Recorrente",
+      leadership: false
     }
   },
   {
@@ -587,7 +627,77 @@ const features: Feature[] = [
       "sales-ops": false,
       ads: false,
       social: false,
-      mastermind: "Real e profundo"
+      mastermind: "Real e profundo",
+      leadership: false
+    }
+  },
+  // Leadership Development
+  {
+    name: "Formação de Líderes",
+    description: "Desenvolvimento de gestores intermediários",
+    category: "Leadership",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      leadership: "4 dimensões"
+    }
+  },
+  {
+    name: "Gestão de Pessoas",
+    description: "Cobrança, feedback e desenvolvimento",
+    category: "Leadership",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      leadership: "Completo"
+    }
+  },
+  {
+    name: "PDI Individual",
+    description: "Plano de desenvolvimento do líder",
+    category: "Leadership",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      leadership: true
+    }
+  },
+  {
+    name: "Rituais de Cultura",
+    description: "Sustentação de cultura organizacional",
+    category: "Leadership",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      leadership: true
     }
   }
 ];
