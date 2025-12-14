@@ -29,12 +29,13 @@ import {
   AlertCircle,
   Loader2,
   Eye,
-  X
+  LogOut
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { User, Session } from "@supabase/supabase-js";
 
 interface DiagnosticResponse {
   id: string;
@@ -101,11 +102,73 @@ export default function DiagnosticResponsesPage() {
   const [responses, setResponses] = useState<DiagnosticResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [accessCode, setAccessCode] = useState("");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedResponse, setSelectedResponse] = useState<DiagnosticResponse | null>(null);
+  
+  // Auth state
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  
+  // Login form state
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
 
-  const ACCESS_CODE = "unv2024"; // Código de acesso simples
+  // Check admin role
+  const checkAdminRole = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Error checking admin role");
+        return false;
+      }
+      
+      return !!data;
+    } catch {
+      return false;
+    }
+  };
+
+  // Set up auth state listener
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          setTimeout(() => {
+            checkAdminRole(session.user.id).then(setIsAdmin);
+          }, 0);
+        } else {
+          setIsAdmin(false);
+        }
+        
+        setAuthLoading(false);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        checkAdminRole(session.user.id).then(setIsAdmin);
+      }
+      
+      setAuthLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const fetchResponses = async () => {
     setLoading(true);
@@ -115,10 +178,18 @@ export default function DiagnosticResponsesPage() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setResponses(data || []);
+      if (error) {
+        if (error.code === 'PGRST116' || error.message.includes('policy')) {
+          setAuthError("Você não tem permissão para acessar esses dados.");
+          setResponses([]);
+        } else {
+          throw error;
+        }
+      } else {
+        setResponses(data || []);
+        setAuthError(null);
+      }
     } catch (error) {
-      console.error("Erro ao buscar respostas:", error);
       toast.error("Erro ao carregar dados");
     } finally {
       setLoading(false);
@@ -126,10 +197,56 @@ export default function DiagnosticResponsesPage() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (user && isAdmin) {
       fetchResponses();
     }
-  }, [isAuthenticated]);
+  }, [user, isAdmin]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    setAuthError(null);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        if (error.message.includes("Invalid login")) {
+          setAuthError("E-mail ou senha inválidos");
+        } else {
+          setAuthError(error.message);
+        }
+        return;
+      }
+
+      if (data.user) {
+        const hasAdminRole = await checkAdminRole(data.user.id);
+        if (!hasAdminRole) {
+          await supabase.auth.signOut();
+          setAuthError("Usuário não possui permissão de administrador");
+          return;
+        }
+        setIsAdmin(true);
+        toast.success("Login realizado com sucesso");
+      }
+    } catch {
+      setAuthError("Erro ao fazer login");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+    setIsAdmin(false);
+    setResponses([]);
+    toast.success("Logout realizado");
+  };
 
   const updateStatus = async (id: string, newStatus: string) => {
     try {
@@ -144,8 +261,7 @@ export default function DiagnosticResponsesPage() {
         prev.map(r => r.id === id ? { ...r, status: newStatus } : r)
       );
       toast.success("Status atualizado");
-    } catch (error) {
-      console.error("Erro ao atualizar status:", error);
+    } catch {
       toast.error("Erro ao atualizar");
     }
   };
@@ -156,7 +272,19 @@ export default function DiagnosticResponsesPage() {
     r.whatsapp.includes(search)
   );
 
-  if (!isAuthenticated) {
+  // Loading state
+  if (authLoading) {
+    return (
+      <Layout>
+        <section className="section-padding bg-background min-h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        </section>
+      </Layout>
+    );
+  }
+
+  // Not authenticated or not admin
+  if (!user || !isAdmin) {
     return (
       <Layout>
         <section className="section-padding bg-background min-h-screen flex items-center justify-center">
@@ -165,33 +293,52 @@ export default function DiagnosticResponsesPage() {
               Área Restrita
             </h1>
             <p className="text-muted-foreground text-center mb-6">
-              Digite o código de acesso para visualizar as respostas dos diagnósticos.
+              Faça login com sua conta de administrador para acessar as respostas dos diagnósticos.
             </p>
-            <div className="space-y-4">
-              <Input
-                type="password"
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value)}
-                placeholder="Código de acesso"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && accessCode === ACCESS_CODE) {
-                    setIsAuthenticated(true);
-                  }
-                }}
-              />
+            
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="E-mail"
+                  required
+                  autoComplete="email"
+                />
+              </div>
+              <div>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Senha"
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+              
+              {authError && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                  <p className="text-sm text-destructive">{authError}</p>
+                </div>
+              )}
+              
               <Button 
+                type="submit" 
                 className="w-full" 
-                onClick={() => {
-                  if (accessCode === ACCESS_CODE) {
-                    setIsAuthenticated(true);
-                  } else {
-                    toast.error("Código inválido");
-                  }
-                }}
+                disabled={loginLoading}
               >
-                Acessar
+                {loginLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Entrando...
+                  </>
+                ) : (
+                  "Entrar"
+                )}
               </Button>
-            </div>
+            </form>
           </div>
         </section>
       </Layout>
@@ -224,6 +371,9 @@ export default function DiagnosticResponsesPage() {
               </div>
               <Button variant="outline" onClick={fetchResponses} disabled={loading}>
                 <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+              </Button>
+              <Button variant="outline" onClick={handleLogout} title="Sair">
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -443,308 +593,58 @@ export default function DiagnosticResponsesPage() {
                 )}
               </div>
 
-              {/* Objetivos */}
+              {/* Produto Recomendado */}
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-3">Produto Recomendado</h4>
+                <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
+                  <Badge className="bg-accent text-accent-foreground text-base px-4 py-1">
+                    {selectedResponse.recommended_product}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Notas */}
               {selectedResponse.notes && (
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-3">Informações Adicionais</h4>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">Notas Adicionais</h4>
                   <div className="bg-secondary/50 rounded-lg p-4">
-                    <p className="text-foreground whitespace-pre-line">{selectedResponse.notes}</p>
+                    <p className="text-foreground whitespace-pre-wrap">{selectedResponse.notes}</p>
                   </div>
                 </div>
               )}
 
-              {/* Recomendação com Justificativa */}
-              <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
-                <p className="text-xs text-accent mb-2">Produto(s) Recomendado(s)</p>
-                <p className="text-xl font-bold text-accent mb-4">{selectedResponse.recommended_product}</p>
-                
-                <div className="border-t border-accent/20 pt-4">
-                  <p className="text-xs font-semibold text-accent mb-2 uppercase">Por que este produto?</p>
-                  <ul className="text-sm text-foreground space-y-2">
-                    {selectedResponse.recommended_product?.includes("Core") && (
-                      <>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Ideal para quem está começando a estruturar o comercial e precisa de fundamentos sólidos</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Investimento acessível (R$ 1.997) para validar a metodologia UNV</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Entrega processo comercial completo e replicável rapidamente</span>
-                        </li>
-                      </>
-                    )}
-                    {selectedResponse.recommended_product?.includes("Control") && (
-                      <>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Perfeito para faturamento de R$ 100k-400k/mês que precisa de acompanhamento contínuo</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Reuniões semanais garantem execução e disciplina comercial</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Modelo de assinatura (R$ 597/mês) permite ajustes contínuos</span>
-                        </li>
-                      </>
-                    )}
-                    {selectedResponse.recommended_product?.includes("Sales Acceleration") && (
-                      <>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Programa intensivo para empresas que faturam R$ 200k-1M/mês e querem escalar rápido</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Direção comercial completa com foco em processos, métricas e time</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>ROI projetado já nos primeiros meses de implementação</span>
-                        </li>
-                      </>
-                    )}
-                    {selectedResponse.recommended_product?.includes("Growth Room") && (
-                      <>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Formato imersivo ideal para resolver problemas específicos rapidamente</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Acesso a networking de alto nível com outros empresários</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Investimento pontual (R$ 12k) com resultado imediato</span>
-                        </li>
-                      </>
-                    )}
-                    {selectedResponse.recommended_product?.includes("Partners") && (
-                      <>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Para empresas que faturam R$ 500k+/mês e precisam de direção comercial dedicada</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Modelo de parceria com acompanhamento próximo e estratégico</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Ideal para quem quer um "diretor comercial" sem contratar CLT</span>
-                        </li>
-                      </>
-                    )}
-                    {selectedResponse.recommended_product?.includes("Sales Ops") && (
-                      <>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Sistema de gestão comercial para times que precisam de controle operacional</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Preço por usuário (R$ 197/mês) escalável conforme o time cresce</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Dashboards e métricas para decisões baseadas em dados</span>
-                        </li>
-                      </>
-                    )}
-                    {selectedResponse.recommended_product?.includes("Ads") && (
-                      <>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Cliente indicou que não investe em tráfego pago ou não está satisfeito</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Gestão de tráfego profissional para gerar leads qualificados</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Resolve a dor de "poucos leads" diretamente na fonte</span>
-                        </li>
-                      </>
-                    )}
-                    {selectedResponse.recommended_product?.includes("Social") && (
-                      <>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Cliente não tem social media ou não está satisfeito com resultados</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Construção de autoridade e presença digital para atrair leads orgânicos</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Complementa estratégia comercial com posicionamento de marca</span>
-                        </li>
-                      </>
-                    )}
-                    {selectedResponse.recommended_product?.includes("Mastermind") && (
-                      <>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Exclusivo para empresários que faturam R$ 300k-3M/mês</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Conselho de decisão com pares de alto nível + acesso a Fabrício</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent mt-0.5">✓</span>
-                          <span>Para quem precisa de visão estratégica, não apenas operacional</span>
-                        </li>
-                      </>
-                    )}
-                  </ul>
-                </div>
-              </div>
-
               {/* Briefing para o Closer */}
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                  📋 Briefing para o Closer
-                </h4>
-                
-                <div className="space-y-4">
-                  {/* Resumo do Cliente */}
+              <div className="border-t border-border pt-6">
+                <h4 className="text-sm font-semibold text-foreground mb-3">📋 Briefing para o Closer</h4>
+                <div className="bg-primary/5 border border-primary/10 rounded-lg p-4 space-y-3">
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Resumo do Cliente</p>
+                    <p className="text-xs text-muted-foreground mb-1">Resumo do Lead</p>
                     <p className="text-sm text-foreground">
-                      <strong>{selectedResponse.contact_name}</strong> da <strong>{selectedResponse.company_name}</strong> 
-                      {" "}fatura {revenueLabels[selectedResponse.revenue] || selectedResponse.revenue}/mês 
-                      {selectedResponse.team_size !== "sozinho" && ` com ${teamLabels[selectedResponse.team_size] || selectedResponse.team_size}`}
-                      {selectedResponse.team_size === "sozinho" && " e vende sozinho(a)"}.
-                      {selectedResponse.has_sales_process ? " Já possui processo comercial estruturado." : " Não possui processo comercial estruturado."}
+                      {selectedResponse.contact_name} da {selectedResponse.company_name}, 
+                      faturando {revenueLabels[selectedResponse.revenue] || selectedResponse.revenue}, 
+                      com {teamLabels[selectedResponse.team_size]?.toLowerCase() || selectedResponse.team_size}. 
+                      {selectedResponse.has_sales_process ? " Já possui processo comercial." : " Ainda não tem processo comercial estruturado."}
                     </p>
                   </div>
-
-                  {/* Dores Identificadas */}
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Dores Identificadas</p>
-                    <ul className="text-sm text-foreground space-y-1">
-                      {selectedResponse.main_pain.split(',').map((pain, index) => (
-                        <li key={index} className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 bg-destructive rounded-full"></span>
-                          {painLabels[pain.trim()] || pain.trim()}
-                        </li>
-                      ))}
+                    <p className="text-xs text-muted-foreground mb-1">Principais Dores</p>
+                    <p className="text-sm text-foreground">
+                      {selectedResponse.main_pain.split(',').map(p => painLabels[p.trim()] || p.trim()).join(', ')}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Perguntas Sugeridas</p>
+                    <ul className="text-sm text-foreground list-disc list-inside space-y-1">
+                      <li>Qual foi o gatilho que te fez buscar ajuda agora?</li>
+                      <li>Quanto está deixando de faturar por não ter isso resolvido?</li>
+                      <li>O que já tentou fazer para resolver?</li>
                     </ul>
                   </div>
-
-                  {/* Nível de Urgência */}
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Nível de Urgência</p>
-                    <p className="text-sm text-foreground">
-                      {selectedResponse.urgency === "imediata" && "🔴 URGENTE - Cliente precisa resolver agora. Abordagem direta e objetiva."}
-                      {selectedResponse.urgency === "alta" && "🟠 ALTA - Próximos 30 dias. Cliente está pronto para decidir."}
-                      {selectedResponse.urgency === "normal" && "🟡 NORMAL - Prazo de 90 dias. Construir relacionamento antes de oferta."}
-                      {selectedResponse.urgency === "exploratoria" && "🟢 EXPLORATÓRIA - Ainda pesquisando. Foco em educar e criar valor."}
-                    </p>
-                  </div>
-
-                  {/* Perguntas para o Closer */}
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Perguntas para Fazer</p>
-                    <ul className="text-sm text-foreground space-y-2">
-                      {selectedResponse.main_pain.includes("sem-processo") && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent">→</span>
-                          <span>"Como vocês acompanham o funil de vendas hoje? O que usam para controlar?"</span>
-                        </li>
-                      )}
-                      {selectedResponse.main_pain.includes("inconsistencia") && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent">→</span>
-                          <span>"Qual foi o melhor e o pior mês de vendas nos últimos 6 meses? O que aconteceu de diferente?"</span>
-                        </li>
-                      )}
-                      {selectedResponse.main_pain.includes("time-desalinhado") && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent">→</span>
-                          <span>"Quantas reuniões de alinhamento você faz com o time por semana? Quem lidera essas reuniões?"</span>
-                        </li>
-                      )}
-                      {selectedResponse.main_pain.includes("poucos-leads") && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent">→</span>
-                          <span>"De onde vêm os leads hoje? Qual canal traz mais? Vocês investem em tráfego pago?"</span>
-                        </li>
-                      )}
-                      {selectedResponse.main_pain.includes("conversao-baixa") && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent">→</span>
-                          <span>"Qual a taxa de conversão de lead para venda hoje? Em qual etapa vocês perdem mais oportunidades?"</span>
-                        </li>
-                      )}
-                      {selectedResponse.main_pain.includes("escala") && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent">→</span>
-                          <span>"O que você acredita que está travando o crescimento? Falta de pessoas, processos ou estratégia?"</span>
-                        </li>
-                      )}
-                      {selectedResponse.main_pain.includes("autoridade") && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent">→</span>
-                          <span>"Como os clientes chegam até vocês? Vocês são indicados ou precisam prospectar?"</span>
-                        </li>
-                      )}
-                      {selectedResponse.main_pain.includes("lideranca-fraca") && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent">→</span>
-                          <span>"Quem cuida da área comercial hoje? Essa pessoa consegue cobrar resultados do time?"</span>
-                        </li>
-                      )}
-                      <li className="flex items-start gap-2">
-                        <span className="text-accent">→</span>
-                        <span>"Se você resolvesse esse problema em 90 dias, quanto isso representaria em faturamento?"</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-accent">→</span>
-                        <span>"O que já tentou fazer para resolver isso? Por que não funcionou?"</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Abordagem Sugerida */}
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Abordagem Sugerida</p>
-                    <p className="text-sm text-foreground bg-secondary/50 rounded p-3">
-                      {selectedResponse.urgency === "imediata" || selectedResponse.urgency === "alta" 
-                        ? `Foco em resolver a dor AGORA. Mostre que o ${selectedResponse.recommended_product} é a solução mais rápida. Trabalhe escassez e decisão imediata.`
-                        : `Construa rapport antes de oferecer. Valide as dores, mostre cases de sucesso similares, e depois apresente o ${selectedResponse.recommended_product} como caminho natural.`
-                      }
-                    </p>
-                  </div>
                 </div>
-              </div>
-
-              {/* Data e Status */}
-              <div className="flex items-center justify-between pt-4 border-t border-border">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  {format(new Date(selectedResponse.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                </div>
-                <Badge className={cn(statusColors[selectedResponse.status] || "bg-secondary")}>
-                  {selectedResponse.status === "pending" && "Pendente"}
-                  {selectedResponse.status === "contacted" && "Contatado"}
-                  {selectedResponse.status === "qualified" && "Qualificado"}
-                  {selectedResponse.status === "closed" && "Fechado"}
-                  {selectedResponse.status === "lost" && "Perdido"}
-                </Badge>
               </div>
 
               {/* Ações */}
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-4">
                 <Button
                   className="flex-1"
                   onClick={() => {
