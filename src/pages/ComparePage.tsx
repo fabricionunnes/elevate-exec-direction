@@ -20,9 +20,11 @@ import {
   FileText,
   Target,
   Megaphone,
-  Star
+  Star,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ClientDiagnosticForm } from "@/components/ClientDiagnosticForm";
 
 interface Product {
   id: string;
@@ -594,6 +596,7 @@ const categories = [...new Set(features.map(f => f.category))];
 
 export default function ComparePage() {
   const [selectedProducts, setSelectedProducts] = useState<string[]>(["core", "sales-acceleration"]);
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
 
   const toggleProduct = (productId: string) => {
     if (selectedProducts.includes(productId)) {
@@ -878,17 +881,37 @@ export default function ComparePage() {
             Ainda em Dúvida?
           </h2>
           <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-            Use nossa ferramenta de diagnóstico para receber uma recomendação 
+            Responda algumas perguntas rápidas e receba uma recomendação 
             personalizada baseada no momento da sua empresa.
           </p>
-          <Link to="/for-closers">
-            <Button variant="hero" size="xl">
-              Fazer Diagnóstico
-              <ArrowRight className="ml-2" />
-            </Button>
-          </Link>
+          <Button variant="hero" size="xl" onClick={() => setShowDiagnostic(true)}>
+            Qual Produto é Ideal Para Mim?
+            <ArrowRight className="ml-2" />
+          </Button>
         </div>
       </section>
+
+      {/* Diagnostic Modal */}
+      {showDiagnostic && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <h2 className="text-xl font-semibold text-foreground">
+                Descubra o Produto Ideal
+              </h2>
+              <button 
+                onClick={() => setShowDiagnostic(false)}
+                className="p-2 rounded-full hover:bg-secondary transition-colors"
+              >
+                <X className="h-5 w-5 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="p-6">
+              <ClientDiagnosticForm onClose={() => setShowDiagnostic(false)} />
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
