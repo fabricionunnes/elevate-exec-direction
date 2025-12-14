@@ -1,20 +1,21 @@
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle, Target, Layers, Shield } from "lucide-react";
+import { ArrowRight, CheckCircle, Target, Layers, Shield, MessageSquare } from "lucide-react";
 
 const deliverables = [
-  "Diagnóstico direcional da sua operação atual",
-  "Estrutura de funil básico com definição de etapas",
+  "Diagnóstico direcional detalhado",
+  "Funil base com definição de etapas",
   "Scripts essenciais (abordagem, qualificação, fechamento)",
   "Metas básicas por vendedor",
-  "Rotina de cobrança mínima",
+  "Rotina mínima de cobrança",
+  "AI Advisor básico",
 ];
 
 const gains = [
   "Clareza e organização no processo comercial",
   "Redução de improviso nas conversas de vendas",
-  "Base pronta para escalar quando crescer",
+  "Base sólida pronta para escalar quando crescer",
 ];
 
 const icp = [
@@ -41,7 +42,10 @@ export default function CorePage() {
             <h1 className="heading-display text-primary-foreground mb-6">
               UNV Core
             </h1>
-            <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8">
+            <p className="text-xl md:text-2xl text-primary-foreground/80 mb-4">
+              Organizar o caos comercial inicial.
+            </p>
+            <p className="text-lg text-primary-foreground/70 mb-8">
               Construa a base estrutural da sua operação comercial. Frameworks
               essenciais para parar de improvisar e começar a vender com método.
             </p>
@@ -122,8 +126,30 @@ export default function CorePage() {
         </div>
       </section>
 
+      {/* AI Advisor */}
+      <section className="py-12 bg-secondary">
+        <div className="container-premium">
+          <div className="max-w-3xl mx-auto">
+            <div className="card-highlight p-8 flex flex-col md:flex-row gap-6 items-center">
+              <div className="w-14 h-14 rounded-xl bg-accent/20 flex items-center justify-center flex-shrink-0">
+                <MessageSquare className="h-7 w-7 text-accent" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">
+                  AI Advisor Básico Incluso
+                </h3>
+                <p className="text-body">
+                  Suporte IA para organização inicial, lembretes e estruturação
+                  do processo comercial.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* What's NOT Included */}
-      <section className="section-padding bg-secondary">
+      <section className="section-padding bg-background">
         <div className="container-premium">
           <div className="max-w-3xl mx-auto">
             <h2 className="heading-section text-foreground text-center mb-12">
@@ -133,7 +159,7 @@ export default function CorePage() {
               {notIncluded.map((item, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 p-4 bg-background rounded-lg"
+                  className="flex items-center gap-3 p-4 bg-secondary rounded-lg"
                 >
                   <Shield className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                   <span className="text-muted-foreground">{item}</span>

@@ -1,20 +1,20 @@
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle, Crown, Shield, MessageSquare, Users, Home } from "lucide-react";
+import { ArrowRight, CheckCircle, Crown, Shield, MessageSquare, Users, Home, Calendar } from "lucide-react";
 import mansionImage from "@/assets/mansion-experience.jpg";
 
 const deliverables = [
-  "Reunião de board mensal com revisão estratégica",
-  "Check-ins de cobrança semanais",
+  "Board mensal com revisão estratégica",
+  "Acompanhamento semanal de execução",
   "Benchmark estruturado (anonimizado entre membros)",
   "Eventos presenciais exclusivos",
-  "UNV AI Advisor (nível estratégico)",
+  "UNV AI Advisor — Nível Estratégico",
 ];
 
 const mansionExperience = [
-  "5 convidados selecionados por mês",
-  "Processo de curadoria e seleção",
+  "Mansão recorrente para membros",
+  "Curadoria e seleção de participantes",
   "Todos os custos (viagem, hospedagem, atividades) por conta do cliente",
   "Disponibilidade limitada — aplicação necessária",
 ];
@@ -32,7 +32,7 @@ const icp = [
 const notIncluded = [
   "Treinamento operacional de time (veja Sales Acceleration)",
   "Gestão de CRM ou implementação de tecnologia",
-  "Garantia de resultados de receita",
+  "Garantia de resultados de faturamento",
 ];
 
 export default function PartnersPage() {
@@ -49,7 +49,10 @@ export default function PartnersPage() {
             <h1 className="heading-display text-primary-foreground mb-6">
               UNV Partners
             </h1>
-            <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8">
+            <p className="text-xl md:text-2xl text-primary-foreground/80 mb-4">
+              Board estratégico recorrente.
+            </p>
+            <p className="text-lg text-primary-foreground/70 mb-8">
               Mentoria elite para empresas estabelecidas. Reuniões de board
               mensais, cobrança semanal, eventos exclusivos e a Experiência Mansão.
             </p>
@@ -142,7 +145,7 @@ export default function PartnersPage() {
                     </h2>
                   </div>
                   <p className="text-body mb-6">
-                    Um encontro presencial exclusivo para membros Partners.
+                    Um encontro presencial exclusivo e recorrente para membros Partners.
                     Conversas estratégicas em ambiente intimista, longe do
                     barulho das operações diárias.
                   </p>

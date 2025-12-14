@@ -1,18 +1,20 @@
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle, Users2, Shield, MessageSquare, BarChart } from "lucide-react";
+import { ArrowRight, CheckCircle, Users2, Shield, MessageSquare, BarChart, TrendingUp } from "lucide-react";
 
 const deliverables = [
   "Trilhas de treinamento por cargo (SDR, Closer, Gestor)",
-  "Discurso padronizado por cargo e etapa do funil",
+  "Padronização do discurso por cargo e etapa do funil",
   "Avaliações individuais e scorecards",
+  "Relatórios de performance",
   "Suporte IA customizado por cargo",
 ];
 
 const gains = [
   "Operações de time padronizadas",
   "Menor dependência do dono",
+  "Escala com previsibilidade",
   "Onboarding escalável para novas contratações",
 ];
 
@@ -40,7 +42,10 @@ export default function SalesOpsPage() {
             <h1 className="heading-display text-primary-foreground mb-6">
               UNV Sales Ops
             </h1>
-            <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8">
+            <p className="text-xl md:text-2xl text-primary-foreground/80 mb-4">
+              Padronizar e escalar times.
+            </p>
+            <p className="text-lg text-primary-foreground/70 mb-8">
               Padronize seu time comercial em escala. Trilhas de treinamento por
               cargo, scorecards e suporte IA para execução consistente em todo
               o time.
@@ -102,7 +107,7 @@ export default function SalesOpsPage() {
               <div>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <BarChart className="h-5 w-5 text-accent" />
+                    <TrendingUp className="h-5 w-5 text-accent" />
                   </div>
                   <h2 className="heading-card text-foreground">
                     Ganhos Esperados
@@ -126,6 +131,9 @@ export default function SalesOpsPage() {
       <section className="py-12 bg-secondary">
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">
+            <h3 className="heading-card text-foreground text-center mb-8">
+              Trilhas por Cargo
+            </h3>
             <div className="grid md:grid-cols-3 gap-6">
               {["Trilha SDR", "Trilha Closer", "Trilha Gestor"].map((track, i) => (
                 <div key={i} className="card-premium p-6 text-center">
@@ -134,7 +142,7 @@ export default function SalesOpsPage() {
                   </div>
                   <h3 className="font-semibold text-foreground">{track}</h3>
                   <p className="text-small mt-2">
-                    Treinamento customizado, scripts e scorecards
+                    Treinamento customizado, scripts e scorecards específicos
                   </p>
                 </div>
               ))}

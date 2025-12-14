@@ -1,21 +1,24 @@
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle, MapPin, Shield, Calendar, Target } from "lucide-react";
+import { ArrowRight, CheckCircle, MapPin, Shield, Calendar, Target, MessageSquare } from "lucide-react";
 import strategySession from "@/assets/strategy-session.jpg";
 
 const deliverables = [
-  "Diagnóstico pré-imersão",
+  "Diagnóstico prévio detalhado",
   "3 dias de sessões presenciais intensivas",
-  "Funil completo + metas + KPIs",
+  "Funil completo estruturado",
+  "Metas e KPIs definidos",
   "Plano de execução de 90 dias fechado",
-  "Pós-imersão: checkpoints e AI Advisor configurado",
+  "Pós-imersão: checkpoints de acompanhamento",
+  "AI Advisor configurado",
 ];
 
 const gains = [
-  "Direção clara e tomada de decisão rápida",
+  "Direção clara e foco imediato",
   "Plano executável que você leva pronto",
   "Alinhamento entre dono e time",
+  "Tomada de decisão rápida",
 ];
 
 const icp = [
@@ -47,7 +50,10 @@ export default function GrowthRoomPage() {
             <h1 className="heading-display text-primary-foreground mb-6">
               UNV Growth Room
             </h1>
-            <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8">
+            <p className="text-xl md:text-2xl text-primary-foreground/80 mb-4">
+              Redefinir rota de crescimento.
+            </p>
+            <p className="text-lg text-primary-foreground/70 mb-8">
               Sessão estratégica presencial intensiva de 3 dias. Redesenhe sua
               rota comercial e saia com um plano de execução de 90 dias fechado.
             </p>
@@ -148,8 +154,30 @@ export default function GrowthRoomPage() {
         </div>
       </section>
 
+      {/* AI Advisor */}
+      <section className="py-12 bg-background">
+        <div className="container-premium">
+          <div className="max-w-3xl mx-auto">
+            <div className="card-premium p-8 flex flex-col md:flex-row gap-6 items-center">
+              <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <MessageSquare className="h-7 w-7 text-accent" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">
+                  AI Advisor Configurado
+                </h3>
+                <p className="text-body">
+                  Após a imersão, você recebe o AI Advisor configurado para
+                  acompanhar a execução do plano de 90 dias.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* What's NOT Included */}
-      <section className="section-padding bg-background">
+      <section className="section-padding bg-secondary">
         <div className="container-premium">
           <div className="max-w-3xl mx-auto">
             <h2 className="heading-section text-foreground text-center mb-12">
@@ -159,7 +187,7 @@ export default function GrowthRoomPage() {
               {notIncluded.map((item, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 p-4 bg-secondary rounded-lg"
+                  className="flex items-center gap-3 p-4 bg-background rounded-lg"
                 >
                   <Shield className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                   <span className="text-muted-foreground">{item}</span>
