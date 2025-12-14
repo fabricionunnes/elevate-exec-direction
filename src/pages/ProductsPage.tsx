@@ -6,58 +6,58 @@ import { Button } from "@/components/ui/button";
 const products = [
   {
     name: "UNV Core",
-    tagline: "Start with structure",
+    tagline: "Comece com estrutura",
     description:
-      "Build the foundation of your commercial operation. Scripts, basic funnel, goals, and minimal accountability routines.",
-    icp: "R$ 50k–150k/month revenue • 1–5 salespeople",
+      "Construa a fundação da sua operação comercial. Scripts, funil básico, metas e rotinas mínimas de cobrança.",
+    icp: "Faturamento R$ 50k–150k/mês • 1–5 vendedores",
     href: "/core",
     investment: "R$ 997–R$ 1.997",
   },
   {
     name: "UNV Control",
-    tagline: "Maintain execution",
+    tagline: "Mantenha a execução",
     description:
-      "Recurring direction to keep your team executing consistently. Monthly check-ins, templates, and AI-powered support.",
-    icp: "R$ 100k–400k/month revenue",
+      "Direção recorrente para manter seu time executando com consistência. Check-ins mensais, templates e suporte com IA.",
+    icp: "Faturamento R$ 100k–400k/mês",
     href: "/control",
-    investment: "R$ 297–R$ 597/month",
+    investment: "R$ 297–R$ 597/mês",
   },
   {
     name: "UNV Sales Acceleration",
-    tagline: "Main program",
+    tagline: "Programa principal",
     description:
-      "Annual commercial direction program. We train, monitor, and hold your sales team accountable for accelerated, predictable growth.",
-    icp: "R$ 150k–1M/month revenue • 3+ salespeople",
+      "Programa anual de direção comercial. Treinamos, acompanhamos e cobramos seu time para crescimento acelerado e previsível.",
+    icp: "Faturamento R$ 150k–1M/mês • 3+ vendedores",
     href: "/sales-acceleration",
-    investment: "R$ 24.000–R$ 36.000/year",
+    investment: "R$ 24.000–R$ 36.000/ano",
     highlight: true,
   },
   {
     name: "UNV Growth Room",
-    tagline: "In-person strategy",
+    tagline: "Estratégia presencial",
     description:
-      "Intensive 3-day in-person immersion. Redesign your commercial route with hands-on guidance and leave with a 90-day execution plan.",
-    icp: "R$ 150k–600k/month revenue",
+      "Imersão presencial intensiva de 3 dias. Redesenhe sua rota comercial com orientação hands-on e saia com um plano de execução de 90 dias.",
+    icp: "Faturamento R$ 150k–600k/mês",
     href: "/growth-room",
     investment: "R$ 12.000–R$ 20.000",
   },
   {
     name: "UNV Partners",
-    tagline: "Elite strategic",
+    tagline: "Elite estratégico",
     description:
-      "Monthly board meetings, weekly accountability, exclusive events, and the Mansion Experience. For established companies seeking elite advisory.",
-    icp: "R$ 300k–2M/month revenue",
+      "Reuniões de board mensais, cobrança semanal, eventos exclusivos e a Experiência Mansão. Para empresas estabelecidas que buscam mentoria de elite.",
+    icp: "Faturamento R$ 300k–2M/mês",
     href: "/partners",
-    investment: "R$ 3.000–R$ 6.000/month",
+    investment: "R$ 3.000–R$ 6.000/mês",
   },
   {
     name: "UNV Sales Ops",
-    tagline: "Team standardization",
+    tagline: "Padronização de times",
     description:
-      "Standardize your sales team at scale. Role-based training tracks, scorecards, and AI support per role.",
-    icp: "R$ 200k+/month revenue • 5+ salespeople",
+      "Padronize seu time comercial em escala. Trilhas de treinamento por cargo, scorecards e suporte IA por função.",
+    icp: "Faturamento R$ 200k+/mês • 5+ vendedores",
     href: "/sales-ops",
-    investment: "R$ 97–R$ 297/user/month",
+    investment: "R$ 97–R$ 297/usuário/mês",
   },
 ];
 
@@ -69,12 +69,12 @@ export default function ProductsPage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="heading-display text-foreground mb-6">
-              Our Products
+              Nossos Produtos
             </h1>
             <p className="text-body text-lg">
-              Not a catalog—a progression. Each product addresses a specific
-              stage of commercial maturity. Find where you fit and grow from
-              there.
+              Não é um catálogo—é uma progressão. Cada produto endereça um
+              estágio específico de maturidade comercial. Encontre onde você se
+              encaixa e cresça a partir daí.
             </p>
           </div>
         </div>
@@ -100,7 +100,7 @@ export default function ProductsPage() {
                       {product.highlight && (
                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent/10 text-accent text-xs font-medium rounded">
                           <Sparkles className="h-3 w-3" />
-                          Featured
+                          Destaque
                         </span>
                       )}
                     </div>
@@ -120,7 +120,7 @@ export default function ProductsPage() {
                         size="lg"
                         className="w-full lg:w-auto"
                       >
-                        Learn More
+                        Saiba Mais
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </Link>
@@ -137,15 +137,15 @@ export default function ProductsPage() {
         <div className="container-premium">
           <div className="card-premium p-8 lg:p-12 text-center max-w-3xl mx-auto">
             <h2 className="heading-card text-foreground mb-4">
-              Not sure which product is right for you?
+              Não sabe qual produto é ideal para você?
             </h2>
             <p className="text-body mb-6">
-              Use our diagnostic tool to get a personalized recommendation based
-              on your company profile.
+              Use nossa ferramenta de diagnóstico para receber uma recomendação
+              personalizada baseada no perfil da sua empresa.
             </p>
             <Link to="/for-closers">
               <Button variant="gold" size="lg">
-                Get Your Recommendation
+                Receber Recomendação
               </Button>
             </Link>
           </div>

@@ -4,14 +4,11 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
   CheckCircle,
-  Target,
   TrendingUp,
   Users,
   Zap,
-  Calendar,
   FileText,
   BarChart3,
-  ClipboardList,
   MessageSquare,
   Shield,
 } from "lucide-react";
@@ -19,90 +16,90 @@ import salesTeam from "@/assets/sales-team.jpg";
 
 const deliverables = [
   {
-    phase: "Month 1",
-    title: "Quick Wins & Sales Unblocking",
+    phase: "Mês 1",
+    title: "Quick Wins & Desbloqueio de Vendas",
     items: [
-      "Script Master (approach, diagnosis, proposal, closing)",
-      "Follow-up System (cadence + templates)",
-      "Daily salesperson checklist (activity and focus)",
-      "Weekly team meeting script",
-      "Minimum pipeline with stage criteria",
+      "Script Master (abordagem, diagnóstico, proposta, fechamento)",
+      "Sistema de Follow-up (cadência + templates)",
+      "Checklist diário do vendedor (atividade e foco)",
+      "Roteiro de reunião semanal do time",
+      "Pipeline mínimo com critérios de passagem",
     ],
     gains: [
-      "Increase in qualified conversations",
-      "Reduction in losses due to inertia",
-      "Better closing through refined pitch (operational target)",
+      "Aumento de conversas qualificadas",
+      "Redução de perda por inércia",
+      "Melhor fechamento por ajuste de discurso (meta operacional)",
     ],
     icon: Zap,
   },
   {
-    phase: "Months 2–3",
-    title: "Conversion & Payback Track",
+    phase: "Meses 2–3",
+    title: "Conversão & Trilha de Payback",
     items: [
-      "Qualification structure (criteria)",
-      "Pipeline + simple forecast",
-      "Proposal and objection playbook",
-      "Lost lead recovery plan",
-      "Scorecard per salesperson (activity + conversion)",
+      "Estrutura de qualificação (critérios)",
+      "Pipeline + forecast simples",
+      "Playbook de propostas e objeções",
+      "Plano de recuperação de leads perdidos",
+      "Scorecard por vendedor (atividade + conversão)",
     ],
     gains: [
-      "Higher conversion with same lead volume",
-      "More controlled sales cycle",
-      "Projected payback by month 3 (projection)",
+      "Conversão maior com mesmo volume de leads",
+      "Ciclo de venda mais controlado",
+      "Payback projetado até o 3º mês (projeção)",
     ],
     icon: TrendingUp,
   },
   {
-    phase: "Months 4–6",
-    title: "Performance & Management",
+    phase: "Meses 4–6",
+    title: "Performance & Gestão",
     items: [
-      "Management cadence (leader's agenda)",
-      "Feedback and accountability model",
-      "Individual development plan per salesperson",
-      "Performance rules",
+      "Cadência de gestão (agenda do líder)",
+      "Modelo de feedback e cobrança",
+      "PDI por vendedor (plano de evolução)",
+      "Regras de performance",
     ],
     gains: [
-      "Less owner dependency",
-      "Team accountable for their numbers",
+      "Menos dependência do dono",
+      "Time com responsabilidade por números",
     ],
     icon: Users,
   },
   {
-    phase: "Months 7–9",
-    title: "Standardization & Scale",
+    phase: "Meses 7–9",
+    title: "Padronização & Escala",
     items: [
-      "Simple and effective commission structure",
-      "Salesperson manual (company standard)",
-      "Standardized pitch by funnel stage",
+      "Estrutura de comissão simples e eficiente",
+      "Manual do vendedor (padrão da empresa)",
+      "Padronização do discurso por etapa do funil",
     ],
-    gains: ["Aligned and replicable team"],
+    gains: ["Time alinhado e replicável"],
     icon: FileText,
   },
   {
-    phase: "Months 10–12",
-    title: "Growth Control & Decisions",
+    phase: "Meses 10–12",
+    title: "Controle de Crescimento & Decisões",
     items: [
-      "Executive indicator dashboard",
-      "Priority and decision map",
-      "Validated growth plan + scaling checklist",
+      "Painel executivo de indicadores",
+      "Mapa de prioridades e decisões",
+      "Plano de crescimento validado + checklist de escala",
     ],
-    gains: ["Growth with control, without chaos"],
+    gains: ["Crescimento com controle, sem caos"],
     icon: BarChart3,
   },
 ];
 
 const icp = [
-  { label: "Revenue", value: "R$ 150k to R$ 1M/month" },
-  { label: "Team", value: "Minimum 3 salespeople" },
-  { label: "Decision-maker", value: "Owner directly involved" },
-  { label: "Pain", value: "Low conversion, inconsistency, owner dependency" },
+  { label: "Faturamento", value: "R$ 150k a R$ 1M/mês" },
+  { label: "Time", value: "Mínimo 3 vendedores" },
+  { label: "Decisor", value: "Dono diretamente envolvido" },
+  { label: "Dor", value: "Baixa conversão, inconsistência, dependência do dono" },
 ];
 
 const notIncluded = [
-  "We don't make sales on your behalf",
-  "We don't guarantee specific revenue numbers",
-  "We don't manage your CRM directly",
-  "We don't provide paid traffic or marketing services",
+  "Não fazemos vendas por você",
+  "Não garantimos números específicos de receita",
+  "Não gerenciamos seu CRM diretamente",
+  "Não fornecemos tráfego pago ou serviços de marketing",
 ];
 
 export default function SalesAccelerationPage() {
@@ -119,18 +116,18 @@ export default function SalesAccelerationPage() {
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl">
             <div className="inline-block px-4 py-1.5 bg-accent/20 text-accent text-sm font-medium rounded-full mb-6">
-              Main Program
+              Programa Principal
             </div>
             <h1 className="heading-display text-primary-foreground mb-6">
               UNV Sales Acceleration
             </h1>
             <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8">
-              Annual commercial direction program to train, monitor, and
-              accelerate your sales team with method and predictability.
+              Programa anual de direção comercial para treinar, acompanhar e
+              acelerar seu time de vendas com método e previsibilidade.
             </p>
             <Link to="/apply">
               <Button variant="hero" size="xl">
-                Apply for Diagnosis
+                Aplicar para Diagnóstico
                 <ArrowRight className="ml-2" />
               </Button>
             </Link>
@@ -143,7 +140,7 @@ export default function SalesAccelerationPage() {
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">
             <h2 className="heading-section text-foreground text-center mb-12">
-              Who This Is For
+              Para Quem É
             </h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {icp.map((item, i) => (
@@ -164,11 +161,11 @@ export default function SalesAccelerationPage() {
         <div className="container-premium">
           <div className="text-center mb-16">
             <h2 className="heading-section text-foreground mb-4">
-              12-Month Roadmap
+              Roadmap de 12 Meses
             </h2>
             <p className="text-body max-w-2xl mx-auto">
-              A structured progression from quick wins to sustainable growth
-              systems. Each phase builds on the previous.
+              Uma progressão estruturada de quick wins a sistemas de crescimento
+              sustentável. Cada fase constrói sobre a anterior.
             </p>
           </div>
 
@@ -191,7 +188,7 @@ export default function SalesAccelerationPage() {
                   </div>
                   <div className="lg:w-1/3">
                     <h4 className="font-semibold text-foreground mb-3">
-                      Deliverables
+                      Entregáveis
                     </h4>
                     <ul className="space-y-2">
                       {phase.items.map((item, j) => (
@@ -207,7 +204,7 @@ export default function SalesAccelerationPage() {
                   </div>
                   <div className="lg:w-1/3">
                     <h4 className="font-semibold text-foreground mb-3">
-                      Expected Gains
+                      Ganhos Esperados
                     </h4>
                     <ul className="space-y-2">
                       {phase.gains.map((gain, j) => (
@@ -242,14 +239,14 @@ export default function SalesAccelerationPage() {
                     UNV AI Advisor
                   </h3>
                   <p className="text-body mb-4">
-                    Included support layer for accountability, checklists, and
-                    meeting preparation. Available throughout the program to
-                    keep execution on track.
+                    Camada de suporte inclusa para cobrança, checklists e
+                    preparação de reuniões. Disponível durante todo o programa
+                    para manter a execução no trilho.
                   </p>
                   <p className="text-small italic">
-                    Note: This is a support tool, not a standalone SaaS product.
-                    It does not provide revenue predictions or automated
-                    decision-making.
+                    Nota: Esta é uma ferramenta de suporte, não um produto SaaS
+                    standalone. Não fornece previsões de receita ou
+                    decisões automatizadas.
                   </p>
                 </div>
               </div>
@@ -263,7 +260,7 @@ export default function SalesAccelerationPage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto">
             <h2 className="heading-section text-foreground text-center mb-12">
-              What's NOT Included
+              O Que NÃO Está Incluso
             </h2>
             <div className="grid sm:grid-cols-2 gap-4">
               {notIncluded.map((item, i) => (
@@ -284,21 +281,20 @@ export default function SalesAccelerationPage() {
       <section className="section-padding bg-primary text-primary-foreground">
         <div className="container-premium">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="heading-section mb-6">Investment</h2>
+            <h2 className="heading-section mb-6">Investimento</h2>
             <p className="text-4xl md:text-5xl font-display font-bold text-accent mb-4">
               R$ 24.000 – R$ 36.000
             </p>
             <p className="text-primary-foreground/70 text-lg mb-6">
-              Annual program • Cash or installments available
+              Programa anual • À vista ou parcelado
             </p>
             <p className="text-sm text-primary-foreground/50 mb-10 max-w-xl mx-auto">
-              Results vary based on execution. Payback projection is
-              operational, not guaranteed. UNV directs and holds accountable—the
-              client executes.
+              Resultados variam conforme execução. Payback é projeção
+              operacional, não garantia. UNV direciona e cobra—o cliente executa.
             </p>
             <Link to="/apply">
               <Button variant="hero" size="xl">
-                Apply for Diagnosis
+                Aplicar para Diagnóstico
                 <ArrowRight className="ml-2" />
               </Button>
             </Link>

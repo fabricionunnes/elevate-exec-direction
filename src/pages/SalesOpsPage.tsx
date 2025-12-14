@@ -4,27 +4,27 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Users2, Shield, MessageSquare, BarChart } from "lucide-react";
 
 const deliverables = [
-  "Role-based training tracks (SDR, Closer, Manager)",
-  "Standardized pitch by role and funnel stage",
-  "Individual assessments and scorecards",
-  "AI support customized per role",
+  "Trilhas de treinamento por cargo (SDR, Closer, Gestor)",
+  "Discurso padronizado por cargo e etapa do funil",
+  "Avaliações individuais e scorecards",
+  "Suporte IA customizado por cargo",
 ];
 
 const gains = [
-  "Standardized team operations",
-  "Reduced owner dependency",
-  "Scalable onboarding for new hires",
+  "Operações de time padronizadas",
+  "Menor dependência do dono",
+  "Onboarding escalável para novas contratações",
 ];
 
 const icp = [
-  { label: "Revenue", value: "R$ 200k+/month" },
-  { label: "Team", value: "5+ salespeople" },
+  { label: "Faturamento", value: "R$ 200k+/mês" },
+  { label: "Time", value: "5+ vendedores" },
 ];
 
 const notIncluded = [
-  "Strategic direction (see Sales Acceleration or Partners)",
-  "In-person training sessions",
-  "CRM implementation or management",
+  "Direção estratégica (veja Sales Acceleration ou Partners)",
+  "Sessões de treinamento presencial",
+  "Implementação ou gestão de CRM",
 ];
 
 export default function SalesOpsPage() {
@@ -35,19 +35,19 @@ export default function SalesOpsPage() {
         <div className="container-premium">
           <div className="max-w-3xl">
             <div className="inline-block px-4 py-1.5 bg-accent/20 text-accent text-sm font-medium rounded-full mb-6">
-              Team Standardization
+              Padronização de Times
             </div>
             <h1 className="heading-display text-primary-foreground mb-6">
               UNV Sales Ops
             </h1>
             <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8">
-              Standardize your sales team at scale. Role-based training tracks,
-              scorecards, and AI support for consistent execution across your
-              entire team.
+              Padronize seu time comercial em escala. Trilhas de treinamento por
+              cargo, scorecards e suporte IA para execução consistente em todo
+              o time.
             </p>
             <Link to="/apply">
               <Button variant="hero" size="xl">
-                Apply Now
+                Aplicar Agora
                 <ArrowRight className="ml-2" />
               </Button>
             </Link>
@@ -60,7 +60,7 @@ export default function SalesOpsPage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto">
             <h2 className="heading-section text-foreground text-center mb-12">
-              Who This Is For
+              Para Quem É
             </h2>
             <div className="grid sm:grid-cols-2 gap-6">
               {icp.map((item, i) => (
@@ -88,7 +88,7 @@ export default function SalesOpsPage() {
                   <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
                     <Users2 className="h-5 w-5 text-accent" />
                   </div>
-                  <h2 className="heading-card text-foreground">Deliverables</h2>
+                  <h2 className="heading-card text-foreground">Entregáveis</h2>
                 </div>
                 <ul className="space-y-4">
                   {deliverables.map((item, i) => (
@@ -105,7 +105,7 @@ export default function SalesOpsPage() {
                     <BarChart className="h-5 w-5 text-accent" />
                   </div>
                   <h2 className="heading-card text-foreground">
-                    Expected Gains
+                    Ganhos Esperados
                   </h2>
                 </div>
                 <ul className="space-y-4">
@@ -127,14 +127,14 @@ export default function SalesOpsPage() {
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">
             <div className="grid md:grid-cols-3 gap-6">
-              {["SDR Track", "Closer Track", "Manager Track"].map((track, i) => (
+              {["Trilha SDR", "Trilha Closer", "Trilha Gestor"].map((track, i) => (
                 <div key={i} className="card-premium p-6 text-center">
                   <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
                     <Users2 className="h-5 w-5 text-accent" />
                   </div>
                   <h3 className="font-semibold text-foreground">{track}</h3>
                   <p className="text-small mt-2">
-                    Customized training, scripts, and scorecards
+                    Treinamento customizado, scripts e scorecards
                   </p>
                 </div>
               ))}
@@ -153,11 +153,11 @@ export default function SalesOpsPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground mb-2">
-                  AI Support Per Role
+                  Suporte IA Por Cargo
                 </h3>
                 <p className="text-body">
-                  Each role receives customized AI assistance for daily
-                  execution, objection handling, and activity tracking.
+                  Cada cargo recebe assistência IA customizada para execução
+                  diária, tratamento de objeções e acompanhamento de atividades.
                 </p>
               </div>
             </div>
@@ -170,7 +170,7 @@ export default function SalesOpsPage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto">
             <h2 className="heading-section text-foreground text-center mb-12">
-              What's NOT Included
+              O Que NÃO Está Incluso
             </h2>
             <div className="space-y-4">
               {notIncluded.map((item, i) => (
@@ -190,16 +190,16 @@ export default function SalesOpsPage() {
       {/* Investment */}
       <section className="section-padding bg-primary text-primary-foreground">
         <div className="container-premium text-center">
-          <h2 className="heading-section mb-6">Investment</h2>
+          <h2 className="heading-section mb-6">Investimento</h2>
           <p className="text-4xl md:text-5xl font-display font-bold text-accent mb-4">
             R$ 97 – R$ 297
           </p>
           <p className="text-primary-foreground/70 text-lg mb-10">
-            Per user, per month
+            Por usuário, por mês
           </p>
           <Link to="/apply">
             <Button variant="hero" size="xl">
-              Apply Now
+              Aplicar Agora
               <ArrowRight className="ml-2" />
             </Button>
           </Link>

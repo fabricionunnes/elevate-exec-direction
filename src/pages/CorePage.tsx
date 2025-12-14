@@ -4,28 +4,28 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Target, Layers, Shield } from "lucide-react";
 
 const deliverables = [
-  "Directional diagnosis of your current operation",
-  "Basic funnel structure with stage definitions",
-  "Essential scripts (approach, qualification, closing)",
-  "Basic goals per salesperson",
-  "Minimal accountability routine",
+  "Diagnóstico direcional da sua operação atual",
+  "Estrutura de funil básico com definição de etapas",
+  "Scripts essenciais (abordagem, qualificação, fechamento)",
+  "Metas básicas por vendedor",
+  "Rotina de cobrança mínima",
 ];
 
 const gains = [
-  "Clarity and organization in your commercial process",
-  "Reduced improvisation in sales conversations",
-  "Foundation ready to scale when you grow",
+  "Clareza e organização no processo comercial",
+  "Redução de improviso nas conversas de vendas",
+  "Base pronta para escalar quando crescer",
 ];
 
 const icp = [
-  { label: "Revenue", value: "R$ 50k–150k/month" },
-  { label: "Team", value: "1–5 salespeople" },
+  { label: "Faturamento", value: "R$ 50k–150k/mês" },
+  { label: "Time", value: "1–5 vendedores" },
 ];
 
 const notIncluded = [
-  "Ongoing direction (see UNV Control)",
-  "Team training beyond initial frameworks",
-  "Performance monitoring or scorecards",
+  "Direção contínua (veja UNV Control)",
+  "Treinamento de time além dos frameworks iniciais",
+  "Monitoria de performance ou scorecards",
 ];
 
 export default function CorePage() {
@@ -36,19 +36,18 @@ export default function CorePage() {
         <div className="container-premium">
           <div className="max-w-3xl">
             <div className="inline-block px-4 py-1.5 bg-accent/20 text-accent text-sm font-medium rounded-full mb-6">
-              Foundation
+              Fundação
             </div>
             <h1 className="heading-display text-primary-foreground mb-6">
               UNV Core
             </h1>
             <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8">
-              Build the structural foundation of your commercial operation.
-              Essential frameworks to stop improvising and start selling with
-              method.
+              Construa a base estrutural da sua operação comercial. Frameworks
+              essenciais para parar de improvisar e começar a vender com método.
             </p>
             <Link to="/apply">
               <Button variant="hero" size="xl">
-                Apply Now
+                Aplicar Agora
                 <ArrowRight className="ml-2" />
               </Button>
             </Link>
@@ -61,7 +60,7 @@ export default function CorePage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto">
             <h2 className="heading-section text-foreground text-center mb-12">
-              Who This Is For
+              Para Quem É
             </h2>
             <div className="grid sm:grid-cols-2 gap-6">
               {icp.map((item, i) => (
@@ -89,7 +88,7 @@ export default function CorePage() {
                   <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
                     <Layers className="h-5 w-5 text-accent" />
                   </div>
-                  <h2 className="heading-card text-foreground">Deliverables</h2>
+                  <h2 className="heading-card text-foreground">Entregáveis</h2>
                 </div>
                 <ul className="space-y-4">
                   {deliverables.map((item, i) => (
@@ -106,7 +105,7 @@ export default function CorePage() {
                     <Target className="h-5 w-5 text-accent" />
                   </div>
                   <h2 className="heading-card text-foreground">
-                    Expected Gains
+                    Ganhos Esperados
                   </h2>
                 </div>
                 <ul className="space-y-4">
@@ -128,7 +127,7 @@ export default function CorePage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto">
             <h2 className="heading-section text-foreground text-center mb-12">
-              What's NOT Included
+              O Que NÃO Está Incluso
             </h2>
             <div className="space-y-4">
               {notIncluded.map((item, i) => (
@@ -148,16 +147,16 @@ export default function CorePage() {
       {/* Investment */}
       <section className="section-padding bg-primary text-primary-foreground">
         <div className="container-premium text-center">
-          <h2 className="heading-section mb-6">Investment</h2>
+          <h2 className="heading-section mb-6">Investimento</h2>
           <p className="text-4xl md:text-5xl font-display font-bold text-accent mb-4">
             R$ 997 – R$ 1.997
           </p>
           <p className="text-primary-foreground/70 text-lg mb-10">
-            One-time investment
+            Investimento único
           </p>
           <Link to="/apply">
             <Button variant="hero" size="xl">
-              Apply Now
+              Aplicar Agora
               <ArrowRight className="ml-2" />
             </Button>
           </Link>
