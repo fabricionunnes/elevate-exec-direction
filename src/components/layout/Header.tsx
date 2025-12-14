@@ -18,6 +18,7 @@ const navigation = [
       { name: "UNV Partners", href: "/partners" },
       { name: "Sales Ops", href: "/sales-ops" },
       { name: "UNV Ads", href: "/ads" },
+      { name: "UNV Social", href: "/social" },
       { name: "Comparar Produtos", href: "/compare" },
     ],
   },
