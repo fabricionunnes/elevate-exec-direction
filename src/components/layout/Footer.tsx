@@ -16,6 +16,7 @@ const footerLinks = {
     { name: "Aplicar", href: "/apply" },
     { name: "FAQ", href: "/faq" },
     { name: "Para Closers", href: "/for-closers" },
+    { name: "Diagnóstico", href: "/diagnostico" },
   ],
   legal: [
     { name: "Termos e Disclaimers", href: "/terms" },
