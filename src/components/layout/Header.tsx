@@ -24,6 +24,7 @@ const navigation = [
       { name: "Comparar Produtos", href: "/compare" },
     ],
   },
+  { name: "Diagnóstico", href: "/diagnostico" },
   { name: "FAQ", href: "/faq" },
 ];
 
