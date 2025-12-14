@@ -510,13 +510,7 @@ export default function ClientDiagnosticPage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-4">Ideal para:</h3>
-                <p className="text-muted-foreground mb-6">{recommendation.bestFor}</p>
-                
-                <div className="bg-secondary rounded-xl p-6">
-                  <p className="text-sm text-muted-foreground mb-2">Investimento</p>
-                  <p className="text-3xl font-bold text-accent">{recommendation.price}</p>
-                  <p className="text-muted-foreground">{recommendation.priceType}</p>
-                </div>
+                <p className="text-muted-foreground">{recommendation.bestFor}</p>
               </div>
             </div>
 
