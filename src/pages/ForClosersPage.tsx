@@ -7,18 +7,48 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowRight, ArrowLeft, CheckCircle, Copy, Layers, RefreshCw, TrendingUp, MapPin, Crown, Users2, Megaphone, Heart, ChevronRight, Star } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle, Copy, Layers, RefreshCw, TrendingUp, MapPin, Crown, Users2, Megaphone, Heart, ChevronRight, Star, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 interface FormData {
-  // Dados básicos
+  // Fase 1 - Rapport
   clientName: string;
   company: string;
   role: string;
   segment: string;
-  // Perfil comercial
+  rapportNotes: string;
+  connectionPoint: string;
+  
+  // Fase 2 - Expectativas
+  expectationsAligned: string;
+  clientAgreed: string;
+  
+  // Fase 3 - Tomadores de Decisão
+  decisionMaker: string;
+  partnerName: string;
+  partnerPresent: string;
+  decisionProcess: string;
+  
+  // Fase 4 - A Razão (Por que marcou a ligação)
+  whyScheduled: string;
+  specificHelp: string;
+  whatSawAboutUs: string;
+  whyNow: string;
+  
+  // Fase 5 - Cavar a Dor
+  mainPains: string[];
+  painDetails: string;
+  howLongProblem: string;
+  howAffectsLife: string;
+  emotionalImpact: string;
+  
+  // Fase 6 - Tentou
+  whatTriedBefore: string;
+  whyDidntWork: string;
+  
+  // Fase 7 - Situação Atual e Desejada
   revenue: string;
   teamSize: string;
   avgTicket: string;
@@ -26,31 +56,32 @@ interface FormData {
   leadVolume: string;
   leadSource: string[];
   conversion: string;
-  // Dores e desafios
-  mainPains: string[];
-  biggestChallenge: string;
-  whatTriedBefore: string;
-  whyDidntWork: string;
-  // Estrutura atual
   hasProcess: string;
-  processDescription: string;
-  hasMetrics: string;
-  metricsUsed: string;
   hasCRM: string;
   crmName: string;
-  hasTraining: string;
-  trainingFrequency: string;
-  // Desejos e metas
-  mainDesire: string;
-  goal90Days: string;
   goal12Months: string;
   idealScenario: string;
-  // Urgência e contexto
-  urgency: number[];
+  realisticExpectation: string;
+  
+  // Fase 8 - Porquê (Amor ou Status)
+  deeperWhy: string;
+  whatWouldChange: string;
+  loveOrStatus: string;
+  
+  // Fase 9 - Admissão
+  admissionStatement: string;
+  whyCantAlone: string;
+  
+  // Fase 10 - Compromisso
+  whenToFix: string;
+  commitmentLevel: number[];
+  isCoachable: string;
+  
+  // Fase 11 - Fechamento
   budget: string;
-  decisionMaker: string;
   timeline: string;
-  // Observações
+  
+  // Fase 12 - Preço / Observações
   additionalContext: string;
 }
 
@@ -460,32 +491,57 @@ function getRecommendation(data: FormData): Recommendation {
   return { products, trail, summary, nextSteps };
 }
 
+// 12 Fases do Script Comercial
 const steps = [
-  { id: 1, title: "Dados Básicos" },
-  { id: 2, title: "Perfil Comercial" },
-  { id: 3, title: "Dores & Desafios" },
-  { id: 4, title: "Estrutura Atual" },
-  { id: 5, title: "Metas & Desejos" },
-  { id: 6, title: "Urgência & Contexto" }
+  { id: 1, title: "Rapport", subtitle: "Conexão" },
+  { id: 2, title: "Expectativas", subtitle: "Alinhamento" },
+  { id: 3, title: "Decisores", subtitle: "Quem decide" },
+  { id: 4, title: "A Razão", subtitle: "Por que marcou" },
+  { id: 5, title: "Cavar", subtitle: "Aprofundar dor" },
+  { id: 6, title: "Tentou", subtitle: "O que fez" },
+  { id: 7, title: "Situação", subtitle: "Atual x Desejada" },
+  { id: 8, title: "Porquê", subtitle: "Amor ou Status" },
+  { id: 9, title: "Admissão", subtitle: "Precisa de ajuda" },
+  { id: 10, title: "Compromisso", subtitle: "Quando resolver" },
+  { id: 11, title: "Fechamento", subtitle: "Investimento" },
+  { id: 12, title: "Recomendação", subtitle: "Resultado" }
 ];
 
 export default function ForClosersPage() {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
-    clientName: "", company: "", role: "", segment: "",
+    // Fase 1
+    clientName: "", company: "", role: "", segment: "", rapportNotes: "", connectionPoint: "",
+    // Fase 2
+    expectationsAligned: "", clientAgreed: "",
+    // Fase 3
+    decisionMaker: "", partnerName: "", partnerPresent: "", decisionProcess: "",
+    // Fase 4
+    whyScheduled: "", specificHelp: "", whatSawAboutUs: "", whyNow: "",
+    // Fase 5
+    mainPains: [], painDetails: "", howLongProblem: "", howAffectsLife: "", emotionalImpact: "",
+    // Fase 6
+    whatTriedBefore: "", whyDidntWork: "",
+    // Fase 7
     revenue: "", teamSize: "", avgTicket: "", salesCycle: "", leadVolume: "", leadSource: [], conversion: "",
-    mainPains: [], biggestChallenge: "", whatTriedBefore: "", whyDidntWork: "",
-    hasProcess: "", processDescription: "", hasMetrics: "", metricsUsed: "", hasCRM: "", crmName: "", hasTraining: "", trainingFrequency: "",
-    mainDesire: "", goal90Days: "", goal12Months: "", idealScenario: "",
-    urgency: [3], budget: "", decisionMaker: "", timeline: "",
+    hasProcess: "", hasCRM: "", crmName: "", goal12Months: "", idealScenario: "", realisticExpectation: "",
+    // Fase 8
+    deeperWhy: "", whatWouldChange: "", loveOrStatus: "",
+    // Fase 9
+    admissionStatement: "", whyCantAlone: "",
+    // Fase 10
+    whenToFix: "", commitmentLevel: [3], isCoachable: "",
+    // Fase 11
+    budget: "", timeline: "",
+    // Fase 12
     additionalContext: ""
   });
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleNext = () => {
-    if (currentStep < 6) setCurrentStep(currentStep + 1);
+    if (currentStep < 12) setCurrentStep(currentStep + 1);
     else handleSubmit();
   };
   
@@ -526,17 +582,25 @@ export default function ForClosersPage() {
     return `*Diagnóstico UNV - Resumo*\n\n` +
       `*Cliente:* ${formData.clientName}\n` +
       `*Empresa:* ${formData.company}\n` +
-      `*Segmento:* ${formData.segment || "N/I"}\n\n` +
+      `*Segmento:* ${formData.segment || "N/I"}\n` +
+      `*Cargo:* ${formData.role || "N/I"}\n\n` +
+      `*Por que marcou:*\n${formData.whyScheduled || "N/I"}\n\n` +
+      `*Por que agora:*\n${formData.whyNow || "N/I"}\n\n` +
       `*Perfil Comercial:*\n` +
       `• Faturamento: ${revenueOptions.find(o => o.value === formData.revenue)?.label || "N/I"}\n` +
       `• Time: ${teamSizeOptions.find(o => o.value === formData.teamSize)?.label || "N/I"}\n` +
       `• Ticket médio: ${ticketOptions.find(o => o.value === formData.avgTicket)?.label || "N/I"}\n` +
       `• Volume de leads: ${leadVolumeOptions.find(o => o.value === formData.leadVolume)?.label || "N/I"}\n` +
       `• Conversão: ${conversionOptions.find(o => o.value === formData.conversion)?.label || "N/I"}\n\n` +
-      `*Dores Identificadas:*\n${painsText}\n\n` +
-      `*Maior Desafio:*\n${formData.biggestChallenge || "N/I"}\n\n` +
-      `*Meta 90 dias:*\n${formData.goal90Days || "N/I"}\n\n` +
-      `*Urgência:* ${formData.urgency[0]}/5\n\n` +
+      `*Dores Identificadas:*\n${painsText || "N/I"}\n\n` +
+      `*Detalhes da Dor:*\n${formData.painDetails || "N/I"}\n\n` +
+      `*O que já tentou:*\n${formData.whatTriedBefore || "N/I"}\n\n` +
+      `*Por que não funcionou:*\n${formData.whyDidntWork || "N/I"}\n\n` +
+      `*Meta 12 meses:*\n${formData.goal12Months || "N/I"}\n\n` +
+      `*Porquê profundo (Amor/Status):*\n${formData.deeperWhy || "N/I"}\n\n` +
+      `*Admissão:*\n${formData.admissionStatement || "N/I"}\n\n` +
+      `*Nível de Compromisso:* ${formData.commitmentLevel[0]}/5\n` +
+      `*Quando quer resolver:* ${formData.whenToFix || "N/I"}\n\n` +
       `---\n\n` +
       `*PRODUTOS RECOMENDADOS:*\n${productsText}\n\n` +
       `*TRILHA DE EVOLUÇÃO:*\n${trailText}\n\n` +
@@ -551,10 +615,27 @@ export default function ForClosersPage() {
 
   const renderStep = () => {
     switch (currentStep) {
+      // FASE 1 - RAPPORT
       case 1:
         return (
           <div className="card-premium p-6 md:p-8 space-y-6">
-            <h2 className="heading-card text-foreground">Dados Básicos</h2>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">1</div>
+              <div>
+                <h2 className="heading-card text-foreground">Fase 1: Rapport</h2>
+                <p className="text-sm text-muted-foreground">Gerar conexão. Deixe a pessoa falar sobre ela. Encontre pontos em comum.</p>
+              </div>
+            </div>
+            
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-muted-foreground">
+                  <strong className="text-foreground">Regra de Ouro:</strong> Se o prospect já estiver pronto para comprar, deixe comprar. Não cometa o erro de fazer passar por todas as fases se já está decidido.
+                </div>
+              </div>
+            </div>
+            
             <div className="grid sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label>Nome do Cliente *</Label>
@@ -562,7 +643,6 @@ export default function ForClosersPage() {
                   value={formData.clientName} 
                   onChange={e => setFormData({...formData, clientName: e.target.value})} 
                   placeholder="Nome completo"
-                  required 
                 />
               </div>
               <div className="space-y-2">
@@ -571,7 +651,6 @@ export default function ForClosersPage() {
                   value={formData.company} 
                   onChange={e => setFormData({...formData, company: e.target.value})} 
                   placeholder="Nome da empresa"
-                  required 
                 />
               </div>
               <div className="space-y-2">
@@ -591,13 +670,367 @@ export default function ForClosersPage() {
                 />
               </div>
             </div>
+            
+            <div className="space-y-2">
+              <Label>Ponto de conexão encontrado</Label>
+              <Textarea 
+                value={formData.connectionPoint} 
+                onChange={e => setFormData({...formData, connectionPoint: e.target.value})} 
+                placeholder="Ex: Vi nos stories que foi na academia, viagem, hobby em comum, experiência similar..."
+                rows={2}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Anotações de Rapport</Label>
+              <Textarea 
+                value={formData.rapportNotes} 
+                onChange={e => setFormData({...formData, rapportNotes: e.target.value})} 
+                placeholder="Observações sobre a conexão, energia do prospect, pontos importantes para usar depois..."
+                rows={2}
+              />
+            </div>
           </div>
         );
       
+      // FASE 2 - EXPECTATIVAS
       case 2:
         return (
           <div className="card-premium p-6 md:p-8 space-y-6">
-            <h2 className="heading-card text-foreground">Perfil Comercial</h2>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">2</div>
+              <div>
+                <h2 className="heading-card text-foreground">Fase 2: Expectativas</h2>
+                <p className="text-sm text-muted-foreground">Alinhar como a conversa vai acontecer. Estabelecer controle.</p>
+              </div>
+            </div>
+            
+            <div className="bg-secondary p-4 rounded-lg space-y-3">
+              <p className="text-sm text-muted-foreground italic">
+                "Você está pronto para começar, [NOME]? Então é assim que essas ligações geralmente acontecem... 
+                É como ir ao médico: vou fazer algumas perguntas sobre o seu negócio, descobrir qual é o problema, 
+                dar um diagnóstico. Se a solução é algo que podemos oferecer, vou falar sobre o que temos. Parece bom?"
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>O cliente concordou com o formato?</Label>
+              <Select value={formData.clientAgreed} onValueChange={v => setFormData({...formData, clientAgreed: v})}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="yes">Sim, concordou</SelectItem>
+                  <SelectItem value="partial">Parcialmente</SelectItem>
+                  <SelectItem value="no">Não concordou</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Anotações sobre expectativas</Label>
+              <Textarea 
+                value={formData.expectationsAligned} 
+                onChange={e => setFormData({...formData, expectationsAligned: e.target.value})} 
+                placeholder="Como o prospect reagiu? Alguma resistência? Observações..."
+                rows={2}
+              />
+            </div>
+          </div>
+        );
+      
+      // FASE 3 - TOMADORES DE DECISÃO
+      case 3:
+        return (
+          <div className="card-premium p-6 md:p-8 space-y-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">3</div>
+              <div>
+                <h2 className="heading-card text-foreground">Fase 3: Tomadores de Decisão</h2>
+                <p className="text-sm text-muted-foreground">Identificar quem decide. Se tem sócio/cônjuge, precisa estar na ligação.</p>
+              </div>
+            </div>
+            
+            <div className="bg-secondary p-4 rounded-lg space-y-3">
+              <p className="text-sm text-muted-foreground italic">
+                "Ah! Esqueci de perguntar, você toca o negócio sozinho, ou tem mais alguém que te ajuda, sócio, marido/esposa?"
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Quem toma a decisão?</Label>
+              <Select value={formData.decisionMaker} onValueChange={v => setFormData({...formData, decisionMaker: v})}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="self">O próprio cliente (sozinho)</SelectItem>
+                  <SelectItem value="partner">Com sócio(s)</SelectItem>
+                  <SelectItem value="spouse">Com cônjuge</SelectItem>
+                  <SelectItem value="board">Conselho/Diretoria</SelectItem>
+                  <SelectItem value="other">Outra pessoa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {(formData.decisionMaker === "partner" || formData.decisionMaker === "spouse") && (
+              <>
+                <div className="space-y-2">
+                  <Label>Nome do sócio/cônjuge</Label>
+                  <Input 
+                    value={formData.partnerName} 
+                    onChange={e => setFormData({...formData, partnerName: e.target.value})} 
+                    placeholder="Nome para mencionar na conversa"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>O outro decisor está presente?</Label>
+                  <Select value={formData.partnerPresent} onValueChange={v => setFormData({...formData, partnerPresent: v})}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="yes">Sim, está na ligação</SelectItem>
+                      <SelectItem value="no">Não está</SelectItem>
+                      <SelectItem value="will-join">Vai entrar agora</SelectItem>
+                      <SelectItem value="reschedule">Vamos reagendar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+            
+            <div className="space-y-2">
+              <Label>Como é o processo de decisão entre eles?</Label>
+              <Textarea 
+                value={formData.decisionProcess} 
+                onChange={e => setFormData({...formData, decisionProcess: e.target.value})} 
+                placeholder="Como funciona a tomada de decisão? Um decide sozinho? Precisam conversar?"
+                rows={2}
+              />
+            </div>
+            
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-muted-foreground">
+                  <strong className="text-foreground">Atenção:</strong> NUNCA deixe o prospect passar informações sozinho para o outro decisor. Ele não vai fazer um bom trabalho como você que é treinado para vender.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      
+      // FASE 4 - A RAZÃO
+      case 4:
+        return (
+          <div className="card-premium p-6 md:p-8 space-y-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">4</div>
+              <div>
+                <h2 className="heading-card text-foreground">Fase 4: A Razão</h2>
+                <p className="text-sm text-muted-foreground">O prospect precisa DIZER o motivo da ligação. Identificar a dor e urgência.</p>
+              </div>
+            </div>
+            
+            <div className="bg-secondary p-4 rounded-lg space-y-3">
+              <p className="text-sm text-muted-foreground italic">
+                "Vamos lá, [NOME]! Por que marcou uma ligação para falar comigo hoje? Em que você precisa da minha ajuda especificamente?"
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Por que marcou a ligação? *</Label>
+              <Textarea 
+                value={formData.whyScheduled} 
+                onChange={e => setFormData({...formData, whyScheduled: e.target.value})} 
+                placeholder="O que o prospect disse sobre o motivo de ter marcado..."
+                rows={3}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Em que precisa de ajuda especificamente?</Label>
+              <Textarea 
+                value={formData.specificHelp} 
+                onChange={e => setFormData({...formData, specificHelp: e.target.value})} 
+                placeholder="Qual ajuda específica ele mencionou..."
+                rows={2}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>O que viu sobre a UNV que acredita ser solução?</Label>
+              <Textarea 
+                value={formData.whatSawAboutUs} 
+                onChange={e => setFormData({...formData, whatSawAboutUs: e.target.value})} 
+                placeholder="O que ele viu que fez pensar que podemos ajudar? (Isso valida nossa autoridade)"
+                rows={2}
+              />
+            </div>
+            
+            <div className="bg-accent/10 p-4 rounded-lg space-y-3">
+              <p className="text-sm font-medium text-foreground">Pergunte: "Mas por que AGORA? Por que é tão importante resolver isso agora?"</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Por que agora? *</Label>
+              <Textarea 
+                value={formData.whyNow} 
+                onChange={e => setFormData({...formData, whyNow: e.target.value})} 
+                placeholder="O que faz essa dor ser urgente? Qual a pressão do momento?"
+                rows={3}
+              />
+            </div>
+          </div>
+        );
+      
+      // FASE 5 - CAVAR A DOR
+      case 5:
+        return (
+          <div className="card-premium p-6 md:p-8 space-y-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">5</div>
+              <div>
+                <h2 className="heading-card text-foreground">Fase 5: Cavar a Dor</h2>
+                <p className="text-sm text-muted-foreground">Aprofundar na dor. O prospect precisa SENTIR como é horrível continuar assim.</p>
+              </div>
+            </div>
+            
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-muted-foreground">
+                  <strong className="text-foreground">Dica:</strong> Use "então" e "parece que" para mostrar que está atento. Nunca use "por quê?" - substitua por "O que te faz dizer isso?" ou "Como você chegou a essa conclusão?"
+                </p>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <Label>Dores identificadas (selecione todas) *</Label>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {painOptions.map(option => (
+                  <label key={option.value} className="flex items-center gap-3 p-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
+                    <Checkbox 
+                      checked={formData.mainPains.includes(option.value)}
+                      onCheckedChange={() => togglePain(option.value)}
+                    />
+                    <span className="text-sm text-foreground">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            
+            <div className="bg-secondary p-4 rounded-lg">
+              <p className="text-sm text-muted-foreground italic">
+                Pergutas para cavar: "O que está acontecendo que leva você a achar que esse problema existe?", 
+                "Há quanto tempo isso é um problema?", "Esse problema está afetando sua vida de outras maneiras? Como?"
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Detalhes da dor *</Label>
+              <Textarea 
+                value={formData.painDetails} 
+                onChange={e => setFormData({...formData, painDetails: e.target.value})} 
+                placeholder="Descreva com detalhes o que o prospect contou sobre a dor..."
+                rows={3}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Há quanto tempo é um problema?</Label>
+              <Input 
+                value={formData.howLongProblem} 
+                onChange={e => setFormData({...formData, howLongProblem: e.target.value})} 
+                placeholder="Ex: 6 meses, 1 ano, desde que começou..."
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Como afeta outras áreas da vida?</Label>
+              <Textarea 
+                value={formData.howAffectsLife} 
+                onChange={e => setFormData({...formData, howAffectsLife: e.target.value})} 
+                placeholder="Família, saúde, relacionamentos, finanças pessoais..."
+                rows={2}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Emoção/reação do prospect</Label>
+              <Textarea 
+                value={formData.emotionalImpact} 
+                onChange={e => setFormData({...formData, emotionalImpact: e.target.value})} 
+                placeholder="O prospect ficou levemente incomodado? Qual emoção surgiu?"
+                rows={2}
+              />
+            </div>
+          </div>
+        );
+      
+      // FASE 6 - TENTOU
+      case 6:
+        return (
+          <div className="card-premium p-6 md:p-8 space-y-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">6</div>
+              <div>
+                <h2 className="heading-card text-foreground">Fase 6: Tentou</h2>
+                <p className="text-sm text-muted-foreground">O que já tentou para resolver? Descobrir e contornar objeções antes que apareçam.</p>
+              </div>
+            </div>
+            
+            <div className="bg-secondary p-4 rounded-lg space-y-3">
+              <p className="text-sm text-muted-foreground italic">
+                "E o que você já tentou até agora para resolver isso?"
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>O que já tentou? *</Label>
+              <Textarea 
+                value={formData.whatTriedBefore} 
+                onChange={e => setFormData({...formData, whatTriedBefore: e.target.value})} 
+                placeholder="Treinamentos, consultorias, contratações, ferramentas, cursos..."
+                rows={3}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Por que não funcionou? *</Label>
+              <Textarea 
+                value={formData.whyDidntWork} 
+                onChange={e => setFormData({...formData, whyDidntWork: e.target.value})} 
+                placeholder="O que faltou? Por que não deu resultado?"
+                rows={3}
+              />
+            </div>
+            
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground">Importante:</strong> Se ele mencionar algo similar ao que oferecemos, diferencie! 
+                Ex: "Alguns dos nossos clientes tiveram essa mesma experiência antes de nos contratar. Mas mostramos pra eles nosso sistema único de [diferencial]."
+              </p>
+            </div>
+          </div>
+        );
+      
+      // FASE 7 - SITUAÇÃO ATUAL E DESEJADA
+      case 7:
+        return (
+          <div className="card-premium p-6 md:p-8 space-y-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">7</div>
+              <div>
+                <h2 className="heading-card text-foreground">Fase 7: Situação Atual x Desejada</h2>
+                <p className="text-sm text-muted-foreground">Identificar onde está e onde quer chegar. Alinhar expectativas realistas.</p>
+              </div>
+            </div>
+            
+            <div className="bg-secondary p-4 rounded-lg mb-4">
+              <p className="text-sm text-muted-foreground italic">
+                "[NOME], agora eu gostaria de saber mais sobre a situação atual para entender melhor para onde vamos. 
+                Tem algum problema você compartilhar um pouco dos seus resultados até aqui?"
+              </p>
+            </div>
+            
+            <h3 className="font-semibold text-foreground mt-6 mb-4">Situação Atual</h3>
+            
             <div className="grid sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label>Faturamento Mensal *</Label>
@@ -607,7 +1040,7 @@ export default function ForClosersPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Tamanho do Time Comercial *</Label>
+                <Label>Tamanho do Time *</Label>
                 <Select value={formData.teamSize} onValueChange={v => setFormData({...formData, teamSize: v})}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent className="bg-card border-border">{teamSizeOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -628,7 +1061,7 @@ export default function ForClosersPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Volume de Leads/Mês</Label>
+                <Label>Volume de Leads</Label>
                 <Select value={formData.leadVolume} onValueChange={v => setFormData({...formData, leadVolume: v})}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent className="bg-card border-border">{leadVolumeOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -642,8 +1075,9 @@ export default function ForClosersPage() {
                 </Select>
               </div>
             </div>
+            
             <div className="space-y-3">
-              <Label>Fontes de Leads (selecione todas que se aplicam)</Label>
+              <Label>Fontes de Leads</Label>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {leadSourceOptions.map(option => (
                   <label key={option.value} className="flex items-center gap-3 p-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
@@ -656,64 +1090,10 @@ export default function ForClosersPage() {
                 ))}
               </div>
             </div>
-          </div>
-        );
-      
-      case 3:
-        return (
-          <div className="card-premium p-6 md:p-8 space-y-6">
-            <h2 className="heading-card text-foreground">Dores & Desafios</h2>
-            <div className="space-y-3">
-              <Label>Principais Dores (selecione todas que se aplicam) *</Label>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {painOptions.map(option => (
-                  <label key={option.value} className="flex items-center gap-3 p-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
-                    <Checkbox 
-                      checked={formData.mainPains.includes(option.value)}
-                      onCheckedChange={() => togglePain(option.value)}
-                    />
-                    <span className="text-sm text-foreground">{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Qual é o MAIOR desafio comercial hoje? *</Label>
-              <Textarea 
-                value={formData.biggestChallenge} 
-                onChange={e => setFormData({...formData, biggestChallenge: e.target.value})} 
-                placeholder="Descreva com suas palavras o principal problema que está enfrentando nas vendas..."
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>O que já tentou fazer para resolver?</Label>
-              <Textarea 
-                value={formData.whatTriedBefore} 
-                onChange={e => setFormData({...formData, whatTriedBefore: e.target.value})} 
-                placeholder="Treinamentos, consultorias, contratações, ferramentas..."
-                rows={2}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Por que não funcionou?</Label>
-              <Textarea 
-                value={formData.whyDidntWork} 
-                onChange={e => setFormData({...formData, whyDidntWork: e.target.value})} 
-                placeholder="O que faltou nas tentativas anteriores?"
-                rows={2}
-              />
-            </div>
-          </div>
-        );
-      
-      case 4:
-        return (
-          <div className="card-premium p-6 md:p-8 space-y-6">
-            <h2 className="heading-card text-foreground">Estrutura Atual</h2>
+            
             <div className="grid sm:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label>Existe processo de vendas? *</Label>
+                <Label>Processo de Vendas</Label>
                 <Select value={formData.hasProcess} onValueChange={v => setFormData({...formData, hasProcess: v})}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent className="bg-card border-border">{processOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -731,128 +1111,259 @@ export default function ForClosersPage() {
                 </Select>
               </div>
             </div>
-            {formData.hasProcess && formData.hasProcess !== "none" && (
-              <div className="space-y-2">
-                <Label>Descreva brevemente o processo atual</Label>
-                <Textarea 
-                  value={formData.processDescription} 
-                  onChange={e => setFormData({...formData, processDescription: e.target.value})} 
-                  placeholder="Como funciona o processo de vendas hoje? Quais são as etapas?"
-                  rows={2}
-                />
-              </div>
-            )}
-            {formData.hasCRM === "yes" && (
-              <div className="space-y-2">
-                <Label>Qual CRM usa?</Label>
-                <Input 
-                  value={formData.crmName} 
-                  onChange={e => setFormData({...formData, crmName: e.target.value})} 
-                  placeholder="Ex: Pipedrive, HubSpot, RD Station"
-                />
-              </div>
-            )}
-            <div className="grid sm:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>Acompanha métricas de vendas?</Label>
-                <Select value={formData.hasMetrics} onValueChange={v => setFormData({...formData, hasMetrics: v})}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent className="bg-card border-border">
-                    <SelectItem value="yes">Sim, regularmente</SelectItem>
-                    <SelectItem value="sometimes">Às vezes</SelectItem>
-                    <SelectItem value="no">Não</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Faz treinamento do time?</Label>
-                <Select value={formData.hasTraining} onValueChange={v => setFormData({...formData, hasTraining: v})}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent className="bg-card border-border">
-                    <SelectItem value="regular">Sim, regularmente</SelectItem>
-                    <SelectItem value="occasional">Ocasionalmente</SelectItem>
-                    <SelectItem value="onboarding">Só no onboarding</SelectItem>
-                    <SelectItem value="no">Não</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            
+            <h3 className="font-semibold text-foreground mt-6 mb-4">Situação Desejada</h3>
+            
+            <div className="bg-secondary p-4 rounded-lg mb-4">
+              <p className="text-sm text-muted-foreground italic">
+                "Se você trabalhasse conosco, onde você gostaria de estar daqui a 12 meses para sentir que o investimento valeu a pena?"
+              </p>
             </div>
-            {formData.hasMetrics === "yes" && (
-              <div className="space-y-2">
-                <Label>Quais métricas acompanha?</Label>
-                <Input 
-                  value={formData.metricsUsed} 
-                  onChange={e => setFormData({...formData, metricsUsed: e.target.value})} 
-                  placeholder="Ex: taxa de conversão, ticket médio, ciclo de vendas..."
-                />
-              </div>
-            )}
-          </div>
-        );
-      
-      case 5:
-        return (
-          <div className="card-premium p-6 md:p-8 space-y-6">
-            <h2 className="heading-card text-foreground">Metas & Desejos</h2>
+            
             <div className="space-y-2">
-              <Label>Qual é o maior DESEJO para o comercial? *</Label>
-              <Textarea 
-                value={formData.mainDesire} 
-                onChange={e => setFormData({...formData, mainDesire: e.target.value})} 
-                placeholder="Se pudesse mudar uma coisa no seu comercial, o que seria? O que sonha alcançar?"
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Meta para os próximos 90 dias *</Label>
-              <Textarea 
-                value={formData.goal90Days} 
-                onChange={e => setFormData({...formData, goal90Days: e.target.value})} 
-                placeholder="O que quer ter alcançado daqui a 3 meses? Seja específico."
-                rows={2}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Meta para os próximos 12 meses</Label>
+              <Label>Onde quer estar em 12 meses? *</Label>
               <Textarea 
                 value={formData.goal12Months} 
                 onChange={e => setFormData({...formData, goal12Months: e.target.value})} 
-                placeholder="Onde quer estar daqui a 1 ano? Faturamento, time, estrutura..."
-                rows={2}
+                placeholder="Faturamento, time, estrutura... O que deixaria feliz?"
+                rows={3}
               />
             </div>
+            
             <div className="space-y-2">
-              <Label>Descreva o cenário ideal</Label>
+              <Label>Cenário ideal (sonho)</Label>
               <Textarea 
                 value={formData.idealScenario} 
                 onChange={e => setFormData({...formData, idealScenario: e.target.value})} 
-                placeholder="Como seria o comercial perfeito para sua empresa? Imagine o cenário dos sonhos."
-                rows={3}
+                placeholder="O comercial perfeito seria como?"
+                rows={2}
+              />
+            </div>
+            
+            <div className="bg-accent/10 p-4 rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground">Alinhe expectativas:</strong> "E se nesse período eu te ajudar a alcançar pelo menos [EXPECTATIVA REALISTA], você já ficaria feliz?"
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Expectativa realista acordada</Label>
+              <Input 
+                value={formData.realisticExpectation} 
+                onChange={e => setFormData({...formData, realisticExpectation: e.target.value})} 
+                placeholder="O que acordaram como expectativa realista?"
               />
             </div>
           </div>
         );
       
-      case 6:
+      // FASE 8 - PORQUÊ (AMOR OU STATUS)
+      case 8:
         return (
           <div className="card-premium p-6 md:p-8 space-y-6">
-            <h2 className="heading-card text-foreground">Urgência & Contexto</h2>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">8</div>
+              <div>
+                <h2 className="heading-card text-foreground">Fase 8: O Porquê Profundo</h2>
+                <p className="text-sm text-muted-foreground">Toda decisão se resume a AMOR ou STATUS. Descobrir o motivo real por trás do desejo.</p>
+              </div>
+            </div>
+            
+            <div className="bg-secondary p-4 rounded-lg space-y-3">
+              <p className="text-sm text-muted-foreground italic">
+                "O que está levando você a querer [RESULTADO]? Como sua vida seria diferente se tivesse [XYZ]? Como seria isso?"
+              </p>
+            </div>
+            
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground">Dica Pro:</strong> A razão sempre se resume a AMOR (viver mais, estar presente para família, não perder relacionamento) 
+                ou STATUS (ser visto como sucesso, reconhecimento, provar que é capaz).
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>O que está por trás do desejo? *</Label>
+              <Textarea 
+                value={formData.deeperWhy} 
+                onChange={e => setFormData({...formData, deeperWhy: e.target.value})} 
+                placeholder="Qual é o REAL motivo? O que ele quer alcançar além do dinheiro?"
+                rows={3}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>O que mudaria na vida dele?</Label>
+              <Textarea 
+                value={formData.whatWouldChange} 
+                onChange={e => setFormData({...formData, whatWouldChange: e.target.value})} 
+                placeholder="Como a vida seria diferente com o resultado alcançado?"
+                rows={3}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>É Amor ou Status?</Label>
+              <Select value={formData.loveOrStatus} onValueChange={v => setFormData({...formData, loveOrStatus: v})}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="love">Amor (família, saúde, relacionamentos, presença)</SelectItem>
+                  <SelectItem value="status">Status (reconhecimento, sucesso, provar valor)</SelectItem>
+                  <SelectItem value="both">Ambos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+      
+      // FASE 9 - ADMISSÃO
+      case 9:
+        return (
+          <div className="card-premium p-6 md:p-8 space-y-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">9</div>
+              <div>
+                <h2 className="heading-card text-foreground">Fase 9: Admissão</h2>
+                <p className="text-sm text-muted-foreground">O prospect precisa ADMITIR que precisa de ajuda. Sem isso, não consegue vender.</p>
+              </div>
+            </div>
+            
+            <div className="bg-accent/10 p-4 rounded-lg">
+              <p className="text-sm font-medium text-foreground">
+                Esta talvez seja a fase MAIS IMPORTANTE. Não pule! O prospect precisa dizer em voz alta que precisa de ajuda.
+              </p>
+            </div>
+            
+            <div className="bg-secondary p-4 rounded-lg space-y-3">
+              <p className="text-sm text-muted-foreground italic">
+                "O que está impedindo você de alcançar tudo isso sozinho, sem qualquer ajuda?"
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>O que ele admitiu? *</Label>
+              <Textarea 
+                value={formData.admissionStatement} 
+                onChange={e => setFormData({...formData, admissionStatement: e.target.value})} 
+                placeholder="O que o prospect disse que o impede? (não sabe como fazer, quer processo comprovado, quer chegar mais rápido...)"
+                rows={3}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Por que não consegue sozinho?</Label>
+              <Textarea 
+                value={formData.whyCantAlone} 
+                onChange={e => setFormData({...formData, whyCantAlone: e.target.value})} 
+                placeholder="Detalhes sobre o que falta para ele fazer sozinho..."
+                rows={2}
+              />
+            </div>
+          </div>
+        );
+      
+      // FASE 10 - COMPROMISSO
+      case 10:
+        return (
+          <div className="card-premium p-6 md:p-8 space-y-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">10</div>
+              <div>
+                <h2 className="heading-card text-foreground">Fase 10: Compromisso</h2>
+                <p className="text-sm text-muted-foreground">Quando quer resolver? Buscar compromisso IMEDIATO. Antecipar objeção de tempo.</p>
+              </div>
+            </div>
+            
+            <div className="bg-secondary p-4 rounded-lg space-y-3">
+              <p className="text-sm text-muted-foreground italic">
+                "Quando você quer consertar isso?"
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Quando quer resolver?</Label>
+              <Select value={formData.whenToFix} onValueChange={v => setFormData({...formData, whenToFix: v})}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="now">Agora</SelectItem>
+                  <SelectItem value="this-week">Esta semana</SelectItem>
+                  <SelectItem value="this-month">Este mês</SelectItem>
+                  <SelectItem value="next-month">Mês que vem</SelectItem>
+                  <SelectItem value="later">Mais tarde</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {formData.whenToFix === "now" && (
+              <div className="bg-accent/10 p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground italic">
+                  "Ótimo! Que bom que você quer resolver isso agora. Mas quão comprometido você está em fazer isso acontecer? 
+                  Você vai fazer o trabalho? Você vai agir? Você é treinável?"
+                </p>
+              </div>
+            )}
+            
+            {(formData.whenToFix === "next-month" || formData.whenToFix === "later") && (
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-2">
+                <p className="text-sm text-foreground font-medium">Fechamento de Procrastinação:</p>
+                <p className="text-sm text-muted-foreground italic">
+                  "[NOME], a verdade é que na grande maioria das vezes, nunca é um bom momento pra começar. 
+                  Até entrarmos nesta ligação, você estava adiando a resolução desse problema? 
+                  Quantas vezes você já disse que o próximo mês não é um bom momento? 
+                  E como tem funcionado para você ficar adiando isso?"
+                </p>
+              </div>
+            )}
+            
             <div className="space-y-4">
-              <Label>Nível de Urgência (1–5) *</Label>
+              <Label>Nível de Compromisso (1–5)</Label>
               <div className="flex items-center gap-4">
-                <span className="text-small text-muted-foreground">Baixa</span>
+                <span className="text-small text-muted-foreground">Baixo</span>
                 <Slider 
-                  value={formData.urgency} 
-                  onValueChange={v => setFormData({...formData, urgency: v})} 
+                  value={formData.commitmentLevel} 
+                  onValueChange={v => setFormData({...formData, commitmentLevel: v})} 
                   min={1} 
                   max={5} 
                   step={1} 
                   className="flex-1" 
                 />
-                <span className="text-small text-muted-foreground">Alta</span>
-                <span className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center">{formData.urgency[0]}</span>
+                <span className="text-small text-muted-foreground">Alto</span>
+                <span className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center">{formData.commitmentLevel[0]}</span>
               </div>
             </div>
+            
+            <div className="space-y-2">
+              <Label>É treinável/coachable?</Label>
+              <Select value={formData.isCoachable} onValueChange={v => setFormData({...formData, isCoachable: v})}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="yes">Sim, totalmente</SelectItem>
+                  <SelectItem value="partially">Parcialmente</SelectItem>
+                  <SelectItem value="no">Não parece ser</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+      
+      // FASE 11 - FECHAMENTO
+      case 11:
+        return (
+          <div className="card-premium p-6 md:p-8 space-y-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">11</div>
+              <div>
+                <h2 className="heading-card text-foreground">Fase 11: Fechamento</h2>
+                <p className="text-sm text-muted-foreground">Orçamento, timeline e contexto final para a recomendação.</p>
+              </div>
+            </div>
+            
+            <div className="bg-secondary p-4 rounded-lg space-y-3">
+              <p className="text-sm text-muted-foreground italic">
+                "Ok, agora tenho informações suficientes e, honestamente, eu ACREDITO que nós podemos ajudar você. Posso dizer como?"
+              </p>
+            </div>
+            
             <div className="grid sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label>Orçamento Disponível</Label>
@@ -869,26 +1380,53 @@ export default function ForClosersPage() {
                 </Select>
               </div>
             </div>
+            
             <div className="space-y-2">
-              <Label>Quem toma a decisão?</Label>
-              <Select value={formData.decisionMaker} onValueChange={v => setFormData({...formData, decisionMaker: v})}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="self">Eu mesmo</SelectItem>
-                  <SelectItem value="partner">Eu + sócio(s)</SelectItem>
-                  <SelectItem value="board">Conselho/Diretoria</SelectItem>
-                  <SelectItem value="other">Outra pessoa</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Observações Adicionais</Label>
+              <Label>Observações finais</Label>
               <Textarea 
                 value={formData.additionalContext} 
                 onChange={e => setFormData({...formData, additionalContext: e.target.value})} 
-                placeholder="Algo mais que devemos saber? Contexto importante, restrições, preferências..."
+                placeholder="Algo mais importante? Contexto, restrições, preferências, red flags..."
                 rows={3}
               />
+            </div>
+            
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground">Lembre-se:</strong> Nunca diga "eu acho", sempre diga "eu acredito". 
+                "Acho" faz parecer que você não tem certeza. "Acreditar" soa como se você tivesse certeza.
+              </p>
+            </div>
+          </div>
+        );
+      
+      // FASE 12 - RESULTADO/RECOMENDAÇÃO (será gerado automaticamente)
+      case 12:
+        return (
+          <div className="card-premium p-6 md:p-8 space-y-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">12</div>
+              <div>
+                <h2 className="heading-card text-foreground">Fase 12: Gerar Recomendação</h2>
+                <p className="text-sm text-muted-foreground">Clique para gerar a recomendação personalizada com base em todas as informações.</p>
+              </div>
+            </div>
+            
+            <div className="bg-accent/10 p-6 rounded-lg text-center">
+              <CheckCircle className="h-12 w-12 text-accent mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">Diagnóstico Completo!</h3>
+              <p className="text-muted-foreground">
+                Você completou todas as 12 fases do script comercial. 
+                Clique em "Gerar Recomendação" para ver os produtos ideais e a trilha de evolução.
+              </p>
+            </div>
+            
+            <div className="bg-secondary p-4 rounded-lg">
+              <p className="text-sm text-muted-foreground italic">
+                "Bem, nossa área de especialização está ajudando [IDENTIDADE DO CLIENTE] a obter [RESULTADO QUE DESEJA] 
+                para que eles possam obter [SUBPRODUTO DO RESULTADO]. E fazemos isso por [OFERTA]. 
+                Agora, isso pode não ser pra você, mas vou deixar você decidir. Isso poderia funcionar pra você?"
+              </p>
             </div>
           </div>
         );
@@ -904,13 +1442,13 @@ export default function ForClosersPage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-block px-4 py-1.5 bg-accent/10 text-accent text-sm font-medium rounded-full mb-6">
-              Diagnóstico Completo
+              12 Fases do Script Comercial
             </div>
             <h1 className="heading-display text-foreground mb-6">
-              Qual Produto é Ideal para Você?
+              Diagnóstico & Recomendação de Produto
             </h1>
             <p className="text-body text-lg">
-              Responda às perguntas para receber uma recomendação personalizada com trilha de evolução.
+              Siga as 12 fases do script comercial para não se perder e gerar a melhor recomendação.
             </p>
           </div>
         </div>
@@ -923,28 +1461,27 @@ export default function ForClosersPage() {
               <>
                 {/* Progress Steps */}
                 <div className="mb-8">
-                  <div className="flex justify-between items-center mb-4">
-                    {steps.map((step, index) => (
-                      <div key={step.id} className="flex items-center">
-                        <div className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all",
-                          currentStep >= step.id 
+                  <div className="flex flex-wrap justify-center gap-2 mb-4">
+                    {steps.map((step) => (
+                      <button
+                        key={step.id}
+                        onClick={() => setCurrentStep(step.id)}
+                        className={cn(
+                          "flex flex-col items-center p-2 rounded-lg transition-all min-w-[60px]",
+                          currentStep === step.id 
                             ? "bg-accent text-accent-foreground" 
-                            : "bg-secondary text-muted-foreground"
-                        )}>
-                          {currentStep > step.id ? <CheckCircle className="h-5 w-5" /> : step.id}
-                        </div>
-                        {index < steps.length - 1 && (
-                          <div className={cn(
-                            "h-1 w-8 md:w-16 mx-1 transition-all",
-                            currentStep > step.id ? "bg-accent" : "bg-secondary"
-                          )} />
+                            : currentStep > step.id
+                            ? "bg-accent/20 text-accent"
+                            : "bg-secondary text-muted-foreground hover:bg-secondary/80"
                         )}
-                      </div>
+                      >
+                        <span className="text-sm font-bold">{step.id}</span>
+                        <span className="text-[10px] leading-tight text-center">{step.title}</span>
+                      </button>
                     ))}
                   </div>
                   <p className="text-center text-sm text-muted-foreground">
-                    Etapa {currentStep} de {steps.length}: {steps[currentStep - 1].title}
+                    Fase {currentStep} de {steps.length}: <span className="font-medium text-foreground">{steps[currentStep - 1].title}</span> — {steps[currentStep - 1].subtitle}
                   </p>
                 </div>
 
@@ -956,7 +1493,7 @@ export default function ForClosersPage() {
                   {currentStep > 1 && (
                     <Button variant="outline" size="lg" onClick={handleBack} className="flex-1">
                       <ArrowLeft className="mr-2 h-4 w-4" />
-                      Voltar
+                      Fase Anterior
                     </Button>
                   )}
                   <Button 
@@ -965,7 +1502,7 @@ export default function ForClosersPage() {
                     onClick={handleNext} 
                     className="flex-1"
                   >
-                    {currentStep === 6 ? "Gerar Recomendação" : "Próximo"}
+                    {currentStep === 12 ? "Gerar Recomendação" : "Próxima Fase"}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
@@ -976,7 +1513,7 @@ export default function ForClosersPage() {
                 <div className="card-highlight p-6 md:p-8">
                   <h2 className="heading-card text-foreground mb-6 text-center">Produtos Recomendados</h2>
                   <div className="space-y-4">
-                    {recommendation?.products.map((product, index) => {
+                    {recommendation?.products.map((product) => {
                       const Icon = product.icon;
                       return (
                         <div 
