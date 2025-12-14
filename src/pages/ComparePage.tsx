@@ -359,13 +359,13 @@ export default function ComparePage() {
   return (
     <Layout>
       {/* Hero */}
-      <section className="section-padding bg-gradient-hero">
+      <section className="section-padding bg-card border-b border-border/30">
         <div className="container-premium">
           <div className="max-w-3xl mx-auto text-center animate-fade-up">
-            <h1 className="heading-display text-primary-foreground mb-6">
+            <h1 className="heading-display text-foreground mb-6">
               Compare os Produtos
             </h1>
-            <p className="text-xl text-primary-foreground/80 mb-8">
+            <p className="text-xl text-muted-foreground mb-8">
               Selecione até 4 produtos para comparar lado a lado e encontrar 
               o melhor fit para o momento da sua empresa.
             </p>
@@ -554,12 +554,13 @@ export default function ComparePage() {
       </section>
 
       {/* CTA */}
-      <section className="section-padding bg-primary text-primary-foreground">
-        <div className="container-premium text-center">
-          <h2 className="heading-section mb-4">
+      <section className="section-padding bg-card border-y border-border/30 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
+        <div className="container-premium text-center relative">
+          <h2 className="heading-section text-foreground mb-4">
             Ainda em Dúvida?
           </h2>
-          <p className="text-primary-foreground/70 text-lg mb-8 max-w-xl mx-auto">
+          <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
             Use nossa ferramenta de diagnóstico para receber uma recomendação 
             personalizada baseada no momento da sua empresa.
           </p>

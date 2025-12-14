@@ -175,16 +175,16 @@ export default function SalesOpsPage() {
         </div>
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl animate-fade-up">
-            <div className="inline-block px-4 py-1.5 bg-accent/20 text-accent text-sm font-medium rounded-full mb-6 backdrop-blur-sm">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 backdrop-blur-sm border border-primary/30">
               Padronização de Times
             </div>
-            <h1 className="heading-display text-primary-foreground mb-6">
+            <h1 className="heading-display text-foreground mb-6">
               UNV Sales Ops
             </h1>
-            <p className="text-2xl md:text-3xl text-primary-foreground/90 font-medium mb-4">
+            <p className="text-2xl md:text-3xl text-foreground/90 font-medium mb-4">
               Padronizar e escalar times.
             </p>
-            <p className="text-lg text-primary-foreground/70 mb-8 max-w-2xl">
+            <p className="text-lg text-muted-foreground mb-8 max-w-2xl">
               Padronize seu time comercial em escala. Trilhas de treinamento por
               cargo, scorecards e suporte IA para execução consistente em todo o time.
             </p>
@@ -196,7 +196,7 @@ export default function SalesOpsPage() {
                 </Button>
               </Link>
               <Link to="/products">
-                <Button variant="outline" size="xl" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+                <Button variant="outline" size="xl">
                   Ver Todos os Produtos
                 </Button>
               </Link>
@@ -422,16 +422,17 @@ export default function SalesOpsPage() {
       </section>
 
       {/* Investment */}
-      <section className="section-padding bg-primary text-primary-foreground">
-        <div className="container-premium text-center">
-          <h2 className="heading-section mb-6">Investimento</h2>
-          <p className="text-5xl md:text-6xl font-display font-bold text-accent mb-4">
+      <section className="section-padding bg-card border-y border-border/30 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
+        <div className="container-premium text-center relative">
+          <h2 className="heading-section text-foreground mb-6">Investimento</h2>
+          <p className="text-5xl md:text-6xl font-display font-bold text-primary mb-4">
             R$ 97
           </p>
-          <p className="text-primary-foreground/70 text-lg mb-4">
+          <p className="text-muted-foreground text-lg mb-4">
             Por usuário, por mês
           </p>
-          <p className="text-primary-foreground/50 text-sm mb-10 max-w-md mx-auto">
+          <p className="text-muted-foreground/60 text-sm mb-10 max-w-md mx-auto">
             Escala de preços por volume. Quanto maior o time, menor o custo por usuário.
           </p>
           <Link to="/apply">

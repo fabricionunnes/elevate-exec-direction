@@ -224,16 +224,16 @@ export default function SalesAccelerationPage() {
         </div>
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl">
-            <div className="inline-block px-4 py-1.5 bg-accent/20 text-accent text-sm font-medium rounded-full mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 border border-primary/30">
               Programa Principal
             </div>
-            <h1 className="heading-display text-primary-foreground mb-6">
+            <h1 className="heading-display text-foreground mb-6">
               UNV Sales Acceleration
             </h1>
-            <p className="text-xl md:text-2xl text-primary-foreground/80 mb-4">
+            <p className="text-xl md:text-2xl text-foreground/80 mb-4">
               Direção Comercial Anual focada em Aceleração de Vendas
             </p>
-            <p className="text-lg text-primary-foreground/70 mb-8">
+            <p className="text-lg text-muted-foreground mb-8">
               Programa de 12 meses para treinar, acompanhar e acelerar seu time
               de vendas com método e previsibilidade.
             </p>
@@ -538,20 +538,21 @@ export default function SalesAccelerationPage() {
       </section>
 
       {/* Investment */}
-      <section className="section-padding bg-primary text-primary-foreground">
-        <div className="container-premium">
+      <section className="section-padding bg-card border-y border-border/30 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
+        <div className="container-premium relative">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="heading-section mb-6">Investimento</h2>
-            <p className="text-4xl md:text-5xl font-display font-bold text-accent mb-4">
+            <h2 className="heading-section text-foreground mb-6">Investimento</h2>
+            <p className="text-4xl md:text-5xl font-display font-bold text-primary mb-4">
               R$ 24.000
             </p>
-            <p className="text-primary-foreground/70 text-lg mb-2">
+            <p className="text-muted-foreground text-lg mb-2">
               Programa anual • À vista ou parcelado
             </p>
-            <p className="text-primary-foreground/70 mb-6">
+            <p className="text-muted-foreground mb-6">
               Aplicação obrigatória
             </p>
-            <p className="text-sm text-primary-foreground/50 mb-10 max-w-xl mx-auto">
+            <p className="text-sm text-muted-foreground/60 mb-10 max-w-xl mx-auto">
               Resultados variam conforme execução. Payback é projeção operacional,
               não garantia. UNV direciona e cobra — o cliente executa.
             </p>

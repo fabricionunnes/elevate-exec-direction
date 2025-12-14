@@ -118,9 +118,9 @@ export default function HowItWorksPage() {
         />
         <div className="absolute inset-0 bg-gradient-overlay flex items-center justify-center">
           <div className="text-center px-4">
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-primary-foreground">
+            <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground">
               Direção não é conselho.
-              <span className="block text-accent">É cobrança.</span>
+              <span className="block text-primary">É cobrança.</span>
             </h2>
           </div>
         </div>
@@ -156,12 +156,13 @@ export default function HowItWorksPage() {
       </section>
 
       {/* CTA */}
-      <section className="section-padding bg-primary text-primary-foreground">
-        <div className="container-premium text-center">
-          <h2 className="heading-section mb-6">
+      <section className="section-padding bg-card border-y border-border/30 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
+        <div className="container-premium text-center relative">
+          <h2 className="heading-section text-foreground mb-6">
             Pronto para direção comercial estruturada?
           </h2>
-          <p className="text-primary-foreground/70 text-lg mb-8 max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
             Aplique para um diagnóstico e descubra qual produto UNV se encaixa
             no seu estágio atual.
           </p>
