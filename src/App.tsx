@@ -21,6 +21,7 @@ import ApplyPage from "./pages/ApplyPage";
 import FAQPage from "./pages/FAQPage";
 import TermsPage from "./pages/TermsPage";
 import ComparePage from "./pages/ComparePage";
+import DiagnosticResponsesPage from "./pages/DiagnosticResponsesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
           <Route path="/faq" element={<FAQPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/compare" element={<ComparePage />} />
+          <Route path="/diagnostic-responses" element={<DiagnosticResponsesPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

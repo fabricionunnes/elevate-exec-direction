@@ -14,7 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      client_diagnostics: {
+        Row: {
+          biggest_challenge: string | null
+          company_name: string
+          contact_name: string
+          created_at: string
+          email: string | null
+          has_sales_process: boolean
+          id: string
+          main_pain: string
+          notes: string | null
+          recommended_product: string | null
+          revenue: string
+          status: string
+          team_size: string
+          urgency: string
+          whatsapp: string
+        }
+        Insert: {
+          biggest_challenge?: string | null
+          company_name: string
+          contact_name: string
+          created_at?: string
+          email?: string | null
+          has_sales_process?: boolean
+          id?: string
+          main_pain: string
+          notes?: string | null
+          recommended_product?: string | null
+          revenue: string
+          status?: string
+          team_size: string
+          urgency?: string
+          whatsapp: string
+        }
+        Update: {
+          biggest_challenge?: string | null
+          company_name?: string
+          contact_name?: string
+          created_at?: string
+          email?: string | null
+          has_sales_process?: boolean
+          id?: string
+          main_pain?: string
+          notes?: string | null
+          recommended_product?: string | null
+          revenue?: string
+          status?: string
+          team_size?: string
+          urgency?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
