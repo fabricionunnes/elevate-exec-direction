@@ -27,7 +27,7 @@
     --muted: 220 15% 18%;
     --muted-foreground: 220 10% 60%;
 
-    /* Gold Accent */
+    /* Gold Accent (same as primary for consistency) */
     --accent: 43 74% 49%;
     --accent-foreground: 220 20% 7%;
 
