@@ -1,0 +1,199 @@
+import { Layout } from "@/components/layout/Layout";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, CheckCircle, RefreshCw, Shield, MessageSquare, Users } from "lucide-react";
+
+const deliverables = [
+  "Recurring direction with defined cadence",
+  "Monthly strategic monitoring session",
+  "Management and accountability templates",
+  "Access to closed community",
+  "UNV AI Advisor (execution level) — weekly accountability",
+];
+
+const gains = [
+  "Consistency in commercial execution",
+  "Sustained momentum without regression",
+  "Continuous direction without annual commitment",
+];
+
+const icp = [
+  { label: "Revenue", value: "R$ 100k–400k/month" },
+];
+
+const notIncluded = [
+  "Full team training (see Sales Acceleration)",
+  "In-person immersions (see Growth Room)",
+  "Elite advisory access (see Partners)",
+];
+
+export default function ControlPage() {
+  return (
+    <Layout>
+      {/* Hero */}
+      <section className="section-padding bg-gradient-hero">
+        <div className="container-premium">
+          <div className="max-w-3xl">
+            <div className="inline-block px-4 py-1.5 bg-accent/20 text-accent text-sm font-medium rounded-full mb-6">
+              Recurring Direction
+            </div>
+            <h1 className="heading-display text-primary-foreground mb-6">
+              UNV Control
+            </h1>
+            <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8">
+              Maintain execution consistency with recurring commercial
+              direction. Monthly check-ins, templates, and AI-powered support to
+              keep your team on track.
+            </p>
+            <Link to="/apply">
+              <Button variant="hero" size="xl">
+                Apply Now
+                <ArrowRight className="ml-2" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ICP */}
+      <section className="section-padding bg-secondary">
+        <div className="container-premium">
+          <div className="max-w-xl mx-auto">
+            <h2 className="heading-section text-foreground text-center mb-12">
+              Who This Is For
+            </h2>
+            {icp.map((item, i) => (
+              <div key={i} className="card-premium p-6 text-center">
+                <p className="text-small uppercase tracking-wider mb-2">
+                  {item.label}
+                </p>
+                <p className="font-semibold text-foreground text-lg">
+                  {item.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Deliverables */}
+      <section className="section-padding bg-background">
+        <div className="container-premium">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-12">
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                    <RefreshCw className="h-5 w-5 text-accent" />
+                  </div>
+                  <h2 className="heading-card text-foreground">Deliverables</h2>
+                </div>
+                <ul className="space-y-4">
+                  {deliverables.map((item, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
+                      <span className="text-body">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                    <Users className="h-5 w-5 text-accent" />
+                  </div>
+                  <h2 className="heading-card text-foreground">
+                    Expected Gains
+                  </h2>
+                </div>
+                <ul className="space-y-4">
+                  {gains.map((item, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
+                      <span className="text-body">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* AI Advisor */}
+      <section className="py-12 bg-secondary">
+        <div className="container-premium">
+          <div className="max-w-3xl mx-auto">
+            <div className="card-highlight p-8 flex flex-col md:flex-row gap-6 items-center">
+              <div className="w-14 h-14 rounded-xl bg-accent/20 flex items-center justify-center flex-shrink-0">
+                <MessageSquare className="h-7 w-7 text-accent" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">
+                  UNV AI Advisor Included
+                </h3>
+                <p className="text-body">
+                  Execution-level AI support for weekly accountability,
+                  checklist reminders, and meeting preparation.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* What's NOT Included */}
+      <section className="section-padding bg-background">
+        <div className="container-premium">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="heading-section text-foreground text-center mb-12">
+              What's NOT Included
+            </h2>
+            <div className="space-y-4">
+              {notIncluded.map((item, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 p-4 bg-secondary rounded-lg"
+                >
+                  <Shield className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                  <span className="text-muted-foreground">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Investment */}
+      <section className="section-padding bg-primary text-primary-foreground">
+        <div className="container-premium text-center">
+          <h2 className="heading-section mb-6">Investment</h2>
+          <div className="flex flex-col md:flex-row justify-center gap-8 mb-6">
+            <div>
+              <p className="text-3xl md:text-4xl font-display font-bold text-accent">
+                R$ 297–R$ 597
+              </p>
+              <p className="text-primary-foreground/70">per month</p>
+            </div>
+            <div className="hidden md:block w-px bg-primary-foreground/20" />
+            <div>
+              <p className="text-3xl md:text-4xl font-display font-bold text-accent">
+                R$ 2.997–R$ 5.997
+              </p>
+              <p className="text-primary-foreground/70">per year</p>
+            </div>
+          </div>
+          <p className="text-primary-foreground/70 text-lg mb-10">
+            Monthly or annual plans available
+          </p>
+          <Link to="/apply">
+            <Button variant="hero" size="xl">
+              Apply Now
+              <ArrowRight className="ml-2" />
+            </Button>
+          </Link>
+        </div>
+      </section>
+    </Layout>
+  );
+}
