@@ -64,6 +64,13 @@ const products = [
     price: "R$ 1.500–4.000/mês",
     href: "/ads",
   },
+  {
+    name: "UNV Social",
+    description: "Social media como canal de vendas",
+    icp: "R$ 80k–1M+/mês",
+    price: "R$ 1.500–3.500/mês",
+    href: "/social",
+  },
 ];
 
 const processSteps = [

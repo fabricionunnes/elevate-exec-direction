@@ -128,6 +128,19 @@ const products: Product[] = [
     price: "R$ 1.500 a R$ 4.000",
     priceType: "/mês + mídia",
     link: "/ads"
+  },
+  {
+    id: "social",
+    name: "UNV Social",
+    tagline: "Social Media como Canal de Vendas",
+    icon: MessageSquare,
+    color: "bg-pink-500",
+    icp: "Empresas construindo autoridade",
+    revenue: "R$ 80k–1M+/mês",
+    team: "Negócios de confiança",
+    price: "R$ 1.500 a R$ 3.500",
+    priceType: "/mês",
+    link: "/social"
   }
 ];
 
@@ -151,7 +164,8 @@ const features: Feature[] = [
       "growth-room": "3 dias intensivos",
       partners: "Board mensal",
       "sales-ops": false,
-      ads: false
+      ads: false,
+      social: false
     }
   },
   {
@@ -165,7 +179,8 @@ const features: Feature[] = [
       "growth-room": "Pós-imersão",
       partners: true,
       "sales-ops": false,
-      ads: "Otimização"
+      ads: "Otimização",
+      social: false
     }
   },
   {
@@ -179,7 +194,8 @@ const features: Feature[] = [
       "growth-room": "90 dias",
       partners: true,
       "sales-ops": "Via trilhas",
-      ads: false
+      ads: false,
+      social: false
     }
   },
   // Estrutura
@@ -194,7 +210,8 @@ const features: Feature[] = [
       "growth-room": "Pré-imersão",
       partners: false,
       "sales-ops": false,
-      ads: "De demanda"
+      ads: "De demanda",
+      social: "Posicionamento"
     }
   },
   {
@@ -208,7 +225,8 @@ const features: Feature[] = [
       "growth-room": "Completo",
       partners: false,
       "sales-ops": false,
-      ads: "Aquisição"
+      ads: "Aquisição",
+      social: false
     }
   },
   {
@@ -222,7 +240,8 @@ const features: Feature[] = [
       "growth-room": true,
       partners: false,
       "sales-ops": "Por cargo",
-      ads: "Copies"
+      ads: "Copies",
+      social: "Conteúdo"
     }
   },
   {
@@ -236,7 +255,8 @@ const features: Feature[] = [
       "growth-room": true,
       partners: false,
       "sales-ops": "Por cargo",
-      ads: "CPL/CAC"
+      ads: "CPL/CAC",
+      social: false
     }
   },
   // Treinamento
@@ -251,7 +271,8 @@ const features: Feature[] = [
       "growth-room": "3 dias",
       partners: false,
       "sales-ops": "Trilhas por cargo",
-      ads: false
+      ads: false,
+      social: false
     }
   },
   {
@@ -265,7 +286,8 @@ const features: Feature[] = [
       "growth-room": false,
       partners: false,
       "sales-ops": true,
-      ads: false
+      ads: false,
+      social: false
     }
   },
   {
@@ -279,7 +301,8 @@ const features: Feature[] = [
       "growth-room": false,
       partners: false,
       "sales-ops": true,
-      ads: false
+      ads: false,
+      social: false
     }
   },
   // Suporte
@@ -294,7 +317,8 @@ const features: Feature[] = [
       "growth-room": "Configurado",
       partners: "Estratégico",
       "sales-ops": "Por cargo",
-      ads: "Ads"
+      ads: "Ads",
+      social: "Social"
     }
   },
   {
@@ -308,7 +332,8 @@ const features: Feature[] = [
       "growth-room": false,
       partners: "Elite",
       "sales-ops": false,
-      ads: false
+      ads: false,
+      social: false
     }
   },
   // Aquisição (nova categoria)
@@ -323,7 +348,8 @@ const features: Feature[] = [
       "growth-room": false,
       partners: false,
       "sales-ops": false,
-      ads: "Completa"
+      ads: "Completa",
+      social: false
     }
   },
   {
@@ -337,7 +363,8 @@ const features: Feature[] = [
       "growth-room": false,
       partners: false,
       "sales-ops": false,
-      ads: true
+      ads: true,
+      social: "Indireta"
     }
   },
   {
@@ -351,7 +378,54 @@ const features: Feature[] = [
       "growth-room": false,
       partners: false,
       "sales-ops": false,
-      ads: true
+      ads: true,
+      social: true
+    }
+  },
+  // Social (nova categoria)
+  {
+    name: "Estratégia de Conteúdo",
+    description: "Linhas editoriais comerciais",
+    category: "Social",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: "Completa"
+    }
+  },
+  {
+    name: "Construção de Autoridade",
+    description: "Posicionamento e credibilidade",
+    category: "Social",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: true
+    }
+  },
+  {
+    name: "Conteúdo de Pré-Venda",
+    description: "Aquecimento de leads",
+    category: "Social",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: true
     }
   },
   // Experiências
@@ -366,7 +440,8 @@ const features: Feature[] = [
       "growth-room": "3 dias",
       partners: "Eventos exclusivos",
       "sales-ops": false,
-      ads: false
+      ads: false,
+      social: false
     }
   },
   {
@@ -380,7 +455,8 @@ const features: Feature[] = [
       "growth-room": false,
       partners: "Recorrente",
       "sales-ops": false,
-      ads: false
+      ads: false,
+      social: false
     }
   },
   {
@@ -394,7 +470,8 @@ const features: Feature[] = [
       "growth-room": false,
       partners: true,
       "sales-ops": false,
-      ads: false
+      ads: false,
+      social: false
     }
   }
 ];
