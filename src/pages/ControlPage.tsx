@@ -8,13 +8,13 @@ const deliverables = [
   "Sessão de monitoria estratégica mensal",
   "Templates de gestão e cobrança",
   "Acesso a comunidade fechada",
-  "UNV AI Advisor nível execução — cobrança semanal",
+  "UNV AI Advisor com cobrança semanal",
 ];
 
 const gains = [
   "Consistência na execução comercial",
   "Momentum sustentado sem regressão",
-  "Direção contínua sem compromisso anual",
+  "Disciplina mantida a longo prazo",
 ];
 
 const icp = [
@@ -40,7 +40,10 @@ export default function ControlPage() {
             <h1 className="heading-display text-primary-foreground mb-6">
               UNV Control
             </h1>
-            <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8">
+            <p className="text-xl md:text-2xl text-primary-foreground/80 mb-4">
+              Sustentar execução contínua.
+            </p>
+            <p className="text-lg text-primary-foreground/70 mb-8">
               Mantenha a consistência de execução com direção comercial
               recorrente. Check-ins mensais, templates e suporte com IA para
               manter seu time no trilho.
@@ -130,11 +133,11 @@ export default function ControlPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground mb-2">
-                  UNV AI Advisor Incluso
+                  UNV AI Advisor — Nível Execução
                 </h3>
                 <p className="text-body">
-                  Suporte IA nível execução para cobrança semanal, lembretes
-                  de checklist e preparação de reuniões.
+                  Suporte IA com cobrança semanal, lembretes de checklist e
+                  preparação de reuniões para manter a disciplina.
                 </p>
               </div>
             </div>
@@ -175,16 +178,9 @@ export default function ControlPage() {
               </p>
               <p className="text-primary-foreground/70">por mês</p>
             </div>
-            <div className="hidden md:block w-px bg-primary-foreground/20" />
-            <div>
-              <p className="text-3xl md:text-4xl font-display font-bold text-accent">
-                R$ 2.997–R$ 5.997
-              </p>
-              <p className="text-primary-foreground/70">por ano</p>
-            </div>
           </div>
           <p className="text-primary-foreground/70 text-lg mb-10">
-            Planos mensais ou anuais disponíveis
+            Planos mensais disponíveis
           </p>
           <Link to="/apply">
             <Button variant="hero" size="xl">
