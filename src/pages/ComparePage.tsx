@@ -36,6 +36,9 @@ interface Product {
   price: string;
   priceType: string;
   link: string;
+  keyDiff: string;
+  bestFor: string;
+  notFor: string;
 }
 
 const products: Product[] = [
@@ -50,7 +53,10 @@ const products: Product[] = [
     team: "1–5 vendedores",
     price: "R$ 997 a R$ 1.997",
     priceType: "único",
-    link: "/core"
+    link: "/core",
+    keyDiff: "Produto de entrada — estrutura básica de vendas para quem está começando",
+    bestFor: "Donos que vendem sozinhos ou com time pequeno e precisam de processo inicial",
+    notFor: "Quem já tem processo estruturado ou busca aceleração"
   },
   {
     id: "control",
@@ -63,7 +69,10 @@ const products: Product[] = [
     team: "Qualquer tamanho",
     price: "R$ 597",
     priceType: "/mês ou R$ 5.997/ano",
-    link: "/control"
+    link: "/control",
+    keyDiff: "Acompanhamento mensal recorrente — mantém a disciplina comercial ativa",
+    bestFor: "Empresas que já vendem mas perdem ritmo sem cobrança externa",
+    notFor: "Quem precisa de estruturação completa ou treinamento de time"
   },
   {
     id: "sales-acceleration",
@@ -76,7 +85,10 @@ const products: Product[] = [
     team: "3–20 vendedores",
     price: "R$ 24.000",
     priceType: "/ano",
-    link: "/sales-acceleration"
+    link: "/sales-acceleration",
+    keyDiff: "Produto principal — direção + treinamento + cobrança integrados por 12 meses",
+    bestFor: "Empresas com time comercial que querem acelerar resultados com método",
+    notFor: "Quem não tem time ou busca apenas padronização"
   },
   {
     id: "growth-room",
@@ -89,7 +101,10 @@ const products: Product[] = [
     team: "Decisores apenas",
     price: "R$ 12.000",
     priceType: "por empresa",
-    link: "/growth-room"
+    link: "/growth-room",
+    keyDiff: "Imersão presencial de 3 dias — clareza estratégica e plano de 90 dias",
+    bestFor: "CEOs/donos que precisam parar e repensar a direção comercial",
+    notFor: "Quem busca acompanhamento recorrente ou treinamento de time"
   },
   {
     id: "partners",
@@ -102,7 +117,10 @@ const products: Product[] = [
     team: "CEO/fundador decisor",
     price: "R$ 4.000",
     priceType: "/mês (12 meses)",
-    link: "/partners"
+    link: "/partners",
+    keyDiff: "Board externo — Fabrício como diretor comercial de fato, não consultor",
+    bestFor: "Empresários que querem um parceiro de decisão, não apenas orientação",
+    notFor: "Quem quer apenas treinamento ou precisa de execução"
   },
   {
     id: "sales-ops",
@@ -115,7 +133,10 @@ const products: Product[] = [
     team: "5+ vendedores",
     price: "R$ 197",
     priceType: "/usuário/mês",
-    link: "/sales-ops"
+    link: "/sales-ops",
+    keyDiff: "Operação comercial — trilhas por cargo, onboarding, padronização de discurso",
+    bestFor: "Empresas com time comercial que perdem padrão quando alguém sai",
+    notFor: "Quem não tem time ou busca aceleração estratégica"
   },
   {
     id: "ads",
@@ -128,7 +149,10 @@ const products: Product[] = [
     team: "Time comercial ativo",
     price: "R$ 1.500 a R$ 4.000",
     priceType: "/mês + mídia",
-    link: "/ads"
+    link: "/ads",
+    keyDiff: "Geração de demanda — campanhas de tráfego pago integradas com vendas",
+    bestFor: "Empresas que precisam de mais leads qualificados para o time comercial",
+    notFor: "Quem não tem time comercial para atender os leads"
   },
   {
     id: "social",
@@ -141,7 +165,10 @@ const products: Product[] = [
     team: "Negócios de confiança",
     price: "R$ 1.500 a R$ 3.500",
     priceType: "/mês",
-    link: "/social"
+    link: "/social",
+    keyDiff: "Autoridade digital — conteúdo estratégico para pré-venda e aquecimento",
+    bestFor: "Empresas onde a venda depende de confiança e autoridade do dono",
+    notFor: "Quem busca leads imediatos ou não quer aparecer"
   },
   {
     id: "mastermind",
@@ -154,7 +181,10 @@ const products: Product[] = [
     team: "Donos reais",
     price: "R$ 36.000",
     priceType: "/ano",
-    link: "/mastermind"
+    link: "/mastermind",
+    keyDiff: "Conselho de decisão — grupo ultra seletivo com hot seats e mansão empresarial",
+    bestFor: "Empresários que já cresceram e querem decidir melhor com pares à altura",
+    notFor: "Quem busca execução, networking frouxo ou palco para ego"
   }
 ];
 
@@ -697,15 +727,66 @@ export default function ComparePage() {
                 ))}
               </div>
               <div className="grid" style={{ gridTemplateColumns: `250px repeat(${selectedProductsData.length}, 1fr)` }}>
-                <div className="p-4">
+                <div className="p-4 bg-secondary/50">
                   <h4 className="font-semibold text-foreground flex items-center gap-2">
                     <Users2 className="h-4 w-4 text-accent" />
                     Time
                   </h4>
                 </div>
                 {selectedProductsData.map((product) => (
-                  <div key={product.id} className="p-4 text-center">
+                  <div key={product.id} className="p-4 text-center bg-secondary/50">
                     <p className="text-sm font-medium text-foreground">{product.team}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Key Differences Section - NEW */}
+      <section className="py-8 bg-background border-b border-border">
+        <div className="container-premium">
+          <h2 className="heading-section text-foreground text-center mb-8">
+            Diferenças-Chave
+          </h2>
+          <div className="overflow-x-auto">
+            <div className="min-w-[800px]">
+              {/* Principal diferença */}
+              <div className="grid mb-4" style={{ gridTemplateColumns: `250px repeat(${selectedProductsData.length}, 1fr)` }}>
+                <div className="p-4 bg-accent/10 rounded-l-lg border-l-4 border-accent">
+                  <h4 className="font-bold text-foreground">🎯 Principal Diferença</h4>
+                  <p className="text-xs text-muted-foreground">O que torna cada produto único</p>
+                </div>
+                {selectedProductsData.map((product, i) => (
+                  <div key={product.id} className={cn("p-4 bg-accent/5", i === selectedProductsData.length - 1 && "rounded-r-lg")}>
+                    <p className="text-sm font-medium text-foreground">{product.keyDiff}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Para quem é */}
+              <div className="grid mb-4" style={{ gridTemplateColumns: `250px repeat(${selectedProductsData.length}, 1fr)` }}>
+                <div className="p-4 bg-emerald-500/10 rounded-l-lg border-l-4 border-emerald-500">
+                  <h4 className="font-bold text-foreground">✅ Melhor Para</h4>
+                  <p className="text-xs text-muted-foreground">Quem deve escolher este produto</p>
+                </div>
+                {selectedProductsData.map((product, i) => (
+                  <div key={product.id} className={cn("p-4 bg-emerald-500/5", i === selectedProductsData.length - 1 && "rounded-r-lg")}>
+                    <p className="text-sm text-foreground">{product.bestFor}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Para quem NÃO é */}
+              <div className="grid" style={{ gridTemplateColumns: `250px repeat(${selectedProductsData.length}, 1fr)` }}>
+                <div className="p-4 bg-destructive/10 rounded-l-lg border-l-4 border-destructive">
+                  <h4 className="font-bold text-foreground">❌ Não É Para</h4>
+                  <p className="text-xs text-muted-foreground">Quem não deve escolher este produto</p>
+                </div>
+                {selectedProductsData.map((product, i) => (
+                  <div key={product.id} className={cn("p-4 bg-destructive/5", i === selectedProductsData.length - 1 && "rounded-r-lg")}>
+                    <p className="text-sm text-muted-foreground">{product.notFor}</p>
                   </div>
                 ))}
               </div>
@@ -717,6 +798,9 @@ export default function ComparePage() {
       {/* Feature Comparison */}
       <section className="section-padding bg-background">
         <div className="container-premium">
+          <h2 className="heading-section text-foreground text-center mb-8">
+            Comparativo Detalhado de Features
+          </h2>
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
               {categories.map((category) => (
