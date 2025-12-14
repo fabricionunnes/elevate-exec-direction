@@ -453,10 +453,160 @@ export default function DiagnosticResponsesPage() {
                 </div>
               )}
 
-              {/* Recomendação */}
+              {/* Recomendação com Justificativa */}
               <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
                 <p className="text-xs text-accent mb-2">Produto(s) Recomendado(s)</p>
-                <p className="text-xl font-bold text-accent">{selectedResponse.recommended_product}</p>
+                <p className="text-xl font-bold text-accent mb-4">{selectedResponse.recommended_product}</p>
+                
+                <div className="border-t border-accent/20 pt-4">
+                  <p className="text-xs font-semibold text-accent mb-2 uppercase">Por que este produto?</p>
+                  <ul className="text-sm text-foreground space-y-2">
+                    {selectedResponse.recommended_product?.includes("Core") && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Ideal para quem está começando a estruturar o comercial e precisa de fundamentos sólidos</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Investimento acessível (R$ 1.997) para validar a metodologia UNV</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Entrega processo comercial completo e replicável rapidamente</span>
+                        </li>
+                      </>
+                    )}
+                    {selectedResponse.recommended_product?.includes("Control") && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Perfeito para faturamento de R$ 100k-400k/mês que precisa de acompanhamento contínuo</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Reuniões semanais garantem execução e disciplina comercial</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Modelo de assinatura (R$ 597/mês) permite ajustes contínuos</span>
+                        </li>
+                      </>
+                    )}
+                    {selectedResponse.recommended_product?.includes("Sales Acceleration") && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Programa intensivo para empresas que faturam R$ 200k-1M/mês e querem escalar rápido</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Direção comercial completa com foco em processos, métricas e time</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>ROI projetado já nos primeiros meses de implementação</span>
+                        </li>
+                      </>
+                    )}
+                    {selectedResponse.recommended_product?.includes("Growth Room") && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Formato imersivo ideal para resolver problemas específicos rapidamente</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Acesso a networking de alto nível com outros empresários</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Investimento pontual (R$ 12k) com resultado imediato</span>
+                        </li>
+                      </>
+                    )}
+                    {selectedResponse.recommended_product?.includes("Partners") && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Para empresas que faturam R$ 500k+/mês e precisam de direção comercial dedicada</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Modelo de parceria com acompanhamento próximo e estratégico</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Ideal para quem quer um "diretor comercial" sem contratar CLT</span>
+                        </li>
+                      </>
+                    )}
+                    {selectedResponse.recommended_product?.includes("Sales Ops") && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Sistema de gestão comercial para times que precisam de controle operacional</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Preço por usuário (R$ 197/mês) escalável conforme o time cresce</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Dashboards e métricas para decisões baseadas em dados</span>
+                        </li>
+                      </>
+                    )}
+                    {selectedResponse.recommended_product?.includes("Ads") && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Cliente indicou que não investe em tráfego pago ou não está satisfeito</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Gestão de tráfego profissional para gerar leads qualificados</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Resolve a dor de "poucos leads" diretamente na fonte</span>
+                        </li>
+                      </>
+                    )}
+                    {selectedResponse.recommended_product?.includes("Social") && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Cliente não tem social media ou não está satisfeito com resultados</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Construção de autoridade e presença digital para atrair leads orgânicos</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Complementa estratégia comercial com posicionamento de marca</span>
+                        </li>
+                      </>
+                    )}
+                    {selectedResponse.recommended_product?.includes("Mastermind") && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Exclusivo para empresários que faturam R$ 300k-3M/mês</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Conselho de decisão com pares de alto nível + acesso a Fabrício</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent mt-0.5">✓</span>
+                          <span>Para quem precisa de visão estratégica, não apenas operacional</span>
+                        </li>
+                      </>
+                    )}
+                  </ul>
+                </div>
               </div>
 
               {/* Briefing para o Closer */}
