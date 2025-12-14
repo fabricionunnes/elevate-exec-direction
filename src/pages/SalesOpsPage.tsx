@@ -630,15 +630,19 @@ export default function SalesOpsPage() {
                     </div>
 
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground mb-3">Entregáveis:</p>
-                      <ul className="space-y-2 mb-6">
-                        {pilar.entregaveis.map((item, j) => (
-                          <li key={j} className="flex items-start gap-2 text-sm">
-                            <FileText className="h-4 w-4 text-accent flex-shrink-0 mt-0.5" />
-                            <span className="text-foreground">{item}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      {pilar.entregaveis && pilar.entregaveis.length > 0 && (
+                        <>
+                          <p className="text-sm font-medium text-muted-foreground mb-3">Entregáveis:</p>
+                          <ul className="space-y-2 mb-6">
+                            {pilar.entregaveis.map((item, j) => (
+                              <li key={j} className="flex items-start gap-2 text-sm">
+                                <FileText className="h-4 w-4 text-accent flex-shrink-0 mt-0.5" />
+                                <span className="text-foreground">{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
 
                       <div className="p-4 bg-accent/5 rounded-lg border border-accent/20">
                         <p className="text-sm font-medium text-muted-foreground mb-1">Ganho percebido:</p>
