@@ -19,7 +19,8 @@ import {
   Home,
   FileText,
   Target,
-  Megaphone
+  Megaphone,
+  Star
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -141,6 +142,19 @@ const products: Product[] = [
     price: "R$ 1.500 a R$ 3.500",
     priceType: "/mês",
     link: "/social"
+  },
+  {
+    id: "mastermind",
+    name: "UNV Mastermind",
+    tagline: "Inner Circle de Líderes",
+    icon: Star,
+    color: "bg-amber-500",
+    icp: "Empresários em estágio avançado",
+    revenue: "R$ 300k–3M/mês",
+    team: "Donos reais",
+    price: "R$ 36.000",
+    priceType: "/ano",
+    link: "/mastermind"
   }
 ];
 
@@ -165,7 +179,8 @@ const features: Feature[] = [
       partners: "Board mensal",
       "sales-ops": false,
       ads: false,
-      social: false
+      social: false,
+      mastermind: "Board coletivo"
     }
   },
   {
@@ -180,7 +195,8 @@ const features: Feature[] = [
       partners: true,
       "sales-ops": false,
       ads: "Otimização",
-      social: false
+      social: false,
+      mastermind: false
     }
   },
   {
@@ -195,7 +211,8 @@ const features: Feature[] = [
       partners: true,
       "sales-ops": "Via trilhas",
       ads: false,
-      social: false
+      social: false,
+      mastermind: false
     }
   },
   // Estrutura
@@ -211,7 +228,8 @@ const features: Feature[] = [
       partners: false,
       "sales-ops": false,
       ads: "De demanda",
-      social: "Posicionamento"
+      social: "Posicionamento",
+      mastermind: false
     }
   },
   {
@@ -226,7 +244,8 @@ const features: Feature[] = [
       partners: false,
       "sales-ops": false,
       ads: "Aquisição",
-      social: false
+      social: false,
+      mastermind: false
     }
   },
   {
@@ -241,7 +260,8 @@ const features: Feature[] = [
       partners: false,
       "sales-ops": "Por cargo",
       ads: "Copies",
-      social: "Conteúdo"
+      social: "Conteúdo",
+      mastermind: false
     }
   },
   {
@@ -256,7 +276,8 @@ const features: Feature[] = [
       partners: false,
       "sales-ops": "Por cargo",
       ads: "CPL/CAC",
-      social: false
+      social: false,
+      mastermind: false
     }
   },
   // Treinamento
@@ -272,7 +293,8 @@ const features: Feature[] = [
       partners: false,
       "sales-ops": "Trilhas por cargo",
       ads: false,
-      social: false
+      social: false,
+      mastermind: false
     }
   },
   {
@@ -287,7 +309,8 @@ const features: Feature[] = [
       partners: false,
       "sales-ops": true,
       ads: false,
-      social: false
+      social: false,
+      mastermind: false
     }
   },
   {
@@ -302,7 +325,8 @@ const features: Feature[] = [
       partners: false,
       "sales-ops": true,
       ads: false,
-      social: false
+      social: false,
+      mastermind: false
     }
   },
   // Suporte
@@ -318,7 +342,8 @@ const features: Feature[] = [
       partners: "Estratégico",
       "sales-ops": "Por cargo",
       ads: "Ads",
-      social: "Social"
+      social: "Social",
+      mastermind: "Mastermind"
     }
   },
   {
@@ -333,10 +358,11 @@ const features: Feature[] = [
       partners: "Elite",
       "sales-ops": false,
       ads: false,
-      social: false
+      social: false,
+      mastermind: "Ultra seletiva"
     }
   },
-  // Aquisição (nova categoria)
+  // Aquisição
   {
     name: "Gestão de Tráfego",
     description: "Campanhas de mídia paga",
@@ -349,7 +375,8 @@ const features: Feature[] = [
       partners: false,
       "sales-ops": false,
       ads: "Completa",
-      social: false
+      social: false,
+      mastermind: false
     }
   },
   {
@@ -364,7 +391,8 @@ const features: Feature[] = [
       partners: false,
       "sales-ops": false,
       ads: true,
-      social: "Indireta"
+      social: "Indireta",
+      mastermind: false
     }
   },
   {
@@ -379,10 +407,11 @@ const features: Feature[] = [
       partners: false,
       "sales-ops": false,
       ads: true,
-      social: true
+      social: true,
+      mastermind: false
     }
   },
-  // Social (nova categoria)
+  // Social
   {
     name: "Estratégia de Conteúdo",
     description: "Linhas editoriais comerciais",
@@ -395,7 +424,8 @@ const features: Feature[] = [
       partners: false,
       "sales-ops": false,
       ads: false,
-      social: "Completa"
+      social: "Completa",
+      mastermind: false
     }
   },
   {
@@ -410,7 +440,8 @@ const features: Feature[] = [
       partners: false,
       "sales-ops": false,
       ads: false,
-      social: true
+      social: true,
+      mastermind: false
     }
   },
   {
@@ -425,7 +456,57 @@ const features: Feature[] = [
       partners: false,
       "sales-ops": false,
       ads: false,
-      social: true
+      social: true,
+      mastermind: false
+    }
+  },
+  // Mastermind
+  {
+    name: "Sessões de Hot Seat",
+    description: "Decisões estratégicas em grupo",
+    category: "Mastermind",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: "Mensal"
+    }
+  },
+  {
+    name: "Mansão Empresarial",
+    description: "Encontros presenciais privados",
+    category: "Mastermind",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: "Mensal"
+    }
+  },
+  {
+    name: "Direção Individual",
+    description: "Sessões privadas com Fabrício",
+    category: "Mastermind",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: "Recorrente",
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: "2x/ano"
     }
   },
   // Experiências
@@ -441,7 +522,8 @@ const features: Feature[] = [
       partners: "Eventos exclusivos",
       "sales-ops": false,
       ads: false,
-      social: false
+      social: false,
+      mastermind: "Mensais"
     }
   },
   {
@@ -456,7 +538,8 @@ const features: Feature[] = [
       partners: "Recorrente",
       "sales-ops": false,
       ads: false,
-      social: false
+      social: false,
+      mastermind: "Recorrente"
     }
   },
   {
@@ -471,7 +554,8 @@ const features: Feature[] = [
       partners: true,
       "sales-ops": false,
       ads: false,
-      social: false
+      social: false,
+      mastermind: "Real e profundo"
     }
   }
 ];

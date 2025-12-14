@@ -71,6 +71,14 @@ const products = [
     price: "R$ 1.500–3.500/mês",
     href: "/social",
   },
+  {
+    name: "UNV Mastermind",
+    description: "Inner Circle de líderes empresariais",
+    icp: "R$ 300k–3M/mês",
+    price: "R$ 36.000/ano",
+    href: "/mastermind",
+    highlight: true,
+  },
 ];
 
 const processSteps = [

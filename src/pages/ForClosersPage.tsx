@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowRight, ArrowLeft, CheckCircle, Copy, Layers, RefreshCw, TrendingUp, MapPin, Crown, Users2, Megaphone, Heart, ChevronRight } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle, Copy, Layers, RefreshCw, TrendingUp, MapPin, Crown, Users2, Megaphone, Heart, ChevronRight, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -195,7 +195,8 @@ const productIcons: Record<string, React.ComponentType<{ className?: string }>> 
   "UNV Partners": Crown,
   "UNV Sales Ops": Users2,
   "UNV Ads": Megaphone,
-  "UNV Social": Heart
+  "UNV Social": Heart,
+  "UNV Mastermind": Star
 };
 
 function getRecommendation(data: FormData): Recommendation {
@@ -345,6 +346,23 @@ function getRecommendation(data: FormData): Recommendation {
     });
   }
   
+  // Mastermind - Para empresários avançados que buscam pares à altura
+  if (["600k-1m", "1m-2m", "over-2m"].includes(revenue) && 
+      data.budget && ["10k-20k", "over-20k", "investment"].includes(data.budget)) {
+    products.push({
+      id: "mastermind",
+      name: "UNV Mastermind",
+      icon: productIcons["UNV Mastermind"],
+      priority: ["1m-2m", "over-2m"].includes(revenue) ? "primary" : "secondary",
+      reasons: [
+        "Você está no nível de empresário avançado",
+        "Decisões melhores com conselho de pares",
+        "Ambiente de elite para crescer certo"
+      ],
+      href: "/mastermind"
+    });
+  }
+  
   // Se não tiver nenhum produto, recomendar Sales Acceleration como padrão
   if (products.length === 0) {
     products.push({
@@ -412,6 +430,12 @@ function getRecommendation(data: FormData): Recommendation {
       { phase: "Agora", product: "UNV Ads", duration: "Mensal", objective: "Gerar leads qualificados", href: "/ads" },
       { phase: "Em paralelo", product: "UNV Social", duration: "Mensal", objective: "Construir autoridade", href: "/social" },
       { phase: "Quando estruturar", product: "UNV Sales Acceleration", duration: "12 meses", objective: "Converter melhor", href: "/sales-acceleration" }
+    );
+  } else if (primaryProduct.id === "mastermind") {
+    trail.push(
+      { phase: "Agora", product: "UNV Mastermind", duration: "12 meses", objective: "Conselho de empresários", href: "/mastermind" },
+      { phase: "Em paralelo", product: "UNV Sales Ops", duration: "Por usuário", objective: "Padronizar operação", href: "/sales-ops" },
+      { phase: "Em paralelo", product: "UNV Ads", duration: "Mensal", objective: "Escalar demanda", href: "/ads" }
     );
   } else {
     trail.push(
