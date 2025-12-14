@@ -12,6 +12,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { 
   RefreshCw, 
   Search, 
@@ -21,7 +27,9 @@ import {
   Clock, 
   CheckCircle,
   AlertCircle,
-  Loader2
+  Loader2,
+  Eye,
+  X
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -56,13 +64,22 @@ const revenueLabels: Record<string, string> = {
 };
 
 const painLabels: Record<string, string> = {
-  "sem-processo": "Sem processo",
+  "sem-processo": "Sem processo comercial",
   "inconsistencia": "Vendas inconsistentes",
   "time-desalinhado": "Time desalinhado",
   "poucos-leads": "Poucos leads",
   "conversao-baixa": "Conversão baixa",
   "escala": "Dificuldade escalar",
   "autoridade": "Falta autoridade",
+  "lideranca-fraca": "Liderança fraca",
+};
+
+const teamLabels: Record<string, string> = {
+  "sozinho": "Vende sozinho",
+  "1-3": "1 a 3 vendedores",
+  "4-10": "4 a 10 vendedores",
+  "11-20": "11 a 20 vendedores",
+  "20+": "Mais de 20 vendedores",
 };
 
 const urgencyLabels: Record<string, string> = {
@@ -86,6 +103,7 @@ export default function DiagnosticResponsesPage() {
   const [search, setSearch] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [selectedResponse, setSelectedResponse] = useState<DiagnosticResponse | null>(null);
 
   const ACCESS_CODE = "unv2024"; // Código de acesso simples
 
@@ -315,17 +333,28 @@ export default function DiagnosticResponsesPage() {
                         </select>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            const phone = response.whatsapp.replace(/\D/g, "");
-                            const text = `Olá ${response.contact_name}! Recebi seu diagnóstico da ${response.company_name}. Vamos conversar sobre o ${response.recommended_product}?`;
-                            window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(text)}`, "_blank");
-                          }}
-                        >
-                          <Phone className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSelectedResponse(response)}
+                            title="Ver detalhes"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              const phone = response.whatsapp.replace(/\D/g, "");
+                              const text = `Olá ${response.contact_name}! Recebi seu diagnóstico da ${response.company_name}. Vamos conversar sobre o ${response.recommended_product}?`;
+                              window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(text)}`, "_blank");
+                            }}
+                            title="WhatsApp"
+                          >
+                            <Phone className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -335,6 +364,135 @@ export default function DiagnosticResponsesPage() {
           )}
         </div>
       </section>
+
+      {/* Modal de Detalhes */}
+      <Dialog open={!!selectedResponse} onOpenChange={() => setSelectedResponse(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <Building2 className="h-5 w-5 text-accent" />
+              {selectedResponse?.company_name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedResponse && (
+            <div className="space-y-6 mt-4">
+              {/* Contato */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="bg-secondary/50 rounded-lg p-4">
+                  <p className="text-xs text-muted-foreground mb-1">Contato</p>
+                  <p className="font-semibold text-foreground">{selectedResponse.contact_name}</p>
+                </div>
+                <div className="bg-secondary/50 rounded-lg p-4">
+                  <p className="text-xs text-muted-foreground mb-1">WhatsApp</p>
+                  <p className="font-semibold text-foreground">{selectedResponse.whatsapp}</p>
+                </div>
+                {selectedResponse.email && (
+                  <div className="bg-secondary/50 rounded-lg p-4 sm:col-span-2">
+                    <p className="text-xs text-muted-foreground mb-1">E-mail</p>
+                    <p className="font-semibold text-foreground">{selectedResponse.email}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Perfil */}
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-3">Perfil da Empresa</h4>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Faturamento</p>
+                    <p className="font-medium text-foreground">{revenueLabels[selectedResponse.revenue] || selectedResponse.revenue}</p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Time</p>
+                    <p className="font-medium text-foreground">{teamLabels[selectedResponse.team_size] || selectedResponse.team_size}</p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Processo</p>
+                    <p className="font-medium text-foreground">{selectedResponse.has_sales_process ? "Tem processo" : "Sem processo"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dor e Urgência */}
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-3">Dor Principal</h4>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Badge variant="secondary" className="text-sm">
+                    {painLabels[selectedResponse.main_pain] || selectedResponse.main_pain}
+                  </Badge>
+                  <Badge 
+                    variant="outline" 
+                    className={cn(
+                      "text-sm",
+                      selectedResponse.urgency === "imediata" && "border-destructive text-destructive",
+                      selectedResponse.urgency === "alta" && "border-orange-500 text-orange-500"
+                    )}
+                  >
+                    {urgencyLabels[selectedResponse.urgency] || selectedResponse.urgency}
+                  </Badge>
+                </div>
+                
+                {selectedResponse.biggest_challenge && (
+                  <div className="bg-secondary/50 rounded-lg p-4">
+                    <p className="text-xs text-muted-foreground mb-2">Maior desafio descrito</p>
+                    <p className="text-foreground">{selectedResponse.biggest_challenge}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Objetivos */}
+              {selectedResponse.notes && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">Objetivos (90 dias)</h4>
+                  <div className="bg-secondary/50 rounded-lg p-4">
+                    <p className="text-foreground">{selectedResponse.notes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Recomendação */}
+              <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
+                <p className="text-xs text-accent mb-2">Produto Recomendado</p>
+                <p className="text-xl font-bold text-accent">{selectedResponse.recommended_product}</p>
+              </div>
+
+              {/* Data e Status */}
+              <div className="flex items-center justify-between pt-4 border-t border-border">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  {format(new Date(selectedResponse.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </div>
+                <Badge className={cn(statusColors[selectedResponse.status] || "bg-secondary")}>
+                  {selectedResponse.status === "pending" && "Pendente"}
+                  {selectedResponse.status === "contacted" && "Contatado"}
+                  {selectedResponse.status === "qualified" && "Qualificado"}
+                  {selectedResponse.status === "closed" && "Fechado"}
+                  {selectedResponse.status === "lost" && "Perdido"}
+                </Badge>
+              </div>
+
+              {/* Ações */}
+              <div className="flex gap-3">
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    const phone = selectedResponse.whatsapp.replace(/\D/g, "");
+                    const text = `Olá ${selectedResponse.contact_name}! Recebi seu diagnóstico da ${selectedResponse.company_name}. Vamos conversar sobre o ${selectedResponse.recommended_product}?`;
+                    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(text)}`, "_blank");
+                  }}
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  Chamar no WhatsApp
+                </Button>
+                <Button variant="outline" onClick={() => setSelectedResponse(null)}>
+                  Fechar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
