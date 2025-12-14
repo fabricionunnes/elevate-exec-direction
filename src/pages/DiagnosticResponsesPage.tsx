@@ -414,13 +414,15 @@ export default function DiagnosticResponsesPage() {
                 </div>
               </div>
 
-              {/* Dor e Urgência */}
+              {/* Dores */}
               <div>
-                <h4 className="text-sm font-semibold text-foreground mb-3">Dor Principal</h4>
+                <h4 className="text-sm font-semibold text-foreground mb-3">Dores Identificadas</h4>
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <Badge variant="secondary" className="text-sm">
-                    {painLabels[selectedResponse.main_pain] || selectedResponse.main_pain}
-                  </Badge>
+                  {selectedResponse.main_pain.split(',').map((pain, index) => (
+                    <Badge key={index} variant="secondary" className="text-sm">
+                      {painLabels[pain.trim()] || pain.trim()}
+                    </Badge>
+                  ))}
                   <Badge 
                     variant="outline" 
                     className={cn(
@@ -444,17 +446,136 @@ export default function DiagnosticResponsesPage() {
               {/* Objetivos */}
               {selectedResponse.notes && (
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-3">Objetivos (90 dias)</h4>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">Informações Adicionais</h4>
                   <div className="bg-secondary/50 rounded-lg p-4">
-                    <p className="text-foreground">{selectedResponse.notes}</p>
+                    <p className="text-foreground whitespace-pre-line">{selectedResponse.notes}</p>
                   </div>
                 </div>
               )}
 
               {/* Recomendação */}
               <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
-                <p className="text-xs text-accent mb-2">Produto Recomendado</p>
+                <p className="text-xs text-accent mb-2">Produto(s) Recomendado(s)</p>
                 <p className="text-xl font-bold text-accent">{selectedResponse.recommended_product}</p>
+              </div>
+
+              {/* Briefing para o Closer */}
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                  📋 Briefing para o Closer
+                </h4>
+                
+                <div className="space-y-4">
+                  {/* Resumo do Cliente */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Resumo do Cliente</p>
+                    <p className="text-sm text-foreground">
+                      <strong>{selectedResponse.contact_name}</strong> da <strong>{selectedResponse.company_name}</strong> 
+                      {" "}fatura {revenueLabels[selectedResponse.revenue] || selectedResponse.revenue}/mês 
+                      {selectedResponse.team_size !== "sozinho" && ` com ${teamLabels[selectedResponse.team_size] || selectedResponse.team_size}`}
+                      {selectedResponse.team_size === "sozinho" && " e vende sozinho(a)"}.
+                      {selectedResponse.has_sales_process ? " Já possui processo comercial estruturado." : " Não possui processo comercial estruturado."}
+                    </p>
+                  </div>
+
+                  {/* Dores Identificadas */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Dores Identificadas</p>
+                    <ul className="text-sm text-foreground space-y-1">
+                      {selectedResponse.main_pain.split(',').map((pain, index) => (
+                        <li key={index} className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-destructive rounded-full"></span>
+                          {painLabels[pain.trim()] || pain.trim()}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Nível de Urgência */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Nível de Urgência</p>
+                    <p className="text-sm text-foreground">
+                      {selectedResponse.urgency === "imediata" && "🔴 URGENTE - Cliente precisa resolver agora. Abordagem direta e objetiva."}
+                      {selectedResponse.urgency === "alta" && "🟠 ALTA - Próximos 30 dias. Cliente está pronto para decidir."}
+                      {selectedResponse.urgency === "normal" && "🟡 NORMAL - Prazo de 90 dias. Construir relacionamento antes de oferta."}
+                      {selectedResponse.urgency === "exploratoria" && "🟢 EXPLORATÓRIA - Ainda pesquisando. Foco em educar e criar valor."}
+                    </p>
+                  </div>
+
+                  {/* Perguntas para o Closer */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Perguntas para Fazer</p>
+                    <ul className="text-sm text-foreground space-y-2">
+                      {selectedResponse.main_pain.includes("sem-processo") && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent">→</span>
+                          <span>"Como vocês acompanham o funil de vendas hoje? O que usam para controlar?"</span>
+                        </li>
+                      )}
+                      {selectedResponse.main_pain.includes("inconsistencia") && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent">→</span>
+                          <span>"Qual foi o melhor e o pior mês de vendas nos últimos 6 meses? O que aconteceu de diferente?"</span>
+                        </li>
+                      )}
+                      {selectedResponse.main_pain.includes("time-desalinhado") && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent">→</span>
+                          <span>"Quantas reuniões de alinhamento você faz com o time por semana? Quem lidera essas reuniões?"</span>
+                        </li>
+                      )}
+                      {selectedResponse.main_pain.includes("poucos-leads") && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent">→</span>
+                          <span>"De onde vêm os leads hoje? Qual canal traz mais? Vocês investem em tráfego pago?"</span>
+                        </li>
+                      )}
+                      {selectedResponse.main_pain.includes("conversao-baixa") && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent">→</span>
+                          <span>"Qual a taxa de conversão de lead para venda hoje? Em qual etapa vocês perdem mais oportunidades?"</span>
+                        </li>
+                      )}
+                      {selectedResponse.main_pain.includes("escala") && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent">→</span>
+                          <span>"O que você acredita que está travando o crescimento? Falta de pessoas, processos ou estratégia?"</span>
+                        </li>
+                      )}
+                      {selectedResponse.main_pain.includes("autoridade") && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent">→</span>
+                          <span>"Como os clientes chegam até vocês? Vocês são indicados ou precisam prospectar?"</span>
+                        </li>
+                      )}
+                      {selectedResponse.main_pain.includes("lideranca-fraca") && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-accent">→</span>
+                          <span>"Quem cuida da área comercial hoje? Essa pessoa consegue cobrar resultados do time?"</span>
+                        </li>
+                      )}
+                      <li className="flex items-start gap-2">
+                        <span className="text-accent">→</span>
+                        <span>"Se você resolvesse esse problema em 90 dias, quanto isso representaria em faturamento?"</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-accent">→</span>
+                        <span>"O que já tentou fazer para resolver isso? Por que não funcionou?"</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Abordagem Sugerida */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Abordagem Sugerida</p>
+                    <p className="text-sm text-foreground bg-secondary/50 rounded p-3">
+                      {selectedResponse.urgency === "imediata" || selectedResponse.urgency === "alta" 
+                        ? `Foco em resolver a dor AGORA. Mostre que o ${selectedResponse.recommended_product} é a solução mais rápida. Trabalhe escassez e decisão imediata.`
+                        : `Construa rapport antes de oferecer. Valide as dores, mostre cases de sucesso similares, e depois apresente o ${selectedResponse.recommended_product} como caminho natural.`
+                      }
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Data e Status */}
