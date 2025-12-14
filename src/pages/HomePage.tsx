@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/layout/Layout";
 import heroBoardroom from "@/assets/hero-boardroom.jpg";
 import salesTeam from "@/assets/sales-team.jpg";
+import fabricioNunnes from "@/assets/fabricio-nunnes.png";
 
 const problems = [
   "Time comercial improvisando ao invés de seguir um processo comprovado",
@@ -323,8 +324,13 @@ export default function HomePage() {
           <div className="max-w-4xl mx-auto">
             <div className="grid lg:grid-cols-5 gap-12 items-center">
               <div className="lg:col-span-2 text-center">
-                <div className="w-48 h-48 md:w-64 md:h-64 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 mx-auto flex items-center justify-center border-4 border-primary/30">
-                  <span className="text-6xl md:text-7xl font-display font-bold text-primary">FN</span>
+                <div className="relative group">
+                  <div className="absolute -inset-4 bg-gradient-gold opacity-20 blur-2xl rounded-full group-hover:opacity-30 transition-opacity duration-500" />
+                  <img
+                    src={fabricioNunnes}
+                    alt="Fabrício Nunnes - CEO e Fundador da UNV"
+                    className="relative w-48 h-48 md:w-64 md:h-64 rounded-full mx-auto object-cover border-4 border-primary/30 shadow-2xl"
+                  />
                 </div>
                 <h3 className="text-2xl font-display font-bold text-foreground mt-6">
                   Fabrício Nunnes
