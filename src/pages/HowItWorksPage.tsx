@@ -7,54 +7,54 @@ import strategySession from "@/assets/strategy-session.jpg";
 const pillars = [
   {
     icon: Target,
-    title: "Direction",
+    title: "Direção",
     description:
-      "We define clear commercial priorities, targets, and the strategic path to achieve them. No guesswork—only focused execution.",
+      "Definimos prioridades comerciais claras, metas e o caminho estratégico para alcançá-las. Sem achismo—apenas execução focada.",
   },
   {
     icon: Users,
-    title: "Training",
+    title: "Treinamento",
     description:
-      "Your team receives practical training on scripts, objection handling, negotiation, and closing—designed for immediate application.",
+      "Seu time recebe treinamento prático em scripts, objeções, negociação e fechamento—desenhado para aplicação imediata.",
   },
   {
     icon: Zap,
-    title: "Execution",
+    title: "Execução",
     description:
-      "We implement processes, pipelines, and routines that turn strategy into daily action. Every activity is purposeful.",
+      "Implementamos processos, pipelines e rotinas que transformam estratégia em ação diária. Cada atividade tem propósito.",
   },
   {
     icon: CheckCircle2,
-    title: "Accountability",
+    title: "Cobrança",
     description:
-      "Weekly check-ins, scorecards, and direct feedback ensure your team delivers. We don't just advise—we demand results.",
+      "Check-ins semanais, scorecards e feedback direto garantem que seu time entregue. Não apenas aconselhamos—exigimos resultados.",
   },
 ];
 
 const cadence = [
   {
     icon: Calendar,
-    title: "Monthly Strategic Meeting",
+    title: "Encontro Estratégico Mensal",
     description:
-      "One strategic session per month to review priorities, adjust targets, and align on the roadmap ahead.",
+      "Uma sessão estratégica por mês para revisar prioridades, ajustar metas e alinhar o roadmap.",
   },
   {
     icon: MessageSquare,
-    title: "Weekly Execution Check-in",
+    title: "Check-in Semanal de Execução",
     description:
-      "Weekly follow-up focused on execution: what was done, what's blocked, and what needs immediate action.",
+      "Acompanhamento semanal focado em execução: o que foi feito, o que está travado e o que precisa de ação imediata.",
   },
   {
     icon: ClipboardCheck,
-    title: "Weekly Checklists",
+    title: "Checklists Semanais",
     description:
-      "Structured checklists ensure every salesperson knows their priorities and tracks their own progress.",
+      "Checklists estruturados garantem que cada vendedor saiba suas prioridades e acompanhe seu próprio progresso.",
   },
   {
     icon: Zap,
-    title: "UNV AI Advisor Support",
+    title: "Suporte UNV AI Advisor",
     description:
-      "AI-powered support layer for daily questions, meeting preparation, and execution reminders. Not a SaaS—a support tool.",
+      "Camada de suporte com IA para dúvidas diárias, preparação de reuniões e lembretes de execução. Não é SaaS—é ferramenta de suporte.",
   },
 ];
 
@@ -66,12 +66,12 @@ export default function HowItWorksPage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="heading-display text-foreground mb-6">
-              The UNV Method
+              O Método UNV
             </h1>
             <p className="text-body text-lg">
-              A proven framework for commercial direction that transforms how
-              your sales team operates. Four pillars. Consistent cadence.
-              Measurable results.
+              Um framework comprovado de direção comercial que transforma como
+              seu time de vendas opera. Quatro pilares. Cadência consistente.
+              Resultados mensuráveis.
             </p>
           </div>
         </div>
@@ -82,11 +82,11 @@ export default function HowItWorksPage() {
         <div className="container-premium">
           <div className="text-center mb-16">
             <h2 className="heading-section text-foreground mb-4">
-              Four Pillars of Direction
+              Quatro Pilares da Direção
             </h2>
             <p className="text-body max-w-2xl mx-auto">
-              Every engagement follows the same foundational framework, adapted
-              to your specific context and team size.
+              Todo engajamento segue o mesmo framework fundamental, adaptado ao
+              seu contexto específico e tamanho do time.
             </p>
           </div>
 
@@ -113,14 +113,14 @@ export default function HowItWorksPage() {
       <section className="relative h-[50vh] min-h-[400px]">
         <img
           src={strategySession}
-          alt="Executive strategy session reviewing sales dashboard"
+          alt="Sessão estratégica executiva revisando dashboard de vendas"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-overlay flex items-center justify-center">
           <div className="text-center px-4">
             <h2 className="text-3xl md:text-4xl font-display font-bold text-primary-foreground">
-              Direction is not advice.
-              <span className="block text-accent">It's accountability.</span>
+              Direção não é conselho.
+              <span className="block text-accent">É cobrança.</span>
             </h2>
           </div>
         </div>
@@ -131,11 +131,11 @@ export default function HowItWorksPage() {
         <div className="container-premium">
           <div className="text-center mb-16">
             <h2 className="heading-section text-foreground mb-4">
-              Execution Cadence
+              Cadência de Execução
             </h2>
             <p className="text-body max-w-2xl mx-auto">
-              Consistency beats intensity. Our cadence ensures continuous
-              progress, not sporadic bursts of activity.
+              Consistência vence intensidade. Nossa cadência garante progresso
+              contínuo, não picos esporádicos de atividade.
             </p>
           </div>
 
@@ -159,15 +159,15 @@ export default function HowItWorksPage() {
       <section className="section-padding bg-primary text-primary-foreground">
         <div className="container-premium text-center">
           <h2 className="heading-section mb-6">
-            Ready for structured commercial direction?
+            Pronto para direção comercial estruturada?
           </h2>
           <p className="text-primary-foreground/70 text-lg mb-8 max-w-2xl mx-auto">
-            Apply for a diagnosis and discover which UNV product fits your
-            current stage.
+            Aplique para um diagnóstico e descubra qual produto UNV se encaixa
+            no seu estágio atual.
           </p>
           <Link to="/apply">
             <Button variant="hero" size="xl">
-              Apply for Diagnosis
+              Aplicar para Diagnóstico
             </Button>
           </Link>
         </div>

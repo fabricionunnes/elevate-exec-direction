@@ -5,27 +5,27 @@ import { ArrowRight, CheckCircle, MapPin, Shield, Calendar, Target } from "lucid
 import strategySession from "@/assets/strategy-session.jpg";
 
 const deliverables = [
-  "Pre-immersion diagnosis",
-  "3 days of intensive in-person sessions",
-  "Complete funnel + goals + KPIs",
-  "Locked 90-day execution plan",
-  "Post-immersion: checkpoints and AI Advisor configured",
+  "Diagnóstico pré-imersão",
+  "3 dias de sessões presenciais intensivas",
+  "Funil completo + metas + KPIs",
+  "Plano de execução de 90 dias fechado",
+  "Pós-imersão: checkpoints e AI Advisor configurado",
 ];
 
 const gains = [
-  "Clear direction and rapid decision-making",
-  "Executable plan you leave with",
-  "Alignment between owner and team",
+  "Direção clara e tomada de decisão rápida",
+  "Plano executável que você leva pronto",
+  "Alinhamento entre dono e time",
 ];
 
 const icp = [
-  { label: "Revenue", value: "R$ 150k–600k/month" },
+  { label: "Faturamento", value: "R$ 150k–600k/mês" },
 ];
 
 const notIncluded = [
-  "Ongoing monthly direction (see Control or Sales Acceleration)",
-  "Travel and accommodation (client responsibility)",
-  "Team training beyond immersion scope",
+  "Direção mensal contínua (veja Control ou Sales Acceleration)",
+  "Viagem e hospedagem (responsabilidade do cliente)",
+  "Treinamento de time além do escopo da imersão",
 ];
 
 export default function GrowthRoomPage() {
@@ -42,18 +42,18 @@ export default function GrowthRoomPage() {
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl">
             <div className="inline-block px-4 py-1.5 bg-accent/20 text-accent text-sm font-medium rounded-full mb-6">
-              In-Person Immersion
+              Imersão Presencial
             </div>
             <h1 className="heading-display text-primary-foreground mb-6">
               UNV Growth Room
             </h1>
             <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8">
-              Intensive 3-day in-person strategy session. Redesign your
-              commercial route and leave with a locked 90-day execution plan.
+              Sessão estratégica presencial intensiva de 3 dias. Redesenhe sua
+              rota comercial e saia com um plano de execução de 90 dias fechado.
             </p>
             <Link to="/apply">
               <Button variant="hero" size="xl">
-                Apply Now
+                Aplicar Agora
                 <ArrowRight className="ml-2" />
               </Button>
             </Link>
@@ -66,7 +66,7 @@ export default function GrowthRoomPage() {
         <div className="container-premium">
           <div className="max-w-xl mx-auto">
             <h2 className="heading-section text-foreground text-center mb-12">
-              Who This Is For
+              Para Quem É
             </h2>
             {icp.map((item, i) => (
               <div key={i} className="card-premium p-6 text-center">
@@ -92,7 +92,7 @@ export default function GrowthRoomPage() {
                   <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
                     <Calendar className="h-5 w-5 text-accent" />
                   </div>
-                  <h2 className="heading-card text-foreground">Deliverables</h2>
+                  <h2 className="heading-card text-foreground">Entregáveis</h2>
                 </div>
                 <ul className="space-y-4">
                   {deliverables.map((item, i) => (
@@ -109,7 +109,7 @@ export default function GrowthRoomPage() {
                     <Target className="h-5 w-5 text-accent" />
                   </div>
                   <h2 className="heading-card text-foreground">
-                    Expected Gains
+                    Ganhos Esperados
                   </h2>
                 </div>
                 <ul className="space-y-4">
@@ -136,11 +136,11 @@ export default function GrowthRoomPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground mb-2">
-                  In-Person Format
+                  Formato Presencial
                 </h3>
                 <p className="text-body">
-                  3 days of intensive, hands-on work at a designated location.
-                  Travel and accommodation are the client's responsibility.
+                  3 dias de trabalho intensivo hands-on em local designado.
+                  Viagem e hospedagem são responsabilidade do cliente.
                 </p>
               </div>
             </div>
@@ -153,7 +153,7 @@ export default function GrowthRoomPage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto">
             <h2 className="heading-section text-foreground text-center mb-12">
-              What's NOT Included
+              O Que NÃO Está Incluso
             </h2>
             <div className="space-y-4">
               {notIncluded.map((item, i) => (
@@ -173,16 +173,16 @@ export default function GrowthRoomPage() {
       {/* Investment */}
       <section className="section-padding bg-primary text-primary-foreground">
         <div className="container-premium text-center">
-          <h2 className="heading-section mb-6">Investment</h2>
+          <h2 className="heading-section mb-6">Investimento</h2>
           <p className="text-4xl md:text-5xl font-display font-bold text-accent mb-4">
             R$ 12.000 – R$ 20.000
           </p>
           <p className="text-primary-foreground/70 text-lg mb-10">
-            Per company • Application required
+            Por empresa • Aplicação necessária
           </p>
           <Link to="/apply">
             <Button variant="hero" size="xl">
-              Apply Now
+              Aplicar Agora
               <ArrowRight className="ml-2" />
             </Button>
           </Link>

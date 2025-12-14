@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Linkedin, Instagram, Mail, Phone } from "lucide-react";
+import logoUnv from "@/assets/logo-unv.png";
 
 const footerLinks = {
   products: [
@@ -11,13 +12,13 @@ const footerLinks = {
     { name: "Sales Ops", href: "/sales-ops" },
   ],
   company: [
-    { name: "Our Method", href: "/how-it-works" },
-    { name: "Apply", href: "/apply" },
+    { name: "Nosso Método", href: "/how-it-works" },
+    { name: "Aplicar", href: "/apply" },
     { name: "FAQ", href: "/faq" },
-    { name: "For Closers", href: "/for-closers" },
+    { name: "Para Closers", href: "/for-closers" },
   ],
   legal: [
-    { name: "Terms & Disclaimers", href: "/terms" },
+    { name: "Termos e Disclaimers", href: "/terms" },
   ],
 };
 
@@ -29,11 +30,11 @@ export function Footer() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <Link to="/" className="inline-block mb-6">
-              <span className="text-2xl font-display font-bold">UNV</span>
+              <img src={logoUnv} alt="UNV" className="h-12 w-auto brightness-0 invert" />
             </Link>
             <p className="text-primary-foreground/70 text-sm mb-6 max-w-xs">
-              Commercial Direction as a Service. We train, monitor, and hold your
-              sales team accountable for accelerated results.
+              Direção Comercial como Serviço. Treinamos, acompanhamos e cobramos
+              seu time comercial para acelerar resultados.
             </p>
             <div className="flex gap-4">
               <a
@@ -58,7 +59,7 @@ export function Footer() {
           {/* Products */}
           <div>
             <h4 className="font-semibold text-sm uppercase tracking-wider mb-6">
-              Products
+              Produtos
             </h4>
             <ul className="space-y-3">
               {footerLinks.products.map((link) => (
@@ -77,7 +78,7 @@ export function Footer() {
           {/* Company */}
           <div>
             <h4 className="font-semibold text-sm uppercase tracking-wider mb-6">
-              Company
+              Empresa
             </h4>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
@@ -96,16 +97,16 @@ export function Footer() {
           {/* Contact */}
           <div>
             <h4 className="font-semibold text-sm uppercase tracking-wider mb-6">
-              Contact
+              Contato
             </h4>
             <ul className="space-y-3">
               <li>
                 <a
-                  href="mailto:contact@unv.com"
+                  href="mailto:contato@unv.com.br"
                   className="flex items-center gap-2 text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors"
                 >
                   <Mail className="h-4 w-4" />
-                  contact@unv.com
+                  contato@unv.com.br
                 </a>
               </li>
               <li>
@@ -136,8 +137,8 @@ export function Footer() {
 
         <div className="mt-16 pt-8 border-t border-primary-foreground/10">
           <p className="text-center text-xs text-primary-foreground/50">
-            © {new Date().getFullYear()} UNV — Universidade Nacional de Vendas. All
-            rights reserved.
+            © {new Date().getFullYear()} UNV — Universidade Nacional de Vendas. Todos os
+            direitos reservados.
           </p>
         </div>
       </div>

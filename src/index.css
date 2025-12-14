@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    /* Premium Executive Palette */
+    /* Premium Executive Palette - Navy Blue + Red from Logo */
     --background: 220 20% 97%;
     --foreground: 222 47% 11%;
 
@@ -16,8 +16,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    /* Deep Navy Primary */
-    --primary: 220 60% 12%;
+    /* Deep Navy Primary (from logo) */
+    --primary: 213 56% 20%;
     --primary-foreground: 0 0% 98%;
 
     /* Warm Gray Secondary */
@@ -27,38 +27,38 @@
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
 
-    /* Subtle Gold Accent */
-    --accent: 43 74% 49%;
-    --accent-foreground: 222 47% 11%;
+    /* Red Accent (from logo) */
+    --accent: 0 72% 51%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 220 60% 12%;
+    --ring: 213 56% 20%;
 
     --radius: 0.5rem;
 
     /* Custom tokens */
-    --navy: 220 60% 12%;
-    --navy-light: 220 50% 20%;
-    --gold: 43 74% 49%;
-    --gold-light: 43 74% 60%;
+    --navy: 213 56% 20%;
+    --navy-light: 213 45% 30%;
+    --red: 0 72% 51%;
+    --red-light: 0 72% 60%;
     --cream: 40 33% 98%;
     --slate: 220 9% 46%;
 
     /* Gradients */
-    --gradient-hero: linear-gradient(135deg, hsl(220 60% 12%) 0%, hsl(220 50% 20%) 100%);
-    --gradient-gold: linear-gradient(135deg, hsl(43 74% 49%) 0%, hsl(43 74% 60%) 100%);
-    --gradient-overlay: linear-gradient(180deg, hsla(220, 60%, 12%, 0.85) 0%, hsla(220, 60%, 12%, 0.95) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(213 56% 20%) 0%, hsl(213 45% 30%) 100%);
+    --gradient-red: linear-gradient(135deg, hsl(0 72% 51%) 0%, hsl(0 72% 60%) 100%);
+    --gradient-overlay: linear-gradient(180deg, hsla(213, 56%, 20%, 0.85) 0%, hsla(213, 56%, 20%, 0.95) 100%);
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsla(220, 60%, 12%, 0.05);
-    --shadow-md: 0 4px 6px -1px hsla(220, 60%, 12%, 0.1), 0 2px 4px -2px hsla(220, 60%, 12%, 0.1);
-    --shadow-lg: 0 10px 15px -3px hsla(220, 60%, 12%, 0.1), 0 4px 6px -4px hsla(220, 60%, 12%, 0.1);
-    --shadow-xl: 0 20px 25px -5px hsla(220, 60%, 12%, 0.1), 0 8px 10px -6px hsla(220, 60%, 12%, 0.1);
-    --shadow-gold: 0 10px 40px -10px hsla(43, 74%, 49%, 0.3);
+    --shadow-sm: 0 1px 2px 0 hsla(213, 56%, 20%, 0.05);
+    --shadow-md: 0 4px 6px -1px hsla(213, 56%, 20%, 0.1), 0 2px 4px -2px hsla(213, 56%, 20%, 0.1);
+    --shadow-lg: 0 10px 15px -3px hsla(213, 56%, 20%, 0.1), 0 4px 6px -4px hsla(213, 56%, 20%, 0.1);
+    --shadow-xl: 0 20px 25px -5px hsla(213, 56%, 20%, 0.1), 0 8px 10px -6px hsla(213, 56%, 20%, 0.1);
+    --shadow-red: 0 10px 40px -10px hsla(0, 72%, 51%, 0.3);
   }
 
   .dark {
@@ -72,7 +72,7 @@
     --popover-foreground: 0 0% 98%;
 
     --primary: 0 0% 98%;
-    --primary-foreground: 222 47% 11%;
+    --primary-foreground: 213 56% 20%;
 
     --secondary: 220 32% 17%;
     --secondary-foreground: 0 0% 98%;
@@ -80,15 +80,15 @@
     --muted: 220 32% 17%;
     --muted-foreground: 220 20% 65%;
 
-    --accent: 43 74% 49%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 0 72% 51%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 63% 31%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 220 32% 17%;
     --input: 220 32% 17%;
-    --ring: 43 74% 49%;
+    --ring: 0 72% 51%;
   }
 }
 
@@ -117,9 +117,9 @@
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
-  .text-gradient-gold {
+  .text-gradient-red {
     @apply bg-clip-text text-transparent;
-    background-image: var(--gradient-gold);
+    background-image: var(--gradient-red);
   }
 
   .bg-gradient-hero {
@@ -136,7 +136,7 @@
 
   .card-highlight {
     @apply bg-card rounded-lg border-2 border-accent/30 shadow-lg;
-    box-shadow: var(--shadow-gold);
+    box-shadow: var(--shadow-red);
   }
 
   .section-padding {

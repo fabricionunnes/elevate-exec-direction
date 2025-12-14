@@ -3,11 +3,12 @@ import { Link, useLocation } from "react-router-dom";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import logoUnv from "@/assets/logo-unv.png";
 
 const navigation = [
-  { name: "Method", href: "/how-it-works" },
+  { name: "Método", href: "/how-it-works" },
   {
-    name: "Products",
+    name: "Produtos",
     href: "/products",
     children: [
       { name: "Sales Acceleration", href: "/sales-acceleration", highlight: true },
@@ -31,12 +32,7 @@ export function Header() {
       <nav className="container-premium flex items-center justify-between h-16 md:h-20">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <span className="text-xl md:text-2xl font-display font-bold text-foreground">
-            UNV
-          </span>
-          <span className="hidden sm:inline text-xs text-muted-foreground uppercase tracking-widest">
-            Commercial Direction
-          </span>
+          <img src={logoUnv} alt="UNV - Universidade Nacional de Vendas" className="h-10 md:h-12 w-auto" />
         </Link>
 
         {/* Desktop Navigation */}
@@ -107,12 +103,12 @@ export function Header() {
         <div className="hidden lg:flex items-center gap-4">
           <Link to="/for-closers">
             <Button variant="ghost" size="sm">
-              For Closers
+              Para Closers
             </Button>
           </Link>
           <Link to="/apply">
             <Button variant="premium" size="default">
-              Apply for Diagnosis
+              Aplicar para Diagnóstico
             </Button>
           </Link>
         </div>
@@ -188,7 +184,7 @@ export function Header() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <Button variant="outline" className="w-full">
-                  For Closers
+                  Para Closers
                 </Button>
               </Link>
               <Link
@@ -197,7 +193,7 @@ export function Header() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <Button variant="premium" className="w-full">
-                  Apply for Diagnosis
+                  Aplicar para Diagnóstico
                 </Button>
               </Link>
             </div>

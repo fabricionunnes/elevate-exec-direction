@@ -1,54 +1,54 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle, Target, TrendingUp, Users, Zap, MessageCircle } from "lucide-react";
+import { ArrowRight, CheckCircle, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/layout/Layout";
 import heroBoardroom from "@/assets/hero-boardroom.jpg";
 import salesTeam from "@/assets/sales-team.jpg";
 
 const problems = [
-  "Sales team improvising instead of following a proven process",
-  "Leads dying in the pipeline without proper follow-up",
-  "Conversion rates fluctuating with no predictability",
-  "Owner becoming the bottleneck for every deal",
-  "No clear metrics or accountability structure",
+  "Time comercial improvisando ao invés de seguir um processo comprovado",
+  "Leads morrendo no pipeline sem follow-up adequado",
+  "Taxa de conversão oscilando sem previsibilidade",
+  "Dono se tornando gargalo em todos os negócios",
+  "Sem métricas claras ou estrutura de cobrança",
 ];
 
 const products = [
   {
     name: "UNV Core",
-    description: "Structure your sales foundation",
-    icp: "R$ 50k–150k/month",
+    description: "Estruture sua base comercial",
+    icp: "R$ 50k–150k/mês",
     href: "/core",
   },
   {
     name: "UNV Control",
-    description: "Maintain execution consistency",
-    icp: "R$ 100k–400k/month",
+    description: "Mantenha a constância de execução",
+    icp: "R$ 100k–400k/mês",
     href: "/control",
   },
   {
     name: "Sales Acceleration",
-    description: "Full commercial direction program",
-    icp: "R$ 150k–1M/month",
+    description: "Programa completo de direção comercial",
+    icp: "R$ 150k–1M/mês",
     href: "/sales-acceleration",
     highlight: true,
   },
   {
     name: "Growth Room",
-    description: "Intensive in-person strategic immersion",
-    icp: "R$ 150k–600k/month",
+    description: "Imersão estratégica presencial intensiva",
+    icp: "R$ 150k–600k/mês",
     href: "/growth-room",
   },
   {
     name: "UNV Partners",
-    description: "Elite strategic advisory + Mansion Experience",
-    icp: "R$ 300k–2M/month",
+    description: "Mentoria estratégica elite + Experiência Mansão",
+    icp: "R$ 300k–2M/mês",
     href: "/partners",
   },
   {
     name: "Sales Ops",
-    description: "Team standardization at scale",
-    icp: "5+ salespeople",
+    description: "Padronização de times em escala",
+    icp: "5+ vendedores",
     href: "/sales-ops",
   },
 ];
@@ -56,23 +56,23 @@ const products = [
 const processSteps = [
   {
     step: "01",
-    title: "Application",
-    description: "Submit your company profile for initial analysis",
+    title: "Aplicação",
+    description: "Envie seu perfil empresarial para análise inicial",
   },
   {
     step: "02",
-    title: "Diagnosis",
-    description: "Deep-dive assessment of your commercial operation",
+    title: "Diagnóstico",
+    description: "Avaliação profunda da sua operação comercial",
   },
   {
     step: "03",
-    title: "Proposal",
-    description: "Custom direction plan tailored to your context",
+    title: "Proposta",
+    description: "Plano de direção personalizado para seu contexto",
   },
   {
     step: "04",
     title: "Onboarding",
-    description: "Begin structured execution with accountability",
+    description: "Início da execução estruturada com cobrança",
   },
 ];
 
@@ -91,19 +91,19 @@ export default function HomePage() {
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl">
             <h1 className="heading-display text-primary-foreground mb-6 opacity-0 animate-fade-up">
-              We act as your Commercial Director.
+              Atuamos como seu Diretor Comercial.
             </h1>
             <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8 opacity-0 animate-fade-up delay-100">
-              UNV trains, monitors, and holds your sales team accountable to
-              accelerate revenue with method and predictability.
+              A UNV treina, acompanha e cobra seu time comercial para acelerar
+              vendas com método e previsibilidade.
             </p>
 
             <ul className="space-y-3 mb-10 opacity-0 animate-fade-up delay-200">
               {[
-                "Practical team training with proven frameworks",
-                "Continuous monitoring and accountability",
-                "Quick wins in the 1st month (operational target)",
-                "Projected payback by the 3rd month (projection, no guarantee)",
+                "Treinamento prático do time",
+                "Acompanhamento e cobrança contínua",
+                "Quick wins no 1º mês (meta operacional)",
+                "Payback projetado até o 3º mês (projeção, sem garantia)",
               ].map((item, i) => (
                 <li
                   key={i}
@@ -118,7 +118,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-4 opacity-0 animate-fade-up delay-300">
               <Link to="/apply">
                 <Button variant="hero" size="xl">
-                  Apply for Diagnosis
+                  Aplicar para Diagnóstico
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
@@ -142,12 +142,12 @@ export default function HomePage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto text-center mb-16">
             <h2 className="heading-section text-foreground mb-6">
-              Your sales problem isn't effort.
-              <span className="block text-accent">It's lack of direction.</span>
+              Seu problema de vendas não é esforço.
+              <span className="block text-accent">É falta de direção.</span>
             </h2>
             <p className="text-body">
-              Without proper commercial direction, even talented teams
-              underperform. These symptoms might sound familiar:
+              Sem direção comercial adequada, até times talentosos performam
+              abaixo do potencial. Esses sintomas podem parecer familiares:
             </p>
           </div>
 
@@ -173,26 +173,26 @@ export default function HomePage() {
           <div className="card-highlight p-8 md:p-12 lg:p-16 flex flex-col lg:flex-row gap-8 lg:gap-16 items-center">
             <div className="flex-1">
               <div className="inline-block px-4 py-1.5 bg-accent/10 text-accent text-sm font-medium rounded-full mb-6">
-                Main Program
+                Programa Principal
               </div>
               <h2 className="heading-section text-foreground mb-4">
                 UNV Sales Acceleration
               </h2>
               <p className="text-body mb-8">
-                Annual commercial direction program to train, monitor, and
-                accelerate your sales team. From quick wins to sustainable
-                growth, with full execution accountability.
+                Programa anual de direção comercial para treinar, acompanhar e
+                acelerar seu time de vendas. De quick wins a crescimento
+                sustentável, com cobrança total de execução.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link to="/sales-acceleration">
                   <Button variant="premium" size="lg">
-                    Explore Program
+                    Explorar Programa
                     <ArrowRight className="ml-2" />
                   </Button>
                 </Link>
                 <Link to="/apply">
                   <Button variant="premium-outline" size="lg">
-                    Apply Now
+                    Aplicar Agora
                   </Button>
                 </Link>
               </div>
@@ -200,7 +200,7 @@ export default function HomePage() {
             <div className="flex-1 w-full lg:w-auto">
               <img
                 src={salesTeam}
-                alt="Professional sales team in modern office"
+                alt="Time de vendas profissional em escritório moderno"
                 className="rounded-lg shadow-premium w-full h-auto object-cover"
               />
             </div>
@@ -213,11 +213,11 @@ export default function HomePage() {
         <div className="container-premium">
           <div className="text-center mb-16">
             <h2 className="heading-section text-foreground mb-4">
-              Find Your Entry Point
+              Encontre Seu Ponto de Entrada
             </h2>
             <p className="text-body max-w-2xl mx-auto">
-              Every company has different needs. Our product ladder meets you
-              where you are and grows with you.
+              Cada empresa tem necessidades diferentes. Nossa escada de produtos
+              te encontra onde você está e cresce com você.
             </p>
           </div>
 
@@ -236,14 +236,14 @@ export default function HomePage() {
                   </h3>
                   {product.highlight && (
                     <span className="px-2 py-1 bg-accent/10 text-accent text-xs font-medium rounded">
-                      Featured
+                      Destaque
                     </span>
                   )}
                 </div>
                 <p className="text-body mb-4">{product.description}</p>
                 <p className="text-small">ICP: {product.icp}</p>
                 <div className="mt-4 flex items-center text-accent text-sm font-medium">
-                  Learn more
+                  Saiba mais
                   <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </Link>
@@ -253,7 +253,7 @@ export default function HomePage() {
           <div className="text-center mt-12">
             <Link to="/products">
               <Button variant="premium-outline" size="lg">
-                View All Products
+                Ver Todos os Produtos
               </Button>
             </Link>
           </div>
@@ -264,10 +264,10 @@ export default function HomePage() {
       <section className="section-padding bg-primary text-primary-foreground">
         <div className="container-premium">
           <div className="text-center mb-16">
-            <h2 className="heading-section mb-4">How We Start</h2>
+            <h2 className="heading-section mb-4">Como Começamos</h2>
             <p className="text-primary-foreground/70 text-lg max-w-2xl mx-auto">
-              A structured onboarding process ensures we understand your context
-              before proposing solutions.
+              Um processo de onboarding estruturado garante que entendamos seu
+              contexto antes de propor soluções.
             </p>
           </div>
 
@@ -286,7 +286,7 @@ export default function HomePage() {
           <div className="text-center mt-16">
             <Link to="/apply">
               <Button variant="hero" size="xl">
-                Start Your Application
+                Iniciar Sua Aplicação
                 <ArrowRight className="ml-2" />
               </Button>
             </Link>

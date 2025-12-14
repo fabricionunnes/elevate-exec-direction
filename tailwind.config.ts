@@ -51,9 +51,9 @@ export default {
           DEFAULT: "hsl(var(--navy))",
           light: "hsl(var(--navy-light))",
         },
-        gold: {
-          DEFAULT: "hsl(var(--gold))",
-          light: "hsl(var(--gold-light))",
+        red: {
+          DEFAULT: "hsl(var(--red))",
+          light: "hsl(var(--red-light))",
         },
         cream: "hsl(var(--cream))",
         slate: "hsl(var(--slate))",
@@ -69,7 +69,7 @@ export default {
       },
       boxShadow: {
         premium: "var(--shadow-lg)",
-        gold: "var(--shadow-gold)",
+        red: "var(--shadow-red)",
       },
       keyframes: {
         "accordion-down": {
