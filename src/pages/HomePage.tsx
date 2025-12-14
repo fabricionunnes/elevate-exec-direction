@@ -57,6 +57,13 @@ const products = [
     price: "R$ 197/usuário/mês",
     href: "/sales-ops",
   },
+  {
+    name: "UNV Ads",
+    description: "Tráfego e geração de demanda qualificada",
+    icp: "R$ 100k–1M+/mês",
+    price: "R$ 1.500–4.000/mês",
+    href: "/ads",
+  },
 ];
 
 const processSteps = [
