@@ -25,7 +25,7 @@ const products = [
     name: "UNV Control",
     description: "Mantenha a constância de execução",
     icp: "R$ 100k–400k/mês",
-    price: "R$ 297/mês",
+    price: "R$ 597/mês",
     href: "/control",
   },
   {
@@ -45,16 +45,16 @@ const products = [
   },
   {
     name: "UNV Partners",
-    description: "Mentoria estratégica elite + Experiência Mansão",
+    description: "Direção estratégica elite + Experiência Mansão",
     icp: "R$ 300k–2M/mês",
-    price: "R$ 3.000/mês",
+    price: "R$ 4.000/mês",
     href: "/partners",
   },
   {
     name: "Sales Ops",
     description: "Padronização de times em escala",
     icp: "5+ vendedores",
-    price: "R$ 97/usuário/mês",
+    price: "R$ 197/usuário/mês",
     href: "/sales-ops",
   },
 ];
@@ -291,6 +291,63 @@ export default function HomePage() {
                 Ver Todos os Produtos
               </Button>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* CEO Section */}
+      <section className="section-padding bg-background">
+        <div className="container-premium">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid lg:grid-cols-5 gap-12 items-center">
+              <div className="lg:col-span-2 text-center">
+                <div className="w-48 h-48 md:w-64 md:h-64 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 mx-auto flex items-center justify-center border-4 border-primary/30">
+                  <span className="text-6xl md:text-7xl font-display font-bold text-primary">FN</span>
+                </div>
+                <h3 className="text-2xl font-display font-bold text-foreground mt-6">
+                  Fabrício Nunnes
+                </h3>
+                <p className="text-primary font-medium">CEO & Fundador da UNV</p>
+              </div>
+              
+              <div className="lg:col-span-3">
+                <h2 className="heading-section text-foreground mb-6">
+                  Quem Está Por Trás da UNV
+                </h2>
+                <div className="space-y-4 text-body">
+                  <p>
+                    Empresário, mentor, diretor de vendas, criador da Universidade Nacional de Vendas. 
+                    Com mais de <span className="text-foreground font-semibold">20 anos de experiência</span> na área 
+                    e uma década como diretor comercial, atualmente atendo diversas empresas que faturam 
+                    entre 6 a 7 dígitos todos os meses.
+                  </p>
+                  <p>
+                    Durante minha carreira, alcancei a marca de mais de <span className="text-foreground font-semibold">1 bilhão em vendas</span> de 
+                    serviços e produtos. Com toda a experiência adquirida, decidi focar o meu trabalho 
+                    em empresários de pequenas e médias empresas que desejam escalar o seu negócio.
+                  </p>
+                  <p>
+                    Minha principal missão é fazer com que cada um alcance suas metas regularmente, 
+                    aumente seu faturamento e consiga estruturar um <span className="text-foreground font-semibold">negócio totalmente 
+                    autogerenciável</span> que traz resultados exponenciais e mais qualidade de vida.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-6 mt-8">
+                  <div className="text-center">
+                    <p className="text-3xl font-display font-bold text-primary">20+</p>
+                    <p className="text-small text-muted-foreground">Anos de experiência</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-display font-bold text-primary">R$ 1Bi+</p>
+                    <p className="text-small text-muted-foreground">Em vendas realizadas</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-display font-bold text-primary">10+</p>
+                    <p className="text-small text-muted-foreground">Anos como diretor</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

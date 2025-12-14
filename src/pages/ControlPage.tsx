@@ -631,14 +631,14 @@ export default function ControlPage() {
           <div className="flex flex-col md:flex-row items-center justify-center gap-8 mb-6">
             <div>
               <p className="text-5xl md:text-6xl font-display font-bold text-primary">
-                R$ 297
+                R$ 597
               </p>
               <p className="text-muted-foreground text-lg">por mês</p>
             </div>
             <div className="text-2xl text-muted-foreground">ou</div>
             <div>
               <p className="text-5xl md:text-6xl font-display font-bold text-primary">
-                R$ 2.997
+                R$ 5.997
               </p>
               <p className="text-muted-foreground text-lg">por ano</p>
             </div>

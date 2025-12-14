@@ -113,7 +113,7 @@ export function Header() {
         <div className="hidden lg:flex items-center gap-3">
           <Link to="/for-closers">
             <Button variant="ghost" size="sm" className="text-muted-foreground">
-              Para Closers
+              Qual produto é ideal?
             </Button>
           </Link>
           <Link to="/apply">
@@ -194,7 +194,7 @@ export function Header() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <Button variant="outline" className="w-full">
-                  Para Closers
+                  Qual produto é ideal?
                 </Button>
               </Link>
               <Link
