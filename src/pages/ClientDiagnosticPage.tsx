@@ -453,7 +453,7 @@ export default function ClientDiagnosticPage() {
   const canProceed = () => {
     switch (step) {
       case 1:
-        return formData.companyName && formData.contactName && formData.whatsapp;
+        return formData.companyName && formData.contactName && formData.whatsapp && formData.email;
       case 2:
         return formData.revenue && formData.teamSize;
       case 3:
@@ -687,13 +687,14 @@ export default function ClientDiagnosticPage() {
                 <div>
                   <Label className="flex items-center gap-2 mb-2">
                     <Mail className="h-4 w-4 text-accent" />
-                    E-mail (opcional)
+                    E-mail *
                   </Label>
                   <Input
                     type="email"
                     value={formData.email}
                     onChange={(e) => updateField("email", e.target.value)}
                     placeholder="seu@email.com"
+                    required
                   />
                 </div>
               </div>
