@@ -87,7 +87,7 @@ export default function DiagnosticResponsesPage() {
   const [accessCode, setAccessCode] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const ACCESS_CODE = "unv2024admin"; // Código de acesso simples
+  const ACCESS_CODE = "unv2024"; // Código de acesso simples
 
   const fetchResponses = async () => {
     setLoading(true);
