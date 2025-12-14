@@ -24,15 +24,22 @@ const footerLinks = {
 
 export function Footer() {
   return (
-    <footer className="bg-primary text-primary-foreground">
+    <footer className="bg-card border-t border-border/30">
       <div className="container-premium section-padding">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
+        {/* Glow effect */}
+        <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
+        
+        <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
           {/* Brand */}
           <div className="lg:col-span-1">
-            <Link to="/" className="inline-block mb-6">
-              <img src={logoUnv} alt="UNV" className="h-12 w-auto brightness-0 invert" />
+            <Link to="/" className="inline-block mb-6 group">
+              <img 
+                src={logoUnv} 
+                alt="UNV" 
+                className="h-12 w-auto brightness-0 invert transition-all duration-300 group-hover:scale-105" 
+              />
             </Link>
-            <p className="text-primary-foreground/70 text-sm mb-6 max-w-xs">
+            <p className="text-muted-foreground text-sm mb-6 max-w-xs leading-relaxed">
               Direção Comercial como Serviço. Treinamos, acompanhamos e cobramos
               seu time comercial para acelerar resultados.
             </p>
@@ -41,7 +48,7 @@ export function Footer() {
                 href="https://linkedin.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"
+                className="w-10 h-10 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
               >
                 <Linkedin className="h-5 w-5" />
               </a>
@@ -49,7 +56,7 @@ export function Footer() {
                 href="https://instagram.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"
+                className="w-10 h-10 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
               >
                 <Instagram className="h-5 w-5" />
               </a>
@@ -58,7 +65,7 @@ export function Footer() {
 
           {/* Products */}
           <div>
-            <h4 className="font-semibold text-sm uppercase tracking-wider mb-6">
+            <h4 className="font-bold text-sm uppercase tracking-wider text-primary mb-6">
               Produtos
             </h4>
             <ul className="space-y-3">
@@ -66,7 +73,7 @@ export function Footer() {
                 <li key={link.href}>
                   <Link
                     to={link.href}
-                    className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+                    className="text-sm text-muted-foreground hover:text-foreground transition-all duration-300 hover:translate-x-1 inline-block"
                   >
                     {link.name}
                   </Link>
@@ -77,7 +84,7 @@ export function Footer() {
 
           {/* Company */}
           <div>
-            <h4 className="font-semibold text-sm uppercase tracking-wider mb-6">
+            <h4 className="font-bold text-sm uppercase tracking-wider text-primary mb-6">
               Empresa
             </h4>
             <ul className="space-y-3">
@@ -85,7 +92,7 @@ export function Footer() {
                 <li key={link.href}>
                   <Link
                     to={link.href}
-                    className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+                    className="text-sm text-muted-foreground hover:text-foreground transition-all duration-300 hover:translate-x-1 inline-block"
                   >
                     {link.name}
                   </Link>
@@ -96,16 +103,18 @@ export function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="font-semibold text-sm uppercase tracking-wider mb-6">
+            <h4 className="font-bold text-sm uppercase tracking-wider text-primary mb-6">
               Contato
             </h4>
             <ul className="space-y-3">
               <li>
                 <a
                   href="mailto:contato@unv.com.br"
-                  className="flex items-center gap-2 text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+                  className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
                 >
-                  <Mail className="h-4 w-4" />
+                  <span className="w-8 h-8 rounded-lg bg-secondary/50 flex items-center justify-center group-hover:bg-primary/10 transition-all">
+                    <Mail className="h-4 w-4" />
+                  </span>
                   contato@unv.com.br
                 </a>
               </li>
@@ -114,9 +123,11 @@ export function Footer() {
                   href="https://wa.me/5500000000000"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+                  className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
                 >
-                  <Phone className="h-4 w-4" />
+                  <span className="w-8 h-8 rounded-lg bg-secondary/50 flex items-center justify-center group-hover:bg-primary/10 transition-all">
+                    <Phone className="h-4 w-4" />
+                  </span>
                   WhatsApp
                 </a>
               </li>
@@ -126,7 +137,7 @@ export function Footer() {
                 <Link
                   key={link.href}
                   to={link.href}
-                  className="text-xs text-primary-foreground/50 hover:text-primary-foreground/70 transition-colors"
+                  className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
                 >
                   {link.name}
                 </Link>
@@ -135,12 +146,12 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-16 pt-8 border-t border-primary-foreground/10">
-          <p className="text-center text-xs text-primary-foreground/50">
-            © {new Date().getFullYear()} UNV — Universidade Nacional de Vendas. Todos os
-            direitos reservados.
-          </p>
-        </div>
+        <div className="divider-glow mt-16 mb-8" />
+        
+        <p className="text-center text-xs text-muted-foreground/60">
+          © {new Date().getFullYear()} UNV — Universidade Nacional de Vendas. Todos os
+          direitos reservados.
+        </p>
       </div>
     </footer>
   );
