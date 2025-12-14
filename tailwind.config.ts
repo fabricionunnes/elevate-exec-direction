@@ -64,8 +64,8 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
-        display: ["Playfair Display", "serif"],
+        sans: ["Lora", "serif"],
+        display: ["Libre Baskerville", "serif"],
       },
       boxShadow: {
         premium: "var(--shadow-lg)",
