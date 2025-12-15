@@ -749,8 +749,8 @@ export default function ComparePage() {
         </div>
       </section>
 
-      {/* Product Selector */}
-      <section className="py-8 bg-secondary sticky top-16 z-40 border-b border-border">
+      {/* Product Selector - Not sticky, scrolls away */}
+      <section className="py-8 bg-secondary border-b border-border">
         <div className="container-premium">
           <div className="flex flex-wrap justify-center gap-3">
             {products.map((product) => {
@@ -783,7 +783,7 @@ export default function ComparePage() {
       </section>
 
       {/* Comparison Header - Sticky product headers */}
-      <section className="py-6 bg-background border-b border-border sticky top-[140px] z-30">
+      <section className="py-4 bg-background/95 backdrop-blur-sm border-b border-border sticky top-16 z-40 shadow-sm">
         <div className="container-premium">
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
