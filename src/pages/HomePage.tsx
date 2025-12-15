@@ -26,7 +26,7 @@ const products = [
     name: "UNV Control",
     description: "Mantenha a constância de execução",
     icp: "R$ 100k–400k/mês",
-    price: "R$ 597/mês",
+    price: "R$ 5.997/ano",
     href: "/control",
   },
   {
