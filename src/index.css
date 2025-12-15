@@ -105,6 +105,24 @@
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
+  /* Hero section with dark overlay - text should be white */
+  .hero-dark {
+    --hero-text: 0 0% 100%;
+    --hero-text-muted: 0 0% 85%;
+  }
+
+  .hero-dark .hero-title {
+    color: hsl(var(--hero-text));
+  }
+
+  .hero-dark .hero-subtitle {
+    color: hsl(var(--hero-text) / 0.9);
+  }
+
+  .hero-dark .hero-description {
+    color: hsl(var(--hero-text-muted));
+  }
+
   .text-gradient-red {
     @apply bg-clip-text text-transparent;
     background-image: var(--gradient-red);

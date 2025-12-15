@@ -267,7 +267,7 @@ export default function SalesOpsPage() {
   return (
     <Layout>
       {/* Hero */}
-      <section className="relative min-h-[70vh] flex items-center">
+      <section className="relative min-h-[70vh] flex items-center hero-dark">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${salesOpsHero})` }}
@@ -280,13 +280,13 @@ export default function SalesOpsPage() {
               <Settings className="h-4 w-4" />
               Sales Operations & Padronização
             </div>
-            <h1 className="heading-display text-foreground mb-6">
+            <h1 className="heading-display hero-title mb-6">
               UNV Sales Ops
             </h1>
-            <p className="text-2xl md:text-3xl text-foreground/90 font-medium mb-4">
+            <p className="text-2xl md:text-3xl hero-subtitle font-medium mb-4">
               Onde vendedores viram um time de verdade.
             </p>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl">
+            <p className="text-lg hero-description mb-8 max-w-2xl">
               Padronizar, treinar e sustentar a operação comercial. 
               Garantindo que o time de vendas opere sob um único padrão, 
               independentemente de quem esteja vendendo.
@@ -299,7 +299,7 @@ export default function SalesOpsPage() {
                 </Button>
               </Link>
               <Link to="/products">
-                <Button variant="outline" size="xl" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+                <Button variant="outline" size="xl" className="border-white/30 text-white hover:bg-white/10">
                   Ver Todos os Produtos
                 </Button>
               </Link>

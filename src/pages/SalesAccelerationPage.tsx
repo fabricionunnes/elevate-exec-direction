@@ -215,7 +215,7 @@ export default function SalesAccelerationPage() {
   return (
     <Layout>
       {/* Hero */}
-      <section className="relative min-h-[70vh] flex items-center">
+      <section className="relative min-h-[70vh] flex items-center hero-dark">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${salesTeam})` }}
@@ -227,13 +227,13 @@ export default function SalesAccelerationPage() {
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 border border-primary/30">
               Programa Principal
             </div>
-            <h1 className="heading-display text-foreground mb-6">
+            <h1 className="heading-display hero-title mb-6">
               UNV Sales Acceleration
             </h1>
-            <p className="text-xl md:text-2xl text-foreground/80 mb-4">
+            <p className="text-xl md:text-2xl hero-subtitle mb-4">
               Direção Comercial Anual focada em Aceleração de Vendas
             </p>
-            <p className="text-lg text-muted-foreground mb-8">
+            <p className="text-lg hero-description mb-8">
               Programa de 12 meses para treinar, acompanhar e acelerar seu time
               de vendas com método e previsibilidade.
             </p>

@@ -183,7 +183,7 @@ export default function CorePage() {
   return (
     <Layout>
       {/* Hero */}
-      <section className="relative min-h-[70vh] flex items-center">
+      <section className="relative min-h-[70vh] flex items-center hero-dark">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${coreHero})` }}
@@ -195,13 +195,13 @@ export default function CorePage() {
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 backdrop-blur-sm border border-primary/30">
               Commercial Foundation & Initial Direction
             </div>
-            <h1 className="heading-display text-foreground mb-6">
+            <h1 className="heading-display hero-title mb-6">
               UNV Core
             </h1>
-            <p className="text-2xl md:text-3xl text-foreground/90 font-medium mb-4">
+            <p className="text-2xl md:text-3xl hero-subtitle font-medium mb-4">
               Onde o improviso comercial termina e a direção começa.
             </p>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl">
+            <p className="text-lg hero-description mb-8 max-w-2xl">
               Direção comercial inicial para organizar o básico que precisa existir 
               para que seu time consiga vender com método, clareza e controle.
             </p>
@@ -213,7 +213,7 @@ export default function CorePage() {
                 </Button>
               </Link>
               <Link to="/products">
-                <Button variant="outline" size="xl">
+                <Button variant="outline" size="xl" className="border-white/30 text-white hover:bg-white/10">
                   Ver Todos os Produtos
                 </Button>
               </Link>
