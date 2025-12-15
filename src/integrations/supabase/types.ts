@@ -68,6 +68,111 @@ export type Database = {
         }
         Relationships: []
       }
+      mastermind_applications: {
+        Row: {
+          agrees_confidentiality: boolean
+          available_for_meetings: boolean
+          aware_of_investment: boolean
+          commits_confidentiality: boolean
+          company: string
+          company_age: string
+          contribution_to_group: string
+          created_at: string
+          email: string
+          employees_count: number
+          energy_drain: string
+          feels_alone: string
+          full_name: string
+          id: string
+          is_decision_maker: boolean
+          main_challenge: string
+          monthly_revenue: string
+          notes: string | null
+          phone: string
+          reaction_to_confrontation: string
+          role: string
+          role_other: string | null
+          salespeople_count: number
+          status: string
+          success_definition: string
+          understands_mansion_costs: boolean
+          understands_may_be_refused: boolean
+          understands_not_operational: boolean
+          upcoming_decision: string
+          validation_or_confrontation: string
+          why_right_moment: string
+          willing_to_share_numbers: boolean
+        }
+        Insert: {
+          agrees_confidentiality: boolean
+          available_for_meetings: boolean
+          aware_of_investment: boolean
+          commits_confidentiality?: boolean
+          company: string
+          company_age: string
+          contribution_to_group: string
+          created_at?: string
+          email: string
+          employees_count: number
+          energy_drain: string
+          feels_alone: string
+          full_name: string
+          id?: string
+          is_decision_maker?: boolean
+          main_challenge: string
+          monthly_revenue: string
+          notes?: string | null
+          phone: string
+          reaction_to_confrontation: string
+          role: string
+          role_other?: string | null
+          salespeople_count: number
+          status?: string
+          success_definition: string
+          understands_mansion_costs: boolean
+          understands_may_be_refused?: boolean
+          understands_not_operational?: boolean
+          upcoming_decision: string
+          validation_or_confrontation: string
+          why_right_moment: string
+          willing_to_share_numbers: boolean
+        }
+        Update: {
+          agrees_confidentiality?: boolean
+          available_for_meetings?: boolean
+          aware_of_investment?: boolean
+          commits_confidentiality?: boolean
+          company?: string
+          company_age?: string
+          contribution_to_group?: string
+          created_at?: string
+          email?: string
+          employees_count?: number
+          energy_drain?: string
+          feels_alone?: string
+          full_name?: string
+          id?: string
+          is_decision_maker?: boolean
+          main_challenge?: string
+          monthly_revenue?: string
+          notes?: string | null
+          phone?: string
+          reaction_to_confrontation?: string
+          role?: string
+          role_other?: string | null
+          salespeople_count?: number
+          status?: string
+          success_definition?: string
+          understands_mansion_costs?: boolean
+          understands_may_be_refused?: boolean
+          understands_not_operational?: boolean
+          upcoming_decision?: string
+          validation_or_confrontation?: string
+          why_right_moment?: string
+          willing_to_share_numbers?: boolean
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
