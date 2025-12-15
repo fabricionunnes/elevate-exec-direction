@@ -109,7 +109,7 @@ export default function HomePage() {
   return (
     <Layout>
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center overflow-hidden">
+      <section className="relative min-h-screen flex items-center overflow-hidden hero-dark">
         {/* Background */}
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -128,12 +128,12 @@ export default function HomePage() {
               Direção Comercial como Serviço
             </div>
             
-            <h1 className="heading-display text-foreground mb-8 opacity-0 animate-fade-up delay-100">
+            <h1 className="heading-display hero-title mb-8 opacity-0 animate-fade-up delay-100">
               Atuamos como seu{" "}
               <span className="text-gradient-gold">Diretor Comercial.</span>
             </h1>
             
-            <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl opacity-0 animate-fade-up delay-200">
+            <p className="text-xl md:text-2xl hero-description mb-10 max-w-2xl opacity-0 animate-fade-up delay-200">
               A UNV treina, acompanha e cobra seu time comercial para acelerar
               vendas com método e previsibilidade.
             </p>
@@ -147,7 +147,7 @@ export default function HomePage() {
               ].map((item, i) => (
                 <li
                   key={i}
-                  className="flex items-center gap-4 text-foreground/90"
+                  className="flex items-center gap-4 hero-subtitle"
                 >
                   <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
                     <CheckCircle className="h-4 w-4 text-primary" />

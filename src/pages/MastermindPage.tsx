@@ -165,8 +165,8 @@ export default function MastermindPage() {
   return (
     <Layout>
       {/* Hero */}
-      <section className="relative min-h-[80vh] flex items-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-900/40 via-background to-background" />
+      <section className="relative min-h-[80vh] flex items-center overflow-hidden hero-dark">
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-900/40 via-navy to-navy" />
         <div className="absolute inset-0 bg-gradient-glow opacity-40 pointer-events-none" />
         
         <div className="container-premium relative z-10 py-32">
@@ -176,16 +176,16 @@ export default function MastermindPage() {
               The Inner Circle of Commercial & Business Leaders
             </div>
             
-            <h1 className="heading-display text-foreground mb-6 animate-fade-up delay-100">
+            <h1 className="heading-display hero-title mb-6 animate-fade-up delay-100">
               UNV Mastermind
             </h1>
             
-            <p className="text-2xl md:text-3xl text-muted-foreground mb-6 animate-fade-up delay-200">
+            <p className="text-2xl md:text-3xl hero-description mb-6 animate-fade-up delay-200">
               O ambiente máximo de{" "}
-              <span className="text-foreground font-semibold">decisão, crescimento e visão estratégica.</span>
+              <span className="hero-title font-semibold">decisão, crescimento e visão estratégica.</span>
             </p>
             
-            <p className="text-lg text-muted-foreground mb-10 max-w-2xl animate-fade-up delay-300">
+            <p className="text-lg hero-description mb-10 max-w-2xl animate-fade-up delay-300">
               Empresários em estágio avançado, pensando, decidindo e evoluindo em nível que não acontece 
               em nenhum outro lugar. Um conselho vivo de empresários que jogam o mesmo jogo.
             </p>
