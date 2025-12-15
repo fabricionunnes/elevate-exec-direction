@@ -220,7 +220,7 @@ export default function SalesAccelerationPage() {
       <section className="relative min-h-[70vh] flex items-center bg-gradient-to-br from-background via-background to-primary/5">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
         <div className="container-premium relative z-10 py-20">
-          <div className="max-w-3xl animate-fade-up">
+          <div className="max-w-3xl mx-auto text-center animate-fade-up">
             <div className="inline-block p-3 bg-white/95 rounded-xl shadow-lg mb-6">
               <img src={logoSalesAcceleration} alt="UNV Sales Acceleration" className="h-16 md:h-20" />
             </div>
@@ -230,7 +230,7 @@ export default function SalesAccelerationPage() {
             <p className="text-xl md:text-2xl text-foreground/90 font-medium mb-4">
               Direção Comercial Anual focada em Aceleração de Vendas
             </p>
-            <p className="text-lg text-muted-foreground mb-8">
+            <p className="text-lg text-muted-foreground mb-8 mx-auto">
               Programa de 12 meses para treinar, acompanhar e acelerar seu time
               de vendas com método e previsibilidade.
             </p>
