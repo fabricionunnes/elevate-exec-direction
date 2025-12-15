@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Linkedin, Instagram, Mail, Phone } from "lucide-react";
+import { Linkedin, Instagram, Mail, Phone, Lock } from "lucide-react";
 import logoUnv from "@/assets/logo-unv.png";
 
 const footerLinks = {
@@ -149,10 +149,19 @@ export function Footer() {
 
         <div className="divider-glow mt-10 sm:mt-12 md:mt-16 mb-6 sm:mb-8" />
         
-        <p className="text-center text-[10px] sm:text-xs text-muted-foreground/60">
-          © {new Date().getFullYear()} UNV — Universidade Nacional de Vendas. Todos os
-          direitos reservados.
-        </p>
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <p className="text-[10px] sm:text-xs text-muted-foreground/60">
+            © {new Date().getFullYear()} UNV — Universidade Nacional de Vendas. Todos os
+            direitos reservados.
+          </p>
+          <Link 
+            to="/admin" 
+            className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+          >
+            <Lock className="h-3 w-3" />
+            Área Restrita
+          </Link>
+        </div>
       </div>
     </footer>
   );
