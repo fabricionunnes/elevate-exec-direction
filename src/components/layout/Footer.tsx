@@ -26,55 +26,55 @@ const footerLinks = {
 export function Footer() {
   return (
     <footer className="bg-card border-t border-border/30">
-      <div className="container-premium section-padding">
+      <div className="container-premium py-10 sm:py-16 md:py-20">
         {/* Glow effect */}
-        <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
+        <div className="hidden sm:block absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
         
-        <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
+        <div className="relative grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 lg:gap-8">
           {/* Brand */}
-          <div className="lg:col-span-1">
-            <Link to="/" className="inline-block mb-6 group">
+          <div className="col-span-2 md:col-span-2 lg:col-span-1">
+            <Link to="/" className="inline-block mb-4 sm:mb-6 group">
               <img 
                 src={logoUnv} 
                 alt="UNV" 
-                className="h-12 w-auto brightness-0 invert transition-all duration-300 group-hover:scale-105" 
+                className="h-10 sm:h-12 w-auto brightness-0 invert transition-all duration-300 group-hover:scale-105" 
               />
             </Link>
-            <p className="text-muted-foreground text-sm mb-6 max-w-xs leading-relaxed">
+            <p className="text-muted-foreground text-xs sm:text-sm mb-4 sm:mb-6 max-w-xs leading-relaxed">
               Direção Comercial como Serviço. Treinamos, acompanhamos e cobramos
               seu time comercial para acelerar resultados.
             </p>
-            <div className="flex gap-4">
+            <div className="flex gap-3 sm:gap-4">
               <a
                 href="https://linkedin.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
               >
-                <Linkedin className="h-5 w-5" />
+                <Linkedin className="h-4 w-4 sm:h-5 sm:w-5" />
               </a>
               <a
                 href="https://instagram.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
               >
-                <Instagram className="h-5 w-5" />
+                <Instagram className="h-4 w-4 sm:h-5 sm:w-5" />
               </a>
             </div>
           </div>
 
           {/* Products */}
           <div>
-            <h4 className="font-bold text-sm uppercase tracking-wider text-primary mb-6">
+            <h4 className="font-bold text-xs sm:text-sm uppercase tracking-wider text-primary mb-4 sm:mb-6">
               Produtos
             </h4>
-            <ul className="space-y-3">
+            <ul className="space-y-2 sm:space-y-3">
               {footerLinks.products.map((link) => (
                 <li key={link.href}>
                   <Link
                     to={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-all duration-300 hover:translate-x-1 inline-block"
+                    className="text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-all duration-300 hover:translate-x-1 inline-block"
                   >
                     {link.name}
                   </Link>
@@ -85,15 +85,15 @@ export function Footer() {
 
           {/* Company */}
           <div>
-            <h4 className="font-bold text-sm uppercase tracking-wider text-primary mb-6">
+            <h4 className="font-bold text-xs sm:text-sm uppercase tracking-wider text-primary mb-4 sm:mb-6">
               Empresa
             </h4>
-            <ul className="space-y-3">
+            <ul className="space-y-2 sm:space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.href}>
                   <Link
                     to={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-all duration-300 hover:translate-x-1 inline-block"
+                    className="text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-all duration-300 hover:translate-x-1 inline-block"
                   >
                     {link.name}
                   </Link>
@@ -103,18 +103,18 @@ export function Footer() {
           </div>
 
           {/* Contact */}
-          <div>
-            <h4 className="font-bold text-sm uppercase tracking-wider text-primary mb-6">
+          <div className="col-span-2 md:col-span-1">
+            <h4 className="font-bold text-xs sm:text-sm uppercase tracking-wider text-primary mb-4 sm:mb-6">
               Contato
             </h4>
-            <ul className="space-y-3">
+            <ul className="space-y-2 sm:space-y-3">
               <li>
                 <a
                   href="mailto:contato@unv.com.br"
-                  className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
+                  className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
                 >
-                  <span className="w-8 h-8 rounded-lg bg-secondary/50 flex items-center justify-center group-hover:bg-primary/10 transition-all">
-                    <Mail className="h-4 w-4" />
+                  <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary/50 flex items-center justify-center group-hover:bg-primary/10 transition-all flex-shrink-0">
+                    <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </span>
                   contato@unv.com.br
                 </a>
@@ -124,21 +124,21 @@ export function Footer() {
                   href="https://wa.me/5500000000000"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
+                  className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
                 >
-                  <span className="w-8 h-8 rounded-lg bg-secondary/50 flex items-center justify-center group-hover:bg-primary/10 transition-all">
-                    <Phone className="h-4 w-4" />
+                  <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary/50 flex items-center justify-center group-hover:bg-primary/10 transition-all flex-shrink-0">
+                    <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </span>
                   WhatsApp
                 </a>
               </li>
             </ul>
-            <div className="mt-6">
+            <div className="mt-4 sm:mt-6">
               {footerLinks.legal.map((link) => (
                 <Link
                   key={link.href}
                   to={link.href}
-                  className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  className="text-[10px] sm:text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
                 >
                   {link.name}
                 </Link>
@@ -147,9 +147,9 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="divider-glow mt-16 mb-8" />
+        <div className="divider-glow mt-10 sm:mt-12 md:mt-16 mb-6 sm:mb-8" />
         
-        <p className="text-center text-xs text-muted-foreground/60">
+        <p className="text-center text-[10px] sm:text-xs text-muted-foreground/60">
           © {new Date().getFullYear()} UNV — Universidade Nacional de Vendas. Todos os
           direitos reservados.
         </p>
