@@ -184,7 +184,9 @@ export default function SocialPage() {
         
         <div className="container-premium relative z-10 py-32">
           <div className="max-w-4xl">
-            <img src={logoSocial} alt="UNV Social" className="h-20 md:h-24 mb-6 animate-fade-up" />
+            <div className="inline-block p-3 bg-white/95 rounded-xl shadow-lg mb-6 animate-fade-up">
+              <img src={logoSocial} alt="UNV Social" className="h-16 md:h-20" />
+            </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-pink-500/10 border border-pink-500/30 rounded-full text-pink-400 text-sm font-medium mb-8 animate-fade-up">
               <Heart className="h-4 w-4" />
               Social Media as a Sales Enablement Channel

@@ -27,6 +27,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import logoMastermind from "@/assets/logo-mastermind.png";
 
 const pillars = [
   {
@@ -184,9 +185,9 @@ export default function MastermindPage() {
               The Inner Circle of Commercial & Business Leaders
             </div>
             
-            <h1 className="heading-display hero-title mb-6 animate-fade-up delay-100">
-              UNV Mastermind
-            </h1>
+            <div className="inline-block p-3 bg-white/95 rounded-xl shadow-lg mb-6 animate-fade-up delay-100">
+              <img src={logoMastermind} alt="UNV Mastermind" className="h-20 md:h-24" />
+            </div>
             
             <p className="text-2xl md:text-3xl hero-description mb-6 animate-fade-up delay-200">
               O ambiente máximo de{" "}
