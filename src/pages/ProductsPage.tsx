@@ -89,7 +89,7 @@ const mainTrail: Product[] = [
       "Direção recorrente para manter seu time executando com consistência. Check-ins mensais, templates e suporte com IA.",
     icp: "Faturamento R$ 100k–400k/mês",
     href: "/control",
-    investment: "R$ 597/mês",
+    investment: "R$ 5.997/ano",
   },
   {
     name: "UNV Sales Acceleration",
