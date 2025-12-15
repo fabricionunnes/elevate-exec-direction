@@ -783,7 +783,7 @@ export default function ComparePage() {
       </section>
 
       {/* Comparison Header - Sticky product headers */}
-      <section className="py-4 bg-background/95 backdrop-blur-sm border-b border-border sticky top-16 z-40 shadow-sm">
+      <section className="py-4 bg-background/95 backdrop-blur-sm border-b border-border sticky top-[72px] z-40 shadow-sm">
         <div className="container-premium">
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
