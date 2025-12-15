@@ -1,6 +1,6 @@
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const products = [
@@ -20,7 +20,7 @@ const products = [
       "Direção recorrente para manter seu time executando com consistência. Check-ins mensais, templates e suporte com IA.",
     icp: "Faturamento R$ 100k–400k/mês",
     href: "/control",
-    investment: "R$ 297/mês",
+    investment: "R$ 597/mês",
   },
   {
     name: "UNV Sales Acceleration",
@@ -48,7 +48,7 @@ const products = [
       "Reuniões de board mensais, cobrança semanal, eventos exclusivos e a Experiência Mansão. Para empresas estabelecidas que buscam mentoria de elite.",
     icp: "Faturamento R$ 300k–2M/mês",
     href: "/partners",
-    investment: "R$ 3.000/mês",
+    investment: "R$ 4.000/mês",
   },
   {
     name: "UNV Sales Ops",
@@ -57,7 +57,53 @@ const products = [
       "Padronize seu time comercial em escala. Trilhas de treinamento por cargo, scorecards e suporte IA por função.",
     icp: "Faturamento R$ 200k+/mês • 5+ vendedores",
     href: "/sales-ops",
-    investment: "R$ 97/usuário/mês",
+    investment: "R$ 197/usuário/mês",
+  },
+  {
+    name: "UNV Ads",
+    tagline: "Geração de demanda",
+    description:
+      "Gestão de tráfego pago com foco em geração de leads qualificados. Estratégia, execução e otimização contínua das suas campanhas.",
+    icp: "Faturamento R$ 100k+/mês",
+    href: "/ads",
+    investment: "R$ 1.500–4.000/mês",
+  },
+  {
+    name: "UNV Social",
+    tagline: "Social selling",
+    description:
+      "Posicionamento estratégico nas redes sociais para vendas. Conteúdo, presença e relacionamento que geram oportunidades.",
+    icp: "Faturamento R$ 100k+/mês",
+    href: "/social",
+    investment: "R$ 1.500–3.500/mês",
+  },
+  {
+    name: "UNV Leadership",
+    tagline: "Desenvolvimento de líderes",
+    description:
+      "Desenvolva líderes intermediários capazes de sustentar a execução sem depender do fundador. Gestão de pessoas, performance e decisões.",
+    icp: "Faturamento R$ 100k–2M+/mês",
+    href: "/leadership",
+    investment: "R$ 1.500/mês por líder",
+  },
+  {
+    name: "UNV Mastermind",
+    tagline: "Conselho de decisão",
+    description:
+      "Mastermind exclusivo para empreendedores avançados. Sessões mensais, hot seats, Experiência Mansão e acesso direto a Fabrício.",
+    icp: "Faturamento R$ 300k–3M/mês",
+    href: "/mastermind",
+    investment: "R$ 36.000/ano",
+  },
+  {
+    name: "Mansão Empreendedora",
+    tagline: "Experiência imersiva",
+    description:
+      "Imersão presencial exclusiva em ambiente privado. Experiência transformadora para empreendedores que buscam conexão e estratégia de alto nível.",
+    icp: "Empreendedores selecionados",
+    href: "https://mansaoempreendedora.com.br",
+    investment: "Consultar",
+    external: true,
   },
 ];
 
@@ -114,16 +160,29 @@ export default function ProductsPage() {
                     <p className="text-lg font-semibold text-foreground mb-4">
                       {product.investment}
                     </p>
-                    <Link to={product.href}>
-                      <Button
-                        variant={product.highlight ? "premium" : "premium-outline"}
-                        size="lg"
-                        className="w-full lg:w-auto"
-                      >
-                        Saiba Mais
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </Link>
+                    {product.external ? (
+                      <a href={product.href} target="_blank" rel="noopener noreferrer">
+                        <Button
+                          variant="premium-outline"
+                          size="lg"
+                          className="w-full lg:w-auto"
+                        >
+                          Conhecer
+                          <ExternalLink className="ml-2 h-4 w-4" />
+                        </Button>
+                      </a>
+                    ) : (
+                      <Link to={product.href}>
+                        <Button
+                          variant={product.highlight ? "premium" : "premium-outline"}
+                          size="lg"
+                          className="w-full lg:w-auto"
+                        >
+                          Saiba Mais
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>
