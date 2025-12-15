@@ -926,7 +926,7 @@ export default function MastermindPage() {
                 </div>
               </div>
 
-              <Link to="/apply">
+              <Link to="/mastermind/apply">
                 <Button variant="premium" size="xl" className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700">
                   Candidatar-se ao Mastermind
                   <ArrowRight className="ml-2" />
@@ -944,7 +944,7 @@ export default function MastermindPage() {
             <blockquote className="text-3xl md:text-4xl font-display font-bold text-foreground mb-8">
               "UNV Mastermind é onde empresários param de crescer sozinhos."
             </blockquote>
-            <Link to="/apply">
+            <Link to="/mastermind/apply">
               <Button variant="hero" size="xl" className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700">
                 Iniciar Processo de Curadoria
                 <ArrowRight className="ml-2" />
