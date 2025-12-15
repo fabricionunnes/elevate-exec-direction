@@ -17,7 +17,14 @@ import {
   Star,
   Lock,
   Zap,
-  TrendingUp
+  TrendingUp,
+  FileText,
+  Search,
+  Phone,
+  Award,
+  Clock,
+  UserCheck,
+  AlertTriangle
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 
@@ -609,6 +616,287 @@ export default function MastermindPage() {
             <p className="text-center text-xl text-foreground font-semibold">
               👉 Ele é ambiente de decisão.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Curation Section */}
+      <section className="section-padding bg-gradient-to-br from-amber-950/30 via-background to-background border-t border-border/30">
+        <div className="container-premium">
+          <div className="max-w-5xl mx-auto">
+            {/* Header */}
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-sm font-medium mb-6">
+                <Crown className="h-4 w-4" />
+                Curadoria de Entrada
+              </div>
+              <h2 className="heading-section text-foreground mb-4">
+                Nem todo empresário está pronto para um ambiente de decisão
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                O UNV Mastermind existe para quem já entende que <span className="text-foreground font-semibold">crescer sozinho custa caro.</span>
+              </p>
+            </div>
+
+            {/* Principle */}
+            <div className="card-premium p-8 mb-12 border-amber-500/30">
+              <div className="flex items-start gap-6">
+                <div className="w-14 h-14 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                  <Shield className="h-7 w-7 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-foreground mb-4">Princípio da Curadoria</h3>
+                  <p className="text-muted-foreground mb-6">
+                    A curadoria do UNV Mastermind <span className="text-foreground font-semibold">não é baseada apenas em faturamento.</span> Ela avalia maturidade, postura e capacidade de contribuição.
+                  </p>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {["Proteger o nível do grupo", "Garantir trocas reais", "Evitar ruído, ego e curiosos", "Manter confidencialidade"].map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        <CheckCircle className="h-4 w-4 text-accent flex-shrink-0" />
+                        <span className="text-muted-foreground">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                    <p className="text-amber-400 font-semibold text-center">
+                      ⚠️ Um membro errado estraga o grupo inteiro.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Eligibility Criteria */}
+            <div className="grid lg:grid-cols-2 gap-8 mb-12">
+              <div className="card-premium p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                    <Target className="h-6 w-6 text-amber-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground">Critérios Objetivos</h3>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">O candidato precisa atender <span className="text-foreground font-semibold">TODOS:</span></p>
+                <ul className="space-y-3">
+                  {[
+                    "Faturamento mínimo: R$ 300k/mês",
+                    "É dono ou sócio decisor",
+                    "Tem estrutura mínima de operação",
+                    "Está disposto a compartilhar números reais",
+                    "Consegue comparecer aos encontros"
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="card-premium p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                    <Brain className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground">Critérios Comportamentais</h3>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">O candidato <span className="text-foreground font-semibold">não pode falhar em:</span></p>
+                <ul className="space-y-3">
+                  {[
+                    "Abertura para feedback direto",
+                    "Capacidade de ouvir sem defensividade",
+                    "Disposição para contribuir com o grupo",
+                    "Maturidade emocional",
+                    "Postura de construção, não de palco"
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Process Steps */}
+            <div className="mb-12">
+              <h3 className="text-2xl font-bold text-foreground mb-8 text-center">Etapas do Processo de Curadoria</h3>
+              
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Step 1 */}
+                <div className="card-premium p-6 relative">
+                  <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold text-sm">
+                    1
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mb-4 mt-2">
+                    <FileText className="h-6 w-6 text-amber-400" />
+                  </div>
+                  <h4 className="font-bold text-foreground mb-2">Aplicação Formal</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    O candidato preenche um formulário de aplicação (não é lead form).
+                  </p>
+                  <p className="text-xs text-amber-400 font-medium">
+                    📌 Aplicação não garante vaga.
+                  </p>
+                </div>
+
+                {/* Step 2 */}
+                <div className="card-premium p-6 relative">
+                  <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold text-sm">
+                    2
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mb-4 mt-2">
+                    <Search className="h-6 w-6 text-amber-400" />
+                  </div>
+                  <h4 className="font-bold text-foreground mb-2">Análise Interna</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    A equipe UNV avalia nível do negócio, coerência, clareza e fit com o grupo.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    👉 Nessa etapa, a maioria é recusada sem call.
+                  </p>
+                </div>
+
+                {/* Step 3 */}
+                <div className="card-premium p-6 relative">
+                  <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold text-sm">
+                    3
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mb-4 mt-2">
+                    <Phone className="h-6 w-6 text-amber-400" />
+                  </div>
+                  <h4 className="font-bold text-foreground mb-2">Conversa de Curadoria</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Avaliar maturidade, reação a provocações, abertura a contrapontos.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    ⚠️ Não é call de vendas. É leitura humana e estratégica.
+                  </p>
+                </div>
+
+                {/* Step 4 */}
+                <div className="card-premium p-6 relative">
+                  <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold text-sm">
+                    4
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mb-4 mt-2">
+                    <Award className="h-6 w-6 text-amber-400" />
+                  </div>
+                  <h4 className="font-bold text-foreground mb-2">Decisão Final</h4>
+                  <div className="space-y-1 text-sm mb-3">
+                    <p className="text-accent">✅ Aceito → convite formal</p>
+                    <p className="text-amber-400">⏳ Lista de espera → maturação</p>
+                    <p className="text-destructive">❌ Recusado → outro produto</p>
+                  </div>
+                  <p className="text-xs text-amber-400 font-medium">
+                    📌 A decisão é soberana. Não há negociação.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Refusal Criteria & Waitlist */}
+            <div className="grid lg:grid-cols-2 gap-8 mb-12">
+              <div className="card-premium p-8 border-destructive/30">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-destructive/20 flex items-center justify-center">
+                    <XCircle className="h-6 w-6 text-destructive" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground">Critérios de Recusa</h3>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">Um candidato pode ser recusado se:</p>
+                <ul className="space-y-2">
+                  {[
+                    "Busca palco ou validação",
+                    "Não compartilha números",
+                    "Demonstra rigidez excessiva",
+                    "Quer execução terceirizada",
+                    "Busca 'fórmula pronta'",
+                    "Não respeita confidencialidade",
+                    "Não tem tempo real para participar"
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm">
+                      <XCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                  <p className="text-sm text-destructive font-semibold text-center">
+                    📌 Dinheiro não compra vaga.
+                  </p>
+                </div>
+              </div>
+
+              <div className="card-premium p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-amber-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground">Lista de Espera</h3>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">A lista de espera existe quando:</p>
+                <ul className="space-y-3 mb-6">
+                  {[
+                    "O grupo está completo",
+                    "O candidato tem potencial",
+                    "Mas ainda não é o momento ideal"
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-2 flex-shrink-0" />
+                      <span className="text-muted-foreground">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-sm text-muted-foreground">
+                  Nesses casos, o candidato é avisado, recebe direcionamento e pode ser reavaliado futuramente.
+                </p>
+              </div>
+            </div>
+
+            {/* Permanence Rules */}
+            <div className="card-premium p-8 mb-12 border-amber-500/30">
+              <div className="flex items-start gap-6">
+                <div className="w-14 h-14 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="h-7 w-7 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-foreground mb-4">Regras de Permanência</h3>
+                  <p className="text-muted-foreground mb-6">
+                    A curadoria <span className="text-foreground font-semibold">não termina na entrada.</span> Motivos para desligamento:
+                  </p>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    {[
+                      "Quebra de confidencialidade",
+                      "Postura desrespeitosa",
+                      "Falta recorrente",
+                      "Uso do grupo para autopromoção",
+                      "Desalinhamento com os valores"
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        <XCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+                        <span className="text-muted-foreground">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-xl">
+                    <p className="text-destructive font-semibold text-center text-sm">
+                      ⚠️ A UNV pode encerrar a participação sem reembolso.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Final Message */}
+            <div className="text-center p-8 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
+              <Crown className="h-12 w-12 text-amber-400 mx-auto mb-4" />
+              <p className="text-2xl md:text-3xl text-foreground font-bold mb-4">
+                O UNV Mastermind não aceita todos — e é exatamente por isso que funciona.
+              </p>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Preencher a aplicação não garante vaga. Nosso objetivo é manter um ambiente de decisão seguro, profundo e de alto nível.
+              </p>
+            </div>
           </div>
         </div>
       </section>
