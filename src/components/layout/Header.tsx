@@ -11,16 +11,20 @@ const navigation = [
     name: "Produtos",
     href: "/products",
     children: [
-      { name: "Sales Acceleration", href: "/sales-acceleration", highlight: true },
+      // Trilha Principal
       { name: "UNV Core", href: "/core" },
       { name: "UNV Control", href: "/control" },
-      { name: "Growth Room", href: "/growth-room" },
-      { name: "UNV Partners", href: "/partners" },
+      { name: "Sales Acceleration", href: "/sales-acceleration", highlight: true },
+      // Suporte à Operação
       { name: "Sales Ops", href: "/sales-ops" },
       { name: "UNV Ads", href: "/ads" },
       { name: "UNV Social", href: "/social" },
-      { name: "UNV Leadership", href: "/leadership" },
+      // Trilha Avançada
+      { name: "Growth Room", href: "/growth-room" },
+      { name: "UNV Partners", href: "/partners" },
       { name: "UNV Mastermind", href: "/mastermind", highlight: true },
+      // Extras
+      { name: "UNV Leadership", href: "/leadership" },
       { name: "Mansão Empreendedora", href: "https://mansaoempreendedora.com.br", external: true, highlight: true },
       { name: "Comparar Produtos", href: "/compare" },
     ],
