@@ -782,25 +782,44 @@ export default function ComparePage() {
         </div>
       </section>
 
-      {/* Comparison Header */}
-      <section className="py-8 bg-background border-b border-border">
+      {/* Comparison Header - Sticky product headers */}
+      <section className="py-6 bg-background border-b border-border sticky top-[140px] z-30">
         <div className="container-premium">
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
               <div className="grid" style={{ gridTemplateColumns: `250px repeat(${selectedProductsData.length}, 1fr)` }}>
-                <div className="p-4" />
-                {selectedProductsData.map((product) => {
+                <div className="p-4 flex items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Comparando:</span>
+                </div>
+                {selectedProductsData.map((product, index) => {
                   const Icon = product.icon;
                   return (
-                    <div key={product.id} className="p-4 text-center">
-                      <div className={cn("w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-3", product.color)}>
-                        <Icon className="h-7 w-7 text-white" />
+                    <div 
+                      key={product.id} 
+                      className={cn(
+                        "p-4 text-center border-b-4 relative",
+                        product.color.replace('bg-', 'border-')
+                      )}
+                      style={{ 
+                        borderBottomColor: product.color === 'bg-accent' ? 'hsl(var(--accent))' : undefined 
+                      }}
+                    >
+                      {/* Product number indicator */}
+                      <div className={cn(
+                        "absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white",
+                        product.color
+                      )}>
+                        {index + 1}
                       </div>
-                      <h3 className="font-semibold text-foreground text-lg">{product.name}</h3>
-                      <p className="text-small text-muted-foreground mb-3">{product.tagline}</p>
-                      <div className="space-y-1 text-sm">
-                        <p className="text-accent font-bold">{product.price}</p>
-                        <p className="text-muted-foreground">{product.priceType}</p>
+                      
+                      <div className="flex items-center justify-center gap-3">
+                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", product.color)}>
+                          <Icon className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="text-left">
+                          <h3 className="font-bold text-foreground text-base leading-tight">{product.name}</h3>
+                          <p className="text-accent font-semibold text-sm">{product.price}<span className="text-muted-foreground font-normal"> {product.priceType}</span></p>
+                        </div>
                       </div>
                     </div>
                   );
@@ -916,30 +935,74 @@ export default function ComparePage() {
           </h2>
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
+              {/* Column indicators */}
+              <div className="grid mb-4" style={{ gridTemplateColumns: `250px repeat(${selectedProductsData.length}, 1fr)` }}>
+                <div className="p-2" />
+                {selectedProductsData.map((product, index) => {
+                  const Icon = product.icon;
+                  return (
+                    <div key={product.id} className="px-2 flex justify-center">
+                      <div className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-medium",
+                        product.color
+                      )}>
+                        <Icon className="h-3.5 w-3.5" />
+                        <span>{product.name.replace('UNV ', '')}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
               {categories.map((category) => (
-                <div key={category} className="mb-8">
+                <div key={category} className="mb-6">
                   <div className="grid mb-2" style={{ gridTemplateColumns: `250px repeat(${selectedProductsData.length}, 1fr)` }}>
                     <div className="p-4 bg-secondary rounded-l-lg">
                       <h3 className="font-bold text-foreground text-lg">{category}</h3>
                     </div>
-                    {selectedProductsData.map((_, i) => (
-                      <div key={i} className={cn("p-4 bg-secondary", i === selectedProductsData.length - 1 && "rounded-r-lg")} />
+                    {selectedProductsData.map((product, i) => (
+                      <div 
+                        key={i} 
+                        className={cn(
+                          "p-4 bg-secondary border-t-2",
+                          i === selectedProductsData.length - 1 && "rounded-r-lg"
+                        )}
+                        style={{ 
+                          borderTopColor: product.color === 'bg-accent' 
+                            ? 'hsl(var(--accent))' 
+                            : product.color === 'bg-blue-500' ? '#3b82f6'
+                            : product.color === 'bg-emerald-500' ? '#10b981'
+                            : product.color === 'bg-orange-500' ? '#f97316'
+                            : product.color === 'bg-amber-500' ? '#f59e0b'
+                            : product.color === 'bg-violet-500' ? '#8b5cf6'
+                            : product.color === 'bg-green-500' ? '#22c55e'
+                            : product.color === 'bg-pink-500' ? '#ec4899'
+                            : product.color === 'bg-cyan-500' ? '#06b6d4'
+                            : '#3b82f6'
+                        }}
+                      />
                     ))}
                   </div>
                   {features
                     .filter(f => f.category === category)
-                    .map((feature, featureIndex) => (
+                    .map((feature) => (
                       <div 
                         key={feature.name} 
-                        className="grid border-b border-border last:border-0"
+                        className="grid border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors"
                         style={{ gridTemplateColumns: `250px repeat(${selectedProductsData.length}, 1fr)` }}
                       >
                         <div className="p-4">
                           <h4 className="font-medium text-foreground text-sm">{feature.name}</h4>
                           <p className="text-xs text-muted-foreground">{feature.description}</p>
                         </div>
-                        {selectedProductsData.map((product) => (
-                          <div key={product.id} className="p-4 flex items-center justify-center">
+                        {selectedProductsData.map((product, i) => (
+                          <div 
+                            key={product.id} 
+                            className={cn(
+                              "p-4 flex items-center justify-center",
+                              i % 2 === 0 ? "bg-muted/10" : "bg-transparent"
+                            )}
+                          >
                             {renderFeatureValue(feature.products[product.id])}
                           </div>
                         ))}
