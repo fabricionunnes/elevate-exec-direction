@@ -19,6 +19,7 @@ import {
   Zap,
   TrendingUp
 } from "lucide-react";
+import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 
 const pillars = [
   {
@@ -218,7 +219,32 @@ export default function MastermindPage() {
         </div>
       </section>
 
-      {/* What It Is */}
+      {/* Trail Summary */}
+      <ProductTrailSummary
+        color="gold"
+        productNumber={10}
+        productName="UNV MASTERMIND"
+        tagline="Produto Máximo"
+        whatItDoes="É o topo intelectual e estratégico da UNV."
+        keyPoints={[
+          "Sessões mensais",
+          "Hot seats",
+          "Mansão Empresarial",
+          "Board coletivo",
+          "Direção individual limitada"
+        ]}
+        arrow="Onde empresários param de crescer sozinhos."
+        targetAudience={{
+          revenue: "R$ 300k a R$ 3M/mês"
+        }}
+        schedule={[
+          { period: "Mensal", description: "Mastermind" },
+          { period: "Mensal", description: "Mansão" },
+          { period: "Anual", description: "Direção individual" }
+        ]}
+        scheduleType="recurring"
+      />
+
       <section className="section-padding bg-card border-y border-border/30">
         <div className="container-premium">
           <div className="max-w-4xl mx-auto text-center">

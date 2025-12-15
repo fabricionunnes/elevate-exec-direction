@@ -21,6 +21,7 @@ import {
   UserCheck
 } from "lucide-react";
 import controlHero from "@/assets/control-hero.jpg";
+import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 
 const unvRole = [
   { title: "Diretor comercial recorrente", description: "Mantém a direção comercial ativa mês a mês" },
@@ -235,7 +236,32 @@ export default function ControlPage() {
         </div>
       </section>
 
-      {/* O que é */}
+      {/* Trail Summary */}
+      <ProductTrailSummary
+        color="blue"
+        productNumber={2}
+        productName="UNV CONTROL"
+        tagline="Execution Discipline"
+        whatItDoes="Evita que o processo morra depois de organizado."
+        keyPoints={[
+          "Direção comercial mensal",
+          "Monitoria de execução",
+          "Correção de rota",
+          "Cobrança indireta",
+          "Disciplina contínua"
+        ]}
+        arrow="Sustenta execução e impede regressão."
+        targetAudience={{
+          revenue: "R$ 100k a R$ 400k/mês"
+        }}
+        schedule={[
+          { period: "Semanal", description: "Cobrança e acompanhamento" },
+          { period: "Mensal", description: "Direção estratégica" },
+          { period: "Trimestral", description: "Revisão e ajustes" }
+        ]}
+        scheduleType="recurring"
+      />
+
       <section className="section-padding bg-background">
         <div className="container-premium">
           <div className="max-w-4xl mx-auto text-center">

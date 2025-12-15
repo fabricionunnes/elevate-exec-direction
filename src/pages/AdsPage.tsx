@@ -27,6 +27,7 @@ import {
   Link2,
   RefreshCw
 } from "lucide-react";
+import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 
 // Papel da UNV
 const papelUNV = [
@@ -281,7 +282,33 @@ export default function AdsPage() {
         </div>
       </section>
 
-      {/* Posicionamento */}
+      {/* Trail Summary */}
+      <ProductTrailSummary
+        color="green"
+        productNumber={7}
+        productName="UNV ADS"
+        tagline="Demand Generation"
+        whatItDoes="Gera demanda qualificada, alinhada ao comercial."
+        keyPoints={[
+          "Estratégia de aquisição",
+          "Tráfego com intenção de venda",
+          "Leads qualificados",
+          "Integração marketing ↔ vendas",
+          "Otimização contínua"
+        ]}
+        arrow="Tráfego que respeita o comercial."
+        targetAudience={{
+          revenue: "R$ 100k a R$ 1M+/mês",
+          team: "Com time preparado para atender"
+        }}
+        schedule={[
+          { period: "Inicial", description: "Diagnóstico de funil" },
+          { period: "Mensal", description: "Plano de mídia" },
+          { period: "Contínuo", description: "Otimização" }
+        ]}
+        scheduleType="recurring"
+      />
+
       <section className="section-padding bg-background">
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">

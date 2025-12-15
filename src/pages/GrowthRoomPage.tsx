@@ -31,6 +31,7 @@ import {
   Settings
 } from "lucide-react";
 import growthRoomHero from "@/assets/growth-room-hero.jpg";
+import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 
 // O que a UNV faz no Growth Room
 const papelUNV = [
@@ -267,7 +268,34 @@ export default function GrowthRoomPage() {
         </div>
       </section>
 
-      {/* Posicionamento */}
+      {/* Trail Summary */}
+      <ProductTrailSummary
+        color="blue"
+        productNumber={4}
+        productName="UNV GROWTH ROOM"
+        tagline="Presencial Estratégico"
+        whatItDoes="Redefine a rota de crescimento da empresa."
+        keyPoints={[
+          "Diagnóstico profundo",
+          "Decisões difíceis",
+          "Definição de foco",
+          "Plano de 90 dias fechado"
+        ]}
+        arrow="Não executa. Decide."
+        targetAudience={{
+          revenue: "R$ 150k a R$ 600k/mês",
+          team: "Com crescimento confuso ou travado"
+        }}
+        schedule={[
+          { period: "Pré", description: "Diagnóstico estratégico" },
+          { period: "Dia 1", description: "Gargalos reais" },
+          { period: "Dia 2", description: "Direção e prioridades" },
+          { period: "Dia 3", description: "Plano de 90 dias" },
+          { period: "Pós", description: "Sustentação com IA" }
+        ]}
+        scheduleType="days"
+      />
+
       <section className="section-padding bg-background">
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">

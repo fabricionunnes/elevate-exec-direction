@@ -17,6 +17,7 @@ import {
   Heart,
   Zap
 } from "lucide-react";
+import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 
 const pillars = [
   {
@@ -218,7 +219,32 @@ export default function SocialPage() {
         </div>
       </section>
 
-      {/* Positioning */}
+      {/* Trail Summary */}
+      <ProductTrailSummary
+        color="purple"
+        productNumber={8}
+        productName="UNV SOCIAL"
+        tagline="Social como Pré-Venda"
+        whatItDoes="Usa redes sociais para aquecer, filtrar e convencer o lead."
+        keyPoints={[
+          "Autoridade",
+          "Conteúdo com intenção",
+          "Redução de objeções",
+          "Suporte ao vendedor",
+          "Integração com Ads"
+        ]}
+        arrow="Conteúdo que ajuda a vender."
+        targetAudience={{
+          revenue: "Empresas onde confiança influencia a compra"
+        }}
+        schedule={[
+          { period: "Mensal", description: "Planejamento" },
+          { period: "Semanal", description: "Publicações" },
+          { period: "Contínuo", description: "Ajustes" }
+        ]}
+        scheduleType="recurring"
+      />
+
       <section className="section-padding bg-card border-y border-border/30">
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">

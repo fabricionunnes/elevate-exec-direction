@@ -27,6 +27,7 @@ import {
   Briefcase
 } from "lucide-react";
 import salesOpsHero from "@/assets/sales-ops-hero.jpg";
+import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 
 // Papel da UNV
 const papelUNV = [
@@ -308,7 +309,33 @@ export default function SalesOpsPage() {
         </div>
       </section>
 
-      {/* Posicionamento */}
+      {/* Trail Summary */}
+      <ProductTrailSummary
+        color="blue"
+        productNumber={6}
+        productName="UNV SALES OPS"
+        tagline="Operação e Padronização"
+        whatItDoes="Padroniza o time para escala sem caos."
+        keyPoints={[
+          "Trilhas por cargo (SDR, Closer, Gestor)",
+          "Scripts oficiais",
+          "Onboarding estruturado",
+          "Avaliação contínua",
+          "Redução da dependência do dono"
+        ]}
+        arrow="Sustenta times grandes."
+        targetAudience={{
+          revenue: "R$ 200k+/mês",
+          team: "Times com 5+ vendedores"
+        }}
+        schedule={[
+          { period: "Diário", description: "Uso de padrões" },
+          { period: "Semanal", description: "Gestão do time" },
+          { period: "Mensal", description: "Avaliação e ajustes" }
+        ]}
+        scheduleType="recurring"
+      />
+
       <section className="section-padding bg-background">
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">
