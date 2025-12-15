@@ -18,6 +18,7 @@ import {
   Zap
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import logoSocial from "@/assets/logo-social.png";
 
 const pillars = [
   {
@@ -183,14 +184,11 @@ export default function SocialPage() {
         
         <div className="container-premium relative z-10 py-32">
           <div className="max-w-4xl">
+            <img src={logoSocial} alt="UNV Social" className="h-20 md:h-24 mb-6 animate-fade-up" />
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-pink-500/10 border border-pink-500/30 rounded-full text-pink-400 text-sm font-medium mb-8 animate-fade-up">
               <Heart className="h-4 w-4" />
               Social Media as a Sales Enablement Channel
             </div>
-            
-            <h1 className="heading-display text-foreground mb-6 animate-fade-up delay-100">
-              UNV Social
-            </h1>
             
             <p className="text-2xl md:text-3xl text-muted-foreground mb-6 animate-fade-up delay-200">
               Transforme redes sociais em um{" "}

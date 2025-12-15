@@ -29,6 +29,7 @@ import {
 import partnersHero from "@/assets/partners-hero.jpg";
 import mansionImage from "@/assets/mansion-experience.jpg";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import logoPartners from "@/assets/logo-partners.png";
 
 // Papel da UNV
 const papelUNV = [
@@ -236,13 +237,11 @@ export default function PartnersPage() {
         </div>
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl animate-fade-up">
+            <img src={logoPartners} alt="UNV Partners" className="h-20 md:h-24 mb-6" />
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 backdrop-blur-sm border border-primary/30">
               <Crown className="h-4 w-4" />
               Direção Estratégica & Parceria Executiva
             </div>
-            <h1 className="heading-display hero-title mb-6">
-              UNV Partners
-            </h1>
             <p className="text-2xl md:text-3xl hero-subtitle font-medium mb-4">
               Onde decisões grandes são tomadas com critério.
             </p>

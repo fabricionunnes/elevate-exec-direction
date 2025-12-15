@@ -15,6 +15,7 @@ import {
   XCircle
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import logoLeadership from "@/assets/logo-leadership.png";
 
 const dimensions = [
   {
@@ -105,13 +106,11 @@ export default function LeadershipPage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--accent)/0.08),transparent_50%)]" />
         <div className="container-premium relative">
           <div className="max-w-4xl mx-auto text-center animate-fade-up">
+            <img src={logoLeadership} alt="UNV Leadership Development" className="h-20 md:h-24 mb-6 mx-auto" />
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6">
               <Brain className="h-4 w-4 text-accent" />
               <span className="text-sm font-medium text-accent">Formação de Liderança</span>
             </div>
-            <h1 className="heading-display text-foreground mb-6">
-              UNV Leadership Development
-            </h1>
             <p className="text-2xl text-accent font-medium mb-4">
               Liderança que sustenta pessoas, performance e crescimento
             </p>

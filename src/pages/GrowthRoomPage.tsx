@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import growthRoomHero from "@/assets/growth-room-hero.jpg";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import logoGrowthRoom from "@/assets/logo-growth-room.png";
 
 // O que a UNV faz no Growth Room
 const papelUNV = [
@@ -237,13 +238,11 @@ export default function GrowthRoomPage() {
         </div>
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl animate-fade-up">
+            <img src={logoGrowthRoom} alt="UNV Growth Room" className="h-20 md:h-24 mb-6" />
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 backdrop-blur-sm border border-primary/30">
               <MapPin className="h-4 w-4" />
               Imersão Presencial de Estratégia
             </div>
-            <h1 className="heading-display hero-title mb-6">
-              UNV Growth Room
-            </h1>
             <p className="text-2xl md:text-3xl hero-subtitle font-medium mb-4">
               Onde crescer deixa de ser confuso e passa a ser decidido.
             </p>
