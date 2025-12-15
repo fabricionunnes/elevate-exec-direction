@@ -226,7 +226,9 @@ export default function SalesAccelerationPage() {
         </div>
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl">
-            <img src={logoSalesAcceleration} alt="UNV Sales Acceleration" className="h-20 md:h-24 mb-6" />
+            <div className="inline-block p-3 bg-white/95 rounded-xl shadow-lg mb-6">
+              <img src={logoSalesAcceleration} alt="UNV Sales Acceleration" className="h-16 md:h-20" />
+            </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 border border-primary/30">
               Programa Principal
             </div>

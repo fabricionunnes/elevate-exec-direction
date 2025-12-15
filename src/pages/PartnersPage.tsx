@@ -237,7 +237,9 @@ export default function PartnersPage() {
         </div>
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl animate-fade-up">
-            <img src={logoPartners} alt="UNV Partners" className="h-20 md:h-24 mb-6" />
+            <div className="inline-block p-3 bg-white/95 rounded-xl shadow-lg mb-6">
+              <img src={logoPartners} alt="UNV Partners" className="h-16 md:h-20" />
+            </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 backdrop-blur-sm border border-primary/30">
               <Crown className="h-4 w-4" />
               Direção Estratégica & Parceria Executiva
