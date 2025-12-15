@@ -910,7 +910,7 @@ export default function MastermindPage() {
               <Crown className="h-16 w-16 text-amber-400 mx-auto mb-6" />
               <h2 className="heading-section text-foreground mb-4">Investimento</h2>
               <div className="text-5xl font-bold text-amber-400 mb-2">
-                R$ 36.000<span className="text-lg font-normal text-muted-foreground">/ano</span>
+                R$ 50.000<span className="text-lg font-normal text-muted-foreground">/ano</span>
               </div>
               <p className="text-muted-foreground mb-8">
                 Pagamento anual ou parcelado

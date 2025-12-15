@@ -776,7 +776,7 @@ const MastermindApplyPage = () => {
                           />
                         </FormControl>
                         <FormLabel className="text-base font-medium cursor-pointer">
-                          Você está ciente de que o investimento anual do UNV Mastermind é de R$ 36.000?
+                          Você está ciente de que o investimento anual do UNV Mastermind é de R$ 50.000?
                         </FormLabel>
                       </div>
                       <FormMessage />
