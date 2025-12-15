@@ -167,8 +167,8 @@ export default function MastermindPage() {
     <Layout>
       {/* Hero */}
       <section className="relative min-h-[80vh] flex items-center overflow-hidden hero-dark">
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-900/40 via-navy to-navy" />
-        <div className="absolute inset-0 bg-gradient-glow opacity-40 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-950/90 via-[hsl(214,65%,12%)] to-[hsl(214,65%,10%)]" />
+        <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
         
         <div className="container-premium relative z-10 py-32">
           <div className="max-w-4xl">
