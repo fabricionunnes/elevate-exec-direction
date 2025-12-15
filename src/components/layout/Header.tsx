@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X, ChevronDown, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import logoUnv from "@/assets/logo-unv.png";
@@ -21,6 +21,7 @@ const navigation = [
       { name: "UNV Social", href: "/social" },
       { name: "UNV Leadership", href: "/leadership" },
       { name: "UNV Mastermind", href: "/mastermind", highlight: true },
+      { name: "Mansão Empreendedora", href: "https://mansaoempreendedora.com.br", external: true, highlight: true },
       { name: "Comparar Produtos", href: "/compare" },
     ],
   },
@@ -93,19 +94,38 @@ export function Header() {
                 >
                   <div className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-xl p-2 min-w-[240px]">
                     {item.children.map((child, index) => (
-                      <Link
-                        key={child.href}
-                        to={child.href}
-                        className={cn(
-                          "block px-4 py-3 text-sm rounded-lg transition-all duration-300",
-                          child.highlight
-                            ? "font-semibold text-primary hover:bg-primary/10"
-                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                        )}
-                        style={{ animationDelay: `${index * 50}ms` }}
-                      >
-                        {child.name}
-                      </Link>
+                      child.external ? (
+                        <a
+                          key={child.href}
+                          href={child.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            "flex items-center justify-between px-4 py-3 text-sm rounded-lg transition-all duration-300",
+                            child.highlight
+                              ? "font-semibold text-primary hover:bg-primary/10"
+                              : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                          )}
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
+                          {child.name}
+                          <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
+                        </a>
+                      ) : (
+                        <Link
+                          key={child.href}
+                          to={child.href}
+                          className={cn(
+                            "block px-4 py-3 text-sm rounded-lg transition-all duration-300",
+                            child.highlight
+                              ? "font-semibold text-primary hover:bg-primary/10"
+                              : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                          )}
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
+                          {child.name}
+                        </Link>
+                      )
                     ))}
                   </div>
                 </div>
@@ -164,19 +184,38 @@ export function Header() {
                     {productsOpen && (
                       <div className="pl-4 space-y-1 mt-1 animate-fade-in">
                         {item.children.map((child) => (
-                          <Link
-                            key={child.href}
-                            to={child.href}
-                            className={cn(
-                              "block px-4 py-2.5 text-sm rounded-lg transition-all",
-                              child.highlight
-                                ? "text-primary font-semibold hover:bg-primary/10"
-                                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                            )}
-                            onClick={() => setMobileMenuOpen(false)}
-                          >
-                            {child.name}
-                          </Link>
+                          child.external ? (
+                            <a
+                              key={child.href}
+                              href={child.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={cn(
+                                "flex items-center justify-between px-4 py-2.5 text-sm rounded-lg transition-all",
+                                child.highlight
+                                  ? "text-primary font-semibold hover:bg-primary/10"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                              )}
+                              onClick={() => setMobileMenuOpen(false)}
+                            >
+                              {child.name}
+                              <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
+                            </a>
+                          ) : (
+                            <Link
+                              key={child.href}
+                              to={child.href}
+                              className={cn(
+                                "block px-4 py-2.5 text-sm rounded-lg transition-all",
+                                child.highlight
+                                  ? "text-primary font-semibold hover:bg-primary/10"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                              )}
+                              onClick={() => setMobileMenuOpen(false)}
+                            >
+                              {child.name}
+                            </Link>
+                          )
                         ))}
                       </div>
                     )}
