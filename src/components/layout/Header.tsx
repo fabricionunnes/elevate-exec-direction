@@ -19,6 +19,7 @@ const navigation = [
       { name: "Sales Ops", href: "/sales-ops" },
       { name: "UNV Ads", href: "/ads" },
       { name: "UNV Social", href: "/social" },
+      { name: "UNV Sales Force", href: "/sales-force" },
       // Trilha Avançada
       { name: "Growth Room", href: "/growth-room" },
       { name: "UNV Partners", href: "/partners" },
