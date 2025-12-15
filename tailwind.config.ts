@@ -47,10 +47,10 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        gold: {
-          DEFAULT: "hsl(var(--gold))",
-          light: "hsl(var(--gold-light))",
-          dark: "hsl(var(--gold-dark))",
+        red: {
+          DEFAULT: "hsl(var(--red))",
+          light: "hsl(var(--red-light))",
+          dark: "hsl(var(--red-dark))",
         },
         navy: {
           DEFAULT: "hsl(var(--navy))",
@@ -69,7 +69,7 @@ export default {
       },
       boxShadow: {
         premium: "var(--shadow-lg)",
-        red: "var(--shadow-red)",
+        brand: "var(--shadow-red)",
       },
       keyframes: {
         "accordion-down": {
