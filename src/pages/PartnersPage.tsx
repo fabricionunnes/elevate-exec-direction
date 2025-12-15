@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import partnersHero from "@/assets/partners-hero.jpg";
 import mansionImage from "@/assets/mansion-experience.jpg";
+import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 
 // Papel da UNV
 const papelUNV = [
@@ -266,7 +267,34 @@ export default function PartnersPage() {
         </div>
       </section>
 
-      {/* Posicionamento */}
+      {/* Trail Summary */}
+      <ProductTrailSummary
+        color="yellow"
+        productNumber={5}
+        productName="UNV PARTNERS"
+        tagline="Board Estratégico"
+        whatItDoes="Atua como conselho estratégico contínuo."
+        keyPoints={[
+          "Board mensal",
+          "Checkpoints semanais",
+          "Benchmark real",
+          "Decisões de alto impacto",
+          "Mansão Empresarial (mensal)"
+        ]}
+        arrow="Produto de elite. Não escalável."
+        targetAudience={{
+          revenue: "R$ 300k a R$ 2M/mês",
+          team: "CEOs que não querem decidir sozinhos"
+        }}
+        schedule={[
+          { period: "Semanal", description: "Checkpoints" },
+          { period: "Mensal", description: "Board" },
+          { period: "Mensal", description: "Mansão Empresarial" },
+          { period: "Trimestral", description: "Revisão profunda" }
+        ]}
+        scheduleType="recurring"
+      />
+
       <section className="section-padding bg-background">
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">

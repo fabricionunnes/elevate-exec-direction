@@ -16,6 +16,7 @@ import {
   Home,
 } from "lucide-react";
 import salesTeam from "@/assets/sales-team.jpg";
+import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 
 const unvRole = [
   "Método comercial",
@@ -247,7 +248,37 @@ export default function SalesAccelerationPage() {
         </div>
       </section>
 
-      {/* Papel da UNV */}
+      {/* Trail Summary */}
+      <ProductTrailSummary
+        color="red"
+        productNumber={3}
+        productName="UNV SALES ACCELERATION"
+        tagline="Produto Principal"
+        whatItDoes="Atua como a direção comercial ativa da empresa para acelerar vendas do time."
+        keyPoints={[
+          "Treina vendedores",
+          "Treina gestor",
+          "Corrige discurso",
+          "Organiza pipeline",
+          "Cobra execução",
+          "Padroniza operação",
+          "Acelera conversão"
+        ]}
+        arrow="Resultado já no 1º mês (quick wins). Payback projetado até o 3º mês."
+        targetAudience={{
+          revenue: "R$ 150k a R$ 1M/mês",
+          team: "Com time ativo e dor de conversão"
+        }}
+        schedule={[
+          { period: "Mês 1 (Unblocking)", description: "Destravar vendas" },
+          { period: "Meses 2–3 (Conversão)", description: "Aumentar fechamento" },
+          { period: "Meses 4–6 (Gestão)", description: "Tirar dono do gargalo" },
+          { period: "Meses 7–9 (Padronização)", description: "Preparar escala" },
+          { period: "Meses 10–12 (Direção madura)", description: "Crescer com controle" }
+        ]}
+        scheduleType="phases"
+      />
+
       <section className="section-padding bg-background">
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">

@@ -19,6 +19,7 @@ import {
   XCircle
 } from "lucide-react";
 import coreHero from "@/assets/core-hero.jpg";
+import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 
 const unvRole = [
   { title: "Diretor comercial temporário", description: "Assume a função de organizar sua área comercial" },
@@ -222,7 +223,35 @@ export default function CorePage() {
         </div>
       </section>
 
-      {/* O que é */}
+      {/* Trail Summary */}
+      <ProductTrailSummary
+        color="blue"
+        productNumber={1}
+        productName="UNV CORE"
+        tagline="Commercial Foundation"
+        whatItDoes="Organiza o básico comercial da empresa para acabar com improviso."
+        keyPoints={[
+          "Define funil",
+          "Cria scripts mínimos",
+          "Estabelece metas básicas",
+          "Define rotina comercial",
+          "Dá clareza ao dono sobre o que cobrar"
+        ]}
+        arrow="É a base. Não acelera vendas, prepara o terreno."
+        targetAudience={{
+          revenue: "R$ 50k a R$ 150k/mês",
+          team: "Times pequenos (1–5 vendedores)"
+        }}
+        schedule={[
+          { period: "Semana 1", description: "Diagnóstico direcional" },
+          { period: "Semana 2", description: "Funil + scripts" },
+          { period: "Semana 3", description: "Metas + indicadores" },
+          { period: "Semana 4", description: "Rotina + playbook" },
+          { period: "Semanas 5–6", description: "Ajustes finais" }
+        ]}
+        scheduleType="weeks"
+      />
+
       <section className="section-padding bg-background">
         <div className="container-premium">
           <div className="max-w-4xl mx-auto text-center">

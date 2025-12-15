@@ -14,6 +14,7 @@ import {
   Sparkles,
   XCircle
 } from "lucide-react";
+import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 
 const dimensions = [
   {
@@ -135,7 +136,31 @@ export default function LeadershipPage() {
         </div>
       </section>
 
-      {/* What is */}
+      {/* Trail Summary */}
+      <ProductTrailSummary
+        color="blue"
+        productNumber={9}
+        productName="UNV LEADERSHIP DEVELOPMENT"
+        tagline="Formação de Líderes"
+        whatItDoes="Forma líderes que sustentam pessoas, cultura e execução."
+        keyPoints={[
+          "Autoliderança",
+          "Cobrança e feedback",
+          "Gestão de pessoas",
+          "Decisão e cultura"
+        ]}
+        arrow="Remove o fundador do centro."
+        targetAudience={{
+          revenue: "Empresas com líderes intermediários"
+        }}
+        schedule={[
+          { period: "Mês 0", description: "Diagnóstico" },
+          { period: "Mensal", description: "Desenvolvimento" },
+          { period: "Contínuo", description: "Aplicação prática" }
+        ]}
+        scheduleType="recurring"
+      />
+
       <section className="section-padding bg-background">
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">
