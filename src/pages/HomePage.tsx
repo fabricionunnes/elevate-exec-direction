@@ -19,21 +19,18 @@ const products = [
     name: "UNV Core",
     description: "Estruture sua base comercial",
     icp: "R$ 50k–150k/mês",
-    price: "R$ 1.997",
     href: "/core",
   },
   {
     name: "UNV Control",
     description: "Mantenha a constância de execução",
     icp: "R$ 100k–400k/mês",
-    price: "R$ 5.997/ano",
     href: "/control",
   },
   {
     name: "Sales Acceleration",
     description: "Programa completo de direção comercial",
     icp: "R$ 150k–1M/mês",
-    price: "R$ 24.000/ano",
     href: "/sales-acceleration",
     highlight: true,
   },
@@ -41,42 +38,36 @@ const products = [
     name: "Growth Room",
     description: "Imersão estratégica presencial intensiva",
     icp: "R$ 150k–600k/mês",
-    price: "R$ 12.000",
     href: "/growth-room",
   },
   {
     name: "UNV Partners",
     description: "Direção estratégica elite + Experiência Mansão",
     icp: "R$ 300k–2M/mês",
-    price: "R$ 4.000/mês",
     href: "/partners",
   },
   {
     name: "Sales Ops",
     description: "Padronização de times em escala",
     icp: "5+ vendedores",
-    price: "R$ 197/usuário/mês",
     href: "/sales-ops",
   },
   {
     name: "UNV Ads",
     description: "Tráfego e geração de demanda qualificada",
     icp: "R$ 100k–1M+/mês",
-    price: "R$ 1.500–4.000/mês",
     href: "/ads",
   },
   {
     name: "UNV Social",
     description: "Social media como canal de vendas",
     icp: "R$ 80k–1M+/mês",
-    price: "R$ 1.500–3.500/mês",
     href: "/social",
   },
   {
     name: "UNV Mastermind",
     description: "Inner Circle de líderes empresariais",
     icp: "R$ 300k–3M/mês",
-    price: "R$ 36.000/ano",
     href: "/mastermind",
     highlight: true,
   },
@@ -234,9 +225,6 @@ export default function HomePage() {
                 acelerar seu time de vendas. De quick wins a crescimento
                 sustentável, com cobrança total de execução.
               </p>
-              <div className="text-2xl sm:text-3xl font-bold text-primary mb-6 sm:mb-8">
-                R$ 24.000<span className="text-sm sm:text-lg font-normal text-muted-foreground">/ano</span>
-              </div>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Link to="/sales-acceleration" className="w-full sm:w-auto">
                   <Button variant="premium" size="default" className="w-full sm:w-auto text-sm sm:text-base">
@@ -299,8 +287,7 @@ export default function HomePage() {
                   )}
                 </div>
                 <p className="text-body text-sm sm:text-base mb-3 sm:mb-4">{product.description}</p>
-                <p className="text-small text-xs sm:text-sm mb-1 sm:mb-2">ICP: {product.icp}</p>
-                <p className="text-base sm:text-lg font-bold text-primary">{product.price}</p>
+                <p className="text-small text-xs sm:text-sm">ICP: {product.icp}</p>
                 <div className="mt-4 sm:mt-6 flex items-center text-primary text-xs sm:text-sm font-semibold">
                   Saiba mais
                   <ArrowRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-2 transition-transform duration-300" />
