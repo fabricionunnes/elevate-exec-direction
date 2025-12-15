@@ -3,10 +3,79 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Sparkles, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const products = [
+interface Product {
+  name: string;
+  tagline: string;
+  description: string;
+  icp: string;
+  href: string;
+  investment: string;
+  highlight?: boolean;
+  external?: boolean;
+}
+
+const ProductCard = ({ product, index, compact }: { product: Product; index: number; compact?: boolean }) => (
+  <div
+    className={`${
+      product.highlight ? "card-highlight" : "card-premium"
+    } ${compact ? "p-6" : "p-8 lg:p-10"}`}
+  >
+    <div className={`flex flex-col ${compact ? "" : "lg:flex-row lg:items-center"} gap-4 ${compact ? "" : "lg:gap-12"}`}>
+      <div className="flex-1">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-sm font-medium text-accent uppercase tracking-wider">
+            {product.tagline}
+          </span>
+          {product.highlight && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent/10 text-accent text-xs font-medium rounded">
+              <Sparkles className="h-3 w-3" />
+              Destaque
+            </span>
+          )}
+        </div>
+        <h2 className={`${compact ? "text-lg" : "heading-card"} font-bold text-foreground mb-2`}>
+          {product.name}
+        </h2>
+        <p className={`text-body ${compact ? "text-sm" : ""} mb-3`}>{product.description}</p>
+        <p className="text-small">{product.icp}</p>
+      </div>
+      <div className={`${compact ? "mt-4" : "lg:text-right lg:min-w-[200px]"}`}>
+        <p className={`${compact ? "text-base" : "text-lg"} font-semibold text-foreground mb-4`}>
+          {product.investment}
+        </p>
+        {product.external ? (
+          <a href={product.href} target="_blank" rel="noopener noreferrer">
+            <Button
+              variant="premium-outline"
+              size={compact ? "default" : "lg"}
+              className="w-full lg:w-auto"
+            >
+              Conhecer
+              <ExternalLink className="ml-2 h-4 w-4" />
+            </Button>
+          </a>
+        ) : (
+          <Link to={product.href}>
+            <Button
+              variant={product.highlight ? "premium" : "premium-outline"}
+              size={compact ? "default" : "lg"}
+              className="w-full lg:w-auto"
+            >
+              Saiba Mais
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+// Main trail: Core → Control → Sales Acceleration
+const mainTrail: Product[] = [
   {
     name: "UNV Core",
-    tagline: "Comece com estrutura",
+    tagline: "Fundação comercial",
     description:
       "Construa a fundação da sua operação comercial. Scripts, funil básico, metas e rotinas mínimas de cobrança.",
     icp: "Faturamento R$ 50k–150k/mês • 1–5 vendedores",
@@ -15,7 +84,7 @@ const products = [
   },
   {
     name: "UNV Control",
-    tagline: "Mantenha a execução",
+    tagline: "Disciplina de execução",
     description:
       "Direção recorrente para manter seu time executando com consistência. Check-ins mensais, templates e suporte com IA.",
     icp: "Faturamento R$ 100k–400k/mês",
@@ -24,7 +93,7 @@ const products = [
   },
   {
     name: "UNV Sales Acceleration",
-    tagline: "Programa principal",
+    tagline: "Produto principal",
     description:
       "Programa anual de direção comercial. Treinamos, acompanhamos e cobramos seu time para crescimento acelerado e previsível.",
     icp: "Faturamento R$ 150k–1M/mês • 3+ vendedores",
@@ -32,24 +101,10 @@ const products = [
     investment: "R$ 24.000/ano",
     highlight: true,
   },
-  {
-    name: "UNV Growth Room",
-    tagline: "Estratégia presencial",
-    description:
-      "Imersão presencial intensiva de 3 dias. Redesenhe sua rota comercial com orientação hands-on e saia com um plano de execução de 90 dias.",
-    icp: "Faturamento R$ 150k–600k/mês",
-    href: "/growth-room",
-    investment: "R$ 12.000",
-  },
-  {
-    name: "UNV Partners",
-    tagline: "Elite estratégico",
-    description:
-      "Reuniões de board mensais, cobrança semanal, eventos exclusivos e a Experiência Mansão. Para empresas estabelecidas que buscam mentoria de elite.",
-    icp: "Faturamento R$ 300k–2M/mês",
-    href: "/partners",
-    investment: "R$ 4.000/mês",
-  },
+];
+
+// Support trail: Sales Ops / Ads / Social
+const supportTrail: Product[] = [
   {
     name: "UNV Sales Ops",
     tagline: "Padronização de times",
@@ -77,14 +132,27 @@ const products = [
     href: "/social",
     investment: "R$ 1.500–3.500/mês",
   },
+];
+
+// Advanced trail: Growth Room → Partners → Mastermind
+const advancedTrail: Product[] = [
   {
-    name: "UNV Leadership",
-    tagline: "Desenvolvimento de líderes",
+    name: "UNV Growth Room",
+    tagline: "Estratégia presencial",
     description:
-      "Desenvolva líderes intermediários capazes de sustentar a execução sem depender do fundador. Gestão de pessoas, performance e decisões.",
-    icp: "Faturamento R$ 100k–2M+/mês",
-    href: "/leadership",
-    investment: "R$ 1.500/mês por líder",
+      "Imersão presencial intensiva de 3 dias. Redesenhe sua rota comercial com orientação hands-on e saia com um plano de execução de 90 dias.",
+    icp: "Faturamento R$ 150k–600k/mês",
+    href: "/growth-room",
+    investment: "R$ 12.000",
+  },
+  {
+    name: "UNV Partners",
+    tagline: "Elite estratégico",
+    description:
+      "Reuniões de board mensais, cobrança semanal, eventos exclusivos e a Experiência Mansão. Para empresas estabelecidas que buscam mentoria de elite.",
+    icp: "Faturamento R$ 300k–2M/mês",
+    href: "/partners",
+    investment: "R$ 4.000/mês",
   },
   {
     name: "UNV Mastermind",
@@ -95,17 +163,30 @@ const products = [
     href: "/mastermind",
     investment: "R$ 36.000/ano",
   },
-  {
-    name: "Mansão Empreendedora",
-    tagline: "Experiência imersiva",
-    description:
-      "Imersão presencial exclusiva em ambiente privado. Experiência transformadora para empreendedores que buscam conexão e estratégia de alto nível.",
-    icp: "Empreendedores selecionados",
-    href: "https://mansaoempreendedora.com.br",
-    investment: "Consultar",
-    external: true,
-  },
 ];
+
+// Leadership standalone
+const leadershipProduct: Product = {
+  name: "UNV Leadership",
+  tagline: "Desenvolvimento de líderes",
+  description:
+    "Desenvolva líderes intermediários capazes de sustentar a execução sem depender do fundador. Gestão de pessoas, performance e decisões.",
+  icp: "Faturamento R$ 100k–2M+/mês",
+  href: "/leadership",
+  investment: "R$ 1.500/mês por líder",
+};
+
+// External
+const externalProduct: Product = {
+  name: "Mansão Empreendedora",
+  tagline: "Experiência imersiva",
+  description:
+    "Imersão presencial exclusiva em ambiente privado. Experiência transformadora para empreendedores que buscam conexão e estratégia de alto nível.",
+  icp: "Empreendedores selecionados",
+  href: "https://mansaoempreendedora.com.br",
+  investment: "Consultar",
+  external: true,
+};
 
 export default function ProductsPage() {
   return (
@@ -126,68 +207,73 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* Product Grid */}
+      {/* Main Trail: Core → Control → Sales Acceleration */}
       <section className="section-padding bg-background">
         <div className="container-premium">
-          <div className="grid gap-8">
-            {products.map((product, i) => (
-              <div
-                key={product.href}
-                className={`${
-                  product.highlight ? "card-highlight" : "card-premium"
-                } p-8 lg:p-10`}
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center gap-6 lg:gap-12">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-4">
-                      <span className="text-sm font-medium text-accent uppercase tracking-wider">
-                        {product.tagline}
-                      </span>
-                      {product.highlight && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent/10 text-accent text-xs font-medium rounded">
-                          <Sparkles className="h-3 w-3" />
-                          Destaque
-                        </span>
-                      )}
-                    </div>
-                    <h2 className="heading-card text-foreground mb-3">
-                      {product.name}
-                    </h2>
-                    <p className="text-body mb-4">{product.description}</p>
-                    <p className="text-small">{product.icp}</p>
-                  </div>
-                  <div className="lg:text-right lg:min-w-[200px]">
-                    <p className="text-lg font-semibold text-foreground mb-4">
-                      {product.investment}
-                    </p>
-                    {product.external ? (
-                      <a href={product.href} target="_blank" rel="noopener noreferrer">
-                        <Button
-                          variant="premium-outline"
-                          size="lg"
-                          className="w-full lg:w-auto"
-                        >
-                          Conhecer
-                          <ExternalLink className="ml-2 h-4 w-4" />
-                        </Button>
-                      </a>
-                    ) : (
-                      <Link to={product.href}>
-                        <Button
-                          variant={product.highlight ? "premium" : "premium-outline"}
-                          size="lg"
-                          className="w-full lg:w-auto"
-                        >
-                          Saiba Mais
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </div>
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-3 h-3 rounded-full bg-primary" />
+            <h2 className="text-xl font-bold text-foreground">Trilha Principal</h2>
+            <span className="text-sm text-muted-foreground">Core → Control → Sales Acceleration</span>
+          </div>
+          <div className="grid gap-6">
+            {mainTrail.map((product, i) => (
+              <ProductCard key={product.href} product={product} index={i} />
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Support Trail: Sales Ops / Ads / Social */}
+      <section className="section-padding bg-secondary">
+        <div className="container-premium">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-3 h-3 rounded-full bg-accent" />
+            <h2 className="text-xl font-bold text-foreground">Suporte à Operação</h2>
+            <span className="text-sm text-muted-foreground">Sales Ops • Ads • Social</span>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {supportTrail.map((product, i) => (
+              <ProductCard key={product.href} product={product} index={i} compact />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Advanced Trail: Growth Room → Partners → Mastermind */}
+      <section className="section-padding bg-background">
+        <div className="container-premium">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-3 h-3 rounded-full bg-amber-500" />
+            <h2 className="text-xl font-bold text-foreground">Trilha Avançada</h2>
+            <span className="text-sm text-muted-foreground">Growth Room → Partners → Mastermind</span>
+          </div>
+          <div className="grid gap-6">
+            {advancedTrail.map((product, i) => (
+              <ProductCard key={product.href} product={product} index={i} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Leadership */}
+      <section className="section-padding bg-secondary">
+        <div className="container-premium">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-3 h-3 rounded-full bg-blue-500" />
+            <h2 className="text-xl font-bold text-foreground">Desenvolvimento de Líderes</h2>
+          </div>
+          <ProductCard product={leadershipProduct} index={0} />
+        </div>
+      </section>
+
+      {/* External */}
+      <section className="section-padding bg-background">
+        <div className="container-premium">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-3 h-3 rounded-full bg-purple-500" />
+            <h2 className="text-xl font-bold text-foreground">Experiência Exclusiva</h2>
+          </div>
+          <ProductCard product={externalProduct} index={0} />
         </div>
       </section>
 
