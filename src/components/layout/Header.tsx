@@ -41,7 +41,7 @@ export function Header() {
           <img 
             src={logoUnv} 
             alt="UNV - Universidade Nacional de Vendas" 
-            className="h-10 md:h-12 w-auto brightness-0 invert transition-all duration-300 group-hover:scale-105" 
+            className="h-10 md:h-12 w-auto transition-all duration-300 group-hover:scale-105" 
           />
         </Link>
 
