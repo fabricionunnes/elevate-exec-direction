@@ -6,65 +6,77 @@
 
 @layer base {
   :root {
-    /* UNV Brand Palette - Navy & Vibrant Red */
-    --background: 214 65% 12%;
-    --foreground: 0 0% 98%;
+    /* UNV Brand Palette - Light Theme with Navy & Red accents */
+    --background: 0 0% 100%;
+    --foreground: 214 65% 15%;
 
-    --card: 214 60% 16%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 214 65% 15%;
 
-    --popover: 214 60% 16%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 214 65% 15%;
 
-    /* Vibrant Red Primary (from logo - more saturated) */
-    --primary: 355 85% 55%;
+    /* Vibrant Red Primary */
+    --primary: 355 85% 50%;
     --primary-foreground: 0 0% 100%;
 
-    /* Navy Secondary */
-    --secondary: 214 55% 20%;
-    --secondary-foreground: 0 0% 98%;
+    /* Light Gray Secondary */
+    --secondary: 214 20% 96%;
+    --secondary-foreground: 214 65% 15%;
 
-    --muted: 214 45% 24%;
-    --muted-foreground: 214 25% 70%;
+    --muted: 214 15% 94%;
+    --muted-foreground: 214 30% 45%;
 
     /* Bright Red Accent */
-    --accent: 355 90% 60%;
+    --accent: 355 90% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214 35% 30%;
-    --input: 214 35% 30%;
-    --ring: 355 85% 55%;
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
+    --ring: 355 85% 50%;
 
     --radius: 0.75rem;
 
     /* Custom tokens */
-    --red: 355 85% 55%;
-    --red-light: 355 90% 65%;
-    --red-dark: 355 80% 45%;
-    --navy: 214 65% 12%;
-    --navy-light: 214 50% 22%;
+    --red: 355 85% 50%;
+    --red-light: 355 90% 60%;
+    --red-dark: 355 80% 40%;
+    --navy: 214 65% 15%;
+    --navy-light: 214 50% 25%;
     --cream: 0 0% 98%;
 
     /* Gradients */
-    --gradient-red: linear-gradient(135deg, hsl(355 85% 55%) 0%, hsl(355 90% 65%) 100%);
-    --gradient-dark: linear-gradient(180deg, hsl(214 65% 12%) 0%, hsl(214 60% 18%) 100%);
-    --gradient-overlay: linear-gradient(180deg, hsla(214, 65%, 12%, 0.75) 0%, hsla(214, 65%, 12%, 0.95) 100%);
-    --gradient-glow: radial-gradient(ellipse at center, hsla(355, 85%, 55%, 0.2) 0%, transparent 70%);
+    --gradient-red: linear-gradient(135deg, hsl(355 85% 50%) 0%, hsl(355 90% 60%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(214 65% 15%) 0%, hsl(214 60% 20%) 100%);
+    --gradient-overlay: linear-gradient(180deg, hsla(214, 65%, 15%, 0.85) 0%, hsla(214, 65%, 15%, 0.95) 100%);
+    --gradient-glow: radial-gradient(ellipse at center, hsla(355, 85%, 50%, 0.15) 0%, transparent 70%);
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsla(0, 0%, 0%, 0.3);
-    --shadow-md: 0 4px 6px -1px hsla(0, 0%, 0%, 0.4), 0 2px 4px -2px hsla(0, 0%, 0%, 0.3);
-    --shadow-lg: 0 10px 15px -3px hsla(0, 0%, 0%, 0.5), 0 4px 6px -4px hsla(0, 0%, 0%, 0.4);
-    --shadow-xl: 0 20px 25px -5px hsla(0, 0%, 0%, 0.5), 0 8px 10px -6px hsla(0, 0%, 0%, 0.4);
-    --shadow-red: 0 10px 40px -10px hsla(355, 85%, 55%, 0.5);
-    --shadow-glow: 0 0 40px hsla(355, 85%, 55%, 0.35);
+    --shadow-sm: 0 1px 2px 0 hsla(214, 65%, 15%, 0.05);
+    --shadow-md: 0 4px 6px -1px hsla(214, 65%, 15%, 0.08), 0 2px 4px -2px hsla(214, 65%, 15%, 0.05);
+    --shadow-lg: 0 10px 15px -3px hsla(214, 65%, 15%, 0.1), 0 4px 6px -4px hsla(214, 65%, 15%, 0.08);
+    --shadow-xl: 0 20px 25px -5px hsla(214, 65%, 15%, 0.12), 0 8px 10px -6px hsla(214, 65%, 15%, 0.08);
+    --shadow-red: 0 10px 40px -10px hsla(355, 85%, 50%, 0.35);
+    --shadow-glow: 0 0 40px hsla(355, 85%, 50%, 0.25);
   }
 
   .dark {
-    /* Same as root - already dark */
+    /* Dark theme - Navy background */
+    --background: 214 65% 12%;
+    --foreground: 0 0% 98%;
+    --card: 214 60% 16%;
+    --card-foreground: 0 0% 98%;
+    --popover: 214 60% 16%;
+    --popover-foreground: 0 0% 98%;
+    --secondary: 214 55% 20%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 214 45% 24%;
+    --muted-foreground: 214 25% 70%;
+    --border: 214 35% 30%;
+    --input: 214 35% 30%;
   }
 }
 
@@ -270,20 +282,20 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(214 65% 12%);
+  background: hsl(214 20% 96%);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(355 85% 55% / 0.5);
+  background: hsl(355 85% 50% / 0.4);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(355 85% 55% / 0.7);
+  background: hsl(355 85% 50% / 0.6);
 }
 
 /* Selection */
 ::selection {
-  background: hsl(355 85% 55% / 0.4);
-  color: hsl(0 0% 100%);
+  background: hsl(355 85% 50% / 0.25);
+  color: hsl(214 65% 15%);
 }
