@@ -28,6 +28,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import logoAds from "@/assets/logo-ads.png";
 
 // Papel da UNV
 const papelUNV = [
@@ -251,13 +252,11 @@ export default function AdsPage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl animate-fade-up">
+            <img src={logoAds} alt="UNV Ads" className="h-20 md:h-24 mb-6" />
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 backdrop-blur-sm border border-primary/30">
               <Megaphone className="h-4 w-4" />
               Sales-Driven Traffic & Demand Generation
             </div>
-            <h1 className="heading-display text-foreground mb-6">
-              UNV Ads
-            </h1>
             <p className="text-2xl md:text-3xl text-foreground/90 font-medium mb-4">
               Tráfego que respeita o comercial — e não o contrário.
             </p>

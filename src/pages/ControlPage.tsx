@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import controlHero from "@/assets/control-hero.jpg";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import logoControl from "@/assets/logo-control.png";
 
 const unvRole = [
   { title: "Diretor comercial recorrente", description: "Mantém a direção comercial ativa mês a mês" },
@@ -206,12 +207,10 @@ export default function ControlPage() {
         </div>
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl animate-fade-up">
+            <img src={logoControl} alt="UNV Control" className="h-20 md:h-24 mb-6" />
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 backdrop-blur-sm border border-primary/30">
               Ongoing Commercial Direction & Execution Discipline
             </div>
-            <h1 className="heading-display hero-title mb-6">
-              UNV Control
-            </h1>
             <p className="text-2xl md:text-3xl hero-subtitle font-medium mb-4">
               O que impede sua empresa de voltar para o improviso.
             </p>

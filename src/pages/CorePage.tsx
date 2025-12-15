@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import coreHero from "@/assets/core-hero.jpg";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import logoCore from "@/assets/logo-core.png";
 
 const unvRole = [
   { title: "Diretor comercial temporário", description: "Assume a função de organizar sua área comercial" },
@@ -193,12 +194,10 @@ export default function CorePage() {
         </div>
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl animate-fade-up">
+            <img src={logoCore} alt="UNV Core" className="h-20 md:h-24 mb-6" />
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 backdrop-blur-sm border border-primary/30">
               Commercial Foundation & Initial Direction
             </div>
-            <h1 className="heading-display hero-title mb-6">
-              UNV Core
-            </h1>
             <p className="text-2xl md:text-3xl hero-subtitle font-medium mb-4">
               Onde o improviso comercial termina e a direção começa.
             </p>

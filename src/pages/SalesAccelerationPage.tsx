@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import salesTeam from "@/assets/sales-team.jpg";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import logoSalesAcceleration from "@/assets/logo-sales-acceleration.png";
 
 const unvRole = [
   "Método comercial",
@@ -225,12 +226,10 @@ export default function SalesAccelerationPage() {
         </div>
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl">
+            <img src={logoSalesAcceleration} alt="UNV Sales Acceleration" className="h-20 md:h-24 mb-6" />
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 border border-primary/30">
               Programa Principal
             </div>
-            <h1 className="heading-display hero-title mb-6">
-              UNV Sales Acceleration
-            </h1>
             <p className="text-xl md:text-2xl hero-subtitle mb-4">
               Direção Comercial Anual focada em Aceleração de Vendas
             </p>

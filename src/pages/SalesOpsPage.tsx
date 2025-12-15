@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import salesOpsHero from "@/assets/sales-ops-hero.jpg";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import logoSalesOps from "@/assets/logo-sales-ops.png";
 
 // Papel da UNV
 const papelUNV = [
@@ -277,13 +278,11 @@ export default function SalesOpsPage() {
         </div>
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl animate-fade-up">
+            <img src={logoSalesOps} alt="UNV Sales Ops" className="h-20 md:h-24 mb-6" />
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 backdrop-blur-sm border border-primary/30">
               <Settings className="h-4 w-4" />
               Sales Operations & Padronização
             </div>
-            <h1 className="heading-display hero-title mb-6">
-              UNV Sales Ops
-            </h1>
             <p className="text-2xl md:text-3xl hero-subtitle font-medium mb-4">
               Onde vendedores viram um time de verdade.
             </p>
