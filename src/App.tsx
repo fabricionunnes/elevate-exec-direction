@@ -15,6 +15,7 @@ import PartnersPage from "./pages/PartnersPage";
 import SalesOpsPage from "./pages/SalesOpsPage";
 import AdsPage from "./pages/AdsPage";
 import SocialPage from "./pages/SocialPage";
+import SalesForcePage from "./pages/SalesForcePage";
 import MastermindPage from "./pages/MastermindPage";
 import MastermindApplyPage from "./pages/MastermindApplyPage";
 import MastermindApplicationsPage from "./pages/MastermindApplicationsPage";
@@ -51,6 +52,7 @@ const App = () => (
           <Route path="/sales-ops" element={<SalesOpsPage />} />
           <Route path="/ads" element={<AdsPage />} />
           <Route path="/social" element={<SocialPage />} />
+          <Route path="/sales-force" element={<SalesForcePage />} />
           <Route path="/mastermind" element={<MastermindPage />} />
           <Route path="/mastermind/apply" element={<MastermindApplyPage />} />
           <Route path="/mastermind/applications" element={<MastermindApplicationsPage />} />

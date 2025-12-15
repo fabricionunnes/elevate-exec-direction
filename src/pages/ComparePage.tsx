@@ -190,6 +190,22 @@ const products: Product[] = [
     notFor: "Quem busca execução, networking frouxo ou palco para ego"
   },
   {
+    id: "sales-force",
+    name: "UNV Sales Force",
+    tagline: "Outsourced SDR & Closing",
+    icon: Users2,
+    color: "bg-red-500",
+    icp: "Empresas com demanda que precisam de conversão",
+    revenue: "R$ 100k–1M+/mês",
+    team: "200+ leads qualificados/mês",
+    price: "R$ 6.000",
+    priceType: "/mês + comissão",
+    link: "/sales-force",
+    keyDiff: "Operação de vendas terceirizada — SDR e Closer executando para você",
+    bestFor: "Empresas com demanda qualificada que não conseguem converter internamente",
+    notFor: "Quem não gera leads ou quer testar"
+  },
+  {
     id: "leadership",
     name: "UNV Leadership",
     tagline: "Formação de Liderança",
