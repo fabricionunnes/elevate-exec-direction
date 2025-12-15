@@ -231,7 +231,7 @@ export default function PartnersPage() {
       <section className="relative min-h-[70vh] flex items-center bg-gradient-to-br from-background via-background to-primary/5">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
         <div className="container-premium relative z-10 py-20">
-          <div className="max-w-3xl animate-fade-up">
+          <div className="max-w-3xl mx-auto text-center animate-fade-up">
             <div className="inline-block p-3 bg-white/95 rounded-xl shadow-lg mb-6">
               <img src={logoPartners} alt="UNV Partners" className="h-16 md:h-20" />
             </div>
@@ -242,11 +242,11 @@ export default function PartnersPage() {
             <p className="text-2xl md:text-3xl text-foreground/90 font-medium mb-4">
               Onde decisões grandes são tomadas com critério.
             </p>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl">
+            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
               A UNV atua como direção estratégica contínua, no formato de board externo,
               ajudando o empresário a tomar decisões melhores, mais rápidas e com menos risco.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/apply">
                 <Button variant="hero" size="xl">
                   Aplicar para Membership

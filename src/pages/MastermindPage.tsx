@@ -178,7 +178,7 @@ export default function MastermindPage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-transparent" />
         
         <div className="container-premium relative z-10 py-32">
-          <div className="max-w-4xl">
+          <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-600 text-sm font-medium mb-8 animate-fade-up">
               <Crown className="h-4 w-4" />
               The Inner Circle of Commercial & Business Leaders
@@ -193,12 +193,12 @@ export default function MastermindPage() {
               <span className="text-foreground font-semibold">decisão, crescimento e visão estratégica.</span>
             </p>
             
-            <p className="text-lg text-muted-foreground mb-10 max-w-2xl animate-fade-up delay-300">
+            <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto animate-fade-up delay-300">
               Empresários em estágio avançado, pensando, decidindo e evoluindo em nível que não acontece 
               em nenhum outro lugar. Um conselho vivo de empresários que jogam o mesmo jogo.
             </p>
 
-            <div className="flex flex-wrap gap-6 mb-10 animate-fade-up delay-400">
+            <div className="flex flex-wrap gap-6 mb-10 justify-center animate-fade-up delay-400">
               <div className="flex items-center gap-2 text-amber-600">
                 <Lock className="h-5 w-5" />
                 <span className="font-medium">Vagas extremamente limitadas</span>
@@ -209,7 +209,7 @@ export default function MastermindPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-4 animate-fade-up delay-500">
+            <div className="flex flex-wrap gap-4 justify-center animate-fade-up delay-500">
               <Link to="/apply">
                 <Button variant="hero" size="xl" className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700">
                   Candidatar-se ao Mastermind

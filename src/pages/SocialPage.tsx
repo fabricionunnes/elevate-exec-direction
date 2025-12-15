@@ -182,7 +182,7 @@ export default function SocialPage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
         
         <div className="container-premium relative z-10 py-32">
-          <div className="max-w-4xl">
+          <div className="max-w-4xl mx-auto text-center">
             <div className="inline-block p-3 bg-white/95 rounded-xl shadow-lg mb-6 animate-fade-up">
               <img src={logoSocial} alt="UNV Social" className="h-16 md:h-20" />
             </div>
@@ -196,12 +196,12 @@ export default function SocialPage() {
               <span className="text-foreground font-semibold">ativo comercial.</span>
             </p>
             
-            <p className="text-lg text-muted-foreground mb-10 max-w-2xl animate-fade-up delay-300">
+            <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto animate-fade-up delay-300">
               A UNV Social não existe para "postar conteúdo". Ela existe para preparar o lead para comprar.
               Não é social de engajamento vazio. É conteúdo com função comercial clara.
             </p>
 
-            <div className="flex flex-wrap gap-4 animate-fade-up delay-400">
+            <div className="flex flex-wrap gap-4 justify-center animate-fade-up delay-400">
               <Link to="/apply">
                 <Button variant="hero" size="xl">
                   Aplicar para Diagnóstico
