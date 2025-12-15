@@ -783,9 +783,9 @@ export default function ComparePage() {
       </section>
 
       {/* Comparison Header - Sticky product headers */}
-      <section className="py-4 bg-background/95 backdrop-blur-sm border-b border-border sticky top-[72px] z-40 shadow-sm">
+      <section className="py-4 bg-background/95 backdrop-blur-sm border-b border-border sticky top-16 md:top-20 z-40 shadow-sm">
         <div className="container-premium">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-visible">
             <div className="min-w-[800px]">
               <div className="grid" style={{ gridTemplateColumns: `250px repeat(${selectedProductsData.length}, 1fr)` }}>
                 <div className="p-4 flex items-center">
@@ -797,7 +797,7 @@ export default function ComparePage() {
                     <div 
                       key={product.id} 
                       className={cn(
-                        "p-4 text-center border-b-4 relative",
+                        "px-4 pb-4 pt-8 text-center border-b-4 relative",
                         product.color.replace('bg-', 'border-')
                       )}
                       style={{ 
@@ -806,7 +806,7 @@ export default function ComparePage() {
                     >
                       {/* Product number indicator */}
                       <div className={cn(
-                        "absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white",
+                        "absolute top-2 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-primary-foreground",
                         product.color
                       )}>
                         {index + 1}
@@ -814,7 +814,7 @@ export default function ComparePage() {
                       
                       <div className="flex items-center justify-center gap-3">
                         <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", product.color)}>
-                          <Icon className="h-5 w-5 text-white" />
+                          <Icon className="h-5 w-5 text-primary-foreground" />
                         </div>
                         <div className="text-left">
                           <h3 className="font-bold text-foreground text-base leading-tight">{product.name}</h3>
