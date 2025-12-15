@@ -150,6 +150,17 @@
     transform: translateY(-4px);
   }
 
+  /* Touch devices - disable hover transform */
+  @media (hover: none) {
+    .card-premium:hover {
+      transform: none;
+    }
+    
+    .card-highlight:hover {
+      transform: none;
+    }
+  }
+
   .card-highlight {
     @apply bg-card rounded-xl border-2 border-primary/40 shadow-xl;
     box-shadow: var(--shadow-red);
@@ -161,19 +172,19 @@
   }
 
   .section-padding {
-    @apply py-20 md:py-28 lg:py-36;
+    @apply py-12 sm:py-16 md:py-24 lg:py-32;
   }
 
   .heading-display {
-    @apply text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-[1.1];
+    @apply text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-[1.15];
   }
 
   .heading-section {
-    @apply text-3xl md:text-4xl lg:text-5xl font-bold;
+    @apply text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold;
   }
 
   .heading-card {
-    @apply text-xl md:text-2xl font-bold;
+    @apply text-lg sm:text-xl md:text-2xl font-bold;
   }
 
   .text-body {
