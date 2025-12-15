@@ -26,6 +26,7 @@ import FAQPage from "./pages/FAQPage";
 import TermsPage from "./pages/TermsPage";
 import ComparePage from "./pages/ComparePage";
 import DiagnosticResponsesPage from "./pages/DiagnosticResponsesPage";
+import AdminSetupPage from "./pages/AdminSetupPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,6 +62,7 @@ const App = () => (
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/diagnostic-responses" element={<DiagnosticResponsesPage />} />
+          <Route path="/admin-setup" element={<AdminSetupPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
