@@ -174,13 +174,12 @@ export default function MastermindPage() {
   return (
     <Layout>
       {/* Hero */}
-      <section className="relative min-h-[80vh] flex items-center overflow-hidden hero-dark">
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-950/90 via-[hsl(214,65%,12%)] to-[hsl(214,65%,10%)]" />
-        <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
+      <section className="relative min-h-[80vh] flex items-center overflow-hidden bg-gradient-to-br from-background via-background to-amber-500/5">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-transparent" />
         
         <div className="container-premium relative z-10 py-32">
           <div className="max-w-4xl">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-sm font-medium mb-8 animate-fade-up">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-600 text-sm font-medium mb-8 animate-fade-up">
               <Crown className="h-4 w-4" />
               The Inner Circle of Commercial & Business Leaders
             </div>
@@ -189,22 +188,22 @@ export default function MastermindPage() {
               <img src={logoMastermind} alt="UNV Mastermind" className="h-20 md:h-24" />
             </div>
             
-            <p className="text-2xl md:text-3xl hero-description mb-6 animate-fade-up delay-200">
+            <p className="text-2xl md:text-3xl text-foreground/90 mb-6 animate-fade-up delay-200">
               O ambiente máximo de{" "}
-              <span className="hero-title font-semibold">decisão, crescimento e visão estratégica.</span>
+              <span className="text-foreground font-semibold">decisão, crescimento e visão estratégica.</span>
             </p>
             
-            <p className="text-lg hero-description mb-10 max-w-2xl animate-fade-up delay-300">
+            <p className="text-lg text-muted-foreground mb-10 max-w-2xl animate-fade-up delay-300">
               Empresários em estágio avançado, pensando, decidindo e evoluindo em nível que não acontece 
               em nenhum outro lugar. Um conselho vivo de empresários que jogam o mesmo jogo.
             </p>
 
             <div className="flex flex-wrap gap-6 mb-10 animate-fade-up delay-400">
-              <div className="flex items-center gap-2 text-amber-400">
+              <div className="flex items-center gap-2 text-amber-600">
                 <Lock className="h-5 w-5" />
                 <span className="font-medium">Vagas extremamente limitadas</span>
               </div>
-              <div className="flex items-center gap-2 text-amber-400">
+              <div className="flex items-center gap-2 text-amber-600">
                 <Shield className="h-5 w-5" />
                 <span className="font-medium">Entrada apenas por curadoria</span>
               </div>
@@ -218,7 +217,7 @@ export default function MastermindPage() {
                 </Button>
               </Link>
               <Link to="/compare">
-                <Button variant="hero-outline" size="xl">
+                <Button variant="outline" size="xl" className="border-amber-500/30 text-foreground hover:bg-amber-500/10">
                   Comparar Produtos
                 </Button>
               </Link>

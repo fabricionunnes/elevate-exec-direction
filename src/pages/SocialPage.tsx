@@ -178,21 +178,20 @@ export default function SocialPage() {
   return (
     <Layout>
       {/* Hero */}
-      <section className="relative min-h-[70vh] flex items-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-pink-900/30 via-background to-background" />
-        <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
+      <section className="relative min-h-[70vh] flex items-center bg-gradient-to-br from-background via-background to-primary/5">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
         
         <div className="container-premium relative z-10 py-32">
           <div className="max-w-4xl">
             <div className="inline-block p-3 bg-white/95 rounded-xl shadow-lg mb-6 animate-fade-up">
               <img src={logoSocial} alt="UNV Social" className="h-16 md:h-20" />
             </div>
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-pink-500/10 border border-pink-500/30 rounded-full text-pink-400 text-sm font-medium mb-8 animate-fade-up">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-full text-primary text-sm font-medium mb-8 animate-fade-up">
               <Heart className="h-4 w-4" />
               Social Media as a Sales Enablement Channel
             </div>
             
-            <p className="text-2xl md:text-3xl text-muted-foreground mb-6 animate-fade-up delay-200">
+            <p className="text-2xl md:text-3xl text-foreground/90 mb-6 animate-fade-up delay-200">
               Transforme redes sociais em um{" "}
               <span className="text-foreground font-semibold">ativo comercial.</span>
             </p>
@@ -210,7 +209,7 @@ export default function SocialPage() {
                 </Button>
               </Link>
               <Link to="/compare">
-                <Button variant="hero-outline" size="xl">
+                <Button variant="outline" size="xl" className="border-primary/30 text-foreground hover:bg-primary/10">
                   Comparar Produtos
                 </Button>
               </Link>

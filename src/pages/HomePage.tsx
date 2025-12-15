@@ -100,17 +100,10 @@ export default function HomePage() {
   return (
     <Layout>
       {/* Hero Section */}
-      <section className="relative min-h-[100svh] flex items-center overflow-hidden hero-dark">
-        {/* Background */}
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${heroBoardroom})` }}
-        >
-          <div className="absolute inset-0 bg-gradient-overlay" />
-        </div>
-        
+      <section className="relative min-h-[100svh] flex items-center overflow-hidden bg-gradient-to-br from-background via-background to-primary/5">
         {/* Glow effect - hidden on mobile for performance */}
-        <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-glow opacity-50 pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
+        <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-glow opacity-30 pointer-events-none" />
 
         <div className="container-premium relative z-10 py-20 sm:py-28 md:py-32">
           <div className="max-w-4xl">
@@ -119,12 +112,12 @@ export default function HomePage() {
               Direção Comercial como Serviço
             </div>
             
-            <h1 className="heading-display hero-title mb-4 sm:mb-6 md:mb-8 opacity-0 animate-fade-up delay-100">
+            <h1 className="heading-display text-foreground mb-4 sm:mb-6 md:mb-8 opacity-0 animate-fade-up delay-100">
               Atuamos como seu{" "}
-              <span className="text-gradient-gold">Diretor Comercial.</span>
+              <span className="text-gradient-red">Diretor Comercial.</span>
             </h1>
             
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl hero-description mb-6 sm:mb-8 md:mb-10 max-w-2xl opacity-0 animate-fade-up delay-200">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground mb-6 sm:mb-8 md:mb-10 max-w-2xl opacity-0 animate-fade-up delay-200">
               A UNV treina, acompanha e cobra seu time comercial para acelerar
               vendas com método e previsibilidade.
             </p>
@@ -138,7 +131,7 @@ export default function HomePage() {
               ].map((item, i) => (
                 <li
                   key={i}
-                  className="flex items-start sm:items-center gap-3 sm:gap-4 hero-subtitle text-sm sm:text-base"
+                  className="flex items-start sm:items-center gap-3 sm:gap-4 text-foreground/90 text-sm sm:text-base"
                 >
                   <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0">
                     <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
@@ -161,7 +154,7 @@ export default function HomePage() {
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto"
               >
-                <Button variant="hero-outline" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto text-sm sm:text-base border-primary/30 text-foreground hover:bg-primary/10">
                   <MessageCircle className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                   WhatsApp
                 </Button>
@@ -169,9 +162,6 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-        
-        {/* Bottom gradient fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-16 sm:h-24 md:h-32 bg-gradient-to-t from-background to-transparent" />
       </section>
 
       {/* Problem Section */}
