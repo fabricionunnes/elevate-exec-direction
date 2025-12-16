@@ -20,6 +20,9 @@ import MastermindPage from "./pages/MastermindPage";
 import MastermindApplyPage from "./pages/MastermindApplyPage";
 import MastermindApplicationsPage from "./pages/MastermindApplicationsPage";
 import LeadershipPage from "./pages/LeadershipPage";
+import LeDesirPage from "./pages/LeDesirPage";
+import FinancePage from "./pages/FinancePage";
+import PeoplePage from "./pages/PeoplePage";
 import ForClosersPage from "./pages/ForClosersPage";
 import ClientDiagnosticPage from "./pages/ClientDiagnosticPage";
 import ApplyPage from "./pages/ApplyPage";
@@ -57,6 +60,9 @@ const App = () => (
           <Route path="/mastermind/apply" element={<MastermindApplyPage />} />
           <Route path="/mastermind/applications" element={<MastermindApplicationsPage />} />
           <Route path="/leadership" element={<LeadershipPage />} />
+          <Route path="/le-desir" element={<LeDesirPage />} />
+          <Route path="/finance" element={<FinancePage />} />
+          <Route path="/people" element={<PeoplePage />} />
           <Route path="/for-closers" element={<ForClosersPage />} />
           <Route path="/diagnostico" element={<ClientDiagnosticPage />} />
           <Route path="/apply" element={<ApplyPage />} />

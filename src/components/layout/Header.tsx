@@ -26,6 +26,9 @@ const navigation = [
       { name: "UNV Mastermind", href: "/mastermind", highlight: true },
       // Extras
       { name: "UNV Leadership", href: "/leadership" },
+      { name: "Le Désir", href: "/le-desir" },
+      { name: "UNV Finance", href: "/finance" },
+      { name: "UNV People", href: "/people" },
       { name: "Mansão Empreendedora", href: "https://mansaoempreendedora.com.br", external: true, highlight: true },
       { name: "Comparar Produtos", href: "/compare" },
     ],
