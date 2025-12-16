@@ -112,7 +112,7 @@ const supportTrail: Product[] = [
       "Padronize seu time comercial em escala. Trilhas de treinamento por cargo, scorecards e suporte IA por função.",
     icp: "Faturamento R$ 200k+/mês • 5+ vendedores",
     href: "/sales-ops",
-    investment: "R$ 197/usuário/mês",
+    investment: "R$ 2.500/ano",
   },
   {
     name: "UNV Ads",
