@@ -153,7 +153,7 @@ const products: Product[] = [
     icp: "Empresas gerando demanda qualificada",
     revenue: "R$ 100k–1M+/mês",
     team: "Time comercial ativo",
-    price: "R$ 1.500 a R$ 4.000",
+    price: "R$ 1.800 a R$ 4.000",
     priceType: "/mês + mídia",
     link: "/ads",
     keyDiff: "Geração de demanda — campanhas de tráfego pago integradas com vendas",

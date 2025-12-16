@@ -774,19 +774,31 @@ export default function AdsPage() {
       <section className="section-padding bg-card border-y border-border/30 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
         <div className="container-premium text-center relative">
-          <h2 className="heading-section text-foreground mb-6">Investimento (Referência)</h2>
-          <p className="text-3xl md:text-4xl font-display font-bold text-primary mb-2">
-            R$ 1.500 a R$ 4.000
-          </p>
-          <p className="text-muted-foreground text-lg mb-2">
-            Por mês (conforme investimento em ads)
-          </p>
-          <p className="text-muted-foreground/60 text-sm mb-4">
-            + Mídia paga: investimento do cliente
-          </p>
-          <p className="text-muted-foreground/60 text-sm mb-10 max-w-md mx-auto">
-            Contrato mínimo recomendado
-          </p>
+          <h2 className="heading-section text-foreground mb-8">Investimento</h2>
+          <div className="max-w-md mx-auto bg-card border border-border rounded-2xl p-6 mb-8">
+            <p className="text-sm text-muted-foreground mb-4">Fee mensal conforme investimento em mídia:</p>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b border-border/50">
+                <span className="text-muted-foreground">Até R$ 10.000 em mídia</span>
+                <span className="font-bold text-foreground">R$ 1.800</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-border/50">
+                <span className="text-muted-foreground">Até R$ 20.000 em mídia</span>
+                <span className="font-bold text-foreground">R$ 2.500</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-border/50">
+                <span className="text-muted-foreground">Até R$ 50.000 em mídia</span>
+                <span className="font-bold text-foreground">R$ 4.000</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-muted-foreground">Acima de R$ 50.000</span>
+                <span className="font-bold text-foreground">% do investido</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground/60 mt-4 text-center">
+              + Mídia paga: investimento do cliente
+            </p>
+          </div>
           <Link to="/apply">
             <Button variant="hero" size="xl">
               Aplicar Agora
