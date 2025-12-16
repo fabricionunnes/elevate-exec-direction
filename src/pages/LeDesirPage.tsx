@@ -50,14 +50,14 @@ export default function LeDesirPage() {
             </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
               <Heart className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Psicanálise Estratégica</span>
+              <span className="text-sm font-medium text-primary">Análise Estratégica</span>
             </div>
             <p className="text-2xl text-primary font-medium mb-4">
-              Psicanálise Estratégica para Empresários
+              Análise Estratégica para Empresários
             </p>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
               Não é terapia clínica tradicional. Não é mentoria.
-              É psicanálise estratégica 100% online voltada à lucidez, presença e tomada de decisão.
+              É análise estratégica 100% online voltada à lucidez, presença e tomada de decisão.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground" asChild>
@@ -81,7 +81,7 @@ export default function LeDesirPage() {
         color="red"
         productNumber={12}
         productName="LE DÉSIR"
-        tagline="Psicanálise Estratégica"
+        tagline="Análise Estratégica"
         whatItDoes="Espaço estruturado de escuta, elaboração e consciência para empresários."
         keyPoints={[
           "Entendimento de padrões",
