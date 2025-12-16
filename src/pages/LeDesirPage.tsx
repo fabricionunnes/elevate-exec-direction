@@ -57,7 +57,7 @@ export default function LeDesirPage() {
             </p>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
               Não é terapia clínica tradicional. Não é mentoria.
-              É psicanálise estratégica voltada à lucidez, presença e tomada de decisão.
+              É psicanálise estratégica 100% online voltada à lucidez, presença e tomada de decisão.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground" asChild>
@@ -94,9 +94,9 @@ export default function LeDesirPage() {
           revenue: "Empresários, Fundadores, Sócios, C-Level"
         }}
         schedule={[
-          { period: "Semanal/Quinzenal", description: "Sessões individuais" },
-          { period: "Online/Presencial", description: "100% confidencial" },
-          { period: "Contínuo", description: "Processo analítico" }
+          { period: "Semanal", description: "R$ 2.000/mês" },
+          { period: "Quinzenal", description: "R$ 1.200/mês" },
+          { period: "100% Online", description: "Sessões individuais" }
         ]}
         scheduleType="recurring"
       />
@@ -170,7 +170,7 @@ export default function LeDesirPage() {
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
                   <CheckCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                  <span className="text-muted-foreground">Sessões individuais (online ou presencial)</span>
+                  <span className="text-muted-foreground">Sessões individuais 100% online</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
@@ -245,19 +245,33 @@ export default function LeDesirPage() {
             <h2 className="heading-section text-foreground mb-8">
               Investimento
             </h2>
-            <div className="bg-card border border-border rounded-2xl p-8 md:p-12">
-              <p className="text-4xl font-bold text-foreground mb-2">R$ 2.000</p>
-              <p className="text-muted-foreground mb-6">/mês</p>
-              <div className="flex flex-wrap justify-center gap-4 mb-8">
-                <span className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full">Alta retenção</span>
-                <span className="px-3 py-1 bg-secondary text-muted-foreground text-sm rounded-full">Não escalável por natureza</span>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-card border border-border rounded-2xl p-8">
+                <p className="text-sm text-muted-foreground mb-2">Semanal</p>
+                <p className="text-4xl font-bold text-foreground mb-2">R$ 2.000</p>
+                <p className="text-muted-foreground mb-6">/mês</p>
+                <Button size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" asChild>
+                  <Link to="/apply">
+                    Iniciar Processo
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
               </div>
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground" asChild>
-                <Link to="/apply">
-                  Iniciar Processo
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
+              <div className="bg-card border border-border rounded-2xl p-8">
+                <p className="text-sm text-muted-foreground mb-2">Quinzenal</p>
+                <p className="text-4xl font-bold text-foreground mb-2">R$ 1.200</p>
+                <p className="text-muted-foreground mb-6">/mês</p>
+                <Button size="lg" variant="outline" className="w-full" asChild>
+                  <Link to="/apply">
+                    Iniciar Processo
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-center gap-4 mt-6">
+              <span className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full">Alta retenção</span>
+              <span className="px-3 py-1 bg-secondary text-muted-foreground text-sm rounded-full">100% Online</span>
             </div>
           </div>
         </div>
