@@ -183,6 +183,17 @@ export default function PeoplePage() {
                   </li>
                 ))}
               </ul>
+              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg mb-6">
+                <div className="flex items-start gap-3">
+                  <Award className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-green-600 mb-1">Garantia de 90 dias</p>
+                    <p className="text-xs text-muted-foreground">
+                      Se o colaborador não permanecer na empresa, fazemos outra contratação sem custo adicional (1x).
+                    </p>
+                  </div>
+                </div>
+              </div>
               <div className="pt-4 border-t border-border">
                 <p className="text-sm text-muted-foreground mb-1">Ticket:</p>
                 <p className="text-lg font-bold text-foreground">R$ 4.000 a R$ 8.000 <span className="text-sm font-normal text-muted-foreground">por vaga</span></p>
