@@ -94,8 +94,8 @@ export default function LeDesirPage() {
           revenue: "Empresários, Fundadores, Sócios, C-Level"
         }}
         schedule={[
-          { period: "Semanal", description: "R$ 2.000/mês" },
-          { period: "Quinzenal", description: "R$ 1.200/mês" },
+          { period: "Semanal", description: "1 sessão por semana" },
+          { period: "Quinzenal", description: "1 sessão a cada 2 semanas" },
           { period: "100% Online", description: "Sessões individuais" }
         ]}
         scheduleType="recurring"
