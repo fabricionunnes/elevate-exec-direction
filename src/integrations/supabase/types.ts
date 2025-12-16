@@ -68,6 +68,180 @@ export type Database = {
         }
         Relationships: []
       }
+      closer_diagnostics: {
+        Row: {
+          additional_context: string | null
+          admission_statement: string | null
+          avg_ticket: string | null
+          budget: string | null
+          client_agreed: string | null
+          client_name: string
+          closer_id: string | null
+          commitment_level: number | null
+          company: string
+          connection_point: string | null
+          conversion: string | null
+          created_at: string
+          crm_name: string | null
+          decision_maker: string | null
+          decision_process: string | null
+          deeper_why: string | null
+          emotional_impact: string | null
+          expectations_aligned: string | null
+          goal_12_months: string | null
+          has_crm: string | null
+          has_process: string | null
+          how_affects_life: string | null
+          how_long_problem: string | null
+          id: string
+          ideal_scenario: string | null
+          is_coachable: string | null
+          lead_source: string[] | null
+          lead_volume: string | null
+          love_or_status: string | null
+          main_pains: string[] | null
+          notes: string | null
+          pain_details: string | null
+          partner_name: string | null
+          partner_present: string | null
+          rapport_notes: string | null
+          realistic_expectation: string | null
+          recommended_products: Json | null
+          recommended_trail: Json | null
+          revenue: string | null
+          role: string | null
+          sales_cycle: string | null
+          segment: string | null
+          specific_help: string | null
+          status: string
+          summary: string | null
+          team_size: string | null
+          timeline: string | null
+          what_saw_about_us: string | null
+          what_tried_before: string | null
+          what_would_change: string | null
+          when_to_fix: string | null
+          why_cant_alone: string | null
+          why_didnt_work: string | null
+          why_now: string | null
+          why_scheduled: string | null
+        }
+        Insert: {
+          additional_context?: string | null
+          admission_statement?: string | null
+          avg_ticket?: string | null
+          budget?: string | null
+          client_agreed?: string | null
+          client_name: string
+          closer_id?: string | null
+          commitment_level?: number | null
+          company: string
+          connection_point?: string | null
+          conversion?: string | null
+          created_at?: string
+          crm_name?: string | null
+          decision_maker?: string | null
+          decision_process?: string | null
+          deeper_why?: string | null
+          emotional_impact?: string | null
+          expectations_aligned?: string | null
+          goal_12_months?: string | null
+          has_crm?: string | null
+          has_process?: string | null
+          how_affects_life?: string | null
+          how_long_problem?: string | null
+          id?: string
+          ideal_scenario?: string | null
+          is_coachable?: string | null
+          lead_source?: string[] | null
+          lead_volume?: string | null
+          love_or_status?: string | null
+          main_pains?: string[] | null
+          notes?: string | null
+          pain_details?: string | null
+          partner_name?: string | null
+          partner_present?: string | null
+          rapport_notes?: string | null
+          realistic_expectation?: string | null
+          recommended_products?: Json | null
+          recommended_trail?: Json | null
+          revenue?: string | null
+          role?: string | null
+          sales_cycle?: string | null
+          segment?: string | null
+          specific_help?: string | null
+          status?: string
+          summary?: string | null
+          team_size?: string | null
+          timeline?: string | null
+          what_saw_about_us?: string | null
+          what_tried_before?: string | null
+          what_would_change?: string | null
+          when_to_fix?: string | null
+          why_cant_alone?: string | null
+          why_didnt_work?: string | null
+          why_now?: string | null
+          why_scheduled?: string | null
+        }
+        Update: {
+          additional_context?: string | null
+          admission_statement?: string | null
+          avg_ticket?: string | null
+          budget?: string | null
+          client_agreed?: string | null
+          client_name?: string
+          closer_id?: string | null
+          commitment_level?: number | null
+          company?: string
+          connection_point?: string | null
+          conversion?: string | null
+          created_at?: string
+          crm_name?: string | null
+          decision_maker?: string | null
+          decision_process?: string | null
+          deeper_why?: string | null
+          emotional_impact?: string | null
+          expectations_aligned?: string | null
+          goal_12_months?: string | null
+          has_crm?: string | null
+          has_process?: string | null
+          how_affects_life?: string | null
+          how_long_problem?: string | null
+          id?: string
+          ideal_scenario?: string | null
+          is_coachable?: string | null
+          lead_source?: string[] | null
+          lead_volume?: string | null
+          love_or_status?: string | null
+          main_pains?: string[] | null
+          notes?: string | null
+          pain_details?: string | null
+          partner_name?: string | null
+          partner_present?: string | null
+          rapport_notes?: string | null
+          realistic_expectation?: string | null
+          recommended_products?: Json | null
+          recommended_trail?: Json | null
+          revenue?: string | null
+          role?: string | null
+          sales_cycle?: string | null
+          segment?: string | null
+          specific_help?: string | null
+          status?: string
+          summary?: string | null
+          team_size?: string | null
+          timeline?: string | null
+          what_saw_about_us?: string | null
+          what_tried_before?: string | null
+          what_would_change?: string | null
+          when_to_fix?: string | null
+          why_cant_alone?: string | null
+          why_didnt_work?: string | null
+          why_now?: string | null
+          why_scheduled?: string | null
+        }
+        Relationships: []
+      }
       mastermind_applications: {
         Row: {
           agrees_confidentiality: boolean
