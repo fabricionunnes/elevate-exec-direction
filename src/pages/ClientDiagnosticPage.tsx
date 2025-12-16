@@ -27,11 +27,13 @@ import {
   Megaphone,
   MessageSquare,
   Star,
-  Brain
+  Brain,
+  Lightbulb
 } from "lucide-react";
 import { toast } from "sonner";
 import logoUnv from "@/assets/logo-unv.png";
 import { cn } from "@/lib/utils";
+import { productDetails } from "@/data/productDetails";
 
 interface FormData {
   companyName: string;
@@ -532,21 +534,22 @@ export default function ClientDiagnosticPage() {
           <div className="space-y-6">
             {recommendations.map((rec, index) => {
               const Icon = rec.icon;
+              const details = productDetails[rec.id];
               return (
                 <div 
                   key={rec.id} 
                   className={cn(
-                    "bg-card border-2 rounded-2xl p-6 md:p-8 animate-fade-up",
+                    "bg-card border-2 rounded-2xl p-6 md:p-8 animate-fade-up relative",
                     index === 0 ? "border-accent" : "border-border"
                   )} 
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
+                  {index === 0 && (
+                    <span className="absolute -top-3 left-4 px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full">
+                      PRINCIPAL
+                    </span>
+                  )}
                   <div className="flex items-center gap-4 mb-4">
-                    {index === 0 && (
-                      <span className="absolute -top-3 left-4 px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full">
-                        PRINCIPAL
-                      </span>
-                    )}
                     <div className={cn("w-14 h-14 rounded-xl flex items-center justify-center", rec.color)}>
                       <Icon className="h-7 w-7 text-white" />
                     </div>
@@ -558,13 +561,58 @@ export default function ClientDiagnosticPage() {
 
                   <div className="bg-accent/10 border border-accent/20 rounded-xl p-4 mb-6">
                     <p className="text-foreground">
-                      <span className="font-semibold">Por que este produto?</span>
+                      <span className="font-semibold">Por que este produto para você?</span>
                       <br />
                       <span className="text-muted-foreground text-sm">{rec.whyRecommended}</span>
                     </p>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-6">
+                  {/* Problemas que resolve - DETALHADO */}
+                  {details && details.problemsSolved && details.problemsSolved.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <Target className="h-4 w-4 text-accent" />
+                        O que este produto vai resolver para você:
+                      </h3>
+                      <div className="space-y-3">
+                        {details.problemsSolved.slice(0, 4).map((item, i) => (
+                          <div key={i} className="bg-secondary/50 rounded-lg p-3 border border-border/30">
+                            <p className="text-sm font-medium text-destructive/80 mb-1">
+                              ❌ {item.problem}
+                            </p>
+                            <p className="text-sm text-muted-foreground mb-1">
+                              <span className="font-medium text-primary">→</span> {item.solution}
+                            </p>
+                            <p className="text-sm text-accent font-medium flex items-start gap-1">
+                              <Lightbulb className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                              {item.result}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Key Benefits */}
+                      {details.keyBenefits && (
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          {details.keyBenefits.map((benefit, i) => (
+                            <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <CheckCircle className="h-3 w-3 text-accent flex-shrink-0" />
+                              {benefit}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Time to Results */}
+                      {details.timeToResults && (
+                        <p className="text-xs text-muted-foreground mt-3 italic">
+                          ⏱️ {details.timeToResults}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-border/30">
                     <div>
                       <h3 className="text-sm font-semibold text-foreground mb-3">O que você recebe:</h3>
                       <ul className="space-y-2">

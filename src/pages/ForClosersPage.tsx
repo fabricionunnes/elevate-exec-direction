@@ -7,10 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowRight, ArrowLeft, CheckCircle, Copy, Layers, RefreshCw, TrendingUp, MapPin, Crown, Users2, Megaphone, Heart, ChevronRight, Star, AlertCircle } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle, Copy, Layers, RefreshCw, TrendingUp, MapPin, Crown, Users2, Megaphone, Heart, ChevronRight, Star, AlertCircle, Target, Lightbulb } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { productDetails } from "@/data/productDetails";
 
 interface FormData {
   // Fase 1 - Rapport
@@ -1512,9 +1513,10 @@ export default function ForClosersPage() {
                 {/* Products Recommendation */}
                 <div className="card-highlight p-6 md:p-8">
                   <h2 className="heading-card text-foreground mb-6 text-center">Produtos Recomendados</h2>
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {recommendation?.products.map((product) => {
                       const Icon = product.icon;
+                      const details = productDetails[product.id];
                       return (
                         <div 
                           key={product.id}
@@ -1527,7 +1529,7 @@ export default function ForClosersPage() {
                               : "bg-background border-border/50"
                           )}
                         >
-                          <div className="flex items-start gap-4">
+                          <div className="flex items-start gap-4 mb-4">
                             <div className={cn(
                               "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0",
                               product.priority === "primary" ? "bg-accent" : "bg-secondary"
@@ -1548,7 +1550,10 @@ export default function ForClosersPage() {
                                   {product.priority === "primary" ? "Recomendação Principal" : product.priority === "secondary" ? "Secundário" : "Complementar"}
                                 </span>
                               </div>
-                              <ul className="space-y-1.5">
+                              {details && (
+                                <p className="text-sm text-muted-foreground mb-2">{details.tagline}</p>
+                              )}
+                              <ul className="space-y-1.5 mb-3">
                                 {product.reasons.map((reason, i) => (
                                   <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
                                     <CheckCircle className="h-4 w-4 text-accent mt-0.5 flex-shrink-0" />
@@ -1556,11 +1561,53 @@ export default function ForClosersPage() {
                                   </li>
                                 ))}
                               </ul>
-                              <Link to={product.href} className="inline-flex items-center gap-1 text-sm text-primary font-medium mt-3 hover:underline">
-                                Ver detalhes <ChevronRight className="h-4 w-4" />
-                              </Link>
                             </div>
                           </div>
+                          
+                          {/* Problemas que resolve - DETALHADO */}
+                          {details && details.problemsSolved && details.problemsSolved.length > 0 && (
+                            <div className="mt-4 pt-4 border-t border-border/50">
+                              <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                                <Target className="h-4 w-4 text-accent" />
+                                O que este produto resolve para você:
+                              </h4>
+                              <div className="space-y-3">
+                                {details.problemsSolved.map((item, i) => (
+                                  <div key={i} className="bg-background/50 rounded-lg p-3 border border-border/30">
+                                    <p className="text-sm font-medium text-destructive/80 mb-1">
+                                      ❌ {item.problem}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground mb-1">
+                                      <span className="font-medium text-primary">→</span> {item.solution}
+                                    </p>
+                                    <p className="text-sm text-accent font-medium flex items-start gap-1">
+                                      <Lightbulb className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                                      {item.result}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                              
+                              {/* Key Benefits */}
+                              <div className="mt-4 grid sm:grid-cols-2 gap-2">
+                                {details.keyBenefits.map((benefit, i) => (
+                                  <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <CheckCircle className="h-3 w-3 text-accent flex-shrink-0" />
+                                    {benefit}
+                                  </div>
+                                ))}
+                              </div>
+                              
+                              {/* Time to Results */}
+                              <p className="text-xs text-muted-foreground mt-3 italic">
+                                ⏱️ {details.timeToResults}
+                              </p>
+                            </div>
+                          )}
+                          
+                          <Link to={product.href} className="inline-flex items-center gap-1 text-sm text-primary font-medium mt-4 hover:underline">
+                            Ver página completa do produto <ChevronRight className="h-4 w-4" />
+                          </Link>
                         </div>
                       );
                     })}
