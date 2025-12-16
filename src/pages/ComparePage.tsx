@@ -22,7 +22,10 @@ import {
   Megaphone,
   Star,
   Brain,
-  X
+  X,
+  Heart,
+  Users,
+  DollarSign
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClientDiagnosticForm } from "@/components/ClientDiagnosticForm";
@@ -220,6 +223,54 @@ const products: Product[] = [
     keyDiff: "Formação de líderes — liderança que sustenta pessoas, performance e crescimento",
     bestFor: "Empresas onde fundador centraliza, líderes não cobram e execução depende do dono",
     notFor: "Quem busca motivação, coaching vazio ou RH terceirizado"
+  },
+  {
+    id: "le-desir",
+    name: "Le Désir",
+    tagline: "Análise Estratégica para Líderes",
+    icon: Heart,
+    color: "bg-rose-500",
+    icp: "Líderes com peso psicológico da liderança",
+    revenue: "R$ 200k–3M+/mês",
+    team: "CEO/Fundador",
+    price: "R$ 1.200 a R$ 2.000",
+    priceType: "/mês",
+    link: "/le-desir",
+    keyDiff: "Análise estratégica — suporte emocional e psicológico para decisores sob pressão",
+    bestFor: "Líderes exaustos, reativos ou com padrões destrutivos que afetam decisões",
+    notFor: "Quem busca terapia clínica ou mentoria de negócios"
+  },
+  {
+    id: "people",
+    name: "UNV People",
+    tagline: "Gestão Estratégica de Pessoas",
+    icon: Users,
+    color: "bg-indigo-500",
+    icp: "Empresas escalando time comercial",
+    revenue: "R$ 100k–2M+/mês",
+    team: "5+ colaboradores",
+    price: "R$ 2.500 a R$ 8.000",
+    priceType: "/mês ou por vaga",
+    link: "/people",
+    keyDiff: "Gestão de pessoas estratégica — contratação, onboarding e desenvolvimento estruturado",
+    bestFor: "Empresas com turnover alto, contratações erradas ou time despadronizado",
+    notFor: "Quem busca RH operacional ou recrutamento pontual"
+  },
+  {
+    id: "finance",
+    name: "UNV Finance",
+    tagline: "Controle Financeiro Estratégico",
+    icon: DollarSign,
+    color: "bg-emerald-600",
+    icp: "Empresas sem clareza financeira",
+    revenue: "R$ 100k–2M+/mês",
+    team: "Decisores",
+    price: "R$ 3.000",
+    priceType: "/mês",
+    link: "/finance",
+    keyDiff: "Clareza financeira — DRE, fluxo de caixa e margem por produto sem burocracia",
+    bestFor: "Empresários que faturam alto mas não sabem onde ganham ou perdem dinheiro",
+    notFor: "Quem busca contabilidade ou assessoria de investimentos"
   }
 ];
 
@@ -246,7 +297,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: "Board coletivo",
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   {
@@ -263,7 +318,11 @@ const features: Feature[] = [
       ads: "Otimização",
       social: false,
       mastermind: false,
-      leadership: "Contínuo"
+      "sales-force": "Semanal",
+      leadership: "Contínuo",
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   {
@@ -280,7 +339,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: false,
-      leadership: true
+      "sales-force": true,
+      leadership: true,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   // Estrutura
@@ -298,7 +361,11 @@ const features: Feature[] = [
       ads: "De demanda",
       social: "Posicionamento",
       mastermind: false,
-      leadership: "De liderança"
+      "sales-force": "Onboarding",
+      leadership: "De liderança",
+      "le-desir": false,
+      people: "De pessoas",
+      finance: "Financeiro"
     }
   },
   {
@@ -315,7 +382,11 @@ const features: Feature[] = [
       ads: "Aquisição",
       social: false,
       mastermind: false,
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   {
@@ -332,7 +403,11 @@ const features: Feature[] = [
       ads: "Copies",
       social: "Conteúdo",
       mastermind: false,
-      leadership: "Feedback"
+      "sales-force": "Adaptados",
+      leadership: "Feedback",
+      "le-desir": false,
+      people: "Entrevistas",
+      finance: false
     }
   },
   {
@@ -349,7 +424,11 @@ const features: Feature[] = [
       ads: "CPL/CAC",
       social: false,
       mastermind: false,
-      leadership: "De liderança"
+      "sales-force": "Conversão",
+      leadership: "De liderança",
+      "le-desir": false,
+      people: "De pessoas",
+      finance: "Financeiros"
     }
   },
   // Treinamento
@@ -367,7 +446,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: false,
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: "Onboarding",
+      finance: false
     }
   },
   {
@@ -384,7 +467,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: false,
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: "Por função",
+      finance: false
     }
   },
   {
@@ -401,7 +488,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: false,
-      leadership: "Por líder"
+      "sales-force": "Mensal",
+      leadership: "Por líder",
+      "le-desir": false,
+      people: "Por colaborador",
+      finance: false
     }
   },
   // Suporte
@@ -419,7 +510,11 @@ const features: Feature[] = [
       ads: "Ads",
       social: "Social",
       mastermind: "Mastermind",
-      leadership: "Leadership"
+      "sales-force": false,
+      leadership: "Leadership",
+      "le-desir": false,
+      people: "People",
+      finance: "Finance"
     }
   },
   {
@@ -436,7 +531,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: "Ultra seletiva",
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   // Aquisição
@@ -454,7 +553,11 @@ const features: Feature[] = [
       ads: "Completa",
       social: false,
       mastermind: false,
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   {
@@ -471,7 +574,11 @@ const features: Feature[] = [
       ads: true,
       social: "Indireta",
       mastermind: false,
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   {
@@ -488,7 +595,11 @@ const features: Feature[] = [
       ads: true,
       social: true,
       mastermind: false,
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   // Social
@@ -506,7 +617,11 @@ const features: Feature[] = [
       ads: false,
       social: "Completa",
       mastermind: false,
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   {
@@ -523,7 +638,11 @@ const features: Feature[] = [
       ads: false,
       social: true,
       mastermind: false,
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   {
@@ -540,7 +659,11 @@ const features: Feature[] = [
       ads: false,
       social: true,
       mastermind: false,
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   // Mastermind
@@ -558,7 +681,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: "Mensal",
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   {
@@ -575,7 +702,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: "Mensal",
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   {
@@ -592,7 +723,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: "2x/ano",
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": "Recorrente",
+      people: false,
+      finance: false
     }
   },
   // Experiências
@@ -610,7 +745,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: "Mensais",
-      leadership: "Híbrido"
+      "sales-force": false,
+      leadership: "Híbrido",
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   {
@@ -627,7 +766,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: "Recorrente",
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   {
@@ -644,7 +787,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: "Real e profundo",
-      leadership: false
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   // Leadership Development
@@ -662,7 +809,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: false,
-      leadership: "4 dimensões"
+      "sales-force": false,
+      leadership: "4 dimensões",
+      "le-desir": false,
+      people: false,
+      finance: false
     }
   },
   {
@@ -679,7 +830,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: false,
-      leadership: "Completo"
+      "sales-force": false,
+      leadership: "Completo",
+      "le-desir": false,
+      people: "Estruturado",
+      finance: false
     }
   },
   {
@@ -696,7 +851,11 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: false,
-      leadership: true
+      "sales-force": false,
+      leadership: true,
+      "le-desir": false,
+      people: true,
+      finance: false
     }
   },
   {
@@ -713,7 +872,246 @@ const features: Feature[] = [
       ads: false,
       social: false,
       mastermind: false,
-      leadership: true
+      "sales-force": false,
+      leadership: true,
+      "le-desir": false,
+      people: true,
+      finance: false
+    }
+  },
+  // Sales Force
+  {
+    name: "SDR Terceirizado",
+    description: "Prospecção e qualificação de leads",
+    category: "Sales Force",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": "Completo",
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
+    }
+  },
+  {
+    name: "Closer Terceirizado",
+    description: "Fechamento de vendas",
+    category: "Sales Force",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": "Completo",
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
+    }
+  },
+  {
+    name: "Operação de Vendas",
+    description: "Execução diária de vendas",
+    category: "Sales Force",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": "Diária",
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false
+    }
+  },
+  // Le Désir
+  {
+    name: "Sessões Analíticas",
+    description: "Análise estratégica individual",
+    category: "Le Désir",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": "Semanal/Quinzenal",
+      people: false,
+      finance: false
+    }
+  },
+  {
+    name: "Suporte Emocional Executivo",
+    description: "Resiliência para decisores sob pressão",
+    category: "Le Désir",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": true,
+      people: false,
+      finance: false
+    }
+  },
+  // People
+  {
+    name: "Contratação Estratégica",
+    description: "Processo completo de hiring",
+    category: "People",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: "Completo",
+      finance: false
+    }
+  },
+  {
+    name: "Onboarding Estruturado",
+    description: "30-60-90 dias de integração",
+    category: "People",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": "Por cargo",
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: "Completo",
+      finance: false
+    }
+  },
+  {
+    name: "Estrutura de Cargos",
+    description: "Definição de funções e carreiras",
+    category: "People",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: true,
+      finance: false
+    }
+  },
+  // Finance
+  {
+    name: "DRE Gerencial",
+    description: "Demonstrativo de resultados mensal",
+    category: "Finance",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: "Mensal"
+    }
+  },
+  {
+    name: "Controle de Fluxo de Caixa",
+    description: "Projeções e acompanhamento",
+    category: "Finance",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: "90 dias"
+    }
+  },
+  {
+    name: "Margem por Produto",
+    description: "Análise de rentabilidade",
+    category: "Finance",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: "Completo"
     }
   }
 ];
