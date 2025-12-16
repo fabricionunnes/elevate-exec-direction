@@ -861,10 +861,10 @@ export default function SalesOpsPage() {
         <div className="container-premium text-center relative">
           <h2 className="heading-section text-foreground mb-6">Investimento</h2>
           <p className="text-5xl md:text-6xl font-display font-bold text-primary mb-4">
-            R$ 197
+            R$ 2.500
           </p>
           <p className="text-muted-foreground text-lg mb-2">
-            Por usuário / mês
+            Por ano / empresa
           </p>
           <p className="text-muted-foreground/60 text-sm mb-10 max-w-md mx-auto">
             Contrato mínimo recomendado • Escala conforme crescimento do time
