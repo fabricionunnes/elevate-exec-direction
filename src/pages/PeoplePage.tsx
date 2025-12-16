@@ -195,8 +195,17 @@ export default function PeoplePage() {
                 </div>
               </div>
               <div className="pt-4 border-t border-border">
-                <p className="text-sm text-muted-foreground mb-1">Ticket:</p>
-                <p className="text-lg font-bold text-foreground">R$ 4.000 a R$ 8.000 <span className="text-sm font-normal text-muted-foreground">por vaga</span></p>
+                <p className="text-sm text-muted-foreground mb-3">Investimento:</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Cargos operacionais</span>
+                    <span className="font-bold text-foreground">R$ 4.000</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Cargos estratégicos e liderança</span>
+                    <span className="font-bold text-foreground">R$ 8.000</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -226,8 +235,21 @@ export default function PeoplePage() {
                 ))}
               </ul>
               <div className="pt-4 border-t border-border">
-                <p className="text-sm text-muted-foreground mb-1">Ticket:</p>
-                <p className="text-lg font-bold text-foreground">R$ 2.500 a R$ 6.000 <span className="text-sm font-normal text-muted-foreground">/mês</span></p>
+                <p className="text-sm text-muted-foreground mb-3">Investimento mensal:</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Até 20 colaboradores</span>
+                    <span className="font-bold text-foreground">R$ 2.500</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Até 35 colaboradores</span>
+                    <span className="font-bold text-foreground">R$ 5.000</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Até 100 colaboradores</span>
+                    <span className="font-bold text-foreground">R$ 6.000</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
