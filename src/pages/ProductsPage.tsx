@@ -189,9 +189,9 @@ const leadershipProduct: Product = {
 const strategicProducts: Product[] = [
   {
     name: "Le Désir",
-    tagline: "Psicanálise estratégica",
+    tagline: "Análise estratégica",
     description:
-      "Psicanálise estratégica 100% online para empresários. Espaço de escuta, elaboração e consciência voltado à lucidez, presença e tomada de decisão.",
+      "Análise estratégica 100% online para empresários. Espaço de escuta, elaboração e consciência voltado à lucidez, presença e tomada de decisão.",
     icp: "Empresários, Fundadores, Sócios, C-Level",
     href: "/le-desir",
     investment: "A partir de R$ 1.200/mês",
