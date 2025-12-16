@@ -13,7 +13,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
-import logoLeDesir from "@/assets/logo-le-desir.jpg";
+import logoLeDesir from "@/assets/logo-le-desir.png";
 
 const problems = [
   "Exaustão mental silenciosa",
