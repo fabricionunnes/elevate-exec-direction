@@ -185,6 +185,37 @@ const leadershipProduct: Product = {
   investment: "R$ 1.500/mês por líder",
 };
 
+// New products
+const strategicProducts: Product[] = [
+  {
+    name: "Le Désir",
+    tagline: "Psicanálise estratégica",
+    description:
+      "Psicanálise estratégica para empresários. Espaço de escuta, elaboração e consciência voltado à lucidez, presença e tomada de decisão.",
+    icp: "Empresários, Fundadores, Sócios, C-Level",
+    href: "/le-desir",
+    investment: "R$ 2.000/mês",
+  },
+  {
+    name: "UNV Finance",
+    tagline: "Controle financeiro",
+    description:
+      "Clareza financeira simples, visual e acionável. DRE gerencial, fluxo de caixa, margem por produto e projeção de 90 dias.",
+    icp: "Empresários • Empresas em crescimento",
+    href: "/finance",
+    investment: "R$ 3.000/mês",
+  },
+  {
+    name: "UNV People",
+    tagline: "Gestão de pessoas",
+    description:
+      "Gestão estratégica de pessoas orientada a resultado. Contratação, estrutura de cargos, avaliação de desempenho e formação de líderes.",
+    icp: "Empresas em crescimento • Times comerciais",
+    href: "/people",
+    investment: "R$ 2.500–6.000/mês",
+  },
+];
+
 // External
 const externalProduct: Product = {
   name: "Mansão Empreendedora",
@@ -275,8 +306,24 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* External */}
+      {/* Strategic Products */}
       <section className="section-padding bg-background">
+        <div className="container-premium">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-3 h-3 rounded-full bg-rose-500" />
+            <h2 className="text-xl font-bold text-foreground">Estratégia & Estrutura</h2>
+            <span className="text-sm text-muted-foreground">Le Désir • Finance • People</span>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {strategicProducts.map((product, i) => (
+              <ProductCard key={product.href} product={product} index={i} compact />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* External */}
+      <section className="section-padding bg-secondary">
         <div className="container-premium">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-3 h-3 rounded-full bg-purple-500" />
