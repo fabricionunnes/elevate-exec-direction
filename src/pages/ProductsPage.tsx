@@ -121,7 +121,7 @@ const supportTrail: Product[] = [
       "Gestão de tráfego pago com foco em geração de leads qualificados. Estratégia, execução e otimização contínua das suas campanhas.",
     icp: "Faturamento R$ 100k+/mês",
     href: "/ads",
-    investment: "R$ 1.500–4.000/mês",
+    investment: "R$ 1.800–4.000/mês",
   },
   {
     name: "UNV Social",

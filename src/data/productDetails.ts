@@ -421,7 +421,7 @@ export const productDetails: Record<string, ProductDetail> = {
     tagline: "Tráfego & Geração de Demanda",
     icon: Megaphone,
     color: "bg-green-500",
-    price: "R$ 1.500 a R$ 4.000",
+    price: "R$ 1.800 a R$ 4.000",
     priceType: "/mês + mídia",
     description: "Campanhas de tráfego pago integradas com vendas para gerar demanda qualificada.",
     deliverables: [
