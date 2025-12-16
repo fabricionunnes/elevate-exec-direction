@@ -13,6 +13,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import logoLeDesir from "@/assets/logo-le-desir.jpg";
 
 const problems = [
   "Exaustão mental silenciosa",
@@ -44,8 +45,8 @@ export default function LeDesirPage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
         <div className="container-premium relative">
           <div className="max-w-4xl mx-auto text-center animate-fade-up">
-            <div className="inline-block p-4 bg-card/95 rounded-xl shadow-lg mb-6 border border-border/50">
-              <span className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">Le Désir</span>
+            <div className="inline-block mb-6">
+              <img src={logoLeDesir} alt="Le Désir" className="h-32 md:h-40 w-auto object-contain" />
             </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
               <Heart className="h-4 w-4 text-primary" />
