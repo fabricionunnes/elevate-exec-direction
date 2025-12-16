@@ -627,7 +627,7 @@ export default function CorePage() {
         <div className="container-premium text-center relative">
           <h2 className="heading-section text-foreground mb-6">Investimento</h2>
           <p className="text-5xl md:text-6xl font-display font-bold text-primary mb-2">
-            R$ 997 a R$ 1.997
+            R$ 1.997
           </p>
           <p className="text-muted-foreground text-lg mb-4">
             Pagamento único • Produto de entrada oficial da UNV
