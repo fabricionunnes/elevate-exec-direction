@@ -1,38 +1,69 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, ChevronDown, ExternalLink } from "lucide-react";
+import { Menu, X, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import logoUnv from "@/assets/logo-unv.png";
 
-const navigation = [
-  { name: "Método", href: "/how-it-works" },
+interface ProductItem {
+  name: string;
+  href: string;
+  external?: boolean;
+  highlight?: boolean;
+}
+
+interface ProductCategory {
+  category: string;
+  items: ProductItem[];
+}
+
+const productCategories: ProductCategory[] = [
   {
-    name: "Produtos",
-    href: "/products",
-    children: [
-      // Trilha Principal
+    category: "Trilha Principal",
+    items: [
       { name: "UNV Core", href: "/core" },
       { name: "UNV Control", href: "/control" },
       { name: "Sales Acceleration", href: "/sales-acceleration", highlight: true },
-      // Suporte à Operação
+    ],
+  },
+  {
+    category: "Operação Comercial",
+    items: [
       { name: "Sales Ops", href: "/sales-ops" },
+      { name: "UNV Sales Force", href: "/sales-force" },
       { name: "UNV Ads", href: "/ads" },
       { name: "UNV Social", href: "/social" },
-      { name: "UNV Sales Force", href: "/sales-force" },
-      // Trilha Avançada
+    ],
+  },
+  {
+    category: "Trilha Avançada",
+    items: [
       { name: "Growth Room", href: "/growth-room" },
       { name: "UNV Partners", href: "/partners" },
       { name: "UNV Mastermind", href: "/mastermind", highlight: true },
-      // Extras
+    ],
+  },
+  {
+    category: "Estratégia & Estrutura",
+    items: [
       { name: "UNV Leadership", href: "/leadership" },
       { name: "Le Désir", href: "/le-desir" },
       { name: "UNV Finance", href: "/finance" },
       { name: "UNV People", href: "/people" },
+    ],
+  },
+  {
+    category: "Outros",
+    items: [
       { name: "Mansão Empreendedora", href: "https://mansaoempreendedora.com.br", external: true, highlight: true },
       { name: "Comparar Produtos", href: "/compare" },
     ],
   },
+];
+
+const navigation = [
+  { name: "Método", href: "/how-it-works" },
+  { name: "Produtos", href: "/products", hasSubmenu: true },
   { name: "Diagnóstico", href: "/diagnostico" },
   { name: "FAQ", href: "/faq" },
 ];
@@ -40,7 +71,20 @@ const navigation = [
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const location = useLocation();
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  const isProductActive = productCategories.some(cat =>
+    cat.items.some(item => location.pathname === item.href)
+  );
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/30">
@@ -58,12 +102,11 @@ export function Header() {
         <div className="hidden lg:flex items-center gap-1">
           {navigation.map((item) => (
             <div key={item.name} className="relative group">
-              {item.children ? (
+              {item.hasSubmenu ? (
                 <button
                   className={cn(
                     "flex items-center gap-1 px-4 py-2 text-sm font-medium transition-all duration-300",
-                    location.pathname.startsWith("/products") ||
-                      item.children.some((c) => location.pathname === c.href)
+                    isProductActive
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
@@ -91,50 +134,106 @@ export function Header() {
                 </Link>
               )}
 
-              {/* Dropdown */}
-              {item.children && (
+              {/* Products Mega Menu */}
+              {item.hasSubmenu && (
                 <div
                   className={cn(
-                    "absolute top-full left-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0"
+                    "absolute top-full left-1/2 -translate-x-1/2 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0"
                   )}
                   onMouseEnter={() => setProductsOpen(true)}
                   onMouseLeave={() => setProductsOpen(false)}
                 >
-                  <div className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-xl p-2 min-w-[240px]">
-                    {item.children.map((child, index) => (
-                      child.external ? (
-                        <a
-                          key={child.href}
-                          href={child.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={cn(
-                            "flex items-center justify-between px-4 py-3 text-sm rounded-lg transition-all duration-300",
-                            child.highlight
-                              ? "font-semibold text-primary hover:bg-primary/10"
-                              : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                          )}
-                          style={{ animationDelay: `${index * 50}ms` }}
-                        >
-                          {child.name}
-                          <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
-                        </a>
-                      ) : (
-                        <Link
-                          key={child.href}
-                          to={child.href}
-                          className={cn(
-                            "block px-4 py-3 text-sm rounded-lg transition-all duration-300",
-                            child.highlight
-                              ? "font-semibold text-primary hover:bg-primary/10"
-                              : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                          )}
-                          style={{ animationDelay: `${index * 50}ms` }}
-                        >
-                          {child.name}
-                        </Link>
-                      )
-                    ))}
+                  <div className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-xl p-4 min-w-[600px]">
+                    <div className="grid grid-cols-3 gap-4">
+                      {productCategories.slice(0, 3).map((cat) => (
+                        <div key={cat.category}>
+                          <p className="text-xs font-semibold text-primary mb-2 uppercase tracking-wider">
+                            {cat.category}
+                          </p>
+                          <div className="space-y-1">
+                            {cat.items.map((product) => (
+                              product.external ? (
+                                <a
+                                  key={product.href}
+                                  href={product.href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={cn(
+                                    "flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all duration-300",
+                                    product.highlight
+                                      ? "font-semibold text-primary hover:bg-primary/10"
+                                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                                  )}
+                                >
+                                  {product.name}
+                                  <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
+                                </a>
+                              ) : (
+                                <Link
+                                  key={product.href}
+                                  to={product.href}
+                                  className={cn(
+                                    "block px-3 py-2 text-sm rounded-lg transition-all duration-300",
+                                    location.pathname === product.href
+                                      ? "bg-primary/10 text-primary font-medium"
+                                      : product.highlight
+                                      ? "font-semibold text-primary hover:bg-primary/10"
+                                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                                  )}
+                                >
+                                  {product.name}
+                                </Link>
+                              )
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-border/30">
+                      {productCategories.slice(3).map((cat) => (
+                        <div key={cat.category}>
+                          <p className="text-xs font-semibold text-primary mb-2 uppercase tracking-wider">
+                            {cat.category}
+                          </p>
+                          <div className="space-y-1">
+                            {cat.items.map((product) => (
+                              product.external ? (
+                                <a
+                                  key={product.href}
+                                  href={product.href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={cn(
+                                    "flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all duration-300",
+                                    product.highlight
+                                      ? "font-semibold text-primary hover:bg-primary/10"
+                                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                                  )}
+                                >
+                                  {product.name}
+                                  <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
+                                </a>
+                              ) : (
+                                <Link
+                                  key={product.href}
+                                  to={product.href}
+                                  className={cn(
+                                    "block px-3 py-2 text-sm rounded-lg transition-all duration-300",
+                                    location.pathname === product.href
+                                      ? "bg-primary/10 text-primary font-medium"
+                                      : product.highlight
+                                      ? "font-semibold text-primary hover:bg-primary/10"
+                                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                                  )}
+                                >
+                                  {product.name}
+                                </Link>
+                              )
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -171,11 +270,11 @@ export function Header() {
 
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-background/95 backdrop-blur-xl border-t border-border/30 animate-fade-in">
+        <div className="lg:hidden bg-background/95 backdrop-blur-xl border-t border-border/30 animate-fade-in max-h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="container-premium py-6 space-y-2">
             {navigation.map((item) => (
               <div key={item.name}>
-                {item.children ? (
+                {item.hasSubmenu ? (
                   <div>
                     <button
                       className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-secondary/50 rounded-lg transition-all"
@@ -190,40 +289,62 @@ export function Header() {
                       />
                     </button>
                     {productsOpen && (
-                      <div className="pl-4 space-y-1 mt-1 animate-fade-in">
-                        {item.children.map((child) => (
-                          child.external ? (
-                            <a
-                              key={child.href}
-                              href={child.href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={cn(
-                                "flex items-center justify-between px-4 py-2.5 text-sm rounded-lg transition-all",
-                                child.highlight
-                                  ? "text-primary font-semibold hover:bg-primary/10"
-                                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                              )}
-                              onClick={() => setMobileMenuOpen(false)}
+                      <div className="pl-2 space-y-1 mt-1 animate-fade-in">
+                        {productCategories.map((cat) => (
+                          <div key={cat.category}>
+                            <button
+                              className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 rounded-lg transition-all"
+                              onClick={() => toggleCategory(cat.category)}
                             >
-                              {child.name}
-                              <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
-                            </a>
-                          ) : (
-                            <Link
-                              key={child.href}
-                              to={child.href}
-                              className={cn(
-                                "block px-4 py-2.5 text-sm rounded-lg transition-all",
-                                child.highlight
-                                  ? "text-primary font-semibold hover:bg-primary/10"
-                                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                              )}
-                              onClick={() => setMobileMenuOpen(false)}
-                            >
-                              {child.name}
-                            </Link>
-                          )
+                              {cat.category}
+                              <ChevronRight
+                                className={cn(
+                                  "h-4 w-4 transition-transform duration-300",
+                                  expandedCategories.includes(cat.category) && "rotate-90"
+                                )}
+                              />
+                            </button>
+                            {expandedCategories.includes(cat.category) && (
+                              <div className="pl-4 space-y-1 mt-1 animate-fade-in">
+                                {cat.items.map((product) => (
+                                  product.external ? (
+                                    <a
+                                      key={product.href}
+                                      href={product.href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={cn(
+                                        "flex items-center justify-between px-4 py-2 text-sm rounded-lg transition-all",
+                                        product.highlight
+                                          ? "text-primary font-semibold hover:bg-primary/10"
+                                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                                      )}
+                                      onClick={() => setMobileMenuOpen(false)}
+                                    >
+                                      {product.name}
+                                      <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
+                                    </a>
+                                  ) : (
+                                    <Link
+                                      key={product.href}
+                                      to={product.href}
+                                      className={cn(
+                                        "block px-4 py-2 text-sm rounded-lg transition-all",
+                                        location.pathname === product.href
+                                          ? "bg-primary/10 text-primary font-medium"
+                                          : product.highlight
+                                          ? "text-primary font-semibold hover:bg-primary/10"
+                                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                                      )}
+                                      onClick={() => setMobileMenuOpen(false)}
+                                    >
+                                      {product.name}
+                                    </Link>
+                                  )
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
                     )}
