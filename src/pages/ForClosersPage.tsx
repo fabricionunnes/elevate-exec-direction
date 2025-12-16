@@ -7,11 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowRight, ArrowLeft, CheckCircle, Copy, Layers, RefreshCw, TrendingUp, MapPin, Crown, Users2, Megaphone, Heart, ChevronRight, Star, AlertCircle, Target, Lightbulb } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle, Copy, Layers, RefreshCw, TrendingUp, MapPin, Crown, Users2, Megaphone, Heart, ChevronRight, Star, AlertCircle, Target, Lightbulb, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { productDetails } from "@/data/productDetails";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FormData {
   // Fase 1 - Rapport
@@ -540,6 +541,7 @@ export default function ForClosersPage() {
   });
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleNext = () => {
     if (currentStep < 12) setCurrentStep(currentStep + 1);
@@ -550,9 +552,79 @@ export default function ForClosersPage() {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
-  const handleSubmit = () => {
-    setRecommendation(getRecommendation(formData));
-    setIsSubmitted(true);
+  const handleSubmit = async () => {
+    const rec = getRecommendation(formData);
+    setRecommendation(rec);
+    setIsSaving(true);
+    
+    try {
+      const { error } = await supabase
+        .from("closer_diagnostics" as any)
+        .insert({
+          client_name: formData.clientName,
+          company: formData.company,
+          role: formData.role,
+          segment: formData.segment,
+          rapport_notes: formData.rapportNotes,
+          connection_point: formData.connectionPoint,
+          expectations_aligned: formData.expectationsAligned,
+          client_agreed: formData.clientAgreed,
+          decision_maker: formData.decisionMaker,
+          partner_name: formData.partnerName,
+          partner_present: formData.partnerPresent,
+          decision_process: formData.decisionProcess,
+          why_scheduled: formData.whyScheduled,
+          specific_help: formData.specificHelp,
+          what_saw_about_us: formData.whatSawAboutUs,
+          why_now: formData.whyNow,
+          main_pains: formData.mainPains,
+          pain_details: formData.painDetails,
+          how_long_problem: formData.howLongProblem,
+          how_affects_life: formData.howAffectsLife,
+          emotional_impact: formData.emotionalImpact,
+          what_tried_before: formData.whatTriedBefore,
+          why_didnt_work: formData.whyDidntWork,
+          revenue: formData.revenue,
+          team_size: formData.teamSize,
+          avg_ticket: formData.avgTicket,
+          sales_cycle: formData.salesCycle,
+          lead_volume: formData.leadVolume,
+          lead_source: formData.leadSource,
+          conversion: formData.conversion,
+          has_process: formData.hasProcess,
+          has_crm: formData.hasCRM,
+          crm_name: formData.crmName,
+          goal_12_months: formData.goal12Months,
+          ideal_scenario: formData.idealScenario,
+          realistic_expectation: formData.realisticExpectation,
+          deeper_why: formData.deeperWhy,
+          what_would_change: formData.whatWouldChange,
+          love_or_status: formData.loveOrStatus,
+          admission_statement: formData.admissionStatement,
+          why_cant_alone: formData.whyCantAlone,
+          when_to_fix: formData.whenToFix,
+          commitment_level: formData.commitmentLevel[0],
+          is_coachable: formData.isCoachable,
+          budget: formData.budget,
+          timeline: formData.timeline,
+          additional_context: formData.additionalContext,
+          recommended_products: rec.products,
+          recommended_trail: rec.trail,
+          summary: rec.summary,
+        } as any);
+
+      if (error) {
+        console.error("Error saving diagnostic:", error);
+        toast({ title: "Erro ao salvar", description: "Os dados foram gerados mas não foram salvos no sistema.", variant: "destructive" });
+      } else {
+        toast({ title: "Diagnóstico salvo!", description: "Os dados foram salvos e estão disponíveis no admin." });
+      }
+    } catch (err) {
+      console.error("Error:", err);
+    } finally {
+      setIsSaving(false);
+      setIsSubmitted(true);
+    }
   };
 
   const toggleLeadSource = (value: string) => {
