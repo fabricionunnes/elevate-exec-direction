@@ -507,19 +507,10 @@ export default function LeadershipPage() {
             <h2 className="heading-section text-foreground text-center mb-12">
               Investimento
             </h2>
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="bg-card border border-border rounded-2xl p-8 text-center">
-                <h3 className="text-lg font-semibold text-muted-foreground mb-2">Por Líder</h3>
-                <p className="text-4xl font-bold text-accent mb-2">R$ 1.500</p>
-                <p className="text-muted-foreground">/mês por líder</p>
-              </div>
-              <div className="bg-card border-2 border-accent rounded-2xl p-8 text-center relative">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full">
-                  RECOMENDADO
-                </div>
-                <h3 className="text-lg font-semibold text-muted-foreground mb-2">Por Empresa</h3>
-                <p className="text-4xl font-bold text-accent mb-2">R$ 15.000</p>
-                <p className="text-muted-foreground">/ano</p>
+            <div className="max-w-md mx-auto">
+              <div className="bg-card border-2 border-accent rounded-2xl p-8 text-center">
+                <p className="text-5xl md:text-6xl font-bold text-accent mb-2">R$ 15.000</p>
+                <p className="text-muted-foreground text-lg">/ano por empresa</p>
               </div>
             </div>
           </div>

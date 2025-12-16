@@ -543,8 +543,8 @@ export const productDetails: Record<string, ProductDetail> = {
     tagline: "Formação de Liderança",
     icon: Brain,
     color: "bg-cyan-500",
-    price: "R$ 1.500",
-    priceType: "/mês por líder ou R$ 15k/ano",
+    price: "R$ 15.000",
+    priceType: "/ano",
     description: "Programa de formação de líderes que sustentam pessoas, performance e crescimento.",
     deliverables: [
       "Diagnóstico de liderança",

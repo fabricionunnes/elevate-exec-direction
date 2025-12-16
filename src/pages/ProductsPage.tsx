@@ -182,7 +182,7 @@ const leadershipProduct: Product = {
     "Desenvolva líderes intermediários capazes de sustentar a execução sem depender do fundador. Gestão de pessoas, performance e decisões.",
   icp: "Faturamento R$ 100k–2M+/mês",
   href: "/leadership",
-  investment: "R$ 1.500/mês por líder",
+  investment: "R$ 15.000/ano",
 };
 
 // New products
