@@ -21,42 +21,38 @@ interface FormData {
   role: string;
   segment: string;
   rapportNotes: string;
-  connectionPoint: string;
   
-  // Fase 2 - Expectativas
-  expectationsAligned: string;
-  clientAgreed: string;
-  
-  // Fase 3 - Tomadores de Decisão
+  // Fase 2 - Tomadores de Decisão
   decisionMaker: string;
   partnerName: string;
   partnerPresent: string;
   decisionProcess: string;
   
-  // Fase 4 - A Razão (Por que marcou a ligação)
+  // Fase 3 - A Razão (Por que marcou a ligação)
   whyScheduled: string;
   specificHelp: string;
   whatSawAboutUs: string;
   whyNow: string;
   
-  // Fase 5 - Cavar a Dor
+  // Fase 4 - Cavar a Dor
   mainPains: string[];
   painDetails: string;
   howLongProblem: string;
   howAffectsLife: string;
   emotionalImpact: string;
   
-  // Fase 6 - Tentou
+  // Fase 5 - Tentou
   whatTriedBefore: string;
   whyDidntWork: string;
   
-  // Fase 7 - Situação Atual e Desejada
+  // Fase 6 - Situação Atual e Desejada
   revenue: string;
   teamSize: string;
   avgTicket: string;
   salesCycle: string;
   leadVolume: string;
   leadSource: string[];
+  otherLeadSource: string;
   conversion: string;
   hasProcess: string;
   hasCRM: string;
@@ -65,25 +61,24 @@ interface FormData {
   idealScenario: string;
   realisticExpectation: string;
   
-  // Fase 8 - Porquê (Amor ou Status)
+  // Fase 7 - Porquê (Amor ou Status)
   deeperWhy: string;
   whatWouldChange: string;
   loveOrStatus: string;
   
-  // Fase 9 - Admissão
+  // Fase 8 - Admissão
   admissionStatement: string;
   whyCantAlone: string;
   
-  // Fase 10 - Compromisso
+  // Fase 9 - Compromisso
   whenToFix: string;
   commitmentLevel: number[];
   isCoachable: string;
   
-  // Fase 11 - Fechamento
-  budget: string;
+  // Fase 10 - Fechamento
   timeline: string;
   
-  // Fase 12 - Preço / Observações
+  // Fase 11 - Observações
   additionalContext: string;
 }
 
@@ -380,8 +375,7 @@ function getRecommendation(data: FormData): Recommendation {
   }
   
   // Mastermind - Para empresários avançados que buscam pares à altura
-  if (["600k-1m", "1m-2m", "over-2m"].includes(revenue) && 
-      data.budget && ["10k-20k", "over-20k", "investment"].includes(data.budget)) {
+  if (["600k-1m", "1m-2m", "over-2m"].includes(revenue)) {
     products.push({
       id: "mastermind",
       name: "UNV Mastermind",
@@ -493,20 +487,19 @@ function getRecommendation(data: FormData): Recommendation {
   return { products, trail, summary, nextSteps };
 }
 
-// 12 Fases do Script Comercial
+// 11 Fases do Script Comercial
 const steps = [
   { id: 1, title: "Rapport", subtitle: "Conexão" },
-  { id: 2, title: "Expectativas", subtitle: "Alinhamento" },
-  { id: 3, title: "Decisores", subtitle: "Quem decide" },
-  { id: 4, title: "A Razão", subtitle: "Por que marcou" },
-  { id: 5, title: "Cavar", subtitle: "Aprofundar dor" },
-  { id: 6, title: "Tentou", subtitle: "O que fez" },
-  { id: 7, title: "Situação", subtitle: "Atual x Desejada" },
-  { id: 8, title: "Porquê", subtitle: "Amor ou Status" },
-  { id: 9, title: "Admissão", subtitle: "Precisa de ajuda" },
-  { id: 10, title: "Compromisso", subtitle: "Quando resolver" },
-  { id: 11, title: "Fechamento", subtitle: "Investimento" },
-  { id: 12, title: "Recomendação", subtitle: "Resultado" }
+  { id: 2, title: "Decisores", subtitle: "Quem decide" },
+  { id: 3, title: "A Razão", subtitle: "Por que marcou" },
+  { id: 4, title: "Cavar", subtitle: "Aprofundar dor" },
+  { id: 5, title: "Tentou", subtitle: "O que fez" },
+  { id: 6, title: "Situação", subtitle: "Atual x Desejada" },
+  { id: 7, title: "Porquê", subtitle: "Amor ou Status" },
+  { id: 8, title: "Admissão", subtitle: "Precisa de ajuda" },
+  { id: 9, title: "Compromisso", subtitle: "Quando resolver" },
+  { id: 10, title: "Fechamento", subtitle: "Timeline" },
+  { id: 11, title: "Recomendação", subtitle: "Resultado" }
 ];
 
 export default function ForClosersPage() {
@@ -514,29 +507,27 @@ export default function ForClosersPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
     // Fase 1
-    clientName: "", company: "", role: "", segment: "", rapportNotes: "", connectionPoint: "",
+    clientName: "", company: "", role: "", segment: "", rapportNotes: "",
     // Fase 2
-    expectationsAligned: "", clientAgreed: "",
-    // Fase 3
     decisionMaker: "", partnerName: "", partnerPresent: "", decisionProcess: "",
-    // Fase 4
+    // Fase 3
     whyScheduled: "", specificHelp: "", whatSawAboutUs: "", whyNow: "",
-    // Fase 5
+    // Fase 4
     mainPains: [], painDetails: "", howLongProblem: "", howAffectsLife: "", emotionalImpact: "",
-    // Fase 6
+    // Fase 5
     whatTriedBefore: "", whyDidntWork: "",
-    // Fase 7
-    revenue: "", teamSize: "", avgTicket: "", salesCycle: "", leadVolume: "", leadSource: [], conversion: "",
+    // Fase 6
+    revenue: "", teamSize: "", avgTicket: "", salesCycle: "", leadVolume: "", leadSource: [], otherLeadSource: "", conversion: "",
     hasProcess: "", hasCRM: "", crmName: "", goal12Months: "", idealScenario: "", realisticExpectation: "",
-    // Fase 8
+    // Fase 7
     deeperWhy: "", whatWouldChange: "", loveOrStatus: "",
-    // Fase 9
+    // Fase 8
     admissionStatement: "", whyCantAlone: "",
-    // Fase 10
+    // Fase 9
     whenToFix: "", commitmentLevel: [3], isCoachable: "",
+    // Fase 10
+    timeline: "",
     // Fase 11
-    budget: "", timeline: "",
-    // Fase 12
     additionalContext: ""
   });
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
@@ -544,7 +535,7 @@ export default function ForClosersPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleNext = () => {
-    if (currentStep < 12) setCurrentStep(currentStep + 1);
+    if (currentStep < 11) setCurrentStep(currentStep + 1);
     else handleSubmit();
   };
   
@@ -566,9 +557,6 @@ export default function ForClosersPage() {
           role: formData.role,
           segment: formData.segment,
           rapport_notes: formData.rapportNotes,
-          connection_point: formData.connectionPoint,
-          expectations_aligned: formData.expectationsAligned,
-          client_agreed: formData.clientAgreed,
           decision_maker: formData.decisionMaker,
           partner_name: formData.partnerName,
           partner_present: formData.partnerPresent,
@@ -589,7 +577,7 @@ export default function ForClosersPage() {
           avg_ticket: formData.avgTicket,
           sales_cycle: formData.salesCycle,
           lead_volume: formData.leadVolume,
-          lead_source: formData.leadSource,
+          lead_source: [...formData.leadSource, ...(formData.otherLeadSource ? [formData.otherLeadSource] : [])],
           conversion: formData.conversion,
           has_process: formData.hasProcess,
           has_crm: formData.hasCRM,
@@ -605,7 +593,6 @@ export default function ForClosersPage() {
           when_to_fix: formData.whenToFix,
           commitment_level: formData.commitmentLevel[0],
           is_coachable: formData.isCoachable,
-          budget: formData.budget,
           timeline: formData.timeline,
           additional_context: formData.additionalContext,
           recommended_products: rec.products,
@@ -745,16 +732,6 @@ export default function ForClosersPage() {
             </div>
             
             <div className="space-y-2">
-              <Label>Ponto de conexão encontrado</Label>
-              <Textarea 
-                value={formData.connectionPoint} 
-                onChange={e => setFormData({...formData, connectionPoint: e.target.value})} 
-                placeholder="Ex: Vi nos stories que foi na academia, viagem, hobby em comum, experiência similar..."
-                rows={2}
-              />
-            </div>
-            
-            <div className="space-y-2">
               <Label>Anotações de Rapport</Label>
               <Textarea 
                 value={formData.rapportNotes} 
@@ -766,58 +743,14 @@ export default function ForClosersPage() {
           </div>
         );
       
-      // FASE 2 - EXPECTATIVAS
+      // FASE 2 - TOMADORES DE DECISÃO
       case 2:
         return (
           <div className="card-premium p-6 md:p-8 space-y-6">
             <div className="flex items-start gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">2</div>
               <div>
-                <h2 className="heading-card text-foreground">Fase 2: Expectativas</h2>
-                <p className="text-sm text-muted-foreground">Alinhar como a conversa vai acontecer. Estabelecer controle.</p>
-              </div>
-            </div>
-            
-            <div className="bg-secondary p-4 rounded-lg space-y-3">
-              <p className="text-sm text-muted-foreground italic">
-                "Você está pronto para começar, [NOME]? Então é assim que essas ligações geralmente acontecem... 
-                É como ir ao médico: vou fazer algumas perguntas sobre o seu negócio, descobrir qual é o problema, 
-                dar um diagnóstico. Se a solução é algo que podemos oferecer, vou falar sobre o que temos. Parece bom?"
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>O cliente concordou com o formato?</Label>
-              <Select value={formData.clientAgreed} onValueChange={v => setFormData({...formData, clientAgreed: v})}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="yes">Sim, concordou</SelectItem>
-                  <SelectItem value="partial">Parcialmente</SelectItem>
-                  <SelectItem value="no">Não concordou</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Anotações sobre expectativas</Label>
-              <Textarea 
-                value={formData.expectationsAligned} 
-                onChange={e => setFormData({...formData, expectationsAligned: e.target.value})} 
-                placeholder="Como o prospect reagiu? Alguma resistência? Observações..."
-                rows={2}
-              />
-            </div>
-          </div>
-        );
-      
-      // FASE 3 - TOMADORES DE DECISÃO
-      case 3:
-        return (
-          <div className="card-premium p-6 md:p-8 space-y-6">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">3</div>
-              <div>
-                <h2 className="heading-card text-foreground">Fase 3: Tomadores de Decisão</h2>
+                <h2 className="heading-card text-foreground">Fase 2: Tomadores de Decisão</h2>
                 <p className="text-sm text-muted-foreground">Identificar quem decide. Se tem sócio/cônjuge, precisa estar na ligação.</p>
               </div>
             </div>
@@ -888,14 +821,14 @@ export default function ForClosersPage() {
           </div>
         );
       
-      // FASE 4 - A RAZÃO
-      case 4:
+      // FASE 3 - A RAZÃO
+      case 3:
         return (
           <div className="card-premium p-6 md:p-8 space-y-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">4</div>
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">3</div>
               <div>
-                <h2 className="heading-card text-foreground">Fase 4: A Razão</h2>
+                <h2 className="heading-card text-foreground">Fase 3: A Razão</h2>
                 <p className="text-sm text-muted-foreground">O prospect precisa DIZER o motivo da ligação. Identificar a dor e urgência.</p>
               </div>
             </div>
@@ -952,14 +885,14 @@ export default function ForClosersPage() {
           </div>
         );
       
-      // FASE 5 - CAVAR A DOR
-      case 5:
+      // FASE 4 - CAVAR A DOR
+      case 4:
         return (
           <div className="card-premium p-6 md:p-8 space-y-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">5</div>
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">4</div>
               <div>
-                <h2 className="heading-card text-foreground">Fase 5: Cavar a Dor</h2>
+                <h2 className="heading-card text-foreground">Fase 4: Cavar a Dor</h2>
                 <p className="text-sm text-muted-foreground">Aprofundar na dor. O prospect precisa SENTIR como é horrível continuar assim.</p>
               </div>
             </div>
@@ -1036,14 +969,14 @@ export default function ForClosersPage() {
           </div>
         );
       
-      // FASE 6 - TENTOU
-      case 6:
+      // FASE 5 - TENTOU
+      case 5:
         return (
           <div className="card-premium p-6 md:p-8 space-y-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">6</div>
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">5</div>
               <div>
-                <h2 className="heading-card text-foreground">Fase 6: Tentou</h2>
+                <h2 className="heading-card text-foreground">Fase 5: Tentou</h2>
                 <p className="text-sm text-muted-foreground">O que já tentou para resolver? Descobrir e contornar objeções antes que apareçam.</p>
               </div>
             </div>
@@ -1083,14 +1016,14 @@ export default function ForClosersPage() {
           </div>
         );
       
-      // FASE 7 - SITUAÇÃO ATUAL E DESEJADA
-      case 7:
+      // FASE 6 - SITUAÇÃO ATUAL E DESEJADA
+      case 6:
         return (
           <div className="card-premium p-6 md:p-8 space-y-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">7</div>
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">6</div>
               <div>
-                <h2 className="heading-card text-foreground">Fase 7: Situação Atual x Desejada</h2>
+                <h2 className="heading-card text-foreground">Fase 6: Situação Atual x Desejada</h2>
                 <p className="text-sm text-muted-foreground">Identificar onde está e onde quer chegar. Alinhar expectativas realistas.</p>
               </div>
             </div>
@@ -1162,6 +1095,14 @@ export default function ForClosersPage() {
                   </label>
                 ))}
               </div>
+              <div className="space-y-2">
+                <Label>Outros (especificar)</Label>
+                <Input 
+                  value={formData.otherLeadSource} 
+                  onChange={e => setFormData({...formData, otherLeadSource: e.target.value})} 
+                  placeholder="Ex: WhatsApp, Telegram, Fórum, Comunidade..."
+                />
+              </div>
             </div>
             
             <div className="grid sm:grid-cols-2 gap-6">
@@ -1230,14 +1171,14 @@ export default function ForClosersPage() {
           </div>
         );
       
-      // FASE 8 - PORQUÊ (AMOR OU STATUS)
-      case 8:
+      // FASE 7 - PORQUÊ (AMOR OU STATUS)
+      case 7:
         return (
           <div className="card-premium p-6 md:p-8 space-y-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">8</div>
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">7</div>
               <div>
-                <h2 className="heading-card text-foreground">Fase 8: O Porquê Profundo</h2>
+                <h2 className="heading-card text-foreground">Fase 7: O Porquê Profundo</h2>
                 <p className="text-sm text-muted-foreground">Toda decisão se resume a AMOR ou STATUS. Descobrir o motivo real por trás do desejo.</p>
               </div>
             </div>
@@ -1289,14 +1230,14 @@ export default function ForClosersPage() {
           </div>
         );
       
-      // FASE 9 - ADMISSÃO
-      case 9:
+      // FASE 8 - ADMISSÃO
+      case 8:
         return (
           <div className="card-premium p-6 md:p-8 space-y-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">9</div>
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">8</div>
               <div>
-                <h2 className="heading-card text-foreground">Fase 9: Admissão</h2>
+                <h2 className="heading-card text-foreground">Fase 8: Admissão</h2>
                 <p className="text-sm text-muted-foreground">O prospect precisa ADMITIR que precisa de ajuda. Sem isso, não consegue vender.</p>
               </div>
             </div>
@@ -1335,14 +1276,14 @@ export default function ForClosersPage() {
           </div>
         );
       
-      // FASE 10 - COMPROMISSO
-      case 10:
+      // FASE 9 - COMPROMISSO
+      case 9:
         return (
           <div className="card-premium p-6 md:p-8 space-y-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">10</div>
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">9</div>
               <div>
-                <h2 className="heading-card text-foreground">Fase 10: Compromisso</h2>
+                <h2 className="heading-card text-foreground">Fase 9: Compromisso</h2>
                 <p className="text-sm text-muted-foreground">Quando quer resolver? Buscar compromisso IMEDIATO. Antecipar objeção de tempo.</p>
               </div>
             </div>
@@ -1419,15 +1360,15 @@ export default function ForClosersPage() {
           </div>
         );
       
-      // FASE 11 - FECHAMENTO
-      case 11:
+      // FASE 10 - FECHAMENTO
+      case 10:
         return (
           <div className="card-premium p-6 md:p-8 space-y-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">11</div>
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">10</div>
               <div>
-                <h2 className="heading-card text-foreground">Fase 11: Fechamento</h2>
-                <p className="text-sm text-muted-foreground">Orçamento, timeline e contexto final para a recomendação.</p>
+                <h2 className="heading-card text-foreground">Fase 10: Fechamento</h2>
+                <p className="text-sm text-muted-foreground">Timeline e contexto final para a recomendação.</p>
               </div>
             </div>
             
@@ -1437,21 +1378,12 @@ export default function ForClosersPage() {
               </p>
             </div>
             
-            <div className="grid sm:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>Orçamento Disponível</Label>
-                <Select value={formData.budget} onValueChange={v => setFormData({...formData, budget: v})}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent className="bg-card border-border">{budgetOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Prazo para Decisão</Label>
-                <Select value={formData.timeline} onValueChange={v => setFormData({...formData, timeline: v})}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent className="bg-card border-border">{timelineOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>Prazo para Decisão</Label>
+              <Select value={formData.timeline} onValueChange={v => setFormData({...formData, timeline: v})}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent className="bg-card border-border">{timelineOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
             
             <div className="space-y-2">
@@ -1473,14 +1405,14 @@ export default function ForClosersPage() {
           </div>
         );
       
-      // FASE 12 - RESULTADO/RECOMENDAÇÃO (será gerado automaticamente)
-      case 12:
+      // FASE 11 - RESULTADO/RECOMENDAÇÃO
+      case 11:
         return (
           <div className="card-premium p-6 md:p-8 space-y-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">12</div>
+              <div className="w-10 h-10 rounded-full bg-accent/20 text-accent font-bold flex items-center justify-center flex-shrink-0">11</div>
               <div>
-                <h2 className="heading-card text-foreground">Fase 12: Gerar Recomendação</h2>
+                <h2 className="heading-card text-foreground">Fase 11: Gerar Recomendação</h2>
                 <p className="text-sm text-muted-foreground">Clique para gerar a recomendação personalizada com base em todas as informações.</p>
               </div>
             </div>
