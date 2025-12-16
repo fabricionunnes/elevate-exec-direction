@@ -183,7 +183,7 @@ const products: Product[] = [
     icon: Star,
     color: "bg-amber-500",
     icp: "Empresários em estágio avançado",
-    revenue: "R$ 300k–3M/mês",
+    revenue: "R$ 1M–10M/mês",
     team: "Donos reais",
     price: "R$ 36.000",
     priceType: "/ano",

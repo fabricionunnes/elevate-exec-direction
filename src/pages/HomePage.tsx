@@ -67,7 +67,7 @@ const products = [
   {
     name: "UNV Mastermind",
     description: "Inner Circle de líderes empresariais",
-    icp: "R$ 300k–3M/mês",
+    icp: "R$ 1M–10M/mês",
     href: "/mastermind",
     highlight: true,
   },

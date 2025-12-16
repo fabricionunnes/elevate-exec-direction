@@ -313,7 +313,7 @@ const products: Record<string, ProductRecommendation> = {
       "Comunidade ultra seletiva",
       "UNV AI Advisor Mastermind"
     ],
-    bestFor: "Empresários R$ 300k a R$ 3M/mês que já cresceram e querem decidir melhor com pares à altura",
+    bestFor: "Empresários R$ 1M a R$ 10M/mês que já cresceram e querem decidir melhor com pares à altura",
     whyRecommended: "Você já passou da fase de execução. Agora precisa de um conselho de decisão com pares do seu nível."
   }
 };

@@ -242,7 +242,7 @@ export default function MastermindPage() {
         ]}
         arrow="Onde empresários param de crescer sozinhos."
         targetAudience={{
-          revenue: "R$ 300k a R$ 3M/mês"
+          revenue: "R$ 1M a R$ 10M/mês"
         }}
         schedule={[
           { period: "Mensal", description: "Mastermind" },
@@ -336,7 +336,7 @@ export default function MastermindPage() {
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
                   <CheckCircle className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
-                  <span className="text-muted-foreground">Faturamento <span className="text-foreground font-semibold">R$ 300k a R$ 3M/mês</span></span>
+                  <span className="text-muted-foreground">Faturamento <span className="text-foreground font-semibold">R$ 1M a R$ 10M/mês</span></span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />

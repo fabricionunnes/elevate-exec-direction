@@ -168,7 +168,7 @@ const advancedTrail: Product[] = [
     tagline: "Conselho de decisão",
     description:
       "Mastermind exclusivo para empreendedores avançados. Sessões mensais, hot seats, Experiência Mansão e acesso direto a Fabrício.",
-    icp: "Faturamento R$ 300k–3M/mês",
+    icp: "Faturamento R$ 1M–10M/mês",
     href: "/mastermind",
     investment: "R$ 36.000/ano",
   },
