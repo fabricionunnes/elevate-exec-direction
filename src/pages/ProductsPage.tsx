@@ -221,7 +221,7 @@ const strategicProducts: Product[] = [
       "Assessoria jurídica terceirizada, preventiva e consultiva. Contratos, compliance, LGPD e suporte para decisões de crescimento.",
     icp: "Empresas B2B • R$ 50k–2M/mês",
     href: "/safe",
-    investment: "R$ 3.000–6.000/mês",
+    investment: "R$ 3.000/mês",
   },
 ];
 

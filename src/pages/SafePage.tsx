@@ -390,7 +390,7 @@ export default function SafePage() {
         <div className="container-premium text-center relative">
           <h2 className="heading-section text-foreground mb-8">Investimento</h2>
           <div className="bg-card border border-border rounded-2xl p-8 md:p-12 max-w-lg mx-auto">
-            <p className="text-4xl font-bold text-foreground mb-2">R$ 3.000 a R$ 6.000</p>
+            <p className="text-4xl font-bold text-foreground mb-2">R$ 3.000</p>
             <p className="text-muted-foreground mb-2">/mês</p>
             <p className="text-sm text-muted-foreground/70 mb-8">
               (dependendo do porte e complexidade)
