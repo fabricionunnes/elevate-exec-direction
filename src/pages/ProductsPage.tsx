@@ -214,6 +214,15 @@ const strategicProducts: Product[] = [
     href: "/people",
     investment: "R$ 2.500–6.000/mês",
   },
+  {
+    name: "UNV Safe",
+    tagline: "Jurídico estratégico",
+    description:
+      "Assessoria jurídica terceirizada, preventiva e consultiva. Contratos, compliance, LGPD e suporte para decisões de crescimento.",
+    icp: "Empresas B2B • R$ 50k–2M/mês",
+    href: "/safe",
+    investment: "R$ 3.000–6.000/mês",
+  },
 ];
 
 // External
@@ -312,7 +321,7 @@ export default function ProductsPage() {
           <div className="flex items-center gap-3 mb-8">
             <div className="w-3 h-3 rounded-full bg-rose-500" />
             <h2 className="text-xl font-bold text-foreground">Estratégia & Estrutura</h2>
-            <span className="text-sm text-muted-foreground">Le Désir • Finance • People</span>
+            <span className="text-sm text-muted-foreground">Le Désir • Finance • People • Safe</span>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {strategicProducts.map((product, i) => (

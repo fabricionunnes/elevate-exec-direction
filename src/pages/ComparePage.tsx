@@ -25,7 +25,8 @@ import {
   X,
   Heart,
   Users,
-  DollarSign
+  DollarSign,
+  Scale
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClientDiagnosticForm } from "@/components/ClientDiagnosticForm";
@@ -271,6 +272,22 @@ const products: Product[] = [
     keyDiff: "Clareza financeira — DRE, fluxo de caixa e margem por produto sem burocracia",
     bestFor: "Empresários que faturam alto mas não sabem onde ganham ou perdem dinheiro",
     notFor: "Quem busca contabilidade ou assessoria de investimentos"
+  },
+  {
+    id: "safe",
+    name: "UNV Safe",
+    tagline: "Legal, Risk & Compliance Advisory",
+    icon: Scale,
+    color: "bg-blue-600",
+    icp: "Empresas B2B em crescimento",
+    revenue: "R$ 50k–2M/mês",
+    team: "Operações com contratos",
+    price: "R$ 3.000 a R$ 6.000",
+    priceType: "/mês",
+    link: "/safe",
+    keyDiff: "Jurídico terceirizado preventivo — contratos, compliance e LGPD sem surpresas",
+    bestFor: "Empresas que crescem rápido mas não têm suporte jurídico estruturado",
+    notFor: "Pessoa física ou quem busca advogado para causa pontual"
   }
 ];
 
@@ -1111,7 +1128,119 @@ const features: Feature[] = [
       leadership: false,
       "le-desir": false,
       people: false,
-      finance: "Completo"
+      finance: "Completo",
+      safe: false
+    }
+  },
+  // Legal & Compliance (UNV Safe)
+  {
+    name: "Jurídico Preventivo",
+    description: "Análise de riscos antes de problemas",
+    category: "Legal & Compliance",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false,
+      safe: "Completo"
+    }
+  },
+  {
+    name: "Padronização de Contratos",
+    description: "Contratos de serviço, comerciais, parceiros",
+    category: "Legal & Compliance",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false,
+      safe: "Completo"
+    }
+  },
+  {
+    name: "Consultoria Jurídica Contínua",
+    description: "Suporte para decisões estratégicas",
+    category: "Legal & Compliance",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false,
+      safe: "Recorrente"
+    }
+  },
+  {
+    name: "Orientação Trabalhista",
+    description: "CLT, PJ, terceirização",
+    category: "Legal & Compliance",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: "Interface",
+      finance: false,
+      safe: "Completo"
+    }
+  },
+  {
+    name: "LGPD & Compliance",
+    description: "Adequação e políticas",
+    category: "Legal & Compliance",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false,
+      safe: "Básico"
     }
   }
 ];
