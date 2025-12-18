@@ -149,7 +149,7 @@ export default function HomePage() {
                 </Button>
               </Link>
               <a
-                href="https://wa.me/5500000000000"
+                href="https://wa.me/5531999120003"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto"
