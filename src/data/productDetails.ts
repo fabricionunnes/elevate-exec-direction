@@ -12,7 +12,8 @@ import {
   Zap,
   DollarSign,
   Users,
-  Heart
+  Heart,
+  Scale
 } from "lucide-react";
 
 export interface ProductProblemSolution {
@@ -898,6 +899,67 @@ export const productDetails: Record<string, ProductDetail> = {
       "Quem não tem gargalo de pessoas",
       "Quem busca só recrutamento pontual (temos modalidade Hiring)",
       "Quem não quer investir em estrutura"
+    ]
+  },
+  safe: {
+    id: "safe",
+    name: "UNV Safe",
+    tagline: "Legal, Risk & Compliance Advisory",
+    icon: Scale,
+    color: "bg-blue-600",
+    price: "R$ 3.000 a R$ 6.000",
+    priceType: "/mês",
+    description: "Assessoria jurídica terceirizada, preventiva e consultiva para empresas em crescimento.",
+    deliverables: [
+      "Análise de riscos da operação",
+      "Padronização de contratos",
+      "Consultoria jurídica contínua",
+      "Orientação trabalhista (CLT, PJ, terceirização)",
+      "LGPD e compliance básico",
+      "Suporte para decisões estratégicas"
+    ],
+    bestFor: "Empresas B2B com R$ 50k-2M/mês que precisam de suporte jurídico preventivo",
+    whyRecommended: "Você cresce rápido mas sem segurança jurídica. O Safe protege seu crescimento com jurídico preventivo.",
+    problemsSolved: [
+      {
+        problem: "Contratos feitos sem padrão — cada cliente tem um contrato diferente",
+        solution: "Padronização completa de contratos (serviços, comerciais, vendedores, parceiros)",
+        result: "Contratos consistentes que protegem a empresa em todas as relações"
+      },
+      {
+        problem: "Decisões tomadas sem respaldo jurídico — medo de crescer errado",
+        solution: "Consultoria jurídica contínua para suportar decisões estratégicas",
+        result: "Decisões seguras com análise jurídica prévia"
+      },
+      {
+        problem: "Riscos trabalhistas acumulados — CLT, PJ, terceirização confusos",
+        solution: "Orientação trabalhista completa + estruturação de cargos",
+        result: "Redução de passivos trabalhistas e clareza nas relações"
+      },
+      {
+        problem: "LGPD e compliance negligenciados — risco de sanções",
+        solution: "Adequação básica de LGPD + termos de uso + políticas",
+        result: "Empresa em conformidade, sem risco de multas"
+      }
+    ],
+    keyBenefits: [
+      "Crescer com segurança jurídica",
+      "Menos risco, mais decisão",
+      "Contratos padronizados",
+      "Jurídico preventivo, não reativo"
+    ],
+    timeToResults: "Contratos revisados em 30 dias, proteção contínua",
+    idealProfile: [
+      "Faturamento R$ 50k-2M/mês",
+      "Empresas B2B",
+      "Times com CLT, PJ ou prestadores",
+      "Operações com contratos recorrentes"
+    ],
+    notFor: [
+      "Pessoa física",
+      "Microempresas informais",
+      "Quem busca advogado para causa isolada",
+      "Contencioso pesado (casos tratados à parte)"
     ]
   }
 };

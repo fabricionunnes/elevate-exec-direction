@@ -50,6 +50,7 @@ const productCategories: ProductCategory[] = [
       { name: "Le Désir", href: "/le-desir" },
       { name: "UNV Finance", href: "/finance" },
       { name: "UNV People", href: "/people" },
+      { name: "UNV Safe", href: "/safe" },
     ],
   },
   {

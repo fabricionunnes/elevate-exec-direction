@@ -23,6 +23,7 @@ import LeadershipPage from "./pages/LeadershipPage";
 import LeDesirPage from "./pages/LeDesirPage";
 import FinancePage from "./pages/FinancePage";
 import PeoplePage from "./pages/PeoplePage";
+import SafePage from "./pages/SafePage";
 import ForClosersPage from "./pages/ForClosersPage";
 import ClientDiagnosticPage from "./pages/ClientDiagnosticPage";
 import ApplyPage from "./pages/ApplyPage";
@@ -63,6 +64,7 @@ const App = () => (
           <Route path="/le-desir" element={<LeDesirPage />} />
           <Route path="/finance" element={<FinancePage />} />
           <Route path="/people" element={<PeoplePage />} />
+          <Route path="/safe" element={<SafePage />} />
           <Route path="/for-closers" element={<ForClosersPage />} />
           <Route path="/diagnostico" element={<ClientDiagnosticPage />} />
           <Route path="/apply" element={<ApplyPage />} />
