@@ -282,7 +282,7 @@ const products: Product[] = [
     icp: "Empresas B2B em crescimento",
     revenue: "R$ 50k–2M/mês",
     team: "Operações com contratos",
-    price: "R$ 3.000 a R$ 6.000",
+    price: "R$ 3.000",
     priceType: "/mês",
     link: "/safe",
     keyDiff: "Jurídico terceirizado preventivo — contratos, compliance e LGPD sem surpresas",

@@ -907,7 +907,7 @@ export const productDetails: Record<string, ProductDetail> = {
     tagline: "Legal, Risk & Compliance Advisory",
     icon: Scale,
     color: "bg-blue-600",
-    price: "R$ 3.000 a R$ 6.000",
+    price: "R$ 3.000",
     priceType: "/mês",
     description: "Assessoria jurídica terceirizada, preventiva e consultiva para empresas em crescimento.",
     deliverables: [
