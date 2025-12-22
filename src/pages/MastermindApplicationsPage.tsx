@@ -605,7 +605,7 @@ export default function MastermindApplicationsPage() {
                               onClick={() => {
                                 const phone = app.phone.replace(/\D/g, "");
                                 const text = `Olá ${app.full_name}! Recebi sua aplicação para o UNV Mastermind. Vamos agendar uma conversa de curadoria?`;
-                                window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(text)}`, "_blank");
+                                window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(text)}`, "_top");
                               }}
                               title="WhatsApp"
                             >
@@ -808,7 +808,7 @@ export default function MastermindApplicationsPage() {
                   onClick={() => {
                     const phone = selectedApplication.phone.replace(/\D/g, "");
                     const text = `Olá ${selectedApplication.full_name}! Recebi sua aplicação para o UNV Mastermind. Vamos agendar uma conversa de curadoria?`;
-                    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(text)}`, "_blank");
+                    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(text)}`, "_top");
                   }}
                 >
                   <Phone className="h-4 w-4 mr-2" />
