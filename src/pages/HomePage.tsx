@@ -230,24 +230,13 @@ export default function HomePage() {
               ))}
             </ul>
 
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 opacity-0 animate-fade-up delay-400">
+             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 opacity-0 animate-fade-up delay-400">
               <Link to="/apply" className="w-full sm:w-auto">
                 <Button variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
                   Aplicar para Diagnóstico
                   <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </Link>
-              <a
-                href="https://wa.me/5531999120003"
-                target="_top"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto"
-              >
-                <Button variant="outline" size="lg" className="w-full sm:w-auto text-sm sm:text-base border-primary/30 text-foreground hover:bg-primary/10">
-                  <MessageCircle className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                  WhatsApp
-                </Button>
-              </a>
             </div>
           </div>
         </div>
@@ -654,16 +643,6 @@ export default function HomePage() {
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
-            <a
-              href="https://wa.me/5531999120003"
-              target="_top"
-              rel="noopener noreferrer"
-            >
-              <Button variant="outline" size="xl" className="w-full sm:w-auto text-sm sm:text-base border-primary/30 text-foreground hover:bg-primary/10">
-                <MessageCircle className="mr-2 h-5 w-5" />
-                Falar no WhatsApp
-              </Button>
-            </a>
           </div>
         </div>
       </section>

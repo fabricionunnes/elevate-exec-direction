@@ -120,17 +120,15 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a
-                  href="https://wa.me/5531999120003"
-                  target="_top"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
-                >
-                  <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary/50 flex items-center justify-center group-hover:bg-primary/10 transition-all flex-shrink-0">
+                <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
+                  <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary/50 flex items-center justify-center flex-shrink-0">
                     <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </span>
-                  WhatsApp
-                </a>
+                  <div className="leading-tight">
+                    <p className="text-muted-foreground">WhatsApp</p>
+                    <p className="text-foreground font-medium">(31) 99912-0003</p>
+                  </div>
+                </div>
               </li>
             </ul>
             <div className="mt-4 sm:mt-6">
