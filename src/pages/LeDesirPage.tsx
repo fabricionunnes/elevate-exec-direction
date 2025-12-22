@@ -10,40 +10,104 @@ import {
   Shield,
   Calendar,
   XCircle,
-  Sparkles
+  Sparkles,
+  Lock,
+  Users,
+  Target,
+  Zap
 } from "lucide-react";
-import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 import logoLeDesir from "@/assets/logo-le-desir.png";
 
-const problems = [
-  "Exaustão mental silenciosa",
-  "Decisões tomadas sob ansiedade",
-  "Repetição de padrões destrutivos",
-  "Dificuldade de separar identidade pessoal da empresa",
-  "Solidão de liderança"
+const pressures = [
+  "A pressão por decisões constantes.",
+  "A solidão do comando.",
+  "A dificuldade de desligar.",
+  "O acúmulo silencioso de tensão.",
+  "A repetição de padrões que sabotam relações, negócios e visão de longo prazo."
 ];
 
-const deliverables = [
-  "Clareza decisória",
-  "Redução de ansiedade",
-  "Aumento de foco",
-  "Melhoria de relações profissionais",
-  "Sustentação emocional para ciclos de crescimento"
+const notIs = [
+  "terapia tradicional",
+  "mentoria de negócios",
+  "coaching motivacional",
+  "conversa casual"
+];
+
+const isFor = [
+  "organizar pensamentos complexos",
+  "entender padrões que se repetem",
+  "reduzir decisões reativas",
+  "recuperar presença e lucidez",
+  "sustentar crescimento sem colapsar internamente"
+];
+
+const problemsWithout = [
+  "decide no impulso",
+  "centraliza demais",
+  "perde clareza estratégica",
+  "mistura identidade pessoal com o negócio",
+  "reage mais do que conduz"
+];
+
+const whereActuates = [
+  "no lugar onde as decisões nascem",
+  "na origem das escolhas",
+  "no que sustenta ou destrói o longo prazo"
+];
+
+const realEffects = [
+  "decisões mais calmas e assertivas",
+  "redução de ansiedade constante",
+  "maior capacidade de delegar",
+  "menos necessidade de controle excessivo",
+  "melhoria nas relações profissionais e pessoais",
+  "maior clareza de propósito e direção",
+  "sustentação emocional para fases de crescimento"
+];
+
+const targetAudience = [
+  "Empresários",
+  "Fundadores",
+  "Sócios",
+  "Executivos C-level",
+  "Líderes que tomam decisões todos os dias"
+];
+
+const especiallyFor = [
+  "sente que \"segura tudo sozinho\"",
+  "já venceu no financeiro, mas sente desgaste interno",
+  "percebe padrões que se repetem",
+  "quer crescer sem se perder no processo"
 ];
 
 const notFor = [
-  "Quem busca respostas rápidas",
-  "Quem quer fórmula",
-  "Quem não tolera silêncio e profundidade"
+  "busca respostas rápidas",
+  "quer fórmula, técnica ou método",
+  "não tolera silêncio",
+  "quer ser convencido",
+  "não está disposto a olhar para si"
+];
+
+const format = [
+  "Encontros individuais",
+  "Online ou presencial (a depender da agenda)",
+  "Frequência semanal ou quinzenal",
+  "Processo contínuo (sem prazo fechado)",
+  "Total confidencialidade"
+];
+
+const complements = [
+  { name: "UNV Sales Acceleration", aspect: "decisão" },
+  { name: "UNV Partners", aspect: "visão" },
+  { name: "UNV Mastermind", aspect: "relação" },
+  { name: "UNV Leadership", aspect: "presença" }
 ];
 
 export default function LeDesirPage() {
-  // Le Désir brand colors - deep burgundy/wine red theme
   const leDesirColors = {
-    primary: "hsl(355, 45%, 35%)", // Deep burgundy
-    primaryLight: "hsl(355, 40%, 45%)", // Lighter burgundy
-    primaryDark: "hsl(355, 50%, 25%)", // Darker burgundy
-    accent: "hsl(355, 35%, 55%)", // Soft wine
+    primary: "hsl(355, 45%, 35%)",
+    primaryLight: "hsl(355, 40%, 45%)",
+    primaryDark: "hsl(355, 50%, 25%)",
   };
 
   return (
@@ -56,18 +120,10 @@ export default function LeDesirPage() {
             <div className="inline-block mb-6 p-4 bg-white/95 rounded-2xl shadow-lg">
               <img src={logoLeDesir} alt="Le Désir" className="h-32 md:h-40 w-auto object-contain" />
             </div>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 border border-white/30 mb-6">
-              <Heart className="h-4 w-4 text-white" />
-              <span className="text-sm font-medium text-white">Escuta Estratégica</span>
-            </div>
-            <p className="text-2xl text-white font-medium mb-4">
-              Escuta Profunda para Quem Decide
+            <p className="text-2xl md:text-3xl text-white font-medium mb-4 leading-relaxed">
+              Um espaço de elaboração estratégica para empresários que carregam muito mais do que números.
             </p>
-            <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
-              Um espaço reservado para empresários que precisam de clareza, presença e equilíbrio.
-              Sessões individuais 100% online para quem carrega o peso das decisões.
-            </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
               <Button size="lg" className="bg-white hover:bg-white/90 text-[hsl(355,45%,35%)]" asChild>
                 <Link to="/apply">
                   Iniciar Processo
@@ -84,53 +140,36 @@ export default function LeDesirPage() {
         </div>
       </section>
 
-      {/* Trail Summary */}
-      <ProductTrailSummary
-        color="red"
-        productNumber={12}
-        productName="LE DÉSIR"
-        tagline="Escuta Estratégica"
-        whatItDoes="Espaço reservado de escuta profunda, reflexão e consciência para quem lidera."
-        keyPoints={[
-          "Entendimento de padrões",
-          "Clareza nas decisões",
-          "Equilíbrio emocional",
-          "Presença como líder"
-        ]}
-        arrow="Sustenta crescimento com equilíbrio e lucidez."
-        targetAudience={{
-          revenue: "Empresários, Fundadores, Sócios, C-Level"
-        }}
-        schedule={[
-          { period: "Semanal", description: "1 sessão por semana" },
-          { period: "Quinzenal", description: "1 sessão a cada 2 semanas" },
-          { period: "100% Online", description: "Sessões individuais" }
-        ]}
-        scheduleType="recurring"
-      />
-
-      {/* O problema real */}
-      <section className="section-padding" style={{ backgroundColor: "hsl(355, 45%, 35%)" }}>
+      {/* Preço Invisível */}
+      <section className="section-padding" style={{ backgroundColor: "hsl(355, 50%, 25%)" }}>
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">
-            <h2 className="heading-section text-white text-center mb-12">
-              O Problema Real que Resolve
+            <h2 className="heading-section text-white text-center mb-8">
+              Para quem construiu muito, mas sente que está pagando um preço invisível
             </h2>
             <div className="bg-white/10 border border-white/20 rounded-2xl p-8 md:p-12 backdrop-blur-sm">
-              <p className="text-lg text-white/80 mb-8 text-center">
-                <span className="text-white font-semibold">Empresários não quebram apenas por números.</span> Quebram por:
+              <p className="text-lg text-white/90 mb-6 text-center">
+                Empresários não quebram apenas por erros de gestão.
               </p>
-              <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                {problems.map((problem, index) => (
-                  <div key={index} className="flex items-start gap-3 p-4 bg-white/10 border border-white/20 rounded-lg">
-                    <XCircle className="h-5 w-5 text-white/70 shrink-0 mt-0.5" />
-                    <span className="text-sm text-white/80">{problem}</span>
-                  </div>
+              <p className="text-xl text-white font-semibold mb-8 text-center">
+                Eles quebram por excesso de carga interna.
+              </p>
+              <div className="space-y-3 mb-8">
+                {pressures.map((pressure, index) => (
+                  <p key={index} className="text-white/80 text-center">{pressure}</p>
                 ))}
               </div>
-              <div className="p-4 bg-white/15 border border-white/25 rounded-lg">
-                <p className="text-sm text-white/90 text-center">
-                  Esses fatores afetam <span className="text-white font-semibold">vendas, liderança, relações e visão de longo prazo</span>.
+              <div className="border-t border-white/20 pt-8">
+                <p className="text-white/70 text-center mb-4">
+                  O problema é que isso não aparece em relatórios,
+                </p>
+                <p className="text-white font-medium text-center">
+                  mas aparece nas decisões, no corpo, no foco e no futuro.
+                </p>
+              </div>
+              <div className="mt-8 p-6 bg-white/10 border border-white/20 rounded-xl">
+                <p className="text-white text-center font-medium">
+                  O Le Désir nasce para cuidar exatamente disso.
                 </p>
               </div>
             </div>
@@ -138,105 +177,200 @@ export default function LeDesirPage() {
         </div>
       </section>
 
-      {/* Como resolve */}
+      {/* O que é e o que não é */}
+      <section className="section-padding" style={{ backgroundColor: "hsl(355, 45%, 35%)" }}>
+        <div className="container-premium">
+          <h2 className="heading-section text-white text-center mb-12">
+            O que é o Le Désir (e o que ele não é)
+          </h2>
+          <div className="max-w-4xl mx-auto">
+            <p className="text-lg text-white/90 text-center mb-10">
+              O Le Désir é um <span className="text-white font-semibold">espaço privado de elaboração profunda, consciência e clareza</span>, voltado exclusivamente para empresários e executivos.
+            </p>
+            
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="bg-white/10 border border-white/20 rounded-2xl p-8 backdrop-blur-sm">
+                <h3 className="text-xl font-semibold text-white mb-6">Ele não é:</h3>
+                <ul className="space-y-3">
+                  {notIs.map((item, index) => (
+                    <li key={index} className="flex items-center gap-3">
+                      <XCircle className="h-5 w-5 text-white/60 shrink-0" />
+                      <span className="text-white/80">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div className="bg-white/15 border border-white/25 rounded-2xl p-8 backdrop-blur-sm">
+                <h3 className="text-xl font-semibold text-white mb-6">Ele é um processo onde você pode:</h3>
+                <ul className="space-y-3">
+                  {isFor.map((item, index) => (
+                    <li key={index} className="flex items-center gap-3">
+                      <CheckCircle className="h-5 w-5 text-white shrink-0" />
+                      <span className="text-white/90">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* O verdadeiro problema */}
       <section className="section-padding" style={{ backgroundColor: "hsl(355, 50%, 25%)" }}>
         <div className="container-premium">
           <h2 className="heading-section text-white text-center mb-12">
-            Como Funciona
+            O verdadeiro problema que resolvemos
+          </h2>
+          <div className="max-w-4xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="bg-white/10 border border-white/20 rounded-2xl p-8 backdrop-blur-sm">
+                <h3 className="text-lg font-semibold text-white mb-6">Quando o empresário não tem onde elaborar, ele:</h3>
+                <ul className="space-y-3">
+                  {problemsWithout.map((item, index) => (
+                    <li key={index} className="flex items-center gap-3">
+                      <XCircle className="h-5 w-5 text-white/60 shrink-0" />
+                      <span className="text-white/80">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div className="bg-white/15 border border-white/25 rounded-2xl p-8 backdrop-blur-sm">
+                <h3 className="text-lg font-semibold text-white mb-6">O Le Désir atua onde nenhum KPI alcança:</h3>
+                <ul className="space-y-4">
+                  {whereActuates.map((item, index) => (
+                    <li key={index} className="flex items-center gap-3">
+                      <Target className="h-5 w-5 text-white shrink-0" />
+                      <span className="text-white/90">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Como funciona */}
+      <section className="section-padding" style={{ backgroundColor: "hsl(355, 45%, 35%)" }}>
+        <div className="container-premium">
+          <h2 className="heading-section text-white text-center mb-8">
+            Como funciona o Le Désir
           </h2>
           <div className="max-w-3xl mx-auto">
-            <p className="text-lg text-white/80 text-center mb-8">
-              Através de um <span className="text-white font-semibold">espaço de escuta profunda, reflexão e consciência</span>, você:
+            <p className="text-lg text-white/90 text-center mb-10">
+              O processo acontece através de encontros individuais, em um ambiente absolutamente confidencial, sem roteiro engessado, sem agenda de performance, sem pressão por resposta rápida.
             </p>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {[
-                { icon: Brain, text: "Entende o que te leva a agir de certa forma" },
-                { icon: Shield, text: "Para de decidir no impulso" },
-                { icon: Eye, text: "Recupera clareza sobre o que realmente importa" },
-                { icon: Sparkles, text: "Fortalece sua presença como líder" },
-                { icon: Heart, text: "Cresce com equilíbrio, sem se destruir no processo" }
-              ].map((item, index) => (
+            
+            <div className="bg-white/10 border border-white/20 rounded-2xl p-8 backdrop-blur-sm">
+              <h3 className="text-lg font-semibold text-white mb-6 text-center">Aqui:</h3>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {[
+                  { icon: Sparkles, text: "o silêncio é parte do processo" },
+                  { icon: Heart, text: "a fala é livre" },
+                  { icon: Shield, text: "não há certo ou errado" },
+                  { icon: Eye, text: "não há julgamento" },
+                  { icon: Brain, text: "não há promessa milagrosa" }
+                ].map((item, index) => (
+                  <div key={index} className="flex items-center gap-3 p-4 bg-white/10 border border-white/20 rounded-lg">
+                    <item.icon className="h-5 w-5 text-white shrink-0" />
+                    <span className="text-white/90">{item.text}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-white text-center font-medium mt-8 text-lg">
+                Existe apenas elaboração, que gera clareza.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Efeitos Reais */}
+      <section className="section-padding" style={{ backgroundColor: "hsl(355, 50%, 25%)" }}>
+        <div className="container-premium">
+          <h2 className="heading-section text-white text-center mb-8">
+            O que muda na prática (efeitos reais)
+          </h2>
+          <div className="max-w-3xl mx-auto">
+            <p className="text-lg text-white/90 text-center mb-8">
+              Empresários que passam pelo Le Désir relatam:
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {realEffects.map((effect, index) => (
                 <div key={index} className="flex items-center gap-3 p-4 bg-white/10 border border-white/20 rounded-lg">
-                  <item.icon className="h-5 w-5 text-white shrink-0" />
-                  <span className="text-white/80">{item.text}</span>
+                  <CheckCircle className="h-5 w-5 text-white shrink-0" />
+                  <span className="text-white/80">{effect}</span>
                 </div>
               ))}
             </div>
+            <div className="mt-8 p-6 bg-white/10 border border-white/20 rounded-xl text-center">
+              <p className="text-white/80 mb-2">Nada disso é imediato.</p>
+              <p className="text-white font-medium">Tudo isso é profundo.</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Estrutura */}
+      {/* Para quem é */}
       <section className="section-padding" style={{ backgroundColor: "hsl(355, 45%, 35%)" }}>
         <div className="container-premium">
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            <div className="bg-white/10 border border-white/20 rounded-2xl p-8 backdrop-blur-sm">
-              <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-white" />
-                Estrutura da Entrega
-              </h3>
-              <ul className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="h-5 w-5 text-white shrink-0 mt-0.5" />
-                  <span className="text-white/80">Sessões individuais 100% online</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="h-5 w-5 text-white shrink-0 mt-0.5" />
-                  <span className="text-white/80">Frequência: semanal ou quinzenal</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="h-5 w-5 text-white shrink-0 mt-0.5" />
-                  <span className="text-white/80">Atendimento 100% confidencial</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="h-5 w-5 text-white shrink-0 mt-0.5" />
-                  <span className="text-white/80">Sem agenda de conteúdo fixa (respeita seu momento)</span>
-                </li>
-              </ul>
-            </div>
-            <div className="bg-white/10 border border-white/20 rounded-2xl p-8 backdrop-blur-sm">
-              <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-white" />
-                Entregáveis
-              </h3>
-              <p className="text-sm text-white/70 mb-4 italic">Intangíveis, porém mensuráveis:</p>
-              <ul className="space-y-3">
-                {deliverables.map((item, index) => (
-                  <li key={index} className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-white shrink-0" />
-                    <span className="text-white/80">{item}</span>
-                  </li>
-                ))}
-              </ul>
+          <h2 className="heading-section text-white text-center mb-12">
+            Para quem o Le Désir é indicado
+          </h2>
+          <div className="max-w-4xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="bg-white/10 border border-white/20 rounded-2xl p-8 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-6">
+                  <Users className="h-6 w-6 text-white" />
+                  <h3 className="text-xl font-semibold text-white">Perfil</h3>
+                </div>
+                <ul className="space-y-3">
+                  {targetAudience.map((item, index) => (
+                    <li key={index} className="flex items-center gap-3">
+                      <CheckCircle className="h-5 w-5 text-white shrink-0" />
+                      <span className="text-white/90">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div className="bg-white/15 border border-white/25 rounded-2xl p-8 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-6">
+                  <Heart className="h-6 w-6 text-white" />
+                  <h3 className="text-xl font-semibold text-white">Especialmente para quem:</h3>
+                </div>
+                <ul className="space-y-3">
+                  {especiallyFor.map((item, index) => (
+                    <li key={index} className="flex items-center gap-3">
+                      <Sparkles className="h-5 w-5 text-white shrink-0" />
+                      <span className="text-white/90">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ICP */}
+      {/* Para quem NÃO é */}
       <section className="section-padding" style={{ backgroundColor: "hsl(355, 50%, 25%)" }}>
         <div className="container-premium">
-          <h2 className="heading-section text-white text-center mb-12">
-            Para Quem É e Para Quem NÃO É
+          <h2 className="heading-section text-white text-center mb-8">
+            Para quem NÃO é
           </h2>
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          <div className="max-w-2xl mx-auto">
+            <p className="text-lg text-white/90 text-center mb-8">
+              O Le Désir não é indicado para quem:
+            </p>
             <div className="bg-white/10 border border-white/20 rounded-2xl p-8 backdrop-blur-sm">
-              <h3 className="text-xl font-semibold text-white mb-6">Para Quem É</h3>
-              <ul className="space-y-4">
-                {["Empresários", "Fundadores", "Sócios", "Executivos C-level"].map((item, index) => (
-                  <li key={index} className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-white shrink-0" />
-                    <span className="text-white/80">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="bg-white/10 border border-white/20 rounded-2xl p-8 backdrop-blur-sm">
-              <h3 className="text-xl font-semibold text-white mb-6">Para Quem NÃO É</h3>
               <ul className="space-y-4">
                 {notFor.map((item, index) => (
                   <li key={index} className="flex items-center gap-3">
-                    <XCircle className="h-5 w-5 text-white/70 shrink-0" />
+                    <XCircle className="h-5 w-5 text-white/60 shrink-0" />
                     <span className="text-white/80">{item}</span>
                   </li>
                 ))}
@@ -246,56 +380,99 @@ export default function LeDesirPage() {
         </div>
       </section>
 
-      {/* Investment */}
+      {/* Formato */}
       <section className="section-padding" style={{ backgroundColor: "hsl(355, 45%, 35%)" }}>
         <div className="container-premium">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="heading-section text-white mb-8">
-              Investimento
-            </h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-white/95 rounded-2xl p-8 shadow-lg">
-                <p className="text-sm text-[hsl(355,45%,35%)] mb-2">Semanal</p>
-                <p className="text-4xl font-bold text-[hsl(355,45%,35%)] mb-2">R$ 2.000</p>
-                <p className="text-[hsl(355,45%,35%)]/70 mb-6">/mês</p>
-                <Button size="lg" className="w-full bg-[hsl(355,45%,35%)] hover:bg-[hsl(355,50%,25%)] text-white" asChild>
-                  <Link to="/apply">
-                    Iniciar Processo
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Link>
-                </Button>
-              </div>
-              <div className="bg-white/10 border border-white/20 rounded-2xl p-8 backdrop-blur-sm">
-                <p className="text-sm text-white/70 mb-2">Quinzenal</p>
-                <p className="text-4xl font-bold text-white mb-2">R$ 1.200</p>
-                <p className="text-white/70 mb-6">/mês</p>
-                <Button size="lg" className="w-full border-white/50 text-white hover:bg-white/10 bg-transparent border" asChild>
-                  <Link to="/apply">
-                    Iniciar Processo
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
-            <div className="flex flex-wrap justify-center gap-4 mt-6">
-              <span className="px-3 py-1 bg-white/20 text-white text-sm rounded-full">Alta retenção</span>
-              <span className="px-3 py-1 bg-white/10 text-white/80 text-sm rounded-full">100% Online</span>
+          <h2 className="heading-section text-white text-center mb-8">
+            O formato
+          </h2>
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white/10 border border-white/20 rounded-2xl p-8 backdrop-blur-sm">
+              <ul className="space-y-4">
+                {format.map((item, index) => (
+                  <li key={index} className="flex items-center gap-3">
+                    <Calendar className="h-5 w-5 text-white shrink-0" />
+                    <span className="text-white/90">{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA */}
+      {/* Valor */}
+      <section className="section-padding" style={{ backgroundColor: "hsl(355, 50%, 25%)" }}>
+        <div className="container-premium">
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="heading-section text-white mb-8">
+              O valor
+            </h2>
+            <div className="bg-white/95 rounded-2xl p-10 shadow-lg">
+              <p className="text-5xl font-bold text-[hsl(355,45%,35%)] mb-2">R$ 2.000</p>
+              <p className="text-[hsl(355,45%,35%)]/70 mb-6">por mês</p>
+              <div className="border-t border-[hsl(355,45%,35%)]/20 pt-6">
+                <p className="text-[hsl(355,45%,35%)]/80 mb-2">O investimento não é no encontro.</p>
+                <p className="text-[hsl(355,45%,35%)] font-medium">É na capacidade de sustentar decisões melhores ao longo do tempo.</p>
+              </div>
+              <Button size="lg" className="w-full mt-8 bg-[hsl(355,45%,35%)] hover:bg-[hsl(355,50%,25%)] text-white" asChild>
+                <Link to="/apply">
+                  Iniciar Processo
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Papel dentro da UNV */}
+      <section className="section-padding" style={{ backgroundColor: "hsl(355, 45%, 35%)" }}>
+        <div className="container-premium">
+          <h2 className="heading-section text-white text-center mb-8">
+            O papel do Le Désir dentro da UNV
+          </h2>
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-white/10 border border-white/20 rounded-2xl p-8 backdrop-blur-sm mb-8">
+              <h3 className="text-lg font-semibold text-white mb-6 text-center">O Le Désir existe porque:</h3>
+              <div className="space-y-3 text-center">
+                <p className="text-white/90">empresas crescem mais rápido que as pessoas</p>
+                <p className="text-white/90">números não resolvem conflitos internos</p>
+                <p className="text-white/90">performance sem sustentação cobra seu preço</p>
+              </div>
+            </div>
+            
+            <div className="bg-white/10 border border-white/20 rounded-2xl p-8 backdrop-blur-sm">
+              <h3 className="text-lg font-semibold text-white mb-6 text-center">Ele complementa:</h3>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {complements.map((item, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 bg-white/10 border border-white/20 rounded-lg">
+                    <span className="text-white font-medium">{item.name}</span>
+                    <span className="text-white/70 text-sm">({item.aspect})</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-white text-center font-medium mt-8">
+                Cuidando do que normalmente ninguém cuida.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Quote Final */}
       <section className="section-padding" style={{ backgroundColor: "hsl(355, 50%, 25%)" }}>
         <div className="container-premium">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="heading-section text-white mb-4">
-              Pronto para Ter Clareza?
-            </h2>
-            <p className="text-white/80 mb-8">
-              O Le Désir é para quem quer liderar com lucidez, presença e equilíbrio.
-            </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <div className="bg-white/10 border border-white/20 rounded-2xl p-10 md:p-16 backdrop-blur-sm">
+              <p className="text-2xl md:text-3xl text-white font-light italic leading-relaxed mb-4">
+                "Não é sobre resolver o negócio.
+              </p>
+              <p className="text-2xl md:text-3xl text-white font-semibold leading-relaxed">
+                É sobre sustentar quem resolve."
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10">
               <Button size="lg" className="bg-white hover:bg-white/90 text-[hsl(355,45%,35%)]" asChild>
                 <Link to="/apply">
                   Iniciar Processo
