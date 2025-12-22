@@ -58,14 +58,14 @@ export default function LeDesirPage() {
             </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 border border-white/30 mb-6">
               <Heart className="h-4 w-4 text-white" />
-              <span className="text-sm font-medium text-white">Análise Estratégica</span>
+              <span className="text-sm font-medium text-white">Escuta Estratégica</span>
             </div>
             <p className="text-2xl text-white font-medium mb-4">
-              Análise Estratégica para Empresários
+              Escuta Profunda para Quem Decide
             </p>
             <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
-              Não é terapia clínica tradicional. Não é mentoria.
-              É análise estratégica 100% online voltada à lucidez, presença e tomada de decisão.
+              Um espaço reservado para empresários que precisam de clareza, presença e equilíbrio.
+              Sessões individuais 100% online para quem carrega o peso das decisões.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-white hover:bg-white/90 text-[hsl(355,45%,35%)]" asChild>
@@ -89,15 +89,15 @@ export default function LeDesirPage() {
         color="red"
         productNumber={12}
         productName="LE DÉSIR"
-        tagline="Análise Estratégica"
-        whatItDoes="Espaço estruturado de escuta, elaboração e consciência para empresários."
+        tagline="Escuta Estratégica"
+        whatItDoes="Espaço reservado de escuta profunda, reflexão e consciência para quem lidera."
         keyPoints={[
           "Entendimento de padrões",
-          "Redução de decisões reativas",
-          "Clareza estratégica",
+          "Clareza nas decisões",
+          "Equilíbrio emocional",
           "Presença como líder"
         ]}
-        arrow="Sustenta crescimento sem colapso emocional."
+        arrow="Sustenta crescimento com equilíbrio e lucidez."
         targetAudience={{
           revenue: "Empresários, Fundadores, Sócios, C-Level"
         }}
@@ -142,19 +142,19 @@ export default function LeDesirPage() {
       <section className="section-padding" style={{ backgroundColor: "hsl(355, 50%, 25%)" }}>
         <div className="container-premium">
           <h2 className="heading-section text-white text-center mb-12">
-            Como o Le Désir Resolve
+            Como Funciona
           </h2>
           <div className="max-w-3xl mx-auto">
             <p className="text-lg text-white/80 text-center mb-8">
-              Através de um <span className="text-white font-semibold">espaço estruturado de escuta, elaboração e consciência</span>, o empresário:
+              Através de um <span className="text-white font-semibold">espaço de escuta profunda, reflexão e consciência</span>, você:
             </p>
             <div className="grid sm:grid-cols-2 gap-4">
               {[
-                { icon: Brain, text: "Entende seus padrões de comportamento" },
-                { icon: Shield, text: "Reduz decisões reativas" },
-                { icon: Eye, text: "Recupera clareza estratégica" },
-                { icon: Sparkles, text: "Fortalece presença como líder" },
-                { icon: Heart, text: "Sustenta crescimento sem colapsar" }
+                { icon: Brain, text: "Entende o que te leva a agir de certa forma" },
+                { icon: Shield, text: "Para de decidir no impulso" },
+                { icon: Eye, text: "Recupera clareza sobre o que realmente importa" },
+                { icon: Sparkles, text: "Fortalece sua presença como líder" },
+                { icon: Heart, text: "Cresce com equilíbrio, sem se destruir no processo" }
               ].map((item, index) => (
                 <div key={index} className="flex items-center gap-3 p-4 bg-white/10 border border-white/20 rounded-lg">
                   <item.icon className="h-5 w-5 text-white shrink-0" />
@@ -190,7 +190,7 @@ export default function LeDesirPage() {
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle className="h-5 w-5 text-white shrink-0 mt-0.5" />
-                  <span className="text-white/80">Sem agenda de conteúdo fixa (respeita o processo analítico)</span>
+                  <span className="text-white/80">Sem agenda de conteúdo fixa (respeita seu momento)</span>
                 </li>
               </ul>
             </div>
@@ -290,10 +290,10 @@ export default function LeDesirPage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="heading-section text-white mb-4">
-              Pronto para Ganhar Clareza?
+              Pronto para Ter Clareza?
             </h2>
             <p className="text-white/80 mb-8">
-              O Le Désir é para quem quer liderar com lucidez, presença e sustentação emocional.
+              O Le Désir é para quem quer liderar com lucidez, presença e equilíbrio.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-white hover:bg-white/90 text-[hsl(355,45%,35%)]" asChild>
