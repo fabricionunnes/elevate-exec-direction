@@ -590,7 +590,7 @@ export default function DiagnosticResponsesPage() {
                                 onClick={() => {
                                   const phone = response.whatsapp.replace(/\D/g, "");
                                   const text = `Olá ${response.contact_name}! Recebi seu diagnóstico da ${response.company_name}. Vamos conversar sobre o ${response.recommended_product}?`;
-                                  window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(text)}`, "_blank");
+                                  window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(text)}`, "_top");
                                 }}
                                 title="WhatsApp"
                               >
@@ -853,7 +853,7 @@ export default function DiagnosticResponsesPage() {
                   onClick={() => {
                     const phone = selectedResponse.whatsapp.replace(/\D/g, "");
                     const text = `Olá ${selectedResponse.contact_name}! Recebi seu diagnóstico da ${selectedResponse.company_name}. Vamos conversar sobre o ${selectedResponse.recommended_product}?`;
-                    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(text)}`, "_blank");
+                    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(text)}`, "_top");
                   }}
                 >
                   <Phone className="h-4 w-4 mr-2" />

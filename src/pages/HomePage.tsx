@@ -239,7 +239,7 @@ export default function HomePage() {
               </Link>
               <a
                 href="https://wa.me/5531999120003"
-                target="_blank"
+                target="_top"
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto"
               >
@@ -656,7 +656,7 @@ export default function HomePage() {
             </Link>
             <a
               href="https://wa.me/5531999120003"
-              target="_blank"
+              target="_top"
               rel="noopener noreferrer"
             >
               <Button variant="outline" size="xl" className="w-full sm:w-auto text-sm sm:text-base border-primary/30 text-foreground hover:bg-primary/10">
