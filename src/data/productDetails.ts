@@ -1034,10 +1034,11 @@ export const productDetails: Record<string, ProductDetail> = {
     tagline: "Diretor Comercial Terceirizado",
     icon: Target,
     color: "bg-amber-500",
-    price: "R$ 7.000",
+    price: "R$ 4.000 + comissão",
     priceType: "/mês",
-    description: "Terceirização completa da função de Diretor Comercial, atuando na gestão diária do time de vendas, cobrança de metas e tomada de decisão comercial.",
+    description: "Terceirização completa da função de Diretor Comercial, atuando na gestão diária do time de vendas, cobrança de metas e tomada de decisão comercial. Inclui CRM como bônus.",
     deliverables: [
+      "CRM incluso (bônus)",
       "Reunião diária com vendedores (seg a sex)",
       "Reunião semanal com o proprietário",
       "Reunião mensal de fechamento",
