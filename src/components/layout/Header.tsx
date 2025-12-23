@@ -32,6 +32,7 @@ const productCategories: ProductCategory[] = [
       { name: "Sales Ops", href: "/sales-ops" },
       { name: "UNV Sales Force", href: "/sales-force" },
       { name: "A.I. Sales System", href: "/ai-sales-system", highlight: true },
+      { name: "Fractional CRO", href: "/fractional-cro", highlight: true },
       { name: "UNV Ads", href: "/ads" },
       { name: "UNV Social", href: "/social" },
     ],
