@@ -26,7 +26,8 @@ import {
   Heart,
   Users,
   DollarSign,
-  Scale
+  Scale,
+  Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClientDiagnosticForm } from "@/components/ClientDiagnosticForm";
@@ -288,6 +289,38 @@ const products: Product[] = [
     keyDiff: "Jurídico terceirizado preventivo — contratos, compliance e LGPD sem surpresas",
     bestFor: "Empresas que crescem rápido mas não têm suporte jurídico estruturado",
     notFor: "Pessoa física ou quem busca advogado para causa pontual"
+  },
+  {
+    id: "ai-sales-system",
+    name: "UNV A.I. Sales System",
+    tagline: "Inteligência Comercial Autônoma",
+    icon: Bot,
+    color: "bg-cyan-500",
+    icp: "Empresas escalando vendas com IA",
+    revenue: "R$ 100k–2M+/mês",
+    team: "B2B e B2C",
+    price: "R$ 297 a R$ 9.997",
+    priceType: "/mês + setup",
+    link: "/ai-sales-system",
+    keyDiff: "IA comercial — CRM inteligente + agentes autônomos + atendimento WhatsApp/Instagram",
+    bestFor: "Empresas que querem escalar vendas com IA, reduzindo custo e aumentando velocidade",
+    notFor: "Quem não tem volume de leads ou busca só CRM tradicional"
+  },
+  {
+    id: "fractional-cro",
+    name: "UNV Fractional CRO",
+    tagline: "Diretor Comercial Terceirizado",
+    icon: Target,
+    color: "bg-amber-500",
+    icp: "Empresas com vendedores sem direção",
+    revenue: "R$ 50k–500k/mês",
+    team: "2–8 vendedores",
+    price: "R$ 4.000 + comissão",
+    priceType: "/mês",
+    link: "/fractional-cro",
+    keyDiff: "Direção comercial diária — reunião diária com time + cobrança de metas + CRM incluso",
+    bestFor: "Donos cansados de cobrar vendas que precisam de direção comercial todos os dias",
+    notFor: "Empresa sem vendedores ou dono que não aceita cobrança"
   }
 ];
 
@@ -1241,6 +1274,200 @@ const features: Feature[] = [
       people: false,
       finance: false,
       safe: "Básico"
+    }
+  },
+  // A.I. Sales System
+  {
+    name: "CRM Inteligente",
+    description: "CRM com lead scoring por IA",
+    category: "A.I. Sales System",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false,
+      safe: false,
+      "ai-sales-system": "Completo",
+      "fractional-cro": "Bônus incluso"
+    }
+  },
+  {
+    name: "Agentes de IA Autônomos",
+    description: "SDR, Atendimento, Qualificação por IA",
+    category: "A.I. Sales System",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false,
+      safe: false,
+      "ai-sales-system": "1 a 10+ agentes",
+      "fractional-cro": false
+    }
+  },
+  {
+    name: "Atendimento WhatsApp/Instagram",
+    description: "Automação de canais de mensagem",
+    category: "A.I. Sales System",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false,
+      safe: false,
+      "ai-sales-system": "24/7",
+      "fractional-cro": false
+    }
+  },
+  {
+    name: "Prospecção Automatizada B2B",
+    description: "IA prospectando leads B2B",
+    category: "A.I. Sales System",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false,
+      safe: false,
+      "ai-sales-system": "B2B only",
+      "fractional-cro": false
+    }
+  },
+  // Fractional CRO
+  {
+    name: "Reunião Diária com Vendedores",
+    description: "Cobrança e acompanhamento diário",
+    category: "Fractional CRO",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false,
+      safe: false,
+      "ai-sales-system": false,
+      "fractional-cro": "Seg a Sex"
+    }
+  },
+  {
+    name: "Reunião Semanal com Dono",
+    description: "Decisões estratégicas baseadas em dados",
+    category: "Fractional CRO",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: "Board",
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": false,
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false,
+      safe: false,
+      "ai-sales-system": false,
+      "fractional-cro": "60 min"
+    }
+  },
+  {
+    name: "Gestão de Pipeline",
+    description: "Acompanhamento diário do funil",
+    category: "Fractional CRO",
+    products: {
+      core: false,
+      control: false,
+      "sales-acceleration": false,
+      "growth-room": false,
+      partners: false,
+      "sales-ops": false,
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": "Terceirizada",
+      leadership: false,
+      "le-desir": false,
+      people: false,
+      finance: false,
+      safe: false,
+      "ai-sales-system": "IA",
+      "fractional-cro": "Diária"
+    }
+  },
+  {
+    name: "Cobrança de Metas",
+    description: "Acompanhamento e cobrança de resultados",
+    category: "Fractional CRO",
+    products: {
+      core: "Básica",
+      control: true,
+      "sales-acceleration": true,
+      "growth-room": "90 dias",
+      partners: true,
+      "sales-ops": "Via trilhas",
+      ads: false,
+      social: false,
+      mastermind: false,
+      "sales-force": true,
+      leadership: true,
+      "le-desir": false,
+      people: false,
+      finance: false,
+      safe: false,
+      "ai-sales-system": false,
+      "fractional-cro": "Diária"
     }
   }
 ];
