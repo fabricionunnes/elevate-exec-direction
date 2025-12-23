@@ -21,7 +21,8 @@ import {
   CalendarDays,
   ClipboardList,
   PieChart,
-  Layers
+  Layers,
+  Phone
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 import logoFractionalCRO from "@/assets/logo-fractional-cro.png";
@@ -38,6 +39,32 @@ const rotinaDiaria = {
     "Cobrança de execução"
   ],
   objetivo: "Criar ritmo e disciplina comercial."
+};
+
+const acompanhamentoContinuo = {
+  title: "Acompanhamento contínuo",
+  items: [
+    {
+      icon: "MessageSquare",
+      title: "Grupo de WhatsApp",
+      description: "Acompanhamento diário através de grupo exclusivo"
+    },
+    {
+      icon: "Phone",
+      title: "Ligações pontuais",
+      description: "Chamadas quando necessário para correções imediatas"
+    },
+    {
+      icon: "AlertTriangle",
+      title: "Ponto de controle",
+      description: "Intervenção com vendedores abaixo da projeção da meta"
+    },
+    {
+      icon: "CalendarDays",
+      title: "Acompanhamento semanal",
+      description: "Follow-up estruturado com cada vendedor"
+    }
+  ]
 };
 
 const rotinaSemanal = {
@@ -438,6 +465,43 @@ export default function FractionalCROPage() {
                   <p className="text-xs text-foreground">
                     👉 <strong>Objetivo:</strong> {rotinaMensal.objetivo}
                   </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Acompanhamento Contínuo */}
+            <div className="mt-12">
+              <h3 className="text-xl font-bold text-foreground text-center mb-6">
+                📱 Acompanhamento Contínuo
+              </h3>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="card-premium p-5 bg-gradient-to-br from-purple-500/5 to-purple-500/10 border-purple-500/20">
+                  <div className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center mb-3">
+                    <MessageSquare className="h-5 w-5 text-white" />
+                  </div>
+                  <h4 className="font-semibold text-foreground mb-1">Grupo de WhatsApp</h4>
+                  <p className="text-sm text-muted-foreground">Acompanhamento diário através de grupo exclusivo</p>
+                </div>
+                <div className="card-premium p-5 bg-gradient-to-br from-rose-500/5 to-rose-500/10 border-rose-500/20">
+                  <div className="w-10 h-10 rounded-lg bg-rose-500 flex items-center justify-center mb-3">
+                    <Phone className="h-5 w-5 text-white" />
+                  </div>
+                  <h4 className="font-semibold text-foreground mb-1">Ligações Pontuais</h4>
+                  <p className="text-sm text-muted-foreground">Chamadas quando necessário para correções imediatas</p>
+                </div>
+                <div className="card-premium p-5 bg-gradient-to-br from-orange-500/5 to-orange-500/10 border-orange-500/20">
+                  <div className="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center mb-3">
+                    <AlertTriangle className="h-5 w-5 text-white" />
+                  </div>
+                  <h4 className="font-semibold text-foreground mb-1">Ponto de Controle</h4>
+                  <p className="text-sm text-muted-foreground">Intervenção com vendedores abaixo da projeção da meta</p>
+                </div>
+                <div className="card-premium p-5 bg-gradient-to-br from-teal-500/5 to-teal-500/10 border-teal-500/20">
+                  <div className="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center mb-3">
+                    <CalendarDays className="h-5 w-5 text-white" />
+                  </div>
+                  <h4 className="font-semibold text-foreground mb-1">Acompanhamento Semanal</h4>
+                  <p className="text-sm text-muted-foreground">Follow-up estruturado com cada vendedor</p>
                 </div>
               </div>
             </div>

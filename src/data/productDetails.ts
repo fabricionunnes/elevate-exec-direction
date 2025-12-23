@@ -1040,6 +1040,10 @@ export const productDetails: Record<string, ProductDetail> = {
     deliverables: [
       "CRM incluso (bônus)",
       "Reunião diária com vendedores (seg a sex)",
+      "Acompanhamento via grupo de WhatsApp",
+      "Ligações pontuais para correções imediatas",
+      "Ponto de controle com vendedores abaixo da meta",
+      "Acompanhamento semanal individual",
       "Reunião semanal com o proprietário",
       "Reunião mensal de fechamento",
       "Gestão diária do pipeline",
@@ -1073,6 +1077,7 @@ export const productDetails: Record<string, ProductDetail> = {
     ],
     keyBenefits: [
       "Direção comercial todos os dias",
+      "Acompanhamento via WhatsApp + ligações",
       "Cobrança real de metas",
       "Sem custo de CLT",
       "ROI típico em menos de 60 dias"
