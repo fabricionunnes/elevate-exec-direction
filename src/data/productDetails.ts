@@ -971,23 +971,23 @@ export const productDetails: Record<string, ProductDetail> = {
     color: "bg-cyan-500",
     price: "R$ 297 a R$ 9.997",
     priceType: "/mês + setup",
-    description: "Sistema completo de inteligência artificial para vendas B2B: CRM inteligente, agentes autônomos e atendimento via WhatsApp/Instagram.",
+    description: "Sistema completo de inteligência artificial para vendas B2B e B2C: CRM inteligente, agentes autônomos e atendimento via WhatsApp/Instagram. Prospecção automatizada exclusiva para B2B.",
     deliverables: [
-      "CRM de prospecção B2B nativo",
+      "CRM inteligente com lead scoring por IA",
       "Agentes de IA autônomos (SDR, Atendimento, Qualificação)",
       "Atendimento via WhatsApp e Instagram",
+      "Prospecção automatizada (exclusivo B2B)",
       "Orquestração de funil e follow-ups",
-      "Lead scoring por IA",
       "Playbooks e regras de negócio",
       "Implementação guiada",
       "Aprendizado contínuo com dados reais"
     ],
-    bestFor: "Empresas B2B que querem escalar vendas com IA, reduzindo custo por venda e aumentando velocidade de atendimento",
-    whyRecommended: "Você precisa de escala comercial sem aumentar time. O A.I. Sales System entrega prospecção, qualificação e atendimento 24/7.",
+    bestFor: "Empresas B2B e B2C que querem escalar vendas com IA, reduzindo custo por venda e aumentando velocidade de atendimento",
+    whyRecommended: "Você precisa de escala comercial sem aumentar time. O A.I. Sales System entrega qualificação e atendimento 24/7 (+ prospecção para B2B).",
     problemsSolved: [
       {
         problem: "SDR caro e difícil de escalar — custo alto para crescer time comercial",
-        solution: "Agentes de IA que prospectam, qualificam e agendam reuniões automaticamente",
+        solution: "Agentes de IA que prospectam (B2B), qualificam e agendam reuniões automaticamente",
         result: "Escala comercial sem proporcionalmente aumentar custo de folha"
       },
       {
@@ -1015,7 +1015,7 @@ export const productDetails: Record<string, ProductDetail> = {
     ],
     timeToResults: "Setup em 2-4 semanas, resultados visíveis no primeiro mês",
     idealProfile: [
-      "Empresas B2B",
+      "Empresas B2B e B2C",
       "Volume de leads que precisa de escala",
       "Time comercial que não dá conta da demanda",
       "Busca automação inteligente, não genérica"

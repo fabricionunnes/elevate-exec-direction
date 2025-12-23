@@ -40,7 +40,7 @@ const agentTypes = [
   {
     name: "AI SDR",
     icon: Phone,
-    actions: ["Prospecta", "Qualifica", "Agenda reuniões"],
+    actions: ["Prospecta (B2B)", "Qualifica", "Agenda reuniões"],
     color: "bg-blue-500",
   },
   {
@@ -202,7 +202,7 @@ export default function AISalesSystemPage() {
             </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500/20 text-cyan-600 text-sm font-medium rounded-full mb-6 backdrop-blur-sm border border-cyan-500/30">
               <Brain className="h-4 w-4" />
-              AI-Driven B2B Prospecting, CRM & Autonomous Sales Agents
+              AI-Driven CRM, Autonomous Sales Agents & B2B Prospecting
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 tracking-tight">
               UNV A.I. Sales System
@@ -236,17 +236,17 @@ export default function AISalesSystemPage() {
         productNumber={0}
         productName="UNV A.I. SALES SYSTEM"
         tagline="Inteligência Comercial Autônoma"
-        whatItDoes="Sistema completo de IA para vendas B2B: CRM + Agentes Autônomos + Atendimento."
+        whatItDoes="Sistema completo de IA para vendas: CRM + Agentes Autônomos + Atendimento (B2B e B2C)."
         keyPoints={[
-          "CRM inteligente focado em prospecção",
+          "CRM inteligente com lead scoring por IA",
           "Agentes de IA autônomos (SDR, Atendimento, Qualificação)",
           "Atendimento via WhatsApp e Instagram",
-          "Orquestração de funil e follow-ups",
+          "Prospecção automatizada (exclusivo B2B)",
           "Aprendizado contínuo com dados reais"
         ]}
         arrow="Infraestrutura de vendas com IA aplicada."
         targetAudience={{
-          revenue: "Empresas B2B",
+          revenue: "Empresas B2B e B2C",
           team: "Buscando escala comercial"
         }}
         schedule={[
@@ -266,13 +266,13 @@ export default function AISalesSystemPage() {
                 O Que É o Produto
               </h2>
               <p className="text-body text-lg max-w-3xl mx-auto mb-8">
-                O UNV A.I. Sales System é um sistema completo de inteligência artificial para vendas B2B, que combina:
+                O UNV A.I. Sales System é um sistema completo de inteligência artificial para vendas, que combina:
               </p>
             </div>
             
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
               {[
-                { icon: Database, text: "CRM inteligente focado em prospecção" },
+                { icon: Database, text: "CRM inteligente com lead scoring" },
                 { icon: Bot, text: "Agentes de IA autônomos" },
                 { icon: Phone, text: "Atendimento via WhatsApp e Instagram" },
                 { icon: Layers, text: "Orquestração de funil e follow-ups" },
@@ -287,7 +287,7 @@ export default function AISalesSystemPage() {
               ))}
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
               <div className="card-premium p-6 bg-cyan-500/5 border-cyan-500/20">
                 <p className="text-foreground font-medium text-lg">
                   👉 Diferente do mercado, não é só ferramenta
@@ -296,6 +296,11 @@ export default function AISalesSystemPage() {
               <div className="card-premium p-6 bg-blue-500/5 border-blue-500/20">
                 <p className="text-foreground font-medium text-lg">
                   👉 É infraestrutura de vendas com IA aplicada
+                </p>
+              </div>
+              <div className="card-premium p-6 bg-amber-500/5 border-amber-500/20">
+                <p className="text-foreground font-medium text-lg">
+                  👉 B2B e B2C (prospecção exclusiva B2B)
                 </p>
               </div>
             </div>
@@ -311,7 +316,7 @@ export default function AISalesSystemPage() {
               Problema Real Que Ele Resolve
             </h2>
             <p className="text-body text-center mb-12 max-w-2xl mx-auto">
-              Empresas B2B hoje enfrentam:
+              Empresas hoje enfrentam:
             </p>
             
             <div className="grid md:grid-cols-2 gap-8 mb-12">
