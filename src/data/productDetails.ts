@@ -1080,6 +1080,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "Acompanhamento via WhatsApp + ligações",
       "Cobrança real de metas",
       "Sem custo de CLT",
+      "Risco trabalhista zero",
       "ROI típico em menos de 60 dias"
     ],
     timeToResults: "Rotina implantada em 30 dias, resultados em 60-90 dias",
