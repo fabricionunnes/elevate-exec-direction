@@ -14,7 +14,8 @@ import {
   Users,
   Heart,
   Scale,
-  Bot
+  Bot,
+  Target
 } from "lucide-react";
 
 export interface ProductProblemSolution {
@@ -1025,6 +1026,67 @@ export const productDetails: Record<string, ProductDetail> = {
       "Quem busca só CRM tradicional",
       "Negócios B2C de ticket muito baixo",
       "Quem não tem processo comercial mínimo"
+    ]
+  },
+  "fractional-cro": {
+    id: "fractional-cro",
+    name: "UNV Fractional CRO",
+    tagline: "Diretor Comercial Terceirizado",
+    icon: Target,
+    color: "bg-amber-500",
+    price: "R$ 7.000",
+    priceType: "/mês",
+    description: "Terceirização completa da função de Diretor Comercial, atuando na gestão diária do time de vendas, cobrança de metas e tomada de decisão comercial.",
+    deliverables: [
+      "Reunião diária com vendedores (seg a sex)",
+      "Reunião semanal com o proprietário",
+      "Reunião mensal de fechamento",
+      "Gestão diária do pipeline",
+      "Cobrança de metas e execução",
+      "Gestão de indicadores comerciais",
+      "Desenvolvimento prático dos vendedores"
+    ],
+    bestFor: "Empresas B2B com R$ 50k a R$ 500k/mês e time de 2 a 8 vendedores que precisam de direção comercial sem custos de CLT",
+    whyRecommended: "Você tem vendedores mas não tem direção. O Fractional CRO assume a gestão diária do seu time todos os dias.",
+    problemsSolved: [
+      {
+        problem: "Não existe cobrança diária — vendedores trabalham sem ritmo",
+        solution: "Reunião diária de 15-30min focada em pipeline, atividades e gargalos",
+        result: "Ritmo e disciplina comercial implantados no time"
+      },
+      {
+        problem: "O dono vira o 'chefe de vendas' — desgaste e falta de foco estratégico",
+        solution: "Diretor comercial terceirizado assume gestão diária do time",
+        result: "Dono livre para ser CEO, não gerente de vendas"
+      },
+      {
+        problem: "Metas não são acompanhadas — previsibilidade zero",
+        solution: "Reunião semanal + mensal com análise de números e correção de rota",
+        result: "Previsibilidade mínima e aprendizado contínuo"
+      },
+      {
+        problem: "Decisões comerciais reativas — sem dados para decidir",
+        solution: "Gestão de indicadores (leads, conversão, ticket, ciclo, forecast)",
+        result: "Decisões baseadas em dados, não em achismo"
+      }
+    ],
+    keyBenefits: [
+      "Direção comercial todos os dias",
+      "Cobrança real de metas",
+      "Sem custo de CLT",
+      "ROI típico em menos de 60 dias"
+    ],
+    timeToResults: "Rotina implantada em 30 dias, resultados em 60-90 dias",
+    idealProfile: [
+      "Empresas B2B",
+      "Faturamento R$ 50k-500k/mês",
+      "Time de 2 a 8 vendedores",
+      "Dono cansado de cobrar vendas"
+    ],
+    notFor: [
+      "Empresa sem vendedores",
+      "Dono que não aceita cobrança",
+      "Negócio informal"
     ]
   }
 };
