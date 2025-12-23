@@ -576,15 +576,28 @@ export default function FractionalCROPage() {
       {/* Preço */}
       <section className="section-padding bg-gradient-to-br from-amber-500/10 via-background to-orange-500/10">
         <div className="container-premium">
-          <div className="max-w-3xl mx-auto text-center">
+          <div className="max-w-4xl mx-auto text-center">
             <h2 className="heading-section text-foreground mb-8">
               Modelo Comercial
             </h2>
             
             <div className="card-premium p-10 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/30">
-              <div className="mb-6">
-                <span className="text-6xl md:text-7xl font-bold text-foreground">R$ 7.000</span>
+              <div className="mb-4">
+                <span className="text-6xl md:text-7xl font-bold text-foreground">R$ 4.000</span>
                 <span className="text-2xl text-muted-foreground ml-2">/mês</span>
+              </div>
+              
+              <p className="text-lg text-foreground font-medium mb-6">
+                + Comissão variável e escalonável com base no atingimento de metas
+              </p>
+
+              {/* Bônus CRM */}
+              <div className="mb-8 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl inline-block">
+                <div className="flex items-center gap-2 justify-center">
+                  <Zap className="h-5 w-5 text-emerald-600" />
+                  <span className="text-foreground font-semibold">BÔNUS:</span>
+                  <span className="text-emerald-600 font-bold">CRM incluso no plano</span>
+                </div>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center text-muted-foreground mb-8">
@@ -607,7 +620,7 @@ export default function FractionalCROPage() {
             </div>
 
             {/* Diferencial */}
-            <div className="mt-12 grid sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="mt-12 grid sm:grid-cols-2 md:grid-cols-5 gap-4">
               <div className="card-premium p-4 text-center">
                 <Calendar className="h-8 w-8 text-amber-600 mx-auto mb-2" />
                 <p className="text-sm font-medium text-foreground">Atuação diária</p>
@@ -623,6 +636,10 @@ export default function FractionalCROPage() {
               <div className="card-premium p-4 text-center">
                 <DollarSign className="h-8 w-8 text-amber-600 mx-auto mb-2" />
                 <p className="text-sm font-medium text-foreground">Sem custo CLT</p>
+              </div>
+              <div className="card-premium p-4 text-center bg-emerald-500/10 border-emerald-500/20">
+                <ClipboardList className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-foreground">CRM incluso</p>
               </div>
             </div>
           </div>
@@ -650,8 +667,8 @@ export default function FractionalCROPage() {
               </div>
               <div className="card-premium p-6 text-center bg-amber-500/10 border-amber-500/30">
                 <Target className="h-12 w-12 text-amber-600 mx-auto mb-4" />
-                <p className="text-2xl font-bold text-foreground mb-2">R$ 7k/mês</p>
-                <p className="text-muted-foreground">UNV Fractional CRO</p>
+                <p className="text-2xl font-bold text-foreground mb-2">R$ 4k/mês</p>
+                <p className="text-muted-foreground">+ comissão por metas</p>
               </div>
             </div>
 
