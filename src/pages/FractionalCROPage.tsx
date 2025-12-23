@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 import logoFractionalCRO from "@/assets/logo-fractional-cro.png";
+import salarioDiretorComercial from "@/assets/salario-diretor-comercial.png";
 
 // Rotina fixa
 const rotinaDiaria = {
@@ -717,6 +718,23 @@ export default function FractionalCROPage() {
             <h2 className="heading-section text-foreground text-center mb-8">
               Por Que Esse Preço Faz Sentido
             </h2>
+
+            {/* Imagem de referência salarial */}
+            <div className="mb-12 card-premium p-6 bg-secondary/50">
+              <p className="text-center text-muted-foreground mb-4 text-sm">
+                Salário médio de um Diretor Comercial no Brasil (fonte: pesquisa Google)
+              </p>
+              <div className="flex justify-center">
+                <img 
+                  src={salarioDiretorComercial} 
+                  alt="Pesquisa salarial - Diretor Comercial no Brasil: média de R$ 15.000 a R$ 31.000 por mês" 
+                  className="rounded-xl shadow-lg max-w-full md:max-w-2xl border border-border"
+                />
+              </div>
+              <p className="text-center text-foreground font-medium mt-4">
+                Média salarial: <span className="text-amber-600 font-bold">R$ 15.000 a R$ 31.000/mês</span> + encargos CLT
+              </p>
+            </div>
             
             <div className="grid md:grid-cols-3 gap-6 mb-12">
               <div className="card-premium p-6 text-center">
