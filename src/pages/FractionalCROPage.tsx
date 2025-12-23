@@ -203,7 +203,7 @@ const icpNaoPara = [
 const frasesVenda = [
   "Hoje quem dirige suas vendas é quem sobra tempo.",
   "Seu time não precisa de mais treinamento, precisa de cobrança.",
-  "Um diretor comercial custa R$ 20k+. Aqui você paga 7."
+  "Um diretor comercial custa R$ 30k+. Aqui você paga 4."
 ];
 
 // Conexão ecossistema
