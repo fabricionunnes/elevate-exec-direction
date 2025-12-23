@@ -1047,7 +1047,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "Gestão de indicadores comerciais",
       "Desenvolvimento prático dos vendedores"
     ],
-    bestFor: "Empresas B2B com R$ 50k a R$ 500k/mês e time de 2 a 8 vendedores que precisam de direção comercial sem custos de CLT",
+    bestFor: "Empresas B2B e B2C com R$ 50k a R$ 500k/mês e time de 2 a 8 vendedores que precisam de direção comercial sem custos de CLT",
     whyRecommended: "Você tem vendedores mas não tem direção. O Fractional CRO assume a gestão diária do seu time todos os dias.",
     problemsSolved: [
       {
@@ -1079,7 +1079,7 @@ export const productDetails: Record<string, ProductDetail> = {
     ],
     timeToResults: "Rotina implantada em 30 dias, resultados em 60-90 dias",
     idealProfile: [
-      "Empresas B2B",
+      "Empresas B2B e B2C",
       "Faturamento R$ 50k-500k/mês",
       "Time de 2 a 8 vendedores",
       "Dono cansado de cobrar vendas"

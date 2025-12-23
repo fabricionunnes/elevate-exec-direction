@@ -160,7 +160,7 @@ const resultadosEsperados = [
 
 // ICP
 const icpPara = [
-  "Empresas B2B",
+  "Empresas B2B e B2C",
   "Faturamento mensal: R$ 50 mil a R$ 500 mil",
   "Time de vendas ativo (2 a 8 vendedores)",
   "Dono cansado de cobrar vendas"
