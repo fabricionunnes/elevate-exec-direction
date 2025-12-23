@@ -13,7 +13,8 @@ import {
   DollarSign,
   Users,
   Heart,
-  Scale
+  Scale,
+  Bot
 } from "lucide-react";
 
 export interface ProductProblemSolution {
@@ -960,6 +961,70 @@ export const productDetails: Record<string, ProductDetail> = {
       "Microempresas informais",
       "Quem busca advogado para causa isolada",
       "Contencioso pesado (casos tratados à parte)"
+    ]
+  },
+  "ai-sales-system": {
+    id: "ai-sales-system",
+    name: "UNV A.I. Sales System",
+    tagline: "Inteligência Comercial Autônoma",
+    icon: Bot,
+    color: "bg-cyan-500",
+    price: "R$ 297 a R$ 9.997",
+    priceType: "/mês + setup",
+    description: "Sistema completo de inteligência artificial para vendas B2B: CRM inteligente, agentes autônomos e atendimento via WhatsApp/Instagram.",
+    deliverables: [
+      "CRM de prospecção B2B nativo",
+      "Agentes de IA autônomos (SDR, Atendimento, Qualificação)",
+      "Atendimento via WhatsApp e Instagram",
+      "Orquestração de funil e follow-ups",
+      "Lead scoring por IA",
+      "Playbooks e regras de negócio",
+      "Implementação guiada",
+      "Aprendizado contínuo com dados reais"
+    ],
+    bestFor: "Empresas B2B que querem escalar vendas com IA, reduzindo custo por venda e aumentando velocidade de atendimento",
+    whyRecommended: "Você precisa de escala comercial sem aumentar time. O A.I. Sales System entrega prospecção, qualificação e atendimento 24/7.",
+    problemsSolved: [
+      {
+        problem: "SDR caro e difícil de escalar — custo alto para crescer time comercial",
+        solution: "Agentes de IA que prospectam, qualificam e agendam reuniões automaticamente",
+        result: "Escala comercial sem proporcionalmente aumentar custo de folha"
+      },
+      {
+        problem: "Follow-ups manuais e esquecidos — leads perdidos por falta de acompanhamento",
+        solution: "Orquestração automática de funil com follow-ups programados e inteligentes",
+        result: "Nenhum lead esquecido, aumento de conversão por persistência inteligente"
+      },
+      {
+        problem: "CRM cheio mas improdutivo — dados sem ação e sem inteligência",
+        solution: "CRM nativo com lead scoring por IA e automação de próximas ações",
+        result: "Cada lead com próximo passo claro, priorização inteligente do time"
+      },
+      {
+        problem: "Atendimento lento no WhatsApp e Instagram — resposta demorada perde vendas",
+        solution: "Agentes de IA respondendo 24/7 com contexto e direcionamento inteligente",
+        result: "Atendimento instantâneo, leads retidos e direcionados corretamente"
+      }
+    ],
+    keyBenefits: [
+      "Escala comercial sem aumentar time",
+      "Atendimento 24/7 com IA",
+      "Redução de custo por venda",
+      "ROI típico em menos de 60 dias",
+      "Integração com processos existentes"
+    ],
+    timeToResults: "Setup em 2-4 semanas, resultados visíveis no primeiro mês",
+    idealProfile: [
+      "Empresas B2B",
+      "Volume de leads que precisa de escala",
+      "Time comercial que não dá conta da demanda",
+      "Busca automação inteligente, não genérica"
+    ],
+    notFor: [
+      "Empresas sem volume de leads",
+      "Quem busca só CRM tradicional",
+      "Negócios B2C de ticket muito baixo",
+      "Quem não tem processo comercial mínimo"
     ]
   }
 };
