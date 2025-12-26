@@ -123,7 +123,7 @@ const products: Product[] = [
     icp: "Empresas buscando parceria estratégica de decisão",
     revenue: "R$ 300k–2M/mês",
     team: "CEO/fundador decisor",
-    price: "R$ 4.000",
+    price: "R$ 2.500",
     priceType: "/mês (12 meses)",
     link: "/partners",
     keyDiff: "Board externo — Fabrício como diretor comercial de fato, não consultor",
