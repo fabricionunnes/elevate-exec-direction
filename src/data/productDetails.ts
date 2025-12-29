@@ -364,7 +364,7 @@ export const productDetails: Record<string, ProductDetail> = {
     tagline: "Padronização & Treinamento de Times",
     icon: Users2,
     color: "bg-violet-500",
-    price: "R$ 18.000",
+    price: "R$ 12.000",
     priceType: "/ano",
     description: "Trilhas por cargo, onboarding e padronização de discurso para times comerciais com acompanhamento mensal em grupo.",
     deliverables: [

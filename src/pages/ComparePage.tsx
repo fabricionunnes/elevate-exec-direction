@@ -140,7 +140,7 @@ const products: Product[] = [
     icp: "Empresas padronizando operação comercial",
     revenue: "R$ 200k+/mês",
     team: "5+ vendedores",
-    price: "R$ 18.000",
+    price: "R$ 12.000",
     priceType: "/ano",
     link: "/sales-ops",
     keyDiff: "Operação comercial — trilhas por cargo, onboarding, treinamentos com acompanhamento mensal em grupo",
