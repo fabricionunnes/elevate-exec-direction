@@ -329,6 +329,7 @@ export default function SalesOpsPage() {
         }}
         schedule={[
           { period: "Diário", description: "Suporte via AI Advisor" },
+          { period: "Quinzenal", description: "Treinamentos por nível (SDR, Closer, Gestor)" },
           { period: "Mensal", description: "Acompanhamento em grupo + avaliação" }
         ]}
         scheduleType="recurring"
