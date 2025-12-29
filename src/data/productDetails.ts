@@ -366,7 +366,7 @@ export const productDetails: Record<string, ProductDetail> = {
     color: "bg-violet-500",
     price: "R$ 12.000",
     priceType: "/ano",
-    description: "Trilhas por cargo, onboarding e padronização de discurso para times comerciais com acompanhamento mensal em grupo.",
+    description: "Treinamentos quinzenais por nível (SDR, Closer, Gestor) com trilhas por cargo, onboarding e padronização de discurso para times comerciais.",
     deliverables: [
       "Trilhas por cargo (SDR, Closer, Gestor)",
       "Avaliações e scorecards",
