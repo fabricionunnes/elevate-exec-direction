@@ -966,7 +966,7 @@ export const productDetails: Record<string, ProductDetail> = {
   },
   "ai-sales-system": {
     id: "ai-sales-system",
-    name: "UNV A.I. Sales System",
+    name: "UNV Sales System",
     tagline: "Inteligência Comercial Autônoma",
     icon: Bot,
     color: "bg-cyan-500",
@@ -984,7 +984,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "Aprendizado contínuo com dados reais"
     ],
     bestFor: "Empresas B2B e B2C que querem escalar vendas com IA, reduzindo custo por venda e aumentando velocidade de atendimento",
-    whyRecommended: "Você precisa de escala comercial sem aumentar time. O A.I. Sales System entrega qualificação e atendimento 24/7 (+ prospecção para B2B).",
+    whyRecommended: "Você precisa de escala comercial sem aumentar time. O Sales System entrega qualificação e atendimento 24/7 (+ prospecção para B2B).",
     problemsSolved: [
       {
         problem: "SDR caro e difícil de escalar — custo alto para crescer time comercial",

@@ -211,7 +211,7 @@ const frasesVenda = [
 const conexaoEcossistema = [
   { nome: "UNV Sales Acceleration", descricao: "Estrutura", href: "/sales-acceleration" },
   { nome: "UNV Sales Ops", descricao: "Padronização", href: "/sales-ops" },
-  { nome: "UNV A.I. Sales System", descricao: "Escala", href: "/ai-sales-system" },
+  { nome: "UNV Sales System", descricao: "Escala", href: "/ai-sales-system" },
   { nome: "UNV Sales Force", descricao: "Execução humana", href: "/sales-force" },
 ];
 

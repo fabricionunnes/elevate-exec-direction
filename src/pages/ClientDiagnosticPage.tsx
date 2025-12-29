@@ -354,7 +354,7 @@ const products: Record<string, ProductRecommendation> = {
   },
   "ai-sales-system": {
     id: "ai-sales-system",
-    name: "A.I. Sales System",
+    name: "UNV Sales System",
     tagline: "Infraestrutura de Vendas com IA",
     icon: Bot,
     color: "bg-purple-600",
@@ -371,7 +371,7 @@ const products: Record<string, ProductRecommendation> = {
       "Operação em escala sem aumentar time"
     ],
     bestFor: "Empresas que querem escalar atendimento e prospecção sem aumentar time humano",
-    whyRecommended: "Você precisa de mais capacidade operacional sem contratar. O A.I. Sales System escala sua operação com inteligência artificial."
+    whyRecommended: "Você precisa de mais capacidade operacional sem contratar. O Sales System escala sua operação com inteligência artificial."
   },
   "people": {
     id: "people",
@@ -512,7 +512,7 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
     addProduct("le-desir");
   }
 
-  // Atendimento lento ou time não dá conta → A.I. Sales System
+  // Atendimento lento ou time não dá conta → Sales System
   if (pains.includes("atendimento-lento")) {
     addProduct("ai-sales-system");
   }
@@ -548,7 +548,7 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
   // Poucos leads
   if (pains.includes("poucos-leads")) {
     addProduct("ads");
-    // Se tem faturamento bom e precisa de leads, pode usar A.I. Sales System para prospecção
+    // Se tem faturamento bom e precisa de leads, pode usar Sales System para prospecção
     if (revenue === "100k-200k" || revenue === "200k-500k" || revenue === "500k-1m" || revenue === "acima-1m") {
       addProduct("ai-sales-system");
     }
