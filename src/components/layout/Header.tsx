@@ -178,12 +178,7 @@ export function Header() {
                                   href={product.href}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className={cn(
-                                    "flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all duration-300",
-                                    product.highlight
-                                      ? "font-semibold text-primary hover:bg-primary/10"
-                                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                                  )}
+                                  className="flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all duration-300 text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                                 >
                                   {product.name}
                                   <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
@@ -192,12 +187,10 @@ export function Header() {
                                 <Link
                                   key={product.href}
                                   to={product.href}
-                                  className={cn(
+                                className={cn(
                                     "block px-3 py-2 text-sm rounded-lg transition-all duration-300",
                                     location.pathname === product.href
                                       ? "bg-primary/10 text-primary font-medium"
-                                      : product.highlight
-                                      ? "font-semibold text-primary hover:bg-primary/10"
                                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                                   )}
                                 >
@@ -223,12 +216,7 @@ export function Header() {
                                   href={product.href}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className={cn(
-                                    "flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all duration-300",
-                                    product.highlight
-                                      ? "font-semibold text-primary hover:bg-primary/10"
-                                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                                  )}
+                                  className="flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all duration-300 text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                                 >
                                   {product.name}
                                   <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
@@ -237,12 +225,10 @@ export function Header() {
                                 <Link
                                   key={product.href}
                                   to={product.href}
-                                  className={cn(
+                                className={cn(
                                     "block px-3 py-2 text-sm rounded-lg transition-all duration-300",
                                     location.pathname === product.href
                                       ? "bg-primary/10 text-primary font-medium"
-                                      : product.highlight
-                                      ? "font-semibold text-primary hover:bg-primary/10"
                                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                                   )}
                                 >
@@ -335,12 +321,7 @@ export function Header() {
                                       href={product.href}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className={cn(
-                                        "flex items-center justify-between px-4 py-2 text-sm rounded-lg transition-all",
-                                        product.highlight
-                                          ? "text-primary font-semibold hover:bg-primary/10"
-                                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                                      )}
+                                      className="flex items-center justify-between px-4 py-2 text-sm rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                                       onClick={() => setMobileMenuOpen(false)}
                                     >
                                       {product.name}
@@ -354,8 +335,6 @@ export function Header() {
                                         "block px-4 py-2 text-sm rounded-lg transition-all",
                                         location.pathname === product.href
                                           ? "bg-primary/10 text-primary font-medium"
-                                          : product.highlight
-                                          ? "text-primary font-semibold hover:bg-primary/10"
                                           : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                                       )}
                                       onClick={() => setMobileMenuOpen(false)}
