@@ -218,7 +218,7 @@ export default function MastermindPage() {
               </Link>
               <Link to="/compare">
                 <Button variant="outline" size="xl" className="border-amber-500/30 text-foreground hover:bg-amber-500/10">
-                  Comparar Produtos
+                  Comparar Serviços
                 </Button>
               </Link>
             </div>

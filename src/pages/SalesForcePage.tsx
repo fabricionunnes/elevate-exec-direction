@@ -722,7 +722,7 @@ export default function SalesForcePage() {
               </Link>
               <Link to="/compare">
                 <Button variant="outline" size="xl" className="border-primary/30 text-foreground hover:bg-primary/10">
-                  Comparar Produtos
+                  Comparar Serviços
                 </Button>
               </Link>
             </div>
