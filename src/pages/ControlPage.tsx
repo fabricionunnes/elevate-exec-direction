@@ -44,7 +44,7 @@ const pillars = [
       "Corrige desvios de rota",
       "Apoia decisões do dono"
     ],
-    frequency: "1 encontro estratégico mensal (direção + prioridades)",
+    frequency: "1 reunião mensal + acompanhamento semanal via WhatsApp",
     deliverables: "Agenda de prioridades do mês + Direcionamento de foco + Decisões documentadas",
     gain: "Todo mês eu sei exatamente onde focar."
   },
@@ -115,15 +115,15 @@ const cadence = [
     period: "Semanal", 
     icon: Clock,
     items: [
-      "Cobrança de execução (gestor → time)",
-      "Acompanhamento de atividades-chave"
+      "Acompanhamento via grupo de WhatsApp",
+      "Cobrança de execução contínua"
     ]
   },
   { 
     period: "Mensal", 
     icon: Calendar,
     items: [
-      "Encontro estratégico com UNV",
+      "1 reunião estratégica com UNV",
       "Ajuste de foco e prioridades",
       "Correção de rota"
     ]
@@ -251,8 +251,8 @@ export default function ControlPage() {
           revenue: "R$ 100k a R$ 400k/mês"
         }}
         schedule={[
-          { period: "Semanal", description: "Cobrança e acompanhamento" },
-          { period: "Mensal", description: "Direção estratégica" },
+          { period: "Semanal", description: "Acompanhamento via WhatsApp" },
+          { period: "Mensal", description: "1 reunião estratégica" },
           { period: "Trimestral", description: "Revisão e ajustes" }
         ]}
         scheduleType="recurring"
