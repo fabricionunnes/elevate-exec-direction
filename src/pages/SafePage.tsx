@@ -154,7 +154,7 @@ export default function SafePage() {
               </Button>
               <Button variant="outline" size="lg" asChild>
                 <Link to="/compare">
-                  Comparar Produtos
+                  Comparar Serviços
                 </Link>
               </Button>
             </div>
@@ -469,7 +469,7 @@ export default function SafePage() {
               </Button>
               <Button variant="outline" size="lg" asChild>
                 <Link to="/compare">
-                  Comparar Produtos
+                  Comparar Serviços
                 </Link>
               </Button>
             </div>

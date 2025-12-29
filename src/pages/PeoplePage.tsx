@@ -79,7 +79,7 @@ export default function PeoplePage() {
               </Button>
               <Button variant="outline" size="lg" asChild>
                 <Link to="/compare">
-                  Comparar Produtos
+                  Comparar Serviços
                 </Link>
               </Button>
             </div>
@@ -331,7 +331,7 @@ export default function PeoplePage() {
               </Button>
               <Button variant="outline" size="lg" asChild>
                 <Link to="/compare">
-                  Comparar Produtos
+                  Comparar Serviços
                 </Link>
               </Button>
             </div>

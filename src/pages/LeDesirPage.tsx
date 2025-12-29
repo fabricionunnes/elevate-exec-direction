@@ -132,7 +132,7 @@ export default function LeDesirPage() {
               </Button>
               <Button size="lg" className="border-white/50 text-white hover:bg-white/10 bg-transparent border" asChild>
                 <Link to="/compare">
-                  Comparar Produtos
+                  Comparar Serviços
                 </Link>
               </Button>
             </div>
@@ -481,7 +481,7 @@ export default function LeDesirPage() {
               </Button>
               <Button size="lg" className="border-white/50 text-white hover:bg-white/10 bg-transparent border" asChild>
                 <Link to="/compare">
-                  Comparar Produtos
+                  Comparar Serviços
                 </Link>
               </Button>
             </div>

@@ -129,7 +129,7 @@ export default function LeadershipPage() {
               </Button>
               <Button variant="outline" size="lg" asChild>
                 <Link to="/compare">
-                  Comparar Produtos
+                  Comparar Serviços
                 </Link>
               </Button>
             </div>
