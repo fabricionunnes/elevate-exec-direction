@@ -166,7 +166,7 @@ const products: ProductPrice[] = [
     tagline: "Grupo Exclusivo de Empresários",
     icon: Crown,
     color: "text-yellow-500 bg-yellow-500/10",
-    price: "R$ 120.000",
+    price: "R$ 50.000",
     priceType: "/ano",
     priceNote: "Vagas limitadas",
     link: "/mastermind",
