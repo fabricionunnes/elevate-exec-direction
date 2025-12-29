@@ -51,7 +51,7 @@ const faqCategories = [
     faqs: [
       { 
         question: "O que é o UNV Growth Room?", 
-        answer: "É uma imersão estratégica de 2 dias focada em decisões de crescimento. Não é curso nem treinamento—é um encontro para clareza estratégica com entregáveis concretos. Vagas limitadas e curadoria obrigatória." 
+        answer: "É uma imersão estratégica de 3 dias focada em decisões de crescimento. Não é curso nem treinamento—é um encontro para clareza estratégica com entregáveis concretos. Vagas limitadas e curadoria obrigatória." 
       },
       { 
         question: "Como funciona o UNV Partners?", 
