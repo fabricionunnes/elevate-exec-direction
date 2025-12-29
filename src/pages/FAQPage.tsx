@@ -34,7 +34,7 @@ const faqCategories = [
     faqs: [
       { 
         question: "Qual a diferença entre Core, Control e Sales Acceleration?", 
-        answer: "UNV Core (R$ 1.997) é o diagnóstico inicial e estruturação básica. UNV Control é a direção comercial recorrente com acompanhamento semanal. Sales Acceleration é o programa completo de 12 meses com rituais, treinamentos e headhunting. É uma progressão natural: Core → Control → Sales Acceleration." 
+        answer: "UNV Core é o diagnóstico inicial e estruturação básica. UNV Control é a direção comercial recorrente com acompanhamento semanal. Sales Acceleration é o programa completo de 12 meses com rituais, treinamentos e headhunting. É uma progressão natural: Core → Control → Sales Acceleration." 
       },
       { 
         question: "Preciso fazer o Core antes de entrar no Control?", 
@@ -42,7 +42,7 @@ const faqCategories = [
       },
       { 
         question: "Quanto tempo dura cada programa?", 
-        answer: "UNV Core é implementação única (valor único de R$ 1.997). UNV Control é recorrente mensal/anual. Sales Acceleration é programa de 12 meses. Growth Room é imersão de 2 dias. Partners é R$ 30.000/ano. Sales Ops é R$ 12.000/ano." 
+        answer: "UNV Core é implementação única. UNV Control é recorrente mensal/anual. Sales Acceleration é programa de 12 meses. Growth Room é imersão de 2 dias. Partners e Sales Ops são anuais." 
       },
     ]
   },
@@ -51,11 +51,11 @@ const faqCategories = [
     faqs: [
       { 
         question: "O que é o UNV Growth Room?", 
-        answer: "É uma imersão estratégica de 2 dias focada em decisões de crescimento. Não é curso nem treinamento—é um encontro para clareza estratégica com entregáveis concretos. Investimento de R$ 3.997 por evento, com vagas limitadas e curadoria obrigatória." 
+        answer: "É uma imersão estratégica de 2 dias focada em decisões de crescimento. Não é curso nem treinamento—é um encontro para clareza estratégica com entregáveis concretos. Vagas limitadas e curadoria obrigatória." 
       },
       { 
         question: "Como funciona o UNV Partners?", 
-        answer: "UNV Partners (R$ 30.000/ano) é o nível premium da trilha de aceleração. Inclui todas as funcionalidades do Sales Acceleration com entrega superior, abrangendo rituais, diagnósticos, playbooks, treinamentos e headhunting. Exige aplicação obrigatória e possui vagas limitadas." 
+        answer: "UNV Partners é o nível premium da trilha de aceleração. Inclui todas as funcionalidades do Sales Acceleration com entrega superior, abrangendo rituais, diagnósticos, playbooks, treinamentos e headhunting. Exige aplicação obrigatória e possui vagas limitadas." 
       },
       { 
         question: "Como funciona a Experiência Mansão?", 
@@ -72,15 +72,15 @@ const faqCategories = [
     faqs: [
       { 
         question: "O que é o UNV Sales Ops?", 
-        answer: "UNV Sales Ops (R$ 12.000/ano) foca em padronização e treinamento do time comercial. Inclui treinamentos quinzenais segmentados por nível (SDR, Closer, Gestor), suporte diário via AI Advisor (agente de IA) e acompanhamento mensal em grupo." 
+        answer: "UNV Sales Ops foca em padronização e treinamento do time comercial. Inclui treinamentos quinzenais segmentados por nível (SDR, Closer, Gestor), suporte diário via AI Advisor (agente de IA) e acompanhamento mensal em grupo." 
       },
       { 
         question: "O que é o UNV Sales Force?", 
-        answer: "UNV Sales Force (R$ 6.000/mês + comissão) é execução direta: a UNV opera como SDR e/ou Closer para sua empresa. Diferente dos outros produtos que fornecem direção, no Sales Force nós executamos as vendas. Exige critérios de entrada: 200+ leads/mês, tráfego pago ativo, oferta validada." 
+        answer: "UNV Sales Force é execução direta: a UNV opera como SDR e/ou Closer para sua empresa. Diferente dos outros produtos que fornecem direção, no Sales Force nós executamos as vendas. Exige critérios de entrada: 200+ leads/mês, tráfego pago ativo, oferta validada." 
       },
       { 
         question: "O que é o UNV Sales System?", 
-        answer: "UNV Sales System é uma infraestrutura de vendas com IA: CRM inteligente + Agentes Autônomos (SDR, Atendimento, Social Setter). Atende B2B e B2C, com prospecção automatizada exclusiva para B2B. Mensalidades de R$ 297 a R$ 9.997 + implementação." 
+        answer: "UNV Sales System é uma infraestrutura de vendas com IA: CRM inteligente + Agentes Autônomos (SDR, Atendimento, Social Setter). Atende B2B e B2C, com prospecção automatizada exclusiva para B2B." 
       },
       { 
         question: "Qual a diferença entre Sales Force e Sales System?", 
@@ -97,11 +97,11 @@ const faqCategories = [
     faqs: [
       { 
         question: "O que é o UNV Ads?", 
-        answer: "Gestão de tráfego pago (Meta, Google, LinkedIn) com foco em geração de demanda qualificada. Tiers baseados no investimento: R$ 1.800 (até 10k investidos), R$ 2.500 (até 20k), R$ 4.000 (até 50k) e % acima de 50k." 
+        answer: "Gestão de tráfego pago (Meta, Google, LinkedIn) com foco em geração de demanda qualificada. Tiers baseados no investimento em mídia." 
       },
       { 
         question: "O que é o UNV Social?", 
-        answer: "Gestão estratégica de redes sociais focada em posicionamento de autoridade e geração de demanda orgânica. A partir de R$ 1.500/mês, inclui estratégia de conteúdo, produção e gestão de canais." 
+        answer: "Gestão estratégica de redes sociais focada em posicionamento de autoridade e geração de demanda orgânica. Inclui estratégia de conteúdo, produção e gestão de canais." 
       },
     ]
   },
@@ -110,19 +110,19 @@ const faqCategories = [
     faqs: [
       { 
         question: "O que é o UNV People?", 
-        answer: "Gestão estratégica de pessoas com duas frentes: Hiring (recrutamento) por R$ 4.000 (operacional) ou R$ 8.000 (liderança/estratégico) com garantia de 90 dias; e Gestão Recorrente por R$ 2.500 a R$ 6.000/mês dependendo do número de colaboradores." 
+        answer: "Gestão estratégica de pessoas com duas frentes: Hiring (recrutamento) para cargos operacionais e de liderança com garantia de 90 dias; e Gestão Recorrente para acompanhamento contínuo dependendo do número de colaboradores." 
       },
       { 
         question: "O que é o UNV Finance?", 
-        answer: "Controle financeiro estratégico (não é contabilidade). Para empresários que faturam bem mas não sabem onde ganham ou perdem dinheiro. Entrega: DRE gerencial, fluxo de caixa, margem por produto, projeções de 90 dias. Investimento de R$ 3.000/mês." 
+        answer: "Controle financeiro estratégico (não é contabilidade). Para empresários que faturam bem mas não sabem onde ganham ou perdem dinheiro. Entrega: DRE gerencial, fluxo de caixa, margem por produto, projeções de 90 dias." 
       },
       { 
         question: "O que é o UNV Safe?", 
-        answer: "Jurídico preventivo terceirizado: contratos, compliance, LGPD, análise de risco. Não é contencioso pesado. Investimento de R$ 3.000/mês para empresas que crescem rápido e precisam de suporte jurídico estruturado." 
+        answer: "Jurídico preventivo terceirizado: contratos, compliance, LGPD, análise de risco. Não é contencioso pesado. Para empresas que crescem rápido e precisam de suporte jurídico estruturado." 
       },
       { 
         question: "O que é o Le Désir?", 
-        answer: "Posicionamento estratégico de marca e autoridade pessoal do empresário. Trabalha a percepção de valor e o desejo do mercado pela sua marca. Investimento de R$ 2.000/mês." 
+        answer: "Posicionamento estratégico de marca e autoridade pessoal do empresário. Trabalha a percepção de valor e o desejo do mercado pela sua marca." 
       },
     ]
   },
