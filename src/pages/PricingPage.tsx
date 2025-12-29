@@ -105,8 +105,8 @@ const products: ProductPrice[] = [
     tagline: "Gestão de Redes Sociais",
     icon: Share2,
     color: "text-pink-500 bg-pink-500/10",
-    price: "Sob consulta",
-    priceType: "",
+    price: "A partir de R$ 1.500",
+    priceType: "/mês",
     link: "/social",
     category: "Operação Comercial"
   },
