@@ -68,6 +68,7 @@ const productCategories: ProductCategory[] = [
 const navigation = [
   { name: "Método", href: "/how-it-works" },
   { name: "Produtos", href: "/products", hasSubmenu: true },
+  { name: "Preços", href: "/pricing" },
   { name: "Diagnóstico", href: "/diagnostico" },
   { name: "FAQ", href: "/faq" },
 ];
