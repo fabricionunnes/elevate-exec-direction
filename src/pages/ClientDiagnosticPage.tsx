@@ -51,6 +51,7 @@ interface FormData {
   trafficSatisfied: string;
   hasSocialMedia: string;
   socialSatisfied: string;
+  whyDiagnostic: string;
 }
 
 const revenueOptions = [
@@ -434,7 +435,8 @@ export default function ClientDiagnosticPage() {
     hasTraffic: "",
     trafficSatisfied: "",
     hasSocialMedia: "",
-    socialSatisfied: ""
+    socialSatisfied: "",
+    whyDiagnostic: ""
   });
 
   const totalSteps = 5;
@@ -455,7 +457,7 @@ export default function ClientDiagnosticPage() {
   const canProceed = () => {
     switch (step) {
       case 1:
-        return formData.companyName && formData.contactName && formData.whatsapp && formData.email;
+        return formData.companyName && formData.contactName && formData.whatsapp && formData.email && formData.whyDiagnostic;
       case 2:
         return formData.revenue && formData.teamSize;
       case 3:
@@ -487,6 +489,7 @@ export default function ClientDiagnosticPage() {
         biggest_challenge: formData.biggestChallenge || null,
         urgency: formData.urgency,
         recommended_product: productNames,
+        why_diagnostic: formData.whyDiagnostic || null,
         notes: `Tráfego: ${formData.hasTraffic === "sim" ? (formData.trafficSatisfied === "sim" ? "Sim, satisfeito" : "Sim, insatisfeito") : "Não"}. Social: ${formData.hasSocialMedia === "sim" ? (formData.socialSatisfied === "sim" ? "Sim, satisfeito" : "Sim, insatisfeito") : "Não"}. ${formData.goals ? "Objetivos: " + formData.goals : ""}`,
         status: "pending"
       });
@@ -743,6 +746,19 @@ export default function ClientDiagnosticPage() {
                     onChange={(e) => updateField("email", e.target.value)}
                     placeholder="seu@email.com"
                     required
+                  />
+                </div>
+
+                <div>
+                  <Label className="flex items-center gap-2 mb-2">
+                    <Lightbulb className="h-4 w-4 text-accent" />
+                    Por que você quer fazer este diagnóstico? *
+                  </Label>
+                  <Textarea
+                    value={formData.whyDiagnostic}
+                    onChange={(e) => updateField("whyDiagnostic", e.target.value)}
+                    placeholder="O que te motivou a buscar ajuda agora? Qual situação você quer resolver?"
+                    rows={3}
                   />
                 </div>
               </div>

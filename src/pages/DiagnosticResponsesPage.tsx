@@ -56,6 +56,7 @@ interface DiagnosticResponse {
   recommended_product: string | null;
   status: string;
   notes: string | null;
+  why_diagnostic: string | null;
 }
 
 interface CloserDiagnostic {
@@ -816,32 +817,172 @@ export default function DiagnosticResponsesPage() {
                 </div>
               </div>
 
-              {/* Briefing para o Closer */}
+              {/* Briefing para o Closer - Baseado nas 12 Fases */}
               <div className="border-t border-border pt-6">
-                <h4 className="text-sm font-semibold text-foreground mb-3">📋 Briefing para o Closer</h4>
-                <div className="bg-primary/5 border border-primary/10 rounded-lg p-4 space-y-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Resumo do Lead</p>
-                    <p className="text-sm text-foreground">
-                      {selectedResponse.contact_name} da {selectedResponse.company_name}, 
-                      faturando {revenueLabels[selectedResponse.revenue] || selectedResponse.revenue}, 
-                      com {teamLabels[selectedResponse.team_size]?.toLowerCase() || selectedResponse.team_size}. 
-                      {selectedResponse.has_sales_process ? " Já possui processo comercial." : " Ainda não tem processo comercial estruturado."}
+                <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                  📋 Briefing para o Closer — Guia das 12 Fases
+                </h4>
+                
+                <div className="space-y-4">
+                  {/* Fase 1: Rapport e Contexto */}
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                    <h5 className="text-xs font-bold text-blue-400 uppercase mb-2">Fase 1 — Rapport e Contexto</h5>
+                    <p className="text-sm text-foreground mb-2">
+                      <span className="font-semibold">Quem é:</span> {selectedResponse.contact_name} da {selectedResponse.company_name}
+                    </p>
+                    <p className="text-sm text-foreground mb-2">
+                      <span className="font-semibold">Perfil:</span> {revenueLabels[selectedResponse.revenue] || selectedResponse.revenue} de faturamento, 
+                      {teamLabels[selectedResponse.team_size]?.toLowerCase() || selectedResponse.team_size}
+                    </p>
+                    {selectedResponse.why_diagnostic && (
+                      <div className="mt-2 bg-background/50 rounded p-2">
+                        <p className="text-xs text-muted-foreground mb-1">Por que buscou o diagnóstico:</p>
+                        <p className="text-sm text-foreground italic">"{selectedResponse.why_diagnostic}"</p>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-2 italic">
+                      💡 Dica: Use as palavras dele para criar conexão. Repita o motivo que ele trouxe.
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Principais Dores</p>
-                    <p className="text-sm text-foreground">
-                      {selectedResponse.main_pain.split(',').map(p => painLabels[p.trim()] || p.trim()).join(', ')}
-                    </p>
+
+                  {/* Fase 2: Dores e Sintomas */}
+                  <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
+                    <h5 className="text-xs font-bold text-orange-400 uppercase mb-2">Fase 2 — Dores e Sintomas</h5>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {selectedResponse.main_pain.split(',').map((pain, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {painLabels[pain.trim()] || pain.trim()}
+                        </Badge>
+                      ))}
+                    </div>
+                    {selectedResponse.biggest_challenge && (
+                      <p className="text-sm text-foreground mt-2">
+                        <span className="font-semibold">Maior desafio descrito:</span> {selectedResponse.biggest_challenge}
+                      </p>
+                    )}
+                    <div className="mt-3 text-xs text-muted-foreground">
+                      <p className="font-semibold mb-1">Perguntas de aprofundamento:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Há quanto tempo você convive com esse problema?</li>
+                        <li>O que esse problema está te custando hoje? (tempo, dinheiro, energia)</li>
+                        <li>Como isso afeta sua vida pessoal e sua rotina?</li>
+                      </ul>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Perguntas Sugeridas</p>
-                    <ul className="text-sm text-foreground list-disc list-inside space-y-1">
-                      <li>Qual foi o gatilho que te fez buscar ajuda agora?</li>
-                      <li>Quanto está deixando de faturar por não ter isso resolvido?</li>
-                      <li>O que já tentou fazer para resolver?</li>
-                    </ul>
+
+                  {/* Fase 3: Tentativas Anteriores */}
+                  <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
+                    <h5 className="text-xs font-bold text-purple-400 uppercase mb-2">Fase 3 — Tentativas Anteriores</h5>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {selectedResponse.has_sales_process 
+                        ? "Já possui algum processo comercial (investigar eficácia)" 
+                        : "Não tem processo comercial estruturado"}
+                    </p>
+                    <div className="text-xs text-muted-foreground">
+                      <p className="font-semibold mb-1">Perguntas para explorar:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>O que você já tentou fazer para resolver isso?</li>
+                        <li>Por que você acha que não funcionou?</li>
+                        <li>Já investiu em alguma consultoria ou treinamento antes?</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Fase 4: Urgência e Timeline */}
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                    <h5 className="text-xs font-bold text-red-400 uppercase mb-2">Fase 4 — Urgência e Timeline</h5>
+                    <Badge 
+                      variant="outline" 
+                      className={cn(
+                        "text-sm mb-2",
+                        selectedResponse.urgency === "imediata" && "border-destructive text-destructive",
+                        selectedResponse.urgency === "alta" && "border-orange-500 text-orange-500"
+                      )}
+                    >
+                      {urgencyLabels[selectedResponse.urgency] || selectedResponse.urgency}
+                    </Badge>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      <p className="font-semibold mb-1">Perguntas para validar urgência real:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>O que acontece se você não resolver isso nos próximos 90 dias?</li>
+                        <li>Por que agora? O que mudou?</li>
+                        <li>Quando você precisa ver os primeiros resultados?</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Fase 5: Metas e Expectativas */}
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4">
+                    <h5 className="text-xs font-bold text-emerald-400 uppercase mb-2">Fase 5 — Metas e Expectativas</h5>
+                    <div className="text-xs text-muted-foreground">
+                      <p className="font-semibold mb-1">Perguntas para alinhar expectativas:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Qual é sua meta de faturamento para os próximos 12 meses?</li>
+                        <li>O que muda na sua vida quando você atingir essa meta?</li>
+                        <li>O que você espera que a UNV faça por você?</li>
+                        <li>Você entende que a UNV direciona e cobra, mas quem executa é você e seu time?</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Fase 6: Decisor e Processo */}
+                  <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-4">
+                    <h5 className="text-xs font-bold text-cyan-400 uppercase mb-2">Fase 6 — Decisor e Processo de Decisão</h5>
+                    <div className="text-xs text-muted-foreground">
+                      <p className="font-semibold mb-1">Perguntas obrigatórias:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Você é quem decide sobre esse investimento?</li>
+                        <li>Existe um sócio ou parceiro(a) que precisa estar nessa conversa?</li>
+                        <li>Como você costuma tomar decisões de investimento na empresa?</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Fase 7: Produto Recomendado */}
+                  <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
+                    <h5 className="text-xs font-bold text-accent uppercase mb-2">Fase 7 — Apresentação da Solução</h5>
+                    <Badge className="bg-accent text-accent-foreground text-sm px-3 py-1 mb-3">
+                      {selectedResponse.recommended_product}
+                    </Badge>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      <p className="font-semibold mb-1">Por que este produto (argumentos):</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        {selectedResponse.main_pain.split(',').slice(0, 3).map((pain, i) => (
+                          <li key={i}>
+                            Resolve a dor: {painLabels[pain.trim()] || pain.trim()}
+                          </li>
+                        ))}
+                        <li>Adequado ao perfil de {revenueLabels[selectedResponse.revenue] || selectedResponse.revenue}</li>
+                        {!selectedResponse.has_sales_process && <li>Ideal para quem ainda não tem processo estruturado</li>}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Fases 8-12: Fechamento */}
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
+                    <h5 className="text-xs font-bold text-amber-400 uppercase mb-2">Fases 8-12 — Compromisso e Fechamento</h5>
+                    <div className="text-xs text-muted-foreground space-y-2">
+                      <div>
+                        <p className="font-semibold">8. Admissão:</p>
+                        <p className="italic">"Você concorda que precisa de ajuda externa para resolver isso?"</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold">9. Compromisso:</p>
+                        <p className="italic">"De 0 a 10, qual seu nível de comprometimento para resolver isso agora?"</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold">10. Coachability:</p>
+                        <p className="italic">"Você está aberto a ser cobrado e confrontado quando necessário?"</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold">11. Investimento:</p>
+                        <p className="italic">Apresentar valor apenas após validar compromisso e coachability</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold">12. Próximos Passos:</p>
+                        <p className="italic">Definir data de início, forma de pagamento e onboarding</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

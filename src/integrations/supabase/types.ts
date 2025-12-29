@@ -31,6 +31,7 @@ export type Database = {
           team_size: string
           urgency: string
           whatsapp: string
+          why_diagnostic: string | null
         }
         Insert: {
           biggest_challenge?: string | null
@@ -48,6 +49,7 @@ export type Database = {
           team_size: string
           urgency?: string
           whatsapp: string
+          why_diagnostic?: string | null
         }
         Update: {
           biggest_challenge?: string | null
@@ -65,6 +67,7 @@ export type Database = {
           team_size?: string
           urgency?: string
           whatsapp?: string
+          why_diagnostic?: string | null
         }
         Relationships: []
       }
