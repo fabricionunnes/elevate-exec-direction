@@ -28,7 +28,15 @@ import {
   MessageSquare,
   Star,
   Brain,
-  Lightbulb
+  Lightbulb,
+  Bot,
+  Briefcase,
+  Calculator,
+  Shield,
+  HeartHandshake,
+  UserPlus,
+  Wallet,
+  Zap
 } from "lucide-react";
 import { toast } from "sonner";
 import logoUnv from "@/assets/logo-unv.png";
@@ -80,6 +88,11 @@ const painOptions = [
   { value: "escala", label: "Dificuldade em escalar vendas", icon: TrendingUp },
   { value: "lideranca-fraca", label: "Líderes não cobram ou desenvolvem", icon: Brain },
   { value: "autoridade", label: "Falta de autoridade no mercado", icon: Star },
+  { value: "sem-diretor-comercial", label: "Não tenho diretor comercial ou gestor de vendas", icon: Briefcase },
+  { value: "rotatividade-time", label: "Alta rotatividade ou dificuldade de contratar", icon: UserPlus },
+  { value: "sem-clareza-financeira", label: "Não sei onde ganho ou perco dinheiro", icon: Wallet },
+  { value: "sobrecarga-decisao", label: "Peso da solidão e sobrecarga de decisões", icon: HeartHandshake },
+  { value: "atendimento-lento", label: "Atendimento lento ou time não dá conta", icon: Zap },
 ];
 
 const urgencyOptions = [
@@ -303,7 +316,7 @@ const products: Record<string, ProductRecommendation> = {
     tagline: "Inner Circle de Líderes",
     icon: Star,
     color: "bg-amber-500",
-    price: "R$ 36.000",
+    price: "R$ 50.000",
     priceType: "/ano",
     description: "Grupo ultra seletivo com hot seats mensais e Mansão Empresarial.",
     deliverables: [
@@ -316,6 +329,146 @@ const products: Record<string, ProductRecommendation> = {
     ],
     bestFor: "Empresários R$ 1M a R$ 10M/mês que já cresceram e querem decidir melhor com pares à altura",
     whyRecommended: "Você já passou da fase de execução. Agora precisa de um conselho de decisão com pares do seu nível."
+  },
+  "fractional-cro": {
+    id: "fractional-cro",
+    name: "UNV Fractional CRO",
+    tagline: "Diretor Comercial Terceirizado",
+    icon: Briefcase,
+    color: "bg-indigo-500",
+    price: "R$ 4.000",
+    priceType: "/mês + comissão",
+    description: "Um diretor comercial operando no dia a dia da sua empresa sem você precisar contratar.",
+    deliverables: [
+      "Standup diário com vendedores (15-30min)",
+      "Monitoramento do grupo de WhatsApp",
+      "Reunião semanal com cada vendedor",
+      "Reunião estratégica semanal com dono",
+      "Reunião de fechamento mensal",
+      "Cobrança diária de execução",
+      "Gestão de metas e KPIs",
+      "CRM como bônus"
+    ],
+    bestFor: "Empresas R$ 50k a R$ 500k/mês com 2-8 vendedores que não querem mais gerir vendas no dia a dia",
+    whyRecommended: "Você precisa de direção comercial diária, não só estratégia. O Fractional CRO opera como seu diretor todos os dias."
+  },
+  "ai-sales-system": {
+    id: "ai-sales-system",
+    name: "A.I. Sales System",
+    tagline: "Infraestrutura de Vendas com IA",
+    icon: Bot,
+    color: "bg-purple-600",
+    price: "R$ 297 a R$ 4.997",
+    priceType: "/mês + setup",
+    description: "Sistema de vendas automatizado com agentes IA para SDR, atendimento e prospecção.",
+    deliverables: [
+      "CRM inteligente integrado",
+      "Agentes IA autônomos (SDR, atendimento)",
+      "Automação de WhatsApp e Instagram",
+      "Prospecção B2B automatizada",
+      "Qualificação automática de leads",
+      "Atendimento 24/7 sem humanos",
+      "Operação em escala sem aumentar time"
+    ],
+    bestFor: "Empresas que querem escalar atendimento e prospecção sem aumentar time humano",
+    whyRecommended: "Você precisa de mais capacidade operacional sem contratar. O A.I. Sales System escala sua operação com inteligência artificial."
+  },
+  "people": {
+    id: "people",
+    name: "UNV People",
+    tagline: "Gestão Estratégica de Pessoas",
+    icon: UserPlus,
+    color: "bg-rose-500",
+    price: "R$ 2.500 a R$ 6.000",
+    priceType: "/mês",
+    description: "Estruturação de RH estratégico para empresas em crescimento.",
+    deliverables: [
+      "Estrutura de cargos e trilhas",
+      "Processo de contratação estruturado",
+      "Onboarding 30-60-90 dias",
+      "Avaliações de desempenho",
+      "Indicadores de pessoas (turnover, tempo de contratação)",
+      "Suporte a desenvolvimento de líderes"
+    ],
+    bestFor: "Empresas em crescimento com rotatividade ou dificuldade de contratar e reter talentos",
+    whyRecommended: "Pessoas são seu gargalo oculto. O UNV People estrutura contratação, onboarding e retenção para você crescer sem perder gente."
+  },
+  "finance": {
+    id: "finance",
+    name: "UNV Finance",
+    tagline: "Controle Financeiro Estratégico",
+    icon: Calculator,
+    color: "bg-teal-500",
+    price: "R$ 3.000",
+    priceType: "/mês",
+    description: "Clareza financeira para tomar decisões melhores e crescer com segurança.",
+    deliverables: [
+      "DRE gerencial mensal",
+      "Fluxo de caixa organizado",
+      "Análise de margem por produto",
+      "Projeção de caixa 90 dias",
+      "Apoio a decisões financeiras",
+      "Indicadores: receita líquida, margem, break-even"
+    ],
+    bestFor: "Empresários que faturam bem mas não sabem onde ganham ou perdem dinheiro",
+    whyRecommended: "Você fatura, mas não tem clareza. O UNV Finance organiza seus números para você decidir melhor."
+  },
+  "safe": {
+    id: "safe",
+    name: "UNV Safe",
+    tagline: "Proteção Jurídica Empresarial",
+    icon: Shield,
+    color: "bg-slate-600",
+    price: "R$ 3.000",
+    priceType: "/mês",
+    description: "Proteção legal contínua para sua empresa crescer com segurança.",
+    deliverables: [
+      "Revisão de contratos",
+      "Blindagem patrimonial",
+      "Suporte jurídico contínuo",
+      "Análise de riscos",
+      "Documentação preventiva"
+    ],
+    bestFor: "Empresários que estão crescendo e precisam proteger patrimônio e operação",
+    whyRecommended: "Você está exposto sem saber. O UNV Safe protege sua empresa enquanto você cresce."
+  },
+  "le-desir": {
+    id: "le-desir",
+    name: "Le Désir",
+    tagline: "Escuta Estratégica",
+    icon: HeartHandshake,
+    color: "bg-rose-800",
+    price: "R$ 1.200",
+    priceType: "/mês",
+    description: "Espaço de elaboração para processar o peso da liderança e tomar decisões com mais clareza.",
+    deliverables: [
+      "Sessões de escuta estratégica",
+      "Elaboração de decisões difíceis",
+      "Processamento de estresse e solidão",
+      "Clareza para próximos passos",
+      "100% online"
+    ],
+    bestFor: "Empresários sobrecarregados pelo peso das decisões e solidão da liderança",
+    whyRecommended: "Você carrega peso demais sozinho. O Le Désir é seu espaço para processar e ganhar clareza."
+  },
+  "sales-force": {
+    id: "sales-force",
+    name: "UNV Sales Force",
+    tagline: "Operação de SDR e Fechamento Terceirizada",
+    icon: Zap,
+    color: "bg-orange-600",
+    price: "R$ 6.000",
+    priceType: "/mês + comissão",
+    description: "A UNV opera como seu SDR e/ou Closer, executando vendas diretamente.",
+    deliverables: [
+      "Operação diária de SDR",
+      "Operação de Closer",
+      "Scripts adaptados ao seu negócio",
+      "Métricas e relatórios semanais",
+      "Ajustes mensais de estratégia"
+    ],
+    bestFor: "Empresas R$ 100k a R$ 1M+/mês com leads mas sem time para converter",
+    whyRecommended: "Você tem demanda mas não tem time. O Sales Force executa a conversão por você."
   }
 };
 
@@ -332,6 +485,45 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
       recommendations.push(products[productId]);
     }
   };
+
+  // ===== NOVOS PRODUTOS - Dores específicas =====
+  
+  // Sem diretor comercial ou gestor de vendas → Fractional CRO
+  if (pains.includes("sem-diretor-comercial")) {
+    // Verificar faturamento compatível (R$ 50k a R$ 500k) e time (2-8 vendedores)
+    if ((revenue === "50k-100k" || revenue === "100k-200k" || revenue === "200k-500k") &&
+        (teamSize === "1-3" || teamSize === "4-10")) {
+      addProduct("fractional-cro");
+    }
+  }
+
+  // Rotatividade ou dificuldade de contratar → UNV People
+  if (pains.includes("rotatividade-time")) {
+    addProduct("people");
+  }
+
+  // Sem clareza financeira → UNV Finance
+  if (pains.includes("sem-clareza-financeira")) {
+    addProduct("finance");
+  }
+
+  // Sobrecarga e solidão → Le Désir
+  if (pains.includes("sobrecarga-decisao")) {
+    addProduct("le-desir");
+  }
+
+  // Atendimento lento ou time não dá conta → A.I. Sales System
+  if (pains.includes("atendimento-lento")) {
+    addProduct("ai-sales-system");
+  }
+
+  // Baixa conversão com leads existentes → Sales Force
+  if (pains.includes("conversao-baixa") && 
+      (revenue === "100k-200k" || revenue === "200k-500k" || revenue === "500k-1m" || revenue === "acima-1m")) {
+    addProduct("sales-force");
+  }
+
+  // ===== PRODUTOS EXISTENTES =====
 
   // Social Media - não tem ou não está satisfeito
   if (data.hasSocialMedia === "nao" || data.socialSatisfied === "nao") {
@@ -356,6 +548,10 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
   // Poucos leads
   if (pains.includes("poucos-leads")) {
     addProduct("ads");
+    // Se tem faturamento bom e precisa de leads, pode usar A.I. Sales System para prospecção
+    if (revenue === "100k-200k" || revenue === "200k-500k" || revenue === "500k-1m" || revenue === "acima-1m") {
+      addProduct("ai-sales-system");
+    }
   }
 
   // Empresas grandes com time desalinhado
@@ -387,6 +583,10 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
     if (pains.includes("inconsistencia")) {
       addProduct("control");
     }
+    // Se não tem diretor comercial e tem time pequeno
+    if (pains.includes("sem-diretor-comercial") || (!data.hasSalesProcess && teamSize === "4-10")) {
+      addProduct("fractional-cro");
+    }
   }
 
   // Faturamento intermediário
@@ -400,11 +600,21 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
     if (pains.includes("sem-processo")) {
       addProduct("core");
     }
+    // Fractional CRO para quem tem time mas não sabe gerir
+    if (teamSize === "1-3" || teamSize === "4-10") {
+      if (pains.includes("sem-diretor-comercial") || pains.includes("time-desalinhado")) {
+        addProduct("fractional-cro");
+      }
+    }
   }
 
   // Baixo faturamento
   if (revenue === "menos-50k" || revenue === "50k-100k") {
     addProduct("core");
+    // Se tem dor de atendimento mesmo com baixo faturamento, A.I. pode ajudar
+    if (pains.includes("atendimento-lento")) {
+      addProduct("ai-sales-system");
+    }
   }
 
   // Se não tem nenhuma recomendação, adicionar Core como padrão
