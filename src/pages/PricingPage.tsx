@@ -256,10 +256,10 @@ export default function PricingPage() {
         <div className="container-premium relative">
           <div className="max-w-4xl mx-auto text-center animate-fade-up">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              Tabela de Produtos e Preços
+              Tabela de Serviços e Preços
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Todos os produtos UNV com seus respectivos investimentos. Encontre a solução ideal para o momento da sua empresa.
+              Todos os serviços UNV com seus respectivos investimentos. Encontre a solução ideal para o momento da sua empresa.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-primary hover:bg-primary/90" asChild>
@@ -270,7 +270,7 @@ export default function PricingPage() {
               </Button>
               <Button variant="outline" size="lg" asChild>
                 <Link to="/compare">
-                  Comparar Produtos
+                  Comparar Serviços
                 </Link>
               </Button>
             </div>
@@ -373,7 +373,7 @@ export default function PricingPage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-bold text-foreground mb-4">
-              Não sabe qual produto é ideal para você?
+              Não sabe qual serviço é ideal para você?
             </h2>
             <p className="text-muted-foreground mb-8">
               Faça nosso diagnóstico gratuito e receba uma recomendação personalizada.

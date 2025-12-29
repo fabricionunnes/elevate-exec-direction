@@ -65,7 +65,7 @@ const icpNao = [
 
 // Formato
 const formato = [
-  { label: "Tipo", value: "Produto recorrente" },
+  { label: "Tipo", value: "Serviço recorrente" },
   { label: "Investimento", value: "R$ 12.000/ano" },
   { label: "Treinamentos", value: "Quinzenais por nível (SDR, Closer, Gestor)" },
   { label: "Contrato mínimo", value: "6 meses recomendado" },
@@ -259,7 +259,7 @@ const naoEntrega = [
   "Não acelera vendas sozinho",
   "Não substitui liderança",
   "Não garante resultado financeiro",
-  "Não é produto estratégico",
+  "Não é serviço estratégico",
 ];
 
 // Próximos passos
@@ -300,7 +300,7 @@ export default function SalesOpsPage() {
               </Link>
               <Link to="/products">
                 <Button variant="outline" size="xl" className="border-primary/30 text-foreground hover:bg-primary/10">
-                  Ver Todos os Produtos
+                  Ver Todos os Serviços
                 </Button>
               </Link>
             </div>
@@ -343,7 +343,7 @@ export default function SalesOpsPage() {
                 Posicionamento Oficial
               </h2>
               <p className="text-body text-lg max-w-3xl mx-auto">
-                O UNV Sales Ops é o produto da UNV focado em padronizar, treinar e sustentar 
+                O UNV Sales Ops é o serviço da UNV focado em padronizar, treinar e sustentar 
                 a operação comercial, garantindo que o time de vendas opere sob um único padrão, 
                 independentemente de quem esteja vendendo.
               </p>
@@ -375,7 +375,7 @@ export default function SalesOpsPage() {
               O Papel da UNV no Sales Ops
             </h2>
             <p className="text-body text-center mb-12 max-w-2xl mx-auto">
-              Neste produto, a UNV atua como:
+              Neste serviço, a UNV atua como:
             </p>
             
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">

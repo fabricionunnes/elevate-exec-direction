@@ -256,7 +256,7 @@ export default function GrowthRoomPage() {
               </Link>
               <Link to="/products">
                 <Button variant="outline" size="xl" className="border-primary/30 text-foreground hover:bg-primary/10">
-                  Ver Todos os Produtos
+                  Ver Todos os Serviços
                 </Button>
               </Link>
             </div>
@@ -329,7 +329,7 @@ export default function GrowthRoomPage() {
               O Papel da UNV no Growth Room
             </h2>
             <p className="text-body text-center mb-12 max-w-2xl mx-auto">
-              Neste produto, a UNV atua como:
+              Neste serviço, a UNV atua como:
             </p>
             
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">

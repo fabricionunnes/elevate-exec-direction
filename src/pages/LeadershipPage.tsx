@@ -483,7 +483,7 @@ export default function LeadershipPage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="heading-section text-foreground mb-8">
-              O Que Este Produto Não É
+              O Que Este Serviço Não É
             </h2>
             <div className="flex flex-wrap justify-center gap-4 mb-8">
               {notFor.map((item, index) => (

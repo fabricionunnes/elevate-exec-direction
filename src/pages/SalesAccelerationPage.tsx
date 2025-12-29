@@ -249,7 +249,7 @@ export default function SalesAccelerationPage() {
         color="red"
         productNumber={3}
         productName="UNV SALES ACCELERATION"
-        tagline="Produto Principal"
+        tagline="Serviço Principal"
         whatItDoes="Atua como a direção comercial ativa da empresa para acelerar vendas do time."
         keyPoints={[
           "Treina vendedores",
@@ -279,10 +279,10 @@ export default function SalesAccelerationPage() {
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">
             <h2 className="heading-section text-foreground text-center mb-4">
-              Papel da UNV Neste Produto
+              Papel da UNV Neste Serviço
             </h2>
             <p className="text-body text-center mb-12 max-w-2xl mx-auto">
-              Neste produto, a UNV atua como o diretor comercial funcional da
+              Neste serviço, a UNV atua como o diretor comercial funcional da
               empresa, assumindo responsabilidade sobre:
             </p>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

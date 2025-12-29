@@ -93,7 +93,7 @@ const mainTrail: Product[] = [
   },
   {
     name: "UNV Sales Acceleration",
-    tagline: "Produto principal",
+    tagline: "Serviço principal",
     description:
       "Programa anual de direção comercial. Treinamos, acompanhamos e cobramos seu time para crescimento acelerado e previsível.",
     icp: "Faturamento R$ 150k–1M/mês • 3+ vendedores",
@@ -245,10 +245,10 @@ export default function ProductsPage() {
         <div className="container-premium">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="heading-display text-foreground mb-6">
-              Nossos Produtos
+              Nossos Serviços
             </h1>
             <p className="text-body text-lg">
-              Não é um catálogo—é uma progressão. Cada produto endereça um
+              Não é um catálogo—é uma progressão. Cada serviço endereça um
               estágio específico de maturidade comercial. Encontre onde você se
               encaixa e cresça a partir daí.
             </p>
@@ -347,7 +347,7 @@ export default function ProductsPage() {
         <div className="container-premium">
           <div className="card-premium p-8 lg:p-12 text-center max-w-3xl mx-auto">
             <h2 className="heading-card text-foreground mb-4">
-              Não sabe qual produto é ideal para você?
+              Não sabe qual serviço é ideal para você?
             </h2>
             <p className="text-body mb-6">
               Use nossa ferramenta de diagnóstico para receber uma recomendação

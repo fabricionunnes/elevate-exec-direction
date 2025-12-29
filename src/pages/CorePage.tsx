@@ -211,7 +211,7 @@ export default function CorePage() {
               </Link>
               <Link to="/products">
                 <Button variant="outline" size="xl" className="border-primary/30 text-foreground hover:bg-primary/10">
-                  Ver Todos os Produtos
+                  Ver Todos os Serviços
                 </Button>
               </Link>
             </div>
@@ -291,7 +291,7 @@ export default function CorePage() {
               O Papel da UNV no Core
             </h2>
             <p className="text-body text-center mb-12 max-w-2xl mx-auto">
-              Neste produto, a UNV atua como:
+              Neste serviço, a UNV atua como:
             </p>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {unvRole.map((role, i) => (

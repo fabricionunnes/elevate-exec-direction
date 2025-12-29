@@ -1606,7 +1606,7 @@ export default function ForClosersPage() {
                             <div className="mt-4 pt-4 border-t border-border/50">
                               <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                                 <Target className="h-4 w-4 text-accent" />
-                                O que este produto resolve para você:
+                                O que este serviço resolve para você:
                               </h4>
                               <div className="space-y-3">
                                 {details.problemsSolved.map((item, i) => (

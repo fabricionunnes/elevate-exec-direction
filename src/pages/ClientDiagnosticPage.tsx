@@ -774,7 +774,7 @@ export default function ClientDiagnosticPage() {
 
                   <div className="bg-accent/10 border border-accent/20 rounded-xl p-4 mb-6">
                     <p className="text-foreground">
-                      <span className="font-semibold">Por que este produto para você?</span>
+                      <span className="font-semibold">Por que este serviço para você?</span>
                       <br />
                       <span className="text-muted-foreground text-sm">{rec.whyRecommended}</span>
                     </p>
