@@ -48,6 +48,7 @@ interface FormData {
   // Fase 6 - Situação Atual e Desejada
   revenue: string;
   teamSize: string;
+  teamWorkMode: string;
   avgTicket: string;
   salesCycle: string;
   leadVolume: string;
@@ -125,6 +126,12 @@ const teamSizeOptions = [
   { value: "6-10", label: "6–10 vendedores" },
   { value: "11-20", label: "11–20 vendedores" },
   { value: "over-20", label: "20+ vendedores" }
+];
+
+const teamWorkModeOptions = [
+  { value: "presencial", label: "Presencial (escritório)" },
+  { value: "home-office", label: "Home Office" },
+  { value: "hibrido", label: "Híbrido" }
 ];
 
 const ticketOptions = [
@@ -219,6 +226,7 @@ const productIcons: Record<string, React.ComponentType<{ className?: string }>> 
   "UNV Core": Layers,
   "UNV Control": RefreshCw,
   "UNV Sales Acceleration": TrendingUp,
+  "UNV Sales Force": Users2,
   "UNV Growth Room": MapPin,
   "UNV Partners": Crown,
   "UNV Sales Ops": Users2,
@@ -231,10 +239,26 @@ function getRecommendation(data: FormData): Recommendation {
   const products: ProductRecommendation[] = [];
   const trail: Trail[] = [];
   
-  const { revenue, teamSize, mainPains, hasProcess, leadVolume, leadSource } = data;
+  const { revenue, teamSize, teamWorkMode, mainPains, hasProcess, leadVolume, leadSource } = data;
   
   // Lógica de recomendação baseada em múltiplos fatores
   
+  // Sales Force - Apenas para quem tem vendedores em home office
+  if (teamWorkMode === "home-office" && teamSize !== "0" && 
+      (mainPains.includes("low-conversion") || mainPains.includes("inconsistent-execution") || mainPains.includes("owner-dependent"))) {
+    products.push({
+      id: "sales-force",
+      name: "UNV Sales Force",
+      icon: productIcons["UNV Sales Force"] || TrendingUp,
+      priority: "primary",
+      reasons: [
+        "Seu time trabalha em home office",
+        "SDR e Closer terceirizados para converter demanda",
+        "Execução profissional sem gestão de pessoas"
+      ],
+      href: "/sales-force"
+    });
+  }
   // Core - Para quem está começando ou sem processo
   if (hasProcess === "none" || hasProcess === "informal" || 
       (mainPains.includes("no-process") && ["under-50k", "50k-100k", "100k-200k"].includes(revenue))) {
@@ -517,7 +541,7 @@ export default function ForClosersPage() {
     // Fase 5
     whatTriedBefore: "", whyDidntWork: "",
     // Fase 6
-    revenue: "", teamSize: "", avgTicket: "", salesCycle: "", leadVolume: "", leadSource: [], otherLeadSource: "", conversion: "",
+    revenue: "", teamSize: "", teamWorkMode: "", avgTicket: "", salesCycle: "", leadVolume: "", leadSource: [], otherLeadSource: "", conversion: "",
     hasProcess: "", hasCRM: "", crmName: "", goal12Months: "", idealScenario: "", realisticExpectation: "",
     // Fase 7
     deeperWhy: "", whatWouldChange: "", loveOrStatus: "",
@@ -1052,6 +1076,15 @@ export default function ForClosersPage() {
                   <SelectContent className="bg-card border-border">{teamSizeOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
+              {formData.teamSize && formData.teamSize !== "0" && (
+                <div className="space-y-2">
+                  <Label>Regime de Trabalho dos Vendedores *</Label>
+                  <Select value={formData.teamWorkMode} onValueChange={v => setFormData({...formData, teamWorkMode: v})}>
+                    <SelectTrigger><SelectValue placeholder="Onde trabalham?" /></SelectTrigger>
+                    <SelectContent className="bg-card border-border">{teamWorkModeOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Ticket Médio</Label>
                 <Select value={formData.avgTicket} onValueChange={v => setFormData({...formData, avgTicket: v})}>
