@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClientDiagnosticForm } from "@/components/ClientDiagnosticForm";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Product {
   id: string;
@@ -1477,6 +1478,21 @@ const categories = [...new Set(features.map(f => f.category))];
 export default function ComparePage() {
   const [selectedProducts, setSelectedProducts] = useState<string[]>(["core", "sales-acceleration"]);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.rpc('has_role', {
+          _user_id: user.id,
+          _role: 'admin'
+        });
+        setIsAdmin(data === true);
+      }
+    };
+    checkAdminRole();
+  }, []);
 
   const toggleProduct = (productId: string) => {
     if (selectedProducts.includes(productId)) {
@@ -1817,22 +1833,24 @@ export default function ComparePage() {
       </section>
 
       {/* CTA */}
-      <section className="section-padding bg-card border-y border-border/30 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
-        <div className="container-premium text-center relative">
-          <h2 className="heading-section text-foreground mb-4">
-            Ainda em Dúvida?
-          </h2>
-          <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-            Responda algumas perguntas rápidas e receba uma recomendação 
-            personalizada baseada no momento da sua empresa.
-          </p>
-          <Button variant="hero" size="xl" onClick={() => setShowDiagnostic(true)}>
-            Qual Produto é Ideal Para Mim?
-            <ArrowRight className="ml-2" />
-          </Button>
-        </div>
-      </section>
+      {isAdmin && (
+        <section className="section-padding bg-card border-y border-border/30 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
+          <div className="container-premium text-center relative">
+            <h2 className="heading-section text-foreground mb-4">
+              Ainda em Dúvida?
+            </h2>
+            <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
+              Responda algumas perguntas rápidas e receba uma recomendação 
+              personalizada baseada no momento da sua empresa.
+            </p>
+            <Button variant="hero" size="xl" onClick={() => setShowDiagnostic(true)}>
+              Qual Produto é Ideal Para Mim?
+              <ArrowRight className="ml-2" />
+            </Button>
+          </div>
+        </section>
+      )}
 
       {/* Diagnostic Modal */}
       {showDiagnostic && (
