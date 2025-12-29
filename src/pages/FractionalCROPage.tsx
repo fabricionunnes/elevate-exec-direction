@@ -252,7 +252,7 @@ export default function FractionalCROPage() {
               </Link>
               <Link to="/products">
                 <Button variant="outline" size="xl" className="border-amber-500/30 text-foreground hover:bg-amber-500/10">
-                  Ver Todos os Produtos
+                  Ver Todos os Serviços
                 </Button>
               </Link>
             </div>

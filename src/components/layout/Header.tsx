@@ -252,7 +252,7 @@ export function Header() {
           {isLoggedIn && (
             <Link to="/for-closers">
               <Button variant="ghost" size="sm" className="text-muted-foreground">
-                Qual produto é ideal?
+                Qual serviço é ideal?
               </Button>
             </Link>
           )}
@@ -369,7 +369,7 @@ export function Header() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <Button variant="outline" className="w-full">
-                    Qual produto é ideal?
+                    Qual serviço é ideal?
                   </Button>
                 </Link>
               )}

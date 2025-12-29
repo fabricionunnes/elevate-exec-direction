@@ -222,7 +222,7 @@ export default function AISalesSystemPage() {
               </Link>
               <Link to="/products">
                 <Button variant="outline" size="xl" className="border-cyan-500/30 text-foreground hover:bg-cyan-500/10">
-                  Ver Todos os Produtos
+                  Ver Todos os Serviços
                 </Button>
               </Link>
             </div>

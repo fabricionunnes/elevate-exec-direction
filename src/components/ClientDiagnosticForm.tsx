@@ -406,7 +406,7 @@ export function ClientDiagnosticForm({ onClose }: ClientDiagnosticFormProps) {
         <div className="space-y-4">
           <div className="text-center mb-6">
             <h3 className="text-xl font-semibold text-foreground">Suas Necessidades</h3>
-            <p className="text-sm text-muted-foreground">Para recomendar o melhor produto</p>
+            <p className="text-sm text-muted-foreground">Para recomendar o melhor serviço</p>
           </div>
           
           <div className="space-y-4">

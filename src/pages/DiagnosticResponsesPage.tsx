@@ -1042,7 +1042,7 @@ export default function DiagnosticResponsesPage() {
                       {selectedResponse.recommended_product}
                     </Badge>
                     <div className="text-xs text-muted-foreground mt-2">
-                      <p className="font-semibold mb-1">Por que este produto (argumentos):</p>
+                      <p className="font-semibold mb-1">Por que este serviço (argumentos):</p>
                       <ul className="list-disc list-inside space-y-1">
                         {selectedResponse.main_pain.split(',').slice(0, 3).map((pain, i) => (
                           <li key={i}>

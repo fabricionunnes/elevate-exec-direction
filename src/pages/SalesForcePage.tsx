@@ -222,7 +222,7 @@ export default function SalesForcePage() {
               </Link>
               <Link to="/products">
                 <Button variant="outline" size="xl" className="border-primary/30 text-foreground hover:bg-primary/10">
-                  Ver Todos os Produtos
+                  Ver Todos os Serviços
                 </Button>
               </Link>
             </div>

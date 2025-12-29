@@ -66,7 +66,7 @@ export function Footer() {
           {/* Products */}
           <div>
             <h4 className="font-bold text-xs sm:text-sm uppercase tracking-wider text-primary mb-4 sm:mb-6">
-              Produtos
+              Serviços
             </h4>
             <ul className="space-y-2 sm:space-y-3">
               {footerLinks.products.map((link) => (

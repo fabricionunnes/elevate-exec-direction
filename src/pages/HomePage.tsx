@@ -582,7 +582,7 @@ export default function HomePage() {
           <div className="text-center mt-10 sm:mt-12 md:mt-16">
             <Link to="/products">
               <Button variant="premium-outline" size="default" className="text-sm sm:text-base">
-                Ver Todos os Produtos
+                Ver Todos os Serviços
               </Button>
             </Link>
           </div>

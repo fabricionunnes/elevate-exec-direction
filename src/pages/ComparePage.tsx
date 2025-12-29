@@ -1805,7 +1805,7 @@ export default function ComparePage() {
       <section className="section-padding bg-secondary">
         <div className="container-premium">
           <h2 className="heading-section text-foreground text-center mb-12">
-            Saiba Mais Sobre Cada Produto
+            Saiba Mais Sobre Cada Serviço
           </h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {selectedProductsData.map((product) => {
@@ -1845,7 +1845,7 @@ export default function ComparePage() {
               personalizada baseada no momento da sua empresa.
             </p>
             <Button variant="hero" size="xl" onClick={() => setShowDiagnostic(true)}>
-              Qual Produto é Ideal Para Mim?
+              Qual Serviço é Ideal Para Mim?
               <ArrowRight className="ml-2" />
             </Button>
           </div>
@@ -1858,7 +1858,7 @@ export default function ComparePage() {
           <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-border">
               <h2 className="text-xl font-semibold text-foreground">
-                Descubra o Produto Ideal
+                Descubra o Serviço Ideal
               </h2>
               <button 
                 onClick={() => setShowDiagnostic(false)}
