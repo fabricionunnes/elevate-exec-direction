@@ -216,6 +216,12 @@ const cadenciaDiaria = [
   "Suporte via AI Advisor (agente de IA)",
 ];
 
+const cadenciaQuinzenal = [
+  "Treinamento quinzenal para SDRs",
+  "Treinamento quinzenal para Closers",
+  "Treinamento quinzenal para Gestores",
+];
+
 const cadenciaMensal = [
   "Reunião de acompanhamento em grupo",
   "Avaliação de performance",
@@ -700,6 +706,20 @@ export default function SalesOpsPage() {
                 </ul>
               </div>
 
+              <div className="card-premium p-6 bg-background">
+                <div className="flex items-center gap-2 mb-4">
+                  <GraduationCap className="h-5 w-5 text-accent" />
+                  <h3 className="font-semibold text-foreground">Quinzenal</h3>
+                </div>
+                <ul className="space-y-2">
+                  {cadenciaQuinzenal.map((item, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      <CheckCircle className="h-4 w-4 text-accent" />
+                      <span className="text-muted-foreground">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
               <div className="card-premium p-6 bg-background">
                 <div className="flex items-center gap-2 mb-4">
