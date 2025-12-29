@@ -138,11 +138,11 @@ const products: ProductPrice[] = [
   {
     id: "growth-room",
     name: "UNV Growth Room",
-    tagline: "Grupo Estratégico de Crescimento",
+    tagline: "Imersões de Alto Impacto",
     icon: Building2,
     color: "text-amber-500 bg-amber-500/10",
-    price: "R$ 36.000",
-    priceType: "/ano",
+    price: "R$ 3.997",
+    priceType: "/evento",
     link: "/growth-room",
     category: "Trilha Avançada"
   },
