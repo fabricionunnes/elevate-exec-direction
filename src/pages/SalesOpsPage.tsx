@@ -66,9 +66,9 @@ const icpNao = [
 // Formato
 const formato = [
   { label: "Tipo", value: "Produto recorrente" },
-  { label: "Cobrança", value: "Por usuário" },
+  { label: "Investimento", value: "R$ 1.500/mês" },
   { label: "Contrato mínimo", value: "6 meses recomendado" },
-  { label: "Escala", value: "Cresce com o time" },
+  { label: "Acompanhamento", value: "Mensal em grupo" },
 ];
 
 // Trilhas por cargo
@@ -216,14 +216,11 @@ const cadenciaDiaria = [
   "Apoio do AI Advisor",
 ];
 
-const cadenciaSemanal = [
-  "Reunião de time (modelo UNV)",
-  "Leitura de indicadores",
-];
-
 const cadenciaMensal = [
+  "Reunião de acompanhamento em grupo",
   "Avaliação de performance",
   "Ajustes de trilha e padrão",
+  "Troca de experiências entre empresas",
 ];
 
 // Entregáveis consolidados
@@ -325,9 +322,8 @@ export default function SalesOpsPage() {
           team: "Times com 5+ vendedores"
         }}
         schedule={[
-          { period: "Diário", description: "Uso de padrões" },
-          { period: "Semanal", description: "Gestão do time" },
-          { period: "Mensal", description: "Avaliação e ajustes" }
+          { period: "Diário", description: "Uso de padrões e scripts" },
+          { period: "Mensal", description: "Acompanhamento em grupo + avaliação" }
         ]}
         scheduleType="recurring"
       />
@@ -704,20 +700,6 @@ export default function SalesOpsPage() {
                 </ul>
               </div>
 
-              <div className="card-premium p-6 bg-background">
-                <div className="flex items-center gap-2 mb-4">
-                  <Clock className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">Semanal</h3>
-                </div>
-                <ul className="space-y-2">
-                  {cadenciaSemanal.map((item, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="h-4 w-4 text-primary" />
-                      <span className="text-muted-foreground">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
 
               <div className="card-premium p-6 bg-background">
                 <div className="flex items-center gap-2 mb-4">
