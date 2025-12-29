@@ -66,7 +66,7 @@ const icpNao = [
 // Formato
 const formato = [
   { label: "Tipo", value: "Produto recorrente" },
-  { label: "Investimento", value: "R$ 1.500/mês" },
+  { label: "Investimento", value: "R$ 18.000/ano" },
   { label: "Contrato mínimo", value: "6 meses recomendado" },
   { label: "Acompanhamento", value: "Mensal em grupo" },
 ];
