@@ -112,7 +112,7 @@ const products: ProductPrice[] = [
   },
   {
     id: "ai-sales-system",
-    name: "A.I. Sales System",
+    name: "UNV Sales System",
     tagline: "Automação com Inteligência Artificial",
     icon: Bot,
     color: "text-cyan-500 bg-cyan-500/10",

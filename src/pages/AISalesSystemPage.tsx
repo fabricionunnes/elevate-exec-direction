@@ -198,14 +198,14 @@ export default function AISalesSystemPage() {
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-4xl mx-auto text-center animate-fade-up">
             <div className="inline-block p-4 bg-white/95 rounded-2xl shadow-xl mb-8">
-              <img src={logoAISalesSystem} alt="UNV A.I. Sales System" className="h-20 md:h-28" />
+              <img src={logoAISalesSystem} alt="UNV Sales System" className="h-20 md:h-28" />
             </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500/20 text-cyan-600 text-sm font-medium rounded-full mb-6 backdrop-blur-sm border border-cyan-500/30">
               <Brain className="h-4 w-4" />
               AI-Driven CRM, Autonomous Sales Agents & B2B Prospecting
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 tracking-tight">
-              UNV A.I. Sales System
+              UNV Sales System
             </h1>
             <p className="text-xl md:text-2xl text-foreground/80 mb-4 font-medium">
               Não é um CRM. Não é um chatbot.
@@ -234,7 +234,7 @@ export default function AISalesSystemPage() {
       <ProductTrailSummary
         color="blue"
         productNumber={0}
-        productName="UNV A.I. SALES SYSTEM"
+        productName="UNV SALES SYSTEM"
         tagline="Inteligência Comercial Autônoma"
         whatItDoes="Sistema completo de IA para vendas: CRM + Agentes Autônomos + Atendimento (B2B e B2C)."
         keyPoints={[
@@ -266,7 +266,7 @@ export default function AISalesSystemPage() {
                 O Que É o Produto
               </h2>
               <p className="text-body text-lg max-w-3xl mx-auto mb-8">
-                O UNV A.I. Sales System é um sistema completo de inteligência artificial para vendas, que combina:
+                O UNV Sales System é um sistema completo de inteligência artificial para vendas, que combina:
               </p>
             </div>
             

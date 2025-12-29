@@ -293,7 +293,7 @@ const products: Product[] = [
   },
   {
     id: "ai-sales-system",
-    name: "UNV A.I. Sales System",
+    name: "UNV Sales System",
     tagline: "Inteligência Comercial Autônoma",
     icon: Bot,
     color: "bg-cyan-500",
@@ -1277,11 +1277,11 @@ const features: Feature[] = [
       safe: "Básico"
     }
   },
-  // A.I. Sales System
+  // Sales System
   {
     name: "CRM Inteligente",
     description: "CRM com lead scoring por IA",
-    category: "A.I. Sales System",
+    category: "Sales System",
     products: {
       core: false,
       control: false,
@@ -1305,7 +1305,7 @@ const features: Feature[] = [
   {
     name: "Agentes de IA Autônomos",
     description: "SDR, Atendimento, Qualificação por IA",
-    category: "A.I. Sales System",
+    category: "Sales System",
     products: {
       core: false,
       control: false,
@@ -1329,7 +1329,7 @@ const features: Feature[] = [
   {
     name: "Atendimento WhatsApp/Instagram",
     description: "Automação de canais de mensagem",
-    category: "A.I. Sales System",
+    category: "Sales System",
     products: {
       core: false,
       control: false,
@@ -1353,7 +1353,7 @@ const features: Feature[] = [
   {
     name: "Prospecção Automatizada B2B",
     description: "IA prospectando leads B2B",
-    category: "A.I. Sales System",
+    category: "Sales System",
     products: {
       core: false,
       control: false,
