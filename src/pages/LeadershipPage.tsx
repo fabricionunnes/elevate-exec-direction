@@ -509,7 +509,7 @@ export default function LeadershipPage() {
             </h2>
             <div className="max-w-md mx-auto">
               <div className="bg-card border-2 border-accent rounded-2xl p-8 text-center">
-                <p className="text-5xl md:text-6xl font-bold text-accent mb-2">R$ 15.000</p>
+                <p className="text-5xl md:text-6xl font-bold text-accent mb-2">R$ 10.000</p>
                 <p className="text-muted-foreground text-lg">/ano por empresa</p>
               </div>
             </div>
