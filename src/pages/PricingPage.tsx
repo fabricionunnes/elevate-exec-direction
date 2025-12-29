@@ -53,8 +53,9 @@ const products: ProductPrice[] = [
     tagline: "Direção Comercial Recorrente",
     icon: Compass,
     color: "text-blue-500 bg-blue-500/10",
-    price: "R$ 2.500",
-    priceType: "/mês",
+    price: "R$ 5.997",
+    priceType: "/ano",
+    priceNote: "À vista ou parcelado",
     link: "/control",
     category: "Trilha Principal"
   },
@@ -64,8 +65,9 @@ const products: ProductPrice[] = [
     tagline: "Aceleração com Acompanhamento Individual",
     icon: TrendingUp,
     color: "text-green-500 bg-green-500/10",
-    price: "R$ 5.000",
-    priceType: "/mês",
+    price: "R$ 24.000",
+    priceType: "/ano",
+    priceNote: "À vista ou parcelado",
     link: "/sales-acceleration",
     category: "Trilha Principal"
   },
