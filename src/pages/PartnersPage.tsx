@@ -850,13 +850,13 @@ export default function PartnersPage() {
         <div className="container-premium text-center relative">
           <h2 className="heading-section text-foreground mb-6">Investimento</h2>
           <p className="text-5xl md:text-6xl font-display font-bold text-primary mb-4">
-            R$ 2.500
+            R$ 30.000
           </p>
           <p className="text-muted-foreground text-lg mb-2">
-            Por mês
+            Por ano
           </p>
           <p className="text-muted-foreground/60 text-sm mb-10 max-w-md mx-auto">
-            Aplicação obrigatória • Vagas limitadas
+            À vista ou parcelado • Aplicação obrigatória • Vagas limitadas
           </p>
           <Link to="/apply">
             <Button variant="hero" size="xl">
