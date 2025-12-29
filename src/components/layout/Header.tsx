@@ -60,7 +60,7 @@ const productCategories: ProductCategory[] = [
     category: "Outros",
     items: [
       { name: "Mansão Empreendedora", href: "https://mansaoempreendedora.com.br", external: true, highlight: true },
-      { name: "Comparar Produtos", href: "/compare" },
+      { name: "Comparar Serviços", href: "/compare" },
     ],
   },
 ];
