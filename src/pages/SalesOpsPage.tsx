@@ -67,8 +67,8 @@ const icpNao = [
 const formato = [
   { label: "Tipo", value: "Produto recorrente" },
   { label: "Investimento", value: "R$ 12.000/ano" },
+  { label: "Treinamentos", value: "Quinzenais por nível (SDR, Closer, Gestor)" },
   { label: "Contrato mínimo", value: "6 meses recomendado" },
-  { label: "Acompanhamento", value: "Mensal em grupo" },
 ];
 
 // Trilhas por cargo
