@@ -213,7 +213,7 @@ const pilares = [
 // Cadência
 const cadenciaDiaria = [
   "Uso de scripts e checklists",
-  "Apoio do AI Advisor",
+  "Suporte via AI Advisor (agente de IA)",
 ];
 
 const cadenciaMensal = [
@@ -322,7 +322,7 @@ export default function SalesOpsPage() {
           team: "Times com 5+ vendedores"
         }}
         schedule={[
-          { period: "Diário", description: "Uso de padrões e scripts" },
+          { period: "Diário", description: "Suporte via AI Advisor" },
           { period: "Mensal", description: "Acompanhamento em grupo + avaliação" }
         ]}
         scheduleType="recurring"
@@ -687,8 +687,8 @@ export default function SalesOpsPage() {
             <div className="grid md:grid-cols-3 gap-6">
               <div className="card-premium p-6 bg-background">
                 <div className="flex items-center gap-2 mb-4">
-                  <Clock className="h-5 w-5 text-accent" />
-                  <h3 className="font-semibold text-foreground">Diário</h3>
+                  <Bot className="h-5 w-5 text-accent" />
+                  <h3 className="font-semibold text-foreground">Diário (AI Advisor)</h3>
                 </div>
                 <ul className="space-y-2">
                   {cadenciaDiaria.map((item, i) => (
