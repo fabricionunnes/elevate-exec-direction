@@ -244,7 +244,7 @@ export default function FractionalCROPage() {
               Você precisa ter direção comercial todos os dias.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 <Button variant="hero" size="xl" className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">
                   Solicitar Proposta
                   <ArrowRight className="ml-2" />
@@ -676,7 +676,7 @@ export default function FractionalCROPage() {
                 </div>
               </div>
 
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 <Button variant="hero" size="xl" className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">
                   Quero Direção Comercial
                   <ArrowRight className="ml-2" />
@@ -837,7 +837,7 @@ export default function FractionalCROPage() {
               "A UNV assume a direção comercial da sua empresa todos os dias."
             </h2>
             
-            <Link to="/apply">
+            <Link to="/diagnostico">
               <Button variant="hero" size="xl" className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">
                 Quero Direção Comercial Agora
                 <ArrowRight className="ml-2" />

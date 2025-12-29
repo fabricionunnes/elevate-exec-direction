@@ -292,7 +292,7 @@ export default function SalesOpsPage() {
               independentemente de quem esteja vendendo.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 <Button variant="hero" size="xl">
                   Aplicar Agora
                   <ArrowRight className="ml-2" />
@@ -872,7 +872,7 @@ export default function SalesOpsPage() {
           <p className="text-muted-foreground/60 text-sm mb-10 max-w-md mx-auto">
             Acompanhamento mensal em grupo • Focado em treinamentos
           </p>
-          <Link to="/apply">
+          <Link to="/diagnostico">
             <Button variant="hero" size="xl">
               Aplicar Agora
               <ArrowRight className="ml-2" />

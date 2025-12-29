@@ -214,7 +214,7 @@ export default function SalesForcePage() {
               mas não conseguem converter em vendas de forma consistente.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 <Button variant="hero" size="xl">
                   Aplicar Agora
                   <ArrowRight className="ml-2" />
@@ -714,7 +714,7 @@ export default function SalesForcePage() {
               Pronto para converter mais com um time de vendas dedicado?
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 <Button variant="hero" size="xl">
                   Aplicar para UNV Sales Force
                   <ArrowRight className="ml-2" />

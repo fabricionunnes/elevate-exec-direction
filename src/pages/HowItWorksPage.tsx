@@ -166,7 +166,7 @@ export default function HowItWorksPage() {
             Aplique para um diagnóstico e descubra qual produto UNV se encaixa
             no seu estágio atual.
           </p>
-          <Link to="/apply">
+          <Link to="/diagnostico">
             <Button variant="hero" size="xl">
               Aplicar para Diagnóstico
             </Button>

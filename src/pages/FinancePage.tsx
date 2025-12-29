@@ -77,7 +77,7 @@ export default function FinancePage() {
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
-                <Link to="/apply">
+                <Link to="/diagnostico">
                   Organizar Minhas Finanças
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -235,7 +235,7 @@ export default function FinancePage() {
               <p className="text-4xl font-bold text-foreground mb-2">R$ 3.000</p>
               <p className="text-muted-foreground mb-6">/mês</p>
               <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
-                <Link to="/apply">
+                <Link to="/diagnostico">
                   Organizar Minhas Finanças
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -257,7 +257,7 @@ export default function FinancePage() {
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
-                <Link to="/apply">
+                <Link to="/diagnostico">
                   Organizar Minhas Finanças
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>

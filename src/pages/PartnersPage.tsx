@@ -247,7 +247,7 @@ export default function PartnersPage() {
               ajudando o empresário a tomar decisões melhores, mais rápidas e com menos risco.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 <Button variant="hero" size="xl">
                   Aplicar para Membership
                   <ArrowRight className="ml-2" />
@@ -858,7 +858,7 @@ export default function PartnersPage() {
           <p className="text-muted-foreground/60 text-sm mb-10 max-w-md mx-auto">
             À vista ou parcelado • Aplicação obrigatória • Vagas limitadas
           </p>
-          <Link to="/apply">
+          <Link to="/diagnostico">
             <Button variant="hero" size="xl">
               Aplicar para Membership
               <ArrowRight className="ml-2" />

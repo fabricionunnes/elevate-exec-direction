@@ -257,7 +257,7 @@ export function Header() {
               </Button>
             </Link>
           )}
-          <Link to="/apply">
+          <Link to="/diagnostico">
             <Button variant="premium" size="default">
               Aplicar para Diagnóstico
             </Button>
@@ -375,7 +375,7 @@ export function Header() {
                 </Link>
               )}
               <Link
-                to="/apply"
+                to="/diagnostico"
                 className="block"
                 onClick={() => setMobileMenuOpen(false)}
               >

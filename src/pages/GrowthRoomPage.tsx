@@ -248,7 +248,7 @@ export default function GrowthRoomPage() {
               A UNV atua como direção comercial e de crescimento, ajudando o empresário a redefinir a rota da empresa.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 <Button variant="hero" size="xl">
                   Aplicar Agora
                   <ArrowRight className="ml-2" />
@@ -698,7 +698,7 @@ export default function GrowthRoomPage() {
           <p className="text-muted-foreground/60 text-sm mb-10 max-w-md mx-auto">
             Vagas limitadas • Curadoria obrigatória
           </p>
-          <Link to="/apply">
+          <Link to="/diagnostico">
             <Button variant="hero" size="xl">
               Aplicar Agora
               <ArrowRight className="ml-2" />

@@ -1666,7 +1666,7 @@ export default function ForClosersPage() {
                     <Copy className="mr-2 h-4 w-4" />
                     Copiar Resumo para WhatsApp
                   </Button>
-                  <Link to="/apply" className="flex-1">
+                  <Link to="/diagnostico" className="flex-1">
                     <Button variant="premium" size="lg" className="w-full">
                       Aplicar para Diagnóstico
                       <ArrowRight className="ml-2 h-4 w-4" />

@@ -234,7 +234,7 @@ export default function SalesAccelerationPage() {
               Programa de 12 meses para treinar, acompanhar e acelerar seu time
               de vendas com método e previsibilidade.
             </p>
-            <Link to="/apply">
+            <Link to="/diagnostico">
               <Button variant="hero" size="xl">
                 Aplicar para Diagnóstico
                 <ArrowRight className="ml-2" />
@@ -583,7 +583,7 @@ export default function SalesAccelerationPage() {
               Resultados variam conforme execução. Payback é projeção operacional,
               não garantia. UNV direciona e cobra — o cliente executa.
             </p>
-            <Link to="/apply">
+            <Link to="/diagnostico">
               <Button variant="hero" size="xl">
                 Aplicar para Diagnóstico
                 <ArrowRight className="ml-2" />

@@ -210,7 +210,7 @@ export default function MastermindPage() {
             </div>
 
             <div className="flex flex-wrap gap-4 justify-center animate-fade-up delay-500">
-              <Link to="/apply">
+              <Link to="/mastermind/apply">
                 <Button variant="hero" size="xl" className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700">
                   Candidatar-se ao Mastermind
                   <ArrowRight className="ml-2 h-5 w-5" />

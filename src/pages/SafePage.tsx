@@ -147,7 +147,7 @@ export default function SafePage() {
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-primary hover:bg-primary/90" asChild>
-                <Link to="/apply">
+                <Link to="/diagnostico">
                   Proteger Meu Crescimento
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -401,7 +401,7 @@ export default function SafePage() {
               (dependendo do porte e complexidade)
             </p>
             <Button size="lg" className="bg-primary hover:bg-primary/90" asChild>
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 Proteger Meu Crescimento
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
@@ -462,7 +462,7 @@ export default function SafePage() {
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-primary hover:bg-primary/90" asChild>
-                <Link to="/apply">
+                <Link to="/diagnostico">
                   Proteger Meu Crescimento
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>

@@ -203,7 +203,7 @@ export default function CorePage() {
               para que seu time consiga vender com método, clareza e controle.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 <Button variant="hero" size="xl">
                   Aplicar Agora
                   <ArrowRight className="ml-2" />
@@ -635,7 +635,7 @@ export default function CorePage() {
           <p className="text-muted-foreground/60 text-sm mb-10 max-w-md mx-auto">
             Valor varia conforme complexidade da operação. Resultados dependem da execução do cliente.
           </p>
-          <Link to="/apply">
+          <Link to="/diagnostico">
             <Button variant="hero" size="xl">
               Aplicar Agora
               <ArrowRight className="ml-2" />

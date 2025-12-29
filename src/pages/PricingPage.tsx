@@ -263,7 +263,7 @@ export default function PricingPage() {
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-primary hover:bg-primary/90" asChild>
-                <Link to="/diagnostic">
+                <Link to="/diagnostico">
                   Fazer Diagnóstico Gratuito
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -380,13 +380,13 @@ export default function PricingPage() {
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-primary hover:bg-primary/90" asChild>
-                <Link to="/diagnostic">
+                <Link to="/diagnostico">
                   Fazer Diagnóstico Gratuito
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
-                <Link to="/apply">
+                <Link to="/diagnostico">
                   Falar com Especialista
                 </Link>
               </Button>

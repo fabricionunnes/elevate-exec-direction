@@ -231,7 +231,7 @@ export default function HomePage() {
             </ul>
 
              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 opacity-0 animate-fade-up delay-400">
-              <Link to="/apply" className="w-full sm:w-auto">
+              <Link to="/diagnostico" className="w-full sm:w-auto">
                 <Button variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
                   Aplicar para Diagnóstico
                   <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
@@ -479,7 +479,7 @@ export default function HomePage() {
             <p className="text-muted-foreground text-sm sm:text-base mb-4">
               E muitos outros empresários transformando seus resultados todos os dias.
             </p>
-            <Link to="/apply">
+            <Link to="/diagnostico">
               <Button variant="premium" size="lg" className="text-sm sm:text-base">
                 Quero Resultados Assim
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -515,7 +515,7 @@ export default function HomePage() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
-                <Link to="/apply" className="w-full sm:w-auto">
+                <Link to="/diagnostico" className="w-full sm:w-auto">
                   <Button variant="premium-outline" size="default" className="w-full sm:w-auto text-sm sm:text-base">
                     Aplicar Agora
                   </Button>
@@ -615,7 +615,7 @@ export default function HomePage() {
           </div>
 
           <div className="text-center mt-10 sm:mt-12 md:mt-16">
-            <Link to="/apply">
+            <Link to="/diagnostico">
               <Button variant="hero" size="lg" className="text-sm sm:text-base">
                 Aplicar para Diagnóstico
                 <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
@@ -637,7 +637,7 @@ export default function HomePage() {
             Aplique agora para um diagnóstico gratuito e descubra como podemos acelerar suas vendas.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/apply">
+            <Link to="/diagnostico">
               <Button variant="hero" size="xl" className="w-full sm:w-auto text-sm sm:text-base">
                 Quero Aplicar Agora
                 <ArrowRight className="ml-2 h-5 w-5" />

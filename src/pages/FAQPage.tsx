@@ -200,7 +200,7 @@ export default function FAQPage() {
               Aplique para um diagnóstico e nossa equipe responderá qualquer pergunta específica sobre sua situação.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 <Button variant="premium" size="lg">Aplicar para Diagnóstico</Button>
               </Link>
               <Link to="/pricing">
