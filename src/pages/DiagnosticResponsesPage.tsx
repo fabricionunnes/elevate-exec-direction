@@ -32,8 +32,20 @@ import {
   Eye,
   LogOut,
   Users,
-  UserCheck
+  UserCheck,
+  Trash2
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -346,6 +358,26 @@ export default function DiagnosticResponsesPage() {
     }
   };
 
+  const deleteDiagnostic = async (id: string, isCloser: boolean = false) => {
+    try {
+      const { error } = await supabase
+        .from(isCloser ? ("closer_diagnostics" as any) : "client_diagnostics")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      
+      if (isCloser) {
+        setCloserDiagnostics(prev => prev.filter(r => r.id !== id));
+      } else {
+        setResponses(prev => prev.filter(r => r.id !== id));
+      }
+      toast.success("Diagnóstico excluído");
+    } catch {
+      toast.error("Erro ao excluir");
+    }
+  };
+
   const filteredResponses = responses.filter(r => 
     r.company_name.toLowerCase().includes(search.toLowerCase()) ||
     r.contact_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -602,6 +634,35 @@ export default function DiagnosticResponsesPage() {
                               >
                                 <Phone className="h-4 w-4" />
                               </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    title="Excluir"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Excluir diagnóstico?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta ação não pode ser desfeita. O diagnóstico de {response.company_name} será permanentemente excluído.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteDiagnostic(response.id, false)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Excluir
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -714,14 +775,45 @@ export default function DiagnosticResponsesPage() {
                             </select>
                           </TableCell>
                           <TableCell>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setSelectedCloser(diagnostic)}
-                              title="Ver detalhes"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setSelectedCloser(diagnostic)}
+                                title="Ver detalhes"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    title="Excluir"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Excluir diagnóstico?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta ação não pode ser desfeita. O diagnóstico de {diagnostic.company} será permanentemente excluído.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteDiagnostic(diagnostic.id, true)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Excluir
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
