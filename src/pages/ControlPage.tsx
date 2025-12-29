@@ -216,7 +216,7 @@ export default function ControlPage() {
               garantindo disciplina, constância e foco mês após mês.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 <Button variant="hero" size="xl">
                   Aplicar Agora
                   <ArrowRight className="ml-2" />
@@ -661,7 +661,7 @@ export default function ControlPage() {
           <p className="text-muted-foreground/60 text-sm mb-10 max-w-md mx-auto">
             Resultados dependem da execução. UNV direciona e cobra — o cliente executa.
           </p>
-          <Link to="/apply">
+          <Link to="/diagnostico">
             <Button variant="hero" size="xl">
               Aplicar Agora
               <ArrowRight className="ml-2" />

@@ -72,7 +72,7 @@ export default function PeoplePage() {
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-blue-500 hover:bg-blue-600 text-white" asChild>
-                <Link to="/apply">
+                <Link to="/diagnostico">
                   Estruturar Meu Time
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -324,7 +324,7 @@ export default function PeoplePage() {
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-blue-500 hover:bg-blue-600 text-white" asChild>
-                <Link to="/apply">
+                <Link to="/diagnostico">
                   Estruturar Meu Time
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>

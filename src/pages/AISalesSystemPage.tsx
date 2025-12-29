@@ -214,7 +214,7 @@ export default function AISalesSystemPage() {
               É um sistema de inteligência comercial que prospecta, qualifica e atende.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 <Button variant="hero" size="xl" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700">
                   Solicitar Demo
                   <ArrowRight className="ml-2" />
@@ -658,7 +658,7 @@ export default function AISalesSystemPage() {
               "Não aumente seu time.<br />
               <span className="text-cyan-600">Aumente sua inteligência comercial."</span>
             </blockquote>
-            <Link to="/apply">
+            <Link to="/diagnostico">
               <Button variant="hero" size="xl" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700">
                 Solicitar Demonstração
                 <ArrowRight className="ml-2" />

@@ -125,7 +125,7 @@ export default function LeDesirPage() {
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
               <Button size="lg" className="bg-white hover:bg-white/90 text-[hsl(355,45%,35%)]" asChild>
-                <Link to="/apply">
+                <Link to="/diagnostico">
                   Iniciar Processo
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -416,7 +416,7 @@ export default function LeDesirPage() {
                 <p className="text-[hsl(355,45%,35%)] font-medium">É na capacidade de sustentar decisões melhores ao longo do tempo.</p>
               </div>
               <Button size="lg" className="w-full mt-8 bg-[hsl(355,45%,35%)] hover:bg-[hsl(355,50%,25%)] text-white" asChild>
-                <Link to="/apply">
+                <Link to="/diagnostico">
                   Iniciar Processo
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -474,7 +474,7 @@ export default function LeDesirPage() {
             </div>
             <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10">
               <Button size="lg" className="bg-white hover:bg-white/90 text-[hsl(355,45%,35%)]" asChild>
-                <Link to="/apply">
+                <Link to="/diagnostico">
                   Iniciar Processo
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>

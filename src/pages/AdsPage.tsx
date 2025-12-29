@@ -267,7 +267,7 @@ export default function AdsPage() {
               com foco em vendas reais, não apenas em leads.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 <Button variant="hero" size="xl">
                   Aplicar Agora
                   <ArrowRight className="ml-2" />
@@ -799,7 +799,7 @@ export default function AdsPage() {
               + Mídia paga: investimento do cliente
             </p>
           </div>
-          <Link to="/apply">
+          <Link to="/diagnostico">
             <Button variant="hero" size="xl">
               Aplicar Agora
               <ArrowRight className="ml-2" />

@@ -122,7 +122,7 @@ export default function LeadershipPage() {
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
-                <Link to="/apply">
+                <Link to="/diagnostico">
                   Quero Formar Meus Líderes
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -528,7 +528,7 @@ export default function LeadershipPage() {
               Forma líderes que sustentam crescimento quando o fundador sai do centro.
             </p>
             <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 Quero Formar Meus Líderes
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>

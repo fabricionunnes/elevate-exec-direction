@@ -202,7 +202,7 @@ export default function SocialPage() {
             </p>
 
             <div className="flex flex-wrap gap-4 justify-center animate-fade-up delay-400">
-              <Link to="/apply">
+              <Link to="/diagnostico">
                 <Button variant="hero" size="xl">
                   Aplicar para Diagnóstico
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -576,7 +576,7 @@ export default function SocialPage() {
                     Produção e gestão conforme plano
                   </li>
                 </ul>
-                <Link to="/apply">
+                <Link to="/diagnostico">
                   <Button variant="premium" className="w-full" size="lg">
                     Aplicar Agora
                     <ArrowRight className="ml-2" />
@@ -620,7 +620,7 @@ export default function SocialPage() {
             <blockquote className="text-3xl md:text-4xl font-display font-bold text-foreground mb-8">
               "UNV Social transforma conteúdo em pré-venda — não em enfeite."
             </blockquote>
-            <Link to="/apply">
+            <Link to="/diagnostico">
               <Button variant="hero" size="xl">
                 Comece Agora
                 <ArrowRight className="ml-2" />

@@ -13,10 +13,9 @@ const footerLinks = {
   ],
   company: [
     { name: "Nosso Método", href: "/how-it-works" },
-    { name: "Aplicar", href: "/apply" },
+    { name: "Diagnóstico", href: "/diagnostico" },
     { name: "FAQ", href: "/faq" },
     { name: "Para Closers", href: "/for-closers" },
-    { name: "Diagnóstico", href: "/diagnostico" },
   ],
   legal: [
     { name: "Termos e Disclaimers", href: "/terms" },
