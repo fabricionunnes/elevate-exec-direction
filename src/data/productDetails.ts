@@ -301,8 +301,8 @@ export const productDetails: Record<string, ProductDetail> = {
     tagline: "Direção Estratégica & Board Externo",
     icon: Crown,
     color: "bg-amber-500",
-    price: "R$ 2.500",
-    priceType: "/mês (12 meses)",
+    price: "R$ 30.000",
+    priceType: "/ano",
     description: "Fabrício como seu diretor comercial de fato, não como consultor.",
     deliverables: [
       "Board mensal de direção",
