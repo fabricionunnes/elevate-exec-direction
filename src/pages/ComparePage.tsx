@@ -1478,20 +1478,20 @@ const categories = [...new Set(features.map(f => f.category))];
 export default function ComparePage() {
   const [selectedProducts, setSelectedProducts] = useState<string[]>(["core", "sales-acceleration"]);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const checkAdminRole = async () => {
+    const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase.rpc('has_role', {
-          _user_id: user.id,
-          _role: 'admin'
-        });
-        setIsAdmin(data === true);
-      }
+      setIsLoggedIn(!!user);
     };
-    checkAdminRole();
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const toggleProduct = (productId: string) => {
@@ -1833,7 +1833,7 @@ export default function ComparePage() {
       </section>
 
       {/* CTA */}
-      {isAdmin && (
+      {isLoggedIn && (
         <section className="section-padding bg-card border-y border-border/30 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
           <div className="container-premium text-center relative">
