@@ -22,6 +22,7 @@ interface FormData {
   email: string;
   revenue: string;
   team_size: string;
+  team_work_mode: string;
   main_pain: string;
   has_sales_process: boolean;
   biggest_challenge: string;
@@ -50,6 +51,12 @@ const teamSizeOptions = [
   { value: "10+", label: "Mais de 10 vendedores" },
 ];
 
+const teamWorkModeOptions = [
+  { value: "presencial", label: "Presencial (escritório)" },
+  { value: "home-office", label: "Home Office" },
+  { value: "hibrido", label: "Híbrido" },
+];
+
 const painOptions = [
   { value: "sem-processo", label: "Não tenho processo de vendas definido" },
   { value: "inconsistencia", label: "Vendas inconsistentes mês a mês" },
@@ -68,7 +75,16 @@ const urgencyOptions = [
 ];
 
 function getRecommendation(data: FormData): Recommendation {
-  const { revenue, team_size, main_pain, has_sales_process } = data;
+  const { revenue, team_size, team_work_mode, main_pain, has_sales_process } = data;
+  
+  // Sales Force - Apenas para quem tem vendedores em home office
+  if (team_work_mode === "home-office" && team_size !== "sozinho" && 
+      (main_pain === "conversao-baixa" || main_pain === "time-desalinhado" || main_pain === "inconsistencia")) {
+    return {
+      product: "UNV Sales Force",
+      reason: "Com vendedores em home office, o Sales Force oferece SDR e Closer terceirizados para converter sua demanda existente em vendas reais."
+    };
+  }
   
   // Lógica de recomendação baseada nas respostas
   if (revenue === "menos-50k" || revenue === "50k-100k") {
@@ -157,6 +173,7 @@ export function ClientDiagnosticForm({ onClose }: ClientDiagnosticFormProps) {
     email: "",
     revenue: "",
     team_size: "",
+    team_work_mode: "",
     main_pain: "",
     has_sales_process: false,
     biggest_challenge: "",
@@ -349,6 +366,24 @@ export function ClientDiagnosticForm({ onClose }: ClientDiagnosticFormProps) {
                 </SelectContent>
               </Select>
             </div>
+            
+            {formData.team_size && formData.team_size !== "sozinho" && (
+              <div>
+                <Label>Regime de trabalho dos vendedores *</Label>
+                <Select value={formData.team_work_mode} onValueChange={(v) => updateField("team_work_mode", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Onde trabalham?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamWorkModeOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             
             <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary">
               <input
