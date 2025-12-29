@@ -14,6 +14,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import logoFinance from "@/assets/logo-finance.png";
 
 const problems = [
   "Não sabem onde ganham dinheiro",
@@ -56,8 +57,12 @@ export default function FinancePage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
         <div className="container-premium relative">
           <div className="max-w-4xl mx-auto text-center animate-fade-up">
-            <div className="inline-block p-4 bg-card/95 rounded-xl shadow-lg mb-6 border border-border/50">
-              <span className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">UNV Finance</span>
+            <div className="inline-block p-6 bg-white/95 rounded-2xl shadow-lg mb-6 border border-border/50">
+              <img 
+                src={logoFinance} 
+                alt="UNV Finance" 
+                className="h-20 md:h-24 w-auto object-contain"
+              />
             </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6">
               <DollarSign className="h-4 w-4 text-accent" />
