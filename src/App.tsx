@@ -32,6 +32,7 @@ import ApplyPage from "./pages/ApplyPage";
 import FAQPage from "./pages/FAQPage";
 import TermsPage from "./pages/TermsPage";
 import ComparePage from "./pages/ComparePage";
+import PricingPage from "./pages/PricingPage";
 import DiagnosticResponsesPage from "./pages/DiagnosticResponsesPage";
 import AdminSetupPage from "./pages/AdminSetupPage";
 import AdminPage from "./pages/AdminPage";
@@ -76,6 +77,7 @@ const App = () => (
           <Route path="/faq" element={<FAQPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/compare" element={<ComparePage />} />
+          <Route path="/pricing" element={<PricingPage />} />
           <Route path="/diagnostic-responses" element={<DiagnosticResponsesPage />} />
           <Route path="/admin-setup" element={<AdminSetupPage />} />
           <Route path="/admin" element={<AdminPage />} />
