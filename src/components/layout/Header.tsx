@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import logoUnv from "@/assets/logo-unv.png";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProductItem {
   name: string;
@@ -75,7 +76,23 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session?.user);
+    };
+
+    init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev =>
@@ -246,11 +263,13 @@ export function Header() {
 
         {/* CTA */}
         <div className="hidden lg:flex items-center gap-3">
-          <Link to="/for-closers">
-            <Button variant="ghost" size="sm" className="text-muted-foreground">
-              Qual produto é ideal?
-            </Button>
-          </Link>
+          {isLoggedIn && (
+            <Link to="/for-closers">
+              <Button variant="ghost" size="sm" className="text-muted-foreground">
+                Qual produto é ideal?
+              </Button>
+            </Link>
+          )}
           <Link to="/apply">
             <Button variant="premium" size="default">
               Aplicar para Diagnóstico
@@ -364,15 +383,17 @@ export function Header() {
               </div>
             ))}
             <div className="pt-6 border-t border-border/30 space-y-3">
-              <Link
-                to="/for-closers"
-                className="block"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Button variant="outline" className="w-full">
-                  Qual produto é ideal?
-                </Button>
-              </Link>
+              {isLoggedIn && (
+                <Link
+                  to="/for-closers"
+                  className="block"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Button variant="outline" className="w-full">
+                    Qual produto é ideal?
+                  </Button>
+                </Link>
+              )}
               <Link
                 to="/apply"
                 className="block"
