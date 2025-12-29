@@ -51,16 +51,16 @@ const pillars = [
   {
     number: "02",
     icon: Eye,
-    title: "Monitoria de Execução",
-    description: "Acompanhamento da execução sem microgerenciamento.",
+    title: "Monitoria de Execução em Grupo",
+    description: "Acompanhamento da execução em formato coletivo.",
     whatWeDo: [
       "Analisa se o combinado está sendo executado",
       "Identifica gargalos recorrentes",
       "Propõe correções práticas",
-      "Cobra ajustes quando necessário"
+      "Troca de experiências entre empresários"
     ],
-    frequency: "Monitoria mensal em grupo ou individual (conforme plano)",
-    deliverables: "Correções táticas + Ajustes de processo + Reforço de disciplina",
+    frequency: "Monitoria mensal em grupo",
+    deliverables: "Correções táticas + Ajustes de processo + Benchmark entre pares",
     gain: "O plano não fica só no papel."
   },
   {
@@ -97,16 +97,16 @@ const pillars = [
     number: "05",
     icon: Sparkles,
     title: "UNV AI Advisor (Nível Control)",
-    description: "Camada de cobrança e suporte contínuo.",
+    description: "Suporte contínuo sobre a metodologia UNV.",
     whatWeDo: [
-      "Cobra execução semanal",
-      "Lembra metas e prioridades",
-      "Ajuda o gestor a cobrar o time",
-      "Organiza decisões e tarefas"
+      "Tira dúvidas sobre o processo",
+      "Orienta aplicação da metodologia",
+      "Ajuda a organizar decisões e tarefas",
+      "Suporte sobre todo o escopo de trabalho"
     ],
     frequency: "Suporte contínuo via IA",
-    deliverables: "Cobrança automatizada + Lembretes + Organização",
-    gain: "A execução não depende da minha memória ou motivação."
+    deliverables: "Orientação metodológica + Respostas rápidas + Apoio na execução",
+    gain: "Tenho suporte sempre que preciso aplicar o que aprendi."
   }
 ];
 
