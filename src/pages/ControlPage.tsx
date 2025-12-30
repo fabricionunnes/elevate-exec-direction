@@ -706,6 +706,7 @@ export default function ControlPage() {
       <ROISimulator
         productName="UNV Control"
         productPrice="R$ 5.997/ano"
+        productPriceValue={5997}
         productSlug="control"
         benefitDescription="A disciplina e constância impedem que sua empresa regrida ao improviso. Processos vivos geram resultados consistentes e previsíveis mês a mês."
         expectedConversionIncrease={4}

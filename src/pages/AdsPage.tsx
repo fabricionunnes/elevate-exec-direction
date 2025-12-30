@@ -813,6 +813,7 @@ export default function AdsPage() {
       <ROISimulator
         productName="UNV Ads"
         productPrice="R$ 1.800 a R$ 4.000/mês"
+        productPriceValue={36000}
         productSlug="ads"
         benefitDescription="Tráfego alinhado ao comercial gera leads mais qualificados. Menos desperdício de mídia, melhor custo por lead qualificado, mais vendas com o mesmo investimento."
         expectedConversionIncrease={6}

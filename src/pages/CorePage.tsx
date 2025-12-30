@@ -680,6 +680,7 @@ export default function CorePage() {
       <ROISimulator
         productName="UNV Core"
         productPrice="R$ 1.997 (único)"
+        productPriceValue={1997}
         productSlug="core"
         benefitDescription="Com a base comercial organizada, sua empresa para de perder vendas por desorganização, improviso e falta de padrão. Times alinhados convertem mais com os mesmos leads."
         expectedConversionIncrease={3}

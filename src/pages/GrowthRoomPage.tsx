@@ -712,6 +712,7 @@ export default function GrowthRoomPage() {
       <ROISimulator
         productName="UNV Growth Room"
         productPrice="R$ 3.997 (evento)"
+        productPriceValue={3997}
         productSlug="growth-room"
         benefitDescription="3 dias de imersão estratégica para definir prioridades claras, eliminar ruído e sair com um plano de ação concreto. Decisões certas geram retorno imediato."
         expectedConversionIncrease={5}
