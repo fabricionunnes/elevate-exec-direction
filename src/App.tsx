@@ -15,6 +15,7 @@ import PartnersPage from "./pages/PartnersPage";
 import SalesOpsPage from "./pages/SalesOpsPage";
 import AISalesSystemPage from "./pages/AISalesSystemPage";
 import FractionalCROPage from "./pages/FractionalCROPage";
+import ExecutionPartnershipPage from "./pages/ExecutionPartnershipPage";
 import AdsPage from "./pages/AdsPage";
 import SocialPage from "./pages/SocialPage";
 import SalesForcePage from "./pages/SalesForcePage";
@@ -59,6 +60,7 @@ const App = () => (
           <Route path="/sales-ops" element={<SalesOpsPage />} />
           <Route path="/ai-sales-system" element={<AISalesSystemPage />} />
           <Route path="/fractional-cro" element={<FractionalCROPage />} />
+          <Route path="/execution-partnership" element={<ExecutionPartnershipPage />} />
           <Route path="/ads" element={<AdsPage />} />
           <Route path="/social" element={<SocialPage />} />
           <Route path="/sales-force" element={<SalesForcePage />} />
