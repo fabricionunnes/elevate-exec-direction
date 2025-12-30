@@ -15,14 +15,13 @@ export interface ProductOnboarding {
 
 // Generate onboarding slides for each product
 export const generateOnboardingSlides = (product: ProductDetail): ProductOnboarding => {
-  const slides: OnboardingSlide[] = [
+const slides: OnboardingSlide[] = [
     // Slide 1: Introduction
     {
       title: `Bem-vindo ao ${product.name}`,
       content: [
         product.tagline,
         product.description,
-        `Investimento: ${product.price} ${product.priceType}`,
       ],
       type: "intro",
     },

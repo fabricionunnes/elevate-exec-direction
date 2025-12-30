@@ -65,9 +65,6 @@ const OnboardingPage = () => {
                         <div className={`p-2.5 rounded-lg ${product.color} text-white`}>
                           <ProductIcon className="h-5 w-5" />
                         </div>
-                        <Badge variant="secondary" className="text-xs">
-                          {product.priceType === "único" ? "Único" : product.priceType}
-                        </Badge>
                       </div>
                       <CardTitle className="text-lg mt-3">{product.name}</CardTitle>
                       <CardDescription className="line-clamp-2">
@@ -75,10 +72,7 @@ const OnboardingPage = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-primary">
-                          {product.price}
-                        </span>
+                      <div className="flex items-center justify-end">
                         <Button
                           variant="ghost"
                           size="sm"
