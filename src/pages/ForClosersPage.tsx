@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowRight, ArrowLeft, CheckCircle, Copy, Layers, RefreshCw, TrendingUp, MapPin, Crown, Users2, Megaphone, Heart, ChevronRight, Star, AlertCircle, Target, Lightbulb, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle, Copy, Layers, RefreshCw, TrendingUp, MapPin, Crown, Users2, Megaphone, Heart, ChevronRight, Star, AlertCircle, Target, Lightbulb, Loader2, Handshake } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -232,7 +232,8 @@ const productIcons: Record<string, React.ComponentType<{ className?: string }>> 
   "UNV Sales Ops": Users2,
   "UNV Ads": Megaphone,
   "UNV Social": Heart,
-  "UNV Mastermind": Star
+  "UNV Mastermind": Star,
+  "UNV Execution Partnership": Handshake
 };
 
 function getRecommendation(data: FormData): Recommendation {
@@ -398,6 +399,21 @@ function getRecommendation(data: FormData): Recommendation {
     });
   }
   
+  // Execution Partnership - Para empresas de alto faturamento que precisam de intervenção rápida
+  if (["600k-1m", "1m-2m", "over-2m"].includes(revenue) && products.length === 0) {
+    products.push({
+      id: "execution-partnership",
+      name: "UNV Execution Partnership",
+      icon: productIcons["UNV Execution Partnership"],
+      priority: "primary",
+      reasons: [
+        "Você precisa de resultados rápidos",
+        "Intervenção intensiva de 3 meses",
+        "Direção comercial com execução direta"
+      ],
+      href: "/execution-partnership"
+    });
+  }
   
   // Se não tiver nenhum produto, recomendar Sales Acceleration como padrão
   if (products.length === 0) {

@@ -36,7 +36,8 @@ import {
   HeartHandshake,
   UserPlus,
   Wallet,
-  Zap
+  Zap,
+  Handshake
 } from "lucide-react";
 import { toast } from "sonner";
 import logoUnv from "@/assets/logo-unv.png";
@@ -408,6 +409,26 @@ const products: Record<string, ProductRecommendation> = {
     ],
     bestFor: "Empresas R$ 100k a R$ 1M+/mês com leads mas sem time para converter",
     whyRecommended: "Você tem demanda mas não tem time. O Sales Force executa a conversão por você."
+  },
+  "execution-partnership": {
+    id: "execution-partnership",
+    name: "UNV Execution Partnership",
+    tagline: "Parceria de Execução Intensiva",
+    icon: Handshake,
+    color: "bg-purple-600",
+    price: "R$ 40.000",
+    priceType: "(3 meses)",
+    description: "Imersão de 3 meses com direção comercial intensiva e execução direta.",
+    deliverables: [
+      "Diagnóstico comercial aprofundado",
+      "Direção estratégica semanal",
+      "Implementação direta de processos",
+      "Acompanhamento intensivo do time",
+      "Reestruturação comercial completa",
+      "KPIs e dashboards implementados"
+    ],
+    bestFor: "Empresas R$ 500k+/mês que precisam resolver gargalos comerciais rapidamente",
+    whyRecommended: "Você precisa de resultados rápidos. O Execution Partnership entrega uma intervenção intensiva de 3 meses."
   }
 };
 
@@ -500,6 +521,10 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
 
   // Alto faturamento
   if (revenue === "acima-1m" || revenue === "500k-1m") {
+    // Execution Partnership para alto faturamento com urgência
+    if (data.urgency === "imediata" || data.urgency === "alta") {
+      addProduct("execution-partnership");
+    }
     if (pains.includes("escala") || teamSize === "20+") {
       addProduct("partners");
     }
