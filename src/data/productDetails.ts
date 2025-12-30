@@ -15,7 +15,8 @@ import {
   Heart,
   Scale,
   Bot,
-  Target
+  Target,
+  Handshake
 } from "lucide-react";
 
 export interface ProductProblemSolution {
@@ -1094,6 +1095,71 @@ export const productDetails: Record<string, ProductDetail> = {
       "Empresa sem vendedores",
       "Dono que não aceita cobrança",
       "Negócio informal"
+    ]
+  },
+  "execution-partnership": {
+    id: "execution-partnership",
+    name: "UNV Execution Partnership",
+    tagline: "Implementação Comercial com Fabrício Nunnes",
+    icon: Handshake,
+    color: "bg-primary",
+    price: "R$ 40.000",
+    priceType: "projeto fechado",
+    description: "Programa exclusivo de implementação comercial profunda por 90 dias, com intervenção executiva direta focada em reestruturação, execução e resultados mensuráveis.",
+    deliverables: [
+      "Novo modelo de gestão comercial implementado",
+      "Rotina semanal e mensal de cobrança funcionando",
+      "Metas por função definidas",
+      "Funil estruturado e acompanhado",
+      "Liderança treinada e operante",
+      "Previsibilidade mínima de receita",
+      "Plano pós-90 dias"
+    ],
+    bestFor: "Empresas com faturamento acima de R$ 500k/mês, time comercial estruturado e liderança intermediária, que aceitam cobrança e mudança",
+    whyRecommended: "Você tem estrutura mas precisa de intervenção direta. O Execution Partnership coloca Fabrício dentro da sua operação por 90 dias para fazer funcionar.",
+    problemsSolved: [
+      {
+        problem: "Gestão comercial desestruturada — empresa depende 100% do dono",
+        solution: "Reestruturação completa do modelo de gestão com implementação prática em 90 dias",
+        result: "Time funcionando com clareza, metas e cobrança — sem depender do dono"
+      },
+      {
+        problem: "Falta previsibilidade — não sabe quanto vai faturar no próximo mês",
+        solution: "Estruturação de funil, metas e rotina de acompanhamento",
+        result: "Previsibilidade mínima de receita e visão clara do pipeline"
+      },
+      {
+        problem: "Liderança comercial fraca — gerentes não entregam resultado",
+        solution: "Treinamento prático e cobrança direta da liderança com acompanhamento semanal",
+        result: "Líderes operantes e responsáveis por resultados"
+      },
+      {
+        problem: "Crescimento travado — empresa não consegue escalar vendas",
+        solution: "Diagnóstico profundo + implementação + aceleração em 3 meses",
+        result: "Payback em até 90 dias e base sólida para escala"
+      }
+    ],
+    keyBenefits: [
+      "Fabrício Nunnes atua diretamente na operação",
+      "Reunião estratégica semanal",
+      "Implementação prática de processos",
+      "Cobrança intensa de execução",
+      "Payback projetado em até 90 dias",
+      "Possibilidade de sociedade futura"
+    ],
+    timeToResults: "Clareza no mês 1, implementação no mês 2, resultados no mês 3",
+    idealProfile: [
+      "Faturamento acima de R$ 500k/mês",
+      "Time comercial estruturado",
+      "Gerente(s) comercial(is) ou liderança intermediária",
+      "Dono disposto a abrir a operação",
+      "Aceita cobrança e decisão dura"
+    ],
+    notFor: [
+      "Empresas pequenas ou em início",
+      "Negócios sem liderança interna",
+      "Donos que não aceitam interferência",
+      "Empresas sem margem para crescimento rápido"
     ]
   }
 };

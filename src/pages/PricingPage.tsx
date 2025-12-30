@@ -172,6 +172,18 @@ const products: ProductPrice[] = [
     link: "/mastermind",
     category: "Trilha Avançada"
   },
+  {
+    id: "execution-partnership",
+    name: "UNV Execution Partnership",
+    tagline: "Implementação Comercial Direta",
+    icon: Handshake,
+    color: "text-red-500 bg-red-500/10",
+    price: "R$ 40.000",
+    priceType: "projeto",
+    priceNote: "3 meses • Máximo 10 empresas",
+    link: "/execution-partnership",
+    category: "Trilha Avançada"
+  },
   // Estratégia & Estrutura
   {
     id: "le-desir",

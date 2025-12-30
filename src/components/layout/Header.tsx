@@ -44,6 +44,7 @@ const productCategories: ProductCategory[] = [
       { name: "Growth Room", href: "/growth-room" },
       { name: "UNV Partners", href: "/partners" },
       { name: "UNV Mastermind", href: "/mastermind", highlight: true },
+      { name: "Execution Partnership", href: "/execution-partnership", highlight: true },
     ],
   },
   {
