@@ -4,4 +4,7 @@ project_id = "czmyjgdixwhpfasfugkm"
 verify_jwt = false
 
 [functions.portal-ai-coach]
-verify_jwt = false
+verify_jwt = true
+
+[functions.portal-recommendations]
+verify_jwt = true

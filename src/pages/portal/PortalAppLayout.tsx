@@ -89,6 +89,7 @@ const PortalAppLayout = () => {
     { href: "/portal/app/execucao", icon: ClipboardCheck, label: "Execução" },
     { href: "/portal/app/dashboard", icon: BarChart3, label: "Dashboard" },
     { href: "/portal/app/config", icon: Settings, label: "Configurações" },
+    ...(user?.role === "admin_unv" ? [{ href: "/portal/app/admin", icon: Settings, label: "Admin UNV" }] : []),
   ];
 
   if (loading) {
