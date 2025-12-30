@@ -22,6 +22,7 @@ import {
   UserCheck
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import logoExecutionPartnership from "@/assets/logo-execution-partnership.png";
 
 const monthlyPhases = [
   {
@@ -127,10 +128,7 @@ export default function ExecutionPartnershipPage() {
             </div>
             
             <div className="inline-block p-3 bg-white/95 rounded-xl shadow-lg mb-6 animate-fade-up delay-100">
-              <div className="flex items-center gap-3 px-6 py-2">
-                <Handshake className="h-12 w-12 text-primary" />
-                <span className="text-2xl md:text-3xl font-bold text-primary">UNV Execution Partnership</span>
-              </div>
+              <img src={logoExecutionPartnership} alt="UNV Execution Partnership" className="h-20 md:h-24" />
             </div>
             
             <p className="text-2xl md:text-3xl text-foreground/90 mb-6 animate-fade-up delay-200 italic">
