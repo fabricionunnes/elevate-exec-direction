@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { 
   Target, 
   TrendingUp, 
@@ -19,9 +22,11 @@ import {
   ArrowDownRight,
   Flame,
   CircleDot,
-  Activity
+  Activity,
+  CalendarDays,
+  ChevronDown
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, subMonths, isWithinInterval, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, subMonths, subWeeks, isWithinInterval, parseISO, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface PortalUser {
@@ -75,14 +80,17 @@ interface Checkin {
   created_at: string;
 }
 
-type PeriodFilter = "current_month" | "last_month" | "current_quarter" | "year" | "all";
+type PeriodFilter = "current_week" | "last_week" | "current_month" | "last_month" | "current_quarter" | "year" | "all" | "custom";
 
 const periodOptions = [
+  { value: "current_week", label: "Esta Semana" },
+  { value: "last_week", label: "Semana Passada" },
   { value: "current_month", label: "Mês Atual" },
   { value: "last_month", label: "Mês Anterior" },
   { value: "current_quarter", label: "Trimestre Atual" },
   { value: "year", label: "Ano" },
   { value: "all", label: "Todo o Período" },
+  { value: "custom", label: "Personalizado" },
 ];
 
 const PortalDashboardPage = () => {
@@ -93,6 +101,11 @@ const PortalDashboardPage = () => {
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("year");
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  });
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -176,6 +189,11 @@ const PortalDashboardPage = () => {
   const getPeriodRange = (period: PeriodFilter) => {
     const now = new Date();
     switch (period) {
+      case "current_week":
+        return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
+      case "last_week":
+        const lastWeek = subWeeks(now, 1);
+        return { start: startOfWeek(lastWeek, { weekStartsOn: 1 }), end: endOfWeek(lastWeek, { weekStartsOn: 1 }) };
       case "current_month":
         return { start: startOfMonth(now), end: endOfMonth(now) };
       case "last_month":
@@ -184,6 +202,11 @@ const PortalDashboardPage = () => {
       case "current_quarter":
         return { start: startOfQuarter(now), end: endOfQuarter(now) };
       case "year":
+        return { start: startOfYear(now), end: endOfYear(now) };
+      case "custom":
+        if (customDateRange.from && customDateRange.to) {
+          return { start: customDateRange.from, end: customDateRange.to };
+        }
         return { start: startOfYear(now), end: endOfYear(now) };
       case "all":
       default:
@@ -197,7 +220,29 @@ const PortalDashboardPage = () => {
       const date = parseISO(c.week_ref);
       return isWithinInterval(date, { start: range.start, end: range.end });
     });
-  }, [checkins, periodFilter]);
+  }, [checkins, periodFilter, customDateRange]);
+
+  const handlePeriodChange = (value: string) => {
+    const newPeriod = value as PeriodFilter;
+    setPeriodFilter(newPeriod);
+    if (newPeriod === "custom") {
+      setIsDatePickerOpen(true);
+    }
+  };
+
+  const handleDateRangeSelect = (range: { from: Date | undefined; to: Date | undefined }) => {
+    setCustomDateRange(range);
+    if (range.from && range.to) {
+      setIsDatePickerOpen(false);
+    }
+  };
+
+  const getFilterDisplayLabel = () => {
+    if (periodFilter === "custom" && customDateRange.from && customDateRange.to) {
+      return `${format(customDateRange.from, "dd/MM/yy", { locale: ptBR })} - ${format(customDateRange.to, "dd/MM/yy", { locale: ptBR })}`;
+    }
+    return periodOptions.find(o => o.value === periodFilter)?.label || "Período";
+  };
 
   const stats = useMemo(() => {
     const allKRs = objectives.flatMap(o => o.key_results);
@@ -315,19 +360,98 @@ const PortalDashboardPage = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Select value={periodFilter} onValueChange={(v) => setPeriodFilter(v as PeriodFilter)}>
-            <SelectTrigger className="w-[160px] bg-slate-900/50 border-slate-800 text-slate-300 h-9 text-sm">
-              <Calendar className="w-4 h-4 mr-2 text-slate-500" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-slate-900 border-slate-800">
-              {periodOptions.map(opt => (
-                <SelectItem key={opt.value} value={opt.value} className="text-slate-300">
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-auto min-w-[180px] justify-start text-left font-normal bg-slate-900/50 border-slate-800 text-slate-300 h-9 text-sm hover:bg-slate-800 hover:border-slate-700",
+                  periodFilter === "custom" && customDateRange.from && "text-amber-400"
+                )}
+              >
+                <CalendarDays className="w-4 h-4 mr-2 text-slate-500" />
+                <span className="flex-1">{getFilterDisplayLabel()}</span>
+                <ChevronDown className="w-4 h-4 ml-2 text-slate-500" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent 
+              className="w-auto p-0 bg-slate-900 border-slate-800" 
+              align="end"
+              sideOffset={8}
+            >
+              <div className="flex">
+                {/* Quick filters */}
+                <div className="border-r border-slate-800 p-2 w-40">
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider px-2 py-1.5 mb-1">Período</p>
+                  {periodOptions.filter(o => o.value !== "custom").map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        setPeriodFilter(opt.value as PeriodFilter);
+                        if (opt.value !== "custom") {
+                          setIsDatePickerOpen(false);
+                        }
+                      }}
+                      className={cn(
+                        "w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors",
+                        periodFilter === opt.value 
+                          ? "bg-amber-500/10 text-amber-400" 
+                          : "text-slate-400 hover:bg-slate-800 hover:text-slate-300"
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                  <div className="border-t border-slate-800 my-2" />
+                  <button
+                    onClick={() => setPeriodFilter("custom")}
+                    className={cn(
+                      "w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors",
+                      periodFilter === "custom" 
+                        ? "bg-amber-500/10 text-amber-400" 
+                        : "text-slate-400 hover:bg-slate-800 hover:text-slate-300"
+                    )}
+                  >
+                    Personalizado
+                  </button>
+                </div>
+                
+                {/* Calendar for custom range */}
+                <div className="p-3">
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Selecione o período</p>
+                  <CalendarComponent
+                    mode="range"
+                    selected={{ from: customDateRange.from, to: customDateRange.to }}
+                    onSelect={(range) => {
+                      if (range) {
+                        handleDateRangeSelect({ from: range.from, to: range.to });
+                        if (range.from) {
+                          setPeriodFilter("custom");
+                        }
+                      }
+                    }}
+                    numberOfMonths={2}
+                    className="pointer-events-auto"
+                    locale={ptBR}
+                  />
+                  {customDateRange.from && customDateRange.to && (
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-800">
+                      <p className="text-xs text-slate-500">
+                        {format(customDateRange.from, "dd MMM yyyy", { locale: ptBR })} - {format(customDateRange.to, "dd MMM yyyy", { locale: ptBR })}
+                      </p>
+                      <Button 
+                        size="sm" 
+                        className="bg-amber-500 hover:bg-amber-600 text-slate-950 h-7 text-xs"
+                        onClick={() => setIsDatePickerOpen(false)}
+                      >
+                        Aplicar
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
           <Link to={`/portal/app/planejamento/${plan.id}`}>
             <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white hover:bg-slate-800">
               <FileText className="w-4 h-4 mr-2" />
