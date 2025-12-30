@@ -24,7 +24,13 @@ import {
   Trash2,
   Sparkles,
   ArrowRight,
-  X
+  X,
+  DollarSign,
+  Percent,
+  Users,
+  TrendingDown,
+  BarChart3,
+  PencilLine
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -66,6 +72,16 @@ interface PortalUser {
 interface Plan {
   id: string;
   theme: string | null;
+  context_data?: {
+    current_revenue?: string;
+    current_margin?: string;
+    monthly_revenue?: string;
+    avg_ticket?: string;
+    leads_month?: string;
+    conversion?: string;
+    nps?: string;
+    [key: string]: any;
+  };
 }
 
 interface KeyResult {
@@ -210,6 +226,18 @@ const PortalExecutionPage = () => {
   // Recommendations
   const [recommendations, setRecommendations] = useState<UNVRecommendation[]>([]);
   const [dismissedRecs, setDismissedRecs] = useState<Set<string>>(new Set());
+
+  // Metrics editing
+  const [metricsDialogOpen, setMetricsDialogOpen] = useState(false);
+  const [metricsForm, setMetricsForm] = useState({
+    current_revenue: "",
+    current_margin: "",
+    leads_month: "",
+    conversion: "",
+    avg_ticket: "",
+    nps: "",
+  });
+  const [savingMetrics, setSavingMetrics] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -390,10 +418,10 @@ const PortalExecutionPage = () => {
     if (!user?.company_id) return;
 
     try {
-      // Load published plan
+      // Load published plan with context_data
       const { data: planData } = await supabase
         .from("portal_plans")
-        .select("id, theme")
+        .select("id, theme, context_data")
         .eq("company_id", user.company_id)
         .eq("status", "published")
         .order("published_at", { ascending: false })
@@ -405,7 +433,21 @@ const PortalExecutionPage = () => {
         return;
       }
 
-      setPlan(planData);
+      setPlan(planData as Plan);
+      
+      // Initialize metrics form with current data
+      const contextData = planData.context_data as Record<string, any> | null;
+      if (contextData) {
+        setMetricsForm({
+          current_revenue: contextData.current_revenue || "",
+          current_margin: contextData.current_margin || "",
+          leads_month: contextData.leads_month || "",
+          conversion: contextData.conversion || "",
+          avg_ticket: contextData.avg_ticket || "",
+          nps: contextData.nps || "",
+        });
+      }
+
 
       // Load key results with objectives
       const { data: objectives } = await supabase
@@ -483,6 +525,60 @@ const PortalExecutionPage = () => {
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay() + 1);
     return startOfWeek.toISOString().split("T")[0];
+  };
+
+  const openMetricsDialog = () => {
+    if (plan?.context_data) {
+      const contextData = plan.context_data as Record<string, any>;
+      setMetricsForm({
+        current_revenue: contextData.current_revenue || "",
+        current_margin: contextData.current_margin || "",
+        leads_month: contextData.leads_month || "",
+        conversion: contextData.conversion || "",
+        avg_ticket: contextData.avg_ticket || "",
+        nps: contextData.nps || "",
+      });
+    }
+    setMetricsDialogOpen(true);
+  };
+
+  const saveMetrics = async () => {
+    if (!plan) return;
+    setSavingMetrics(true);
+
+    try {
+      const currentContextData = (plan.context_data || {}) as Record<string, any>;
+      const updatedContextData = {
+        ...currentContextData,
+        current_revenue: metricsForm.current_revenue,
+        current_margin: metricsForm.current_margin,
+        leads_month: metricsForm.leads_month,
+        conversion: metricsForm.conversion,
+        avg_ticket: metricsForm.avg_ticket,
+        nps: metricsForm.nps,
+      };
+
+      const { error } = await supabase
+        .from("portal_plans")
+        .update({ context_data: updatedContextData })
+        .eq("id", plan.id);
+
+      if (error) throw error;
+
+      setPlan({ ...plan, context_data: updatedContextData } as Plan);
+      setMetricsDialogOpen(false);
+      toast.success("Métricas atualizadas com sucesso!");
+    } catch (error) {
+      console.error("Error saving metrics:", error);
+      toast.error("Erro ao salvar métricas");
+    } finally {
+      setSavingMetrics(false);
+    }
+  };
+
+  const formatMetricValue = (value: string | undefined, prefix?: string, suffix?: string) => {
+    if (!value || value === "") return "-";
+    return `${prefix || ""}${value}${suffix || ""}`;
   };
 
   const openCheckinDialog = (kr: KeyResult, existingCheckin?: Checkin) => {
@@ -725,6 +821,90 @@ const PortalExecutionPage = () => {
           Semana de {formatDate(getCurrentWeek())}
         </div>
       </div>
+
+      {/* Metrics Section */}
+      <Card className="mb-8 bg-gradient-to-r from-slate-900/80 to-slate-900/50 border-slate-800">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <CardTitle className="text-white text-lg">Métricas do Negócio</CardTitle>
+                <CardDescription className="text-slate-500">Atualize os dados para alimentar o dashboard</CardDescription>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={openMetricsDialog}
+              className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+            >
+              <PencilLine className="w-4 h-4 mr-2" />
+              Editar
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+              <div className="flex items-center gap-2 mb-1">
+                <DollarSign className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs text-slate-500 uppercase tracking-wider">Faturamento</span>
+              </div>
+              <p className="text-lg font-semibold text-white">
+                {formatMetricValue((plan?.context_data as any)?.current_revenue, "R$ ")}
+              </p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+              <div className="flex items-center gap-2 mb-1">
+                <Percent className="w-4 h-4 text-blue-400" />
+                <span className="text-xs text-slate-500 uppercase tracking-wider">Margem</span>
+              </div>
+              <p className="text-lg font-semibold text-white">
+                {formatMetricValue((plan?.context_data as any)?.current_margin, "", "%")}
+              </p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+              <div className="flex items-center gap-2 mb-1">
+                <Users className="w-4 h-4 text-purple-400" />
+                <span className="text-xs text-slate-500 uppercase tracking-wider">Leads/Mês</span>
+              </div>
+              <p className="text-lg font-semibold text-white">
+                {formatMetricValue((plan?.context_data as any)?.leads_month)}
+              </p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingDown className="w-4 h-4 text-amber-400" />
+                <span className="text-xs text-slate-500 uppercase tracking-wider">Conversão</span>
+              </div>
+              <p className="text-lg font-semibold text-white">
+                {formatMetricValue((plan?.context_data as any)?.conversion, "", "%")}
+              </p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+              <div className="flex items-center gap-2 mb-1">
+                <DollarSign className="w-4 h-4 text-cyan-400" />
+                <span className="text-xs text-slate-500 uppercase tracking-wider">Ticket Médio</span>
+              </div>
+              <p className="text-lg font-semibold text-white">
+                {formatMetricValue((plan?.context_data as any)?.avg_ticket, "R$ ")}
+              </p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+              <div className="flex items-center gap-2 mb-1">
+                <CheckCircle2 className="w-4 h-4 text-green-400" />
+                <span className="text-xs text-slate-500 uppercase tracking-wider">NPS</span>
+              </div>
+              <p className="text-lg font-semibold text-white">
+                {formatMetricValue((plan?.context_data as any)?.nps)}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* UNV Recommendations */}
       {visibleRecommendations.length > 0 && (
@@ -1126,6 +1306,115 @@ const PortalExecutionPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Metrics Dialog */}
+      <Dialog open={metricsDialogOpen} onOpenChange={setMetricsDialogOpen}>
+        <DialogContent className="bg-slate-900 border-slate-800 max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white">Atualizar Métricas</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Atualize os indicadores do seu negócio para acompanhar no dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="current_revenue" className="text-slate-300">
+                Faturamento Atual (R$)
+              </Label>
+              <Input
+                id="current_revenue"
+                value={metricsForm.current_revenue}
+                onChange={(e) => setMetricsForm({ ...metricsForm, current_revenue: e.target.value })}
+                placeholder="Ex: 500.000"
+                className="bg-slate-800 border-slate-700 text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="current_margin" className="text-slate-300">
+                Margem (%)
+              </Label>
+              <Input
+                id="current_margin"
+                value={metricsForm.current_margin}
+                onChange={(e) => setMetricsForm({ ...metricsForm, current_margin: e.target.value })}
+                placeholder="Ex: 30"
+                className="bg-slate-800 border-slate-700 text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="leads_month" className="text-slate-300">
+                Leads por Mês
+              </Label>
+              <Input
+                id="leads_month"
+                value={metricsForm.leads_month}
+                onChange={(e) => setMetricsForm({ ...metricsForm, leads_month: e.target.value })}
+                placeholder="Ex: 500"
+                className="bg-slate-800 border-slate-700 text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="conversion" className="text-slate-300">
+                Conversão (%)
+              </Label>
+              <Input
+                id="conversion"
+                value={metricsForm.conversion}
+                onChange={(e) => setMetricsForm({ ...metricsForm, conversion: e.target.value })}
+                placeholder="Ex: 15"
+                className="bg-slate-800 border-slate-700 text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="avg_ticket" className="text-slate-300">
+                Ticket Médio (R$)
+              </Label>
+              <Input
+                id="avg_ticket"
+                value={metricsForm.avg_ticket}
+                onChange={(e) => setMetricsForm({ ...metricsForm, avg_ticket: e.target.value })}
+                placeholder="Ex: 2.000"
+                className="bg-slate-800 border-slate-700 text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nps" className="text-slate-300">
+                NPS
+              </Label>
+              <Input
+                id="nps"
+                value={metricsForm.nps}
+                onChange={(e) => setMetricsForm({ ...metricsForm, nps: e.target.value })}
+                placeholder="Ex: 75"
+                className="bg-slate-800 border-slate-700 text-white"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setMetricsDialogOpen(false)}
+              className="text-slate-400"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={saveMetrics}
+              disabled={savingMetrics}
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950"
+            >
+              {savingMetrics ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Salvar Métricas
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
