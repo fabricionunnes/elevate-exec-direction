@@ -117,9 +117,7 @@ NÃO inclua preços no texto - o cliente verá os detalhes na página do serviç
 - **UNV Social**: Redes sociais e conteúdo. Botão: [CTA_BUTTON:UNV Social:/social]
 
 **ESTRATÉGICOS:**
-- **UNV Growth Room**: Imersão presencial 3 dias. Botão: [CTA_BUTTON:UNV Growth Room:/growth-room]
 - **UNV Partners**: Board mensal. R$ 300k-2M/mês. Botão: [CTA_BUTTON:UNV Partners:/partners]
-- **UNV Mastermind**: Grupo elite. R$ 1M+/mês. Botão: [CTA_BUTTON:UNV Mastermind:/mastermind]
 
 **ESPECIALIZADOS:**
 - **UNV Finance**: BPO financeiro e controladoria. Botão: [CTA_BUTTON:UNV Finance:/finance]
@@ -138,8 +136,9 @@ NÃO inclua preços no texto - o cliente verá os detalhes na página do serviç
 4. SEMPRE identifique pelo menos 1 problema/oportunidade que o cliente não mencionou
 5. SEMPRE conecte o serviço UNV ao problema específico identificado
 6. NUNCA inclua preços no texto - use apenas o formato [CTA_BUTTON:Nome:/link]
-7. Use emojis com moderação para destacar seções (🎯 📊 ⚡ 💭 💼)
-8. Responda em português brasileiro, tom direto e profissional`;
+7. NUNCA sugira eventos presenciais (Growth Room, Mastermind, Le Désir) - foque apenas em serviços recorrentes
+8. Use emojis com moderação para destacar seções (🎯 📊 ⚡ 💭 💼)
+9. Responda em português brasileiro, tom direto e profissional`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
