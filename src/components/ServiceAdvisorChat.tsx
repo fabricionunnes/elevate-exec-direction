@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import { supabase } from "@/integrations/supabase/client";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/service-advisor-chat`;
 
@@ -117,6 +118,7 @@ export function ServiceAdvisorChat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [leadId, setLeadId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -133,6 +135,106 @@ export function ServiceAdvisorChat() {
       inputRef.current.focus();
     }
   }, [isOpen, isMinimized]);
+
+  // Save messages to database
+  const saveToDatabase = async (newMessages: Message[], extractedData?: { name?: string; email?: string; phone?: string }) => {
+    try {
+      if (!leadId) {
+        // Create new lead
+        const { data, error } = await supabase
+          .from('chat_advisor_leads')
+          .insert({
+            messages: newMessages,
+            name: extractedData?.name || null,
+            email: extractedData?.email || null,
+            phone: extractedData?.phone || null,
+          })
+          .select('id')
+          .single();
+
+        if (error) {
+          console.error('Error creating lead:', error);
+          return;
+        }
+        
+        if (data) {
+          setLeadId(data.id);
+        }
+      } else {
+        // Update existing lead
+        const updateData: any = { messages: newMessages };
+        if (extractedData?.name) updateData.name = extractedData.name;
+        if (extractedData?.email) updateData.email = extractedData.email;
+        if (extractedData?.phone) updateData.phone = extractedData.phone;
+
+        const { error } = await supabase
+          .from('chat_advisor_leads')
+          .update(updateData)
+          .eq('id', leadId);
+
+        if (error) {
+          console.error('Error updating lead:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving to database:', error);
+    }
+  };
+
+  // Extract contact info from conversation
+  const extractContactInfo = (allMessages: Message[]) => {
+    const data: { name?: string; email?: string; phone?: string } = {};
+    
+    // Simple extraction logic - looks at user messages after certain questions
+    const userMessages = allMessages.filter(m => m.role === 'user').map(m => m.content);
+    const assistantMessages = allMessages.filter(m => m.role === 'assistant').map(m => m.content.toLowerCase());
+    
+    for (let i = 0; i < assistantMessages.length && i < userMessages.length; i++) {
+      const assistantMsg = assistantMessages[i];
+      const userResponse = userMessages[i];
+      
+      // Check for name question
+      if (assistantMsg.includes('qual é o seu nome') || assistantMsg.includes('qual seu nome')) {
+        // Next user message after this is likely the name
+        if (userResponse && !userResponse.includes('@') && !userResponse.match(/^\d/)) {
+          data.name = userResponse.trim();
+        }
+      }
+      
+      // Check for email
+      if (userResponse && userResponse.includes('@') && userResponse.includes('.')) {
+        const emailMatch = userResponse.match(/[\w.-]+@[\w.-]+\.\w+/);
+        if (emailMatch) {
+          data.email = emailMatch[0];
+        }
+      }
+      
+      // Check for phone
+      if (assistantMsg.includes('telefone') || assistantMsg.includes('whatsapp')) {
+        const phoneMatch = userResponse.match(/[\d\s\-().+]+/);
+        if (phoneMatch && phoneMatch[0].replace(/\D/g, '').length >= 8) {
+          data.phone = phoneMatch[0].trim();
+        }
+      }
+    }
+    
+    // Also check last few messages for contact info
+    const recentUserMessages = userMessages.slice(-5);
+    for (const msg of recentUserMessages) {
+      if (!data.email && msg.includes('@') && msg.includes('.')) {
+        const emailMatch = msg.match(/[\w.-]+@[\w.-]+\.\w+/);
+        if (emailMatch) data.email = emailMatch[0];
+      }
+      if (!data.phone) {
+        const phoneMatch = msg.match(/[\d\s\-().+]+/);
+        if (phoneMatch && phoneMatch[0].replace(/\D/g, '').length >= 8) {
+          data.phone = phoneMatch[0].trim();
+        }
+      }
+    }
+    
+    return data;
+  };
 
   const startConversation = async () => {
     setHasStarted(true);
@@ -153,7 +255,12 @@ export function ServiceAdvisorChat() {
     await streamChat({
       messages: [],
       onDelta: upsertAssistant,
-      onDone: () => setIsLoading(false),
+      onDone: () => {
+        setIsLoading(false);
+        // Save initial message
+        const initialMessages: Message[] = [{ role: "assistant", content: assistantContent }];
+        saveToDatabase(initialMessages);
+      },
       onError: (error) => {
         toast.error(error);
         setIsLoading(false);
@@ -165,7 +272,8 @@ export function ServiceAdvisorChat() {
     if (!input.trim() || isLoading) return;
 
     const userMsg: Message = { role: "user", content: input.trim() };
-    setMessages((prev) => [...prev, userMsg]);
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setInput("");
     setIsLoading(true);
 
@@ -182,9 +290,15 @@ export function ServiceAdvisorChat() {
     };
 
     await streamChat({
-      messages: [...messages, userMsg],
+      messages: newMessages,
       onDelta: upsertAssistant,
-      onDone: () => setIsLoading(false),
+      onDone: () => {
+        setIsLoading(false);
+        // Save all messages with extracted contact info
+        const allMessages = [...newMessages, { role: "assistant" as const, content: assistantContent }];
+        const contactInfo = extractContactInfo(allMessages);
+        saveToDatabase(allMessages, contactInfo);
+      },
       onError: (error) => {
         toast.error(error);
         setIsLoading(false);
