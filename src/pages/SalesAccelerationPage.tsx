@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import salesTeam from "@/assets/sales-team.jpg";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import { ROISimulator } from "@/components/ROISimulator";
 import logoSalesAcceleration from "@/assets/logo-sales-acceleration.png";
 
 const unvRole = [
@@ -592,6 +593,16 @@ export default function SalesAccelerationPage() {
           </div>
         </div>
       </section>
+
+      {/* ROI Simulator */}
+      <ROISimulator
+        productName="UNV Sales Acceleration"
+        productPrice="R$ 24.000/ano"
+        productSlug="sales-acceleration"
+        benefitDescription="Com direção comercial ativa, seu time vende mais com os mesmos leads. Payback projetado até o 3º mês. Conversão otimizada, ciclo de vendas menor, gestão estruturada."
+        expectedConversionIncrease={7}
+        expectedTicketIncrease={20}
+      />
     </Layout>
   );
 }

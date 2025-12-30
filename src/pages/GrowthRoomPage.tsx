@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import growthRoomHero from "@/assets/growth-room-hero.jpg";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import { ROISimulator } from "@/components/ROISimulator";
 import logoGrowthRoom from "@/assets/logo-growth-room.png";
 
 // O que a UNV faz no Growth Room
@@ -706,6 +707,16 @@ export default function GrowthRoomPage() {
           </Link>
         </div>
       </section>
+
+      {/* ROI Simulator */}
+      <ROISimulator
+        productName="UNV Growth Room"
+        productPrice="R$ 3.997 (evento)"
+        productSlug="growth-room"
+        benefitDescription="3 dias de imersão estratégica para definir prioridades claras, eliminar ruído e sair com um plano de ação concreto. Decisões certas geram retorno imediato."
+        expectedConversionIncrease={5}
+        expectedTicketIncrease={15}
+      />
 
       {/* Frase Final */}
       <section className="section-padding bg-background">
