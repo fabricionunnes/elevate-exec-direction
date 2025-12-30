@@ -371,14 +371,24 @@ Como posso ajudar você hoje?
                     parseCtaButtons(message.content).map((part, partIndex) => {
                       if (part.type === 'button') {
                         return (
-                          <Link
+                          <div 
                             key={partIndex}
-                            to={part.link || "#"}
-                            className="inline-flex items-center gap-2 mt-3 mb-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-semibold rounded-lg transition-all shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 hover:scale-[1.02]"
+                            className="mt-4 mb-2 p-4 bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-500/30 rounded-xl"
                           >
-                            <span>Conhecer {part.label}</span>
-                            <ExternalLink className="w-4 h-4" />
-                          </Link>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Sparkles className="w-4 h-4 text-amber-400" />
+                              <span className="text-amber-400 text-xs font-semibold uppercase tracking-wider">
+                                Serviço Recomendado
+                              </span>
+                            </div>
+                            <Link
+                              to={part.link || "#"}
+                              className="inline-flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-lg transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.02] text-base"
+                            >
+                              <span>{part.label}</span>
+                              <ExternalLink className="w-5 h-5" />
+                            </Link>
+                          </div>
                         );
                       }
                       return (
