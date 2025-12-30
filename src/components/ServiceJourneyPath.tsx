@@ -292,7 +292,7 @@ export function ServiceJourneyPath() {
 
         {/* Desktop Unified Path */}
         <div className="hidden lg:block relative" style={{ height: '1300px' }}>
-          {/* SVG Path - Single Unified Path */}
+          {/* SVG Path - Single Unified Path with Connections */}
           <svg 
             className="absolute inset-0 w-full h-full pointer-events-none" 
             viewBox="0 0 100 65"
@@ -311,9 +311,7 @@ export function ServiceJourneyPath() {
               
               {/* Rainbow gradient for unified path */}
               <linearGradient id="unifiedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#ef4444">
-                  <animate attributeName="stop-color" values="#ef4444;#3b82f6;#22c55e;#ef4444" dur="8s" repeatCount="indefinite"/>
-                </stop>
+                <stop offset="0%" stopColor="#ef4444" />
                 <stop offset="18%" stopColor="#3b82f6" />
                 <stop offset="30%" stopColor="#22c55e" />
                 <stop offset="40%" stopColor="#f97316" />
@@ -325,13 +323,90 @@ export function ServiceJourneyPath() {
                 <stop offset="100%" stopColor="#8b5cf6" />
               </linearGradient>
 
-              {/* Animated dash for flow effect */}
-              <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="rgba(255,255,255,0)"/>
-                <stop offset="50%" stopColor="rgba(255,255,255,0.8)"/>
-                <stop offset="100%" stopColor="rgba(255,255,255,0)"/>
+              {/* Vertical gradient for connecting lines */}
+              <linearGradient id="connectGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#a855f7" stopOpacity="0.6" />
+                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.6" />
               </linearGradient>
             </defs>
+
+            {/* Connecting lines between upper and lower trails */}
+            {/* Connection: Acceleration (3) to Growth Room (9) */}
+            <path
+              d="M 45 4 Q 45 15, 38 25"
+              fill="none"
+              stroke="url(#connectGradient)"
+              strokeWidth="0.3"
+              strokeLinecap="round"
+              strokeDasharray="1 1"
+              opacity="0.5"
+            />
+            
+            {/* Connection: Sales Ops (4) to Partners (10) */}
+            <path
+              d="M 65 9 Q 40 16, 18 22"
+              fill="none"
+              stroke="url(#connectGradient)"
+              strokeWidth="0.3"
+              strokeLinecap="round"
+              strokeDasharray="1 1"
+              opacity="0.5"
+            />
+            
+            {/* Connection: Ads (5) to Mastermind (12) */}
+            <path
+              d="M 85 5 Q 60 24, 22 42"
+              fill="none"
+              stroke="url(#connectGradient)"
+              strokeWidth="0.3"
+              strokeLinecap="round"
+              strokeDasharray="1 1"
+              opacity="0.4"
+            />
+
+            {/* Connection: Social (6) to Le Désir (13) */}
+            <path
+              d="M 92 16 Q 70 28, 42 38"
+              fill="none"
+              stroke="url(#connectGradient)"
+              strokeWidth="0.3"
+              strokeLinecap="round"
+              strokeDasharray="1 1"
+              opacity="0.5"
+            />
+
+            {/* Connection: Sales System (7) to People (14) */}
+            <path
+              d="M 78 22 Q 72 34, 62 44"
+              fill="none"
+              stroke="url(#connectGradient)"
+              strokeWidth="0.3"
+              strokeLinecap="round"
+              strokeDasharray="1 1"
+              opacity="0.5"
+            />
+
+            {/* Connection: Fractional CRO (8) to Finance (15) */}
+            <path
+              d="M 58 19 Q 70 30, 82 40"
+              fill="none"
+              stroke="url(#connectGradient)"
+              strokeWidth="0.3"
+              strokeLinecap="round"
+              strokeDasharray="1 1"
+              opacity="0.5"
+            />
+
+            {/* Connection: Execution (11) to Safe (16) */}
+            <path
+              d="M 8 34 Q 50 45, 92 52"
+              fill="none"
+              stroke="url(#connectGradient)"
+              strokeWidth="0.3"
+              strokeLinecap="round"
+              strokeDasharray="1 1"
+              opacity="0.4"
+            />
 
             {/* Background glow path */}
             <path
@@ -353,7 +428,7 @@ export function ServiceJourneyPath() {
               filter="url(#pathGlow)"
             />
 
-            {/* Animated flowing dots */}
+            {/* Animated flowing dots on main path */}
             <circle r="0.8" fill="white" opacity="0.8">
               <animateMotion dur="12s" repeatCount="indefinite" path={pathD} />
             </circle>
