@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.portal-recommendations]
 verify_jwt = true
+
+[functions.service-advisor-chat]
+verify_jwt = false
