@@ -79,9 +79,9 @@ const formato = [
 const pilares = [
   {
     numero: "1",
-    titulo: "Board Estratégico Mensal",
+    titulo: "Board Estratégico Quinzenal com Fabrício Nunnes",
     icon: Calendar,
-    descricao: "Reunião mensal de board externo, com pauta estruturada.",
+    descricao: "Reunião quinzenal individual com Fabrício Nunnes, com pauta estruturada.",
     oQueAcontece: [
       "Análise de decisões críticas",
       "Avaliação de indicadores estratégicos",
@@ -90,8 +90,7 @@ const pilares = [
     ],
     participantes: [
       "CEO/fundador",
-      "UNV (board externo)",
-      "Convidados estratégicos (quando aplicável)",
+      "Fabrício Nunnes (individual)",
     ],
     entregaveis: [
       "Ata de decisões",
@@ -176,8 +175,8 @@ const pilares = [
 ];
 
 // Cadência
-const cadenciaMensal = [
-  "Board estratégico",
+const cadenciaQuinzenal = [
+  "Board estratégico individual com Fabrício",
   "Decisões-chave",
   "Redefinição de prioridades",
 ];
@@ -195,7 +194,7 @@ const cadenciaTrimestral = [
 
 // Entregáveis consolidados
 const entregaveisConsolidados = [
-  "Board mensal com atas",
+  "Board quinzenal individual com Fabrício (com atas)",
   "Direcionamento estratégico documentado",
   "Correção de rota contínua",
   "Benchmark estruturado",
@@ -270,9 +269,9 @@ export default function PartnersPage() {
         productNumber={5}
         productName="UNV PARTNERS"
         tagline="Board Estratégico"
-        whatItDoes="Atua como conselho estratégico contínuo."
+        whatItDoes="Atua como conselho estratégico contínuo com Fabrício Nunnes."
         keyPoints={[
-          "Board mensal",
+          "Board quinzenal individual com Fabrício",
           "Checkpoints semanais",
           "Benchmark real",
           "Decisões de alto impacto",
@@ -285,7 +284,7 @@ export default function PartnersPage() {
         }}
         schedule={[
           { period: "Semanal", description: "Checkpoints" },
-          { period: "Mensal", description: "Board" },
+          { period: "Quinzenal", description: "Board individual com Fabrício" },
           { period: "Mensal", description: "Mansão Empresarial" },
           { period: "Trimestral", description: "Revisão profunda" }
         ]}
@@ -687,10 +686,10 @@ export default function PartnersPage() {
               <div className="card-premium p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Clock className="h-5 w-5 text-accent" />
-                  <h3 className="font-semibold text-foreground">Mensal</h3>
+                  <h3 className="font-semibold text-foreground">Quinzenal</h3>
                 </div>
                 <ul className="space-y-2">
-                  {cadenciaMensal.map((item, i) => (
+                  {cadenciaQuinzenal.map((item, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm">
                       <CheckCircle className="h-4 w-4 text-accent" />
                       <span className="text-muted-foreground">{item}</span>
