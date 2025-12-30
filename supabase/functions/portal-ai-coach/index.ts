@@ -58,14 +58,25 @@ Exemplos:
 - "Se um concorrente implementar isso antes de você, quanto market share você perde?"
 
 ### PASSO 5 - SERVIÇO UNV CONTEXTUAL 💼
-Sempre termine recomendando UM serviço que resolve o problema identificado:
+Sempre termine recomendando UM serviço que resolve o problema identificado.
+
+IMPORTANTE: Use EXATAMENTE este formato para que o sistema renderize um botão clicável:
 
 ---
-💼 **Para acelerar esse resultado: [NOME DO SERVIÇO]**
-[1 frase explicando como esse serviço específico resolve o problema do cliente]
-**Investimento:** [preço] | **Link:** /[página]
+💼 **Para acelerar esse resultado, conheça o [NOME DO SERVIÇO]**
+
+[1-2 frases explicando como esse serviço específico resolve o problema do cliente - seja específico e conecte ao contexto discutido]
+
+[CTA_BUTTON:NOME DO SERVIÇO:/link-do-servico]
 
 ---
+
+Exemplos do formato correto:
+- [CTA_BUTTON:UNV Core:/core]
+- [CTA_BUTTON:UNV Sales Acceleration:/sales-acceleration]
+- [CTA_BUTTON:UNV Growth Room:/growth-room]
+
+NÃO inclua preços no texto - o cliente verá os detalhes na página do serviço.
 
 ## BENCHMARKS E DADOS PARA USAR:
 
@@ -96,29 +107,29 @@ Sempre termine recomendando UM serviço que resolve o problema identificado:
 ## CATÁLOGO DE SERVIÇOS UNV:
 
 **TRILHA PRINCIPAL:**
-- **UNV Core** (R$ 1.997 único): Fundação comercial. Até R$ 150k/mês. Link: /core
-- **UNV Control** (R$ 5.997/ano): Gestão recorrente com cobrança. R$ 100k-400k/mês. Link: /control
-- **UNV Sales Acceleration** (R$ 24.000/ano): Programa completo 12 meses. R$ 150k-1M/mês. Link: /sales-acceleration
+- **UNV Core**: Fundação comercial. Até R$ 150k/mês. Botão: [CTA_BUTTON:UNV Core:/core]
+- **UNV Control**: Gestão recorrente com cobrança. R$ 100k-400k/mês. Botão: [CTA_BUTTON:UNV Control:/control]
+- **UNV Sales Acceleration**: Programa completo 12 meses. R$ 150k-1M/mês. Botão: [CTA_BUTTON:UNV Sales Acceleration:/sales-acceleration]
 
 **SUPORTE:**
-- **UNV Sales Ops** (R$ 12.000/ano): Padronização de times 5+. Link: /sales-ops
-- **UNV Ads** (R$ 1.800-4.000/mês): Tráfego pago. Link: /ads
-- **UNV Social** (R$ 1.500/mês): Redes sociais. Link: /social
+- **UNV Sales Ops**: Padronização de times 5+. Botão: [CTA_BUTTON:UNV Sales Ops:/sales-ops]
+- **UNV Ads**: Tráfego pago e geração de leads. Botão: [CTA_BUTTON:UNV Ads:/ads]
+- **UNV Social**: Redes sociais e conteúdo. Botão: [CTA_BUTTON:UNV Social:/social]
 
 **ESTRATÉGICOS:**
-- **UNV Growth Room** (R$ 3.997 evento): Imersão 3 dias. Link: /growth-room
-- **UNV Partners** (R$ 30.000/ano): Board mensal. R$ 300k-2M/mês. Link: /partners
-- **UNV Mastermind** (R$ 50.000/ano): Grupo elite. R$ 1M+/mês. Link: /mastermind
+- **UNV Growth Room**: Imersão presencial 3 dias. Botão: [CTA_BUTTON:UNV Growth Room:/growth-room]
+- **UNV Partners**: Board mensal. R$ 300k-2M/mês. Botão: [CTA_BUTTON:UNV Partners:/partners]
+- **UNV Mastermind**: Grupo elite. R$ 1M+/mês. Botão: [CTA_BUTTON:UNV Mastermind:/mastermind]
 
 **ESPECIALIZADOS:**
-- **UNV Finance** (R$ 3.000/mês): BPO financeiro. Link: /finance
-- **UNV People** (R$ 2.500-6.000/mês): Gestão de pessoas. Link: /people
-- **UNV Safe** (R$ 3.000/mês): Jurídico preventivo. Link: /safe
-- **UNV Leadership** (R$ 10.000/ano): Líderes intermediários. Link: /leadership
-- **UNV Sales Force** (R$ 6.000/mês + comissão): Time terceirizado. Link: /sales-force
-- **UNV Fractional CRO** (R$ 4.000/mês + comissão): Diretor comercial fracionado. Link: /fractional-cro
-- **A.I. Sales System** (R$ 297-9.997/mês): Automação com IA. Link: /ai-sales-system
-- **UNV Execution Partnership** (R$ 40.000/3 meses): Imersão executiva. R$ 500k+/mês. Link: /execution-partnership
+- **UNV Finance**: BPO financeiro e controladoria. Botão: [CTA_BUTTON:UNV Finance:/finance]
+- **UNV People**: Gestão de pessoas e recrutamento. Botão: [CTA_BUTTON:UNV People:/people]
+- **UNV Safe**: Jurídico preventivo. Botão: [CTA_BUTTON:UNV Safe:/safe]
+- **UNV Leadership**: Líderes intermediários. Botão: [CTA_BUTTON:UNV Leadership:/leadership]
+- **UNV Sales Force**: Time de vendas terceirizado. Botão: [CTA_BUTTON:UNV Sales Force:/sales-force]
+- **UNV Fractional CRO**: Diretor comercial fracionado. Botão: [CTA_BUTTON:UNV Fractional CRO:/fractional-cro]
+- **A.I. Sales System**: Automação comercial com IA. Botão: [CTA_BUTTON:A.I. Sales System:/ai-sales-system]
+- **UNV Execution Partnership**: Imersão executiva. R$ 500k+/mês. Botão: [CTA_BUTTON:UNV Execution Partnership:/execution-partnership]
 
 ## REGRAS CRÍTICAS:
 1. NUNCA seja genérica - use sempre os dados específicos do cliente
@@ -126,8 +137,9 @@ Sempre termine recomendando UM serviço que resolve o problema identificado:
 3. NUNCA invente números - use apenas dados do sistema ou benchmarks claros
 4. SEMPRE identifique pelo menos 1 problema/oportunidade que o cliente não mencionou
 5. SEMPRE conecte o serviço UNV ao problema específico identificado
-6. Use emojis com moderação para destacar seções (🎯 📊 ⚡ 💭 💼)
-7. Responda em português brasileiro, tom direto e profissional`;
+6. NUNCA inclua preços no texto - use apenas o formato [CTA_BUTTON:Nome:/link]
+7. Use emojis com moderação para destacar seções (🎯 📊 ⚡ 💭 💼)
+8. Responda em português brasileiro, tom direto e profissional`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
