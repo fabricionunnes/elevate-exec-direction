@@ -33,7 +33,8 @@ import {
   LogOut,
   Users,
   UserCheck,
-  Trash2
+  Trash2,
+  MessageCircle
 } from "lucide-react";
 import {
   AlertDialog,
@@ -95,6 +96,16 @@ interface CloserDiagnostic {
   notes: string | null;
 }
 
+interface ChatAdvisorLead {
+  id: string;
+  created_at: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  messages: any[];
+  recommended_services: any;
+  status: string;
+}
 const revenueLabels: Record<string, string> = {
   "menos-50k": "< R$ 50k",
   "50k-100k": "R$ 50k-100k",
@@ -170,10 +181,12 @@ const statusColors: Record<string, string> = {
 export default function DiagnosticResponsesPage() {
   const [responses, setResponses] = useState<DiagnosticResponse[]>([]);
   const [closerDiagnostics, setCloserDiagnostics] = useState<CloserDiagnostic[]>([]);
+  const [chatLeads, setChatLeads] = useState<ChatAdvisorLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedResponse, setSelectedResponse] = useState<DiagnosticResponse | null>(null);
   const [selectedCloser, setSelectedCloser] = useState<CloserDiagnostic | null>(null);
+  const [selectedChatLead, setSelectedChatLead] = useState<ChatAdvisorLead | null>(null);
   const [activeTab, setActiveTab] = useState("clients");
   
   // Auth state
@@ -245,13 +258,17 @@ export default function DiagnosticResponsesPage() {
   const fetchResponses = async () => {
     setLoading(true);
     try {
-      const [clientsResult, closersResult] = await Promise.all([
+      const [clientsResult, closersResult, chatResult] = await Promise.all([
         supabase
           .from("client_diagnostics")
           .select("*")
           .order("created_at", { ascending: false }),
         supabase
           .from("closer_diagnostics" as any)
+          .select("*")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("chat_advisor_leads" as any)
           .select("*")
           .order("created_at", { ascending: false })
       ]);
@@ -273,6 +290,13 @@ export default function DiagnosticResponsesPage() {
         setCloserDiagnostics([]);
       } else {
         setCloserDiagnostics((closersResult.data as unknown as CloserDiagnostic[]) || []);
+      }
+
+      if (chatResult.error) {
+        console.error("Error fetching chat leads:", chatResult.error);
+        setChatLeads([]);
+      } else {
+        setChatLeads((chatResult.data as unknown as ChatAdvisorLead[]) || []);
       }
     } catch (error) {
       toast.error("Erro ao carregar dados");
@@ -378,6 +402,22 @@ export default function DiagnosticResponsesPage() {
     }
   };
 
+  const deleteChatLead = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("chat_advisor_leads" as any)
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      
+      setChatLeads(prev => prev.filter(r => r.id !== id));
+      toast.success("Lead do chat excluído");
+    } catch {
+      toast.error("Erro ao excluir");
+    }
+  };
+
   const filteredResponses = responses.filter(r => 
     r.company_name.toLowerCase().includes(search.toLowerCase()) ||
     r.contact_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -387,6 +427,12 @@ export default function DiagnosticResponsesPage() {
   const filteredCloserDiagnostics = closerDiagnostics.filter(r => 
     r.company.toLowerCase().includes(search.toLowerCase()) ||
     r.client_name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const filteredChatLeads = chatLeads.filter(r => 
+    (r.name?.toLowerCase().includes(search.toLowerCase())) ||
+    (r.email?.toLowerCase().includes(search.toLowerCase())) ||
+    (r.phone?.includes(search))
   );
 
   // Loading state
@@ -472,7 +518,7 @@ export default function DiagnosticResponsesPage() {
                 Respostas dos Diagnósticos
               </h1>
               <p className="text-muted-foreground">
-                {responses.length} de clientes • {closerDiagnostics.length} de closers
+                {responses.length} de clientes • {closerDiagnostics.length} de closers • {chatLeads.length} do chat
               </p>
             </div>
             
@@ -504,6 +550,10 @@ export default function DiagnosticResponsesPage() {
               <TabsTrigger value="closers" className="flex items-center gap-2">
                 <UserCheck className="h-4 w-4" />
                 Closers ({closerDiagnostics.length})
+              </TabsTrigger>
+              <TabsTrigger value="chat" className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" />
+                Chat IA ({chatLeads.length})
               </TabsTrigger>
             </TabsList>
 
@@ -806,6 +856,114 @@ export default function DiagnosticResponsesPage() {
                                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() => deleteDiagnostic(diagnostic.id, true)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Excluir
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Chat IA Leads */}
+            <TabsContent value="chat">
+              {loading ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                </div>
+              ) : filteredChatLeads.length === 0 ? (
+                <div className="text-center py-20">
+                  <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Nenhum lead do chat encontrado</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Contato</TableHead>
+                        <TableHead>Mensagens</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredChatLeads.map((lead) => (
+                        <TableRow key={lead.id}>
+                          <TableCell className="whitespace-nowrap">
+                            <div className="flex items-center gap-2 text-sm">
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                              {format(new Date(lead.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-medium">{lead.name || "Não informado"}</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {lead.email && (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Mail className="h-3 w-3" />
+                                  {lead.email}
+                                </div>
+                              )}
+                              {lead.phone && (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Phone className="h-3 w-3" />
+                                  {lead.phone}
+                                </div>
+                              )}
+                              {!lead.email && !lead.phone && (
+                                <span className="text-xs text-muted-foreground">Não informado</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {Array.isArray(lead.messages) ? lead.messages.length : 0} msgs
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={statusColors[lead.status] || statusColors.pending}>
+                              {lead.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedChatLead(lead)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta ação não pode ser desfeita.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteChatLead(lead.id)}
                                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                     >
                                       Excluir
@@ -1265,6 +1423,52 @@ export default function DiagnosticResponsesPage() {
                   Fechar
                 </Button>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Detalhes - Chat Lead */}
+      <Dialog open={!!selectedChatLead} onOpenChange={() => setSelectedChatLead(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Conversa do Chat</DialogTitle>
+          </DialogHeader>
+          {selectedChatLead && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-secondary/50 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground">Nome</p>
+                  <p className="font-medium">{selectedChatLead.name || "Não informado"}</p>
+                </div>
+                <div className="bg-secondary/50 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground">E-mail</p>
+                  <p className="font-medium">{selectedChatLead.email || "Não informado"}</p>
+                </div>
+                <div className="bg-secondary/50 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground">Telefone</p>
+                  <p className="font-medium">{selectedChatLead.phone || "Não informado"}</p>
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-4 max-h-96 overflow-y-auto space-y-3">
+                <p className="text-xs text-muted-foreground mb-2">Histórico da Conversa</p>
+                {Array.isArray(selectedChatLead.messages) && selectedChatLead.messages.map((msg: any, i: number) => (
+                  <div key={i} className={cn(
+                    "p-3 rounded-lg text-sm",
+                    msg.role === "user" ? "bg-primary/10 ml-8" : "bg-secondary mr-8"
+                  )}>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      {msg.role === "user" ? "Visitante" : "Consultor UNV"}
+                    </p>
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+                ))}
+              </div>
+
+              <Button variant="outline" className="w-full" onClick={() => setSelectedChatLead(null)}>
+                Fechar
+              </Button>
             </div>
           )}
         </DialogContent>

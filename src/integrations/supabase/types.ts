@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_advisor_leads: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          messages: Json
+          name: string | null
+          phone: string | null
+          recommended_services: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          messages?: Json
+          name?: string | null
+          phone?: string | null
+          recommended_services?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          messages?: Json
+          name?: string | null
+          phone?: string | null
+          recommended_services?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_diagnostics: {
         Row: {
           biggest_challenge: string | null
