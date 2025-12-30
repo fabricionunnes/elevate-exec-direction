@@ -216,11 +216,9 @@ const PortalExecutionPage = () => {
   }, [user?.company_id]);
 
   useEffect(() => {
-    // Generate recommendations when data changes
-    if (keyResults.length > 0 && checkins.length >= 0) {
-      generateRecommendations();
-    }
-  }, [keyResults, checkins]);
+    // Generate recommendations when data changes (always generate, even without KRs)
+    generateRecommendations();
+  }, [keyResults, checkins, plan]);
 
   const generateRecommendations = () => {
     const recs: UNVRecommendation[] = [];
@@ -231,14 +229,17 @@ const PortalExecutionPage = () => {
     
     // Check for impediments in recent check-ins
     const recentCheckins = checkins.slice(0, 10);
-    const hasImpediments = recentCheckins.some(c => c.impediments && c.impediments.length > 10);
     const impedimentsText = recentCheckins.map(c => c.impediments?.toLowerCase() || "").join(" ");
     
     // Calculate overall progress
-    const avgProgress = keyResults.reduce((acc, kr) => {
-      const progress = kr.target > 0 ? (kr.current_value / kr.target) * 100 : 0;
-      return acc + progress;
-    }, 0) / (keyResults.length || 1);
+    const avgProgress = keyResults.length > 0 
+      ? keyResults.reduce((acc, kr) => {
+          const progress = kr.target > 0 ? (kr.current_value / kr.target) * 100 : 0;
+          return acc + progress;
+        }, 0) / keyResults.length
+      : 0;
+
+    // ===== CONTEXTUAL RECOMMENDATIONS (based on data) =====
 
     // Rule: Many off-track KRs → Execution Partnership
     if (offTrackKRs.length >= 2 || (offTrackKRs.length >= 1 && avgProgress < 30)) {
@@ -251,7 +252,7 @@ const PortalExecutionPage = () => {
     }
 
     // Rule: Low progress + has team issues → Fractional CRO
-    if (avgProgress < 40 && (impedimentsText.includes("time") || impedimentsText.includes("equipe") || impedimentsText.includes("liderança"))) {
+    if (avgProgress < 40 && avgProgress > 0 && (impedimentsText.includes("time") || impedimentsText.includes("equipe") || impedimentsText.includes("liderança"))) {
       recs.push({
         service: UNV_SERVICES.fractionalCro.name,
         reason: "Identificamos desafios de liderança comercial. Um Diretor Comercial fracionado pode trazer a direção que seu time precisa.",
@@ -326,6 +327,53 @@ const PortalExecutionPage = () => {
         service: UNV_SERVICES.mastermind.name,
         reason: "Você está performando bem! O Mastermind conecta você com outros empresários de alto nível para trocar experiências.",
         ctaUrl: UNV_SERVICES.mastermind.url,
+        priority: "low"
+      });
+    }
+
+    // ===== DEFAULT RECOMMENDATIONS (always show if no contextual ones) =====
+    
+    // If no KRs registered yet → suggest starting with structure
+    if (keyResults.length === 0) {
+      recs.push({
+        service: UNV_SERVICES.core.name,
+        reason: "Comece sua jornada com a estruturação comercial. O UNV Core ajuda a criar a base sólida que seu negócio precisa.",
+        ctaUrl: UNV_SERVICES.core.url,
+        priority: "medium"
+      });
+      recs.push({
+        service: UNV_SERVICES.growthRoom.name,
+        reason: "Quer acelerar sua estratégia? A imersão Growth Room de 3 dias pode transformar sua visão de negócio.",
+        ctaUrl: UNV_SERVICES.growthRoom.url,
+        priority: "low"
+      });
+    }
+
+    // If few checkins → suggest discipline tools
+    if (checkins.length < 3 && keyResults.length > 0) {
+      const hasControl = recs.some(r => r.service === UNV_SERVICES.control.name);
+      if (!hasControl) {
+        recs.push({
+          service: UNV_SERVICES.control.name,
+          reason: "Poucos check-ins registrados. O UNV Control ajuda a criar a disciplina de acompanhamento semanal.",
+          ctaUrl: UNV_SERVICES.control.url,
+          priority: "medium"
+        });
+      }
+    }
+
+    // Always suggest at least one option if empty
+    if (recs.length === 0) {
+      recs.push({
+        service: UNV_SERVICES.salesAcceleration.name,
+        reason: "Pronto para acelerar? O Sales Acceleration é o caminho para escalar seus resultados comerciais.",
+        ctaUrl: UNV_SERVICES.salesAcceleration.url,
+        priority: "low"
+      });
+      recs.push({
+        service: UNV_SERVICES.ads.name,
+        reason: "Precisa de mais leads? Nossa gestão de tráfego pago gera demanda qualificada para seu time comercial.",
+        ctaUrl: UNV_SERVICES.ads.url,
         priority: "low"
       });
     }
