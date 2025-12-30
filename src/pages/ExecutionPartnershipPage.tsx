@@ -490,43 +490,130 @@ export default function ExecutionPartnershipPage() {
       {/* Partnership Possibility */}
       <section className="section-padding bg-card border-y border-border/30">
         <div className="container-premium">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="heading-section text-foreground mb-6 text-center">
-              Possibilidade de Sociedade
-            </h2>
-            <p className="text-center text-primary font-semibold mb-12">Diferencial Único</p>
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-full text-primary text-sm font-medium mb-4">
+                <Crown className="h-4 w-4" />
+                Diferencial Único
+              </div>
+              <h2 className="heading-section text-foreground mb-4">
+                Possibilidade de Sociedade
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                Ao final dos 3 meses, se houver alinhamento estratégico e potencial real, 
+                Fabrício Nunnes pode avaliar entrar como sócio do negócio.
+              </p>
+            </div>
             
-            <div className="card-premium p-8 border-primary/30">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <Crown className="h-7 w-7 text-primary" />
+            <div className="card-premium p-8 md:p-10 border-2 border-primary/40 bg-gradient-to-br from-primary/5 via-transparent to-transparent">
+              <div className="grid md:grid-cols-2 gap-8 mb-8">
+                {/* Avaliação */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                      <Target className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="text-lg font-bold text-foreground">Avaliação da Empresa</h3>
+                  </div>
+                  <p className="text-muted-foreground">
+                    Será realizada uma avaliação detalhada da empresa para determinar o valor justo 
+                    e as condições de uma possível sociedade.
+                  </p>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-foreground">Ao final dos 3 meses</h3>
-                  <p className="text-muted-foreground">Se houver alinhamento e potencial real</p>
+
+                {/* Percentual */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                      <Handshake className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="text-lg font-bold text-foreground">Percentual Negociado</h3>
+                  </div>
+                  <p className="text-muted-foreground">
+                    O percentual de participação será decidido em comum acordo entre ambas as partes, 
+                    de forma justa e transparente.
+                  </p>
+                </div>
+
+                {/* Investimento ou Troca */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                      <DollarSign className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="text-lg font-bold text-foreground">Investimento ou Troca</h3>
+                  </div>
+                  <p className="text-muted-foreground">
+                    A entrada pode ocorrer via investimento financeiro ou através de troca por trabalho 
+                    estratégico e operacional na empresa.
+                  </p>
+                </div>
+
+                {/* Executivo */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                      <Users2 className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="text-lg font-bold text-foreground">Fabrício ou Executivo</h3>
+                  </div>
+                  <p className="text-muted-foreground">
+                    A atuação pós-sociedade pode ser do próprio Fabrício Nunnes ou de um executivo 
+                    selecionado e aprovado por ele.
+                  </p>
                 </div>
               </div>
-              
-              <p className="text-muted-foreground mb-6">
-                Fabrício Nunnes pode avaliar entrar como sócio do negócio, em formato a ser definido posteriormente 
-                (fora do escopo do contrato inicial).
-              </p>
-              
-              <div className="space-y-3 p-4 bg-secondary/50 rounded-xl">
-                <div className="flex items-center gap-2 text-sm">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">A sociedade <strong className="text-foreground">não é automática</strong></span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground"><strong className="text-foreground">Não faz parte</strong> do serviço contratado</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">É uma <strong className="text-foreground">possibilidade estratégica futura</strong></span>
+
+              {/* Disclaimer */}
+              <div className="p-6 bg-secondary/50 rounded-xl border border-border/50">
+                <h4 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  Importante Entender
+                </h4>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-primary text-xs font-bold">1</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      A sociedade <strong className="text-foreground">não é automática</strong> — 
+                      depende de avaliação e interesse mútuo.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-primary text-xs font-bold">2</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      <strong className="text-foreground">Não faz parte</strong> do contrato inicial — 
+                      é uma possibilidade futura.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-primary text-xs font-bold">3</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      É uma <strong className="text-foreground">oportunidade estratégica</strong> — 
+                      não uma garantia do serviço.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-primary text-xs font-bold">4</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      <strong className="text-foreground">Termos negociáveis</strong> — 
+                      definidos caso a caso conforme o potencial.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
+
+            <p className="text-center text-muted-foreground mt-8 text-sm italic">
+              "Eu entro para estruturar. Se fizer sentido, posso ficar."
+            </p>
           </div>
         </div>
       </section>
