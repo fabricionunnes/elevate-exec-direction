@@ -54,7 +54,7 @@ function F1Car({ color, number, rotation = 0 }: { color: string; number: number;
   return (
     <svg 
       viewBox="0 0 60 24" 
-      className="w-12 h-5 md:w-16 md:h-6 drop-shadow-lg"
+      className="w-14 h-6 md:w-20 md:h-8 drop-shadow-lg"
       style={{ transform: `rotate(${rotation}deg)` }}
     >
       {/* Car body */}
@@ -95,51 +95,47 @@ function CheckeredFlag() {
 }
 
 export function ServiceJourneyPath() {
-  // Track path for the racing circuit - one continuous winding path
+  // Track path - serpentine circuit going down the page
   const trackPath = `
-    M 50 30
-    L 85 30
-    Q 95 30 95 45
-    L 95 80
-    Q 95 95 80 95
-    L 20 95
-    Q 5 95 5 110
-    L 5 145
-    Q 5 160 20 160
-    L 80 160
-    Q 95 160 95 175
-    L 95 210
-    Q 95 225 80 225
-    L 20 225
-    Q 5 225 5 240
-    L 5 275
-    Q 5 290 20 290
-    L 80 290
-    Q 95 290 95 305
-    L 95 340
-    Q 95 355 80 355
-    L 50 355
+    M 10 8
+    L 90 8
+    Q 98 8 98 16
+    L 98 22
+    Q 98 30 90 30
+    L 10 30
+    Q 2 30 2 38
+    L 2 44
+    Q 2 52 10 52
+    L 90 52
+    Q 98 52 98 60
+    L 98 66
+    Q 98 74 90 74
+    L 10 74
+    Q 2 74 2 82
+    L 2 88
+    Q 2 96 10 96
+    L 50 96
   `;
 
-  // Positions along the track for each car (percentage along path)
+  // Car positions ON the track path (matching the path coordinates)
   const carPositions = [
-    { x: 15, y: 5, rotation: 0 },    // 1
-    { x: 45, y: 5, rotation: 0 },    // 2
-    { x: 75, y: 5, rotation: 0 },    // 3
-    { x: 92, y: 12, rotation: 90 },  // 4
-    { x: 92, y: 22, rotation: 90 },  // 5
-    { x: 75, y: 30, rotation: 180 }, // 6
-    { x: 45, y: 30, rotation: 180 }, // 7
-    { x: 15, y: 30, rotation: 180 }, // 8
-    { x: 8, y: 38, rotation: 90 },   // 9
-    { x: 8, y: 48, rotation: 90 },   // 10
-    { x: 25, y: 55, rotation: 0 },   // 11
-    { x: 55, y: 55, rotation: 0 },   // 12
-    { x: 85, y: 55, rotation: 0 },   // 13
-    { x: 92, y: 65, rotation: 90 },  // 14
-    { x: 75, y: 75, rotation: 180 }, // 15
-    { x: 45, y: 75, rotation: 180 }, // 16
-    { x: 25, y: 85, rotation: 180 }, // 17 - Finish
+    { x: 18, y: 8, rotation: 0 },    // 1 - Core (primeira reta, indo para direita)
+    { x: 40, y: 8, rotation: 0 },    // 2 - Control
+    { x: 65, y: 8, rotation: 0 },    // 3 - Acceleration
+    { x: 88, y: 8, rotation: 0 },    // 4 - Sales Ops
+    { x: 98, y: 19, rotation: 90 },  // 5 - Ads (curva descendo)
+    { x: 82, y: 30, rotation: 180 }, // 6 - Social (segunda reta, indo para esquerda)
+    { x: 55, y: 30, rotation: 180 }, // 7 - Sales System
+    { x: 28, y: 30, rotation: 180 }, // 8 - Fractional CRO
+    { x: 2, y: 41, rotation: 90 },   // 9 - Growth Room (curva descendo)
+    { x: 20, y: 52, rotation: 0 },   // 10 - Partners (terceira reta, indo para direita)
+    { x: 50, y: 52, rotation: 0 },   // 11 - Execution
+    { x: 80, y: 52, rotation: 0 },   // 12 - Mastermind
+    { x: 98, y: 63, rotation: 90 },  // 13 - Le Désir (curva descendo)
+    { x: 75, y: 74, rotation: 180 }, // 14 - People (quarta reta, indo para esquerda)
+    { x: 45, y: 74, rotation: 180 }, // 15 - Finance
+    { x: 2, y: 85, rotation: 90 },   // 16 - Safe (curva descendo)
+    { x: 35, y: 96, rotation: 0 },   // 17 - Leadership (reta final)
   ];
 
   return (
@@ -160,11 +156,11 @@ export function ServiceJourneyPath() {
         </div>
 
         {/* Racing Track - Desktop */}
-        <div className="hidden lg:block relative" style={{ height: '1600px' }}>
+        <div className="hidden lg:block relative" style={{ height: '1400px' }}>
           <svg 
             className="absolute inset-0 w-full h-full" 
-            viewBox="0 0 100 100"
-            preserveAspectRatio="xMidYMid slice"
+            viewBox="0 0 100 104"
+            preserveAspectRatio="xMidYMid meet"
           >
             <defs>
               {/* Track gradient */}
@@ -175,96 +171,159 @@ export function ServiceJourneyPath() {
               
               {/* Glow effect */}
               <filter id="trackGlow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="0.5" result="blur" />
+                <feGaussianBlur stdDeviation="0.3" result="blur" />
                 <feMerge>
                   <feMergeNode in="blur" />
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
-
-              {/* Racing stripes pattern */}
-              <pattern id="racingStripes" patternUnits="userSpaceOnUse" width="2" height="2">
-                <rect width="1" height="2" fill="#ef4444" opacity="0.3" />
-              </pattern>
             </defs>
 
-            {/* Track outer edge */}
+            {/* Track outer edge (red border) */}
             <path
               d={trackPath}
               fill="none"
               stroke="#ef4444"
-              strokeWidth="8"
+              strokeWidth="10"
               strokeLinecap="round"
               strokeLinejoin="round"
-              opacity="0.3"
+              opacity="0.4"
             />
 
-            {/* Track surface */}
+            {/* Track surface (dark asphalt) */}
             <path
               d={trackPath}
               fill="none"
               stroke="url(#trackGradient)"
-              strokeWidth="6"
+              strokeWidth="8"
               strokeLinecap="round"
               strokeLinejoin="round"
               filter="url(#trackGlow)"
             />
 
-            {/* Track center line (dashed) */}
+            {/* Track white edge lines */}
+            <path
+              d={trackPath}
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="8.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity="0.15"
+            />
+
+            {/* Track center dashed line */}
             <path
               d={trackPath}
               fill="none"
               stroke="#ffffff"
               strokeWidth="0.3"
               strokeLinecap="round"
-              strokeDasharray="2 2"
-              opacity="0.5"
+              strokeDasharray="3 3"
+              opacity="0.6"
             />
 
-            {/* Track inner edge */}
-            <path
-              d={trackPath}
-              fill="none"
-              stroke="#ef4444"
-              strokeWidth="0.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity="0.5"
-            />
+            {/* Start/Finish line checkered pattern */}
+            <g>
+              <rect x="8" y="5" width="2" height="2" fill="white" />
+              <rect x="10" y="5" width="2" height="2" fill="black" />
+              <rect x="8" y="7" width="2" height="2" fill="black" />
+              <rect x="10" y="7" width="2" height="2" fill="white" />
+              <rect x="8" y="9" width="2" height="2" fill="white" />
+              <rect x="10" y="9" width="2" height="2" fill="black" />
+              <rect x="8" y="11" width="2" height="2" fill="black" />
+              <rect x="10" y="11" width="2" height="2" fill="white" />
+            </g>
 
-            {/* Start line */}
-            <line x1="48" y1="28" x2="48" y2="32" stroke="white" strokeWidth="0.5" />
-            <line x1="49" y1="28" x2="49" y2="32" stroke="black" strokeWidth="0.5" />
-            <line x1="50" y1="28" x2="50" y2="32" stroke="white" strokeWidth="0.5" />
-            <line x1="51" y1="28" x2="51" y2="32" stroke="black" strokeWidth="0.5" />
-            <line x1="52" y1="28" x2="52" y2="32" stroke="white" strokeWidth="0.5" />
+            {/* F1 Cars on track */}
+            {allServices.map((service, index) => {
+              const pos = carPositions[index];
+              return (
+                <g key={service.id} transform={`translate(${pos.x}, ${pos.y})`}>
+                  {/* Car shadow */}
+                  <ellipse cx="0" cy="1" rx="3" ry="1" fill="black" opacity="0.3" />
+                  {/* Car body */}
+                  <g transform={`rotate(${pos.rotation})`}>
+                    {/* Main body */}
+                    <ellipse cx="0" cy="0" rx="4" ry="1.5" fill={service.carColor} />
+                    {/* Cockpit */}
+                    <ellipse cx="-0.5" cy="0" rx="1.2" ry="0.8" fill="#1a1a1a" />
+                    {/* Helmet */}
+                    <circle cx="-0.5" cy="0" r="0.5" fill="white" />
+                    {/* Front wing */}
+                    <rect x="3.5" y="-1.2" width="0.8" height="2.4" rx="0.2" fill={service.carColor} />
+                    {/* Rear wing */}
+                    <rect x="-4.5" y="-1.5" width="0.6" height="3" rx="0.2" fill={service.carColor} />
+                    <rect x="-5" y="-1" width="0.8" height="2" rx="0.2" fill="#1a1a1a" />
+                    {/* Wheels */}
+                    <ellipse cx="2.5" cy="-1.8" rx="0.8" ry="0.5" fill="#1a1a1a" />
+                    <ellipse cx="2.5" cy="1.8" rx="0.8" ry="0.5" fill="#1a1a1a" />
+                    <ellipse cx="-2" cy="-2" rx="1" ry="0.5" fill="#1a1a1a" />
+                    <ellipse cx="-2" cy="2" rx="1" ry="0.5" fill="#1a1a1a" />
+                  </g>
+                  {/* Number above car */}
+                  <text y="-4" textAnchor="middle" fontSize="2.5" fill="white" fontWeight="bold" className="select-none">{index + 1}</text>
+                </g>
+              );
+            })}
+
+            {/* Finish checkered flag at end */}
+            <g transform="translate(50, 96)">
+              <rect x="-3" y="-1" width="1.5" height="1.5" fill="white" />
+              <rect x="-1.5" y="-1" width="1.5" height="1.5" fill="black" />
+              <rect x="0" y="-1" width="1.5" height="1.5" fill="white" />
+              <rect x="-3" y="0.5" width="1.5" height="1.5" fill="black" />
+              <rect x="-1.5" y="0.5" width="1.5" height="1.5" fill="white" />
+              <rect x="0" y="0.5" width="1.5" height="1.5" fill="black" />
+            </g>
           </svg>
 
-          {/* Start/Finish markers */}
-          <div className="absolute left-[8%] top-[2%] flex items-center gap-2">
-            <Flag className="h-6 w-6 text-green-500" />
-            <span className="text-sm font-bold text-green-500 uppercase">Largada</span>
+          {/* Start marker */}
+          <div className="absolute left-[5%] top-[3%] flex items-center gap-2 bg-green-500/20 border border-green-500/50 rounded-full px-3 py-1.5">
+            <Flag className="h-4 w-4 text-green-500" />
+            <span className="text-xs font-bold text-green-500 uppercase">Largada</span>
           </div>
 
-          {/* F1 Cars positioned on track */}
-          {allServices.map((service, index) => (
-            <CarOnTrack
-              key={service.id}
-              service={service}
-              position={carPositions[index]}
-              number={index + 1}
-              isLast={index === allServices.length - 1}
-            />
-          ))}
-
-          {/* Finish line marker */}
-          <div className="absolute left-[20%] bottom-[8%] flex items-center gap-3">
-            <CheckeredFlag />
-            <div className="flex items-center gap-2">
-              <Trophy className="h-6 w-6 text-yellow-500" />
-              <span className="text-sm font-bold text-yellow-500 uppercase">Chegada</span>
-            </div>
+          {/* Finish marker */}
+          <div className="absolute left-[45%] bottom-[3%] flex items-center gap-2 bg-yellow-500/20 border border-yellow-500/50 rounded-full px-3 py-1.5">
+            <Trophy className="h-4 w-4 text-yellow-500" />
+            <span className="text-xs font-bold text-yellow-500 uppercase">Chegada</span>
           </div>
+
+          {/* Clickable areas for each car */}
+          {allServices.map((service, index) => {
+            const pos = carPositions[index];
+            return (
+              <Link
+                key={service.id}
+                to={service.link}
+                className="absolute group"
+                style={{
+                  left: `${pos.x}%`,
+                  top: `${(pos.y / 104) * 100}%`,
+                  transform: 'translate(-50%, -50%)'
+                }}
+              >
+                {/* Invisible clickable area */}
+                <div className="w-16 h-12 md:w-20 md:h-14" />
+                
+                {/* Tooltip on hover */}
+                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+                  <div className="bg-card border border-border rounded-xl p-3 shadow-2xl min-w-[180px] text-center backdrop-blur-sm">
+                    <div 
+                      className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
+                      style={{ backgroundColor: service.carColor }}
+                    >
+                      <service.icon className="h-4 w-4 text-white" />
+                    </div>
+                    <h4 className="font-bold text-sm text-foreground">{service.name}</h4>
+                    <p className="text-xs text-muted-foreground mt-1">{service.objective}</p>
+                    <div className="mt-2 text-xs text-primary font-medium">Clique para ver mais →</div>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
 
         {/* Mobile version - vertical list with car styling */}
@@ -303,59 +362,6 @@ export function ServiceJourneyPath() {
   );
 }
 
-interface CarOnTrackProps {
-  service: JourneyStep;
-  position: { x: number; y: number; rotation: number };
-  number: number;
-  isLast: boolean;
-}
-
-function CarOnTrack({ service, position, number, isLast }: CarOnTrackProps) {
-  const Icon = service.icon;
-  
-  return (
-    <Link
-      to={service.link}
-      className="absolute group"
-      style={{
-        left: `${position.x}%`,
-        top: `${position.y}%`,
-        transform: 'translate(-50%, -50%)'
-      }}
-    >
-      {/* Hover glow */}
-      <div 
-        className="absolute -inset-4 rounded-full blur-xl opacity-0 group-hover:opacity-60 transition-opacity duration-300"
-        style={{ backgroundColor: service.carColor }}
-      />
-      
-      {/* F1 Car */}
-      <div className="relative transition-transform duration-300 group-hover:scale-125">
-        <F1Car color={service.carColor} number={number} rotation={position.rotation} />
-        
-        {/* Trophy for last */}
-        {isLast && (
-          <Trophy className="absolute -top-4 left-1/2 -translate-x-1/2 h-5 w-5 text-yellow-500 animate-bounce" />
-        )}
-      </div>
-      
-      {/* Info tooltip */}
-      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
-        <div className="bg-card border border-border rounded-xl p-4 shadow-2xl min-w-[200px] text-center backdrop-blur-sm">
-          <div 
-            className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center"
-            style={{ backgroundColor: service.carColor }}
-          >
-            <Icon className="h-5 w-5 text-white" />
-          </div>
-          <h4 className="font-bold text-sm text-foreground">{service.name}</h4>
-          <p className="text-xs text-muted-foreground mt-1">{service.objective}</p>
-          <div className="mt-2 text-xs text-primary font-medium">Clique para ver mais →</div>
-        </div>
-      </div>
-    </Link>
-  );
-}
 
 interface MobileCarCardProps {
   service: JourneyStep;
