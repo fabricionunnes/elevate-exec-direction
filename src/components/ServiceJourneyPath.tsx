@@ -67,6 +67,7 @@ function CheckeredFlag() {
 export function ServiceJourneyPath() {
   const [hoveredCar, setHoveredCar] = useState<number | null>(null);
   const [isTooltipHovered, setIsTooltipHovered] = useState(false);
+  const [selectedMobileCar, setSelectedMobileCar] = useState<number | null>(null);
 
   const handleCarMouseLeave = () => {
     // Small delay to allow mouse to reach tooltip
@@ -84,6 +85,10 @@ export function ServiceJourneyPath() {
   const handleTooltipMouseLeave = () => {
     setIsTooltipHovered(false);
     setHoveredCar(null);
+  };
+
+  const handleMobileCarClick = (index: number) => {
+    setSelectedMobileCar(selectedMobileCar === index ? null : index);
   };
 
   // Smooth F1 circuit path
@@ -535,44 +540,62 @@ export function ServiceJourneyPath() {
                 ))}
               </g>
 
-              {/* Car positions on mobile track */}
+              {/* Car positions on mobile track - Clickable */}
               {(() => {
                 const mobileCarPositions = [
-                  { x: 55, y: 15, rot: 0 },    // 1 - start
-                  { x: 75, y: 15, rot: 0 },    // 2
-                  { x: 92, y: 35, rot: 90 },   // 3
-                  { x: 75, y: 65, rot: 180 },  // 4
-                  { x: 45, y: 65, rot: 180 },  // 5
-                  { x: 8, y: 90, rot: 270 },   // 6
-                  { x: 45, y: 115, rot: 0 },   // 7
-                  { x: 92, y: 140, rot: 90 },  // 8
-                  { x: 45, y: 165, rot: 180 }, // 9
-                  { x: 8, y: 190, rot: 270 },  // 10
-                  { x: 45, y: 215, rot: 0 },   // 11
-                  { x: 92, y: 240, rot: 90 },  // 12
-                  { x: 55, y: 265, rot: 180 }, // 13
-                  { x: 20, y: 265, rot: 180 }, // 14
-                  { x: 5, y: 285, rot: 270 },  // 15
-                  { x: 5, y: 300, rot: 270 },  // 16 - near finish
-                  { x: 5, y: 305, rot: 270 },  // 17 - finish (hidden, use 16)
+                  { x: 55, y: 15 },    // 1 - start
+                  { x: 75, y: 15 },    // 2
+                  { x: 92, y: 35 },    // 3
+                  { x: 75, y: 65 },    // 4
+                  { x: 45, y: 65 },    // 5
+                  { x: 8, y: 90 },     // 6
+                  { x: 45, y: 115 },   // 7
+                  { x: 92, y: 140 },   // 8
+                  { x: 45, y: 165 },   // 9
+                  { x: 8, y: 190 },    // 10
+                  { x: 45, y: 215 },   // 11
+                  { x: 92, y: 240 },   // 12
+                  { x: 55, y: 265 },   // 13
+                  { x: 20, y: 265 },   // 14
+                  { x: 8, y: 285 },    // 15
+                  { x: 8, y: 305 },    // 16
                 ];
                 
-                // Only show first 16 cars, last one is at finish
                 return allServices.slice(0, 16).map((service, index) => {
                   const pos = mobileCarPositions[index];
+                  const isSelected = selectedMobileCar === index;
                   return (
-                    <g key={service.id} transform={`translate(${pos.x}, ${pos.y})`}>
+                    <g 
+                      key={service.id} 
+                      transform={`translate(${pos.x}, ${pos.y})`}
+                      onClick={() => handleMobileCarClick(index)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {/* Tap area - larger for touch */}
+                      <circle r="8" fill="transparent" />
+                      {/* Highlight ring */}
+                      {isSelected && (
+                        <circle r="6" fill={service.carColor} opacity="0.3" />
+                      )}
                       {/* Number badge */}
-                      <circle r="4" fill={service.carColor} />
+                      <circle r="4.5" fill={service.carColor} stroke={isSelected ? "#fff" : "transparent"} strokeWidth="1" />
                       <text y="1.5" textAnchor="middle" fontSize="4" fill="white" fontWeight="bold">{index + 1}</text>
                     </g>
                   );
                 });
               })()}
 
-              {/* Finish area */}
-              <g transform="translate(5, 305)">
-                <circle r="5" fill="#fbbf24" stroke="#fff" strokeWidth="1" />
+              {/* Car 17 at finish - Clickable */}
+              <g 
+                transform="translate(8, 315)"
+                onClick={() => handleMobileCarClick(16)}
+                style={{ cursor: 'pointer' }}
+              >
+                <circle r="10" fill="transparent" />
+                {selectedMobileCar === 16 && (
+                  <circle r="7" fill="#fbbf24" opacity="0.3" />
+                )}
+                <circle r="5" fill="#fbbf24" stroke={selectedMobileCar === 16 ? "#fff" : "transparent"} strokeWidth="1" />
                 <text y="1.5" textAnchor="middle" fontSize="4" fill="#000" fontWeight="bold">17</text>
               </g>
             </svg>
@@ -586,12 +609,49 @@ export function ServiceJourneyPath() {
               <Trophy className="h-3 w-3 text-yellow-400" />
               META
             </div>
+
+            {/* Mobile tooltip - shows when a car is selected */}
+            {selectedMobileCar !== null && (
+              <div 
+                className="absolute left-1/2 -translate-x-1/2 bottom-16 z-20 w-[90%] max-w-[300px] animate-fade-in"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="bg-background border border-border rounded-xl p-4 shadow-2xl">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div 
+                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold shadow-md shrink-0"
+                      style={{ backgroundColor: allServices[selectedMobileCar].carColor }}
+                    >
+                      {selectedMobileCar + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-foreground text-sm truncate">{allServices[selectedMobileCar].name}</h4>
+                      <p className="text-xs text-muted-foreground line-clamp-1">{allServices[selectedMobileCar].objective}</p>
+                    </div>
+                    <button 
+                      onClick={() => setSelectedMobileCar(null)}
+                      className="shrink-0 w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <Link 
+                    to={allServices[selectedMobileCar].link}
+                    className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg text-sm font-semibold text-white transition-all active:scale-95"
+                    style={{ backgroundColor: allServices[selectedMobileCar].carColor }}
+                  >
+                    Conhecer serviço
+                    <Trophy className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Mobile Legend */}
           <div className="mt-6 space-y-2">
             <p className="text-center text-sm text-muted-foreground mb-4">
-              Toque em um serviço para conhecer
+              Toque nos números da pista ou selecione abaixo
             </p>
             {allServices.map((service, index) => (
               <MobileCarCard
