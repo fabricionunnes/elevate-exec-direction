@@ -127,11 +127,11 @@ export function ServiceJourneyPath() {
   ];
 
   return (
-    <section className="py-16 md:py-24 bg-gradient-to-b from-background to-secondary/10">
+    <section className="py-16 md:py-24 bg-gradient-to-b from-secondary/20 to-background">
       <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-5">
             <Flag className="h-4 w-4" />
             Grande Prêmio do Crescimento
           </div>
@@ -139,14 +139,25 @@ export function ServiceJourneyPath() {
             Circuito UNV
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            17 etapas para cruzar a linha de chegada. Passe o mouse sobre os carros para conhecer cada serviço.
+            17 etapas para cruzar a linha de chegada. Clique nos carros ou na legenda para conhecer cada serviço.
           </p>
         </div>
 
         {/* Racing Track - Desktop */}
-        <div className="hidden lg:block relative mx-auto rounded-3xl shadow-2xl" style={{ maxWidth: '1000px', height: '800px', background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 50%, #a5d6a7 100%)' }}>
-          {/* Track container with padding */}
-          <div className="absolute inset-4">
+        <div className="hidden lg:block relative mx-auto rounded-3xl shadow-2xl border border-border/30 overflow-hidden" style={{ maxWidth: '900px', height: '720px' }}>
+          {/* Grass background with texture */}
+          <div className="absolute inset-0" style={{ 
+            background: 'linear-gradient(180deg, #4ade80 0%, #22c55e 50%, #16a34a 100%)',
+          }}>
+            {/* Grass texture overlay */}
+            <div className="absolute inset-0 opacity-30" style={{
+              backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(0,0,0,0.1) 1px, transparent 0)',
+              backgroundSize: '8px 8px'
+            }} />
+          </div>
+          
+          {/* Track container */}
+          <div className="absolute inset-6">
             <svg 
               className="w-full h-full" 
               viewBox="0 0 100 120"
@@ -324,16 +335,26 @@ export function ServiceJourneyPath() {
                 );
               })}
 
-              {/* Track title */}
-              <text x="50" y="8" textAnchor="middle" fontSize="3" fill="#1f2937" fontWeight="bold" letterSpacing="0.2">CIRCUITO UNV</text>
-              <text x="50" y="11" textAnchor="middle" fontSize="1.2" fill="#6b7280">17 SERVIÇOS • SUA JORNADA DE CRESCIMENTO</text>
+              {/* Remove internal title - will use external labels instead */}
             </svg>
           </div>
 
+          {/* Track title - positioned on the grass */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 text-center z-10">
+            <h3 className="text-xl font-bold text-white drop-shadow-lg tracking-wider">CIRCUITO UNV</h3>
+            <p className="text-xs text-white/80 drop-shadow">17 serviços • Sua jornada de crescimento</p>
+          </div>
+
           {/* Start label */}
-          <div className="absolute left-[52%] top-[12%] -translate-x-1/2 flex items-center gap-2 bg-green-600 text-white rounded-full px-4 py-1.5 shadow-lg z-10">
+          <div className="absolute left-[52%] top-[16%] -translate-x-1/2 flex items-center gap-2 bg-green-600 text-white rounded-full px-4 py-2 shadow-xl z-10 border-2 border-white/30">
             <Flag className="h-4 w-4" />
-            <span className="text-xs font-bold uppercase tracking-wide">Largada</span>
+            <span className="text-sm font-bold uppercase tracking-wide">Largada</span>
+          </div>
+
+          {/* Finish flag - on the track end */}
+          <div className="absolute right-[8%] bottom-[38%] flex items-center gap-2 bg-foreground text-background rounded-full px-3 py-1.5 shadow-xl z-10">
+            <Trophy className="h-4 w-4 text-yellow-400" />
+            <span className="text-xs font-bold uppercase tracking-wide">Meta</span>
           </div>
 
           {/* Floating tooltip - positioned outside track to avoid clipping */}
@@ -386,26 +407,48 @@ export function ServiceJourneyPath() {
           })()}
         </div>
 
-        {/* Car legend - Desktop */}
-        <div className="hidden lg:block mt-10">
-          <div className="grid grid-cols-6 gap-4 max-w-5xl mx-auto">
-            {allServices.map((service, index) => (
-              <Link 
-                key={service.id}
-                to={service.link}
-                className="flex items-center gap-3 p-3 rounded-xl hover:bg-secondary/50 transition-all group"
-                onMouseEnter={() => setHoveredCar(index)}
-                onMouseLeave={() => setHoveredCar(null)}
-              >
-                <div 
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md group-hover:scale-110 transition-transform"
-                  style={{ backgroundColor: service.carColor }}
+        {/* Car legend - Desktop - Improved Grid */}
+        <div className="hidden lg:block mt-12">
+          <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-6 max-w-5xl mx-auto">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <Trophy className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-bold text-foreground">Legenda do Circuito</h3>
+            </div>
+            <div className="grid grid-cols-6 gap-3">
+              {allServices.map((service, index) => (
+                <Link 
+                  key={service.id}
+                  to={service.link}
+                  className={cn(
+                    "flex items-center gap-2.5 p-3 rounded-xl border transition-all duration-200 group",
+                    hoveredCar === index 
+                      ? "border-primary bg-primary/5 shadow-md" 
+                      : "border-transparent hover:border-border hover:bg-secondary/30"
+                  )}
+                  onMouseEnter={() => setHoveredCar(index)}
+                  onMouseLeave={handleCarMouseLeave}
                 >
-                  {index + 1}
-                </div>
-                <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{service.shortName}</span>
-              </Link>
-            ))}
+                  <div 
+                    className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-md transition-transform",
+                      hoveredCar === index ? "scale-110" : "group-hover:scale-105"
+                    )}
+                    style={{ backgroundColor: service.carColor }}
+                  >
+                    {index + 1}
+                  </div>
+                  <span className={cn(
+                    "text-sm font-medium transition-colors truncate",
+                    hoveredCar === index ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                  )}>
+                    {service.shortName}
+                  </span>
+                </Link>
+              ))}
+            </div>
+            <p className="text-center text-xs text-muted-foreground mt-4">
+              Clique em qualquer serviço para ver os detalhes completos
+            </p>
           </div>
         </div>
 

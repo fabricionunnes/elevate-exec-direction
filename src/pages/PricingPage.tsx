@@ -269,10 +269,10 @@ export default function PricingPage() {
         <div className="container-premium relative">
           <div className="max-w-4xl mx-auto text-center animate-fade-up">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              Tabela de Serviços e Preços
+              Trilha de Serviços UNV
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Todos os serviços UNV com seus respectivos investimentos. Encontre a solução ideal para o momento da sua empresa.
+              Sua jornada rumo ao crescimento comercial. Encontre o serviço ideal para o momento da sua empresa.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" className="bg-primary hover:bg-primary/90" asChild>
