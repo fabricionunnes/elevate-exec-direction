@@ -20,6 +20,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { ProductOnboarding } from "@/data/onboardingContent";
 import { cn } from "@/lib/utils";
 
+// Import slide images
+import slideIntro from "@/assets/onboarding/slide-intro.jpg";
+import slideDeliverables from "@/assets/onboarding/slide-deliverables.jpg";
+import slideExpectations from "@/assets/onboarding/slide-expectations.jpg";
+import slideNextsteps from "@/assets/onboarding/slide-nextsteps.jpg";
+
 interface OnboardingSlideViewerProps {
   onboarding: ProductOnboarding;
 }
@@ -30,30 +36,35 @@ const slideTypeConfig = {
     gradient: "from-primary via-primary/80 to-blue-600",
     bgPattern: "radial-gradient(circle at 20% 80%, rgba(196, 30, 58, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(10, 34, 64, 0.2) 0%, transparent 50%)",
     accentIcon: Sparkles,
+    image: slideIntro,
   },
   deliverable: {
     icon: CheckCircle2,
     gradient: "from-emerald-500 via-emerald-600 to-teal-600",
     bgPattern: "radial-gradient(circle at 10% 90%, rgba(16, 185, 129, 0.15) 0%, transparent 50%), radial-gradient(circle at 90% 10%, rgba(20, 184, 166, 0.15) 0%, transparent 50%)",
     accentIcon: Zap,
+    image: slideDeliverables,
   },
   cadence: {
     icon: Clock,
     gradient: "from-blue-500 via-blue-600 to-indigo-600",
     bgPattern: "radial-gradient(circle at 30% 70%, rgba(59, 130, 246, 0.15) 0%, transparent 50%), radial-gradient(circle at 70% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 50%)",
     accentIcon: TrendingUp,
+    image: slideDeliverables,
   },
   expectations: {
     icon: Target,
     gradient: "from-amber-500 via-orange-500 to-red-500",
     bgPattern: "radial-gradient(circle at 25% 75%, rgba(245, 158, 11, 0.15) 0%, transparent 50%), radial-gradient(circle at 75% 25%, rgba(239, 68, 68, 0.15) 0%, transparent 50%)",
     accentIcon: Star,
+    image: slideExpectations,
   },
   "next-steps": {
     icon: ArrowRight,
     gradient: "from-violet-500 via-purple-600 to-fuchsia-600",
     bgPattern: "radial-gradient(circle at 15% 85%, rgba(139, 92, 246, 0.15) 0%, transparent 50%), radial-gradient(circle at 85% 15%, rgba(192, 38, 211, 0.15) 0%, transparent 50%)",
     accentIcon: Shield,
+    image: slideNextsteps,
   },
 };
 
@@ -192,87 +203,115 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
       <main className="relative flex-1 flex items-center justify-center p-4 md:p-8">
         <div
           className={cn(
-            "w-full max-w-5xl transition-all duration-300 ease-out",
+            "w-full max-w-6xl transition-all duration-300 ease-out",
             isAnimating && direction === "next" && "translate-x-8 opacity-0",
             isAnimating && direction === "prev" && "-translate-x-8 opacity-0"
           )}
         >
           {/* Slide Card */}
           <div className="relative rounded-3xl overflow-hidden shadow-2xl">
-            {/* Gradient Header */}
-            <div className={cn(
-              "relative p-8 md:p-12 bg-gradient-to-br text-white",
-              config.gradient
-            )}>
-              {/* Decorative elements */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl" />
-              
-              <div className="relative flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-                {/* Icon Container */}
-                <div className="relative">
-                  <div className="p-6 bg-white/20 backdrop-blur-sm rounded-2xl shadow-lg">
-                    <SlideIcon className="h-12 w-12 md:h-16 md:w-16" />
-                  </div>
-                  <div className="absolute -bottom-2 -right-2 p-2 bg-white/30 backdrop-blur-sm rounded-xl">
-                    <AccentIcon className="h-5 w-5" />
+            {/* Two-column layout */}
+            <div className="flex flex-col lg:flex-row">
+              {/* Image Column */}
+              <div className="relative lg:w-2/5 h-48 lg:h-auto">
+                <img 
+                  src={config.image} 
+                  alt={currentSlideData.title}
+                  className="w-full h-full object-cover"
+                />
+                {/* Gradient overlay */}
+                <div className={cn(
+                  "absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-transparent via-transparent",
+                  "to-card lg:to-card"
+                )} />
+                
+                {/* Icon overlay */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className={cn(
+                    "p-6 rounded-2xl bg-white/20 backdrop-blur-sm shadow-2xl",
+                    "transition-transform duration-500 hover:scale-105"
+                  )}>
+                    <SlideIcon className="h-12 w-12 lg:h-16 lg:w-16 text-white drop-shadow-lg" />
                   </div>
                 </div>
-                
-                {/* Title */}
-                <div className="flex-1">
-                  <h2 className="text-2xl md:text-4xl font-bold mb-2 drop-shadow-lg">
-                    {currentSlideData.title}
-                  </h2>
-                  <p className="text-white/80 text-sm md:text-base">
-                    Slide {currentSlide + 1} de {slides.length}
-                  </p>
+
+                {/* Slide number badge */}
+                <div className="absolute top-4 left-4">
+                  <div className={cn(
+                    "px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm",
+                    "text-white font-semibold text-sm"
+                  )}>
+                    {currentSlide + 1} / {slides.length}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Content Area */}
-            <div className="bg-card p-6 md:p-10">
-              <div className="grid gap-4">
-                {currentSlideData.content.map((item, index) => (
-                  <div
-                    key={index}
-                    className={cn(
-                      "group flex items-start gap-4 p-5 rounded-xl",
-                      "bg-gradient-to-r from-muted/50 to-muted/30",
-                      "border border-border/50 hover:border-primary/30",
-                      "transition-all duration-500 ease-out",
-                      "hover:shadow-lg hover:shadow-primary/5",
-                      "hover:-translate-y-0.5",
-                      visibleItems.includes(index)
-                        ? "opacity-100 translate-x-0"
-                        : "opacity-0 translate-x-8"
-                    )}
-                    style={{
-                      transitionDelay: `${index * 50}ms`,
-                    }}
-                  >
-                    {/* Number indicator */}
-                    <div className={cn(
-                      "shrink-0 w-10 h-10 rounded-xl flex items-center justify-center",
-                      "bg-gradient-to-br text-white font-bold text-sm shadow-lg",
-                      "group-hover:scale-110 transition-transform duration-300",
-                      config.gradient
-                    )}>
-                      {index + 1}
-                    </div>
-                    
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-foreground leading-relaxed text-base md:text-lg">
-                        {item}
-                      </p>
-                    </div>
-                    
-                    {/* Check icon on hover */}
-                    <CheckCircle2 className="h-5 w-5 text-primary/0 group-hover:text-primary transition-colors shrink-0" />
+              {/* Content Column */}
+              <div className="lg:w-3/5 bg-card">
+                {/* Header */}
+                <div className={cn(
+                  "p-6 lg:p-8 bg-gradient-to-r text-white",
+                  config.gradient
+                )}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <AccentIcon className="h-5 w-5" />
+                    <span className="text-sm font-medium text-white/80">
+                      {currentSlideData.type === "intro" && "Introdução"}
+                      {currentSlideData.type === "deliverable" && "Entregáveis"}
+                      {currentSlideData.type === "cadence" && "Cadência"}
+                      {currentSlideData.type === "expectations" && "Expectativas"}
+                      {currentSlideData.type === "next-steps" && "Próximos Passos"}
+                    </span>
                   </div>
-                ))}
+                  <h2 className="text-xl lg:text-2xl font-bold">
+                    {currentSlideData.title}
+                  </h2>
+                </div>
+
+                {/* Content Items */}
+                <div className="p-6 lg:p-8 max-h-[50vh] lg:max-h-[400px] overflow-y-auto">
+                  <div className="grid gap-3">
+                    {currentSlideData.content.map((item, index) => (
+                      <div
+                        key={index}
+                        className={cn(
+                          "group flex items-start gap-4 p-4 rounded-xl",
+                          "bg-gradient-to-r from-muted/50 to-muted/30",
+                          "border border-border/50 hover:border-primary/30",
+                          "transition-all duration-500 ease-out",
+                          "hover:shadow-lg hover:shadow-primary/5",
+                          "hover:-translate-y-0.5",
+                          visibleItems.includes(index)
+                            ? "opacity-100 translate-x-0"
+                            : "opacity-0 translate-x-8"
+                        )}
+                        style={{
+                          transitionDelay: `${index * 50}ms`,
+                        }}
+                      >
+                        {/* Number indicator */}
+                        <div className={cn(
+                          "shrink-0 w-8 h-8 rounded-lg flex items-center justify-center",
+                          "bg-gradient-to-br text-white font-bold text-sm shadow-md",
+                          "group-hover:scale-110 transition-transform duration-300",
+                          config.gradient
+                        )}>
+                          {index + 1}
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-foreground leading-relaxed text-sm lg:text-base">
+                            {item}
+                          </p>
+                        </div>
+                        
+                        {/* Check icon on hover */}
+                        <CheckCircle2 className="h-5 w-5 text-primary/0 group-hover:text-primary transition-colors shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
