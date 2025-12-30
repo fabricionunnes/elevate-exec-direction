@@ -247,7 +247,7 @@ const desktopPositions = [
   { x: 70, y: 54 },   // 17. Leadership
 ];
 
-// Generate smooth curved path through all points
+// Generate smooth curved path through all points with proper turns
 function generateSmoothPath(positions: { x: number; y: number }[]): string {
   if (positions.length < 2) return "";
   
@@ -256,16 +256,25 @@ function generateSmoothPath(positions: { x: number; y: number }[]): string {
   for (let i = 1; i < positions.length; i++) {
     const prev = positions[i - 1];
     const curr = positions[i];
+    const next = positions[i + 1];
     
-    // Calculate control points for smooth curves
-    const midX = (prev.x + curr.x) / 2;
-    const cpX1 = prev.x + (curr.x - prev.x) * 0.5;
-    const cpY1 = prev.y;
-    const cpX2 = prev.x + (curr.x - prev.x) * 0.5;
-    const cpY2 = curr.y;
+    // Detect if this is a "turn" point (direction changes significantly)
+    const isVerticalMove = Math.abs(curr.x - prev.x) < 5;
     
-    // Use cubic bezier for smoother curves
-    path += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${curr.x} ${curr.y}`;
+    if (isVerticalMove) {
+      // Vertical connection - use smooth S-curve
+      const midY = (prev.y + curr.y) / 2;
+      path += ` C ${prev.x} ${midY}, ${curr.x} ${midY}, ${curr.x} ${curr.y}`;
+    } else {
+      // Horizontal movement - smooth bezier
+      const tension = 0.4;
+      const cpX1 = prev.x + (curr.x - prev.x) * tension;
+      const cpY1 = prev.y;
+      const cpX2 = curr.x - (curr.x - prev.x) * tension;
+      const cpY2 = curr.y;
+      
+      path += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${curr.x} ${curr.y}`;
+    }
   }
   
   return path;
