@@ -1,1 +1,7 @@
 project_id = "czmyjgdixwhpfasfugkm"
+
+[functions.create-admin]
+verify_jwt = false
+
+[functions.portal-ai-coach]
+verify_jwt = false
