@@ -705,10 +705,10 @@ export function ServiceJourneyPath() {
                       {allServices[selectedMobileCar].description}
                     </p>
                     
-                    {/* Price */}
-                    <div className="flex items-center justify-between p-2 bg-secondary/50 rounded-lg mb-3">
-                      <span className="text-xs text-muted-foreground">Investimento:</span>
-                      <span className="text-sm font-bold text-foreground">{allServices[selectedMobileCar].price}</span>
+                    {/* Price - Always visible */}
+                    <div className="flex items-center justify-between p-2.5 bg-primary/10 border border-primary/20 rounded-lg mb-3">
+                      <span className="text-xs font-medium text-muted-foreground">Investimento:</span>
+                      <span className="text-sm font-bold text-primary">{allServices[selectedMobileCar].price}</span>
                     </div>
                     
                     <Link 
