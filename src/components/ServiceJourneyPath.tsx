@@ -610,42 +610,90 @@ export function ServiceJourneyPath() {
               META
             </div>
 
-            {/* Mobile tooltip - shows when a car is selected */}
-            {selectedMobileCar !== null && (
-              <div 
-                className="absolute left-1/2 -translate-x-1/2 bottom-16 z-20 w-[90%] max-w-[300px] animate-fade-in"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="bg-background border border-border rounded-xl p-4 shadow-2xl">
-                  <div className="flex items-center gap-3 mb-3">
+            {/* Mobile tooltip - positioned near the clicked car */}
+            {selectedMobileCar !== null && (() => {
+              const mobileCarPositions = [
+                { x: 55, y: 15 },    // 1
+                { x: 75, y: 15 },    // 2
+                { x: 92, y: 35 },    // 3
+                { x: 75, y: 65 },    // 4
+                { x: 45, y: 65 },    // 5
+                { x: 8, y: 90 },     // 6
+                { x: 45, y: 115 },   // 7
+                { x: 92, y: 140 },   // 8
+                { x: 45, y: 165 },   // 9
+                { x: 8, y: 190 },    // 10
+                { x: 45, y: 215 },   // 11
+                { x: 92, y: 240 },   // 12
+                { x: 55, y: 265 },   // 13
+                { x: 20, y: 265 },   // 14
+                { x: 8, y: 285 },    // 15
+                { x: 8, y: 305 },    // 16
+                { x: 8, y: 315 },    // 17
+              ];
+              
+              const pos = mobileCarPositions[selectedMobileCar];
+              const topPercent = (pos.y / 320) * 100;
+              const leftPercent = pos.x;
+              
+              // Determine if tooltip should show above or below based on position
+              const showAbove = pos.y > 80;
+              // Determine horizontal alignment
+              const alignLeft = pos.x > 50;
+              
+              return (
+                <div 
+                  className="absolute z-20 w-[85%] max-w-[280px] animate-fade-in"
+                  style={{
+                    top: showAbove ? `${topPercent - 3}%` : `${topPercent + 5}%`,
+                    left: alignLeft ? 'auto' : '8px',
+                    right: alignLeft ? '8px' : 'auto',
+                    transform: showAbove ? 'translateY(-100%)' : 'translateY(0)'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="bg-background border border-border rounded-xl p-3 shadow-2xl">
+                    {/* Arrow pointing to car */}
                     <div 
-                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold shadow-md shrink-0"
+                      className="absolute w-3 h-3 bg-background border-l border-t border-border rotate-45"
+                      style={{
+                        top: showAbove ? 'auto' : '-6px',
+                        bottom: showAbove ? '-6px' : 'auto',
+                        left: alignLeft ? 'auto' : `${Math.max(20, Math.min(80, leftPercent))}%`,
+                        right: alignLeft ? `${Math.max(10, 100 - leftPercent)}%` : 'auto',
+                        transform: showAbove ? 'rotate(-135deg)' : 'rotate(45deg)'
+                      }}
+                    />
+                    <div className="flex items-center gap-3 mb-2">
+                      <div 
+                        className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md shrink-0"
+                        style={{ backgroundColor: allServices[selectedMobileCar].carColor }}
+                      >
+                        {selectedMobileCar + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-foreground text-sm truncate">{allServices[selectedMobileCar].name}</h4>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{allServices[selectedMobileCar].objective}</p>
+                      </div>
+                      <button 
+                        onClick={() => setSelectedMobileCar(null)}
+                        className="shrink-0 w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-muted-foreground active:bg-secondary/80"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <Link 
+                      to={allServices[selectedMobileCar].link}
+                      className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg text-sm font-semibold text-white transition-all active:scale-95"
                       style={{ backgroundColor: allServices[selectedMobileCar].carColor }}
                     >
-                      {selectedMobileCar + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-foreground text-sm truncate">{allServices[selectedMobileCar].name}</h4>
-                      <p className="text-xs text-muted-foreground line-clamp-1">{allServices[selectedMobileCar].objective}</p>
-                    </div>
-                    <button 
-                      onClick={() => setSelectedMobileCar(null)}
-                      className="shrink-0 w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground"
-                    >
-                      ×
-                    </button>
+                      Conhecer serviço
+                      <Trophy className="h-3.5 w-3.5" />
+                    </Link>
                   </div>
-                  <Link 
-                    to={allServices[selectedMobileCar].link}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg text-sm font-semibold text-white transition-all active:scale-95"
-                    style={{ backgroundColor: allServices[selectedMobileCar].carColor }}
-                  >
-                    Conhecer serviço
-                    <Trophy className="h-4 w-4" />
-                  </Link>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Mobile Legend */}
