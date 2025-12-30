@@ -145,7 +145,7 @@ const PortalSignupPage = () => {
     e.preventDefault();
     
     // Validation
-    if (!name.trim() || !email.trim() || !password) {
+    if (!name.trim() || !email.trim() || (!existingUser && !password)) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
