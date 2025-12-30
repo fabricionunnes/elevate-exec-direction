@@ -25,29 +25,32 @@ interface JourneyStep {
   name: string;
   shortName: string;
   objective: string;
+  description: string;
+  price: string;
+  category: string;
   icon: React.ElementType;
   link: string;
   carColor: string;
 }
 
 const allServices: JourneyStep[] = [
-  { id: "core", name: "UNV Core", shortName: "Core", objective: "Estruturar sua operação comercial do zero", icon: Target, link: "/core", carColor: "#dc2626" },
-  { id: "control", name: "UNV Control", shortName: "Control", objective: "Direção comercial contínua e previsibilidade", icon: Compass, link: "/control", carColor: "#2563eb" },
-  { id: "sales-acceleration", name: "UNV Sales Acceleration", shortName: "Acceleration", objective: "Acelerar resultados com acompanhamento", icon: TrendingUp, link: "/sales-acceleration", carColor: "#16a34a" },
-  { id: "sales-ops", name: "UNV Sales Ops", shortName: "Sales Ops", objective: "Treinar e capacitar seu time comercial", icon: Users, link: "/sales-ops", carColor: "#ea580c" },
-  { id: "ads", name: "UNV Ads", shortName: "Ads", objective: "Escalar geração de leads qualificados", icon: Megaphone, link: "/ads", carColor: "#7c3aed" },
-  { id: "social", name: "UNV Social", shortName: "Social", objective: "Gestão profissional das redes sociais", icon: Share2, link: "/social", carColor: "#db2777" },
-  { id: "ai-sales-system", name: "UNV Sales System", shortName: "Sales System", objective: "Automatizar vendas com IA", icon: Bot, link: "/ai-sales-system", carColor: "#0891b2" },
-  { id: "fractional-cro", name: "UNV Fractional CRO", shortName: "Fractional CRO", objective: "Diretor comercial terceirizado", icon: UserCheck, link: "/fractional-cro", carColor: "#4f46e5" },
-  { id: "growth-room", name: "UNV Growth Room", shortName: "Growth Room", objective: "Imersões intensivas para destravar", icon: Building2, link: "/growth-room", carColor: "#d97706" },
-  { id: "partners", name: "UNV Partners", shortName: "Partners", objective: "Grupo estratégico de parceiros UNV", icon: Handshake, link: "/partners", carColor: "#059669" },
-  { id: "execution-partnership", name: "UNV Execution", shortName: "Execution", objective: "Implementação comercial direta", icon: Handshake, link: "/execution-partnership", carColor: "#b91c1c" },
-  { id: "mastermind", name: "UNV Mastermind", shortName: "Mastermind", objective: "Grupo exclusivo de empresários de elite", icon: Crown, link: "/mastermind", carColor: "#ca8a04" },
-  { id: "le-desir", name: "UNV Le Désir", shortName: "Le Désir", objective: "Posicionamento premium para sua marca", icon: Sparkles, link: "/le-desir", carColor: "#e11d48" },
-  { id: "people", name: "UNV People", shortName: "People", objective: "Gestão de pessoas e cultura", icon: Users, link: "/people", carColor: "#1d4ed8" },
-  { id: "finance", name: "UNV Finance", shortName: "Finance", objective: "Controle financeiro estratégico", icon: DollarSign, link: "/finance", carColor: "#15803d" },
-  { id: "safe", name: "UNV Safe", shortName: "Safe", objective: "Assessoria jurídica preventiva", icon: Shield, link: "/safe", carColor: "#475569" },
-  { id: "leadership", name: "UNV Leadership", shortName: "Leadership", objective: "Desenvolvimento de líderes", icon: UserCheck, link: "/leadership", carColor: "#7c3aed" }
+  { id: "core", name: "UNV Core", shortName: "Core", objective: "Estruturar sua operação comercial do zero", description: "Diagnóstico completo + playbook comercial personalizado para sua empresa", price: "R$ 1.997 único", category: "Trilha Principal", icon: Target, link: "/core", carColor: "#dc2626" },
+  { id: "control", name: "UNV Control", shortName: "Control", objective: "Direção comercial contínua e previsibilidade", description: "Reuniões mensais de direcionamento + dashboards + rituais de gestão", price: "R$ 5.997/ano", category: "Trilha Principal", icon: Compass, link: "/control", carColor: "#2563eb" },
+  { id: "sales-acceleration", name: "UNV Sales Acceleration", shortName: "Acceleration", objective: "Acelerar resultados com acompanhamento", description: "Mentorias semanais + acompanhamento individual do seu comercial", price: "R$ 24.000/ano", category: "Trilha Principal", icon: TrendingUp, link: "/sales-acceleration", carColor: "#16a34a" },
+  { id: "sales-ops", name: "UNV Sales Ops", shortName: "Sales Ops", objective: "Treinar e capacitar seu time comercial", description: "Treinamentos práticos + roleplay + certificação para vendedores", price: "R$ 12.000/ano", category: "Operação", icon: Users, link: "/sales-ops", carColor: "#ea580c" },
+  { id: "ads", name: "UNV Ads", shortName: "Ads", objective: "Escalar geração de leads qualificados", description: "Gestão completa de tráfego pago + criativos + otimização", price: "A partir de R$ 1.800/mês", category: "Operação", icon: Megaphone, link: "/ads", carColor: "#7c3aed" },
+  { id: "social", name: "UNV Social", shortName: "Social", objective: "Gestão profissional das redes sociais", description: "Produção de conteúdo + gestão de perfis + estratégia digital", price: "R$ 1.500/mês", category: "Operação", icon: Share2, link: "/social", carColor: "#db2777" },
+  { id: "ai-sales-system", name: "UNV Sales System", shortName: "Sales System", objective: "Automatizar vendas com IA", description: "Chatbots inteligentes + automações + integração com CRM", price: "R$ 297 a R$ 9.997/mês", category: "Operação", icon: Bot, link: "/ai-sales-system", carColor: "#0891b2" },
+  { id: "fractional-cro", name: "UNV Fractional CRO", shortName: "Fractional CRO", objective: "Diretor comercial terceirizado", description: "Liderança comercial experiente sem custo de CLT", price: "R$ 4.000/mês + comissão", category: "Operação", icon: UserCheck, link: "/fractional-cro", carColor: "#4f46e5" },
+  { id: "growth-room", name: "UNV Growth Room", shortName: "Growth Room", objective: "Imersões intensivas para destravar", description: "3 dias presenciais de imersão com empresários selecionados", price: "R$ 3.997/evento", category: "Avançada", icon: Building2, link: "/growth-room", carColor: "#d97706" },
+  { id: "partners", name: "UNV Partners", shortName: "Partners", objective: "Grupo estratégico de parceiros UNV", description: "Comunidade exclusiva + rituais mensais + networking qualificado", price: "R$ 30.000/ano", category: "Avançada", icon: Handshake, link: "/partners", carColor: "#059669" },
+  { id: "execution-partnership", name: "UNV Execution", shortName: "Execution", objective: "Implementação comercial direta", description: "Squad UNV implementando sua operação comercial por 3 meses", price: "R$ 40.000 projeto", category: "Avançada", icon: Handshake, link: "/execution-partnership", carColor: "#b91c1c" },
+  { id: "mastermind", name: "UNV Mastermind", shortName: "Mastermind", objective: "Grupo exclusivo de empresários de elite", description: "Encontros presenciais + mentoria + acesso à Mansão Empreendedora", price: "R$ 50.000/ano", category: "Avançada", icon: Crown, link: "/mastermind", carColor: "#ca8a04" },
+  { id: "le-desir", name: "UNV Le Désir", shortName: "Le Désir", objective: "Posicionamento premium para sua marca", description: "Branding + posicionamento de luxo + estratégia de percepção", price: "R$ 2.000/mês", category: "Estrutura", icon: Sparkles, link: "/le-desir", carColor: "#e11d48" },
+  { id: "people", name: "UNV People", shortName: "People", objective: "Gestão de pessoas e cultura", description: "RH estratégico + recrutamento + desenvolvimento de equipe", price: "R$ 2.500 a R$ 6.000/mês", category: "Estrutura", icon: Users, link: "/people", carColor: "#1d4ed8" },
+  { id: "finance", name: "UNV Finance", shortName: "Finance", objective: "Controle financeiro estratégico", description: "BPO financeiro + controladoria + dashboards de gestão", price: "R$ 3.000/mês", category: "Estrutura", icon: DollarSign, link: "/finance", carColor: "#15803d" },
+  { id: "safe", name: "UNV Safe", shortName: "Safe", objective: "Assessoria jurídica preventiva", description: "Contratos + compliance + proteção legal para sua empresa", price: "R$ 3.000/mês", category: "Estrutura", icon: Shield, link: "/safe", carColor: "#475569" },
+  { id: "leadership", name: "UNV Leadership", shortName: "Leadership", objective: "Desenvolvimento de líderes", description: "Programa de formação de líderes comerciais na sua empresa", price: "R$ 10.000/ano", category: "Estrutura", icon: UserCheck, link: "/leadership", carColor: "#7c3aed" }
 ];
 
 // Checkered flag pattern
@@ -664,30 +667,56 @@ export function ServiceJourneyPath() {
                         transform: showAbove ? 'rotate(-135deg)' : 'rotate(45deg)'
                       }}
                     />
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-start gap-3 mb-3">
                       <div 
-                        className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md shrink-0"
+                        className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold shadow-md shrink-0"
                         style={{ backgroundColor: allServices[selectedMobileCar].carColor }}
                       >
-                        {selectedMobileCar + 1}
+                        {(() => {
+                          const IconComponent = allServices[selectedMobileCar].icon;
+                          return <IconComponent className="h-5 w-5" />;
+                        })()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-foreground text-sm truncate">{allServices[selectedMobileCar].name}</h4>
-                        <p className="text-xs text-muted-foreground line-clamp-1">{allServices[selectedMobileCar].objective}</p>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span 
+                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                            style={{ 
+                              backgroundColor: `${allServices[selectedMobileCar].carColor}20`,
+                              color: allServices[selectedMobileCar].carColor 
+                            }}
+                          >
+                            {allServices[selectedMobileCar].category}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">#{selectedMobileCar + 1}</span>
+                        </div>
+                        <h4 className="font-bold text-foreground text-sm">{allServices[selectedMobileCar].name}</h4>
                       </div>
                       <button 
                         onClick={() => setSelectedMobileCar(null)}
-                        className="shrink-0 w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-muted-foreground active:bg-secondary/80"
+                        className="shrink-0 w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-muted-foreground active:bg-secondary/80 text-lg leading-none"
                       >
                         ×
                       </button>
                     </div>
+                    
+                    {/* Description */}
+                    <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                      {allServices[selectedMobileCar].description}
+                    </p>
+                    
+                    {/* Price */}
+                    <div className="flex items-center justify-between p-2 bg-secondary/50 rounded-lg mb-3">
+                      <span className="text-xs text-muted-foreground">Investimento:</span>
+                      <span className="text-sm font-bold text-foreground">{allServices[selectedMobileCar].price}</span>
+                    </div>
+                    
                     <Link 
                       to={allServices[selectedMobileCar].link}
-                      className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg text-sm font-semibold text-white transition-all active:scale-95"
+                      className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-lg text-sm font-semibold text-white transition-all active:scale-95"
                       style={{ backgroundColor: allServices[selectedMobileCar].carColor }}
                     >
-                      Conhecer serviço
+                      Ver detalhes completos
                       <Trophy className="h-3.5 w-3.5" />
                     </Link>
                   </div>
