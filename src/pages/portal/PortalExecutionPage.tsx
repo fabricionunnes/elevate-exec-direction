@@ -585,12 +585,46 @@ const PortalExecutionPage = () => {
     setDeleting(true);
 
     try {
+      const krId = checkinToDelete.key_result_id;
+      
+      // Delete the check-in
       const { error } = await supabase
         .from("portal_checkins")
         .delete()
         .eq("id", checkinToDelete.id);
 
       if (error) throw error;
+
+      // Get remaining check-ins for this KR
+      const { data: remainingCheckins } = await supabase
+        .from("portal_checkins")
+        .select("*")
+        .eq("key_result_id", krId)
+        .order("week_ref", { ascending: false });
+
+      // Find the KR to get its baseline
+      const kr = keyResults.find(k => k.id === krId);
+      
+      if (remainingCheckins && remainingCheckins.length > 0) {
+        // Use the most recent check-in value
+        const mostRecent = remainingCheckins[0];
+        await supabase
+          .from("portal_key_results")
+          .update({
+            current_value: mostRecent.current_value,
+            status: mostRecent.status as "on_track" | "attention" | "off_track" | "completed",
+          })
+          .eq("id", krId);
+      } else {
+        // No check-ins remaining, reset to baseline
+        await supabase
+          .from("portal_key_results")
+          .update({
+            current_value: kr?.baseline || 0,
+            status: "on_track" as const,
+          })
+          .eq("id", krId);
+      }
 
       toast.success("Check-in excluído com sucesso!");
       setDeleteDialogOpen(false);
