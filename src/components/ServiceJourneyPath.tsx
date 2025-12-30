@@ -15,7 +15,8 @@ import {
   Shield,
   Bot,
   UserCheck,
-  Flag
+  Flag,
+  Trophy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,11 +29,10 @@ interface JourneyStep {
   color: string;
   bgColor: string;
   link: string;
-  phase: 'main' | 'operation' | 'advanced' | 'structure' | 'other';
+  carColor: string;
 }
 
 const allServices: JourneyStep[] = [
-  // Trilha Principal
   {
     id: "core",
     name: "UNV Core",
@@ -42,7 +42,7 @@ const allServices: JourneyStep[] = [
     color: "text-red-500",
     bgColor: "bg-red-500",
     link: "/core",
-    phase: 'main'
+    carColor: "#ef4444"
   },
   {
     id: "control",
@@ -53,7 +53,7 @@ const allServices: JourneyStep[] = [
     color: "text-blue-500",
     bgColor: "bg-blue-500",
     link: "/control",
-    phase: 'main'
+    carColor: "#3b82f6"
   },
   {
     id: "sales-acceleration",
@@ -64,9 +64,8 @@ const allServices: JourneyStep[] = [
     color: "text-green-500",
     bgColor: "bg-green-500",
     link: "/sales-acceleration",
-    phase: 'main'
+    carColor: "#22c55e"
   },
-  // Operação Comercial
   {
     id: "sales-ops",
     name: "UNV Sales Ops",
@@ -76,7 +75,7 @@ const allServices: JourneyStep[] = [
     color: "text-orange-500",
     bgColor: "bg-orange-500",
     link: "/sales-ops",
-    phase: 'operation'
+    carColor: "#f97316"
   },
   {
     id: "ads",
@@ -87,7 +86,7 @@ const allServices: JourneyStep[] = [
     color: "text-purple-500",
     bgColor: "bg-purple-500",
     link: "/ads",
-    phase: 'operation'
+    carColor: "#a855f7"
   },
   {
     id: "social",
@@ -98,7 +97,7 @@ const allServices: JourneyStep[] = [
     color: "text-pink-500",
     bgColor: "bg-pink-500",
     link: "/social",
-    phase: 'operation'
+    carColor: "#ec4899"
   },
   {
     id: "ai-sales-system",
@@ -109,7 +108,7 @@ const allServices: JourneyStep[] = [
     color: "text-cyan-500",
     bgColor: "bg-cyan-500",
     link: "/ai-sales-system",
-    phase: 'operation'
+    carColor: "#06b6d4"
   },
   {
     id: "fractional-cro",
@@ -120,9 +119,8 @@ const allServices: JourneyStep[] = [
     color: "text-indigo-500",
     bgColor: "bg-indigo-500",
     link: "/fractional-cro",
-    phase: 'operation'
+    carColor: "#6366f1"
   },
-  // Trilha Avançada
   {
     id: "growth-room",
     name: "UNV Growth Room",
@@ -132,7 +130,7 @@ const allServices: JourneyStep[] = [
     color: "text-amber-500",
     bgColor: "bg-amber-500",
     link: "/growth-room",
-    phase: 'advanced'
+    carColor: "#f59e0b"
   },
   {
     id: "partners",
@@ -143,7 +141,7 @@ const allServices: JourneyStep[] = [
     color: "text-emerald-500",
     bgColor: "bg-emerald-500",
     link: "/partners",
-    phase: 'advanced'
+    carColor: "#10b981"
   },
   {
     id: "execution-partnership",
@@ -154,7 +152,7 @@ const allServices: JourneyStep[] = [
     color: "text-red-600",
     bgColor: "bg-red-600",
     link: "/execution-partnership",
-    phase: 'advanced'
+    carColor: "#dc2626"
   },
   {
     id: "mastermind",
@@ -165,9 +163,8 @@ const allServices: JourneyStep[] = [
     color: "text-yellow-500",
     bgColor: "bg-yellow-500",
     link: "/mastermind",
-    phase: 'advanced'
+    carColor: "#eab308"
   },
-  // Estratégia & Estrutura
   {
     id: "le-desir",
     name: "UNV Le Désir",
@@ -177,7 +174,7 @@ const allServices: JourneyStep[] = [
     color: "text-rose-500",
     bgColor: "bg-rose-500",
     link: "/le-desir",
-    phase: 'structure'
+    carColor: "#f43f5e"
   },
   {
     id: "people",
@@ -188,7 +185,7 @@ const allServices: JourneyStep[] = [
     color: "text-blue-600",
     bgColor: "bg-blue-600",
     link: "/people",
-    phase: 'structure'
+    carColor: "#2563eb"
   },
   {
     id: "finance",
@@ -199,7 +196,7 @@ const allServices: JourneyStep[] = [
     color: "text-green-600",
     bgColor: "bg-green-600",
     link: "/finance",
-    phase: 'structure'
+    carColor: "#16a34a"
   },
   {
     id: "safe",
@@ -210,9 +207,8 @@ const allServices: JourneyStep[] = [
     color: "text-slate-500",
     bgColor: "bg-slate-500",
     link: "/safe",
-    phase: 'structure'
+    carColor: "#64748b"
   },
-  // Outros
   {
     id: "leadership",
     name: "UNV Leadership",
@@ -222,388 +218,215 @@ const allServices: JourneyStep[] = [
     color: "text-violet-500",
     bgColor: "bg-violet-500",
     link: "/leadership",
-    phase: 'other'
+    carColor: "#8b5cf6"
   }
 ];
-
-// Unified winding path - single continuous serpentine with clear U-turns
-const desktopPositions = [
-  // Linha 1: esquerda para direita
-  { x: 8, y: 6 },     // 1. Core
-  { x: 26, y: 6 },    // 2. Control
-  { x: 44, y: 6 },    // 3. Acceleration
-  { x: 62, y: 6 },    // 4. Sales Ops
-  { x: 80, y: 6 },    // 5. Ads
-  // Curva U para baixo (direita)
-  { x: 92, y: 14 },   // 6. Social (ponto da curva)
-  // Linha 2: direita para esquerda
-  { x: 74, y: 22 },   // 7. Sales System
-  { x: 56, y: 22 },   // 8. Fractional CRO
-  { x: 38, y: 22 },   // 9. Growth Room
-  { x: 20, y: 22 },   // 10. Partners
-  // Curva U para baixo (esquerda)
-  { x: 8, y: 30 },    // 11. Execution (ponto da curva)
-  // Linha 3: esquerda para direita
-  { x: 26, y: 38 },   // 12. Mastermind
-  { x: 44, y: 38 },   // 13. Le Désir
-  { x: 62, y: 38 },   // 14. People
-  { x: 80, y: 38 },   // 15. Finance
-  // Curva U para baixo (direita)
-  { x: 92, y: 46 },   // 16. Safe (ponto da curva)
-  // Linha 4: final
-  { x: 74, y: 54 },   // 17. Leadership
-];
-
-// Generate smooth serpentine path with visible U-turns
-function generateSmoothPath(positions: { x: number; y: number }[]): string {
-  if (positions.length < 2) return "";
-  
-  let path = `M ${positions[0].x} ${positions[0].y}`;
-  
-  for (let i = 1; i < positions.length; i++) {
-    const prev = positions[i - 1];
-    const curr = positions[i];
-    
-    // Check if this is a U-turn (significant Y change with X staying near edges)
-    const isUTurn = Math.abs(curr.y - prev.y) > 5 && (prev.x > 85 || prev.x < 15);
-    
-    if (isUTurn) {
-      // Create a smooth U-turn curve
-      const midY = (prev.y + curr.y) / 2;
-      // Extend outward for the curve
-      const curveExtend = prev.x > 50 ? 98 : 2;
-      path += ` Q ${curveExtend} ${prev.y}, ${curveExtend} ${midY}`;
-      path += ` Q ${curveExtend} ${curr.y}, ${curr.x} ${curr.y}`;
-    } else {
-      // Normal horizontal or slight curve
-      const cpX = (prev.x + curr.x) / 2;
-      path += ` Q ${cpX} ${prev.y}, ${cpX} ${(prev.y + curr.y) / 2}`;
-      path += ` Q ${cpX} ${curr.y}, ${curr.x} ${curr.y}`;
-    }
-  }
-  
-  return path;
-}
 
 export function ServiceJourneyPath() {
-  const pathD = generateSmoothPath(desktopPositions);
-  
   return (
-    <section className="section-padding bg-gradient-to-b from-background via-secondary/20 to-background overflow-hidden">
+    <section className="section-padding bg-gradient-to-b from-background via-secondary/10 to-background overflow-hidden">
       <div className="container-premium">
+        {/* Header */}
         <div className="text-center mb-8 md:mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
             <Flag className="h-4 w-4" />
-            Sua Jornada de Crescimento
+            Grande Prêmio do Crescimento
           </div>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            A Trilha do Crescimento Comercial
+            A Corrida para o Sucesso Comercial
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            17 serviços interligados para transformar sua operação comercial. Clique em cada ponto para conhecer.
+            17 etapas para cruzar a linha de chegada. Cada serviço te aproxima do pódio.
           </p>
         </div>
 
-        {/* Desktop Unified Path */}
-        <div className="hidden lg:block relative" style={{ height: '1300px' }}>
-          {/* SVG Path - Single Unified Path with Connections */}
-          <svg 
-            className="absolute inset-0 w-full h-full pointer-events-none" 
-            viewBox="0 0 100 65"
-            preserveAspectRatio="xMidYMid slice"
-          >
-            {/* Defs */}
-            <defs>
-              {/* Glow filter */}
-              <filter id="pathGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="0.8" result="coloredBlur"/>
-                <feMerge>
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-              
-              {/* Rainbow gradient for unified path */}
-              <linearGradient id="unifiedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#ef4444" />
-                <stop offset="18%" stopColor="#3b82f6" />
-                <stop offset="30%" stopColor="#22c55e" />
-                <stop offset="40%" stopColor="#f97316" />
-                <stop offset="50%" stopColor="#a855f7" />
-                <stop offset="60%" stopColor="#ec4899" />
-                <stop offset="70%" stopColor="#f59e0b" />
-                <stop offset="80%" stopColor="#10b981" />
-                <stop offset="90%" stopColor="#eab308" />
-                <stop offset="100%" stopColor="#8b5cf6" />
-              </linearGradient>
-
-            </defs>
-
-            {/* Background glow path */}
-            <path
-              d={pathD}
-              fill="none"
-              stroke="url(#unifiedGradient)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              opacity="0.2"
-            />
-            
-            {/* Main gradient path */}
-            <path
-              d={pathD}
-              fill="none"
-              stroke="url(#unifiedGradient)"
-              strokeWidth="0.5"
-              strokeLinecap="round"
-              filter="url(#pathGlow)"
-            />
-
-            {/* Animated flowing dots on main path */}
-            <circle r="0.8" fill="white" opacity="0.8">
-              <animateMotion dur="12s" repeatCount="indefinite" path={pathD} />
-            </circle>
-            <circle r="0.6" fill="white" opacity="0.6">
-              <animateMotion dur="12s" repeatCount="indefinite" path={pathD} begin="-4s" />
-            </circle>
-            <circle r="0.5" fill="white" opacity="0.4">
-              <animateMotion dur="12s" repeatCount="indefinite" path={pathD} begin="-8s" />
-            </circle>
-          </svg>
-
-          {/* Service Nodes */}
-          {allServices.map((service, index) => (
-            <DesktopNode 
-              key={service.id}
-              service={service}
-              position={desktopPositions[index]}
-              number={index + 1}
-              isLast={index === allServices.length - 1}
-            />
-          ))}
-
-          {/* Floating phase indicators - positioned along the path */}
-          <div className="absolute" style={{ left: '16%', top: '1%' }}>
-            <PhaseLabel phase="main" label="Trilha Principal" color="red" />
-          </div>
-          <div className="absolute" style={{ left: '85%', top: '12%' }}>
-            <PhaseLabel phase="operation" label="Operação Comercial" color="purple" />
-          </div>
-          <div className="absolute" style={{ left: '5%', top: '28%' }}>
-            <PhaseLabel phase="advanced" label="Trilha Avançada" color="amber" />
-          </div>
-          <div className="absolute" style={{ left: '55%', top: '52%' }}>
-            <PhaseLabel phase="structure" label="Estratégia & Estrutura" color="emerald" />
-          </div>
-        </div>
-
-        {/* Mobile/Tablet Path */}
-        <div className="lg:hidden">
-          <div className="relative">
-            {/* Continuous vertical gradient line */}
-            <div className="absolute left-8 top-0 bottom-0 w-1 rounded-full bg-gradient-to-b from-red-500 via-purple-500 via-amber-500 via-emerald-500 to-violet-500">
-              {/* Animated glow */}
-              <div className="absolute inset-0 w-1 rounded-full bg-gradient-to-b from-red-500 via-purple-500 via-amber-500 via-emerald-500 to-violet-500 blur-md animate-pulse" />
+        {/* Racing Track */}
+        <div className="relative">
+          {/* Start Line */}
+          <div className="flex items-center justify-center gap-4 mb-8">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-foreground/20 to-foreground/40" />
+            <div className="flex items-center gap-2 px-6 py-3 bg-card border-2 border-dashed border-foreground/30 rounded-full">
+              <Flag className="h-5 w-5 text-green-500" />
+              <span className="font-bold text-foreground uppercase tracking-wider text-sm">Largada</span>
             </div>
-            
-            {/* Steps */}
-            <div className="space-y-4">
+            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-foreground/20 to-foreground/40" />
+          </div>
+
+          {/* Track with Cars */}
+          <div className="relative">
+            {/* Track SVG Background */}
+            <svg 
+              className="absolute inset-0 w-full h-full pointer-events-none opacity-20" 
+              preserveAspectRatio="none"
+              viewBox="0 0 100 100"
+            >
+              <defs>
+                <pattern id="trackPattern" patternUnits="userSpaceOnUse" width="20" height="20">
+                  <rect width="10" height="10" fill="currentColor" className="text-foreground/10" />
+                  <rect x="10" y="10" width="10" height="10" fill="currentColor" className="text-foreground/10" />
+                </pattern>
+              </defs>
+            </svg>
+
+            {/* Services as Race Cars */}
+            <div className="space-y-4 md:space-y-6">
               {allServices.map((service, index) => (
-                <MobileNode 
-                  key={service.id} 
-                  service={service} 
-                  number={index + 1}
+                <RaceCarNode 
+                  key={service.id}
+                  service={service}
+                  position={index + 1}
                   isLast={index === allServices.length - 1}
-                  showPhaseLabel={
-                    index === 0 ? 'Trilha Principal' :
-                    index === 3 ? 'Operação Comercial' :
-                    index === 8 ? 'Trilha Avançada' :
-                    index === 12 ? 'Estratégia & Estrutura' :
-                    index === 16 ? 'Desenvolvimento' : undefined
-                  }
+                  direction={index % 2 === 0 ? 'right' : 'left'}
                 />
               ))}
             </div>
           </div>
+
+          {/* Finish Line */}
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-foreground/20 to-foreground/40" />
+            <div className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-2 border-yellow-500/50 rounded-full">
+              <Trophy className="h-5 w-5 text-yellow-500" />
+              <span className="font-bold text-yellow-500 uppercase tracking-wider text-sm">Chegada</span>
+              <div className="flex gap-0.5">
+                {[...Array(6)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className={cn(
+                      "w-2 h-4",
+                      i % 2 === 0 ? "bg-foreground" : "bg-background border border-foreground/30"
+                    )} 
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-foreground/20 to-foreground/40" />
+          </div>
         </div>
 
         {/* Legend */}
-        <div className="mt-8 lg:mt-4 flex flex-wrap justify-center gap-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-card border border-border rounded-full px-3 py-1">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-            <span>Principal</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-card border border-border rounded-full px-3 py-1">
-            <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-            <span>Operação</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-card border border-border rounded-full px-3 py-1">
-            <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-            <span>Avançada</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-card border border-border rounded-full px-3 py-1">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <span>Estrutura</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-card border border-border rounded-full px-3 py-1">
-            <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
-            <span>Desenvolvimento</span>
-          </div>
+        <div className="mt-12 text-center">
+          <p className="text-sm text-muted-foreground">
+            Clique em qualquer carro para conhecer o serviço e acelerar sua jornada
+          </p>
         </div>
       </div>
     </section>
   );
 }
 
-interface PhaseLabelProps {
-  phase: string;
-  label: string;
-  color: 'red' | 'purple' | 'amber' | 'emerald' | 'violet';
-}
-
-function PhaseLabel({ label, color }: PhaseLabelProps) {
-  const colorClasses = {
-    red: 'bg-red-500/10 border-red-500/30 text-red-500',
-    purple: 'bg-purple-500/10 border-purple-500/30 text-purple-500',
-    amber: 'bg-amber-500/10 border-amber-500/30 text-amber-500',
-    emerald: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
-    violet: 'bg-violet-500/10 border-violet-500/30 text-violet-500',
-  };
-  
-  return (
-    <div className={cn("border rounded-lg px-3 py-1.5 backdrop-blur-sm", colorClasses[color])}>
-      <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
-    </div>
-  );
-}
-
-interface DesktopNodeProps {
+interface RaceCarNodeProps {
   service: JourneyStep;
-  position: { x: number; y: number };
-  number: number;
-  isLast?: boolean;
+  position: number;
+  isLast: boolean;
+  direction: 'left' | 'right';
 }
 
-function DesktopNode({ service, position, number, isLast }: DesktopNodeProps) {
+function RaceCarNode({ service, position, isLast, direction }: RaceCarNodeProps) {
   const Icon = service.icon;
   
   return (
-    <Link 
-      to={service.link}
-      className="absolute group"
-      style={{ 
-        left: `${position.x}%`, 
-        top: `${position.y}%`,
-        transform: 'translate(-50%, -50%)'
-      }}
-    >
-      <div className="relative flex flex-col items-center">
-        {/* Glow effect on hover */}
+    <div className={cn(
+      "relative flex items-center gap-4 group",
+      direction === 'left' ? "flex-row-reverse" : "flex-row"
+    )}>
+      {/* Track line connecting to next */}
+      {!isLast && (
         <div className={cn(
-          "absolute -inset-4 rounded-full blur-xl opacity-0 group-hover:opacity-60 transition-opacity duration-300",
-          service.bgColor
+          "absolute top-full left-1/2 w-0.5 h-4 md:h-6 -translate-x-1/2",
+          "bg-gradient-to-b from-foreground/20 to-foreground/5"
         )} />
-        
-        {/* Connecting pulse ring */}
-        <div className={cn(
-          "absolute -inset-2 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 animate-ping",
-          service.bgColor.replace('bg-', 'border-2 border-')
-        )} />
-        
-        {/* Main circle */}
-        <div className={cn(
-          "relative w-14 h-14 xl:w-16 xl:h-16 rounded-full flex items-center justify-center shadow-lg transition-all duration-300",
-          "group-hover:scale-125 group-hover:shadow-2xl border-4 border-background",
-          service.bgColor
-        )}>
-          <Icon className="h-6 w-6 xl:h-7 xl:w-7 text-white" />
-          
-          {/* Number badge */}
-          <div className="absolute -top-1 -left-1 w-6 h-6 rounded-full bg-background shadow-md flex items-center justify-center text-xs font-bold text-foreground border border-border">
-            {number}
-          </div>
-          
-          {/* Crown for last step */}
-          {isLast && (
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-              <Crown className="h-5 w-5 text-yellow-400 drop-shadow-lg animate-bounce" />
-            </div>
-          )}
-        </div>
-        
-        {/* Info card on hover */}
-        <div className="absolute top-full mt-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-30 transform scale-95 group-hover:scale-100">
-          <div className="bg-card border border-border rounded-xl p-4 shadow-2xl min-w-[220px] text-center backdrop-blur-sm">
-            <h4 className={cn("font-bold text-sm", service.color)}>{service.name}</h4>
-            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{service.objective}</p>
-            <div className="mt-3 flex items-center justify-center gap-1 text-xs text-primary font-semibold">
-              Ver detalhes <ArrowRight className="h-3 w-3" />
-            </div>
-          </div>
-        </div>
-        
-        {/* Label */}
-        <span className="mt-2 text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors whitespace-nowrap bg-background/80 px-2 py-0.5 rounded-full">
-          {service.shortName}
-        </span>
-      </div>
-    </Link>
-  );
-}
-
-interface MobileNodeProps {
-  service: JourneyStep;
-  number: number;
-  isLast?: boolean;
-  showPhaseLabel?: string;
-}
-
-function MobileNode({ service, number, isLast, showPhaseLabel }: MobileNodeProps) {
-  const Icon = service.icon;
-  
-  return (
-    <>
-      {showPhaseLabel && (
-        <div className="ml-20 mb-2 mt-4">
-          <span className={cn(
-            "text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full",
-            service.phase === 'main' && "bg-red-500/10 text-red-500",
-            service.phase === 'operation' && "bg-purple-500/10 text-purple-500",
-            service.phase === 'advanced' && "bg-amber-500/10 text-amber-500",
-            service.phase === 'structure' && "bg-emerald-500/10 text-emerald-500",
-            service.phase === 'other' && "bg-violet-500/10 text-violet-500",
-          )}>
-            {showPhaseLabel}
-          </span>
-        </div>
       )}
-      <Link to={service.link} className="relative flex items-start gap-4 group">
-        {/* Circle on the line */}
+      
+      {/* Position Number */}
+      <div className={cn(
+        "hidden md:flex items-center justify-center w-12 h-12 rounded-full border-2 font-bold text-lg shrink-0 transition-all duration-300",
+        "bg-background border-foreground/20 text-muted-foreground",
+        "group-hover:border-primary group-hover:text-primary group-hover:scale-110"
+      )}>
+        {position}
+      </div>
+      
+      {/* Race Car Card */}
+      <Link 
+        to={service.link}
+        className={cn(
+          "flex-1 relative overflow-hidden rounded-2xl border transition-all duration-300",
+          "bg-card hover:bg-card/80 border-border hover:border-primary/50",
+          "hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1",
+          "group/card"
+        )}
+      >
+        {/* Speed lines effect */}
         <div className={cn(
-          "relative z-10 w-16 h-16 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 border-4 border-background shadow-lg",
-          "group-hover:scale-110",
-          service.bgColor
+          "absolute inset-y-0 w-32 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500",
+          direction === 'left' ? "right-0 bg-gradient-to-l" : "left-0 bg-gradient-to-r",
+          "from-transparent via-primary/5 to-transparent"
+        )} />
+        
+        <div className={cn(
+          "relative flex items-center gap-4 p-4 md:p-5",
+          direction === 'left' ? "flex-row-reverse" : "flex-row"
         )}>
-          <Icon className="h-7 w-7 text-white" />
-          <div className="absolute -top-1 -left-1 w-6 h-6 rounded-full bg-background shadow flex items-center justify-center text-xs font-bold border border-border">
-            {number}
-          </div>
-          {isLast && (
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-              <Crown className="h-5 w-5 text-yellow-500 animate-bounce" />
+          {/* Car Icon */}
+          <div className="relative shrink-0">
+            {/* Glow */}
+            <div 
+              className="absolute -inset-2 rounded-full blur-xl opacity-0 group-hover/card:opacity-50 transition-opacity duration-300"
+              style={{ backgroundColor: service.carColor }}
+            />
+            
+            {/* Car body */}
+            <div 
+              className="relative w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-lg transition-transform duration-300 group-hover/card:scale-110"
+              style={{ backgroundColor: service.carColor }}
+            >
+              <Icon className="h-7 w-7 md:h-8 md:w-8 text-white" />
+              
+              {/* Racing number */}
+              <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-background shadow-md flex items-center justify-center text-xs font-bold border border-border">
+                {position}
+              </div>
+              
+              {/* Winner crown for last position */}
+              {isLast && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                  <Trophy className="h-5 w-5 text-yellow-500 drop-shadow-lg" />
+                </div>
+              )}
             </div>
-          )}
+          </div>
+          
+          {/* Content */}
+          <div className={cn(
+            "flex-1 min-w-0",
+            direction === 'left' ? "text-right" : "text-left"
+          )}>
+            <h4 className={cn("font-bold text-base md:text-lg", service.color)}>
+              {service.name}
+            </h4>
+            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+              {service.objective}
+            </p>
+          </div>
+          
+          {/* Arrow */}
+          <div className={cn(
+            "shrink-0 p-2 rounded-full transition-all duration-300",
+            "bg-primary/10 text-primary",
+            "group-hover/card:bg-primary group-hover/card:text-primary-foreground",
+            direction === 'left' && "rotate-180"
+          )}>
+            <ArrowRight className="h-4 w-4" />
+          </div>
         </div>
         
-        {/* Content */}
-        <div className="flex-1 bg-card border border-border rounded-xl p-4 group-hover:border-primary/50 group-hover:shadow-lg transition-all duration-300">
-          <h4 className={cn("font-bold", service.color)}>{service.name}</h4>
-          <p className="text-sm text-muted-foreground mt-1">{service.objective}</p>
-          <div className="mt-2 flex items-center gap-1 text-xs text-primary font-medium">
-            Ver detalhes <ArrowRight className="h-3 w-3" />
-          </div>
-        </div>
+        {/* Bottom accent line */}
+        <div 
+          className="h-1 w-full opacity-60 group-hover/card:opacity-100 transition-opacity"
+          style={{ backgroundColor: service.carColor }}
+        />
       </Link>
-    </>
+    </div>
   );
 }
