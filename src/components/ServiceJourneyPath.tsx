@@ -452,28 +452,155 @@ export function ServiceJourneyPath() {
           </div>
         </div>
 
-        {/* Mobile version */}
-        <div className="lg:hidden space-y-3">
-          {/* Start */}
-          <div className="flex items-center justify-center gap-3 py-4">
-            <Flag className="h-5 w-5 text-green-500" />
-            <span className="font-bold text-green-500 uppercase text-sm">Largada</span>
+        {/* Mobile version - Visual Track */}
+        <div className="lg:hidden">
+          {/* Mobile Track Container */}
+          <div className="relative mx-auto rounded-2xl overflow-hidden shadow-xl" style={{ maxWidth: '360px' }}>
+            {/* Grass background */}
+            <div className="absolute inset-0 bg-gradient-to-b from-green-400 via-green-500 to-green-600">
+              <div className="absolute inset-0 opacity-20" style={{
+                backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(0,0,0,0.15) 1px, transparent 0)',
+                backgroundSize: '6px 6px'
+              }} />
+            </div>
+            
+            {/* Track SVG - Vertical serpentine */}
+            <svg className="relative w-full" viewBox="0 0 100 320" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <linearGradient id="mobileAsphalt" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#4b5563" />
+                  <stop offset="50%" stopColor="#374151" />
+                  <stop offset="100%" stopColor="#4b5563" />
+                </linearGradient>
+                <pattern id="mobileCurb" patternUnits="userSpaceOnUse" width="4" height="4">
+                  <rect width="2" height="4" fill="#dc2626" />
+                  <rect x="2" width="2" height="4" fill="#ffffff" />
+                </pattern>
+              </defs>
+
+              {/* Track path - serpentine vertical */}
+              {(() => {
+                const trackPath = `
+                  M 50 15
+                  L 80 15
+                  Q 95 15, 95 30
+                  L 95 50
+                  Q 95 65, 80 65
+                  L 20 65
+                  Q 5 65, 5 80
+                  L 5 100
+                  Q 5 115, 20 115
+                  L 80 115
+                  Q 95 115, 95 130
+                  L 95 150
+                  Q 95 165, 80 165
+                  L 20 165
+                  Q 5 165, 5 180
+                  L 5 200
+                  Q 5 215, 20 215
+                  L 80 215
+                  Q 95 215, 95 230
+                  L 95 250
+                  Q 95 265, 80 265
+                  L 20 265
+                  Q 5 265, 5 280
+                  L 5 305
+                `;
+                
+                return (
+                  <>
+                    {/* Track shadow */}
+                    <path d={trackPath} fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" transform="translate(1, 2)" />
+                    {/* Curb */}
+                    <path d={trackPath} fill="none" stroke="url(#mobileCurb)" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round" />
+                    {/* White edge */}
+                    <path d={trackPath} fill="none" stroke="#ffffff" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
+                    {/* Asphalt */}
+                    <path d={trackPath} fill="none" stroke="url(#mobileAsphalt)" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" />
+                    {/* Center line */}
+                    <path d={trackPath} fill="none" stroke="#ffffff" strokeWidth="0.5" strokeDasharray="3 3" opacity="0.6" />
+                  </>
+                );
+              })()}
+
+              {/* Start/Finish checkered */}
+              <g transform="translate(45, 10)">
+                {[...Array(5)].map((_, i) => (
+                  <g key={i}>
+                    <rect x={i * 2} y="0" width="2" height="2" fill={i % 2 === 0 ? "#fff" : "#000"} />
+                    <rect x={i * 2} y="2" width="2" height="2" fill={i % 2 === 1 ? "#fff" : "#000"} />
+                    <rect x={i * 2} y="4" width="2" height="2" fill={i % 2 === 0 ? "#fff" : "#000"} />
+                    <rect x={i * 2} y="6" width="2" height="2" fill={i % 2 === 1 ? "#fff" : "#000"} />
+                  </g>
+                ))}
+              </g>
+
+              {/* Car positions on mobile track */}
+              {(() => {
+                const mobileCarPositions = [
+                  { x: 55, y: 15, rot: 0 },    // 1 - start
+                  { x: 75, y: 15, rot: 0 },    // 2
+                  { x: 92, y: 35, rot: 90 },   // 3
+                  { x: 75, y: 65, rot: 180 },  // 4
+                  { x: 45, y: 65, rot: 180 },  // 5
+                  { x: 8, y: 90, rot: 270 },   // 6
+                  { x: 45, y: 115, rot: 0 },   // 7
+                  { x: 92, y: 140, rot: 90 },  // 8
+                  { x: 45, y: 165, rot: 180 }, // 9
+                  { x: 8, y: 190, rot: 270 },  // 10
+                  { x: 45, y: 215, rot: 0 },   // 11
+                  { x: 92, y: 240, rot: 90 },  // 12
+                  { x: 55, y: 265, rot: 180 }, // 13
+                  { x: 20, y: 265, rot: 180 }, // 14
+                  { x: 5, y: 285, rot: 270 },  // 15
+                  { x: 5, y: 300, rot: 270 },  // 16 - near finish
+                  { x: 5, y: 305, rot: 270 },  // 17 - finish (hidden, use 16)
+                ];
+                
+                // Only show first 16 cars, last one is at finish
+                return allServices.slice(0, 16).map((service, index) => {
+                  const pos = mobileCarPositions[index];
+                  return (
+                    <g key={service.id} transform={`translate(${pos.x}, ${pos.y})`}>
+                      {/* Number badge */}
+                      <circle r="4" fill={service.carColor} />
+                      <text y="1.5" textAnchor="middle" fontSize="4" fill="white" fontWeight="bold">{index + 1}</text>
+                    </g>
+                  );
+                });
+              })()}
+
+              {/* Finish area */}
+              <g transform="translate(5, 305)">
+                <circle r="5" fill="#fbbf24" stroke="#fff" strokeWidth="1" />
+                <text y="1.5" textAnchor="middle" fontSize="4" fill="#000" fontWeight="bold">17</text>
+              </g>
+            </svg>
+
+            {/* Labels */}
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1.5 z-10">
+              <Flag className="h-3 w-3" />
+              LARGADA
+            </div>
+            <div className="absolute bottom-2 left-2 bg-foreground text-background text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1.5 z-10">
+              <Trophy className="h-3 w-3 text-yellow-400" />
+              META
+            </div>
           </div>
 
-          {allServices.map((service, index) => (
-            <MobileCarCard
-              key={service.id}
-              service={service}
-              number={index + 1}
-              isLast={index === allServices.length - 1}
-            />
-          ))}
-
-          {/* Finish */}
-          <div className="flex items-center justify-center gap-3 py-4">
-            <CheckeredFlag />
-            <Trophy className="h-5 w-5 text-yellow-500" />
-            <span className="font-bold text-yellow-500 uppercase text-sm">Chegada</span>
+          {/* Mobile Legend */}
+          <div className="mt-6 space-y-2">
+            <p className="text-center text-sm text-muted-foreground mb-4">
+              Toque em um serviço para conhecer
+            </p>
+            {allServices.map((service, index) => (
+              <MobileCarCard
+                key={service.id}
+                service={service}
+                number={index + 1}
+                isLast={index === allServices.length - 1}
+              />
+            ))}
           </div>
         </div>
       </div>
