@@ -350,6 +350,553 @@ export type Database = {
         }
         Relationships: []
       }
+      portal_audit_logs: {
+        Row: {
+          action: string
+          after_data: Json | null
+          before_data: Json | null
+          company_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          after_data?: Json | null
+          before_data?: Json | null
+          company_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          after_data?: Json | null
+          before_data?: Json | null
+          company_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_audit_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "portal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_chat_logs: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          messages: Json
+          mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          messages?: Json
+          mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          messages?: Json
+          mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_chat_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "portal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_chat_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_companies: {
+        Row: {
+          created_at: string
+          id: string
+          invite_code: string | null
+          name: string
+          segment: string | null
+          size: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_code?: string | null
+          name: string
+          segment?: string | null
+          size?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_code?: string | null
+          name?: string
+          segment?: string | null
+          size?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      portal_initiatives: {
+        Row: {
+          created_at: string
+          deadline: string | null
+          description: string | null
+          effort: string | null
+          id: string
+          key_result_id: string
+          owner_user_id: string | null
+          status: Database["public"]["Enums"]["progress_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          effort?: string | null
+          id?: string
+          key_result_id: string
+          owner_user_id?: string | null
+          status?: Database["public"]["Enums"]["progress_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          effort?: string | null
+          id?: string
+          key_result_id?: string
+          owner_user_id?: string | null
+          status?: Database["public"]["Enums"]["progress_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_initiatives_key_result_id_fkey"
+            columns: ["key_result_id"]
+            isOneToOne: false
+            referencedRelation: "portal_key_results"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_initiatives_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_invites: {
+        Row: {
+          company_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          role: Database["public"]["Enums"]["portal_role"]
+          token: string | null
+          used_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["portal_role"]
+          token?: string | null
+          used_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["portal_role"]
+          token?: string | null
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_invites_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "portal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_key_results: {
+        Row: {
+          baseline: number | null
+          created_at: string
+          current_value: number | null
+          id: string
+          objective_id: string
+          quarter: number | null
+          status: Database["public"]["Enums"]["progress_status"]
+          target: number
+          title: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          baseline?: number | null
+          created_at?: string
+          current_value?: number | null
+          id?: string
+          objective_id: string
+          quarter?: number | null
+          status?: Database["public"]["Enums"]["progress_status"]
+          target?: number
+          title: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          baseline?: number | null
+          created_at?: string
+          current_value?: number | null
+          id?: string
+          objective_id?: string
+          quarter?: number | null
+          status?: Database["public"]["Enums"]["progress_status"]
+          target?: number
+          title?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_key_results_objective_id_fkey"
+            columns: ["objective_id"]
+            isOneToOne: false
+            referencedRelation: "portal_objectives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_north_stars: {
+        Row: {
+          annual_target: number | null
+          created_at: string
+          definition: string | null
+          id: string
+          name: string
+          plan_id: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          annual_target?: number | null
+          created_at?: string
+          definition?: string | null
+          id?: string
+          name: string
+          plan_id: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          annual_target?: number | null
+          created_at?: string
+          definition?: string | null
+          id?: string
+          name?: string
+          plan_id?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_north_stars_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "portal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_objectives: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          owner_user_id: string | null
+          plan_id: string
+          priority: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_user_id?: string | null
+          plan_id: string
+          priority?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_user_id?: string | null
+          plan_id?: string
+          priority?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_objectives_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_objectives_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "portal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_plans: {
+        Row: {
+          company_id: string
+          context_data: Json | null
+          created_at: string
+          current_step: number
+          id: string
+          published_at: string | null
+          status: Database["public"]["Enums"]["plan_status"]
+          theme: string | null
+          updated_at: string
+          version: number
+          vision: string | null
+          year: number
+        }
+        Insert: {
+          company_id: string
+          context_data?: Json | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["plan_status"]
+          theme?: string | null
+          updated_at?: string
+          version?: number
+          vision?: string | null
+          year?: number
+        }
+        Update: {
+          company_id?: string
+          context_data?: Json | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["plan_status"]
+          theme?: string | null
+          updated_at?: string
+          version?: number
+          vision?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_plans_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "portal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_product_catalog: {
+        Row: {
+          category: string | null
+          created_at: string
+          cta_url: string | null
+          id: string
+          is_active: boolean
+          name: string
+          short_description: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          cta_url?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          short_description?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          cta_url?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          short_description?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      portal_rocks: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          owner_user_id: string | null
+          plan_id: string
+          quarter: number
+          status: Database["public"]["Enums"]["progress_status"]
+          target: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_user_id?: string | null
+          plan_id: string
+          quarter: number
+          status?: Database["public"]["Enums"]["progress_status"]
+          target?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_user_id?: string | null
+          plan_id?: string
+          quarter?: number
+          status?: Database["public"]["Enums"]["progress_status"]
+          target?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_rocks_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_rocks_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "portal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_users: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          email: string
+          id: string
+          lgpd_consent_at: string | null
+          name: string
+          role: Database["public"]["Enums"]["portal_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          lgpd_consent_at?: string | null
+          name: string
+          role?: Database["public"]["Enums"]["portal_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          lgpd_consent_at?: string | null
+          name?: string
+          role?: Database["public"]["Enums"]["portal_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_users_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "portal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -376,6 +923,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_portal_company_id: {
+        Args: { check_user_id: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -383,9 +934,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_portal_admin_unv: { Args: { check_user_id: string }; Returns: boolean }
+      is_portal_company_admin: {
+        Args: { check_company_id: string; check_user_id: string }
+        Returns: boolean
+      }
+      is_portal_company_member: {
+        Args: { check_company_id: string; check_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user"
+      plan_status: "draft" | "published" | "archived"
+      portal_role: "admin_unv" | "admin_company" | "member"
+      progress_status: "on_track" | "attention" | "off_track" | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -514,6 +1077,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      plan_status: ["draft", "published", "archived"],
+      portal_role: ["admin_unv", "admin_company", "member"],
+      progress_status: ["on_track", "attention", "off_track", "completed"],
     },
   },
 } as const
