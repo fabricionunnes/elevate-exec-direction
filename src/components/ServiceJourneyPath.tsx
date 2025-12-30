@@ -108,7 +108,7 @@ export function ServiceJourneyPath() {
   ];
 
   return (
-    <section className="py-16 md:py-24 bg-gradient-to-b from-background to-secondary/10 overflow-hidden">
+    <section className="py-16 md:py-24 bg-gradient-to-b from-background to-secondary/10">
       <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-10">
@@ -125,7 +125,7 @@ export function ServiceJourneyPath() {
         </div>
 
         {/* Racing Track - Desktop */}
-        <div className="hidden lg:block relative mx-auto rounded-3xl overflow-hidden shadow-2xl" style={{ maxWidth: '1000px', height: '800px', background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 50%, #a5d6a7 100%)' }}>
+        <div className="hidden lg:block relative mx-auto rounded-3xl shadow-2xl" style={{ maxWidth: '1000px', height: '800px', background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 50%, #a5d6a7 100%)' }}>
           {/* Track container with padding */}
           <div className="absolute inset-4">
             <svg 
@@ -317,44 +317,52 @@ export function ServiceJourneyPath() {
             <span className="text-xs font-bold uppercase tracking-wide">Largada</span>
           </div>
 
-          {/* Floating tooltip */}
-          {hoveredCar !== null && (
-            <div 
-              className="absolute z-50 pointer-events-none animate-fade-in"
-              style={{
-                left: `${(carPositions[hoveredCar].x / 100) * 100 + 4}%`,
-                top: `${(carPositions[hoveredCar].y / 120) * 100 + 3}%`,
-                transform: 'translate(-50%, -130%)'
-              }}
-            >
-              <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-2xl min-w-[240px]">
-                <div className="flex items-center gap-3 mb-3">
-                  <div 
-                    className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
+          {/* Floating tooltip - positioned outside track to avoid clipping */}
+          {hoveredCar !== null && (() => {
+            const pos = carPositions[hoveredCar];
+            // Calculate position and determine if tooltip should show above or below
+            const showAbove = pos.y > 30;
+            const leftPercent = (pos.x / 100) * 100;
+            const topPercent = (pos.y / 120) * 100;
+            
+            return (
+              <div 
+                className="absolute z-[100] pointer-events-none"
+                style={{
+                  left: `${Math.max(15, Math.min(85, leftPercent))}%`,
+                  top: showAbove ? `${topPercent - 2}%` : `${topPercent + 8}%`,
+                  transform: showAbove ? 'translate(-50%, -100%)' : 'translate(-50%, 0)'
+                }}
+              >
+                <div className="bg-background border border-border rounded-2xl p-4 shadow-2xl w-[260px] animate-fade-in">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div 
+                      className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shrink-0"
+                      style={{ backgroundColor: allServices[hoveredCar].carColor }}
+                    >
+                      {(() => {
+                        const IconComponent = allServices[hoveredCar].icon;
+                        return <IconComponent className="h-6 w-6 text-white" />;
+                      })()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs text-muted-foreground font-medium">Posição {hoveredCar + 1}</div>
+                      <h4 className="font-bold text-foreground truncate">{allServices[hoveredCar].name}</h4>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">{allServices[hoveredCar].objective}</p>
+                  <Link 
+                    to={allServices[hoveredCar].link}
+                    className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 pointer-events-auto"
                     style={{ backgroundColor: allServices[hoveredCar].carColor }}
                   >
-                    {(() => {
-                      const IconComponent = allServices[hoveredCar].icon;
-                      return <IconComponent className="h-6 w-6 text-white" />;
-                    })()}
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500 font-medium">Posição {hoveredCar + 1}</div>
-                    <h4 className="font-bold text-gray-900">{allServices[hoveredCar].name}</h4>
-                  </div>
+                    Conhecer serviço
+                    <Trophy className="h-4 w-4" />
+                  </Link>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">{allServices[hoveredCar].objective}</p>
-                <Link 
-                  to={allServices[hoveredCar].link}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 pointer-events-auto"
-                  style={{ backgroundColor: allServices[hoveredCar].carColor }}
-                >
-                  Conhecer serviço
-                  <Trophy className="h-4 w-4" />
-                </Link>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* Car legend - Desktop */}
