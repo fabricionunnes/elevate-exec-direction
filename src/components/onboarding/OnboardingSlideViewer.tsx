@@ -155,23 +155,23 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
 
       {/* Header */}
       <header className="relative border-b border-border/40 bg-card/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="container mx-auto px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <Button
               variant="ghost"
-              size="icon"
-              className="hover:bg-primary/10 transition-colors"
+              size="sm"
+              className="hover:bg-primary/10 transition-colors h-8 w-8 p-0"
               asChild
             >
               <Link to="/onboarding">
-                <Home className="h-5 w-5" />
+                <Home className="h-4 w-4" />
               </Link>
             </Button>
             <div>
-              <h1 className="font-bold text-lg bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+              <h1 className="font-bold text-base bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
                 {onboarding.productName}
               </h1>
-              <p className="text-sm text-muted-foreground">{onboarding.tagline}</p>
+              <p className="text-xs text-muted-foreground">{onboarding.tagline}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -200,7 +200,7 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
       </header>
 
       {/* Main Content */}
-      <main className="relative flex-1 flex items-center justify-center p-4 md:p-8">
+      <main className="relative flex-1 flex items-center justify-center p-2 md:p-4">
         <div
           className={cn(
             "w-full max-w-6xl transition-all duration-300 ease-out",
@@ -209,11 +209,11 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
           )}
         >
           {/* Slide Card */}
-          <div className="relative rounded-3xl overflow-hidden shadow-2xl">
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl">
             {/* Two-column layout */}
             <div className="flex flex-col lg:flex-row">
               {/* Image Column */}
-              <div className="relative lg:w-2/5 h-48 lg:h-auto">
+              <div className="relative lg:w-1/3 h-32 lg:h-auto min-h-[180px]">
                 <img 
                   src={config.image} 
                   alt={currentSlideData.title}
@@ -228,18 +228,18 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
                 {/* Icon overlay */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className={cn(
-                    "p-6 rounded-2xl bg-white/20 backdrop-blur-sm shadow-2xl",
+                    "p-4 rounded-xl bg-white/20 backdrop-blur-sm shadow-xl",
                     "transition-transform duration-500 hover:scale-105"
                   )}>
-                    <SlideIcon className="h-12 w-12 lg:h-16 lg:w-16 text-white drop-shadow-lg" />
+                    <SlideIcon className="h-10 w-10 lg:h-12 lg:w-12 text-white drop-shadow-lg" />
                   </div>
                 </div>
 
                 {/* Slide number badge */}
-                <div className="absolute top-4 left-4">
+                <div className="absolute top-3 left-3">
                   <div className={cn(
-                    "px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm",
-                    "text-white font-semibold text-sm"
+                    "px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm",
+                    "text-white font-semibold text-xs"
                   )}>
                     {currentSlide + 1} / {slides.length}
                   </div>
@@ -247,15 +247,15 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
               </div>
 
               {/* Content Column */}
-              <div className="lg:w-3/5 bg-card">
+              <div className="lg:w-2/3 bg-card flex flex-col">
                 {/* Header */}
                 <div className={cn(
-                  "p-6 lg:p-8 bg-gradient-to-r text-white",
+                  "p-4 lg:p-5 bg-gradient-to-r text-white",
                   config.gradient
                 )}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <AccentIcon className="h-5 w-5" />
-                    <span className="text-sm font-medium text-white/80">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AccentIcon className="h-4 w-4" />
+                    <span className="text-xs font-medium text-white/80">
                       {currentSlideData.type === "intro" && "Introdução"}
                       {currentSlideData.type === "deliverable" && "Entregáveis"}
                       {currentSlideData.type === "cadence" && "Cadência"}
@@ -263,24 +263,23 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
                       {currentSlideData.type === "next-steps" && "Próximos Passos"}
                     </span>
                   </div>
-                  <h2 className="text-xl lg:text-2xl font-bold">
+                  <h2 className="text-lg lg:text-xl font-bold">
                     {currentSlideData.title}
                   </h2>
                 </div>
 
                 {/* Content Items */}
-                <div className="p-6 lg:p-8 max-h-[50vh] lg:max-h-[400px] overflow-y-auto">
-                  <div className="grid gap-3">
+                <div className="p-4 lg:p-6">
+                  <div className="grid gap-2">
                     {currentSlideData.content.map((item, index) => (
                       <div
                         key={index}
                         className={cn(
-                          "group flex items-start gap-4 p-4 rounded-xl",
+                          "group flex items-start gap-3 p-3 rounded-lg",
                           "bg-gradient-to-r from-muted/50 to-muted/30",
                           "border border-border/50 hover:border-primary/30",
                           "transition-all duration-500 ease-out",
-                          "hover:shadow-lg hover:shadow-primary/5",
-                          "hover:-translate-y-0.5",
+                          "hover:shadow-md hover:shadow-primary/5",
                           visibleItems.includes(index)
                             ? "opacity-100 translate-x-0"
                             : "opacity-0 translate-x-8"
@@ -291,8 +290,8 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
                       >
                         {/* Number indicator */}
                         <div className={cn(
-                          "shrink-0 w-8 h-8 rounded-lg flex items-center justify-center",
-                          "bg-gradient-to-br text-white font-bold text-sm shadow-md",
+                          "shrink-0 w-6 h-6 rounded-md flex items-center justify-center",
+                          "bg-gradient-to-br text-white font-bold text-xs shadow-sm",
                           "group-hover:scale-110 transition-transform duration-300",
                           config.gradient
                         )}>
@@ -300,14 +299,9 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
                         </div>
                         
                         {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-foreground leading-relaxed text-sm lg:text-base">
-                            {item}
-                          </p>
-                        </div>
-                        
-                        {/* Check icon on hover */}
-                        <CheckCircle2 className="h-5 w-5 text-primary/0 group-hover:text-primary transition-colors shrink-0" />
+                        <p className="flex-1 text-foreground leading-snug text-sm">
+                          {item}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -320,7 +314,7 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
 
       {/* Footer Navigation */}
       <footer className="relative border-t border-border/40 bg-card/80 backdrop-blur-xl sticky bottom-0">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
+        <div className="container mx-auto px-4 py-2 flex items-center justify-between gap-4">
           <Button
             variant="outline"
             onClick={goToPrev}
