@@ -31,23 +31,23 @@ interface JourneyStep {
 }
 
 const allServices: JourneyStep[] = [
-  { id: "core", name: "UNV Core", shortName: "Core", objective: "Estruturar sua operação comercial do zero", icon: Target, link: "/core", carColor: "#ef4444" },
-  { id: "control", name: "UNV Control", shortName: "Control", objective: "Direção comercial contínua e previsibilidade", icon: Compass, link: "/control", carColor: "#3b82f6" },
-  { id: "sales-acceleration", name: "UNV Sales Acceleration", shortName: "Acceleration", objective: "Acelerar resultados com acompanhamento", icon: TrendingUp, link: "/sales-acceleration", carColor: "#22c55e" },
-  { id: "sales-ops", name: "UNV Sales Ops", shortName: "Sales Ops", objective: "Treinar e capacitar seu time comercial", icon: Users, link: "/sales-ops", carColor: "#f97316" },
-  { id: "ads", name: "UNV Ads", shortName: "Ads", objective: "Escalar geração de leads qualificados", icon: Megaphone, link: "/ads", carColor: "#a855f7" },
-  { id: "social", name: "UNV Social", shortName: "Social", objective: "Gestão profissional das redes sociais", icon: Share2, link: "/social", carColor: "#ec4899" },
-  { id: "ai-sales-system", name: "UNV Sales System", shortName: "Sales System", objective: "Automatizar vendas com IA", icon: Bot, link: "/ai-sales-system", carColor: "#06b6d4" },
-  { id: "fractional-cro", name: "UNV Fractional CRO", shortName: "Fractional CRO", objective: "Diretor comercial terceirizado", icon: UserCheck, link: "/fractional-cro", carColor: "#6366f1" },
-  { id: "growth-room", name: "UNV Growth Room", shortName: "Growth Room", objective: "Imersões intensivas para destravar", icon: Building2, link: "/growth-room", carColor: "#f59e0b" },
-  { id: "partners", name: "UNV Partners", shortName: "Partners", objective: "Grupo estratégico de parceiros UNV", icon: Handshake, link: "/partners", carColor: "#10b981" },
-  { id: "execution-partnership", name: "UNV Execution", shortName: "Execution", objective: "Implementação comercial direta", icon: Handshake, link: "/execution-partnership", carColor: "#dc2626" },
-  { id: "mastermind", name: "UNV Mastermind", shortName: "Mastermind", objective: "Grupo exclusivo de empresários de elite", icon: Crown, link: "/mastermind", carColor: "#eab308" },
-  { id: "le-desir", name: "UNV Le Désir", shortName: "Le Désir", objective: "Posicionamento premium para sua marca", icon: Sparkles, link: "/le-desir", carColor: "#f43f5e" },
-  { id: "people", name: "UNV People", shortName: "People", objective: "Gestão de pessoas e cultura", icon: Users, link: "/people", carColor: "#2563eb" },
-  { id: "finance", name: "UNV Finance", shortName: "Finance", objective: "Controle financeiro estratégico", icon: DollarSign, link: "/finance", carColor: "#16a34a" },
-  { id: "safe", name: "UNV Safe", shortName: "Safe", objective: "Assessoria jurídica preventiva", icon: Shield, link: "/safe", carColor: "#64748b" },
-  { id: "leadership", name: "UNV Leadership", shortName: "Leadership", objective: "Desenvolvimento de líderes", icon: UserCheck, link: "/leadership", carColor: "#8b5cf6" }
+  { id: "core", name: "UNV Core", shortName: "Core", objective: "Estruturar sua operação comercial do zero", icon: Target, link: "/core", carColor: "#dc2626" },
+  { id: "control", name: "UNV Control", shortName: "Control", objective: "Direção comercial contínua e previsibilidade", icon: Compass, link: "/control", carColor: "#2563eb" },
+  { id: "sales-acceleration", name: "UNV Sales Acceleration", shortName: "Acceleration", objective: "Acelerar resultados com acompanhamento", icon: TrendingUp, link: "/sales-acceleration", carColor: "#16a34a" },
+  { id: "sales-ops", name: "UNV Sales Ops", shortName: "Sales Ops", objective: "Treinar e capacitar seu time comercial", icon: Users, link: "/sales-ops", carColor: "#ea580c" },
+  { id: "ads", name: "UNV Ads", shortName: "Ads", objective: "Escalar geração de leads qualificados", icon: Megaphone, link: "/ads", carColor: "#7c3aed" },
+  { id: "social", name: "UNV Social", shortName: "Social", objective: "Gestão profissional das redes sociais", icon: Share2, link: "/social", carColor: "#db2777" },
+  { id: "ai-sales-system", name: "UNV Sales System", shortName: "Sales System", objective: "Automatizar vendas com IA", icon: Bot, link: "/ai-sales-system", carColor: "#0891b2" },
+  { id: "fractional-cro", name: "UNV Fractional CRO", shortName: "Fractional CRO", objective: "Diretor comercial terceirizado", icon: UserCheck, link: "/fractional-cro", carColor: "#4f46e5" },
+  { id: "growth-room", name: "UNV Growth Room", shortName: "Growth Room", objective: "Imersões intensivas para destravar", icon: Building2, link: "/growth-room", carColor: "#d97706" },
+  { id: "partners", name: "UNV Partners", shortName: "Partners", objective: "Grupo estratégico de parceiros UNV", icon: Handshake, link: "/partners", carColor: "#059669" },
+  { id: "execution-partnership", name: "UNV Execution", shortName: "Execution", objective: "Implementação comercial direta", icon: Handshake, link: "/execution-partnership", carColor: "#b91c1c" },
+  { id: "mastermind", name: "UNV Mastermind", shortName: "Mastermind", objective: "Grupo exclusivo de empresários de elite", icon: Crown, link: "/mastermind", carColor: "#ca8a04" },
+  { id: "le-desir", name: "UNV Le Désir", shortName: "Le Désir", objective: "Posicionamento premium para sua marca", icon: Sparkles, link: "/le-desir", carColor: "#e11d48" },
+  { id: "people", name: "UNV People", shortName: "People", objective: "Gestão de pessoas e cultura", icon: Users, link: "/people", carColor: "#1d4ed8" },
+  { id: "finance", name: "UNV Finance", shortName: "Finance", objective: "Controle financeiro estratégico", icon: DollarSign, link: "/finance", carColor: "#15803d" },
+  { id: "safe", name: "UNV Safe", shortName: "Safe", objective: "Assessoria jurídica preventiva", icon: Shield, link: "/safe", carColor: "#475569" },
+  { id: "leadership", name: "UNV Leadership", shortName: "Leadership", objective: "Desenvolvimento de líderes", icon: UserCheck, link: "/leadership", carColor: "#7c3aed" }
 ];
 
 // Checkered flag pattern
@@ -67,53 +67,51 @@ function CheckeredFlag() {
 export function ServiceJourneyPath() {
   const [hoveredCar, setHoveredCar] = useState<number | null>(null);
 
-  // F1 style circuit path
+  // Smooth F1 circuit path
   const trackPath = `
-    M 50 12
-    L 80 12
-    Q 92 12, 92 24
-    L 92 40
-    Q 92 50, 82 55
-    L 60 65
-    Q 45 72, 35 82
-    L 20 98
-    Q 10 108, 8 100
-    L 8 88
-    Q 8 78, 18 70
-    L 25 62
-    Q 30 55, 25 48
-    L 18 38
-    Q 12 30, 20 22
-    L 35 18
-    Q 45 15, 50 12
+    M 50 18
+    L 78 18
+    C 88 18, 92 22, 92 32
+    L 92 50
+    C 92 58, 88 65, 80 70
+    L 65 78
+    C 55 84, 45 92, 35 100
+    C 22 110, 10 108, 10 95
+    L 10 82
+    C 10 72, 15 65, 22 60
+    L 28 55
+    C 35 50, 35 42, 28 36
+    L 22 30
+    C 15 24, 18 18, 28 18
+    L 50 18
   `;
 
-  // Car positions along the track path - rotation follows the track direction
+  // Car positions following the track precisely
   const carPositions = [
-    { x: 55, y: 12, rotation: 0 },      // 1 - Reta inicial, indo para direita
-    { x: 75, y: 12, rotation: 0 },      // 2 - Reta inicial
-    { x: 90, y: 18, rotation: 70 },     // 3 - Curva 1, descendo
-    { x: 92, y: 34, rotation: 90 },     // 4 - Descendo reto
-    { x: 88, y: 48, rotation: 140 },    // 5 - Curva 2, virando para esquerda
-    { x: 72, y: 60, rotation: 160 },    // 6 - Indo para esquerda e descendo
-    { x: 52, y: 70, rotation: 200 },    // 7 - Curva S
-    { x: 38, y: 80, rotation: 220 },    // 8 - Descendo diagonal
-    { x: 22, y: 96, rotation: 240 },    // 9 - Curva fechada
-    { x: 10, y: 100, rotation: 270 },   // 10 - Virando para cima
-    { x: 8, y: 88, rotation: -90 },     // 11 - Subindo
-    { x: 12, y: 74, rotation: -60 },    // 12 - Curva S subindo
-    { x: 22, y: 62, rotation: -45 },    // 13 - Diagonal subindo
-    { x: 26, y: 50, rotation: -90 },    // 14 - Subindo
-    { x: 20, y: 38, rotation: -120 },   // 15 - Curva
-    { x: 24, y: 24, rotation: -30 },    // 16 - Saindo da curva
-    { x: 42, y: 16, rotation: 0 },      // 17 - Voltando para reta de largada
+    { x: 54, y: 18, rotation: 0 },      // 1
+    { x: 72, y: 18, rotation: 0 },      // 2
+    { x: 88, y: 22, rotation: 45 },     // 3
+    { x: 92, y: 38, rotation: 90 },     // 4
+    { x: 92, y: 54, rotation: 90 },     // 5
+    { x: 85, y: 68, rotation: 135 },    // 6
+    { x: 70, y: 76, rotation: 160 },    // 7
+    { x: 52, y: 86, rotation: 200 },    // 8
+    { x: 35, y: 98, rotation: 225 },    // 9
+    { x: 18, y: 105, rotation: 250 },   // 10
+    { x: 10, y: 92, rotation: 270 },    // 11
+    { x: 10, y: 78, rotation: 270 },    // 12
+    { x: 18, y: 65, rotation: 315 },    // 13
+    { x: 28, y: 52, rotation: 270 },    // 14
+    { x: 30, y: 40, rotation: 220 },    // 15
+    { x: 22, y: 28, rotation: 315 },    // 16
+    { x: 38, y: 18, rotation: 0 },      // 17
   ];
 
   return (
-    <section className="section-padding bg-gradient-to-b from-background via-secondary/5 to-background overflow-hidden">
-      <div className="container-premium">
+    <section className="py-16 md:py-24 bg-gradient-to-b from-background to-secondary/10 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
-        <div className="text-center mb-6 md:mb-10">
+        <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
             <Flag className="h-4 w-4" />
             Grande Prêmio do Crescimento
@@ -127,221 +125,256 @@ export function ServiceJourneyPath() {
         </div>
 
         {/* Racing Track - Desktop */}
-        <div className="hidden lg:block relative w-full" style={{ height: '850px' }}>
-          <svg 
-            className="w-full h-full" 
-            viewBox="0 0 100 115"
-            preserveAspectRatio="xMidYMid meet"
-          >
-            <defs>
-              {/* Track asphalt gradient */}
-              <linearGradient id="asphaltGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#52525b" />
-                <stop offset="50%" stopColor="#3f3f46" />
-                <stop offset="100%" stopColor="#27272a" />
-              </linearGradient>
-              
-              {/* Red curb gradient */}
-              <linearGradient id="curbRed" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#dc2626" />
-                <stop offset="50%" stopColor="#ef4444" />
-                <stop offset="100%" stopColor="#dc2626" />
-              </linearGradient>
+        <div className="hidden lg:block relative mx-auto rounded-3xl overflow-hidden shadow-2xl" style={{ maxWidth: '1000px', height: '800px', background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 50%, #a5d6a7 100%)' }}>
+          {/* Track container with padding */}
+          <div className="absolute inset-4">
+            <svg 
+              className="w-full h-full" 
+              viewBox="0 0 100 120"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              <defs>
+                {/* Track asphalt gradient */}
+                <linearGradient id="asphaltGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#4b5563" />
+                  <stop offset="50%" stopColor="#374151" />
+                  <stop offset="100%" stopColor="#1f2937" />
+                </linearGradient>
+                
+                {/* Outer curb red/white pattern */}
+                <pattern id="curbOuter" patternUnits="userSpaceOnUse" width="3" height="3" patternTransform="rotate(45)">
+                  <rect width="1.5" height="3" fill="#dc2626" />
+                  <rect x="1.5" width="1.5" height="3" fill="#ffffff" />
+                </pattern>
 
-              {/* Glow filter for cars */}
-              <filter id="carGlow" x="-100%" y="-100%" width="300%" height="300%">
-                <feGaussianBlur stdDeviation="2" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
+                {/* Inner curb pattern */}
+                <pattern id="curbInner" patternUnits="userSpaceOnUse" width="2" height="2" patternTransform="rotate(45)">
+                  <rect width="1" height="2" fill="#dc2626" />
+                  <rect x="1" width="1" height="2" fill="#ffffff" />
+                </pattern>
 
-              {/* Shadow filter */}
-              <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="1" stdDeviation="0.5" floodOpacity="0.5" />
-              </filter>
-            </defs>
+                {/* Drop shadow */}
+                <filter id="trackShadow" x="-10%" y="-10%" width="120%" height="120%">
+                  <feDropShadow dx="2" dy="4" stdDeviation="3" floodOpacity="0.3" />
+                </filter>
 
-            {/* Background grass texture */}
-            <rect x="0" y="0" width="100" height="115" fill="#166534" opacity="0.1" />
+                {/* Car glow */}
+                <filter id="carGlow" x="-100%" y="-100%" width="300%" height="300%">
+                  <feGaussianBlur stdDeviation="2" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
 
-            {/* Track outer edge (red curb) */}
-            <path
-              d={trackPath}
-              fill="none"
-              stroke="url(#curbRed)"
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity="0.8"
-            />
+              {/* Track shadow */}
+              <path
+                d={trackPath}
+                fill="none"
+                stroke="rgba(0,0,0,0.2)"
+                strokeWidth="14"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                transform="translate(1, 2)"
+              />
 
-            {/* White edge */}
-            <path
-              d={trackPath}
-              fill="none"
-              stroke="white"
-              strokeWidth="8.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity="0.9"
-            />
+              {/* Outer curb (red/white) */}
+              <path
+                d={trackPath}
+                fill="none"
+                stroke="url(#curbOuter)"
+                strokeWidth="13"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
 
-            {/* Track surface (asphalt) */}
-            <path
-              d={trackPath}
-              fill="none"
-              stroke="url(#asphaltGradient)"
-              strokeWidth="7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+              {/* White edge line */}
+              <path
+                d={trackPath}
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth="11"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
 
-            {/* Center dashed line */}
-            <path
-              d={trackPath}
-              fill="none"
-              stroke="white"
-              strokeWidth="0.2"
-              strokeLinecap="round"
-              strokeDasharray="1.5 1.5"
-              opacity="0.6"
-            />
+              {/* Track surface (asphalt) */}
+              <path
+                d={trackPath}
+                fill="none"
+                stroke="url(#asphaltGradient)"
+                strokeWidth="9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
 
-            {/* Start/Finish line checkered pattern */}
-            <g transform="translate(49, 9)">
-              {[0,1,2,3,4,5].map(i => (
-                <g key={i}>
-                  <rect x={i * 0.8} y="0" width="0.8" height="0.8" fill={i % 2 === 0 ? "white" : "#1a1a1a"} />
-                  <rect x={i * 0.8} y="0.8" width="0.8" height="0.8" fill={i % 2 === 1 ? "white" : "#1a1a1a"} />
-                  <rect x={i * 0.8} y="1.6" width="0.8" height="0.8" fill={i % 2 === 0 ? "white" : "#1a1a1a"} />
-                  <rect x={i * 0.8} y="2.4" width="0.8" height="0.8" fill={i % 2 === 1 ? "white" : "#1a1a1a"} />
-                  <rect x={i * 0.8} y="3.2" width="0.8" height="0.8" fill={i % 2 === 0 ? "white" : "#1a1a1a"} />
-                  <rect x={i * 0.8} y="4" width="0.8" height="0.8" fill={i % 2 === 1 ? "white" : "#1a1a1a"} />
-                </g>
-              ))}
-            </g>
+              {/* Center dashed line */}
+              <path
+                d={trackPath}
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth="0.4"
+                strokeLinecap="round"
+                strokeDasharray="2 2"
+                opacity="0.7"
+              />
 
-            {/* F1 Cars on track */}
-            {allServices.map((service, index) => {
-              const pos = carPositions[index];
-              const isHovered = hoveredCar === index;
-              
-              return (
-                <g 
-                  key={service.id} 
-                  transform={`translate(${pos.x}, ${pos.y})`}
-                  style={{ cursor: 'pointer' }}
-                  onMouseEnter={() => setHoveredCar(index)}
-                  onMouseLeave={() => setHoveredCar(null)}
-                >
-                  {/* Hover glow effect */}
-                  {isHovered && (
-                    <circle cx="0" cy="0" r="5" fill={service.carColor} opacity="0.4" filter="url(#carGlow)" />
-                  )}
-                  
-                  {/* Car shadow */}
-                  <ellipse cx="0.3" cy="0.5" rx="3" ry="1" fill="black" opacity="0.3" />
-                  
-                  {/* Car body */}
-                  <g transform={`rotate(${pos.rotation}) scale(${isHovered ? 1.3 : 1})`} style={{ transition: 'transform 0.2s' }}>
-                    {/* Main chassis */}
-                    <path 
-                      d="M -3.5 0 L -2.5 -1.2 L 2.5 -1.2 L 3.5 -0.4 L 3.5 0.4 L 2.5 1.2 L -2.5 1.2 L -3.5 0 Z" 
-                      fill={service.carColor}
-                      filter="url(#shadow)"
-                    />
-                    {/* Cockpit */}
-                    <ellipse cx="-0.2" cy="0" rx="1.2" ry="0.7" fill="#0a0a0a" />
-                    {/* Driver helmet */}
-                    <circle cx="-0.2" cy="0" r="0.45" fill="white" />
-                    <circle cx="-0.2" cy="-0.1" r="0.25" fill={service.carColor} />
-                    {/* Front wing */}
-                    <rect x="3" y="-1.5" width="0.6" height="3" rx="0.1" fill={service.carColor} />
-                    {/* Rear wing */}
-                    <rect x="-4.2" y="-1.3" width="0.7" height="2.6" rx="0.1" fill={service.carColor} />
-                    <rect x="-4.5" y="-1" width="0.4" height="2" fill="#1a1a1a" />
-                    {/* Wheels */}
-                    <ellipse cx="2.2" cy="-1.5" rx="0.7" ry="0.4" fill="#1a1a1a" />
-                    <ellipse cx="2.2" cy="1.5" rx="0.7" ry="0.4" fill="#1a1a1a" />
-                    <ellipse cx="-2" cy="-1.6" rx="0.8" ry="0.45" fill="#1a1a1a" />
-                    <ellipse cx="-2" cy="1.6" rx="0.8" ry="0.45" fill="#1a1a1a" />
-                    {/* Number on car */}
-                    <circle cx="1" cy="0" r="0.8" fill="white" />
-                    <text x="1" y="0.3" textAnchor="middle" fontSize="0.9" fill={service.carColor} fontWeight="bold">{index + 1}</text>
+              {/* Start/Finish line */}
+              <g transform="translate(48, 14)">
+                {[...Array(8)].map((_, i) => (
+                  <g key={i}>
+                    <rect x={i * 0.8} y="0" width="0.8" height="0.8" fill={i % 2 === 0 ? "#fff" : "#000"} />
+                    <rect x={i * 0.8} y="0.8" width="0.8" height="0.8" fill={i % 2 === 1 ? "#fff" : "#000"} />
+                    <rect x={i * 0.8} y="1.6" width="0.8" height="0.8" fill={i % 2 === 0 ? "#fff" : "#000"} />
+                    <rect x={i * 0.8} y="2.4" width="0.8" height="0.8" fill={i % 2 === 1 ? "#fff" : "#000"} />
+                    <rect x={i * 0.8} y="3.2" width="0.8" height="0.8" fill={i % 2 === 0 ? "#fff" : "#000"} />
+                    <rect x={i * 0.8} y="4" width="0.8" height="0.8" fill={i % 2 === 1 ? "#fff" : "#000"} />
                   </g>
-                </g>
-              );
-            })}
+                ))}
+              </g>
 
-            {/* Track labels */}
-            <text x="50" y="6" textAnchor="middle" fontSize="2.5" fill="currentColor" className="text-foreground" fontWeight="bold" letterSpacing="0.3">CIRCUITO UNV</text>
-            <text x="50" y="8.5" textAnchor="middle" fontSize="1.2" fill="currentColor" className="text-muted-foreground">17 SERVIÇOS • SUA JORNADA DE CRESCIMENTO</text>
-          </svg>
+              {/* F1 Cars on track */}
+              {allServices.map((service, index) => {
+                const pos = carPositions[index];
+                const isHovered = hoveredCar === index;
+                
+                return (
+                  <g 
+                    key={service.id} 
+                    transform={`translate(${pos.x}, ${pos.y})`}
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredCar(index)}
+                    onMouseLeave={() => setHoveredCar(null)}
+                  >
+                    {/* Hover highlight */}
+                    {isHovered && (
+                      <circle cx="0" cy="0" r="6" fill={service.carColor} opacity="0.3" filter="url(#carGlow)" />
+                    )}
+                    
+                    {/* Car shadow */}
+                    <ellipse 
+                      cx="0.5" 
+                      cy="0.8" 
+                      rx="3.5" 
+                      ry="1.2" 
+                      fill="rgba(0,0,0,0.4)"
+                      transform={`rotate(${pos.rotation})`}
+                    />
+                    
+                    {/* F1 Car */}
+                    <g transform={`rotate(${pos.rotation}) scale(${isHovered ? 1.2 : 1})`} style={{ transition: 'transform 0.15s ease-out' }}>
+                      {/* Rear wing */}
+                      <rect x="-4" y="-1.3" width="0.8" height="2.6" rx="0.1" fill="#1a1a1a" />
+                      <rect x="-4.3" y="-1" width="0.4" height="2" fill={service.carColor} />
+                      
+                      {/* Rear wheels */}
+                      <ellipse cx="-2.2" cy="-1.8" rx="1" ry="0.5" fill="#1a1a1a" />
+                      <ellipse cx="-2.2" cy="1.8" rx="1" ry="0.5" fill="#1a1a1a" />
+                      
+                      {/* Main body */}
+                      <path 
+                        d="M -3 0 Q -2.5 -1.3, 0 -1.3 L 2.5 -0.8 Q 3.5 -0.4, 3.5 0 Q 3.5 0.4, 2.5 0.8 L 0 1.3 Q -2.5 1.3, -3 0 Z" 
+                        fill={service.carColor}
+                      />
+                      
+                      {/* Cockpit */}
+                      <ellipse cx="0" cy="0" rx="1.3" ry="0.8" fill="#0f0f0f" />
+                      
+                      {/* Driver helmet */}
+                      <circle cx="0" cy="0" r="0.5" fill="#fff" />
+                      <path d="M -0.3 -0.3 Q 0 -0.5, 0.3 -0.3 L 0.3 0 Q 0 0.2, -0.3 0 Z" fill={service.carColor} />
+                      
+                      {/* Front wing */}
+                      <rect x="3" y="-1.6" width="0.6" height="3.2" rx="0.1" fill={service.carColor} />
+                      
+                      {/* Front wheels */}
+                      <ellipse cx="2.2" cy="-1.7" rx="0.8" ry="0.45" fill="#1a1a1a" />
+                      <ellipse cx="2.2" cy="1.7" rx="0.8" ry="0.45" fill="#1a1a1a" />
+                      
+                      {/* Number circle */}
+                      <circle cx="0" cy="0" r="0.6" fill="transparent" />
+                    </g>
+                    
+                    {/* Number badge above car */}
+                    <g transform="translate(0, -5)">
+                      <rect x="-2" y="-1.2" width="4" height="2.4" rx="1.2" fill={service.carColor} />
+                      <text y="0.5" textAnchor="middle" fontSize="1.6" fill="white" fontWeight="bold">{index + 1}</text>
+                    </g>
+                  </g>
+                );
+              })}
+
+              {/* Track title */}
+              <text x="50" y="8" textAnchor="middle" fontSize="3" fill="#1f2937" fontWeight="bold" letterSpacing="0.2">CIRCUITO UNV</text>
+              <text x="50" y="11" textAnchor="middle" fontSize="1.2" fill="#6b7280">17 SERVIÇOS • SUA JORNADA DE CRESCIMENTO</text>
+            </svg>
+          </div>
+
+          {/* Start label */}
+          <div className="absolute left-[52%] top-[12%] -translate-x-1/2 flex items-center gap-2 bg-green-600 text-white rounded-full px-4 py-1.5 shadow-lg z-10">
+            <Flag className="h-4 w-4" />
+            <span className="text-xs font-bold uppercase tracking-wide">Largada</span>
+          </div>
 
           {/* Floating tooltip */}
           {hoveredCar !== null && (
             <div 
               className="absolute z-50 pointer-events-none animate-fade-in"
               style={{
-                left: `${carPositions[hoveredCar].x}%`,
-                top: `${(carPositions[hoveredCar].y / 115) * 100}%`,
-                transform: 'translate(-50%, -120%)'
+                left: `${(carPositions[hoveredCar].x / 100) * 100 + 4}%`,
+                top: `${(carPositions[hoveredCar].y / 120) * 100 + 3}%`,
+                transform: 'translate(-50%, -130%)'
               }}
             >
-              <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl p-4 shadow-2xl min-w-[220px]">
-                <div className="flex items-center gap-3 mb-2">
+              <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-2xl min-w-[240px]">
+                <div className="flex items-center gap-3 mb-3">
                   <div 
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
+                    className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
                     style={{ backgroundColor: allServices[hoveredCar].carColor }}
                   >
                     {(() => {
                       const IconComponent = allServices[hoveredCar].icon;
-                      return <IconComponent className="h-5 w-5 text-white" />;
+                      return <IconComponent className="h-6 w-6 text-white" />;
                     })()}
                   </div>
                   <div>
-                    <div className="text-xs text-muted-foreground font-medium">Posição {hoveredCar + 1}</div>
-                    <h4 className="font-bold text-foreground">{allServices[hoveredCar].name}</h4>
+                    <div className="text-xs text-gray-500 font-medium">Posição {hoveredCar + 1}</div>
+                    <h4 className="font-bold text-gray-900">{allServices[hoveredCar].name}</h4>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground">{allServices[hoveredCar].objective}</p>
+                <p className="text-sm text-gray-600 mb-3">{allServices[hoveredCar].objective}</p>
                 <Link 
                   to={allServices[hoveredCar].link}
-                  className="mt-3 flex items-center justify-center gap-2 w-full py-2 px-4 rounded-lg text-sm font-medium text-white transition-colors pointer-events-auto"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 pointer-events-auto"
                   style={{ backgroundColor: allServices[hoveredCar].carColor }}
                 >
-                  Ver detalhes
-                  <Trophy className="h-3 w-3" />
+                  Conhecer serviço
+                  <Trophy className="h-4 w-4" />
                 </Link>
               </div>
             </div>
           )}
-
-          {/* Start/Finish labels */}
-          <div className="absolute left-[52%] top-[4%] flex items-center gap-2 bg-green-500 text-white rounded-full px-4 py-1.5 shadow-lg">
-            <Flag className="h-4 w-4" />
-            <span className="text-xs font-bold uppercase tracking-wide">Largada</span>
-          </div>
         </div>
 
         {/* Car legend - Desktop */}
-        <div className="hidden lg:block mt-8">
-          <div className="grid grid-cols-6 gap-3 max-w-4xl mx-auto">
+        <div className="hidden lg:block mt-10">
+          <div className="grid grid-cols-6 gap-4 max-w-5xl mx-auto">
             {allServices.map((service, index) => (
               <Link 
                 key={service.id}
                 to={service.link}
-                className="flex items-center gap-2 p-2 rounded-lg hover:bg-secondary/50 transition-colors group"
+                className="flex items-center gap-3 p-3 rounded-xl hover:bg-secondary/50 transition-all group"
+                onMouseEnter={() => setHoveredCar(index)}
+                onMouseLeave={() => setHoveredCar(null)}
               >
                 <div 
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm group-hover:scale-110 transition-transform"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md group-hover:scale-110 transition-transform"
                   style={{ backgroundColor: service.carColor }}
                 >
                   {index + 1}
                 </div>
-                <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors truncate">{service.shortName}</span>
+                <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{service.shortName}</span>
               </Link>
             ))}
           </div>
