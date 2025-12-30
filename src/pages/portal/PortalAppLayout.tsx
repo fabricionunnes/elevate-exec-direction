@@ -13,7 +13,8 @@ import {
   X,
   MessageCircle,
   ChevronRight,
-  User
+  User,
+  ClipboardCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -85,6 +86,7 @@ const PortalAppLayout = () => {
   const navItems = [
     { href: "/portal/app", icon: LayoutDashboard, label: "Início" },
     { href: "/portal/app/planejamento", icon: FileText, label: "Planejamento" },
+    { href: "/portal/app/execucao", icon: ClipboardCheck, label: "Execução" },
     { href: "/portal/app/dashboard", icon: BarChart3, label: "Dashboard" },
     { href: "/portal/app/config", icon: Settings, label: "Configurações" },
   ];

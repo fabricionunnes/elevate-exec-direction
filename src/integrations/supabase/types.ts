@@ -446,6 +446,66 @@ export type Database = {
           },
         ]
       }
+      portal_checkins: {
+        Row: {
+          comment: string | null
+          created_at: string
+          created_by: string | null
+          current_value: number | null
+          id: string
+          impediments: string | null
+          key_result_id: string
+          next_action: string | null
+          previous_value: number | null
+          status: Database["public"]["Enums"]["progress_status"]
+          updated_at: string
+          week_ref: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_value?: number | null
+          id?: string
+          impediments?: string | null
+          key_result_id: string
+          next_action?: string | null
+          previous_value?: number | null
+          status?: Database["public"]["Enums"]["progress_status"]
+          updated_at?: string
+          week_ref: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_value?: number | null
+          id?: string
+          impediments?: string | null
+          key_result_id?: string
+          next_action?: string | null
+          previous_value?: number | null
+          status?: Database["public"]["Enums"]["progress_status"]
+          updated_at?: string
+          week_ref?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_checkins_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_checkins_key_result_id_fkey"
+            columns: ["key_result_id"]
+            isOneToOne: false
+            referencedRelation: "portal_key_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_companies: {
         Row: {
           created_at: string
@@ -798,6 +858,68 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      portal_recommendations: {
+        Row: {
+          company_id: string
+          created_at: string
+          dismissed_at: string | null
+          id: string
+          key_result_id: string | null
+          plan_id: string | null
+          product_id: string | null
+          reason: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          key_result_id?: string | null
+          plan_id?: string | null
+          product_id?: string | null
+          reason?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          key_result_id?: string | null
+          plan_id?: string | null
+          product_id?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_recommendations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "portal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_recommendations_key_result_id_fkey"
+            columns: ["key_result_id"]
+            isOneToOne: false
+            referencedRelation: "portal_key_results"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_recommendations_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "portal_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_recommendations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "portal_product_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       portal_rocks: {
         Row: {
