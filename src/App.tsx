@@ -39,6 +39,18 @@ import AdminSetupPage from "./pages/AdminSetupPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
+// Portal pages
+import PortalLandingPage from "./pages/portal/PortalLandingPage";
+import PortalLoginPage from "./pages/portal/PortalLoginPage";
+import PortalSignupPage from "./pages/portal/PortalSignupPage";
+import PortalAppLayout from "./pages/portal/PortalAppLayout";
+import PortalHomePage from "./pages/portal/PortalHomePage";
+import PortalPlanningWizard from "./pages/portal/PortalPlanningWizard";
+import PortalDashboardPage from "./pages/portal/PortalDashboardPage";
+import PortalConfigPage from "./pages/portal/PortalConfigPage";
+import PortalCoachPage from "./pages/portal/PortalCoachPage";
+import PortalExecutionPage from "./pages/portal/PortalExecutionPage";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -82,6 +94,21 @@ const App = () => (
           <Route path="/diagnostic-responses" element={<DiagnosticResponsesPage />} />
           <Route path="/admin-setup" element={<AdminSetupPage />} />
           <Route path="/admin" element={<AdminPage />} />
+          
+          {/* Portal do Planejamento 2026 */}
+          <Route path="/portal" element={<PortalLandingPage />} />
+          <Route path="/portal/login" element={<PortalLoginPage />} />
+          <Route path="/portal/signup" element={<PortalSignupPage />} />
+          <Route path="/portal/app" element={<PortalAppLayout />}>
+            <Route index element={<PortalHomePage />} />
+            <Route path="planejamento" element={<PortalHomePage />} />
+            <Route path="planejamento/:planId" element={<PortalPlanningWizard />} />
+            <Route path="dashboard" element={<PortalDashboardPage />} />
+            <Route path="execucao" element={<PortalExecutionPage />} />
+            <Route path="config" element={<PortalConfigPage />} />
+            <Route path="coach" element={<PortalCoachPage />} />
+          </Route>
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
