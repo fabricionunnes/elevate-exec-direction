@@ -209,13 +209,15 @@ const PortalAppLayout = () => {
         <Outlet context={{ user }} />
       </main>
 
-      {/* AI Coach Button (Fixed) */}
-      <Link
-        to="/portal/app/coach"
-        className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/20 hover:scale-105 transition-transform"
-      >
-        <MessageCircle className="w-6 h-6 text-slate-950" />
-      </Link>
+      {/* AI Coach Button (Fixed) - Hide when already on coach page */}
+      {location.pathname !== "/portal/app/coach" && (
+        <Link
+          to="/portal/app/coach"
+          className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/20 hover:scale-105 transition-transform"
+        >
+          <MessageCircle className="w-6 h-6 text-slate-950" />
+        </Link>
+      )}
     </div>
   );
 };
