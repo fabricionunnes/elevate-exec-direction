@@ -226,28 +226,35 @@ const allServices: JourneyStep[] = [
   }
 ];
 
-// Unified winding path positions - truly continuous serpentine flow
+// Unified winding path - single continuous serpentine with clear U-turns
 const desktopPositions = [
-  { x: 10, y: 5 },    // 1. Core
-  { x: 30, y: 8 },    // 2. Control
-  { x: 50, y: 5 },    // 3. Acceleration
-  { x: 70, y: 10 },   // 4. Sales Ops
-  { x: 90, y: 6 },    // 5. Ads
-  { x: 90, y: 18 },   // 6. Social (curva para baixo)
-  { x: 70, y: 22 },   // 7. Sales System
-  { x: 50, y: 18 },   // 8. Fractional CRO
-  { x: 30, y: 24 },   // 9. Growth Room
-  { x: 10, y: 20 },   // 10. Partners
-  { x: 10, y: 34 },   // 11. Execution (curva para baixo)
-  { x: 30, y: 38 },   // 12. Mastermind
-  { x: 50, y: 34 },   // 13. Le Désir
-  { x: 70, y: 40 },   // 14. People
-  { x: 90, y: 36 },   // 15. Finance
-  { x: 90, y: 50 },   // 16. Safe (curva para baixo)
-  { x: 70, y: 54 },   // 17. Leadership
+  // Linha 1: esquerda para direita
+  { x: 8, y: 6 },     // 1. Core
+  { x: 26, y: 6 },    // 2. Control
+  { x: 44, y: 6 },    // 3. Acceleration
+  { x: 62, y: 6 },    // 4. Sales Ops
+  { x: 80, y: 6 },    // 5. Ads
+  // Curva U para baixo (direita)
+  { x: 92, y: 14 },   // 6. Social (ponto da curva)
+  // Linha 2: direita para esquerda
+  { x: 74, y: 22 },   // 7. Sales System
+  { x: 56, y: 22 },   // 8. Fractional CRO
+  { x: 38, y: 22 },   // 9. Growth Room
+  { x: 20, y: 22 },   // 10. Partners
+  // Curva U para baixo (esquerda)
+  { x: 8, y: 30 },    // 11. Execution (ponto da curva)
+  // Linha 3: esquerda para direita
+  { x: 26, y: 38 },   // 12. Mastermind
+  { x: 44, y: 38 },   // 13. Le Désir
+  { x: 62, y: 38 },   // 14. People
+  { x: 80, y: 38 },   // 15. Finance
+  // Curva U para baixo (direita)
+  { x: 92, y: 46 },   // 16. Safe (ponto da curva)
+  // Linha 4: final
+  { x: 74, y: 54 },   // 17. Leadership
 ];
 
-// Generate smooth curved path through all points with proper turns
+// Generate smooth serpentine path with visible U-turns
 function generateSmoothPath(positions: { x: number; y: number }[]): string {
   if (positions.length < 2) return "";
   
@@ -256,24 +263,22 @@ function generateSmoothPath(positions: { x: number; y: number }[]): string {
   for (let i = 1; i < positions.length; i++) {
     const prev = positions[i - 1];
     const curr = positions[i];
-    const next = positions[i + 1];
     
-    // Detect if this is a "turn" point (direction changes significantly)
-    const isVerticalMove = Math.abs(curr.x - prev.x) < 5;
+    // Check if this is a U-turn (significant Y change with X staying near edges)
+    const isUTurn = Math.abs(curr.y - prev.y) > 5 && (prev.x > 85 || prev.x < 15);
     
-    if (isVerticalMove) {
-      // Vertical connection - use smooth S-curve
+    if (isUTurn) {
+      // Create a smooth U-turn curve
       const midY = (prev.y + curr.y) / 2;
-      path += ` C ${prev.x} ${midY}, ${curr.x} ${midY}, ${curr.x} ${curr.y}`;
+      // Extend outward for the curve
+      const curveExtend = prev.x > 50 ? 98 : 2;
+      path += ` Q ${curveExtend} ${prev.y}, ${curveExtend} ${midY}`;
+      path += ` Q ${curveExtend} ${curr.y}, ${curr.x} ${curr.y}`;
     } else {
-      // Horizontal movement - smooth bezier
-      const tension = 0.4;
-      const cpX1 = prev.x + (curr.x - prev.x) * tension;
-      const cpY1 = prev.y;
-      const cpX2 = curr.x - (curr.x - prev.x) * tension;
-      const cpY2 = curr.y;
-      
-      path += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${curr.x} ${curr.y}`;
+      // Normal horizontal or slight curve
+      const cpX = (prev.x + curr.x) / 2;
+      path += ` Q ${cpX} ${prev.y}, ${cpX} ${(prev.y + curr.y) / 2}`;
+      path += ` Q ${cpX} ${curr.y}, ${curr.x} ${curr.y}`;
     }
   }
   
