@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useOutletContext, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import ReactMarkdown from "react-markdown";
 import { 
   Send, 
   ArrowLeft, 
@@ -322,17 +323,72 @@ Como posso ajudar você hoje?
             )}
             
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+              className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                 message.role === "user"
                   ? "bg-amber-500 text-slate-950"
                   : "bg-slate-800 text-slate-200"
               }`}
             >
-              <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                {message.content || (isLoading && index === messages.length - 1 ? (
+              {message.content ? (
+                <div className={`text-sm leading-relaxed prose prose-sm max-w-none ${
+                  message.role === "user" 
+                    ? "prose-invert prose-p:text-slate-950 prose-strong:text-slate-950 prose-headings:text-slate-950" 
+                    : "prose-invert prose-p:text-slate-200 prose-strong:text-amber-400 prose-headings:text-amber-400 prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-li:text-slate-200 prose-a:text-amber-400 prose-a:no-underline hover:prose-a:underline prose-hr:border-slate-600"
+                }`}>
+                  <ReactMarkdown
+                    components={{
+                      // Custom link renderer
+                      a: ({ href, children }) => (
+                        <Link 
+                          to={href || "#"} 
+                          className="text-amber-400 hover:text-amber-300 hover:underline font-medium"
+                        >
+                          {children}
+                        </Link>
+                      ),
+                      // Better styling for code blocks
+                      code: ({ children }) => (
+                        <code className="bg-slate-700 px-1.5 py-0.5 rounded text-amber-300 text-xs">
+                          {children}
+                        </code>
+                      ),
+                      // Better styling for blockquotes
+                      blockquote: ({ children }) => (
+                        <blockquote className="border-l-2 border-amber-500 pl-3 italic text-slate-300">
+                          {children}
+                        </blockquote>
+                      ),
+                      // Styling for horizontal rules
+                      hr: () => (
+                        <hr className="border-slate-600 my-4" />
+                      ),
+                      // Better list styling
+                      ul: ({ children }) => (
+                        <ul className="list-disc list-inside space-y-1 text-slate-200">
+                          {children}
+                        </ul>
+                      ),
+                      ol: ({ children }) => (
+                        <ol className="list-decimal list-inside space-y-1 text-slate-200">
+                          {children}
+                        </ol>
+                      ),
+                      // Paragraph spacing
+                      p: ({ children }) => (
+                        <p className="mb-2 last:mb-0">
+                          {children}
+                        </p>
+                      ),
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                isLoading && index === messages.length - 1 && (
                   <Loader2 className="w-4 h-4 animate-spin" />
-                ) : null)}
-              </div>
+                )
+              )}
             </div>
 
             {message.role === "user" && (
