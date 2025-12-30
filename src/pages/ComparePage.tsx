@@ -100,22 +100,6 @@ const products: Product[] = [
     notFor: "Quem não tem time ou busca apenas padronização"
   },
   {
-    id: "growth-room",
-    name: "UNV Growth Room",
-    tagline: "Imersão Presencial Estratégica",
-    icon: MapPin,
-    color: "bg-orange-500",
-    icp: "Empresas que precisam de clareza estratégica",
-    revenue: "R$ 150k–600k/mês",
-    team: "Decisores apenas",
-    price: "R$ 12.000",
-    priceType: "por empresa",
-    link: "/growth-room",
-    keyDiff: "Imersão presencial de 3 dias — clareza estratégica e plano de 90 dias",
-    bestFor: "CEOs/donos que precisam parar e repensar a direção comercial",
-    notFor: "Quem busca acompanhamento recorrente ou treinamento de time"
-  },
-  {
     id: "partners",
     name: "UNV Partners",
     tagline: "Direção Estratégica & Board Externo",
@@ -180,22 +164,6 @@ const products: Product[] = [
     notFor: "Quem busca leads imediatos ou não quer aparecer"
   },
   {
-    id: "mastermind",
-    name: "UNV Mastermind",
-    tagline: "Inner Circle de Líderes",
-    icon: Star,
-    color: "bg-amber-500",
-    icp: "Empresários em estágio avançado",
-    revenue: "R$ 1M–10M/mês",
-    team: "Donos reais",
-    price: "R$ 36.000",
-    priceType: "/ano",
-    link: "/mastermind",
-    keyDiff: "Conselho de decisão — grupo ultra seletivo com hot seats e mansão empresarial",
-    bestFor: "Empresários que já cresceram e querem decidir melhor com pares à altura",
-    notFor: "Quem busca execução, networking frouxo ou palco para ego"
-  },
-  {
     id: "sales-force",
     name: "UNV Sales Force",
     tagline: "Outsourced SDR & Closing",
@@ -226,22 +194,6 @@ const products: Product[] = [
     keyDiff: "Formação de líderes — liderança que sustenta pessoas, performance e crescimento",
     bestFor: "Empresas onde fundador centraliza, líderes não cobram e execução depende do dono",
     notFor: "Quem busca motivação, coaching vazio ou RH terceirizado"
-  },
-  {
-    id: "le-desir",
-    name: "Le Désir",
-    tagline: "Análise Estratégica para Líderes",
-    icon: Heart,
-    color: "bg-rose-500",
-    icp: "Líderes com peso psicológico da liderança",
-    revenue: "R$ 200k–3M+/mês",
-    team: "CEO/Fundador",
-    price: "R$ 1.200 a R$ 2.000",
-    priceType: "/mês",
-    link: "/le-desir",
-    keyDiff: "Análise estratégica — suporte emocional e psicológico para decisores sob pressão",
-    bestFor: "Líderes exaustos, reativos ou com padrões destrutivos que afetam decisões",
-    notFor: "Quem busca terapia clínica ou mentoria de negócios"
   },
   {
     id: "people",

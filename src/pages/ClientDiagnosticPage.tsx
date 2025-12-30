@@ -180,28 +180,6 @@ const products: Record<string, ProductRecommendation> = {
     bestFor: "Empresas de R$ 150k a R$ 1M/mês com time comercial querendo acelerar resultados",
     whyRecommended: "Você tem time e está pronto para acelerar. O Sales Acceleration entrega direção + treinamento + cobrança em um só programa."
   },
-  "growth-room": {
-    id: "growth-room",
-    name: "UNV Growth Room",
-    tagline: "Imersão Presencial Estratégica",
-    icon: MapPin,
-    color: "bg-orange-500",
-    price: "R$ 12.000",
-    priceType: "por empresa",
-    description: "Imersão presencial de 3 dias para clareza estratégica e plano de 90 dias.",
-    deliverables: [
-      "3 dias de imersão presencial",
-      "Diagnóstico pré-imersão",
-      "Direção estratégica intensiva",
-      "Estruturação completa de funil",
-      "Scripts e roteiros",
-      "Plano de 90 dias",
-      "Acompanhamento pós-imersão",
-      "Treinamento intensivo"
-    ],
-    bestFor: "CEOs/donos de empresas R$ 150k a R$ 600k/mês que precisam parar e repensar a direção",
-    whyRecommended: "Você precisa de clareza e direção. A Growth Room te tira do operacional para pensar estrategicamente."
-  },
   partners: {
     id: "partners",
     name: "UNV Partners",
@@ -310,26 +288,6 @@ const products: Record<string, ProductRecommendation> = {
     bestFor: "Empresas R$ 100k a R$ 2M+/mês com líderes intermediários que não cobram ou desenvolvem",
     whyRecommended: "Seu gargalo são os líderes. O Leadership forma gestores que sustentam crescimento sem depender de você."
   },
-  mastermind: {
-    id: "mastermind",
-    name: "UNV Mastermind",
-    tagline: "Inner Circle de Líderes",
-    icon: Star,
-    color: "bg-amber-500",
-    price: "R$ 50.000",
-    priceType: "/ano",
-    description: "Grupo ultra seletivo com hot seats mensais e Mansão Empresarial.",
-    deliverables: [
-      "Sessões de hot seat mensais",
-      "Mansão Empresarial mensal",
-      "Board coletivo de decisão",
-      "Direção individual 2x/ano",
-      "Comunidade ultra seletiva",
-      "UNV AI Advisor Mastermind"
-    ],
-    bestFor: "Empresários R$ 1M a R$ 10M/mês que já cresceram e querem decidir melhor com pares à altura",
-    whyRecommended: "Você já passou da fase de execução. Agora precisa de um conselho de decisão com pares do seu nível."
-  },
   "fractional-cro": {
     id: "fractional-cro",
     name: "UNV Fractional CRO",
@@ -432,25 +390,6 @@ const products: Record<string, ProductRecommendation> = {
     bestFor: "Empresários que estão crescendo e precisam proteger patrimônio e operação",
     whyRecommended: "Você está exposto sem saber. O UNV Safe protege sua empresa enquanto você cresce."
   },
-  "le-desir": {
-    id: "le-desir",
-    name: "Le Désir",
-    tagline: "Escuta Estratégica",
-    icon: HeartHandshake,
-    color: "bg-rose-800",
-    price: "R$ 1.200",
-    priceType: "/mês",
-    description: "Espaço de elaboração para processar o peso da liderança e tomar decisões com mais clareza.",
-    deliverables: [
-      "Sessões de escuta estratégica",
-      "Elaboração de decisões difíceis",
-      "Processamento de estresse e solidão",
-      "Clareza para próximos passos",
-      "100% online"
-    ],
-    bestFor: "Empresários sobrecarregados pelo peso das decisões e solidão da liderança",
-    whyRecommended: "Você carrega peso demais sozinho. O Le Désir é seu espaço para processar e ganhar clareza."
-  },
   "sales-force": {
     id: "sales-force",
     name: "UNV Sales Force",
@@ -507,9 +446,9 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
     addProduct("finance");
   }
 
-  // Sobrecarga e solidão → Le Désir
+  // Sobrecarga e solidão → Leadership (substituindo Le Désir que é evento)
   if (pains.includes("sobrecarga-decisao")) {
-    addProduct("le-desir");
+    addProduct("leadership");
   }
 
   // Atendimento lento ou time não dá conta → Sales System
@@ -567,15 +506,12 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
     if (teamSize === "4-10" || teamSize === "11-20") {
       addProduct("sales-acceleration");
     }
-    if (recommendations.length === 0 || (revenue === "acima-1m" && teamSize !== "sozinho")) {
-      addProduct("mastermind");
-    }
   }
 
   // Médio faturamento
   if (revenue === "200k-500k") {
     if (!data.hasSalesProcess || pains.includes("sem-processo")) {
-      addProduct("growth-room");
+      addProduct("control");
     }
     if (teamSize === "4-10" || teamSize === "11-20") {
       addProduct("sales-acceleration");
