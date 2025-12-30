@@ -66,6 +66,25 @@ function CheckeredFlag() {
 
 export function ServiceJourneyPath() {
   const [hoveredCar, setHoveredCar] = useState<number | null>(null);
+  const [isTooltipHovered, setIsTooltipHovered] = useState(false);
+
+  const handleCarMouseLeave = () => {
+    // Small delay to allow mouse to reach tooltip
+    setTimeout(() => {
+      if (!isTooltipHovered) {
+        setHoveredCar(null);
+      }
+    }, 100);
+  };
+
+  const handleTooltipMouseEnter = () => {
+    setIsTooltipHovered(true);
+  };
+
+  const handleTooltipMouseLeave = () => {
+    setIsTooltipHovered(false);
+    setHoveredCar(null);
+  };
 
   // Smooth F1 circuit path
   const trackPath = `
@@ -245,7 +264,7 @@ export function ServiceJourneyPath() {
                     transform={`translate(${pos.x}, ${pos.y})`}
                     style={{ cursor: 'pointer' }}
                     onMouseEnter={() => setHoveredCar(index)}
-                    onMouseLeave={() => setHoveredCar(null)}
+                    onMouseLeave={handleCarMouseLeave}
                   >
                     {/* Hover highlight */}
                     {isHovered && (
@@ -327,12 +346,14 @@ export function ServiceJourneyPath() {
             
             return (
               <div 
-                className="absolute z-[100] pointer-events-none"
+                className="absolute z-[100]"
                 style={{
                   left: `${Math.max(15, Math.min(85, leftPercent))}%`,
                   top: showAbove ? `${topPercent - 2}%` : `${topPercent + 8}%`,
                   transform: showAbove ? 'translate(-50%, -100%)' : 'translate(-50%, 0)'
                 }}
+                onMouseEnter={handleTooltipMouseEnter}
+                onMouseLeave={handleTooltipMouseLeave}
               >
                 <div className="bg-background border border-border rounded-2xl p-4 shadow-2xl w-[260px] animate-fade-in">
                   <div className="flex items-center gap-3 mb-3">
@@ -353,7 +374,7 @@ export function ServiceJourneyPath() {
                   <p className="text-sm text-muted-foreground mb-3">{allServices[hoveredCar].objective}</p>
                   <Link 
                     to={allServices[hoveredCar].link}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 pointer-events-auto"
+                    className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
                     style={{ backgroundColor: allServices[hoveredCar].carColor }}
                   >
                     Conhecer serviço
