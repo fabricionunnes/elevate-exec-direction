@@ -27,7 +27,8 @@ import {
   Users,
   DollarSign,
   Scale,
-  Bot
+  Bot,
+  Handshake
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClientDiagnosticForm } from "@/components/ClientDiagnosticForm";
@@ -98,6 +99,22 @@ const products: Product[] = [
     keyDiff: "Produto principal — direção + treinamento + cobrança integrados por 12 meses",
     bestFor: "Empresas com time comercial que querem acelerar resultados com método",
     notFor: "Quem não tem time ou busca apenas padronização"
+  },
+  {
+    id: "growth-room",
+    name: "UNV Growth Room",
+    tagline: "Imersão Presencial Estratégica",
+    icon: MapPin,
+    color: "bg-orange-500",
+    icp: "Empresas que precisam de clareza estratégica",
+    revenue: "R$ 150k–600k/mês",
+    team: "Decisores apenas",
+    price: "R$ 3.997",
+    priceType: "por pessoa (3 dias)",
+    link: "/growth-room",
+    keyDiff: "Imersão presencial de 3 dias — clareza estratégica e plano de 90 dias",
+    bestFor: "CEOs/donos que precisam parar e repensar a direção comercial",
+    notFor: "Quem busca acompanhamento recorrente ou treinamento de time"
   },
   {
     id: "partners",
@@ -274,6 +291,54 @@ const products: Product[] = [
     keyDiff: "Direção comercial diária — reunião diária com time + cobrança de metas + CRM incluso",
     bestFor: "Donos cansados de cobrar vendas que precisam de direção comercial todos os dias",
     notFor: "Empresa sem vendedores ou dono que não aceita cobrança"
+  },
+  {
+    id: "mastermind",
+    name: "UNV Mastermind",
+    tagline: "Inner Circle de Líderes",
+    icon: Star,
+    color: "bg-amber-500",
+    icp: "Empresários em estágio avançado",
+    revenue: "R$ 1M–10M/mês",
+    team: "Donos reais",
+    price: "R$ 50.000",
+    priceType: "/ano",
+    link: "/mastermind",
+    keyDiff: "Conselho de decisão — grupo ultra seletivo com hot seats e mansão empresarial",
+    bestFor: "Empresários que já cresceram e querem decidir melhor com pares à altura",
+    notFor: "Quem busca execução, networking frouxo ou palco para ego"
+  },
+  {
+    id: "le-desir",
+    name: "Le Désir",
+    tagline: "Análise Estratégica para Líderes",
+    icon: Heart,
+    color: "bg-rose-500",
+    icp: "Líderes com peso psicológico da liderança",
+    revenue: "R$ 200k–3M+/mês",
+    team: "CEO/Fundador",
+    price: "R$ 2.000",
+    priceType: "/mês",
+    link: "/le-desir",
+    keyDiff: "Análise estratégica — suporte emocional e psicológico para decisores sob pressão",
+    bestFor: "Líderes exaustos, reativos ou com padrões destrutivos que afetam decisões",
+    notFor: "Quem busca terapia clínica ou mentoria de negócios"
+  },
+  {
+    id: "execution-partnership",
+    name: "UNV Execution Partnership",
+    tagline: "Parceria de Execução Intensiva",
+    icon: Handshake,
+    color: "bg-purple-600",
+    icp: "Empresas que precisam de execução imediata",
+    revenue: "R$ 500k+/mês",
+    team: "CEO + time comercial",
+    price: "R$ 40.000",
+    priceType: "(3 meses)",
+    link: "/execution-partnership",
+    keyDiff: "Imersão de 3 meses — direção comercial intensiva com execução direta",
+    bestFor: "Empresas que precisam resolver gargalos comerciais rapidamente com acompanhamento intensivo",
+    notFor: "Quem busca consultoria pontual ou não tem urgência"
   }
 ];
 
