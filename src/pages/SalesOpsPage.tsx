@@ -886,6 +886,7 @@ export default function SalesOpsPage() {
       <ROISimulator
         productName="UNV Sales Ops"
         productPrice="R$ 12.000/ano"
+        productPriceValue={12000}
         productSlug="sales-ops"
         benefitDescription="Operação comercial padronizada reduz erros, acelera onboarding de novos vendedores e garante que ninguém execute abaixo do padrão."
         expectedConversionIncrease={5}

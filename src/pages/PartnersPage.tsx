@@ -872,6 +872,7 @@ export default function PartnersPage() {
       <ROISimulator
         productName="UNV Partners"
         productPrice="R$ 30.000/ano"
+        productPriceValue={30000}
         productSlug="partners"
         benefitDescription="Board estratégico externo para decisões de alto impacto. Uma decisão errada pode custar milhões. Um conselheiro experiente reduz risco e acelera crescimento."
         expectedConversionIncrease={8}

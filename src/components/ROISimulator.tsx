@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Calculator, TrendingUp, DollarSign, AlertTriangle, ArrowRight, BarChart3 } from "lucide-react";
+import { Calculator, TrendingUp, DollarSign, AlertTriangle, ArrowRight, BarChart3, Scale, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 interface ROISimulatorProps {
   productName: string;
   productPrice: string;
+  productPriceValue?: number; // numeric value for calculations (annual)
   productSlug: string;
   benefitDescription: string;
   expectedConversionIncrease?: number; // percentage points (e.g., 5 = +5%)
@@ -18,6 +19,7 @@ interface ROISimulatorProps {
 export function ROISimulator({
   productName,
   productPrice,
+  productPriceValue = 10000,
   productSlug,
   benefitDescription,
   expectedConversionIncrease = 5,
@@ -51,8 +53,12 @@ export function ROISimulator({
     const monthlyOpportunityLost = projectedMonthlyRevenue - monthlyRevenue;
     const yearlyOpportunityLost = monthlyOpportunityLost * 12;
     
-    // ROI calculation (simplified)
-    const additionalRevenue = monthlyOpportunityLost;
+    // Investment vs Return calculation
+    const yearlyInvestment = productPriceValue;
+    const yearlyReturn = yearlyOpportunityLost;
+    const roi = yearlyInvestment > 0 ? ((yearlyReturn - yearlyInvestment) / yearlyInvestment) * 100 : 0;
+    const netGain = yearlyReturn - yearlyInvestment;
+    const paybackMonths = monthlyOpportunityLost > 0 ? yearlyInvestment / monthlyOpportunityLost : 0;
     
     return {
       currentTicket,
@@ -64,9 +70,13 @@ export function ROISimulator({
       projectedMonthlyRevenue,
       monthlyOpportunityLost,
       yearlyOpportunityLost,
-      additionalRevenue,
+      yearlyInvestment,
+      yearlyReturn,
+      roi,
+      netGain,
+      paybackMonths,
     };
-  }, [monthlyRevenue, monthlySales, simulatedConversionIncrease, simulatedTicketIncrease]);
+  }, [monthlyRevenue, monthlySales, simulatedConversionIncrease, simulatedTicketIncrease, productPriceValue]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -263,6 +273,71 @@ export function ROISimulator({
                       {formatCurrency(calculations.projectedMonthlyRevenue * 12)}
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Investment vs Return Comparison */}
+              <div className="card-premium p-6 border-2 border-primary/40 bg-gradient-to-br from-primary/5 to-accent/5">
+                <h3 className="font-semibold text-foreground mb-6 flex items-center gap-2">
+                  <Scale className="h-5 w-5 text-primary" />
+                  Investimento vs Retorno (1 Ano)
+                </h3>
+                
+                <div className="space-y-4">
+                  {/* Visual comparison bar */}
+                  <div className="relative">
+                    <div className="flex gap-4 mb-4">
+                      <div className="flex-1 p-4 bg-muted/50 rounded-lg border border-border text-center">
+                        <p className="text-small text-muted-foreground mb-1">Você Investe</p>
+                        <p className="text-xl md:text-2xl font-bold text-foreground">
+                          {formatCurrency(calculations.yearlyInvestment)}
+                        </p>
+                      </div>
+                      <div className="flex items-center">
+                        <ArrowRight className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="flex-1 p-4 bg-primary/10 rounded-lg border border-primary/30 text-center">
+                        <p className="text-small text-muted-foreground mb-1">Você Ganha</p>
+                        <p className="text-xl md:text-2xl font-bold text-primary">
+                          {formatCurrency(calculations.yearlyReturn)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Net Gain */}
+                  <div className="p-5 bg-accent/10 rounded-xl border border-accent/30 text-center">
+                    <p className="text-muted-foreground mb-2 flex items-center justify-center gap-2">
+                      <Zap className="h-4 w-4 text-accent" />
+                      Ganho Líquido Projetado/Ano
+                    </p>
+                    <p className="text-3xl md:text-4xl font-bold text-accent">
+                      {formatCurrency(calculations.netGain)}
+                    </p>
+                    {calculations.roi > 0 && (
+                      <p className="text-sm text-accent/80 mt-2">
+                        ROI de {Math.round(calculations.roi)}%
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Payback */}
+                  {calculations.paybackMonths > 0 && calculations.paybackMonths < 12 && (
+                    <div className="p-4 bg-background rounded-lg border border-border text-center">
+                      <p className="text-muted-foreground text-sm">
+                        ⏱️ Payback projetado em <span className="font-semibold text-foreground">{calculations.paybackMonths.toFixed(1)} meses</span>
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Warning if negative */}
+                  {calculations.netGain < 0 && (
+                    <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/30 text-center">
+                      <p className="text-destructive text-sm">
+                        ⚠️ Com esses parâmetros, o investimento não se paga. Ajuste os valores ou converse conosco.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 

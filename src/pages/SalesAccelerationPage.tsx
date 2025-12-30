@@ -598,6 +598,7 @@ export default function SalesAccelerationPage() {
       <ROISimulator
         productName="UNV Sales Acceleration"
         productPrice="R$ 24.000/ano"
+        productPriceValue={24000}
         productSlug="sales-acceleration"
         benefitDescription="Com direção comercial ativa, seu time vende mais com os mesmos leads. Payback projetado até o 3º mês. Conversão otimizada, ciclo de vendas menor, gestão estruturada."
         expectedConversionIncrease={7}
