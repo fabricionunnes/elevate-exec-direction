@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import coreHero from "@/assets/core-hero.jpg";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import { ROISimulator } from "@/components/ROISimulator";
 import logoCore from "@/assets/logo-core.png";
 
 const unvRole = [
@@ -674,6 +675,16 @@ export default function CorePage() {
           </div>
         </div>
       </section>
+
+      {/* ROI Simulator */}
+      <ROISimulator
+        productName="UNV Core"
+        productPrice="R$ 1.997 (único)"
+        productSlug="core"
+        benefitDescription="Com a base comercial organizada, sua empresa para de perder vendas por desorganização, improviso e falta de padrão. Times alinhados convertem mais com os mesmos leads."
+        expectedConversionIncrease={3}
+        expectedTicketIncrease={10}
+      />
 
       {/* Final Quote */}
       <section className="py-16 bg-card border-t border-border/30">

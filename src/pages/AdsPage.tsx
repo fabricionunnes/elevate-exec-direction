@@ -28,6 +28,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import { ROISimulator } from "@/components/ROISimulator";
 import logoAds from "@/assets/logo-ads.png";
 
 // Papel da UNV
@@ -807,6 +808,16 @@ export default function AdsPage() {
           </Link>
         </div>
       </section>
+
+      {/* ROI Simulator */}
+      <ROISimulator
+        productName="UNV Ads"
+        productPrice="R$ 1.800 a R$ 4.000/mês"
+        productSlug="ads"
+        benefitDescription="Tráfego alinhado ao comercial gera leads mais qualificados. Menos desperdício de mídia, melhor custo por lead qualificado, mais vendas com o mesmo investimento."
+        expectedConversionIncrease={6}
+        expectedTicketIncrease={10}
+      />
 
       {/* Frase Final */}
       <section className="section-padding bg-background">

@@ -29,6 +29,7 @@ import {
 import partnersHero from "@/assets/partners-hero.jpg";
 import mansionImage from "@/assets/mansion-experience.jpg";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import { ROISimulator } from "@/components/ROISimulator";
 import logoPartners from "@/assets/logo-partners.png";
 
 // Papel da UNV
@@ -866,6 +867,16 @@ export default function PartnersPage() {
           </Link>
         </div>
       </section>
+
+      {/* ROI Simulator */}
+      <ROISimulator
+        productName="UNV Partners"
+        productPrice="R$ 30.000/ano"
+        productSlug="partners"
+        benefitDescription="Board estratégico externo para decisões de alto impacto. Uma decisão errada pode custar milhões. Um conselheiro experiente reduz risco e acelera crescimento."
+        expectedConversionIncrease={8}
+        expectedTicketIncrease={25}
+      />
 
       {/* Frase Final */}
       <section className="section-padding bg-background">

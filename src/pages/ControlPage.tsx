@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import controlHero from "@/assets/control-hero.jpg";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import { ROISimulator } from "@/components/ROISimulator";
 import logoControl from "@/assets/logo-control.png";
 
 const unvRole = [
@@ -700,6 +701,16 @@ export default function ControlPage() {
           </div>
         </div>
       </section>
+
+      {/* ROI Simulator */}
+      <ROISimulator
+        productName="UNV Control"
+        productPrice="R$ 5.997/ano"
+        productSlug="control"
+        benefitDescription="A disciplina e constância impedem que sua empresa regrida ao improviso. Processos vivos geram resultados consistentes e previsíveis mês a mês."
+        expectedConversionIncrease={4}
+        expectedTicketIncrease={10}
+      />
 
       {/* Final Quote */}
       <section className="py-16 bg-card border-t border-border/30">

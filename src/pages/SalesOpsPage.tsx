@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import salesOpsHero from "@/assets/sales-ops-hero.jpg";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import { ROISimulator } from "@/components/ROISimulator";
 import logoSalesOps from "@/assets/logo-sales-ops.png";
 
 // Papel da UNV
@@ -880,6 +881,16 @@ export default function SalesOpsPage() {
           </Link>
         </div>
       </section>
+
+      {/* ROI Simulator */}
+      <ROISimulator
+        productName="UNV Sales Ops"
+        productPrice="R$ 12.000/ano"
+        productSlug="sales-ops"
+        benefitDescription="Operação comercial padronizada reduz erros, acelera onboarding de novos vendedores e garante que ninguém execute abaixo do padrão."
+        expectedConversionIncrease={5}
+        expectedTicketIncrease={12}
+      />
 
       {/* Frase Final */}
       <section className="section-padding bg-background">
