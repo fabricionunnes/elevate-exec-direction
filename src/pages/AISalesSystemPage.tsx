@@ -25,6 +25,7 @@ import {
   Crown
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import { ROISimulator } from "@/components/ROISimulator";
 import logoAISalesSystem from "@/assets/logo-ai-sales-system.png";
 
 // Funcionalidades CRM
@@ -667,6 +668,17 @@ export default function AISalesSystemPage() {
           </div>
         </div>
       </section>
+
+      {/* ROI Simulator */}
+      <ROISimulator
+        productName="UNV AI Sales System"
+        productPrice="R$ 297 a R$ 9.997/mês"
+        productPriceValue={60000}
+        productSlug="ai-sales-system"
+        benefitDescription="Agentes de IA trabalhando 24/7 na prospecção e atendimento. Escale sua operação sem aumentar headcount. Mais leads qualificados, mais reuniões agendadas."
+        expectedConversionIncrease={8}
+        expectedTicketIncrease={15}
+      />
     </Layout>
   );
 }

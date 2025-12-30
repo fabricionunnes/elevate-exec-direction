@@ -15,6 +15,7 @@ import {
   XCircle
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import { ROISimulator } from "@/components/ROISimulator";
 import logoLeadership from "@/assets/logo-leadership.png";
 
 const dimensions = [
@@ -536,6 +537,17 @@ export default function LeadershipPage() {
           </div>
         </div>
       </section>
+
+      {/* ROI Simulator */}
+      <ROISimulator
+        productName="UNV Leadership"
+        productPrice="R$ 10.000/ano"
+        productPriceValue={10000}
+        productSlug="leadership"
+        benefitDescription="Líderes bem desenvolvidos multiplicam resultados. Menos turnover, mais produtividade, time mais engajado. O retorno vem em performance e retenção."
+        expectedConversionIncrease={5}
+        expectedTicketIncrease={15}
+      />
     </Layout>
   );
 }

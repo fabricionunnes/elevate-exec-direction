@@ -22,6 +22,7 @@ import {
   UserCheck
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import { ROISimulator } from "@/components/ROISimulator";
 import logoExecutionPartnership from "@/assets/logo-execution-partnership.png";
 
 const monthlyPhases = [
@@ -703,6 +704,17 @@ export default function ExecutionPartnershipPage() {
           </div>
         </div>
       </section>
+
+      {/* ROI Simulator */}
+      <ROISimulator
+        productName="UNV Execution Partnership"
+        productPrice="R$ 40.000 (3 meses)"
+        productPriceValue={40000}
+        productSlug="execution-partnership"
+        benefitDescription="3 meses de imersão intensiva na sua operação. Diagnóstico, implementação e aceleração em tempo recorde. Resultados rápidos com acompanhamento próximo."
+        expectedConversionIncrease={15}
+        expectedTicketIncrease={25}
+      />
     </Layout>
   );
 }

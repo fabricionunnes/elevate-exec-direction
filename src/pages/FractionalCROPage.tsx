@@ -25,6 +25,7 @@ import {
   Phone
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import { ROISimulator } from "@/components/ROISimulator";
 import logoFractionalCRO from "@/assets/logo-fractional-cro.png";
 import salarioDiretorComercial from "@/assets/salario-diretor-comercial.png";
 
@@ -846,6 +847,17 @@ export default function FractionalCROPage() {
           </div>
         </div>
       </section>
+
+      {/* ROI Simulator */}
+      <ROISimulator
+        productName="UNV Fractional CRO"
+        productPrice="R$ 4.000/mês + comissão"
+        productPriceValue={48000}
+        productSlug="fractional-cro"
+        benefitDescription="Tenha um diretor comercial atuando diariamente por uma fração do custo de uma contratação CLT. Direção real, cobrança diária, resultados mensuráveis."
+        expectedConversionIncrease={10}
+        expectedTicketIncrease={20}
+      />
     </Layout>
   );
 }
