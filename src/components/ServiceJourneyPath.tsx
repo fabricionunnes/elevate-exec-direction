@@ -88,25 +88,25 @@ export function ServiceJourneyPath() {
     Q 45 15, 50 12
   `;
 
-  // Car positions along the track path
+  // Car positions along the track path - rotation follows the track direction
   const carPositions = [
-    { x: 52, y: 12, rotation: 0 },
-    { x: 72, y: 12, rotation: 0 },
-    { x: 88, y: 16, rotation: 60 },
-    { x: 92, y: 32, rotation: 90 },
-    { x: 90, y: 48, rotation: 120 },
-    { x: 75, y: 58, rotation: 160 },
-    { x: 55, y: 68, rotation: 200 },
-    { x: 40, y: 78, rotation: 220 },
-    { x: 25, y: 92, rotation: 240 },
-    { x: 12, y: 102, rotation: 280 },
-    { x: 8, y: 90, rotation: -80 },
-    { x: 14, y: 74, rotation: -50 },
-    { x: 24, y: 58, rotation: -30 },
-    { x: 24, y: 45, rotation: -100 },
-    { x: 18, y: 34, rotation: -60 },
-    { x: 26, y: 22, rotation: -20 },
-    { x: 42, y: 16, rotation: 0 },
+    { x: 55, y: 12, rotation: 0 },      // 1 - Reta inicial, indo para direita
+    { x: 75, y: 12, rotation: 0 },      // 2 - Reta inicial
+    { x: 90, y: 18, rotation: 70 },     // 3 - Curva 1, descendo
+    { x: 92, y: 34, rotation: 90 },     // 4 - Descendo reto
+    { x: 88, y: 48, rotation: 140 },    // 5 - Curva 2, virando para esquerda
+    { x: 72, y: 60, rotation: 160 },    // 6 - Indo para esquerda e descendo
+    { x: 52, y: 70, rotation: 200 },    // 7 - Curva S
+    { x: 38, y: 80, rotation: 220 },    // 8 - Descendo diagonal
+    { x: 22, y: 96, rotation: 240 },    // 9 - Curva fechada
+    { x: 10, y: 100, rotation: 270 },   // 10 - Virando para cima
+    { x: 8, y: 88, rotation: -90 },     // 11 - Subindo
+    { x: 12, y: 74, rotation: -60 },    // 12 - Curva S subindo
+    { x: 22, y: 62, rotation: -45 },    // 13 - Diagonal subindo
+    { x: 26, y: 50, rotation: -90 },    // 14 - Subindo
+    { x: 20, y: 38, rotation: -120 },   // 15 - Curva
+    { x: 24, y: 24, rotation: -30 },    // 16 - Saindo da curva
+    { x: 42, y: 16, rotation: 0 },      // 17 - Voltando para reta de largada
   ];
 
   return (
