@@ -9,10 +9,41 @@ import {
   Sparkles, 
   Loader2,
   Bot,
-  User
+  User,
+  ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+
+// Function to parse CTA buttons from text
+const parseCtaButtons = (text: string) => {
+  const ctaRegex = /\[CTA_BUTTON:([^:]+):([^\]]+)\]/g;
+  const parts: Array<{ type: 'text' | 'button'; content: string; label?: string; link?: string }> = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = ctaRegex.exec(text)) !== null) {
+    // Add text before the button
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+    }
+    // Add the button
+    parts.push({ 
+      type: 'button', 
+      content: match[0], 
+      label: match[1], 
+      link: match[2] 
+    });
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push({ type: 'text', content: text.slice(lastIndex) });
+  }
+
+  return parts;
+};
 
 interface PortalUser {
   id: string;
@@ -330,59 +361,77 @@ Como posso ajudar você hoje?
               }`}
             >
               {message.content ? (
-                <div className={`text-sm leading-relaxed prose prose-sm max-w-none ${
+                <div className={`text-sm leading-relaxed ${
                   message.role === "user" 
-                    ? "prose-invert prose-p:text-slate-950 prose-strong:text-slate-950 prose-headings:text-slate-950" 
-                    : "prose-invert prose-p:text-slate-200 prose-strong:text-amber-400 prose-headings:text-amber-400 prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-li:text-slate-200 prose-a:text-amber-400 prose-a:no-underline hover:prose-a:underline prose-hr:border-slate-600"
+                    ? "" 
+                    : ""
                 }`}>
-                  <ReactMarkdown
-                    components={{
-                      // Custom link renderer
-                      a: ({ href, children }) => (
-                        <Link 
-                          to={href || "#"} 
-                          className="text-amber-400 hover:text-amber-300 hover:underline font-medium"
-                        >
-                          {children}
-                        </Link>
-                      ),
-                      // Better styling for code blocks
-                      code: ({ children }) => (
-                        <code className="bg-slate-700 px-1.5 py-0.5 rounded text-amber-300 text-xs">
-                          {children}
-                        </code>
-                      ),
-                      // Better styling for blockquotes
-                      blockquote: ({ children }) => (
-                        <blockquote className="border-l-2 border-amber-500 pl-3 italic text-slate-300">
-                          {children}
-                        </blockquote>
-                      ),
-                      // Styling for horizontal rules
-                      hr: () => (
-                        <hr className="border-slate-600 my-4" />
-                      ),
-                      // Better list styling
-                      ul: ({ children }) => (
-                        <ul className="list-disc list-inside space-y-1 text-slate-200">
-                          {children}
-                        </ul>
-                      ),
-                      ol: ({ children }) => (
-                        <ol className="list-decimal list-inside space-y-1 text-slate-200">
-                          {children}
-                        </ol>
-                      ),
-                      // Paragraph spacing
-                      p: ({ children }) => (
-                        <p className="mb-2 last:mb-0">
-                          {children}
-                        </p>
-                      ),
-                    }}
-                  >
-                    {message.content}
-                  </ReactMarkdown>
+                  {message.role === "assistant" ? (
+                    // Parse content for CTA buttons
+                    parseCtaButtons(message.content).map((part, partIndex) => {
+                      if (part.type === 'button') {
+                        return (
+                          <Link
+                            key={partIndex}
+                            to={part.link || "#"}
+                            className="inline-flex items-center gap-2 mt-3 mb-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-semibold rounded-lg transition-all shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 hover:scale-[1.02]"
+                          >
+                            <span>Conhecer {part.label}</span>
+                            <ExternalLink className="w-4 h-4" />
+                          </Link>
+                        );
+                      }
+                      return (
+                        <div key={partIndex} className={`prose prose-sm max-w-none prose-invert prose-p:text-slate-200 prose-strong:text-amber-400 prose-headings:text-amber-400 prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-li:text-slate-200 prose-a:text-amber-400 prose-a:no-underline hover:prose-a:underline prose-hr:border-slate-600`}>
+                          <ReactMarkdown
+                            components={{
+                              a: ({ href, children }) => (
+                                <Link 
+                                  to={href || "#"} 
+                                  className="text-amber-400 hover:text-amber-300 hover:underline font-medium"
+                                >
+                                  {children}
+                                </Link>
+                              ),
+                              code: ({ children }) => (
+                                <code className="bg-slate-700 px-1.5 py-0.5 rounded text-amber-300 text-xs">
+                                  {children}
+                                </code>
+                              ),
+                              blockquote: ({ children }) => (
+                                <blockquote className="border-l-2 border-amber-500 pl-3 italic text-slate-300">
+                                  {children}
+                                </blockquote>
+                              ),
+                              hr: () => (
+                                <hr className="border-slate-600 my-4" />
+                              ),
+                              ul: ({ children }) => (
+                                <ul className="list-disc list-inside space-y-1 text-slate-200">
+                                  {children}
+                                </ul>
+                              ),
+                              ol: ({ children }) => (
+                                <ol className="list-decimal list-inside space-y-1 text-slate-200">
+                                  {children}
+                                </ol>
+                              ),
+                              p: ({ children }) => (
+                                <p className="mb-2 last:mb-0">
+                                  {children}
+                                </p>
+                              ),
+                            }}
+                          >
+                            {part.content}
+                          </ReactMarkdown>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    // User messages - simple text
+                    <span className="whitespace-pre-wrap">{message.content}</span>
+                  )}
                 </div>
               ) : (
                 isLoading && index === messages.length - 1 && (
