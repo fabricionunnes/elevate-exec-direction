@@ -130,7 +130,7 @@ export function ServiceJourneyPath() {
         </div>
 
         {/* Racing Track - Desktop */}
-        <div className="hidden lg:block relative mx-auto" style={{ maxWidth: '900px', height: '700px' }}>
+        <div className="hidden lg:block relative mx-auto w-full" style={{ height: '900px' }}>
           <svg 
             className="w-full h-full" 
             viewBox="0 0 100 115"
