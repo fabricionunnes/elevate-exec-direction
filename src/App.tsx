@@ -53,6 +53,10 @@ import PortalExecutionPage from "./pages/portal/PortalExecutionPage";
 import PortalAdminPage from "./pages/portal/PortalAdminPage";
 import PortalPlanVersionPage from "./pages/portal/PortalPlanVersionPage";
 
+// Onboarding pages
+import OnboardingPage from "./pages/OnboardingPage";
+import OnboardingProductPage from "./pages/OnboardingProductPage";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -96,6 +100,10 @@ const App = () => (
           <Route path="/diagnostic-responses" element={<DiagnosticResponsesPage />} />
           <Route path="/admin-setup" element={<AdminSetupPage />} />
           <Route path="/admin" element={<AdminPage />} />
+          
+          {/* Onboarding CS */}
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/onboarding/:productId" element={<OnboardingProductPage />} />
           
           {/* Portal do Planejamento 2026 */}
           <Route path="/portal" element={<PortalLandingPage />} />
