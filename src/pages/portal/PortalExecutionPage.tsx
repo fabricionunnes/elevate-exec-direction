@@ -19,7 +19,12 @@ import {
   Save,
   Loader2,
   Calendar,
-  MessageSquare
+  MessageSquare,
+  Edit2,
+  Trash2,
+  Sparkles,
+  ArrowRight,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -42,6 +47,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PortalUser {
   id: string;
@@ -77,6 +92,95 @@ interface Checkin {
   created_at: string;
 }
 
+interface UNVRecommendation {
+  service: string;
+  reason: string;
+  ctaUrl: string;
+  priority: "high" | "medium" | "low";
+}
+
+// UNV Services recommendation logic
+const UNV_SERVICES = {
+  core: {
+    name: "UNV Core",
+    description: "Estruturação comercial para empresas iniciando",
+    url: "/core",
+    tags: ["estruturação", "processo", "início"]
+  },
+  control: {
+    name: "UNV Control",
+    description: "Gestão comercial avançada e disciplina operacional",
+    url: "/control",
+    tags: ["gestão", "disciplina", "controle"]
+  },
+  salesOps: {
+    name: "UNV Sales Ops",
+    description: "Treinamento contínuo para times de vendas",
+    url: "/sales-ops",
+    tags: ["treinamento", "time", "vendas"]
+  },
+  salesAcceleration: {
+    name: "UNV Sales Acceleration",
+    description: "Aceleração de resultados comerciais",
+    url: "/sales-acceleration",
+    tags: ["aceleração", "resultados", "escala"]
+  },
+  ads: {
+    name: "UNV Ads",
+    description: "Gestão de tráfego pago para geração de leads",
+    url: "/ads",
+    tags: ["tráfego", "leads", "marketing"]
+  },
+  social: {
+    name: "UNV Social",
+    description: "Gestão estratégica de redes sociais",
+    url: "/social",
+    tags: ["redes sociais", "conteúdo", "marca"]
+  },
+  finance: {
+    name: "UNV Finance",
+    description: "Controladoria e clareza financeira",
+    url: "/finance",
+    tags: ["financeiro", "margem", "fluxo"]
+  },
+  people: {
+    name: "UNV People",
+    description: "Gestão estratégica de pessoas e recrutamento",
+    url: "/people",
+    tags: ["pessoas", "contratação", "turnover"]
+  },
+  growthRoom: {
+    name: "UNV Growth Room",
+    description: "Imersão presencial de 3 dias",
+    url: "/growth-room",
+    tags: ["imersão", "estratégia", "networking"]
+  },
+  mastermind: {
+    name: "UNV Mastermind",
+    description: "Grupo exclusivo de empresários",
+    url: "/mastermind",
+    tags: ["networking", "mentoria", "empresários"]
+  },
+  fractionalCro: {
+    name: "Fractional CRO",
+    description: "Diretor comercial fracionado",
+    url: "/fractional-cro",
+    tags: ["diretor", "liderança", "comercial"]
+  },
+  salesForce: {
+    name: "UNV Sales Force",
+    description: "Força de vendas terceirizada (SDR/Closer)",
+    url: "/sales-force",
+    tags: ["sdr", "closer", "terceirização"]
+  },
+  executionPartnership: {
+    name: "Execution Partnership",
+    description: "Intervenção executiva direta com Fabrício Nunnes",
+    url: "/execution-partnership",
+    tags: ["executivo", "intervenção", "reestruturação"]
+  }
+};
+
 const PortalExecutionPage = () => {
   const { user } = useOutletContext<{ user: PortalUser }>();
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -88,6 +192,7 @@ const PortalExecutionPage = () => {
   // Check-in dialog
   const [checkinDialogOpen, setCheckinDialogOpen] = useState(false);
   const [selectedKR, setSelectedKR] = useState<KeyResult | null>(null);
+  const [editingCheckin, setEditingCheckin] = useState<Checkin | null>(null);
   const [checkinForm, setCheckinForm] = useState({
     current_value: "",
     comment: "",
@@ -97,9 +202,141 @@ const PortalExecutionPage = () => {
   });
   const [savingCheckin, setSavingCheckin] = useState(false);
 
+  // Delete dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [checkinToDelete, setCheckinToDelete] = useState<Checkin | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Recommendations
+  const [recommendations, setRecommendations] = useState<UNVRecommendation[]>([]);
+  const [dismissedRecs, setDismissedRecs] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     loadData();
   }, [user?.company_id]);
+
+  useEffect(() => {
+    // Generate recommendations when data changes
+    if (keyResults.length > 0 && checkins.length >= 0) {
+      generateRecommendations();
+    }
+  }, [keyResults, checkins]);
+
+  const generateRecommendations = () => {
+    const recs: UNVRecommendation[] = [];
+    
+    // Check for off-track KRs
+    const offTrackKRs = keyResults.filter(kr => kr.status === "off_track");
+    const attentionKRs = keyResults.filter(kr => kr.status === "attention");
+    
+    // Check for impediments in recent check-ins
+    const recentCheckins = checkins.slice(0, 10);
+    const hasImpediments = recentCheckins.some(c => c.impediments && c.impediments.length > 10);
+    const impedimentsText = recentCheckins.map(c => c.impediments?.toLowerCase() || "").join(" ");
+    
+    // Calculate overall progress
+    const avgProgress = keyResults.reduce((acc, kr) => {
+      const progress = kr.target > 0 ? (kr.current_value / kr.target) * 100 : 0;
+      return acc + progress;
+    }, 0) / (keyResults.length || 1);
+
+    // Rule: Many off-track KRs → Execution Partnership
+    if (offTrackKRs.length >= 2 || (offTrackKRs.length >= 1 && avgProgress < 30)) {
+      recs.push({
+        service: UNV_SERVICES.executionPartnership.name,
+        reason: `Você tem ${offTrackKRs.length} Key Result(s) off track. Uma intervenção executiva direta pode ajudar a reestruturar a operação e recuperar o ritmo.`,
+        ctaUrl: UNV_SERVICES.executionPartnership.url,
+        priority: "high"
+      });
+    }
+
+    // Rule: Low progress + has team issues → Fractional CRO
+    if (avgProgress < 40 && (impedimentsText.includes("time") || impedimentsText.includes("equipe") || impedimentsText.includes("liderança"))) {
+      recs.push({
+        service: UNV_SERVICES.fractionalCro.name,
+        reason: "Identificamos desafios de liderança comercial. Um Diretor Comercial fracionado pode trazer a direção que seu time precisa.",
+        ctaUrl: UNV_SERVICES.fractionalCro.url,
+        priority: "high"
+      });
+    }
+
+    // Rule: Lead/traffic impediments → UNV Ads
+    if (impedimentsText.includes("lead") || impedimentsText.includes("tráfego") || impedimentsText.includes("demanda") || impedimentsText.includes("oportunidade")) {
+      recs.push({
+        service: UNV_SERVICES.ads.name,
+        reason: "Parece que geração de leads é um gargalo. Nossa gestão de tráfego pago pode ajudar a aumentar a demanda qualificada.",
+        ctaUrl: UNV_SERVICES.ads.url,
+        priority: "medium"
+      });
+    }
+
+    // Rule: Process/discipline issues → UNV Control
+    if (impedimentsText.includes("processo") || impedimentsText.includes("disciplina") || impedimentsText.includes("rotina") || impedimentsText.includes("organização")) {
+      recs.push({
+        service: UNV_SERVICES.control.name,
+        reason: "Falta de processo ou disciplina foi mencionado. O UNV Control traz a estrutura de gestão comercial que você precisa.",
+        ctaUrl: UNV_SERVICES.control.url,
+        priority: "medium"
+      });
+    }
+
+    // Rule: Team training issues → Sales Ops
+    if (impedimentsText.includes("treinamento") || impedimentsText.includes("capacitação") || impedimentsText.includes("vendedor") || impedimentsText.includes("closer")) {
+      recs.push({
+        service: UNV_SERVICES.salesOps.name,
+        reason: "Seu time precisa de capacitação contínua. O Sales Ops oferece treinamentos quinzenais segmentados por nível.",
+        ctaUrl: UNV_SERVICES.salesOps.url,
+        priority: "medium"
+      });
+    }
+
+    // Rule: Hiring/turnover issues → UNV People
+    if (impedimentsText.includes("contratação") || impedimentsText.includes("turnover") || impedimentsText.includes("demissão") || impedimentsText.includes("rh")) {
+      recs.push({
+        service: UNV_SERVICES.people.name,
+        reason: "Desafios com pessoas podem estar travando seus resultados. O UNV People ajuda com recrutamento e gestão de talentos.",
+        ctaUrl: UNV_SERVICES.people.url,
+        priority: "medium"
+      });
+    }
+
+    // Rule: Financial issues → UNV Finance
+    if (impedimentsText.includes("caixa") || impedimentsText.includes("financeiro") || impedimentsText.includes("margem") || impedimentsText.includes("investimento")) {
+      recs.push({
+        service: UNV_SERVICES.finance.name,
+        reason: "Questões financeiras aparecem nos impedimentos. O UNV Finance traz clareza sobre onde seu dinheiro está sendo bem investido.",
+        ctaUrl: UNV_SERVICES.finance.url,
+        priority: "medium"
+      });
+    }
+
+    // Rule: Attention KRs + no critical issues → Growth Room
+    if (attentionKRs.length >= 1 && offTrackKRs.length === 0 && recs.length < 2) {
+      recs.push({
+        service: UNV_SERVICES.growthRoom.name,
+        reason: "Seus KRs estão em atenção. Uma imersão de 3 dias pode dar a virada estratégica que você precisa.",
+        ctaUrl: UNV_SERVICES.growthRoom.url,
+        priority: "low"
+      });
+    }
+
+    // Rule: Good progress but wants more → Mastermind
+    if (avgProgress >= 60 && keyResults.length >= 3) {
+      recs.push({
+        service: UNV_SERVICES.mastermind.name,
+        reason: "Você está performando bem! O Mastermind conecta você com outros empresários de alto nível para trocar experiências.",
+        ctaUrl: UNV_SERVICES.mastermind.url,
+        priority: "low"
+      });
+    }
+
+    // Limit to 3 recommendations max
+    setRecommendations(recs.slice(0, 3));
+  };
+
+  const dismissRecommendation = (service: string) => {
+    setDismissedRecs(prev => new Set([...prev, service]));
+  };
 
   const loadData = async () => {
     if (!user?.company_id) return;
@@ -200,15 +437,27 @@ const PortalExecutionPage = () => {
     return startOfWeek.toISOString().split("T")[0];
   };
 
-  const openCheckinDialog = (kr: KeyResult) => {
+  const openCheckinDialog = (kr: KeyResult, existingCheckin?: Checkin) => {
     setSelectedKR(kr);
-    setCheckinForm({
-      current_value: kr.current_value.toString(),
-      comment: "",
-      impediments: "",
-      next_action: "",
-      status: kr.status,
-    });
+    if (existingCheckin) {
+      setEditingCheckin(existingCheckin);
+      setCheckinForm({
+        current_value: existingCheckin.current_value?.toString() || "",
+        comment: existingCheckin.comment || "",
+        impediments: existingCheckin.impediments || "",
+        next_action: existingCheckin.next_action || "",
+        status: existingCheckin.status,
+      });
+    } else {
+      setEditingCheckin(null);
+      setCheckinForm({
+        current_value: kr.current_value.toString(),
+        comment: "",
+        impediments: "",
+        next_action: "",
+        status: kr.status,
+      });
+    }
     setCheckinDialogOpen(true);
   };
 
@@ -217,27 +466,45 @@ const PortalExecutionPage = () => {
     setSavingCheckin(true);
 
     try {
-      const weekRef = getCurrentWeek();
       const newValue = parseFloat(checkinForm.current_value) || 0;
 
-      // Create check-in
-      const { error: checkinError } = await supabase
-        .from("portal_checkins")
-        .insert([{
-          key_result_id: selectedKR.id,
-          week_ref: weekRef,
-          current_value: newValue,
-          previous_value: selectedKR.current_value,
-          comment: checkinForm.comment,
-          impediments: checkinForm.impediments,
-          next_action: checkinForm.next_action,
-          status: checkinForm.status as "on_track" | "attention" | "off_track" | "completed",
-          created_by: user.id,
-        }]);
+      if (editingCheckin) {
+        // Update existing check-in
+        const { error: checkinError } = await supabase
+          .from("portal_checkins")
+          .update({
+            current_value: newValue,
+            comment: checkinForm.comment,
+            impediments: checkinForm.impediments,
+            next_action: checkinForm.next_action,
+            status: checkinForm.status as "on_track" | "attention" | "off_track" | "completed",
+          })
+          .eq("id", editingCheckin.id);
 
-      if (checkinError) throw checkinError;
+        if (checkinError) throw checkinError;
+        toast.success("Check-in atualizado com sucesso!");
+      } else {
+        // Create new check-in
+        const weekRef = getCurrentWeek();
+        const { error: checkinError } = await supabase
+          .from("portal_checkins")
+          .insert([{
+            key_result_id: selectedKR.id,
+            week_ref: weekRef,
+            current_value: newValue,
+            previous_value: selectedKR.current_value,
+            comment: checkinForm.comment,
+            impediments: checkinForm.impediments,
+            next_action: checkinForm.next_action,
+            status: checkinForm.status as "on_track" | "attention" | "off_track" | "completed",
+            created_by: user.id,
+          }]);
 
-      // Update KR current value and status
+        if (checkinError) throw checkinError;
+        toast.success("Check-in registrado com sucesso!");
+      }
+
+      // Update KR current value and status (use most recent value)
       const { error: krError } = await supabase
         .from("portal_key_results")
         .update({
@@ -248,8 +515,8 @@ const PortalExecutionPage = () => {
 
       if (krError) throw krError;
 
-      toast.success("Check-in registrado com sucesso!");
       setCheckinDialogOpen(false);
+      setEditingCheckin(null);
       loadData();
 
     } catch (error) {
@@ -257,6 +524,36 @@ const PortalExecutionPage = () => {
       toast.error("Erro ao salvar check-in");
     } finally {
       setSavingCheckin(false);
+    }
+  };
+
+  const openDeleteDialog = (checkin: Checkin) => {
+    setCheckinToDelete(checkin);
+    setDeleteDialogOpen(true);
+  };
+
+  const deleteCheckin = async () => {
+    if (!checkinToDelete) return;
+    setDeleting(true);
+
+    try {
+      const { error } = await supabase
+        .from("portal_checkins")
+        .delete()
+        .eq("id", checkinToDelete.id);
+
+      if (error) throw error;
+
+      toast.success("Check-in excluído com sucesso!");
+      setDeleteDialogOpen(false);
+      setCheckinToDelete(null);
+      loadData();
+
+    } catch (error) {
+      console.error("Error deleting check-in:", error);
+      toast.error("Erro ao excluir check-in");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -292,6 +589,8 @@ const PortalExecutionPage = () => {
     acc[kr.objective_id].krs.push(kr);
     return acc;
   }, {} as Record<string, { title: string; krs: KeyResult[] }>);
+
+  const visibleRecommendations = recommendations.filter(r => !dismissedRecs.has(r.service));
 
   if (loading) {
     return (
@@ -344,6 +643,73 @@ const PortalExecutionPage = () => {
           Semana de {formatDate(getCurrentWeek())}
         </div>
       </div>
+
+      {/* UNV Recommendations */}
+      {visibleRecommendations.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="w-5 h-5 text-amber-400" />
+            <h2 className="text-lg font-semibold text-white">Recomendações UNV para você</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {visibleRecommendations.map((rec) => (
+              <Card 
+                key={rec.service} 
+                className={`relative border ${
+                  rec.priority === "high" 
+                    ? "bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/30" 
+                    : rec.priority === "medium"
+                    ? "bg-slate-900/50 border-slate-700"
+                    : "bg-slate-900/30 border-slate-800"
+                }`}
+              >
+                <button 
+                  onClick={() => dismissRecommendation(rec.service)}
+                  className="absolute top-2 right-2 p-1 rounded-full hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <CardContent className="p-4 pt-6">
+                  <div className="flex items-start gap-3 mb-3">
+                    {rec.priority === "high" && (
+                      <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center shrink-0">
+                        <AlertTriangle className="w-4 h-4 text-amber-400" />
+                      </div>
+                    )}
+                    {rec.priority === "medium" && (
+                      <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center shrink-0">
+                        <Target className="w-4 h-4 text-blue-400" />
+                      </div>
+                    )}
+                    {rec.priority === "low" && (
+                      <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center shrink-0">
+                        <TrendingUp className="w-4 h-4 text-green-400" />
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="font-semibold text-white">{rec.service}</h3>
+                      <p className="text-sm text-slate-400 mt-1">{rec.reason}</p>
+                    </div>
+                  </div>
+                  <Link to={rec.ctaUrl}>
+                    <Button 
+                      size="sm" 
+                      className={`w-full ${
+                        rec.priority === "high"
+                          ? "bg-amber-500 hover:bg-amber-600 text-slate-950"
+                          : "bg-slate-700 hover:bg-slate-600 text-white"
+                      }`}
+                    >
+                      Conhecer
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -469,15 +835,35 @@ const PortalExecutionPage = () => {
 
                       <CollapsibleContent className="mt-4 space-y-3">
                         {krCheckins.map((checkin) => (
-                          <div key={checkin.id} className="bg-slate-900/50 rounded-lg p-3 border border-slate-700">
+                          <div key={checkin.id} className="bg-slate-900/50 rounded-lg p-3 border border-slate-700 group">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
                                 <Calendar className="w-4 h-4 text-slate-500" />
                                 <span className="text-sm text-slate-400">{formatDate(checkin.week_ref)}</span>
                               </div>
-                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(checkin.status)}`}>
-                                {getStatusLabel(checkin.status)}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(checkin.status)}`}>
+                                  {getStatusLabel(checkin.status)}
+                                </span>
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-slate-400 hover:text-white"
+                                    onClick={() => openCheckinDialog(kr, checkin)}
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-slate-400 hover:text-red-400"
+                                    onClick={() => openDeleteDialog(checkin)}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
                             <div className="flex items-center gap-4 text-sm mb-2">
                               <span className="text-white">
@@ -531,7 +917,9 @@ const PortalExecutionPage = () => {
       <Dialog open={checkinDialogOpen} onOpenChange={setCheckinDialogOpen}>
         <DialogContent className="bg-slate-900 border-slate-800 max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">Novo Check-in</DialogTitle>
+            <DialogTitle className="text-white">
+              {editingCheckin ? "Editar Check-in" : "Novo Check-in"}
+            </DialogTitle>
             <DialogDescription className="text-slate-400">
               {selectedKR?.title}
             </DialogDescription>
@@ -607,7 +995,10 @@ const PortalExecutionPage = () => {
           <DialogFooter>
             <Button
               variant="ghost"
-              onClick={() => setCheckinDialogOpen(false)}
+              onClick={() => {
+                setCheckinDialogOpen(false);
+                setEditingCheckin(null);
+              }}
               className="text-slate-400"
             >
               Cancelar
@@ -622,13 +1013,37 @@ const PortalExecutionPage = () => {
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Salvar Check-in
+                  {editingCheckin ? "Atualizar" : "Salvar"} Check-in
                 </>
               )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Excluir Check-in?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Esta ação não pode ser desfeita. O check-in será permanentemente removido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteCheckin}
+              disabled={deleting}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
