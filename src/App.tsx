@@ -50,6 +50,8 @@ import PortalDashboardPage from "./pages/portal/PortalDashboardPage";
 import PortalConfigPage from "./pages/portal/PortalConfigPage";
 import PortalCoachPage from "./pages/portal/PortalCoachPage";
 import PortalExecutionPage from "./pages/portal/PortalExecutionPage";
+import PortalAdminPage from "./pages/portal/PortalAdminPage";
+import PortalPlanVersionPage from "./pages/portal/PortalPlanVersionPage";
 
 const queryClient = new QueryClient();
 
@@ -107,6 +109,8 @@ const App = () => (
             <Route path="execucao" element={<PortalExecutionPage />} />
             <Route path="config" element={<PortalConfigPage />} />
             <Route path="coach" element={<PortalCoachPage />} />
+            <Route path="admin" element={<PortalAdminPage />} />
+            <Route path="plano/:planId" element={<PortalPlanVersionPage />} />
           </Route>
           
           <Route path="*" element={<NotFound />} />
