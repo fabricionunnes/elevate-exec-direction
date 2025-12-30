@@ -14,11 +14,10 @@ import {
   Zap,
   TrendingUp,
   Shield,
-  Star,
-  ChevronDown
+  Star
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { ProductOnboarding, OnboardingSlideItem } from "@/data/onboardingContent";
+import { ProductOnboarding } from "@/data/onboardingContent";
 import { cn } from "@/lib/utils";
 
 // Import slide images
@@ -67,79 +66,6 @@ const slideTypeConfig = {
     accentIcon: Shield,
     image: slideNextsteps,
   },
-};
-
-// Expandable Item Component
-interface ExpandableItemProps {
-  item: OnboardingSlideItem;
-  index: number;
-  isVisible: boolean;
-  gradient: string;
-}
-
-const ExpandableItem = ({ item, index, isVisible, gradient }: ExpandableItemProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const hasDetails = !!item.details;
-
-  return (
-    <div
-      className={cn(
-        "rounded-lg overflow-hidden transition-all duration-500 ease-out",
-        "border border-border/50",
-        hasDetails && "cursor-pointer",
-        isExpanded ? "border-primary/40 shadow-md shadow-primary/10" : "hover:border-primary/30",
-        isVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-8"
-      )}
-      style={{ transitionDelay: `${index * 50}ms` }}
-      onClick={() => hasDetails && setIsExpanded(!isExpanded)}
-    >
-      <div className={cn(
-        "flex items-start gap-3 p-3",
-        "bg-gradient-to-r from-muted/50 to-muted/30",
-        hasDetails && "hover:from-muted/70 hover:to-muted/50 transition-colors"
-      )}>
-        {/* Number indicator */}
-        <div className={cn(
-          "shrink-0 w-6 h-6 rounded-md flex items-center justify-center",
-          "bg-gradient-to-br text-white font-bold text-xs shadow-sm",
-          "transition-transform duration-300",
-          isExpanded && "scale-110",
-          gradient
-        )}>
-          {index + 1}
-        </div>
-        
-        {/* Content */}
-        <p className="flex-1 text-foreground leading-snug text-sm">
-          {item.text}
-        </p>
-
-        {/* Expand indicator */}
-        {hasDetails && (
-          <ChevronDown 
-            className={cn(
-              "h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-300",
-              isExpanded && "rotate-180 text-primary"
-            )} 
-          />
-        )}
-      </div>
-
-      {/* Details Panel */}
-      {hasDetails && (
-        <div className={cn(
-          "overflow-hidden transition-all duration-300 ease-out",
-          isExpanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
-        )}>
-          <div className="px-3 pb-3 pt-1 pl-12">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {item.details}
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 };
 
 export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps) => {
@@ -346,13 +272,33 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
                 <div className="p-4 lg:p-6">
                   <div className="grid gap-2">
                     {currentSlideData.content.map((item, index) => (
-                      <ExpandableItem
+                      <div
                         key={index}
-                        item={item}
-                        index={index}
-                        isVisible={visibleItems.includes(index)}
-                        gradient={config.gradient}
-                      />
+                        className={cn(
+                          "flex items-start gap-3 p-3 rounded-lg",
+                          "bg-gradient-to-r from-muted/50 to-muted/30",
+                          "border border-border/50",
+                          "transition-all duration-500 ease-out",
+                          visibleItems.includes(index)
+                            ? "opacity-100 translate-x-0"
+                            : "opacity-0 translate-x-8"
+                        )}
+                        style={{ transitionDelay: `${index * 50}ms` }}
+                      >
+                        {/* Number indicator */}
+                        <div className={cn(
+                          "shrink-0 w-6 h-6 rounded-md flex items-center justify-center",
+                          "bg-gradient-to-br text-white font-bold text-xs shadow-sm",
+                          config.gradient
+                        )}>
+                          {index + 1}
+                        </div>
+                        
+                        {/* Content */}
+                        <p className="flex-1 text-foreground leading-snug text-sm">
+                          {item.text}
+                        </p>
+                      </div>
                     ))}
                   </div>
                 </div>
