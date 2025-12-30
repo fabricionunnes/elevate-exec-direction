@@ -137,8 +137,8 @@ function getRecommendation(data: FormData): Recommendation {
   
   if (revenue === "acima-1m") {
     return {
-      product: "UNV Mastermind",
-      reason: "Empresários no seu patamar precisam de um conselho de decisão com pares à altura. O Mastermind é o próximo passo."
+      product: "UNV Partners",
+      reason: "Empresários no seu patamar precisam de um parceiro estratégico de decisão. O Partners oferece board mensal e direção semanal."
     };
   }
   

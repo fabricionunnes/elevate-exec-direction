@@ -312,20 +312,20 @@ function getRecommendation(data: FormData): Recommendation {
     });
   }
   
-  // Growth Room - Para quem precisa de clareza estratégica
+  // Para quem precisa de clareza estratégica - Control em vez de Growth Room (evento)
   if ((mainPains.includes("no-direction") || mainPains.includes("owner-dependent")) &&
-      ["100k-200k", "200k-400k", "400k-600k", "600k-1m"].includes(revenue)) {
+      ["100k-200k", "200k-400k", "400k-600k", "600k-1m"].includes(revenue) && products.length === 0) {
     products.push({
-      id: "growth-room",
-      name: "UNV Growth Room",
-      icon: productIcons["UNV Growth Room"],
-      priority: products.length === 0 ? "primary" : "complementary",
+      id: "control",
+      name: "UNV Control",
+      icon: productIcons["UNV Control"],
+      priority: "primary",
       reasons: [
-        "Você precisa de clareza antes de agir",
-        "Imersão de 3 dias para redesenhar a rota",
-        "Sairá com plano de 90 dias definido"
+        "Você precisa de direção comercial recorrente",
+        "Acompanhamento mensal para manter disciplina",
+        "Cobrança de execução consistente"
       ],
-      href: "/growth-room"
+      href: "/control"
     });
   }
   
@@ -398,21 +398,6 @@ function getRecommendation(data: FormData): Recommendation {
     });
   }
   
-  // Mastermind - Para empresários avançados que buscam pares à altura
-  if (["600k-1m", "1m-2m", "over-2m"].includes(revenue)) {
-    products.push({
-      id: "mastermind",
-      name: "UNV Mastermind",
-      icon: productIcons["UNV Mastermind"],
-      priority: ["1m-2m", "over-2m"].includes(revenue) ? "primary" : "secondary",
-      reasons: [
-        "Você está no nível de empresário avançado",
-        "Decisões melhores com conselho de pares",
-        "Ambiente de elite para crescer certo"
-      ],
-      href: "/mastermind"
-    });
-  }
   
   // Se não tiver nenhum produto, recomendar Sales Acceleration como padrão
   if (products.length === 0) {
@@ -458,12 +443,6 @@ function getRecommendation(data: FormData): Recommendation {
       { phase: "Em paralelo", product: "UNV Ads", duration: "Mensal", objective: "Gerar demanda", href: "/ads" },
       { phase: "Quando escalar", product: "UNV Sales Ops", duration: "Por usuário", objective: "Padronizar time", href: "/sales-ops" }
     );
-  } else if (primaryProduct.id === "growth-room") {
-    trail.push(
-      { phase: "Agora", product: "UNV Growth Room", duration: "3 dias", objective: "Clareza estratégica", href: "/growth-room" },
-      { phase: "Pós-imersão", product: "UNV Sales Acceleration", duration: "12 meses", objective: "Executar plano", href: "/sales-acceleration" },
-      { phase: "Em paralelo", product: "UNV Social", duration: "Mensal", objective: "Construir autoridade", href: "/social" }
-    );
   } else if (primaryProduct.id === "partners") {
     trail.push(
       { phase: "Agora", product: "UNV Partners", duration: "12 meses", objective: "Mentoria estratégica", href: "/partners" },
@@ -481,12 +460,6 @@ function getRecommendation(data: FormData): Recommendation {
       { phase: "Agora", product: "UNV Ads", duration: "Mensal", objective: "Gerar leads qualificados", href: "/ads" },
       { phase: "Em paralelo", product: "UNV Social", duration: "Mensal", objective: "Construir autoridade", href: "/social" },
       { phase: "Quando estruturar", product: "UNV Sales Acceleration", duration: "12 meses", objective: "Converter melhor", href: "/sales-acceleration" }
-    );
-  } else if (primaryProduct.id === "mastermind") {
-    trail.push(
-      { phase: "Agora", product: "UNV Mastermind", duration: "12 meses", objective: "Conselho de empresários", href: "/mastermind" },
-      { phase: "Em paralelo", product: "UNV Sales Ops", duration: "Por usuário", objective: "Padronizar operação", href: "/sales-ops" },
-      { phase: "Em paralelo", product: "UNV Ads", duration: "Mensal", objective: "Escalar demanda", href: "/ads" }
     );
   } else {
     trail.push(
