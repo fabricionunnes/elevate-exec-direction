@@ -30,6 +30,7 @@ import {
   Percent
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import { ROISimulator } from "@/components/ROISimulator";
 import logoSalesForce from "@/assets/logo-sales-force.png";
 
 // Papel da UNV no Sales Force
@@ -729,6 +730,17 @@ export default function SalesForcePage() {
           </div>
         </div>
       </section>
+
+      {/* ROI Simulator */}
+      <ROISimulator
+        productName="UNV Sales Force"
+        productPrice="R$ 6.000/mês + comissão"
+        productPriceValue={72000}
+        productSlug="sales-force"
+        benefitDescription="Operação de SDR e Closer terceirizada. Sem custos de contratação, sem risco trabalhista. Pague por resultado. Seu time de vendas funcionando com profissionais experientes."
+        expectedConversionIncrease={15}
+        expectedTicketIncrease={10}
+      />
     </Layout>
   );
 }

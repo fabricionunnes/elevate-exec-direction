@@ -27,6 +27,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
+import { ROISimulator } from "@/components/ROISimulator";
 import logoMastermind from "@/assets/logo-mastermind.png";
 
 const pillars = [
@@ -953,6 +954,17 @@ export default function MastermindPage() {
           </div>
         </div>
       </section>
+
+      {/* ROI Simulator */}
+      <ROISimulator
+        productName="UNV Mastermind"
+        productPrice="R$ 50.000/ano"
+        productPriceValue={50000}
+        productSlug="mastermind"
+        benefitDescription="Decisões estratégicas tomadas com pares de alto nível. Uma única decisão certa pode valer milhões. Evite erros caros com conselhos de quem já passou pelo mesmo."
+        expectedConversionIncrease={12}
+        expectedTicketIncrease={30}
+      />
     </Layout>
   );
 }
