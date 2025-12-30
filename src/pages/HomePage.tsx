@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle, MessageCircle, Sparkles, Quote, Star, Users, Target, Trophy, TrendingUp, Building2, Award, LayoutDashboard } from "lucide-react";
+import { ArrowRight, CheckCircle, MessageCircle, Sparkles, Quote, Star, Users, Target, Trophy, TrendingUp, Building2, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/layout/Layout";
 import {
@@ -188,22 +188,6 @@ const stats = [
 export default function HomePage() {
   return (
     <Layout>
-      {/* Portal Banner */}
-      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border-b border-primary/20">
-        <div className="container-premium py-2 sm:py-3">
-          <Link 
-            to="/portal" 
-            className="flex items-center justify-center gap-2 text-xs sm:text-sm text-primary hover:text-primary/80 transition-colors group"
-          >
-            <LayoutDashboard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span>
-              <span className="font-semibold">Novo:</span> Portal do Planejamento 2026 – Mansão Empreendedora
-            </span>
-            <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform" />
-          </Link>
-        </div>
-      </div>
-
       {/* Hero Section */}
       <section className="relative min-h-[100svh] flex items-center overflow-hidden bg-gradient-to-br from-background via-background to-primary/5">
         {/* Glow effect - hidden on mobile for performance */}
