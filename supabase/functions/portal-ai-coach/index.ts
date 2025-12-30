@@ -10,8 +10,8 @@ const SYSTEM_PROMPT = `Você é a "IA UNV – Diretora Estratégica". Sua funç�
 Regras:
 - Seja objetiva, prática e orientada a ação.
 - Faça perguntas abertas e uma por vez.
-- Use apenas dados fornecidos pelo cliente no sistema; se faltar informação, peça.
-- Nunca invente números.
+- Use os dados do planejamento fornecidos no contexto para dar respostas personalizadas.
+- Nunca invente números - use apenas os dados reais do sistema.
 - Quando identificar risco (KR off track, sem check-in, execução baixa), entregue:
   1) Diagnóstico em 1–2 frases
   2) Próxima ação recomendada (1 ação)
@@ -44,19 +44,96 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, companyName, userName } = await req.json();
+    const { messages, companyName, userName, planningData } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Build context from planning data
+    let dataContext = "";
+    
+    if (planningData) {
+      const { plan, northStar, objectives, keyResults, rocks, checkins } = planningData;
+      
+      if (plan) {
+        dataContext += `\n## Plano Estratégico ${plan.year} (v${plan.version})
+- Status: ${plan.status}
+- Tema do Ano: ${plan.theme || "Não definido"}
+- Visão: ${plan.vision || "Não definida"}
+- Etapa Atual: ${plan.current_step}/7
+`;
+        if (plan.context_data) {
+          const ctx = plan.context_data;
+          if (ctx.segment) dataContext += `- Segmento: ${ctx.segment}\n`;
+          if (ctx.revenue) dataContext += `- Faturamento: ${ctx.revenue}\n`;
+          if (ctx.teamSize) dataContext += `- Tamanho do Time: ${ctx.teamSize}\n`;
+          if (ctx.challenges) dataContext += `- Desafios: ${ctx.challenges}\n`;
+          if (ctx.lastYearRevenue) dataContext += `- Faturamento Ano Passado: ${ctx.lastYearRevenue}\n`;
+          if (ctx.nextYearGoal) dataContext += `- Meta Próximo Ano: ${ctx.nextYearGoal}\n`;
+        }
+      }
+      
+      if (northStar) {
+        dataContext += `\n## North Star Metric
+- Métrica: ${northStar.name}
+- Definição: ${northStar.definition || "Não definida"}
+- Meta Anual: ${northStar.annual_target || "Não definida"} ${northStar.unit || ""}
+`;
+      }
+      
+      if (objectives && objectives.length > 0) {
+        dataContext += `\n## OKRs (${objectives.length} objetivos)\n`;
+        objectives.forEach((obj: any, i: number) => {
+          dataContext += `\n### Objetivo ${i + 1}: ${obj.title}
+- Prioridade: ${obj.priority}
+- Descrição: ${obj.description || "Sem descrição"}
+`;
+          const objKRs = keyResults?.filter((kr: any) => kr.objective_id === obj.id) || [];
+          if (objKRs.length > 0) {
+            dataContext += `Key Results:\n`;
+            objKRs.forEach((kr: any) => {
+              const progress = kr.target > 0 ? Math.round((kr.current_value / kr.target) * 100) : 0;
+              dataContext += `  - ${kr.title}: ${kr.current_value}/${kr.target} ${kr.unit || ""} (${progress}%) - Status: ${kr.status}\n`;
+              
+              // Add recent checkins for this KR
+              const krCheckins = checkins?.filter((c: any) => c.key_result_id === kr.id)?.slice(0, 3) || [];
+              if (krCheckins.length > 0) {
+                dataContext += `    Check-ins recentes:\n`;
+                krCheckins.forEach((c: any) => {
+                  dataContext += `      - ${c.week_ref}: ${c.current_value} (${c.status}) ${c.comment ? `- "${c.comment}"` : ""}\n`;
+                });
+              }
+            });
+          }
+        });
+      }
+      
+      if (rocks && rocks.length > 0) {
+        dataContext += `\n## Rocks Trimestrais (${rocks.length} rocks)\n`;
+        const quarters = [1, 2, 3, 4];
+        quarters.forEach(q => {
+          const qRocks = rocks.filter((r: any) => r.quarter === q);
+          if (qRocks.length > 0) {
+            dataContext += `\nQ${q}:\n`;
+            qRocks.forEach((rock: any) => {
+              dataContext += `- ${rock.title} (${rock.status}): ${rock.description || ""} - Meta: ${rock.target || "Não definida"}\n`;
+            });
+          }
+        });
+      }
+    }
+
     const contextPrompt = `
-Contexto atual:
+## Contexto Atual
 - Empresa: ${companyName || "Não informado"}
 - Usuário: ${userName || "Não informado"}
 - Data: ${new Date().toLocaleDateString("pt-BR")}
+${dataContext || "\n(Nenhum dado de planejamento encontrado ainda)"}
 `;
+
+    console.log("Sending context to AI:", contextPrompt.substring(0, 500) + "...");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

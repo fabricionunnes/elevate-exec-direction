@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { useOutletContext, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
 import { 
   Send, 
   ArrowLeft, 
@@ -28,28 +27,145 @@ interface Message {
   content: string;
 }
 
+interface PlanningData {
+  plan: any;
+  northStar: any;
+  objectives: any[];
+  keyResults: any[];
+  rocks: any[];
+  checkins: any[];
+}
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portal-ai-coach`;
 
 const PortalCoachPage = () => {
   const { user } = useOutletContext<{ user: PortalUser }>();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: `Olá, ${user?.name?.split(" ")[0]}! 👋
-
-Sou a **Diretora Estratégica da UNV**. Estou aqui para orientar você no Planejamento 2026 e na execução ao longo do ano.
-
-Como posso ajudar hoje?
-
-- 📋 Orientar no preenchimento do planejamento
-- 🎯 Revisar seus OKRs e dar feedback
-- 🚀 Sugerir próximas ações para destravar resultados
-- 📊 Analisar progresso e identificar gargalos`
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [planningData, setPlanningData] = useState<PlanningData | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch planning data on mount
+  useEffect(() => {
+    const fetchPlanningData = async () => {
+      if (!user?.company_id) {
+        setIsLoadingData(false);
+        return;
+      }
+
+      try {
+        // Fetch the latest plan for this company
+        const { data: plans, error: planError } = await supabase
+          .from("portal_plans")
+          .select("*")
+          .eq("company_id", user.company_id)
+          .order("version", { ascending: false })
+          .limit(1);
+
+        if (planError) throw planError;
+        const plan = plans?.[0];
+
+        if (!plan) {
+          setPlanningData(null);
+          setIsLoadingData(false);
+          initializeChat(null);
+          return;
+        }
+
+        // Fetch related data in parallel
+        const [
+          { data: northStars },
+          { data: objectives },
+          { data: rocks }
+        ] = await Promise.all([
+          supabase.from("portal_north_stars").select("*").eq("plan_id", plan.id),
+          supabase.from("portal_objectives").select("*").eq("plan_id", plan.id).order("priority"),
+          supabase.from("portal_rocks").select("*").eq("plan_id", plan.id).order("quarter")
+        ]);
+
+        // Fetch key results for all objectives
+        let keyResults: any[] = [];
+        let checkins: any[] = [];
+        
+        if (objectives && objectives.length > 0) {
+          const objIds = objectives.map(o => o.id);
+          const { data: krs } = await supabase
+            .from("portal_key_results")
+            .select("*")
+            .in("objective_id", objIds);
+          
+          keyResults = krs || [];
+
+          // Fetch recent checkins for all key results
+          if (keyResults.length > 0) {
+            const krIds = keyResults.map(kr => kr.id);
+            const { data: checkinsData } = await supabase
+              .from("portal_checkins")
+              .select("*")
+              .in("key_result_id", krIds)
+              .order("week_ref", { ascending: false });
+            
+            checkins = checkinsData || [];
+          }
+        }
+
+        const data: PlanningData = {
+          plan,
+          northStar: northStars?.[0] || null,
+          objectives: objectives || [],
+          keyResults,
+          rocks: rocks || [],
+          checkins
+        };
+
+        setPlanningData(data);
+        initializeChat(data);
+      } catch (error) {
+        console.error("Error fetching planning data:", error);
+        toast.error("Erro ao carregar dados do planejamento");
+        initializeChat(null);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    fetchPlanningData();
+  }, [user?.company_id]);
+
+  const initializeChat = (data: PlanningData | null) => {
+    let welcomeMessage = `Olá, ${user?.name?.split(" ")[0]}! 👋
+
+Sou a **Diretora Estratégica da UNV**. `;
+
+    if (data?.plan) {
+      const planStatus = data.plan.status === 'published' ? 'publicado' : 'em construção';
+      const progress = data.objectives?.length || 0;
+      const krsTotal = data.keyResults?.length || 0;
+      const krsOnTrack = data.keyResults?.filter(kr => kr.status === 'on_track').length || 0;
+      
+      welcomeMessage += `Vejo que você tem um plano ${planStatus} para ${data.plan.year}.
+
+📊 **Resumo do seu planejamento:**
+- ${progress} objetivo(s) definido(s)
+- ${krsTotal} key result(s) sendo acompanhados
+- ${krsOnTrack} no caminho certo
+
+Como posso ajudar você hoje?`;
+    } else {
+      welcomeMessage += `Ainda não encontrei um plano estratégico cadastrado para sua empresa.
+
+Como posso ajudar você hoje?
+
+- 📋 Orientar no preenchimento do planejamento
+- 🎯 Ajudar a definir OKRs e metas
+- 🚀 Sugerir próximas ações para destravar resultados
+- 📊 Explicar como funciona o sistema`;
+    }
+
+    setMessages([{ role: "assistant", content: welcomeMessage }]);
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -80,6 +196,7 @@ Como posso ajudar hoje?
           messages: [...messages, userMessage],
           companyName: user?.portal_companies?.name,
           userName: user?.name,
+          planningData: planningData,
         }),
       });
 
@@ -161,6 +278,17 @@ Como posso ajudar hoje?
       sendMessage();
     }
   };
+
+  if (isLoadingData) {
+    return (
+      <div className="h-[calc(100vh-4rem)] lg:h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+          <p className="text-slate-400 text-sm">Carregando dados do planejamento...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-4rem)] lg:h-screen flex flex-col">
