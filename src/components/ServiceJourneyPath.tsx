@@ -10,8 +10,11 @@ import {
   Handshake, 
   Crown,
   ArrowRight,
-  CheckCircle2,
-  Sparkles
+  Sparkles,
+  DollarSign,
+  Shield,
+  Bot,
+  UserCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,10 +27,11 @@ interface JourneyStep {
   color: string;
   bgColor: string;
   link: string;
-  phase: "start" | "growth" | "scale" | "elite";
+  category: "main" | "operation" | "advanced" | "structure" | "other";
 }
 
-const journeySteps: JourneyStep[] = [
+const allServices: JourneyStep[] = [
+  // Trilha Principal
   {
     id: "core",
     name: "UNV Core",
@@ -37,7 +41,7 @@ const journeySteps: JourneyStep[] = [
     color: "text-red-500",
     bgColor: "bg-red-500",
     link: "/core",
-    phase: "start"
+    category: "main"
   },
   {
     id: "control",
@@ -48,7 +52,7 @@ const journeySteps: JourneyStep[] = [
     color: "text-blue-500",
     bgColor: "bg-blue-500",
     link: "/control",
-    phase: "start"
+    category: "main"
   },
   {
     id: "sales-acceleration",
@@ -59,8 +63,9 @@ const journeySteps: JourneyStep[] = [
     color: "text-green-500",
     bgColor: "bg-green-500",
     link: "/sales-acceleration",
-    phase: "growth"
+    category: "main"
   },
+  // Operação Comercial
   {
     id: "sales-ops",
     name: "UNV Sales Ops",
@@ -70,7 +75,7 @@ const journeySteps: JourneyStep[] = [
     color: "text-orange-500",
     bgColor: "bg-orange-500",
     link: "/sales-ops",
-    phase: "growth"
+    category: "operation"
   },
   {
     id: "ads",
@@ -81,8 +86,42 @@ const journeySteps: JourneyStep[] = [
     color: "text-purple-500",
     bgColor: "bg-purple-500",
     link: "/ads",
-    phase: "growth"
+    category: "operation"
   },
+  {
+    id: "social",
+    name: "UNV Social",
+    shortName: "Social",
+    objective: "Gestão profissional das redes sociais",
+    icon: Share2,
+    color: "text-pink-500",
+    bgColor: "bg-pink-500",
+    link: "/social",
+    category: "operation"
+  },
+  {
+    id: "ai-sales-system",
+    name: "UNV Sales System",
+    shortName: "Sales System",
+    objective: "Automatizar vendas com inteligência artificial",
+    icon: Bot,
+    color: "text-cyan-500",
+    bgColor: "bg-cyan-500",
+    link: "/ai-sales-system",
+    category: "operation"
+  },
+  {
+    id: "fractional-cro",
+    name: "UNV Fractional CRO",
+    shortName: "Fractional CRO",
+    objective: "Diretor comercial terceirizado para sua empresa",
+    icon: UserCheck,
+    color: "text-indigo-500",
+    bgColor: "bg-indigo-500",
+    link: "/fractional-cro",
+    category: "operation"
+  },
+  // Trilha Avançada
   {
     id: "growth-room",
     name: "UNV Growth Room",
@@ -92,7 +131,7 @@ const journeySteps: JourneyStep[] = [
     color: "text-amber-500",
     bgColor: "bg-amber-500",
     link: "/growth-room",
-    phase: "scale"
+    category: "advanced"
   },
   {
     id: "partners",
@@ -103,29 +142,124 @@ const journeySteps: JourneyStep[] = [
     color: "text-emerald-500",
     bgColor: "bg-emerald-500",
     link: "/partners",
-    phase: "scale"
+    category: "advanced"
   },
   {
     id: "mastermind",
     name: "UNV Mastermind",
     shortName: "Mastermind",
-    objective: "Fazer parte do grupo exclusivo de empresários de elite",
+    objective: "Grupo exclusivo de empresários de elite",
     icon: Crown,
     color: "text-yellow-500",
     bgColor: "bg-yellow-500",
     link: "/mastermind",
-    phase: "elite"
+    category: "advanced"
+  },
+  {
+    id: "execution-partnership",
+    name: "UNV Execution Partnership",
+    shortName: "Execution",
+    objective: "Implementação comercial direta em 3 meses",
+    icon: Handshake,
+    color: "text-red-600",
+    bgColor: "bg-red-600",
+    link: "/execution-partnership",
+    category: "advanced"
+  },
+  // Estratégia & Estrutura
+  {
+    id: "le-desir",
+    name: "UNV Le Désir",
+    shortName: "Le Désir",
+    objective: "Posicionamento premium para sua marca",
+    icon: Sparkles,
+    color: "text-rose-500",
+    bgColor: "bg-rose-500",
+    link: "/le-desir",
+    category: "structure"
+  },
+  {
+    id: "people",
+    name: "UNV People",
+    shortName: "People",
+    objective: "Gestão de pessoas e cultura organizacional",
+    icon: Users,
+    color: "text-blue-600",
+    bgColor: "bg-blue-600",
+    link: "/people",
+    category: "structure"
+  },
+  {
+    id: "finance",
+    name: "UNV Finance",
+    shortName: "Finance",
+    objective: "Controle financeiro estratégico",
+    icon: DollarSign,
+    color: "text-green-600",
+    bgColor: "bg-green-600",
+    link: "/finance",
+    category: "structure"
+  },
+  {
+    id: "safe",
+    name: "UNV Safe",
+    shortName: "Safe",
+    objective: "Assessoria jurídica preventiva",
+    icon: Shield,
+    color: "text-slate-500",
+    bgColor: "bg-slate-500",
+    link: "/safe",
+    category: "structure"
+  },
+  // Outros
+  {
+    id: "leadership",
+    name: "UNV Leadership",
+    shortName: "Leadership",
+    objective: "Desenvolvimento de líderes intermediários",
+    icon: UserCheck,
+    color: "text-violet-500",
+    bgColor: "bg-violet-500",
+    link: "/leadership",
+    category: "other"
   }
 ];
 
-const phaseLabels = {
-  start: { label: "INÍCIO", description: "Estruturação" },
-  growth: { label: "CRESCIMENTO", description: "Aceleração" },
-  scale: { label: "ESCALA", description: "Expansão" },
-  elite: { label: "ELITE", description: "Excelência" }
+const categoryInfo = {
+  main: { 
+    label: "Trilha Principal", 
+    description: "Fundação comercial",
+    color: "from-red-500 via-blue-500 to-green-500"
+  },
+  operation: { 
+    label: "Operação Comercial", 
+    description: "Execução e escala",
+    color: "from-orange-500 via-purple-500 to-cyan-500"
+  },
+  advanced: { 
+    label: "Trilha Avançada", 
+    description: "Alto impacto",
+    color: "from-amber-500 via-emerald-500 to-yellow-500"
+  },
+  structure: { 
+    label: "Estratégia & Estrutura", 
+    description: "Base sólida",
+    color: "from-rose-500 via-blue-600 to-slate-500"
+  },
+  other: { 
+    label: "Desenvolvimento", 
+    description: "Liderança",
+    color: "from-violet-500 to-violet-600"
+  }
 };
 
 export function ServiceJourneyPath() {
+  const mainTrail = allServices.filter(s => s.category === "main");
+  const operationTrail = allServices.filter(s => s.category === "operation");
+  const advancedTrail = allServices.filter(s => s.category === "advanced");
+  const structureTrail = allServices.filter(s => s.category === "structure");
+  const otherTrail = allServices.filter(s => s.category === "other");
+
   return (
     <section className="section-padding bg-gradient-to-b from-background via-secondary/30 to-background overflow-hidden">
       <div className="container-premium">
@@ -134,271 +268,169 @@ export function ServiceJourneyPath() {
             A Trilha do Crescimento Comercial
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Cada empresa tem uma jornada única. Veja o caminho completo para transformar sua operação comercial.
+            Cada empresa tem uma jornada única. Veja todos os serviços organizados por fase de crescimento.
           </p>
         </div>
 
-        {/* Journey Path - Desktop */}
-        <div className="hidden lg:block relative">
-          {/* Main path line */}
-          <svg 
-            className="absolute inset-0 w-full h-full pointer-events-none" 
-            viewBox="0 0 1200 600"
-            preserveAspectRatio="xMidYMid meet"
-          >
-            {/* Curved path */}
-            <path
-              d="M 100 100 
-                 C 200 100, 250 100, 300 150 
-                 S 400 250, 500 200 
-                 S 650 100, 750 150 
-                 S 900 300, 950 250 
-                 S 1050 150, 1100 200"
-              fill="none"
-              stroke="url(#pathGradient)"
-              strokeWidth="6"
-              strokeLinecap="round"
-              strokeDasharray="12 8"
-              className="animate-pulse"
-            />
-            {/* Glow effect */}
-            <path
-              d="M 100 100 
-                 C 200 100, 250 100, 300 150 
-                 S 400 250, 500 200 
-                 S 650 100, 750 150 
-                 S 900 300, 950 250 
-                 S 1050 150, 1100 200"
-              fill="none"
-              stroke="url(#pathGradient)"
-              strokeWidth="20"
-              strokeLinecap="round"
-              opacity="0.1"
-              filter="blur(8px)"
-            />
-            <defs>
-              <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#ef4444" />
-                <stop offset="25%" stopColor="#3b82f6" />
-                <stop offset="50%" stopColor="#22c55e" />
-                <stop offset="75%" stopColor="#f59e0b" />
-                <stop offset="100%" stopColor="#eab308" />
-              </linearGradient>
-            </defs>
-          </svg>
+        {/* Main Journey Path */}
+        <div className="space-y-12">
+          {/* Trilha Principal */}
+          <TrailSection 
+            title={categoryInfo.main.label}
+            description={categoryInfo.main.description}
+            services={mainTrail}
+            gradientColor={categoryInfo.main.color}
+            isMainTrail
+          />
 
-          {/* Journey steps positioned along the path */}
-          <div className="relative h-[500px]">
-            {/* Step 1 - Core */}
-            <JourneyNode 
-              step={journeySteps[0]} 
-              position={{ top: "5%", left: "5%" }}
-              number={1}
-            />
-            
-            {/* Step 2 - Control */}
-            <JourneyNode 
-              step={journeySteps[1]} 
-              position={{ top: "8%", left: "20%" }}
-              number={2}
-            />
-            
-            {/* Step 3 - Sales Acceleration */}
-            <JourneyNode 
-              step={journeySteps[2]} 
-              position={{ top: "25%", left: "32%" }}
-              number={3}
-            />
-            
-            {/* Step 4 - Sales Ops */}
-            <JourneyNode 
-              step={journeySteps[3]} 
-              position={{ top: "30%", left: "48%" }}
-              number={4}
-            />
-            
-            {/* Step 5 - Ads */}
-            <JourneyNode 
-              step={journeySteps[4]} 
-              position={{ top: "12%", left: "58%" }}
-              number={5}
-            />
-            
-            {/* Step 6 - Growth Room */}
-            <JourneyNode 
-              step={journeySteps[5]} 
-              position={{ top: "20%", left: "72%" }}
-              number={6}
-            />
-            
-            {/* Step 7 - Partners */}
-            <JourneyNode 
-              step={journeySteps[6]} 
-              position={{ top: "45%", left: "80%" }}
-              number={7}
-            />
-            
-            {/* Step 8 - Mastermind */}
-            <JourneyNode 
-              step={journeySteps[7]} 
-              position={{ top: "30%", left: "88%" }}
-              number={8}
-              isLast
-            />
-          </div>
+          {/* Operação Comercial */}
+          <TrailSection 
+            title={categoryInfo.operation.label}
+            description={categoryInfo.operation.description}
+            services={operationTrail}
+            gradientColor={categoryInfo.operation.color}
+          />
 
-          {/* Phase indicators */}
-          <div className="flex justify-between mt-8 px-4">
-            {Object.entries(phaseLabels).map(([phase, { label, description }]) => (
-              <div key={phase} className="text-center">
-                <div className="text-xs font-semibold text-primary uppercase tracking-wider">{label}</div>
-                <div className="text-sm text-muted-foreground">{description}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+          {/* Trilha Avançada */}
+          <TrailSection 
+            title={categoryInfo.advanced.label}
+            description={categoryInfo.advanced.description}
+            services={advancedTrail}
+            gradientColor={categoryInfo.advanced.color}
+          />
 
-        {/* Journey Path - Mobile/Tablet */}
-        <div className="lg:hidden">
-          <div className="relative">
-            {/* Vertical line */}
-            <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-red-500 via-green-500 via-amber-500 to-yellow-500 rounded-full" />
-            
-            {/* Steps */}
-            <div className="space-y-6">
-              {journeySteps.map((step, index) => (
-                <MobileJourneyNode 
-                  key={step.id} 
-                  step={step} 
-                  number={index + 1}
-                  isLast={index === journeySteps.length - 1}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+          {/* Estratégia & Estrutura */}
+          <TrailSection 
+            title={categoryInfo.structure.label}
+            description={categoryInfo.structure.description}
+            services={structureTrail}
+            gradientColor={categoryInfo.structure.color}
+          />
 
-        {/* Legend */}
-        <div className="mt-12 flex flex-wrap justify-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="w-3 h-3 rounded-full bg-red-500" />
-            <span>Início</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="w-3 h-3 rounded-full bg-green-500" />
-            <span>Crescimento</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="w-3 h-3 rounded-full bg-amber-500" />
-            <span>Escala</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="w-3 h-3 rounded-full bg-yellow-500" />
-            <span>Elite</span>
-          </div>
+          {/* Outros */}
+          <TrailSection 
+            title={categoryInfo.other.label}
+            description={categoryInfo.other.description}
+            services={otherTrail}
+            gradientColor={categoryInfo.other.color}
+          />
         </div>
       </div>
     </section>
   );
 }
 
-interface JourneyNodeProps {
-  step: JourneyStep;
-  position: { top: string; left: string };
-  number: number;
-  isLast?: boolean;
+interface TrailSectionProps {
+  title: string;
+  description: string;
+  services: JourneyStep[];
+  gradientColor: string;
+  isMainTrail?: boolean;
 }
 
-function JourneyNode({ step, position, number, isLast }: JourneyNodeProps) {
-  const Icon = step.icon;
-  
+function TrailSection({ title, description, services, gradientColor, isMainTrail }: TrailSectionProps) {
   return (
-    <Link 
-      to={step.link}
-      className="absolute group"
-      style={{ top: position.top, left: position.left }}
-    >
-      <div className="relative flex flex-col items-center">
-        {/* Glow effect on hover */}
+    <div className="relative">
+      {/* Section Header */}
+      <div className="flex items-center gap-4 mb-6">
         <div className={cn(
-          "absolute inset-0 rounded-full blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300",
-          step.bgColor
+          "h-1 w-12 rounded-full bg-gradient-to-r",
+          gradientColor
+        )} />
+        <div>
+          <h3 className={cn(
+            "font-bold text-foreground",
+            isMainTrail ? "text-xl" : "text-lg"
+          )}>
+            {title}
+          </h3>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+
+      {/* Trail Container */}
+      <div className="relative">
+        {/* Connecting line */}
+        <div className={cn(
+          "absolute top-1/2 left-0 right-0 h-1 -translate-y-1/2 rounded-full bg-gradient-to-r opacity-30",
+          gradientColor
         )} />
         
-        {/* Main circle */}
+        {/* Services */}
         <div className={cn(
-          "relative w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all duration-300",
-          "group-hover:scale-110 group-hover:shadow-xl",
-          step.bgColor
+          "relative grid gap-4",
+          services.length <= 3 ? "grid-cols-1 sm:grid-cols-3" : 
+          services.length <= 4 ? "grid-cols-2 md:grid-cols-4" :
+          "grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
         )}>
-          <Icon className="h-8 w-8 text-white" />
-          
-          {/* Number badge */}
-          <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-background border-2 border-current flex items-center justify-center text-xs font-bold">
-            {number}
-          </div>
-          
-          {/* Crown for last step */}
-          {isLast && (
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-              <Sparkles className="h-5 w-5 text-yellow-400 animate-pulse" />
-            </div>
-          )}
+          {services.map((service, index) => (
+            <ServiceNode 
+              key={service.id} 
+              service={service} 
+              index={index}
+              isMainTrail={isMainTrail}
+            />
+          ))}
         </div>
-        
-        {/* Info card on hover */}
-        <div className="absolute top-full mt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-20">
-          <div className="bg-card border border-border rounded-xl p-4 shadow-xl min-w-[200px] text-center">
-            <h4 className={cn("font-bold text-sm", step.color)}>{step.name}</h4>
-            <p className="text-xs text-muted-foreground mt-1">{step.objective}</p>
-            <div className="mt-2 flex items-center justify-center gap-1 text-xs text-primary font-medium">
-              Ver detalhes <ArrowRight className="h-3 w-3" />
-            </div>
-          </div>
-        </div>
-        
-        {/* Label */}
-        <span className="mt-2 text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors whitespace-nowrap">
-          {step.shortName}
-        </span>
       </div>
-    </Link>
+    </div>
   );
 }
 
-interface MobileJourneyNodeProps {
-  step: JourneyStep;
-  number: number;
-  isLast?: boolean;
+interface ServiceNodeProps {
+  service: JourneyStep;
+  index: number;
+  isMainTrail?: boolean;
 }
 
-function MobileJourneyNode({ step, number, isLast }: MobileJourneyNodeProps) {
-  const Icon = step.icon;
+function ServiceNode({ service, index, isMainTrail }: ServiceNodeProps) {
+  const Icon = service.icon;
   
   return (
-    <Link to={step.link} className="relative flex items-start gap-4 group">
-      {/* Circle on the line */}
+    <Link 
+      to={service.link}
+      className="group relative"
+    >
       <div className={cn(
-        "relative z-10 w-16 h-16 rounded-full flex items-center justify-center shrink-0 transition-all duration-300",
-        "group-hover:scale-110",
-        step.bgColor
+        "relative bg-card border border-border rounded-2xl p-4 transition-all duration-300",
+        "hover:border-primary/50 hover:shadow-lg hover:-translate-y-1",
+        isMainTrail && "p-6"
       )}>
-        <Icon className="h-7 w-7 text-white" />
-        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-background border-2 flex items-center justify-center text-xs font-bold">
-          {number}
+        {/* Step number */}
+        <div className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-background border-2 border-border flex items-center justify-center text-xs font-bold text-muted-foreground group-hover:border-primary group-hover:text-primary transition-colors">
+          {index + 1}
         </div>
-      </div>
-      
-      {/* Content */}
-      <div className="flex-1 bg-card border border-border rounded-xl p-4 group-hover:border-primary/50 group-hover:shadow-lg transition-all duration-300">
-        <div className="flex items-center justify-between">
-          <h4 className={cn("font-bold", step.color)}>{step.name}</h4>
-          {isLast && <Crown className="h-5 w-5 text-yellow-500" />}
+
+        {/* Icon */}
+        <div className={cn(
+          "w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110",
+          service.bgColor
+        )}>
+          <Icon className="h-6 w-6 text-white" />
         </div>
-        <p className="text-sm text-muted-foreground mt-1">{step.objective}</p>
-        <div className="mt-2 flex items-center gap-1 text-xs text-primary font-medium">
+
+        {/* Content */}
+        <h4 className={cn(
+          "font-bold text-foreground mb-1",
+          isMainTrail ? "text-base" : "text-sm"
+        )}>
+          {service.shortName}
+        </h4>
+        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+          {service.objective}
+        </p>
+
+        {/* Arrow indicator */}
+        <div className="flex items-center gap-1 text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
           Ver detalhes <ArrowRight className="h-3 w-3" />
         </div>
+
+        {/* Connector arrow for main trail */}
+        {isMainTrail && index < 2 && (
+          <div className="hidden sm:block absolute top-1/2 -right-4 -translate-y-1/2 z-10">
+            <ArrowRight className={cn("h-5 w-5", service.color)} />
+          </div>
+        )}
       </div>
     </Link>
   );
