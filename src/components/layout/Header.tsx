@@ -69,7 +69,7 @@ const productCategories: ProductCategory[] = [
 const navigation = [
   { name: "Serviços", href: "/products", hasSubmenu: true },
   { name: "Preços", href: "/pricing" },
-  { name: "Portal 2026", href: "/portal", highlight: true },
+  { name: "Planejamento Estratégico", href: "/portal" },
   { name: "Diagnóstico", href: "/diagnostico" },
   { name: "FAQ", href: "/faq" },
 ];
@@ -143,12 +143,9 @@ export function Header() {
                   to={item.href}
                   className={cn(
                     "px-4 py-2 text-sm font-medium transition-all duration-300 relative",
-                    item.highlight && "text-primary",
                     location.pathname === item.href
                       ? "text-foreground"
-                      : item.highlight 
-                        ? "text-primary hover:text-primary/80" 
-                        : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   {item.name}
