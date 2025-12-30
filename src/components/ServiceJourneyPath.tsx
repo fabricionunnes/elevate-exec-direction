@@ -28,6 +28,7 @@ interface JourneyStep {
   color: string;
   bgColor: string;
   link: string;
+  phase: 'main' | 'operation' | 'advanced' | 'structure' | 'other';
 }
 
 const allServices: JourneyStep[] = [
@@ -40,7 +41,8 @@ const allServices: JourneyStep[] = [
     icon: Target,
     color: "text-red-500",
     bgColor: "bg-red-500",
-    link: "/core"
+    link: "/core",
+    phase: 'main'
   },
   {
     id: "control",
@@ -50,7 +52,8 @@ const allServices: JourneyStep[] = [
     icon: Compass,
     color: "text-blue-500",
     bgColor: "bg-blue-500",
-    link: "/control"
+    link: "/control",
+    phase: 'main'
   },
   {
     id: "sales-acceleration",
@@ -60,7 +63,8 @@ const allServices: JourneyStep[] = [
     icon: TrendingUp,
     color: "text-green-500",
     bgColor: "bg-green-500",
-    link: "/sales-acceleration"
+    link: "/sales-acceleration",
+    phase: 'main'
   },
   // Operação Comercial
   {
@@ -71,7 +75,8 @@ const allServices: JourneyStep[] = [
     icon: Users,
     color: "text-orange-500",
     bgColor: "bg-orange-500",
-    link: "/sales-ops"
+    link: "/sales-ops",
+    phase: 'operation'
   },
   {
     id: "ads",
@@ -81,7 +86,8 @@ const allServices: JourneyStep[] = [
     icon: Megaphone,
     color: "text-purple-500",
     bgColor: "bg-purple-500",
-    link: "/ads"
+    link: "/ads",
+    phase: 'operation'
   },
   {
     id: "social",
@@ -91,7 +97,8 @@ const allServices: JourneyStep[] = [
     icon: Share2,
     color: "text-pink-500",
     bgColor: "bg-pink-500",
-    link: "/social"
+    link: "/social",
+    phase: 'operation'
   },
   {
     id: "ai-sales-system",
@@ -101,7 +108,8 @@ const allServices: JourneyStep[] = [
     icon: Bot,
     color: "text-cyan-500",
     bgColor: "bg-cyan-500",
-    link: "/ai-sales-system"
+    link: "/ai-sales-system",
+    phase: 'operation'
   },
   {
     id: "fractional-cro",
@@ -111,7 +119,8 @@ const allServices: JourneyStep[] = [
     icon: UserCheck,
     color: "text-indigo-500",
     bgColor: "bg-indigo-500",
-    link: "/fractional-cro"
+    link: "/fractional-cro",
+    phase: 'operation'
   },
   // Trilha Avançada
   {
@@ -122,7 +131,8 @@ const allServices: JourneyStep[] = [
     icon: Building2,
     color: "text-amber-500",
     bgColor: "bg-amber-500",
-    link: "/growth-room"
+    link: "/growth-room",
+    phase: 'advanced'
   },
   {
     id: "partners",
@@ -132,7 +142,8 @@ const allServices: JourneyStep[] = [
     icon: Handshake,
     color: "text-emerald-500",
     bgColor: "bg-emerald-500",
-    link: "/partners"
+    link: "/partners",
+    phase: 'advanced'
   },
   {
     id: "execution-partnership",
@@ -142,7 +153,8 @@ const allServices: JourneyStep[] = [
     icon: Handshake,
     color: "text-red-600",
     bgColor: "bg-red-600",
-    link: "/execution-partnership"
+    link: "/execution-partnership",
+    phase: 'advanced'
   },
   {
     id: "mastermind",
@@ -152,7 +164,8 @@ const allServices: JourneyStep[] = [
     icon: Crown,
     color: "text-yellow-500",
     bgColor: "bg-yellow-500",
-    link: "/mastermind"
+    link: "/mastermind",
+    phase: 'advanced'
   },
   // Estratégia & Estrutura
   {
@@ -163,7 +176,8 @@ const allServices: JourneyStep[] = [
     icon: Sparkles,
     color: "text-rose-500",
     bgColor: "bg-rose-500",
-    link: "/le-desir"
+    link: "/le-desir",
+    phase: 'structure'
   },
   {
     id: "people",
@@ -173,7 +187,8 @@ const allServices: JourneyStep[] = [
     icon: Users,
     color: "text-blue-600",
     bgColor: "bg-blue-600",
-    link: "/people"
+    link: "/people",
+    phase: 'structure'
   },
   {
     id: "finance",
@@ -183,7 +198,8 @@ const allServices: JourneyStep[] = [
     icon: DollarSign,
     color: "text-green-600",
     bgColor: "bg-green-600",
-    link: "/finance"
+    link: "/finance",
+    phase: 'structure'
   },
   {
     id: "safe",
@@ -193,7 +209,8 @@ const allServices: JourneyStep[] = [
     icon: Shield,
     color: "text-slate-500",
     bgColor: "bg-slate-500",
-    link: "/safe"
+    link: "/safe",
+    phase: 'structure'
   },
   // Outros
   {
@@ -204,32 +221,59 @@ const allServices: JourneyStep[] = [
     icon: UserCheck,
     color: "text-violet-500",
     bgColor: "bg-violet-500",
-    link: "/leadership"
+    link: "/leadership",
+    phase: 'other'
   }
 ];
 
-// Positions for the winding path - desktop
+// Unified winding path positions - continuous flow
 const desktopPositions = [
-  { x: 10, y: 5 },    // Core
-  { x: 30, y: 8 },    // Control
-  { x: 50, y: 5 },    // Acceleration
-  { x: 70, y: 12 },   // Sales Ops
-  { x: 88, y: 8 },    // Ads
-  { x: 85, y: 22 },   // Social
-  { x: 65, y: 26 },   // Sales System
-  { x: 45, y: 22 },   // Fractional CRO
-  { x: 25, y: 28 },   // Growth Room
-  { x: 10, y: 35 },   // Partners
-  { x: 25, y: 42 },   // Execution
-  { x: 48, y: 38 },   // Mastermind
-  { x: 70, y: 44 },   // Le Désir
-  { x: 88, y: 50 },   // People
-  { x: 70, y: 58 },   // Finance
-  { x: 48, y: 62 },   // Safe
-  { x: 25, y: 58 },   // Leadership
+  { x: 8, y: 4 },     // 1. Core
+  { x: 25, y: 7 },    // 2. Control
+  { x: 45, y: 4 },    // 3. Acceleration
+  { x: 65, y: 9 },    // 4. Sales Ops
+  { x: 85, y: 5 },    // 5. Ads
+  { x: 92, y: 16 },   // 6. Social
+  { x: 78, y: 22 },   // 7. Sales System
+  { x: 58, y: 19 },   // 8. Fractional CRO
+  { x: 38, y: 25 },   // 9. Growth Room
+  { x: 18, y: 22 },   // 10. Partners
+  { x: 8, y: 34 },    // 11. Execution
+  { x: 22, y: 42 },   // 12. Mastermind
+  { x: 42, y: 38 },   // 13. Le Désir
+  { x: 62, y: 44 },   // 14. People
+  { x: 82, y: 40 },   // 15. Finance
+  { x: 92, y: 52 },   // 16. Safe
+  { x: 75, y: 58 },   // 17. Leadership
 ];
 
+// Generate smooth curved path through all points
+function generateSmoothPath(positions: { x: number; y: number }[]): string {
+  if (positions.length < 2) return "";
+  
+  let path = `M ${positions[0].x} ${positions[0].y}`;
+  
+  for (let i = 1; i < positions.length; i++) {
+    const prev = positions[i - 1];
+    const curr = positions[i];
+    
+    // Calculate control points for smooth curves
+    const midX = (prev.x + curr.x) / 2;
+    const cpX1 = prev.x + (curr.x - prev.x) * 0.5;
+    const cpY1 = prev.y;
+    const cpX2 = prev.x + (curr.x - prev.x) * 0.5;
+    const cpY2 = curr.y;
+    
+    // Use cubic bezier for smoother curves
+    path += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${curr.x} ${curr.y}`;
+  }
+  
+  return path;
+}
+
 export function ServiceJourneyPath() {
+  const pathD = generateSmoothPath(desktopPositions);
+  
   return (
     <section className="section-padding bg-gradient-to-b from-background via-secondary/20 to-background overflow-hidden">
       <div className="container-premium">
@@ -242,96 +286,83 @@ export function ServiceJourneyPath() {
             A Trilha do Crescimento Comercial
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            17 serviços organizados para transformar sua operação comercial. Clique em cada ponto para conhecer.
+            17 serviços interligados para transformar sua operação comercial. Clique em cada ponto para conhecer.
           </p>
         </div>
 
-        {/* Desktop Path */}
-        <div className="hidden lg:block relative" style={{ height: '1400px' }}>
-          {/* SVG Path */}
+        {/* Desktop Unified Path */}
+        <div className="hidden lg:block relative" style={{ height: '1300px' }}>
+          {/* SVG Path - Single Unified Path */}
           <svg 
             className="absolute inset-0 w-full h-full pointer-events-none" 
-            viewBox="0 0 100 70"
+            viewBox="0 0 100 65"
             preserveAspectRatio="xMidYMid slice"
           >
-            {/* Glow filter */}
+            {/* Defs */}
             <defs>
-              <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="0.5" result="coloredBlur"/>
+              {/* Glow filter */}
+              <filter id="pathGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="0.8" result="coloredBlur"/>
                 <feMerge>
                   <feMergeNode in="coloredBlur"/>
                   <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
-              <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#ef4444" />
-                <stop offset="15%" stopColor="#3b82f6" />
+              
+              {/* Rainbow gradient for unified path */}
+              <linearGradient id="unifiedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#ef4444">
+                  <animate attributeName="stop-color" values="#ef4444;#3b82f6;#22c55e;#ef4444" dur="8s" repeatCount="indefinite"/>
+                </stop>
+                <stop offset="18%" stopColor="#3b82f6" />
                 <stop offset="30%" stopColor="#22c55e" />
-                <stop offset="45%" stopColor="#f97316" />
-                <stop offset="60%" stopColor="#a855f7" />
-                <stop offset="75%" stopColor="#f59e0b" />
+                <stop offset="40%" stopColor="#f97316" />
+                <stop offset="50%" stopColor="#a855f7" />
+                <stop offset="60%" stopColor="#ec4899" />
+                <stop offset="70%" stopColor="#f59e0b" />
+                <stop offset="80%" stopColor="#10b981" />
                 <stop offset="90%" stopColor="#eab308" />
                 <stop offset="100%" stopColor="#8b5cf6" />
               </linearGradient>
+
+              {/* Animated dash for flow effect */}
+              <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="rgba(255,255,255,0)"/>
+                <stop offset="50%" stopColor="rgba(255,255,255,0.8)"/>
+                <stop offset="100%" stopColor="rgba(255,255,255,0)"/>
+              </linearGradient>
             </defs>
 
-            {/* Main curved path */}
+            {/* Background glow path */}
             <path
-              d={`
-                M ${desktopPositions[0].x} ${desktopPositions[0].y}
-                Q ${desktopPositions[0].x + 10} ${desktopPositions[0].y}, ${desktopPositions[1].x} ${desktopPositions[1].y}
-                Q ${desktopPositions[1].x + 10} ${desktopPositions[1].y - 2}, ${desktopPositions[2].x} ${desktopPositions[2].y}
-                Q ${desktopPositions[2].x + 10} ${desktopPositions[2].y + 5}, ${desktopPositions[3].x} ${desktopPositions[3].y}
-                Q ${desktopPositions[3].x + 10} ${desktopPositions[3].y - 2}, ${desktopPositions[4].x} ${desktopPositions[4].y}
-                Q ${desktopPositions[4].x + 2} ${desktopPositions[4].y + 8}, ${desktopPositions[5].x} ${desktopPositions[5].y}
-                Q ${desktopPositions[5].x - 10} ${desktopPositions[5].y + 2}, ${desktopPositions[6].x} ${desktopPositions[6].y}
-                Q ${desktopPositions[6].x - 10} ${desktopPositions[6].y - 2}, ${desktopPositions[7].x} ${desktopPositions[7].y}
-                Q ${desktopPositions[7].x - 10} ${desktopPositions[7].y + 4}, ${desktopPositions[8].x} ${desktopPositions[8].y}
-                Q ${desktopPositions[8].x - 8} ${desktopPositions[8].y + 4}, ${desktopPositions[9].x} ${desktopPositions[9].y}
-                Q ${desktopPositions[9].x + 8} ${desktopPositions[9].y + 5}, ${desktopPositions[10].x} ${desktopPositions[10].y}
-                Q ${desktopPositions[10].x + 12} ${desktopPositions[10].y - 2}, ${desktopPositions[11].x} ${desktopPositions[11].y}
-                Q ${desktopPositions[11].x + 12} ${desktopPositions[11].y + 4}, ${desktopPositions[12].x} ${desktopPositions[12].y}
-                Q ${desktopPositions[12].x + 10} ${desktopPositions[12].y + 4}, ${desktopPositions[13].x} ${desktopPositions[13].y}
-                Q ${desktopPositions[13].x - 8} ${desktopPositions[13].y + 5}, ${desktopPositions[14].x} ${desktopPositions[14].y}
-                Q ${desktopPositions[14].x - 12} ${desktopPositions[14].y + 2}, ${desktopPositions[15].x} ${desktopPositions[15].y}
-                Q ${desktopPositions[15].x - 12} ${desktopPositions[15].y - 2}, ${desktopPositions[16].x} ${desktopPositions[16].y}
-              `}
+              d={pathD}
               fill="none"
-              stroke="url(#pathGradient)"
-              strokeWidth="0.4"
+              stroke="url(#unifiedGradient)"
+              strokeWidth="2"
               strokeLinecap="round"
-              strokeDasharray="1 0.5"
-              filter="url(#glow)"
-              className="animate-pulse"
+              opacity="0.2"
             />
             
-            {/* Glow path */}
+            {/* Main gradient path */}
             <path
-              d={`
-                M ${desktopPositions[0].x} ${desktopPositions[0].y}
-                Q ${desktopPositions[0].x + 10} ${desktopPositions[0].y}, ${desktopPositions[1].x} ${desktopPositions[1].y}
-                Q ${desktopPositions[1].x + 10} ${desktopPositions[1].y - 2}, ${desktopPositions[2].x} ${desktopPositions[2].y}
-                Q ${desktopPositions[2].x + 10} ${desktopPositions[2].y + 5}, ${desktopPositions[3].x} ${desktopPositions[3].y}
-                Q ${desktopPositions[3].x + 10} ${desktopPositions[3].y - 2}, ${desktopPositions[4].x} ${desktopPositions[4].y}
-                Q ${desktopPositions[4].x + 2} ${desktopPositions[4].y + 8}, ${desktopPositions[5].x} ${desktopPositions[5].y}
-                Q ${desktopPositions[5].x - 10} ${desktopPositions[5].y + 2}, ${desktopPositions[6].x} ${desktopPositions[6].y}
-                Q ${desktopPositions[6].x - 10} ${desktopPositions[6].y - 2}, ${desktopPositions[7].x} ${desktopPositions[7].y}
-                Q ${desktopPositions[7].x - 10} ${desktopPositions[7].y + 4}, ${desktopPositions[8].x} ${desktopPositions[8].y}
-                Q ${desktopPositions[8].x - 8} ${desktopPositions[8].y + 4}, ${desktopPositions[9].x} ${desktopPositions[9].y}
-                Q ${desktopPositions[9].x + 8} ${desktopPositions[9].y + 5}, ${desktopPositions[10].x} ${desktopPositions[10].y}
-                Q ${desktopPositions[10].x + 12} ${desktopPositions[10].y - 2}, ${desktopPositions[11].x} ${desktopPositions[11].y}
-                Q ${desktopPositions[11].x + 12} ${desktopPositions[11].y + 4}, ${desktopPositions[12].x} ${desktopPositions[12].y}
-                Q ${desktopPositions[12].x + 10} ${desktopPositions[12].y + 4}, ${desktopPositions[13].x} ${desktopPositions[13].y}
-                Q ${desktopPositions[13].x - 8} ${desktopPositions[13].y + 5}, ${desktopPositions[14].x} ${desktopPositions[14].y}
-                Q ${desktopPositions[14].x - 12} ${desktopPositions[14].y + 2}, ${desktopPositions[15].x} ${desktopPositions[15].y}
-                Q ${desktopPositions[15].x - 12} ${desktopPositions[15].y - 2}, ${desktopPositions[16].x} ${desktopPositions[16].y}
-              `}
+              d={pathD}
               fill="none"
-              stroke="url(#pathGradient)"
-              strokeWidth="1.5"
+              stroke="url(#unifiedGradient)"
+              strokeWidth="0.5"
               strokeLinecap="round"
-              opacity="0.15"
+              filter="url(#pathGlow)"
             />
+
+            {/* Animated flowing dots */}
+            <circle r="0.8" fill="white" opacity="0.8">
+              <animateMotion dur="12s" repeatCount="indefinite" path={pathD} />
+            </circle>
+            <circle r="0.6" fill="white" opacity="0.6">
+              <animateMotion dur="12s" repeatCount="indefinite" path={pathD} begin="-4s" />
+            </circle>
+            <circle r="0.5" fill="white" opacity="0.4">
+              <animateMotion dur="12s" repeatCount="indefinite" path={pathD} begin="-8s" />
+            </circle>
           </svg>
 
           {/* Service Nodes */}
@@ -345,38 +376,29 @@ export function ServiceJourneyPath() {
             />
           ))}
 
-          {/* Phase Labels */}
-          <div className="absolute left-4 top-[3%] text-left">
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
-              <span className="text-xs font-bold text-red-500 uppercase tracking-wider">Fase 1</span>
-              <p className="text-xs text-muted-foreground">Trilha Principal</p>
-            </div>
+          {/* Floating phase indicators - positioned along the path */}
+          <div className="absolute" style={{ left: '16%', top: '1%' }}>
+            <PhaseLabel phase="main" label="Trilha Principal" color="red" />
           </div>
-          <div className="absolute right-4 top-[28%] text-right">
-            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg px-3 py-2">
-              <span className="text-xs font-bold text-purple-500 uppercase tracking-wider">Fase 2</span>
-              <p className="text-xs text-muted-foreground">Operação Comercial</p>
-            </div>
+          <div className="absolute" style={{ left: '85%', top: '12%' }}>
+            <PhaseLabel phase="operation" label="Operação Comercial" color="purple" />
           </div>
-          <div className="absolute left-4 top-[52%] text-left">
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
-              <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">Fase 3</span>
-              <p className="text-xs text-muted-foreground">Trilha Avançada</p>
-            </div>
+          <div className="absolute" style={{ left: '5%', top: '28%' }}>
+            <PhaseLabel phase="advanced" label="Trilha Avançada" color="amber" />
           </div>
-          <div className="absolute right-4 top-[78%] text-right">
-            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2">
-              <span className="text-xs font-bold text-emerald-500 uppercase tracking-wider">Fase 4</span>
-              <p className="text-xs text-muted-foreground">Estratégia & Estrutura</p>
-            </div>
+          <div className="absolute" style={{ left: '55%', top: '52%' }}>
+            <PhaseLabel phase="structure" label="Estratégia & Estrutura" color="emerald" />
           </div>
         </div>
 
         {/* Mobile/Tablet Path */}
         <div className="lg:hidden">
           <div className="relative">
-            {/* Vertical gradient line */}
-            <div className="absolute left-8 top-0 bottom-0 w-1 rounded-full bg-gradient-to-b from-red-500 via-purple-500 via-amber-500 via-emerald-500 to-violet-500" />
+            {/* Continuous vertical gradient line */}
+            <div className="absolute left-8 top-0 bottom-0 w-1 rounded-full bg-gradient-to-b from-red-500 via-purple-500 via-amber-500 via-emerald-500 to-violet-500">
+              {/* Animated glow */}
+              <div className="absolute inset-0 w-1 rounded-full bg-gradient-to-b from-red-500 via-purple-500 via-amber-500 via-emerald-500 to-violet-500 blur-md animate-pulse" />
+            </div>
             
             {/* Steps */}
             <div className="space-y-4">
@@ -386,6 +408,13 @@ export function ServiceJourneyPath() {
                   service={service} 
                   number={index + 1}
                   isLast={index === allServices.length - 1}
+                  showPhaseLabel={
+                    index === 0 ? 'Trilha Principal' :
+                    index === 3 ? 'Operação Comercial' :
+                    index === 8 ? 'Trilha Avançada' :
+                    index === 12 ? 'Estratégia & Estrutura' :
+                    index === 16 ? 'Desenvolvimento' : undefined
+                  }
                 />
               ))}
             </div>
@@ -410,9 +439,35 @@ export function ServiceJourneyPath() {
             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
             <span>Estrutura</span>
           </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-card border border-border rounded-full px-3 py-1">
+            <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
+            <span>Desenvolvimento</span>
+          </div>
         </div>
       </div>
     </section>
+  );
+}
+
+interface PhaseLabelProps {
+  phase: string;
+  label: string;
+  color: 'red' | 'purple' | 'amber' | 'emerald' | 'violet';
+}
+
+function PhaseLabel({ label, color }: PhaseLabelProps) {
+  const colorClasses = {
+    red: 'bg-red-500/10 border-red-500/30 text-red-500',
+    purple: 'bg-purple-500/10 border-purple-500/30 text-purple-500',
+    amber: 'bg-amber-500/10 border-amber-500/30 text-amber-500',
+    emerald: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
+    violet: 'bg-violet-500/10 border-violet-500/30 text-violet-500',
+  };
+  
+  return (
+    <div className={cn("border rounded-lg px-3 py-1.5 backdrop-blur-sm", colorClasses[color])}>
+      <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
+    </div>
   );
 }
 
@@ -443,6 +498,12 @@ function DesktopNode({ service, position, number, isLast }: DesktopNodeProps) {
           service.bgColor
         )} />
         
+        {/* Connecting pulse ring */}
+        <div className={cn(
+          "absolute -inset-2 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 animate-ping",
+          service.bgColor.replace('bg-', 'border-2 border-')
+        )} />
+        
         {/* Main circle */}
         <div className={cn(
           "relative w-14 h-14 xl:w-16 xl:h-16 rounded-full flex items-center justify-center shadow-lg transition-all duration-300",
@@ -459,14 +520,14 @@ function DesktopNode({ service, position, number, isLast }: DesktopNodeProps) {
           {/* Crown for last step */}
           {isLast && (
             <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-              <Crown className="h-5 w-5 text-yellow-400 drop-shadow-lg" />
+              <Crown className="h-5 w-5 text-yellow-400 drop-shadow-lg animate-bounce" />
             </div>
           )}
         </div>
         
         {/* Info card on hover */}
         <div className="absolute top-full mt-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-30 transform scale-95 group-hover:scale-100">
-          <div className="bg-card border border-border rounded-xl p-4 shadow-2xl min-w-[220px] text-center">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-2xl min-w-[220px] text-center backdrop-blur-sm">
             <h4 className={cn("font-bold text-sm", service.color)}>{service.name}</h4>
             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{service.objective}</p>
             <div className="mt-3 flex items-center justify-center gap-1 text-xs text-primary font-semibold">
@@ -488,38 +549,55 @@ interface MobileNodeProps {
   service: JourneyStep;
   number: number;
   isLast?: boolean;
+  showPhaseLabel?: string;
 }
 
-function MobileNode({ service, number, isLast }: MobileNodeProps) {
+function MobileNode({ service, number, isLast, showPhaseLabel }: MobileNodeProps) {
   const Icon = service.icon;
   
   return (
-    <Link to={service.link} className="relative flex items-start gap-4 group">
-      {/* Circle on the line */}
-      <div className={cn(
-        "relative z-10 w-16 h-16 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 border-4 border-background shadow-lg",
-        "group-hover:scale-110",
-        service.bgColor
-      )}>
-        <Icon className="h-7 w-7 text-white" />
-        <div className="absolute -top-1 -left-1 w-6 h-6 rounded-full bg-background shadow flex items-center justify-center text-xs font-bold border border-border">
-          {number}
+    <>
+      {showPhaseLabel && (
+        <div className="ml-20 mb-2 mt-4">
+          <span className={cn(
+            "text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full",
+            service.phase === 'main' && "bg-red-500/10 text-red-500",
+            service.phase === 'operation' && "bg-purple-500/10 text-purple-500",
+            service.phase === 'advanced' && "bg-amber-500/10 text-amber-500",
+            service.phase === 'structure' && "bg-emerald-500/10 text-emerald-500",
+            service.phase === 'other' && "bg-violet-500/10 text-violet-500",
+          )}>
+            {showPhaseLabel}
+          </span>
         </div>
-        {isLast && (
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-            <Crown className="h-5 w-5 text-yellow-500" />
+      )}
+      <Link to={service.link} className="relative flex items-start gap-4 group">
+        {/* Circle on the line */}
+        <div className={cn(
+          "relative z-10 w-16 h-16 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 border-4 border-background shadow-lg",
+          "group-hover:scale-110",
+          service.bgColor
+        )}>
+          <Icon className="h-7 w-7 text-white" />
+          <div className="absolute -top-1 -left-1 w-6 h-6 rounded-full bg-background shadow flex items-center justify-center text-xs font-bold border border-border">
+            {number}
           </div>
-        )}
-      </div>
-      
-      {/* Content */}
-      <div className="flex-1 bg-card border border-border rounded-xl p-4 group-hover:border-primary/50 group-hover:shadow-lg transition-all duration-300">
-        <h4 className={cn("font-bold", service.color)}>{service.name}</h4>
-        <p className="text-sm text-muted-foreground mt-1">{service.objective}</p>
-        <div className="mt-2 flex items-center gap-1 text-xs text-primary font-medium">
-          Ver detalhes <ArrowRight className="h-3 w-3" />
+          {isLast && (
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+              <Crown className="h-5 w-5 text-yellow-500 animate-bounce" />
+            </div>
+          )}
         </div>
-      </div>
-    </Link>
+        
+        {/* Content */}
+        <div className="flex-1 bg-card border border-border rounded-xl p-4 group-hover:border-primary/50 group-hover:shadow-lg transition-all duration-300">
+          <h4 className={cn("font-bold", service.color)}>{service.name}</h4>
+          <p className="text-sm text-muted-foreground mt-1">{service.objective}</p>
+          <div className="mt-2 flex items-center gap-1 text-xs text-primary font-medium">
+            Ver detalhes <ArrowRight className="h-3 w-3" />
+          </div>
+        </div>
+      </Link>
+    </>
   );
 }
