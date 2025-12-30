@@ -1,6 +1,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { ServiceJourneyPath } from "@/components/ServiceJourneyPath";
 import { 
   ArrowRight, 
   Target,
@@ -289,6 +290,9 @@ export default function PricingPage() {
           </div>
         </div>
       </section>
+
+      {/* Journey Path */}
+      <ServiceJourneyPath />
 
       {/* Products by Category */}
       {categories.map((category) => {
