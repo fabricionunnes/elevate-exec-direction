@@ -27,6 +27,7 @@ export function ROISimulator({
 }: ROISimulatorProps) {
   const [monthlyRevenue, setMonthlyRevenue] = useState<number>(100000);
   const [monthlySales, setMonthlySales] = useState<number>(50);
+  const [monthlyLeads, setMonthlyLeads] = useState<number>(500);
   const [simulatedConversionIncrease, setSimulatedConversionIncrease] = useState<number>(expectedConversionIncrease);
   const [simulatedTicketIncrease, setSimulatedTicketIncrease] = useState<number>(expectedTicketIncrease);
 
@@ -34,17 +35,15 @@ export function ROISimulator({
     // Current metrics
     const currentTicket = monthlySales > 0 ? monthlyRevenue / monthlySales : 0;
     
-    // Assuming current conversion is baseline (we estimate leads based on typical conversion rate)
-    // For simulation purposes, we assume 10% baseline conversion
-    const estimatedBaselineConversion = 10;
-    const estimatedLeads = monthlySales > 0 ? Math.round(monthlySales / (estimatedBaselineConversion / 100)) : 0;
+    // Calculate actual conversion from leads and sales
+    const currentConversion = monthlyLeads > 0 ? (monthlySales / monthlyLeads) * 100 : 0;
     
     // Simulated improvements
-    const newConversion = estimatedBaselineConversion + simulatedConversionIncrease;
+    const newConversion = currentConversion + simulatedConversionIncrease;
     const newTicket = currentTicket * (1 + simulatedTicketIncrease / 100);
     
     // Projected sales with new conversion
-    const projectedSales = Math.round(estimatedLeads * (newConversion / 100));
+    const projectedSales = Math.round(monthlyLeads * (newConversion / 100));
     
     // New revenue
     const projectedMonthlyRevenue = projectedSales * newTicket;
@@ -62,8 +61,8 @@ export function ROISimulator({
     
     return {
       currentTicket,
-      estimatedLeads,
-      estimatedBaselineConversion,
+      currentConversion,
+      monthlyLeads,
       newConversion,
       newTicket,
       projectedSales,
@@ -76,7 +75,7 @@ export function ROISimulator({
       netGain,
       paybackMonths,
     };
-  }, [monthlyRevenue, monthlySales, simulatedConversionIncrease, simulatedTicketIncrease, productPriceValue]);
+  }, [monthlyRevenue, monthlySales, monthlyLeads, simulatedConversionIncrease, simulatedTicketIncrease, productPriceValue]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -152,11 +151,34 @@ export function ROISimulator({
                     </p>
                   </div>
 
-                  <div className="p-4 bg-secondary rounded-lg border border-border">
+                  <div className="space-y-3">
+                    <Label htmlFor="leads" className="text-foreground font-medium">
+                      Quantidade de Atendimentos/Mês
+                    </Label>
+                    <Input
+                      id="leads"
+                      type="number"
+                      value={monthlyLeads}
+                      onChange={(e) => setMonthlyLeads(Number(e.target.value))}
+                      className="text-lg"
+                      min={0}
+                    />
+                    <p className="text-small text-muted-foreground">
+                      {formatNumber(monthlyLeads)} atendimentos (leads)
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-secondary rounded-lg border border-border space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Ticket Médio Calculado:</span>
                       <span className="font-semibold text-foreground text-lg">
                         {formatCurrency(calculations.currentTicket)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-border">
+                      <span className="text-muted-foreground">Conversão Atual:</span>
+                      <span className="font-semibold text-foreground text-lg">
+                        {calculations.currentConversion.toFixed(1)}%
                       </span>
                     </div>
                   </div>
@@ -188,7 +210,7 @@ export function ROISimulator({
                       className="w-full"
                     />
                     <p className="text-small text-muted-foreground">
-                      De {calculations.estimatedBaselineConversion}% para {calculations.newConversion}% de conversão
+                      De {calculations.currentConversion.toFixed(1)}% para {calculations.newConversion.toFixed(1)}% de conversão
                     </p>
                   </div>
 
