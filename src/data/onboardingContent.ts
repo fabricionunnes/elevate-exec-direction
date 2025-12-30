@@ -15,52 +15,64 @@ export interface ProductOnboarding {
 
 // Generate onboarding slides for each product
 export const generateOnboardingSlides = (product: ProductDetail): ProductOnboarding => {
-const slides: OnboardingSlide[] = [
+  // Transform content to speak directly to the client (second person)
+  const transformToSecondPerson = (text: string): string => {
+    return text
+      .replace(/o cliente/gi, "você")
+      .replace(/do cliente/gi, "seu")
+      .replace(/ao cliente/gi, "a você")
+      .replace(/para o cliente/gi, "para você")
+      .replace(/seu time/gi, "seu time")
+      .replace(/sua empresa/gi, "sua empresa");
+  };
+
+  const slides: OnboardingSlide[] = [
     // Slide 1: Introduction
     {
       title: `Bem-vindo ao ${product.name}`,
       content: [
         product.tagline,
-        product.description,
+        transformToSecondPerson(product.description),
       ],
       type: "intro",
     },
     // Slide 2: What you will receive
     {
       title: "O que você vai receber",
-      content: product.deliverables,
+      content: product.deliverables.map(transformToSecondPerson),
       type: "deliverable",
     },
     // Slide 3: Problems we solve
     {
-      title: "Problemas que resolvemos",
-      content: product.problemsSolved.map((ps) => `${ps.problem} → ${ps.result}`),
+      title: "Problemas que vamos resolver juntos",
+      content: product.problemsSolved.map((ps) => 
+        `${transformToSecondPerson(ps.problem)} → ${transformToSecondPerson(ps.result)}`
+      ),
       type: "deliverable",
     },
     // Slide 4: Key Benefits
     {
-      title: "Benefícios-chave",
-      content: product.keyBenefits,
+      title: "Benefícios que você terá",
+      content: product.keyBenefits.map(transformToSecondPerson),
       type: "deliverable",
     },
     // Slide 5: Time to results
     {
-      title: "Expectativas e Tempo de Resultado",
+      title: "O que esperar e quando",
       content: [
-        product.timeToResults,
-        product.bestFor,
-        product.whyRecommended,
+        transformToSecondPerson(product.timeToResults),
+        transformToSecondPerson(product.whyRecommended),
       ],
       type: "expectations",
     },
     // Slide 6: Next steps
     {
-      title: "Próximos Passos",
+      title: "Seus Próximos Passos",
       content: [
-        "Alinhar expectativas com o cliente",
-        "Definir data de início",
-        "Configurar acesso às ferramentas",
-        "Agendar primeira reunião de kick-off",
+        "Vamos alinhar as expectativas juntos",
+        "Definir a data de início do seu programa",
+        "Configurar seus acessos às ferramentas",
+        "Agendar nossa primeira reunião de kick-off",
       ],
       type: "next-steps",
     },
