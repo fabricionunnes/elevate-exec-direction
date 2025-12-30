@@ -226,25 +226,25 @@ const allServices: JourneyStep[] = [
   }
 ];
 
-// Unified winding path positions - continuous flow
+// Unified winding path positions - truly continuous serpentine flow
 const desktopPositions = [
-  { x: 8, y: 4 },     // 1. Core
-  { x: 25, y: 7 },    // 2. Control
-  { x: 45, y: 4 },    // 3. Acceleration
-  { x: 65, y: 9 },    // 4. Sales Ops
-  { x: 85, y: 5 },    // 5. Ads
-  { x: 92, y: 16 },   // 6. Social
-  { x: 78, y: 22 },   // 7. Sales System
-  { x: 58, y: 19 },   // 8. Fractional CRO
-  { x: 38, y: 25 },   // 9. Growth Room
-  { x: 18, y: 22 },   // 10. Partners
-  { x: 8, y: 34 },    // 11. Execution
-  { x: 22, y: 42 },   // 12. Mastermind
-  { x: 42, y: 38 },   // 13. Le Désir
-  { x: 62, y: 44 },   // 14. People
-  { x: 82, y: 40 },   // 15. Finance
-  { x: 92, y: 52 },   // 16. Safe
-  { x: 75, y: 58 },   // 17. Leadership
+  { x: 10, y: 5 },    // 1. Core
+  { x: 30, y: 8 },    // 2. Control
+  { x: 50, y: 5 },    // 3. Acceleration
+  { x: 70, y: 10 },   // 4. Sales Ops
+  { x: 90, y: 6 },    // 5. Ads
+  { x: 90, y: 18 },   // 6. Social (curva para baixo)
+  { x: 70, y: 22 },   // 7. Sales System
+  { x: 50, y: 18 },   // 8. Fractional CRO
+  { x: 30, y: 24 },   // 9. Growth Room
+  { x: 10, y: 20 },   // 10. Partners
+  { x: 10, y: 34 },   // 11. Execution (curva para baixo)
+  { x: 30, y: 38 },   // 12. Mastermind
+  { x: 50, y: 34 },   // 13. Le Désir
+  { x: 70, y: 40 },   // 14. People
+  { x: 90, y: 36 },   // 15. Finance
+  { x: 90, y: 50 },   // 16. Safe (curva para baixo)
+  { x: 70, y: 54 },   // 17. Leadership
 ];
 
 // Generate smooth curved path through all points
@@ -323,90 +323,7 @@ export function ServiceJourneyPath() {
                 <stop offset="100%" stopColor="#8b5cf6" />
               </linearGradient>
 
-              {/* Vertical gradient for connecting lines */}
-              <linearGradient id="connectGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#a855f7" stopOpacity="0.6" />
-                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.6" />
-              </linearGradient>
             </defs>
-
-            {/* Connecting lines between upper and lower trails */}
-            {/* Connection: Acceleration (3) to Growth Room (9) */}
-            <path
-              d="M 45 4 Q 45 15, 38 25"
-              fill="none"
-              stroke="url(#connectGradient)"
-              strokeWidth="0.3"
-              strokeLinecap="round"
-              strokeDasharray="1 1"
-              opacity="0.5"
-            />
-            
-            {/* Connection: Sales Ops (4) to Partners (10) */}
-            <path
-              d="M 65 9 Q 40 16, 18 22"
-              fill="none"
-              stroke="url(#connectGradient)"
-              strokeWidth="0.3"
-              strokeLinecap="round"
-              strokeDasharray="1 1"
-              opacity="0.5"
-            />
-            
-            {/* Connection: Ads (5) to Mastermind (12) */}
-            <path
-              d="M 85 5 Q 60 24, 22 42"
-              fill="none"
-              stroke="url(#connectGradient)"
-              strokeWidth="0.3"
-              strokeLinecap="round"
-              strokeDasharray="1 1"
-              opacity="0.4"
-            />
-
-            {/* Connection: Social (6) to Le Désir (13) */}
-            <path
-              d="M 92 16 Q 70 28, 42 38"
-              fill="none"
-              stroke="url(#connectGradient)"
-              strokeWidth="0.3"
-              strokeLinecap="round"
-              strokeDasharray="1 1"
-              opacity="0.5"
-            />
-
-            {/* Connection: Sales System (7) to People (14) */}
-            <path
-              d="M 78 22 Q 72 34, 62 44"
-              fill="none"
-              stroke="url(#connectGradient)"
-              strokeWidth="0.3"
-              strokeLinecap="round"
-              strokeDasharray="1 1"
-              opacity="0.5"
-            />
-
-            {/* Connection: Fractional CRO (8) to Finance (15) */}
-            <path
-              d="M 58 19 Q 70 30, 82 40"
-              fill="none"
-              stroke="url(#connectGradient)"
-              strokeWidth="0.3"
-              strokeLinecap="round"
-              strokeDasharray="1 1"
-              opacity="0.5"
-            />
-
-            {/* Connection: Execution (11) to Safe (16) */}
-            <path
-              d="M 8 34 Q 50 45, 92 52"
-              fill="none"
-              stroke="url(#connectGradient)"
-              strokeWidth="0.3"
-              strokeLinecap="round"
-              strokeDasharray="1 1"
-              opacity="0.4"
-            />
 
             {/* Background glow path */}
             <path
