@@ -9,7 +9,6 @@ import {
   Building2, 
   Handshake, 
   Crown,
-  ArrowRight,
   Sparkles,
   DollarSign,
   Shield,
@@ -26,203 +25,123 @@ interface JourneyStep {
   shortName: string;
   objective: string;
   icon: React.ElementType;
-  color: string;
-  bgColor: string;
   link: string;
   carColor: string;
 }
 
 const allServices: JourneyStep[] = [
-  {
-    id: "core",
-    name: "UNV Core",
-    shortName: "Core",
-    objective: "Estruturar sua operação comercial do zero",
-    icon: Target,
-    color: "text-red-500",
-    bgColor: "bg-red-500",
-    link: "/core",
-    carColor: "#ef4444"
-  },
-  {
-    id: "control",
-    name: "UNV Control",
-    shortName: "Control",
-    objective: "Direção comercial contínua e previsibilidade",
-    icon: Compass,
-    color: "text-blue-500",
-    bgColor: "bg-blue-500",
-    link: "/control",
-    carColor: "#3b82f6"
-  },
-  {
-    id: "sales-acceleration",
-    name: "UNV Sales Acceleration",
-    shortName: "Acceleration",
-    objective: "Acelerar resultados com acompanhamento individual",
-    icon: TrendingUp,
-    color: "text-green-500",
-    bgColor: "bg-green-500",
-    link: "/sales-acceleration",
-    carColor: "#22c55e"
-  },
-  {
-    id: "sales-ops",
-    name: "UNV Sales Ops",
-    shortName: "Sales Ops",
-    objective: "Treinar e capacitar seu time comercial",
-    icon: Users,
-    color: "text-orange-500",
-    bgColor: "bg-orange-500",
-    link: "/sales-ops",
-    carColor: "#f97316"
-  },
-  {
-    id: "ads",
-    name: "UNV Ads",
-    shortName: "Ads",
-    objective: "Escalar geração de leads qualificados",
-    icon: Megaphone,
-    color: "text-purple-500",
-    bgColor: "bg-purple-500",
-    link: "/ads",
-    carColor: "#a855f7"
-  },
-  {
-    id: "social",
-    name: "UNV Social",
-    shortName: "Social",
-    objective: "Gestão profissional das redes sociais",
-    icon: Share2,
-    color: "text-pink-500",
-    bgColor: "bg-pink-500",
-    link: "/social",
-    carColor: "#ec4899"
-  },
-  {
-    id: "ai-sales-system",
-    name: "UNV Sales System",
-    shortName: "Sales System",
-    objective: "Automatizar vendas com inteligência artificial",
-    icon: Bot,
-    color: "text-cyan-500",
-    bgColor: "bg-cyan-500",
-    link: "/ai-sales-system",
-    carColor: "#06b6d4"
-  },
-  {
-    id: "fractional-cro",
-    name: "UNV Fractional CRO",
-    shortName: "Fractional CRO",
-    objective: "Diretor comercial terceirizado",
-    icon: UserCheck,
-    color: "text-indigo-500",
-    bgColor: "bg-indigo-500",
-    link: "/fractional-cro",
-    carColor: "#6366f1"
-  },
-  {
-    id: "growth-room",
-    name: "UNV Growth Room",
-    shortName: "Growth Room",
-    objective: "Imersões intensivas para destravar crescimento",
-    icon: Building2,
-    color: "text-amber-500",
-    bgColor: "bg-amber-500",
-    link: "/growth-room",
-    carColor: "#f59e0b"
-  },
-  {
-    id: "partners",
-    name: "UNV Partners",
-    shortName: "Partners",
-    objective: "Grupo estratégico de parceiros UNV",
-    icon: Handshake,
-    color: "text-emerald-500",
-    bgColor: "bg-emerald-500",
-    link: "/partners",
-    carColor: "#10b981"
-  },
-  {
-    id: "execution-partnership",
-    name: "UNV Execution Partnership",
-    shortName: "Execution",
-    objective: "Implementação comercial direta em 3 meses",
-    icon: Handshake,
-    color: "text-red-600",
-    bgColor: "bg-red-600",
-    link: "/execution-partnership",
-    carColor: "#dc2626"
-  },
-  {
-    id: "mastermind",
-    name: "UNV Mastermind",
-    shortName: "Mastermind",
-    objective: "Grupo exclusivo de empresários de elite",
-    icon: Crown,
-    color: "text-yellow-500",
-    bgColor: "bg-yellow-500",
-    link: "/mastermind",
-    carColor: "#eab308"
-  },
-  {
-    id: "le-desir",
-    name: "UNV Le Désir",
-    shortName: "Le Désir",
-    objective: "Posicionamento premium para sua marca",
-    icon: Sparkles,
-    color: "text-rose-500",
-    bgColor: "bg-rose-500",
-    link: "/le-desir",
-    carColor: "#f43f5e"
-  },
-  {
-    id: "people",
-    name: "UNV People",
-    shortName: "People",
-    objective: "Gestão de pessoas e cultura organizacional",
-    icon: Users,
-    color: "text-blue-600",
-    bgColor: "bg-blue-600",
-    link: "/people",
-    carColor: "#2563eb"
-  },
-  {
-    id: "finance",
-    name: "UNV Finance",
-    shortName: "Finance",
-    objective: "Controle financeiro estratégico",
-    icon: DollarSign,
-    color: "text-green-600",
-    bgColor: "bg-green-600",
-    link: "/finance",
-    carColor: "#16a34a"
-  },
-  {
-    id: "safe",
-    name: "UNV Safe",
-    shortName: "Safe",
-    objective: "Assessoria jurídica preventiva",
-    icon: Shield,
-    color: "text-slate-500",
-    bgColor: "bg-slate-500",
-    link: "/safe",
-    carColor: "#64748b"
-  },
-  {
-    id: "leadership",
-    name: "UNV Leadership",
-    shortName: "Leadership",
-    objective: "Desenvolvimento de líderes intermediários",
-    icon: UserCheck,
-    color: "text-violet-500",
-    bgColor: "bg-violet-500",
-    link: "/leadership",
-    carColor: "#8b5cf6"
-  }
+  { id: "core", name: "UNV Core", shortName: "Core", objective: "Estruturar sua operação comercial do zero", icon: Target, link: "/core", carColor: "#ef4444" },
+  { id: "control", name: "UNV Control", shortName: "Control", objective: "Direção comercial contínua e previsibilidade", icon: Compass, link: "/control", carColor: "#3b82f6" },
+  { id: "sales-acceleration", name: "UNV Sales Acceleration", shortName: "Acceleration", objective: "Acelerar resultados com acompanhamento", icon: TrendingUp, link: "/sales-acceleration", carColor: "#22c55e" },
+  { id: "sales-ops", name: "UNV Sales Ops", shortName: "Sales Ops", objective: "Treinar e capacitar seu time comercial", icon: Users, link: "/sales-ops", carColor: "#f97316" },
+  { id: "ads", name: "UNV Ads", shortName: "Ads", objective: "Escalar geração de leads qualificados", icon: Megaphone, link: "/ads", carColor: "#a855f7" },
+  { id: "social", name: "UNV Social", shortName: "Social", objective: "Gestão profissional das redes sociais", icon: Share2, link: "/social", carColor: "#ec4899" },
+  { id: "ai-sales-system", name: "UNV Sales System", shortName: "Sales System", objective: "Automatizar vendas com IA", icon: Bot, link: "/ai-sales-system", carColor: "#06b6d4" },
+  { id: "fractional-cro", name: "UNV Fractional CRO", shortName: "Fractional CRO", objective: "Diretor comercial terceirizado", icon: UserCheck, link: "/fractional-cro", carColor: "#6366f1" },
+  { id: "growth-room", name: "UNV Growth Room", shortName: "Growth Room", objective: "Imersões intensivas para destravar", icon: Building2, link: "/growth-room", carColor: "#f59e0b" },
+  { id: "partners", name: "UNV Partners", shortName: "Partners", objective: "Grupo estratégico de parceiros UNV", icon: Handshake, link: "/partners", carColor: "#10b981" },
+  { id: "execution-partnership", name: "UNV Execution", shortName: "Execution", objective: "Implementação comercial direta", icon: Handshake, link: "/execution-partnership", carColor: "#dc2626" },
+  { id: "mastermind", name: "UNV Mastermind", shortName: "Mastermind", objective: "Grupo exclusivo de empresários de elite", icon: Crown, link: "/mastermind", carColor: "#eab308" },
+  { id: "le-desir", name: "UNV Le Désir", shortName: "Le Désir", objective: "Posicionamento premium para sua marca", icon: Sparkles, link: "/le-desir", carColor: "#f43f5e" },
+  { id: "people", name: "UNV People", shortName: "People", objective: "Gestão de pessoas e cultura", icon: Users, link: "/people", carColor: "#2563eb" },
+  { id: "finance", name: "UNV Finance", shortName: "Finance", objective: "Controle financeiro estratégico", icon: DollarSign, link: "/finance", carColor: "#16a34a" },
+  { id: "safe", name: "UNV Safe", shortName: "Safe", objective: "Assessoria jurídica preventiva", icon: Shield, link: "/safe", carColor: "#64748b" },
+  { id: "leadership", name: "UNV Leadership", shortName: "Leadership", objective: "Desenvolvimento de líderes", icon: UserCheck, link: "/leadership", carColor: "#8b5cf6" }
 ];
 
+// F1 Car SVG Component
+function F1Car({ color, number, rotation = 0 }: { color: string; number: number; rotation?: number }) {
+  return (
+    <svg 
+      viewBox="0 0 60 24" 
+      className="w-12 h-5 md:w-16 md:h-6 drop-shadow-lg"
+      style={{ transform: `rotate(${rotation}deg)` }}
+    >
+      {/* Car body */}
+      <ellipse cx="30" cy="12" rx="28" ry="8" fill={color} />
+      {/* Cockpit */}
+      <ellipse cx="24" cy="12" rx="8" ry="5" fill="#1a1a1a" />
+      {/* Driver helmet */}
+      <circle cx="24" cy="11" r="3" fill="#ffffff" />
+      {/* Front wing */}
+      <rect x="54" y="4" width="4" height="16" rx="1" fill={color} />
+      {/* Rear wing */}
+      <rect x="0" y="2" width="3" height="20" rx="1" fill={color} />
+      <rect x="-2" y="6" width="6" height="12" rx="1" fill="#1a1a1a" />
+      {/* Front wheels */}
+      <ellipse cx="48" cy="4" rx="4" ry="3" fill="#1a1a1a" />
+      <ellipse cx="48" cy="20" rx="4" ry="3" fill="#1a1a1a" />
+      {/* Rear wheels */}
+      <ellipse cx="10" cy="3" rx="5" ry="3" fill="#1a1a1a" />
+      <ellipse cx="10" cy="21" rx="5" ry="3" fill="#1a1a1a" />
+      {/* Number */}
+      <text x="34" y="15" fontSize="8" fill="white" fontWeight="bold">{number}</text>
+    </svg>
+  );
+}
+
+// Checkered flag pattern
+function CheckeredFlag() {
+  return (
+    <div className="flex">
+      {[...Array(8)].map((_, i) => (
+        <div key={i} className="flex flex-col">
+          <div className={cn("w-3 h-3", i % 2 === 0 ? "bg-foreground" : "bg-background border border-foreground/20")} />
+          <div className={cn("w-3 h-3", i % 2 === 1 ? "bg-foreground" : "bg-background border border-foreground/20")} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ServiceJourneyPath() {
+  // Track path for the racing circuit - one continuous winding path
+  const trackPath = `
+    M 50 30
+    L 85 30
+    Q 95 30 95 45
+    L 95 80
+    Q 95 95 80 95
+    L 20 95
+    Q 5 95 5 110
+    L 5 145
+    Q 5 160 20 160
+    L 80 160
+    Q 95 160 95 175
+    L 95 210
+    Q 95 225 80 225
+    L 20 225
+    Q 5 225 5 240
+    L 5 275
+    Q 5 290 20 290
+    L 80 290
+    Q 95 290 95 305
+    L 95 340
+    Q 95 355 80 355
+    L 50 355
+  `;
+
+  // Positions along the track for each car (percentage along path)
+  const carPositions = [
+    { x: 15, y: 5, rotation: 0 },    // 1
+    { x: 45, y: 5, rotation: 0 },    // 2
+    { x: 75, y: 5, rotation: 0 },    // 3
+    { x: 92, y: 12, rotation: 90 },  // 4
+    { x: 92, y: 22, rotation: 90 },  // 5
+    { x: 75, y: 30, rotation: 180 }, // 6
+    { x: 45, y: 30, rotation: 180 }, // 7
+    { x: 15, y: 30, rotation: 180 }, // 8
+    { x: 8, y: 38, rotation: 90 },   // 9
+    { x: 8, y: 48, rotation: 90 },   // 10
+    { x: 25, y: 55, rotation: 0 },   // 11
+    { x: 55, y: 55, rotation: 0 },   // 12
+    { x: 85, y: 55, rotation: 0 },   // 13
+    { x: 92, y: 65, rotation: 90 },  // 14
+    { x: 75, y: 75, rotation: 180 }, // 15
+    { x: 45, y: 75, rotation: 180 }, // 16
+    { x: 25, y: 85, rotation: 180 }, // 17 - Finish
+  ];
+
   return (
     <section className="section-padding bg-gradient-to-b from-background via-secondary/10 to-background overflow-hidden">
       <div className="container-premium">
@@ -240,74 +159,143 @@ export function ServiceJourneyPath() {
           </p>
         </div>
 
-        {/* Racing Track */}
-        <div className="relative">
-          {/* Start Line */}
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-foreground/20 to-foreground/40" />
-            <div className="flex items-center gap-2 px-6 py-3 bg-card border-2 border-dashed border-foreground/30 rounded-full">
-              <Flag className="h-5 w-5 text-green-500" />
-              <span className="font-bold text-foreground uppercase tracking-wider text-sm">Largada</span>
-            </div>
-            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-foreground/20 to-foreground/40" />
+        {/* Racing Track - Desktop */}
+        <div className="hidden lg:block relative" style={{ height: '1600px' }}>
+          <svg 
+            className="absolute inset-0 w-full h-full" 
+            viewBox="0 0 100 100"
+            preserveAspectRatio="xMidYMid slice"
+          >
+            <defs>
+              {/* Track gradient */}
+              <linearGradient id="trackGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#374151" />
+                <stop offset="100%" stopColor="#1f2937" />
+              </linearGradient>
+              
+              {/* Glow effect */}
+              <filter id="trackGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="0.5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+
+              {/* Racing stripes pattern */}
+              <pattern id="racingStripes" patternUnits="userSpaceOnUse" width="2" height="2">
+                <rect width="1" height="2" fill="#ef4444" opacity="0.3" />
+              </pattern>
+            </defs>
+
+            {/* Track outer edge */}
+            <path
+              d={trackPath}
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity="0.3"
+            />
+
+            {/* Track surface */}
+            <path
+              d={trackPath}
+              fill="none"
+              stroke="url(#trackGradient)"
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              filter="url(#trackGlow)"
+            />
+
+            {/* Track center line (dashed) */}
+            <path
+              d={trackPath}
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="0.3"
+              strokeLinecap="round"
+              strokeDasharray="2 2"
+              opacity="0.5"
+            />
+
+            {/* Track inner edge */}
+            <path
+              d={trackPath}
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="0.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity="0.5"
+            />
+
+            {/* Start line */}
+            <line x1="48" y1="28" x2="48" y2="32" stroke="white" strokeWidth="0.5" />
+            <line x1="49" y1="28" x2="49" y2="32" stroke="black" strokeWidth="0.5" />
+            <line x1="50" y1="28" x2="50" y2="32" stroke="white" strokeWidth="0.5" />
+            <line x1="51" y1="28" x2="51" y2="32" stroke="black" strokeWidth="0.5" />
+            <line x1="52" y1="28" x2="52" y2="32" stroke="white" strokeWidth="0.5" />
+          </svg>
+
+          {/* Start/Finish markers */}
+          <div className="absolute left-[8%] top-[2%] flex items-center gap-2">
+            <Flag className="h-6 w-6 text-green-500" />
+            <span className="text-sm font-bold text-green-500 uppercase">Largada</span>
           </div>
 
-          {/* Track with Cars */}
-          <div className="relative">
-            {/* Track SVG Background */}
-            <svg 
-              className="absolute inset-0 w-full h-full pointer-events-none opacity-20" 
-              preserveAspectRatio="none"
-              viewBox="0 0 100 100"
-            >
-              <defs>
-                <pattern id="trackPattern" patternUnits="userSpaceOnUse" width="20" height="20">
-                  <rect width="10" height="10" fill="currentColor" className="text-foreground/10" />
-                  <rect x="10" y="10" width="10" height="10" fill="currentColor" className="text-foreground/10" />
-                </pattern>
-              </defs>
-            </svg>
+          {/* F1 Cars positioned on track */}
+          {allServices.map((service, index) => (
+            <CarOnTrack
+              key={service.id}
+              service={service}
+              position={carPositions[index]}
+              number={index + 1}
+              isLast={index === allServices.length - 1}
+            />
+          ))}
 
-            {/* Services as Race Cars */}
-            <div className="space-y-4 md:space-y-6">
-              {allServices.map((service, index) => (
-                <RaceCarNode 
-                  key={service.id}
-                  service={service}
-                  position={index + 1}
-                  isLast={index === allServices.length - 1}
-                  direction={index % 2 === 0 ? 'right' : 'left'}
-                />
-              ))}
+          {/* Finish line marker */}
+          <div className="absolute left-[20%] bottom-[8%] flex items-center gap-3">
+            <CheckeredFlag />
+            <div className="flex items-center gap-2">
+              <Trophy className="h-6 w-6 text-yellow-500" />
+              <span className="text-sm font-bold text-yellow-500 uppercase">Chegada</span>
             </div>
           </div>
+        </div>
 
-          {/* Finish Line */}
-          <div className="flex items-center justify-center gap-4 mt-8">
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-foreground/20 to-foreground/40" />
-            <div className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-2 border-yellow-500/50 rounded-full">
-              <Trophy className="h-5 w-5 text-yellow-500" />
-              <span className="font-bold text-yellow-500 uppercase tracking-wider text-sm">Chegada</span>
-              <div className="flex gap-0.5">
-                {[...Array(6)].map((_, i) => (
-                  <div 
-                    key={i} 
-                    className={cn(
-                      "w-2 h-4",
-                      i % 2 === 0 ? "bg-foreground" : "bg-background border border-foreground/30"
-                    )} 
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-foreground/20 to-foreground/40" />
+        {/* Mobile version - vertical list with car styling */}
+        <div className="lg:hidden space-y-3">
+          {/* Start */}
+          <div className="flex items-center justify-center gap-3 py-4">
+            <Flag className="h-5 w-5 text-green-500" />
+            <span className="font-bold text-green-500 uppercase text-sm">Largada</span>
+          </div>
+
+          {allServices.map((service, index) => (
+            <MobileCarCard
+              key={service.id}
+              service={service}
+              number={index + 1}
+              isLast={index === allServices.length - 1}
+            />
+          ))}
+
+          {/* Finish */}
+          <div className="flex items-center justify-center gap-3 py-4">
+            <CheckeredFlag />
+            <Trophy className="h-5 w-5 text-yellow-500" />
+            <span className="font-bold text-yellow-500 uppercase text-sm">Chegada</span>
           </div>
         </div>
 
         {/* Legend */}
-        <div className="mt-12 text-center">
+        <div className="mt-8 text-center">
           <p className="text-sm text-muted-foreground">
-            Clique em qualquer carro para conhecer o serviço e acelerar sua jornada
+            Clique em qualquer carro para conhecer o serviço
           </p>
         </div>
       </div>
@@ -315,118 +303,106 @@ export function ServiceJourneyPath() {
   );
 }
 
-interface RaceCarNodeProps {
+interface CarOnTrackProps {
   service: JourneyStep;
-  position: number;
+  position: { x: number; y: number; rotation: number };
+  number: number;
   isLast: boolean;
-  direction: 'left' | 'right';
 }
 
-function RaceCarNode({ service, position, isLast, direction }: RaceCarNodeProps) {
+function CarOnTrack({ service, position, number, isLast }: CarOnTrackProps) {
   const Icon = service.icon;
   
   return (
-    <div className={cn(
-      "relative flex items-center gap-4 group",
-      direction === 'left' ? "flex-row-reverse" : "flex-row"
-    )}>
-      {/* Track line connecting to next */}
-      {!isLast && (
-        <div className={cn(
-          "absolute top-full left-1/2 w-0.5 h-4 md:h-6 -translate-x-1/2",
-          "bg-gradient-to-b from-foreground/20 to-foreground/5"
-        )} />
-      )}
+    <Link
+      to={service.link}
+      className="absolute group"
+      style={{
+        left: `${position.x}%`,
+        top: `${position.y}%`,
+        transform: 'translate(-50%, -50%)'
+      }}
+    >
+      {/* Hover glow */}
+      <div 
+        className="absolute -inset-4 rounded-full blur-xl opacity-0 group-hover:opacity-60 transition-opacity duration-300"
+        style={{ backgroundColor: service.carColor }}
+      />
       
-      {/* Position Number */}
-      <div className={cn(
-        "hidden md:flex items-center justify-center w-12 h-12 rounded-full border-2 font-bold text-lg shrink-0 transition-all duration-300",
-        "bg-background border-foreground/20 text-muted-foreground",
-        "group-hover:border-primary group-hover:text-primary group-hover:scale-110"
-      )}>
-        {position}
+      {/* F1 Car */}
+      <div className="relative transition-transform duration-300 group-hover:scale-125">
+        <F1Car color={service.carColor} number={number} rotation={position.rotation} />
+        
+        {/* Trophy for last */}
+        {isLast && (
+          <Trophy className="absolute -top-4 left-1/2 -translate-x-1/2 h-5 w-5 text-yellow-500 animate-bounce" />
+        )}
       </div>
       
-      {/* Race Car Card */}
-      <Link 
-        to={service.link}
-        className={cn(
-          "flex-1 relative overflow-hidden rounded-2xl border transition-all duration-300",
-          "bg-card hover:bg-card/80 border-border hover:border-primary/50",
-          "hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1",
-          "group/card"
-        )}
-      >
-        {/* Speed lines effect */}
-        <div className={cn(
-          "absolute inset-y-0 w-32 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500",
-          direction === 'left' ? "right-0 bg-gradient-to-l" : "left-0 bg-gradient-to-r",
-          "from-transparent via-primary/5 to-transparent"
-        )} />
-        
-        <div className={cn(
-          "relative flex items-center gap-4 p-4 md:p-5",
-          direction === 'left' ? "flex-row-reverse" : "flex-row"
-        )}>
-          {/* Car Icon */}
-          <div className="relative shrink-0">
-            {/* Glow */}
-            <div 
-              className="absolute -inset-2 rounded-full blur-xl opacity-0 group-hover/card:opacity-50 transition-opacity duration-300"
-              style={{ backgroundColor: service.carColor }}
-            />
-            
-            {/* Car body */}
-            <div 
-              className="relative w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-lg transition-transform duration-300 group-hover/card:scale-110"
-              style={{ backgroundColor: service.carColor }}
-            >
-              <Icon className="h-7 w-7 md:h-8 md:w-8 text-white" />
-              
-              {/* Racing number */}
-              <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-background shadow-md flex items-center justify-center text-xs font-bold border border-border">
-                {position}
-              </div>
-              
-              {/* Winner crown for last position */}
-              {isLast && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Trophy className="h-5 w-5 text-yellow-500 drop-shadow-lg" />
-                </div>
-              )}
-            </div>
+      {/* Info tooltip */}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+        <div className="bg-card border border-border rounded-xl p-4 shadow-2xl min-w-[200px] text-center backdrop-blur-sm">
+          <div 
+            className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center"
+            style={{ backgroundColor: service.carColor }}
+          >
+            <Icon className="h-5 w-5 text-white" />
           </div>
-          
-          {/* Content */}
-          <div className={cn(
-            "flex-1 min-w-0",
-            direction === 'left' ? "text-right" : "text-left"
-          )}>
-            <h4 className={cn("font-bold text-base md:text-lg", service.color)}>
-              {service.name}
-            </h4>
-            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-              {service.objective}
-            </p>
-          </div>
-          
-          {/* Arrow */}
-          <div className={cn(
-            "shrink-0 p-2 rounded-full transition-all duration-300",
-            "bg-primary/10 text-primary",
-            "group-hover/card:bg-primary group-hover/card:text-primary-foreground",
-            direction === 'left' && "rotate-180"
-          )}>
-            <ArrowRight className="h-4 w-4" />
-          </div>
+          <h4 className="font-bold text-sm text-foreground">{service.name}</h4>
+          <p className="text-xs text-muted-foreground mt-1">{service.objective}</p>
+          <div className="mt-2 text-xs text-primary font-medium">Clique para ver mais →</div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+interface MobileCarCardProps {
+  service: JourneyStep;
+  number: number;
+  isLast: boolean;
+}
+
+function MobileCarCard({ service, number, isLast }: MobileCarCardProps) {
+  const Icon = service.icon;
+  
+  return (
+    <Link
+      to={service.link}
+      className="block relative overflow-hidden rounded-xl border border-border bg-card hover:border-primary/50 transition-all duration-300 group"
+    >
+      {/* Track texture */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-foreground/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      
+      <div className="relative flex items-center gap-4 p-4">
+        {/* Car */}
+        <div className="relative shrink-0">
+          <F1Car color={service.carColor} number={number} />
+          {isLast && (
+            <Trophy className="absolute -top-3 left-1/2 -translate-x-1/2 h-4 w-4 text-yellow-500" />
+          )}
         </div>
         
-        {/* Bottom accent line */}
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <h4 className="font-bold text-foreground">{service.name}</h4>
+          <p className="text-sm text-muted-foreground line-clamp-1">{service.objective}</p>
+        </div>
+        
+        {/* Icon */}
         <div 
-          className="h-1 w-full opacity-60 group-hover/card:opacity-100 transition-opacity"
+          className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
           style={{ backgroundColor: service.carColor }}
-        />
-      </Link>
-    </div>
+        >
+          <Icon className="h-5 w-5 text-white" />
+        </div>
+      </div>
+      
+      {/* Bottom accent */}
+      <div 
+        className="h-1 w-full opacity-60 group-hover:opacity-100 transition-opacity"
+        style={{ backgroundColor: service.carColor }}
+      />
+    </Link>
   );
 }
