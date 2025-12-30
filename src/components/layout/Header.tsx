@@ -11,6 +11,7 @@ interface ProductItem {
   href: string;
   external?: boolean;
   highlight?: boolean;
+  comingSoon?: boolean;
 }
 
 interface ProductCategory {
@@ -41,7 +42,7 @@ const productCategories: ProductCategory[] = [
   {
     category: "Trilha Avançada",
     items: [
-      { name: "Growth Room", href: "/growth-room" },
+      { name: "Growth Room", href: "/growth-room", comingSoon: true },
       { name: "UNV Partners", href: "/partners" },
       { name: "UNV Mastermind", href: "/mastermind", highlight: true },
       { name: "Execution Partnership", href: "/execution-partnership", highlight: true },
@@ -51,8 +52,8 @@ const productCategories: ProductCategory[] = [
     category: "Estratégia & Estrutura",
     items: [
       { name: "UNV Leadership", href: "/leadership" },
-      { name: "Le Désir", href: "/le-desir" },
-      { name: "UNV Finance", href: "/finance" },
+      { name: "Le Désir", href: "/le-desir", comingSoon: true },
+      { name: "UNV Finance", href: "/finance", comingSoon: true },
       { name: "UNV People", href: "/people" },
       { name: "UNV Safe", href: "/safe" },
     ],
@@ -190,13 +191,16 @@ export function Header() {
                                   key={product.href}
                                   to={product.href}
                                 className={cn(
-                                    "block px-3 py-2 text-sm rounded-lg transition-all duration-300",
+                                    "flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all duration-300",
                                     location.pathname === product.href
                                       ? "bg-primary/10 text-primary font-medium"
                                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                                   )}
                                 >
                                   {product.name}
+                                  {product.comingSoon && (
+                                    <span className="ml-2 text-[10px] font-bold text-destructive uppercase">Em breve</span>
+                                  )}
                                 </Link>
                               )
                             ))}
@@ -228,13 +232,16 @@ export function Header() {
                                   key={product.href}
                                   to={product.href}
                                 className={cn(
-                                    "block px-3 py-2 text-sm rounded-lg transition-all duration-300",
+                                    "flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all duration-300",
                                     location.pathname === product.href
                                       ? "bg-primary/10 text-primary font-medium"
                                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                                   )}
                                 >
                                   {product.name}
+                                  {product.comingSoon && (
+                                    <span className="ml-2 text-[10px] font-bold text-destructive uppercase">Em breve</span>
+                                  )}
                                 </Link>
                               )
                             ))}
@@ -334,7 +341,7 @@ export function Header() {
                                       key={product.href}
                                       to={product.href}
                                       className={cn(
-                                        "block px-4 py-2 text-sm rounded-lg transition-all",
+                                        "flex items-center justify-between px-4 py-2 text-sm rounded-lg transition-all",
                                         location.pathname === product.href
                                           ? "bg-primary/10 text-primary font-medium"
                                           : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
@@ -342,6 +349,9 @@ export function Header() {
                                       onClick={() => setMobileMenuOpen(false)}
                                     >
                                       {product.name}
+                                      {product.comingSoon && (
+                                        <span className="ml-2 text-[10px] font-bold text-destructive uppercase">Em breve</span>
+                                      )}
                                     </Link>
                                   )
                                 ))}
