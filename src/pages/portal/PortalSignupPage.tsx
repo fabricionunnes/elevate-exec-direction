@@ -14,10 +14,12 @@ const PortalSignupPage = () => {
   const [searchParams] = useSearchParams();
   const inviteToken = searchParams.get("invite");
   const companyCode = searchParams.get("company");
+  const isCompleting = searchParams.get("complete") === "true";
   
   const [mode, setMode] = useState<"new" | "join">(inviteToken || companyCode ? "join" : "new");
   const [loading, setLoading] = useState(false);
   const [checkingInvite, setCheckingInvite] = useState(false);
+  const [existingUser, setExistingUser] = useState<{ id: string; email: string } | null>(null);
   
   // Form fields
   const [name, setName] = useState("");
@@ -36,6 +38,20 @@ const PortalSignupPage = () => {
     email?: string;
     role: string;
   } | null>(null);
+
+  // Check if user is already logged in (completing signup)
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      if (isCompleting) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setExistingUser({ id: session.user.id, email: session.user.email || "" });
+          setEmail(session.user.email || "");
+        }
+      }
+    };
+    checkExistingSession();
+  }, [isCompleting]);
 
   // Check invite on load
   useEffect(() => {
@@ -134,14 +150,16 @@ const PortalSignupPage = () => {
       return;
     }
 
-    if (password !== confirmPassword) {
-      toast.error("As senhas não conferem");
-      return;
-    }
+    if (!existingUser) {
+      if (password !== confirmPassword) {
+        toast.error("As senhas não conferem");
+        return;
+      }
 
-    if (password.length < 6) {
-      toast.error("A senha deve ter pelo menos 6 caracteres");
-      return;
+      if (password.length < 6) {
+        toast.error("A senha deve ter pelo menos 6 caracteres");
+        return;
+      }
     }
 
     if (!lgpdConsent) {
@@ -162,27 +180,40 @@ const PortalSignupPage = () => {
     setLoading(true);
 
     try {
-      // 1. Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/portal/app`,
-        },
-      });
+      let userId: string;
+      let userEmail: string;
 
-      if (authError) {
-        if (authError.message.includes("already registered")) {
-          toast.error("Este email já está cadastrado. Faça login.");
-        } else {
-          toast.error(authError.message);
+      if (existingUser) {
+        // User already has auth, just need to create portal_user
+        userId = existingUser.id;
+        userEmail = existingUser.email;
+      } else {
+        // 1. Create auth user
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/portal/app`,
+          },
+        });
+
+        if (authError) {
+          if (authError.message.includes("already registered")) {
+            toast.error("Este email já está cadastrado. Faça login.");
+            navigate("/portal/login");
+          } else {
+            toast.error(authError.message);
+          }
+          return;
         }
-        return;
-      }
 
-      if (!authData.user) {
-        toast.error("Erro ao criar usuário");
-        return;
+        if (!authData.user) {
+          toast.error("Erro ao criar usuário");
+          return;
+        }
+
+        userId = authData.user.id;
+        userEmail = email.trim();
       }
 
       let companyId: string;
@@ -214,10 +245,10 @@ const PortalSignupPage = () => {
       const { error: userError } = await supabase
         .from("portal_users")
         .insert({
-          user_id: authData.user.id,
+          user_id: userId,
           company_id: companyId,
           name: name.trim(),
-          email: email.trim(),
+          email: userEmail,
           role: userRole,
           lgpd_consent_at: new Date().toISOString(),
         });
@@ -381,44 +412,48 @@ const PortalSignupPage = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                  disabled={loading || (inviteData?.email ? true : false)}
+                  disabled={loading || !!existingUser || (inviteData?.email ? true : false)}
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-300">Senha</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 pr-10"
-                    disabled={loading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
+              {!existingUser && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-slate-300">Senha</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 pr-10"
+                        disabled={loading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-slate-300">Confirmar Senha</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                  disabled={loading}
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-slate-300">Confirmar Senha</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                      disabled={loading}
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="flex items-start gap-3 pt-2">
                 <Checkbox

@@ -52,8 +52,9 @@ const PortalLoginPage = () => {
           .single();
 
         if (!portalUser) {
-          toast.error("Usuário não encontrado no portal. Crie uma conta primeiro.");
-          await supabase.auth.signOut();
+          // User exists in auth but not in portal - redirect to complete signup
+          toast.info("Complete seu cadastro no portal");
+          navigate("/portal/signup?complete=true");
           return;
         }
 
