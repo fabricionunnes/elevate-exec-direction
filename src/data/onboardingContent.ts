@@ -5,10 +5,17 @@ export interface OnboardingSlideItem {
   details?: string;
 }
 
+export interface PresenterNote {
+  tip: string;
+  talkingPoints?: string[];
+  watchOut?: string;
+}
+
 export interface OnboardingSlide {
   title: string;
   content: OnboardingSlideItem[];
   type: "intro" | "deliverable" | "cadence" | "expectations" | "next-steps";
+  presenterNotes?: PresenterNote;
 }
 
 export interface ProductOnboarding {
@@ -76,6 +83,15 @@ export const generateOnboardingSlides = (product: ProductDetail): ProductOnboard
         { text: "A partir de agora, você não está mais sozinho nessa jornada." },
       ],
       type: "intro",
+      presenterNotes: {
+        tip: "Crie conexão! Sorria, olhe nos olhos e demonstre entusiasmo genuíno.",
+        talkingPoints: [
+          "Pergunte como foi o processo de decisão até aqui",
+          "Valide a escolha: 'Você tomou a decisão certa'",
+          "Mencione um case de sucesso similar se tiver",
+        ],
+        watchOut: "Evite parecer roteiro decorado. Adapte ao contexto do cliente.",
+      },
     },
     // Slide 2: What you will receive - Gift framing
     {
@@ -85,6 +101,15 @@ export const generateOnboardingSlides = (product: ProductDetail): ProductOnboard
         details: findDetails(d),
       })),
       type: "deliverable",
+      presenterNotes: {
+        tip: "Destaque 2-3 entregáveis mais relevantes pro perfil desse cliente.",
+        talkingPoints: [
+          "Qual desses é mais urgente pra você?",
+          "Já tentou fazer algum desses antes?",
+          "Explore as dores específicas ligadas a cada item",
+        ],
+        watchOut: "Não passe rápido demais. Deixe o cliente absorver o valor.",
+      },
     },
     // Slide 3: Problems we solve - Transformation focus
     {
@@ -94,6 +119,15 @@ export const generateOnboardingSlides = (product: ProductDetail): ProductOnboard
         details: transformToSecondPerson(ps.solution),
       })),
       type: "deliverable",
+      presenterNotes: {
+        tip: "Faça o cliente se ver no 'antes' e desejar o 'depois'.",
+        talkingPoints: [
+          "Qual dessas situações você mais se identifica?",
+          "Como isso afeta o dia a dia da empresa?",
+          "O que mudaria se isso fosse resolvido?",
+        ],
+        watchOut: "Não minimize as dores. Valide antes de apresentar a transformação.",
+      },
     },
     // Slide 4: Key Benefits - Celebration
     {
@@ -102,6 +136,15 @@ export const generateOnboardingSlides = (product: ProductDetail): ProductOnboard
         text: transformToSecondPerson(b),
       })),
       type: "deliverable",
+      presenterNotes: {
+        tip: "Este é o momento de criar expectativa positiva e confiança.",
+        talkingPoints: [
+          "Imagine quando isso acontecer...",
+          "Outros clientes como você já alcançaram...",
+          "Vamos comemorar cada conquista juntos!",
+        ],
+        watchOut: "Não prometa garantias. Use 'projeção' e 'potencial'.",
+      },
     },
     // Slide 5: Time to results - Exciting expectations
     {
@@ -112,6 +155,15 @@ export const generateOnboardingSlides = (product: ProductDetail): ProductOnboard
         { text: "Lembra: a gente tá nessa contigo, passo a passo." },
       ],
       type: "expectations",
+      presenterNotes: {
+        tip: "Alinhe expectativas realistas. Melhor surpreender do que decepcionar.",
+        talkingPoints: [
+          "Os primeiros sinais aparecem em X semanas",
+          "O esforço inicial é maior, depois normaliza",
+          "Pergunte: você consegue se comprometer com isso?",
+        ],
+        watchOut: "Não crie falsas expectativas de resultado garantido.",
+      },
     },
     // Slide 6: Next steps - Partnership closing
     {
@@ -135,6 +187,15 @@ export const generateOnboardingSlides = (product: ProductDetail): ProductOnboard
         },
       ],
       type: "next-steps",
+      presenterNotes: {
+        tip: "Feche com energia! Deixe o cliente ansioso pra começar.",
+        talkingPoints: [
+          "Tem alguma dúvida antes de seguirmos?",
+          "Qual data funciona melhor pra você?",
+          "Anote os próximos passos junto com o cliente",
+        ],
+        watchOut: "Garanta que o cliente saiu sem dúvidas. Pergunte diretamente.",
+      },
     },
   ];
 
