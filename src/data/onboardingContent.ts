@@ -67,69 +67,71 @@ export const generateOnboardingSlides = (product: ProductDetail): ProductOnboard
   };
 
   const slides: OnboardingSlide[] = [
-    // Slide 1: Introduction
+    // Slide 1: Introduction - Energetic welcome
     {
-      title: `Bem-vindo ao ${product.name}`,
+      title: `Que bom ter você aqui! 🙌`,
       content: [
-        { text: product.tagline },
+        { text: `Você está entrando no ${product.name} – e a gente tá animado com isso!` },
         { text: transformToSecondPerson(product.description) },
+        { text: "A partir de agora, você não está mais sozinho nessa jornada." },
       ],
       type: "intro",
     },
-    // Slide 2: What you will receive
+    // Slide 2: What you will receive - Gift framing
     {
-      title: "O que você vai receber",
-      content: product.deliverables.map((d) => ({
-        text: transformToSecondPerson(d),
+      title: "Olha o que preparamos pra você! 🎁",
+      content: product.deliverables.map((d, i) => ({
+        text: `${transformToSecondPerson(d)}${i === 0 ? " – isso é só o começo!" : ""}`,
         details: findDetails(d),
       })),
       type: "deliverable",
     },
-    // Slide 3: Problems we solve - with solution as details
+    // Slide 3: Problems we solve - Transformation focus
     {
-      title: "Problemas que vamos resolver juntos",
+      title: "Adeus, dor de cabeça! 👋",
       content: product.problemsSolved.map((ps) => ({
-        text: `${transformToSecondPerson(ps.problem)} → ${transformToSecondPerson(ps.result)}`,
+        text: `De "${transformToSecondPerson(ps.problem)}" para "${transformToSecondPerson(ps.result)}"`,
         details: transformToSecondPerson(ps.solution),
       })),
       type: "deliverable",
     },
-    // Slide 4: Key Benefits
+    // Slide 4: Key Benefits - Celebration
     {
-      title: "Benefícios que você terá",
+      title: "O que você vai conquistar! 🏆",
       content: product.keyBenefits.map((b) => ({
         text: transformToSecondPerson(b),
       })),
       type: "deliverable",
     },
-    // Slide 5: Time to results
+    // Slide 5: Time to results - Exciting expectations
     {
-      title: "O que esperar e quando",
+      title: "Quando você vai ver resultado? 📈",
       content: [
-        { text: transformToSecondPerson(product.timeToResults) },
+        { text: `${transformToSecondPerson(product.timeToResults)} – e a gente vai comemorar junto!` },
         { text: transformToSecondPerson(product.whyRecommended) },
+        { text: "Lembra: a gente tá nessa contigo, passo a passo." },
       ],
       type: "expectations",
     },
-    // Slide 6: Next steps
+    // Slide 6: Next steps - Partnership closing
     {
-      title: "Seus Próximos Passos",
+      title: "Bora começar? 🚀",
       content: [
         { 
-          text: "Vamos alinhar as expectativas juntos",
-          details: "Nessa conversa, vamos garantir que você entenda exatamente o que vai receber e como vamos trabalhar juntos."
+          text: "Primeiro, vamos alinhar tudo direitinho",
+          details: "Queremos ter certeza que você entende exatamente o que vai receber. Sem surpresas, só resultados!"
         },
         { 
-          text: "Definir a data de início do seu programa",
-          details: "Escolhemos juntos a melhor data para começar, considerando sua disponibilidade e momento atual."
+          text: "Depois, escolhemos juntos a data perfeita pra começar",
+          details: "A gente vai encontrar o momento ideal pra você, respeitando sua agenda."
         },
         { 
-          text: "Configurar seus acessos às ferramentas",
-          details: "Você receberá acesso a todas as ferramentas necessárias: plataforma, grupos, materiais e AI Advisor."
+          text: "Você vai receber todos os acessos e ferramentas",
+          details: "Plataforma, grupos, materiais, AI Advisor – tudo configurado e pronto pra você usar."
         },
         { 
-          text: "Agendar nossa primeira reunião de kick-off",
-          details: "Na reunião de kick-off, vamos dar o pontapé inicial do programa com seu diagnóstico e primeiros passos."
+          text: "E aí... é só decolar! 🛫",
+          details: "No kick-off, a gente faz seu diagnóstico e define os primeiros passos juntos. Vai ser incrível!"
         },
       ],
       type: "next-steps",

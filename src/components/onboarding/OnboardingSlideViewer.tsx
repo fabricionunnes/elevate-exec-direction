@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { 
@@ -14,11 +14,16 @@ import {
   Zap,
   TrendingUp,
   Shield,
-  Star
+  Star,
+  Rocket,
+  Trophy,
+  Heart,
+  PartyPopper
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { ProductOnboarding } from "@/data/onboardingContent";
 import { cn } from "@/lib/utils";
+import confetti from "canvas-confetti";
 
 // Import slide images
 import slideIntro from "@/assets/onboarding/slide-intro.jpg";
@@ -32,18 +37,20 @@ interface OnboardingSlideViewerProps {
 
 const slideTypeConfig = {
   intro: {
-    icon: Package,
+    icon: Rocket,
     gradient: "from-primary via-primary/80 to-blue-600",
     bgPattern: "radial-gradient(circle at 20% 80%, rgba(196, 30, 58, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(10, 34, 64, 0.2) 0%, transparent 50%)",
     accentIcon: Sparkles,
     image: slideIntro,
+    emoji: "🚀",
   },
   deliverable: {
-    icon: CheckCircle2,
+    icon: Trophy,
     gradient: "from-emerald-500 via-emerald-600 to-teal-600",
     bgPattern: "radial-gradient(circle at 10% 90%, rgba(16, 185, 129, 0.15) 0%, transparent 50%), radial-gradient(circle at 90% 10%, rgba(20, 184, 166, 0.15) 0%, transparent 50%)",
     accentIcon: Zap,
     image: slideDeliverables,
+    emoji: "🏆",
   },
   cadence: {
     icon: Clock,
@@ -51,6 +58,7 @@ const slideTypeConfig = {
     bgPattern: "radial-gradient(circle at 30% 70%, rgba(59, 130, 246, 0.15) 0%, transparent 50%), radial-gradient(circle at 70% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 50%)",
     accentIcon: TrendingUp,
     image: slideDeliverables,
+    emoji: "⏰",
   },
   expectations: {
     icon: Target,
@@ -58,14 +66,44 @@ const slideTypeConfig = {
     bgPattern: "radial-gradient(circle at 25% 75%, rgba(245, 158, 11, 0.15) 0%, transparent 50%), radial-gradient(circle at 75% 25%, rgba(239, 68, 68, 0.15) 0%, transparent 50%)",
     accentIcon: Star,
     image: slideExpectations,
+    emoji: "🎯",
   },
   "next-steps": {
-    icon: ArrowRight,
+    icon: Heart,
     gradient: "from-violet-500 via-purple-600 to-fuchsia-600",
     bgPattern: "radial-gradient(circle at 15% 85%, rgba(139, 92, 246, 0.15) 0%, transparent 50%), radial-gradient(circle at 85% 15%, rgba(192, 38, 211, 0.15) 0%, transparent 50%)",
-    accentIcon: Shield,
+    accentIcon: PartyPopper,
     image: slideNextsteps,
+    emoji: "💪",
   },
+};
+
+// Motivational phrases for each slide type
+const motivationalPhrases = {
+  intro: [
+    "Vamos nessa jornada juntos! 🤝",
+    "Seu sucesso começa aqui!",
+    "Prontos para transformar resultados?",
+  ],
+  deliverable: [
+    "Olha só o que preparamos pra você!",
+    "Isso tudo é seu!",
+    "Cada item aqui foi pensado pra você crescer!",
+  ],
+  cadence: [
+    "A consistência é o segredo!",
+    "Juntos, vamos manter o ritmo!",
+  ],
+  expectations: [
+    "Você no controle dos resultados!",
+    "A transformação acontece aqui!",
+    "O futuro do seu comercial!",
+  ],
+  "next-steps": [
+    "Agora é com a gente!",
+    "Só falta dar o primeiro passo!",
+    "Vamos juntos construir isso!",
+  ],
 };
 
 export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps) => {
@@ -73,9 +111,56 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
   const [isAnimating, setIsAnimating] = useState(false);
   const [direction, setDirection] = useState<"next" | "prev">("next");
   const [visibleItems, setVisibleItems] = useState<number[]>([]);
+  const [showCelebration, setShowCelebration] = useState(false);
   const navigate = useNavigate();
   const slides = onboarding.slides;
   const progress = ((currentSlide + 1) / slides.length) * 100;
+
+  // Fire confetti celebration
+  const celebrate = useCallback(() => {
+    const duration = 2000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    const interval = setInterval(() => {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+        colors: ['#C41E3A', '#10B981', '#3B82F6', '#F59E0B', '#8B5CF6'],
+      });
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+        colors: ['#C41E3A', '#10B981', '#3B82F6', '#F59E0B', '#8B5CF6'],
+      });
+    }, 250);
+
+    setShowCelebration(true);
+    setTimeout(() => setShowCelebration(false), 2000);
+  }, []);
+
+  // Small celebration when advancing
+  const smallCelebrate = useCallback(() => {
+    confetti({
+      particleCount: 30,
+      spread: 60,
+      origin: { x: 0.9, y: 0.9 },
+      colors: ['#C41E3A', '#10B981', '#3B82F6'],
+      zIndex: 9999,
+    });
+  }, []);
 
   // Animate items appearing one by one
   useEffect(() => {
@@ -93,6 +178,11 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
     if (isAnimating) return;
     setIsAnimating(true);
     setDirection(dir);
+    
+    // Small celebration when moving forward
+    if (dir === "next") {
+      smallCelebrate();
+    }
     
     setTimeout(() => {
       setCurrentSlide(newSlide);
@@ -112,6 +202,11 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
     }
   };
 
+  const handleComplete = () => {
+    celebrate();
+    setTimeout(() => navigate("/onboarding"), 2000);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowRight") goToNext();
     if (e.key === "ArrowLeft") goToPrev();
@@ -121,6 +216,8 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
   const config = slideTypeConfig[currentSlideData.type];
   const SlideIcon = config.icon;
   const AccentIcon = config.accentIcon;
+  const phrases = motivationalPhrases[currentSlideData.type];
+  const randomPhrase = phrases[currentSlide % phrases.length];
 
   return (
     <div
@@ -134,24 +231,31 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
         style={{ background: config.bgPattern }}
       />
       
-      {/* Floating particles */}
+      {/* Floating particles - more dynamic */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        {[...Array(6)].map((_, i) => (
+        {[...Array(8)].map((_, i) => (
           <div
             key={i}
             className={cn(
-              "absolute w-2 h-2 rounded-full bg-primary/20",
-              "animate-pulse"
+              "absolute rounded-full",
+              i % 2 === 0 ? "w-3 h-3 bg-primary/30" : "w-2 h-2 bg-emerald-500/20"
             )}
             style={{
-              left: `${15 + i * 15}%`,
-              top: `${20 + (i % 3) * 25}%`,
-              animationDelay: `${i * 0.5}s`,
-              animationDuration: `${2 + i * 0.5}s`,
+              left: `${10 + i * 12}%`,
+              top: `${15 + (i % 4) * 20}%`,
+              animation: `pulse ${2 + i * 0.3}s ease-in-out infinite`,
+              animationDelay: `${i * 0.2}s`,
             }}
           />
         ))}
       </div>
+
+      {/* Celebration overlay */}
+      {showCelebration && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="text-6xl animate-bounce">🎉</div>
+        </div>
+      )}
 
       {/* Header */}
       <header className="relative border-b border-border/40 bg-card/80 backdrop-blur-xl sticky top-0 z-50">
@@ -168,7 +272,8 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
               </Link>
             </Button>
             <div>
-              <h1 className="font-bold text-base bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+              <h1 className="font-bold text-base bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text flex items-center gap-2">
+                <span>{config.emoji}</span>
                 {onboarding.productName}
               </h1>
               <p className="text-xs text-muted-foreground">{onboarding.tagline}</p>
@@ -225,50 +330,57 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
                   "to-card lg:to-card"
                 )} />
                 
-                {/* Icon overlay */}
+                {/* Icon overlay with pulse animation */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className={cn(
                     "p-4 rounded-xl bg-white/20 backdrop-blur-sm shadow-xl",
-                    "transition-transform duration-500 hover:scale-105"
+                    "transition-all duration-500 hover:scale-110",
+                    "animate-pulse"
                   )}>
                     <SlideIcon className="h-10 w-10 lg:h-12 lg:w-12 text-white drop-shadow-lg" />
                   </div>
                 </div>
 
-                {/* Slide number badge */}
-                <div className="absolute top-3 left-3">
+                {/* Motivational badge */}
+                <div className="absolute bottom-3 left-3 right-3">
                   <div className={cn(
-                    "px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm",
-                    "text-white font-semibold text-xs"
+                    "px-3 py-2 rounded-lg bg-white/90 backdrop-blur-sm",
+                    "text-gray-800 font-medium text-xs text-center",
+                    "shadow-lg border border-white/50"
                   )}>
-                    {currentSlide + 1} / {slides.length}
+                    {randomPhrase}
                   </div>
                 </div>
               </div>
 
               {/* Content Column */}
               <div className="lg:w-2/3 bg-card flex flex-col">
-                {/* Header */}
+                {/* Header with energetic styling */}
                 <div className={cn(
-                  "p-4 lg:p-5 bg-gradient-to-r text-white",
+                  "p-4 lg:p-5 bg-gradient-to-r text-white relative overflow-hidden",
                   config.gradient
                 )}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <AccentIcon className="h-4 w-4" />
-                    <span className="text-xs font-medium text-white/80">
-                      {currentSlideData.type === "intro" && "Introdução"}
-                      {currentSlideData.type === "deliverable" && "Entregáveis"}
-                      {currentSlideData.type === "cadence" && "Cadência"}
-                      {currentSlideData.type === "expectations" && "Expectativas"}
-                      {currentSlideData.type === "next-steps" && "Próximos Passos"}
-                    </span>
+                  {/* Animated shine effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 animate-pulse" />
+                  
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-1">
+                      <AccentIcon className="h-4 w-4 animate-bounce" />
+                      <span className="text-xs font-medium text-white/90">
+                        {currentSlideData.type === "intro" && "🎬 Vamos começar!"}
+                        {currentSlideData.type === "deliverable" && "🎁 O que é seu!"}
+                        {currentSlideData.type === "cadence" && "📅 Nossa rotina"}
+                        {currentSlideData.type === "expectations" && "🎯 Seus resultados"}
+                        {currentSlideData.type === "next-steps" && "🚀 Bora!"}
+                      </span>
+                    </div>
+                    <h2 className="text-lg lg:text-xl font-bold">
+                      {currentSlideData.title}
+                    </h2>
                   </div>
-                  <h2 className="text-lg lg:text-xl font-bold">
-                    {currentSlideData.title}
-                  </h2>
                 </div>
 
-                {/* Content Items */}
+                {/* Content Items with engaging animations */}
                 <div className="p-4 lg:p-6">
                   <div className="grid gap-2">
                     {currentSlideData.content.map((item, index) => (
@@ -279,16 +391,18 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
                           "bg-gradient-to-r from-muted/50 to-muted/30",
                           "border border-border/50",
                           "transition-all duration-500 ease-out",
+                          "hover:scale-[1.02] hover:shadow-md hover:border-primary/30",
                           visibleItems.includes(index)
                             ? "opacity-100 translate-x-0"
                             : "opacity-0 translate-x-8"
                         )}
                         style={{ transitionDelay: `${index * 50}ms` }}
                       >
-                        {/* Number indicator */}
+                        {/* Animated number indicator */}
                         <div className={cn(
-                          "shrink-0 w-6 h-6 rounded-md flex items-center justify-center",
-                          "bg-gradient-to-br text-white font-bold text-xs shadow-sm",
+                          "shrink-0 w-7 h-7 rounded-full flex items-center justify-center",
+                          "bg-gradient-to-br text-white font-bold text-xs shadow-md",
+                          "transition-transform duration-300 hover:scale-110 hover:rotate-12",
                           config.gradient
                         )}>
                           {index + 1}
@@ -308,7 +422,7 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
         </div>
       </main>
 
-      {/* Footer Navigation */}
+      {/* Footer Navigation - more engaging buttons */}
       <footer className="relative border-t border-border/40 bg-card/80 backdrop-blur-xl sticky bottom-0">
         <div className="container mx-auto px-4 py-2 flex items-center justify-between gap-4">
           <Button
@@ -318,7 +432,7 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
             className="gap-2 min-w-[120px] transition-all hover:gap-3"
           >
             <ChevronLeft className="h-4 w-4" />
-            Anterior
+            Voltar
           </Button>
 
           {/* Mobile slide indicators */}
@@ -338,15 +452,16 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
 
           {currentSlide === slides.length - 1 ? (
             <Button 
-              onClick={() => navigate("/onboarding")} 
+              onClick={handleComplete} 
               className={cn(
-                "gap-2 min-w-[120px] bg-gradient-to-r shadow-lg",
+                "gap-2 min-w-[140px] bg-gradient-to-r shadow-lg",
                 "hover:shadow-xl hover:scale-105 transition-all",
+                "animate-pulse",
                 config.gradient
               )}
             >
-              Concluir
-              <CheckCircle2 className="h-4 w-4" />
+              <PartyPopper className="h-4 w-4" />
+              Vamos Juntos!
             </Button>
           ) : (
             <Button 
@@ -354,12 +469,12 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
               disabled={isAnimating}
               className={cn(
                 "gap-2 min-w-[120px] bg-gradient-to-r shadow-lg",
-                "hover:shadow-xl hover:gap-3 transition-all",
+                "hover:shadow-xl hover:gap-3 transition-all group",
                 config.gradient
               )}
             >
-              Próximo
-              <ChevronRight className="h-4 w-4" />
+              Continuar
+              <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </Button>
           )}
         </div>
