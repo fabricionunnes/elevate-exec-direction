@@ -18,10 +18,15 @@ import {
   Rocket,
   Trophy,
   Heart,
-  PartyPopper
+  PartyPopper,
+  Eye,
+  EyeOff,
+  Lightbulb,
+  MessageCircle,
+  AlertTriangle
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { ProductOnboarding } from "@/data/onboardingContent";
+import { ProductOnboarding, PresenterNote } from "@/data/onboardingContent";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
@@ -112,6 +117,7 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
   const [direction, setDirection] = useState<"next" | "prev">("next");
   const [visibleItems, setVisibleItems] = useState<number[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showPresenterNotes, setShowPresenterNotes] = useState(false);
   const navigate = useNavigate();
   const slides = onboarding.slides;
   const progress = ((currentSlide + 1) / slides.length) * 100;
@@ -280,6 +286,26 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* Presenter Notes Toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPresenterNotes(!showPresenterNotes)}
+              className={cn(
+                "gap-2 h-8 text-xs transition-colors",
+                showPresenterNotes 
+                  ? "bg-amber-500/20 text-amber-600 hover:bg-amber-500/30" 
+                  : "hover:bg-muted"
+              )}
+            >
+              {showPresenterNotes ? (
+                <EyeOff className="h-3.5 w-3.5" />
+              ) : (
+                <Eye className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">Notas CS</span>
+            </Button>
+
             <div className="hidden md:flex items-center gap-1.5">
               {slides.map((_, index) => (
                 <button
@@ -418,6 +444,55 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
                 </div>
               </div>
             </div>
+
+            {/* Presenter Notes Panel */}
+            {showPresenterNotes && currentSlideData.presenterNotes && (
+              <div className="lg:w-80 bg-amber-50 dark:bg-amber-950/30 border-l-4 border-amber-500 p-4 flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-semibold text-sm">
+                  <Lightbulb className="h-4 w-4" />
+                  Notas do Apresentador
+                </div>
+                
+                {/* Main Tip */}
+                <div className="bg-white/80 dark:bg-amber-900/30 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
+                  <p className="text-sm text-amber-900 dark:text-amber-100 font-medium">
+                    💡 {currentSlideData.presenterNotes.tip}
+                  </p>
+                </div>
+
+                {/* Talking Points */}
+                {currentSlideData.presenterNotes.talkingPoints && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      Pergunte / Fale sobre:
+                    </div>
+                    <ul className="space-y-1">
+                      {currentSlideData.presenterNotes.talkingPoints.map((point, i) => (
+                        <li 
+                          key={i}
+                          className="text-xs text-amber-800 dark:text-amber-200 pl-3 relative before:content-['→'] before:absolute before:left-0 before:text-amber-500"
+                        >
+                          {point}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Watch Out */}
+                {currentSlideData.presenterNotes.watchOut && (
+                  <div className="bg-red-50 dark:bg-red-950/30 rounded-lg p-2.5 border border-red-200 dark:border-red-800">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
+                      <p className="text-xs text-red-700 dark:text-red-300">
+                        {currentSlideData.presenterNotes.watchOut}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </main>
