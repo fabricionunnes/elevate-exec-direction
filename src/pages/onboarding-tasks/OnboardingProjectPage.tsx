@@ -21,6 +21,7 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -49,6 +50,8 @@ interface OnboardingTask {
   sort_order: number;
   priority: string | null;
   tags: string[] | null;
+  recurrence: string | null;
+  template_id: string | null;
   assignee?: { id: string; name: string; role: string };
   responsible_staff?: { id: string; name: string } | null;
 }
@@ -216,9 +219,16 @@ const OnboardingProjectPage = () => {
 
   const handleStatusChange = async (taskId: string, newStatus: "pending" | "in_progress" | "completed") => {
     try {
+      const task = tasks.find(t => t.id === taskId);
       const updates: any = { status: newStatus };
+      
       if (newStatus === "completed") {
         updates.completed_at = new Date().toISOString();
+        
+        // If task is recurring, create next occurrence
+        if (task?.recurrence) {
+          await createNextRecurringTask(task);
+        }
       } else {
         updates.completed_at = null;
       }
@@ -230,9 +240,49 @@ const OnboardingProjectPage = () => {
 
       if (error) throw error;
       fetchProjectData();
+      
+      if (task?.recurrence && newStatus === "completed") {
+        toast.success("Tarefa concluída! Nova tarefa recorrente criada.");
+      }
     } catch (error: any) {
       console.error("Error updating task:", error);
       toast.error("Erro ao atualizar tarefa");
+    }
+  };
+
+  const createNextRecurringTask = async (task: OnboardingTask) => {
+    const today = new Date();
+    let nextDueDate: Date;
+    
+    switch (task.recurrence) {
+      case 'daily':
+        nextDueDate = new Date(today.setDate(today.getDate() + 1));
+        break;
+      case 'weekly':
+        nextDueDate = new Date(today.setDate(today.getDate() + 7));
+        break;
+      case 'monthly':
+        nextDueDate = new Date(today.setMonth(today.getMonth() + 1));
+        break;
+      default:
+        return;
+    }
+
+    const { error } = await supabase.from("onboarding_tasks").insert({
+      project_id: projectId,
+      title: task.title,
+      description: task.description,
+      due_date: nextDueDate.toISOString().split('T')[0],
+      priority: task.priority,
+      tags: task.tags,
+      recurrence: task.recurrence,
+      template_id: task.template_id,
+      sort_order: task.sort_order,
+      status: 'pending'
+    });
+
+    if (error) {
+      console.error("Error creating recurring task:", error);
     }
   };
 
@@ -547,6 +597,15 @@ const OnboardingProjectPage = () => {
                               </div>
 
                               <div className="flex items-center gap-2 flex-shrink-0">
+                                {task.recurrence && (
+                                  <Badge variant="outline" className="text-xs gap-1">
+                                    <RefreshCw className="h-3 w-3" />
+                                    {task.recurrence === 'daily' ? 'Diário' : 
+                                     task.recurrence === 'weekly' ? 'Semanal' : 
+                                     task.recurrence === 'monthly' ? 'Mensal' : task.recurrence}
+                                  </Badge>
+                                )}
+                                
                                 {getPriorityBadge(task.priority)}
                                 
                                 {task.responsible_staff && (
