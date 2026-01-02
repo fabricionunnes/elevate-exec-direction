@@ -90,6 +90,7 @@ const OnboardingCompanyDetailPage = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [activeTab, setActiveTab] = useState("info");
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   
   const [form, setForm] = useState<CompanyForm>({
     name: "",
@@ -118,12 +119,32 @@ const OnboardingCompanyDetailPage = () => {
   });
 
   useEffect(() => {
+    checkUserPermissions();
     fetchStaff();
     if (!isNew) {
       fetchCompany();
       fetchProjects();
     }
   }, [companyId]);
+
+  const checkUserPermissions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: staffMember } = await supabase
+          .from("onboarding_staff")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (staffMember) {
+          setCurrentUserRole(staffMember.role);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking permissions:", error);
+    }
+  };
 
   const fetchStaff = async () => {
     const { data } = await supabase
@@ -278,6 +299,14 @@ const OnboardingCompanyDetailPage = () => {
 
   const csOptions = staffList.filter((s) => s.role === "cs");
   const consultantOptions = staffList.filter((s) => s.role === "consultant");
+
+  // Permission logic:
+  // - Admin: can edit everything including CS assignment
+  // - CS: can edit consultant assignment and other fields, but not CS assignment
+  // - Consultant: read-only on company data
+  const canEditCompany = currentUserRole === "admin" || currentUserRole === "cs";
+  const canEditCS = currentUserRole === "admin";
+  const canEditConsultant = currentUserRole === "admin" || currentUserRole === "cs";
 
   return (
     <div className="min-h-screen bg-background">
@@ -496,7 +525,11 @@ const OnboardingCompanyDetailPage = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="cs">CS Responsável</Label>
-                      <Select value={form.cs_id} onValueChange={(v) => setForm({ ...form, cs_id: v })}>
+                      <Select 
+                        value={form.cs_id} 
+                        onValueChange={(v) => setForm({ ...form, cs_id: v })}
+                        disabled={!canEditCS}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um CS" />
                         </SelectTrigger>
@@ -509,12 +542,16 @@ const OnboardingCompanyDetailPage = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                      {!canEditCS && (
+                        <p className="text-xs text-muted-foreground">Apenas administradores podem alterar o CS</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="consultant">Consultor Responsável</Label>
                       <Select
                         value={form.consultant_id}
                         onValueChange={(v) => setForm({ ...form, consultant_id: v })}
+                        disabled={!canEditConsultant}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um consultor" />
@@ -528,6 +565,9 @@ const OnboardingCompanyDetailPage = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                      {!canEditConsultant && (
+                        <p className="text-xs text-muted-foreground">Apenas CS ou administradores podem alterar o consultor</p>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-2">

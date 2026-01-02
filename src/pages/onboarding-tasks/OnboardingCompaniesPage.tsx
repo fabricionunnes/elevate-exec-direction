@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Building2, Search, Users, FileText } from "lucide-react";
+import { ArrowLeft, Plus, Building2, Search } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -34,10 +34,31 @@ const OnboardingCompaniesPage = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   useEffect(() => {
+    checkUserPermissions();
     fetchCompanies();
   }, []);
+
+  const checkUserPermissions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: staffMember } = await supabase
+          .from("onboarding_staff")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (staffMember) {
+          setCurrentUserRole(staffMember.role);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking permissions:", error);
+    }
+  };
 
   const fetchCompanies = async () => {
     try {
@@ -79,6 +100,9 @@ const OnboardingCompaniesPage = () => {
     }
   };
 
+  // Only admin and CS can create new companies
+  const canCreateCompany = currentUserRole === "admin" || currentUserRole === "cs";
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -103,10 +127,12 @@ const OnboardingCompaniesPage = () => {
               </p>
             </div>
           </div>
-          <Button onClick={() => navigate("/onboarding-tasks/companies/new")}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Empresa
-          </Button>
+          {canCreateCompany && (
+            <Button onClick={() => navigate("/onboarding-tasks/companies/new")}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Empresa
+            </Button>
+          )}
         </div>
 
         {/* Search */}
@@ -152,12 +178,14 @@ const OnboardingCompaniesPage = () => {
             <Building2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">Nenhuma empresa encontrada</h3>
             <p className="text-muted-foreground mb-4">
-              Cadastre sua primeira empresa para começar
+              {canCreateCompany ? "Cadastre sua primeira empresa para começar" : "Aguarde o cadastro de empresas pelo CS ou Admin"}
             </p>
-            <Button onClick={() => navigate("/onboarding-tasks/companies/new")}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Empresa
-            </Button>
+            {canCreateCompany && (
+              <Button onClick={() => navigate("/onboarding-tasks/companies/new")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Empresa
+              </Button>
+            )}
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
