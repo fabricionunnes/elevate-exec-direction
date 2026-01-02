@@ -21,10 +21,22 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { TaskAttachments } from "./TaskAttachments";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface OnboardingTask {
   id: string;
@@ -36,6 +48,7 @@ interface OnboardingTask {
   assignee_id: string | null;
   observations: string | null;
   sort_order: number;
+  project_id?: string;
 }
 
 interface OnboardingUser {
@@ -51,6 +64,9 @@ interface TaskDetailsDialogProps {
   onClose: () => void;
   onTaskUpdated: () => void;
   isAdmin?: boolean;
+  companyId?: string;
+  projectId?: string;
+  onDelete?: (taskId: string) => void;
 }
 
 export const TaskDetailsDialog = ({
@@ -59,6 +75,9 @@ export const TaskDetailsDialog = ({
   onClose,
   onTaskUpdated,
   isAdmin = false,
+  companyId,
+  projectId,
+  onDelete,
 }: TaskDetailsDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [editedTask, setEditedTask] = useState<Partial<OnboardingTask>>({});
@@ -114,16 +133,10 @@ export const TaskDetailsDialog = ({
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "Pendente";
-      case "in_progress":
-        return "Em andamento";
-      case "completed":
-        return "Concluída";
-      default:
-        return status;
+  const handleDelete = () => {
+    if (task && onDelete) {
+      onDelete(task.id);
+      onClose();
     }
   };
 
@@ -144,11 +157,38 @@ export const TaskDetailsDialog = ({
 
   if (!task) return null;
 
+  const taskProjectId = projectId || task.project_id;
+
   return (
     <Dialog open={!!task} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Detalhes da Tarefa</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>Detalhes da Tarefa</DialogTitle>
+            {isAdmin && onDelete && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir tarefa?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação não pode ser desfeita. A tarefa será removida permanentemente.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="space-y-4 pt-4">
@@ -201,6 +241,7 @@ export const TaskDetailsDialog = ({
                       "w-full justify-start text-left font-normal",
                       !editedTask.due_date && "text-muted-foreground"
                     )}
+                    disabled={!isAdmin}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {editedTask.due_date
@@ -233,6 +274,7 @@ export const TaskDetailsDialog = ({
               onValueChange={(value) =>
                 setEditedTask({ ...editedTask, assignee_id: value === "none" ? null : value })
               }
+              disabled={!isAdmin}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecionar responsável" />
@@ -257,9 +299,21 @@ export const TaskDetailsDialog = ({
               placeholder="Adicione observações sobre a execução..."
               value={editedTask.observations || ""}
               onChange={(e) => setEditedTask({ ...editedTask, observations: e.target.value })}
-              rows={4}
+              rows={3}
             />
           </div>
+
+          {/* Attachments section */}
+          {companyId && taskProjectId && (
+            <div className="border-t pt-4">
+              <TaskAttachments
+                taskId={task.id}
+                companyId={companyId}
+                projectId={taskProjectId}
+                isAdmin={isAdmin}
+              />
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={onClose}>
