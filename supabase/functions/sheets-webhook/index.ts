@@ -386,7 +386,7 @@ Deno.serve(async (req) => {
 
       const { data: templates, error: templatesError } = await supabase
         .from("onboarding_task_templates")
-        .select("id, title, description, priority, sort_order, default_days_offset, duration_days")
+        .select("id, title, description, priority, sort_order, default_days_offset, duration_days, phase, recurrence")
         .eq("product_id", product.id)
         .order("sort_order", { ascending: true });
 
@@ -437,8 +437,9 @@ Deno.serve(async (req) => {
           due_date: dueDate,
           start_date: null,
           sort_order: tpl.sort_order ?? idx,
-          recurrence: null,
-          tags: null,
+          recurrence: tpl.recurrence ?? null,
+          // Mantém a fase do template para o painel agrupar corretamente
+          tags: tpl.phase ? [tpl.phase] : null,
           estimated_hours: null,
         };
       });
