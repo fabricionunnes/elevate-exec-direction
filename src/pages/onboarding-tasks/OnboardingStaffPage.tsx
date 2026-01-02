@@ -87,30 +87,23 @@ const OnboardingStaffPage = () => {
     try {
       let userId: string | null = null;
 
-      // Se for novo membro e tiver senha, criar usuário de login
-      if (!editingStaff && formData.password) {
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/onboarding-tasks`,
+      // Se for novo membro, criar/atualizar login via backend (sem trocar a sessão do admin)
+      if (!editingStaff) {
+        const { data: result, error: fnError } = await supabase.functions.invoke("create-staff-user", {
+          body: {
+            email: formData.email,
+            password: formData.password,
+            name: formData.name,
+            role: formData.role,
+            phone: formData.phone || null,
           },
         });
 
-        // Se o usuário já existe, buscar o ID dele
-        if (authError) {
-          if (authError.message.includes("already registered") || authError.message.includes("User already registered")) {
-            // Usuário já existe - vamos apenas cadastrar o membro sem user_id
-            // O admin pode vincular depois ou usar edge function
-            toast.info("Email já registrado no sistema. Cadastrando membro sem login vinculado.");
-          } else {
-            throw authError;
-          }
-        } else {
-          userId = authData.user?.id || null;
-          if (userId) {
-            toast.success("Usuário de login criado com sucesso");
-          }
+        if (fnError) throw fnError;
+        userId = (result?.user_id as string | undefined) ?? null;
+
+        if (!userId) {
+          throw new Error("Não foi possível vincular o login ao membro.");
         }
       }
 
@@ -128,18 +121,7 @@ const OnboardingStaffPage = () => {
         if (error) throw error;
         toast.success("Membro atualizado com sucesso");
       } else {
-        const { error } = await supabase
-          .from("onboarding_staff")
-          .insert({
-            name: formData.name,
-            email: formData.email,
-            role: formData.role,
-            phone: formData.phone || null,
-            user_id: userId,
-          });
-
-        if (error) throw error;
-        toast.success("Membro cadastrado com sucesso");
+        toast.success("Membro cadastrado e login vinculado com sucesso");
       }
 
       setShowDialog(false);
