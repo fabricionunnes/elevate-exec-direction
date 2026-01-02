@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2 } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Filter, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
@@ -23,12 +24,20 @@ interface OnboardingProject {
   completed_count?: number;
 }
 
+interface ServiceStats {
+  product_id: string;
+  product_name: string;
+  count: number;
+}
+
 const OnboardingTasksPage = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<OnboardingProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [selectedService, setSelectedService] = useState<string>("all");
+  const [serviceStats, setServiceStats] = useState<ServiceStats[]>([]);
 
   useEffect(() => {
     fetchProjects();
@@ -69,6 +78,22 @@ const OnboardingTasksPage = () => {
       );
 
       setProjects(projectsWithCounts);
+
+      // Calculate service stats
+      const statsMap = new Map<string, ServiceStats>();
+      (data || []).forEach((project) => {
+        const existing = statsMap.get(project.product_id);
+        if (existing) {
+          existing.count++;
+        } else {
+          statsMap.set(project.product_id, {
+            product_id: project.product_id,
+            product_name: project.product_name,
+            count: 1,
+          });
+        }
+      });
+      setServiceStats(Array.from(statsMap.values()).sort((a, b) => b.count - a.count));
     } catch (error: any) {
       console.error("Error fetching projects:", error);
       toast.error("Erro ao carregar projetos");
@@ -79,10 +104,11 @@ const OnboardingTasksPage = () => {
 
   const filteredProjects = projects.filter((project) => {
     const companyName = project.onboarding_company?.name || "";
-    return (
+    const matchesSearch =
       project.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      companyName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+      companyName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesService = selectedService === "all" || project.product_id === selectedService;
+    return matchesSearch && matchesService;
   });
 
   const getStatusBadge = (status: string) => {
@@ -128,15 +154,54 @@ const OnboardingTasksPage = () => {
           </Button>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por produto ou empresa..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 max-w-md"
-          />
+        {/* Service Stats */}
+        {serviceStats.length > 0 && (
+          <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-6 mb-6">
+            {serviceStats.slice(0, 6).map((stat) => (
+              <Card 
+                key={stat.product_id} 
+                className={`cursor-pointer transition-all hover:shadow-md ${selectedService === stat.product_id ? 'ring-2 ring-primary' : ''}`}
+                onClick={() => setSelectedService(selectedService === stat.product_id ? "all" : stat.product_id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-muted-foreground truncate">{stat.product_name}</p>
+                      <p className="text-2xl font-bold">{stat.count}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Search and Filter */}
+        <div className="flex gap-4 mb-6">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por produto ou empresa..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={selectedService} onValueChange={setSelectedService}>
+            <SelectTrigger className="w-[220px]">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Filtrar por serviço" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os serviços</SelectItem>
+              {serviceStats.map((stat) => (
+                <SelectItem key={stat.product_id} value={stat.product_id}>
+                  {stat.product_name} ({stat.count})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Projects Grid */}
