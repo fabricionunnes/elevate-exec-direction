@@ -680,7 +680,7 @@ const OnboardingProjectPage = () => {
           </TabsContent>
 
           <TabsContent value="briefing">
-            <CompanyBriefingPanel companyId={project.onboarding_company_id || ""} />
+            <CompanyBriefingPanel companyId={project.onboarding_company_id || ""} isAdmin={isAdmin} />
           </TabsContent>
 
           <TabsContent value="variables">
