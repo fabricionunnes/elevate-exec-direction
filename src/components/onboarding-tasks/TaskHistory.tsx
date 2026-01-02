@@ -12,7 +12,8 @@ interface HistoryItem {
   old_value: string | null;
   new_value: string | null;
   created_at: string;
-  user?: { name: string };
+  user?: { name: string } | null;
+  staff?: { name: string } | null;
 }
 
 interface TaskHistoryProps {
@@ -29,15 +30,32 @@ export const TaskHistory = ({ taskId }: TaskHistoryProps) => {
 
   const fetchHistory = async () => {
     try {
+      // Fetch history with staff relation (user relation was removed when we dropped FK)
       const { data, error } = await supabase
         .from("onboarding_task_history")
-        .select(`*, user:onboarding_users(name)`)
+        .select(`*, staff:onboarding_staff(name)`)
         .eq("task_id", taskId)
         .order("created_at", { ascending: false })
         .limit(20);
 
       if (error) throw error;
-      setHistory(data || []);
+      
+      // For entries with user_id, fetch user names manually
+      const historyWithUsers = await Promise.all(
+        (data || []).map(async (item: any) => {
+          if (item.user_id && !item.staff_id) {
+            const { data: userData } = await supabase
+              .from("onboarding_users")
+              .select("name")
+              .eq("id", item.user_id)
+              .single();
+            return { ...item, user: userData };
+          }
+          return item;
+        })
+      );
+      
+      setHistory(historyWithUsers);
     } catch (error: any) {
       console.error("Error fetching history:", error);
     } finally {
@@ -100,18 +118,21 @@ export const TaskHistory = ({ taskId }: TaskHistoryProps) => {
         Histórico
       </h4>
       <div className="space-y-3">
-        {history.map((item) => (
-          <div key={item.id} className="flex gap-3 text-sm">
-            <div className="flex-shrink-0 mt-0.5">{getActionIcon(item.action)}</div>
-            <div>
-              <span className="font-medium">{item.user?.name || "Sistema"}</span>{" "}
-              <span className="text-muted-foreground">{getActionText(item)}</span>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {format(new Date(item.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+        {history.map((item) => {
+          const userName = item.staff?.name || item.user?.name || "Sistema";
+          return (
+            <div key={item.id} className="flex gap-3 text-sm">
+              <div className="flex-shrink-0 mt-0.5">{getActionIcon(item.action)}</div>
+              <div>
+                <span className="font-medium">{userName}</span>{" "}
+                <span className="text-muted-foreground">{getActionText(item)}</span>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {format(new Date(item.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
