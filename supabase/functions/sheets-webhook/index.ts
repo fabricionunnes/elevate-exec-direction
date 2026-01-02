@@ -27,7 +27,8 @@ interface SheetData {
 const PRODUCT_MAPPING: Record<string, { id: string; name: string }> = {
   // Adicione aqui os mapeamentos conforme os nomes usados na Clint
   "core": { id: "core", name: "Core" },
-  "control": { id: "control", name: "Control" },
+  "control": { id: "control", name: "UNV Control" },
+  "unv control": { id: "control", name: "UNV Control" },
   "growth room": { id: "growth-room", name: "Growth Room" },
   "growth-room": { id: "growth-room", name: "Growth Room" },
   "growthroom": { id: "growth-room", name: "Growth Room" },
