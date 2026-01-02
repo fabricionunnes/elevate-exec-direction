@@ -184,23 +184,28 @@ Deno.serve(async (req) => {
             console.error("Error creating onboarding user:", onboardingUserError);
           }
 
-          // Get task templates for this product
+          // SEMPRE usar o template "master" (90 tarefas com 8 fases) independente do produto
           const { data: templates } = await supabaseAdmin
             .from("onboarding_task_templates")
             .select("*")
-            .eq("product_id", productId)
+            .eq("product_id", "master")
+            .order("phase_order")
             .order("sort_order");
 
           if (templates && templates.length > 0) {
-            // Create tasks from templates
+            // Create tasks from templates - incluindo fase e recurrence
             const tasks = templates.map((template, index) => ({
               project_id: project.id,
+              template_id: template.id,
               title: template.title,
               description: template.description,
+              priority: template.priority || "medium",
               sort_order: template.sort_order || index,
               status: "pending" as const,
+              tags: template.phase ? [template.phase] : null,
+              recurrence: template.recurrence || null,
               due_date: template.default_days_offset 
-                ? new Date(Date.now() + template.default_days_offset * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                ? new Date(Date.now() + ((template.default_days_offset || 0) + (template.duration_days || 0)) * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
                 : null,
             }));
 
