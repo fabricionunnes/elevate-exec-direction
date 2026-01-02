@@ -115,17 +115,35 @@ export const CreateProjectDialog = ({
 
       if (projectError) throw projectError;
 
-      // Fetch task templates for this product (with phase info)
-      const { data: templates } = await supabase
+      // Fetch master template tasks (applies to ALL products)
+      const { data: masterTemplates } = await supabase
+        .from("onboarding_task_templates")
+        .select("*")
+        .eq("product_id", "master")
+        .order("phase_order")
+        .order("sort_order");
+
+      // Fetch product-specific task templates
+      const { data: productTemplates } = await supabase
         .from("onboarding_task_templates")
         .select("*")
         .eq("product_id", selectedProduct)
+        .order("phase_order")
         .order("sort_order");
 
+      // Combine master + product templates
+      const allTemplates = [
+        ...(masterTemplates || []),
+        ...(productTemplates || []),
+      ];
+
       // Create tasks from templates with phase info
-      if (templates && templates.length > 0) {
+      if (allTemplates.length > 0) {
         const today = new Date();
-        const tasks = templates.map((template) => ({
+        
+        // Re-calculate sort_order to maintain proper ordering
+        // Master tasks come first, then product-specific tasks
+        const tasks = allTemplates.map((template, index) => ({
           project_id: project.id,
           title: template.title,
           description: template.description,
@@ -133,7 +151,7 @@ export const CreateProjectDialog = ({
           due_date: template.default_days_offset != null 
             ? new Date(today.getTime() + template.default_days_offset * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
             : null,
-          sort_order: template.sort_order,
+          sort_order: index,
           status: "pending" as const,
           // Store phase info in tags array: [phase_name, phase_order]
           tags: template.phase ? [template.phase, String(template.phase_order ?? 0)] : null,
