@@ -1,0 +1,72 @@
+-- Remove existing master templates for phases 2 and above
+DELETE FROM public.onboarding_task_templates 
+WHERE product_id = 'master' AND phase_order >= 2;
+
+-- FASE 2 — ONBOARDING ADMINISTRATIVO COMPLETO (D0 a D+5)
+INSERT INTO public.onboarding_task_templates (product_id, title, description, default_days_offset, sort_order, responsible_role, priority, phase, phase_order) VALUES
+('master', 'Criar projeto no sistema', 'Criar projeto de onboarding no sistema de gestão', 0, 1, 'cs', 'high', 'Onboarding Administrativo', 2),
+('master', 'Criar estrutura de pastas do projeto', 'Organizar pastas e documentos do projeto', 0, 2, 'cs', 'high', 'Onboarding Administrativo', 2),
+('master', 'Criar cadastro do cliente nos sistemas UNV', 'Registrar cliente em todos os sistemas internos', 0, 3, 'cs', 'high', 'Onboarding Administrativo', 2),
+('master', 'Enviar e-mail oficial de boas-vindas', 'Enviar comunicação inicial de boas-vindas', 0, 4, 'cs', 'high', 'Onboarding Administrativo', 2),
+('master', 'Enviar apresentação institucional UNV', 'Enviar materiais sobre a UNV', 1, 5, 'cs', 'medium', 'Onboarding Administrativo', 2),
+('master', 'Enviar explicação detalhada do produto contratado', 'Enviar guia completo do produto', 1, 6, 'cs', 'high', 'Onboarding Administrativo', 2),
+('master', 'Enviar checklist completo de acessos', 'Enviar lista de acessos necessários', 1, 7, 'cs', 'high', 'Onboarding Administrativo', 2),
+('master', 'Enviar checklist de documentos', 'Enviar lista de documentos necessários', 1, 8, 'cs', 'high', 'Onboarding Administrativo', 2),
+('master', 'Aguardar checklist preenchido', 'Aguardar retorno do cliente com checklists', 3, 9, 'cs', 'medium', 'Onboarding Administrativo', 2),
+('master', 'Validar acessos recebidos', 'Conferir todos os acessos fornecidos', 4, 10, 'cs', 'high', 'Onboarding Administrativo', 2),
+('master', 'Cobrar acessos pendentes', 'Fazer follow-up de acessos não fornecidos', 4, 11, 'cs', 'medium', 'Onboarding Administrativo', 2),
+('master', 'Definir responsáveis internos do cliente', 'Identificar pontos focais do cliente', 4, 12, 'cs', 'high', 'Onboarding Administrativo', 2),
+('master', 'Definir sponsor executivo do cliente', 'Identificar decisor principal', 4, 13, 'cs', 'high', 'Onboarding Administrativo', 2),
+('master', 'Definir líder operacional do cliente', 'Identificar responsável operacional', 4, 14, 'cs', 'high', 'Onboarding Administrativo', 2),
+('master', 'Definir canal oficial de comunicação', 'Definir canal principal (WhatsApp, Slack, etc.)', 5, 15, 'cs', 'high', 'Onboarding Administrativo', 2),
+('master', 'Definir regras de comunicação', 'Estabelecer horários e frequência de contato', 5, 16, 'cs', 'medium', 'Onboarding Administrativo', 2),
+('master', 'Agendar reunião de briefing', 'Agendar primeira reunião estratégica', 5, 17, 'cs', 'high', 'Onboarding Administrativo', 2),
+
+-- FASE 3 — BRIEFING PROFUNDO (D+6 a D+12)
+('master', 'Realizar reunião de briefing', 'Conduzir reunião inicial de briefing', 7, 1, 'consultant', 'high', 'Briefing Profundo', 3),
+('master', 'Levantar objetivos estratégicos', 'Mapear objetivos de médio e longo prazo', 7, 2, 'consultant', 'high', 'Briefing Profundo', 3),
+('master', 'Levantar metas atuais', 'Documentar metas existentes', 7, 3, 'consultant', 'high', 'Briefing Profundo', 3),
+('master', 'Levantar histórico da empresa', 'Entender trajetória e contexto', 8, 4, 'consultant', 'medium', 'Briefing Profundo', 3),
+('master', 'Levantar modelo de negócio', 'Mapear modelo de receita e operação', 8, 5, 'consultant', 'high', 'Briefing Profundo', 3),
+('master', 'Levantar ICP atual', 'Documentar perfil de cliente ideal', 8, 6, 'consultant', 'high', 'Briefing Profundo', 3),
+('master', 'Levantar estrutura do time comercial', 'Mapear organograma comercial', 9, 7, 'consultant', 'high', 'Briefing Profundo', 3),
+('master', 'Levantar cargos e funções', 'Documentar papéis e responsabilidades', 9, 8, 'consultant', 'medium', 'Briefing Profundo', 3),
+('master', 'Levantar processos existentes', 'Mapear processos atuais de vendas', 9, 9, 'consultant', 'high', 'Briefing Profundo', 3),
+('master', 'Levantar indicadores atuais', 'Documentar KPIs existentes', 10, 10, 'consultant', 'high', 'Briefing Profundo', 3),
+('master', 'Levantar ferramentas utilizadas', 'Mapear stack de ferramentas', 10, 11, 'consultant', 'medium', 'Briefing Profundo', 3),
+('master', 'Levantar canais de aquisição', 'Documentar fontes de leads', 10, 12, 'consultant', 'high', 'Briefing Profundo', 3),
+('master', 'Levantar gargalos percebidos pelo dono', 'Coletar visão do empresário', 11, 13, 'consultant', 'high', 'Briefing Profundo', 3),
+('master', 'Levantar gargalos percebidos pelo time', 'Coletar visão operacional', 11, 14, 'consultant', 'high', 'Briefing Profundo', 3),
+('master', 'Levantar expectativas de curto prazo', 'Documentar expectativas imediatas', 11, 15, 'consultant', 'high', 'Briefing Profundo', 3),
+('master', 'Levantar expectativas de longo prazo', 'Documentar visão de futuro', 11, 16, 'consultant', 'medium', 'Briefing Profundo', 3),
+('master', 'Registrar briefing completo no sistema', 'Documentar todo o briefing no projeto', 12, 17, 'consultant', 'high', 'Briefing Profundo', 3),
+('master', 'Validar briefing com o cliente', 'Confirmar entendimento com o cliente', 12, 18, 'consultant', 'high', 'Briefing Profundo', 3),
+
+-- FASE 4 — DIAGNÓSTICO PROFUNDO (D+13 a D+22)
+('master', 'Analisar estrutura comercial', 'Avaliar organização do time de vendas', 14, 1, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+('master', 'Analisar processo de vendas', 'Avaliar etapas e fluxo de vendas', 14, 2, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+('master', 'Analisar funil e conversões', 'Avaliar métricas de conversão', 15, 3, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+('master', 'Analisar metas e indicadores', 'Avaliar adequação das metas', 15, 4, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+('master', 'Analisar discurso comercial', 'Avaliar pitch e argumentação', 16, 5, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+('master', 'Analisar capacidade do time', 'Avaliar skills e capacidade', 16, 6, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+('master', 'Analisar dependência do dono', 'Avaliar centralização de decisões', 17, 7, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+('master', 'Analisar riscos operacionais', 'Identificar riscos do projeto', 17, 8, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+('master', 'Analisar riscos de churn', 'Avaliar risco de cancelamento', 18, 9, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+('master', 'Analisar maturidade da empresa', 'Avaliar estágio de maturidade', 18, 10, 'consultant', 'medium', 'Diagnóstico Profundo', 4),
+('master', 'Identificar gargalos críticos', 'Priorizar problemas principais', 19, 11, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+('master', 'Priorizar gargalos', 'Ordenar por impacto e urgência', 19, 12, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+('master', 'Criar diagnóstico consolidado', 'Consolidar análise em documento', 20, 13, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+('master', 'Preparar apresentação do diagnóstico', 'Criar apresentação para o cliente', 21, 14, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+('master', 'Reunião de validação do diagnóstico', 'Apresentar e validar diagnóstico', 22, 15, 'consultant', 'high', 'Diagnóstico Profundo', 4),
+
+-- FASE 5 — PLANEJAMENTO EXECUTIVO (D+23 a D+30)
+('master', 'Definir objetivo central do projeto', 'Estabelecer objetivo principal', 24, 1, 'consultant', 'high', 'Planejamento Executivo', 5),
+('master', 'Definir metas claras do projeto', 'Estabelecer metas mensuráveis', 24, 2, 'consultant', 'high', 'Planejamento Executivo', 5),
+('master', 'Definir KPIs de acompanhamento', 'Estabelecer indicadores de sucesso', 25, 3, 'consultant', 'high', 'Planejamento Executivo', 5),
+('master', 'Definir responsáveis por frente', 'Atribuir donos para cada frente', 25, 4, 'consultant', 'high', 'Planejamento Executivo', 5),
+('master', 'Criar plano de ação detalhado', 'Desenvolver plano com ações específicas', 26, 5, 'consultant', 'high', 'Planejamento Executivo', 5),
+('master', 'Criar cronograma por semana', 'Estabelecer timeline semanal', 27, 6, 'consultant', 'high', 'Planejamento Executivo', 5),
+('master', 'Definir checkpoints de validação', 'Estabelecer pontos de controle', 28, 7, 'consultant', 'medium', 'Planejamento Executivo', 5),
+('master', 'Definir critérios de sucesso', 'Estabelecer o que é sucesso', 28, 8, 'consultant', 'high', 'Planejamento Executivo', 5),
+('master', 'Definir critérios de falha', 'Estabelecer sinais de alerta', 29, 9, 'consultant', 'medium', 'Planejamento Executivo', 5),
+('master', 'Validar plano com o cliente', 'Aprovar plano final com cliente', 30, 10, 'consultant', 'high', 'Planejamento Executivo', 5);
