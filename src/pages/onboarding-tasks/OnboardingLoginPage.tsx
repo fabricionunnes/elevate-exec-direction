@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+
 import { ClipboardList, Eye, EyeOff, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,13 +17,6 @@ const OnboardingLoginPage = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  
-  // Password change dialog
-  const [showPasswordChange, setShowPasswordChange] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [changingPassword, setChangingPassword] = useState(false);
-  const [onboardingUserId, setOnboardingUserId] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,13 +86,6 @@ const OnboardingLoginPage = () => {
 
         const onboardingUser = onboardingUsers[0];
 
-        // Check if password needs to be changed
-        if (!onboardingUser.password_changed) {
-          setOnboardingUserId(onboardingUser.id);
-          setShowPasswordChange(true);
-          return;
-        }
-
         toast.success("Login realizado com sucesso!");
         
         // Redirect based on role
@@ -117,70 +103,6 @@ const OnboardingLoginPage = () => {
     }
   };
 
-  const handlePasswordChange = async () => {
-    if (!newPassword || !confirmPassword) {
-      toast.error("Preencha todos os campos");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      toast.error("As senhas não coincidem");
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      toast.error("A senha deve ter pelo menos 6 caracteres");
-      return;
-    }
-
-    setChangingPassword(true);
-
-    try {
-      // Update password in auth
-      const { error: authError } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (authError) {
-        toast.error(authError.message);
-        return;
-      }
-
-      // Mark password as changed
-      const { error: updateError } = await supabase
-        .from("onboarding_users")
-        .update({ password_changed: true, temp_password: null })
-        .eq("id", onboardingUserId);
-
-      if (updateError) {
-        console.error("Error updating password_changed:", updateError);
-      }
-
-      // Get user info for redirect
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: onboardingUsers } = await supabase
-          .from("onboarding_users")
-          .select("role, project_id")
-          .eq("user_id", user.id);
-
-        toast.success("Senha alterada com sucesso!");
-        setShowPasswordChange(false);
-
-        const onboardingUser = onboardingUsers?.[0];
-        if (onboardingUser?.role === "client") {
-          navigate(`/onboarding-client/${onboardingUser.project_id}`);
-        } else {
-          navigate("/onboarding-tasks");
-        }
-      }
-    } catch (error) {
-      console.error("Password change error:", error);
-      toast.error("Erro ao alterar senha");
-    } finally {
-      setChangingPassword(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
@@ -260,54 +182,6 @@ const OnboardingLoginPage = () => {
           Acesso restrito a membros do projeto. Contate seu administrador para obter acesso.
         </p>
       </div>
-
-      {/* Password Change Dialog */}
-      <Dialog open={showPasswordChange} onOpenChange={() => {}}>
-        <DialogContent className="bg-slate-900 border-slate-800">
-          <DialogHeader>
-            <DialogTitle className="text-white">Alterar Senha</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Por segurança, você precisa alterar sua senha temporária no primeiro acesso.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label className="text-slate-300">Nova Senha</Label>
-              <Input
-                type="password"
-                placeholder="Mínimo 6 caracteres"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="bg-slate-800/50 border-slate-700 text-white"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-slate-300">Confirmar Nova Senha</Label>
-              <Input
-                type="password"
-                placeholder="Repita a nova senha"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="bg-slate-800/50 border-slate-700 text-white"
-              />
-            </div>
-            <Button
-              onClick={handlePasswordChange}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950"
-              disabled={changingPassword}
-            >
-              {changingPassword ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Alterando...
-                </>
-              ) : (
-                "Alterar Senha"
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
