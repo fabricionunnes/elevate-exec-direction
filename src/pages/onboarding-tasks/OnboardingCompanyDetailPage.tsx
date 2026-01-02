@@ -15,6 +15,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -86,6 +97,7 @@ const OnboardingCompanyDetailPage = () => {
   
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -307,6 +319,38 @@ const OnboardingCompanyDetailPage = () => {
   const canEditCompany = currentUserRole === "admin" || currentUserRole === "cs";
   const canEditCS = currentUserRole === "admin";
   const canEditConsultant = currentUserRole === "admin" || currentUserRole === "cs";
+  const canDeleteCompany = currentUserRole === "admin";
+
+  const handleDeleteCompany = async () => {
+    if (!companyId || isNew) return;
+    
+    setDeleting(true);
+    try {
+      // First delete all related projects
+      const { error: projectsError } = await supabase
+        .from("onboarding_projects")
+        .delete()
+        .eq("onboarding_company_id", companyId);
+      
+      if (projectsError) throw projectsError;
+
+      // Then delete the company
+      const { error } = await supabase
+        .from("onboarding_companies")
+        .delete()
+        .eq("id", companyId);
+
+      if (error) throw error;
+      
+      toast.success("Empresa excluída com sucesso");
+      navigate("/onboarding-tasks/companies");
+    } catch (error: any) {
+      console.error("Error deleting company:", error);
+      toast.error(error.message || "Erro ao excluir empresa");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -326,10 +370,37 @@ const OnboardingCompanyDetailPage = () => {
               </p>
             </div>
           </div>
-          <Button onClick={handleSubmit} disabled={saving}>
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? "Salvando..." : "Salvar"}
-          </Button>
+          <div className="flex items-center gap-2">
+            {canDeleteCompany && !isNew && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" disabled={deleting}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {deleting ? "Excluindo..." : "Excluir"}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir Empresa</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja excluir a empresa "{form.name}"? 
+                      Esta ação irá excluir também todos os projetos associados e não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteCompany} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <Button onClick={handleSubmit} disabled={saving}>
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? "Salvando..." : "Salvar"}
+            </Button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit}>
