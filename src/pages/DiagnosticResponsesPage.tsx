@@ -632,11 +632,15 @@ export default function DiagnosticResponsesPage() {
     r.client_name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const filteredChatLeads = chatLeads.filter(r => 
-    (r.name?.toLowerCase().includes(search.toLowerCase())) ||
-    (r.email?.toLowerCase().includes(search.toLowerCase())) ||
-    (r.phone?.includes(search))
-  );
+  const filteredChatLeads = chatLeads.filter(r => {
+    if (!search.trim()) return true;
+    const searchLower = search.toLowerCase();
+    return (
+      (r.name?.toLowerCase().includes(searchLower)) ||
+      (r.email?.toLowerCase().includes(searchLower)) ||
+      (r.phone?.includes(search))
+    );
+  });
 
   // Loading state
   if (authLoading) {
