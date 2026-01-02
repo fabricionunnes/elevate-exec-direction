@@ -1,0 +1,239 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+import { productDetails } from "@/data/productDetails";
+
+interface CreateProjectDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onProjectCreated: () => void;
+}
+
+interface Company {
+  id: string;
+  name: string;
+}
+
+export const CreateProjectDialog = ({
+  open,
+  onOpenChange,
+  onProjectCreated,
+}: CreateProjectDialogProps) => {
+  const [loading, setLoading] = useState(false);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState("");
+  const [selectedCompany, setSelectedCompany] = useState("");
+  const [newCompanyName, setNewCompanyName] = useState("");
+  const [createNewCompany, setCreateNewCompany] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      fetchCompanies();
+    }
+  }, [open]);
+
+  const fetchCompanies = async () => {
+    const { data, error } = await supabase
+      .from("portal_companies")
+      .select("id, name")
+      .order("name");
+
+    if (!error && data) {
+      setCompanies(data);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!selectedProduct) {
+      toast.error("Selecione um produto");
+      return;
+    }
+
+    if (!createNewCompany && !selectedCompany) {
+      toast.error("Selecione uma empresa");
+      return;
+    }
+
+    if (createNewCompany && !newCompanyName.trim()) {
+      toast.error("Digite o nome da empresa");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let companyId = selectedCompany;
+
+      // Create new company if needed
+      if (createNewCompany) {
+        const { data: newCompany, error: companyError } = await supabase
+          .from("portal_companies")
+          .insert({ name: newCompanyName.trim() })
+          .select("id")
+          .single();
+
+        if (companyError) throw companyError;
+        companyId = newCompany.id;
+      }
+
+      // Get current user's portal_user id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const { data: portalUser } = await supabase
+        .from("portal_users")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      const productName = productDetails[selectedProduct]?.name || selectedProduct;
+
+      // Create project
+      const { data: project, error: projectError } = await supabase
+        .from("onboarding_projects")
+        .insert({
+          product_id: selectedProduct,
+          product_name: productName,
+          company_id: companyId,
+          created_by: portalUser?.id,
+        })
+        .select("id")
+        .single();
+
+      if (projectError) throw projectError;
+
+      // Fetch task templates for this product
+      const { data: templates } = await supabase
+        .from("onboarding_task_templates")
+        .select("*")
+        .eq("product_id", selectedProduct)
+        .order("sort_order");
+
+      // Create tasks from templates
+      if (templates && templates.length > 0) {
+        const today = new Date();
+        const tasks = templates.map((template) => ({
+          project_id: project.id,
+          title: template.title,
+          description: template.description,
+          due_date: new Date(
+            today.getTime() + template.default_days_offset * 24 * 60 * 60 * 1000
+          ).toISOString().split("T")[0],
+          sort_order: template.sort_order,
+          status: "pending" as const,
+        }));
+
+        await supabase.from("onboarding_tasks").insert(tasks);
+      }
+
+      toast.success("Projeto criado com sucesso!");
+      onOpenChange(false);
+      onProjectCreated();
+      
+      // Reset form
+      setSelectedProduct("");
+      setSelectedCompany("");
+      setNewCompanyName("");
+      setCreateNewCompany(false);
+    } catch (error: any) {
+      console.error("Error creating project:", error);
+      toast.error("Erro ao criar projeto");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const availableProducts = Object.entries(productDetails).map(([id, product]) => ({
+    id,
+    name: product.name,
+  }));
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Novo Projeto de Onboarding</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-4">
+          <div className="space-y-2">
+            <Label>Produto</Label>
+            <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o produto" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableProducts.map((product) => (
+                  <SelectItem key={product.id} value={product.id}>
+                    {product.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Empresa</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setCreateNewCompany(!createNewCompany)}
+              >
+                {createNewCompany ? "Selecionar existente" : "Criar nova"}
+              </Button>
+            </div>
+            
+            {createNewCompany ? (
+              <Input
+                placeholder="Nome da nova empresa"
+                value={newCompanyName}
+                onChange={(e) => setNewCompanyName(e.target.value)}
+              />
+            ) : (
+              <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreate} disabled={loading}>
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Criar Projeto
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};

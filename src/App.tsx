@@ -56,6 +56,9 @@ import PortalPlanVersionPage from "./pages/portal/PortalPlanVersionPage";
 // Onboarding pages
 import OnboardingPage from "./pages/OnboardingPage";
 import OnboardingProductPage from "./pages/OnboardingProductPage";
+import OnboardingTasksPage from "./pages/onboarding-tasks/OnboardingTasksPage";
+import OnboardingProjectPage from "./pages/onboarding-tasks/OnboardingProjectPage";
+import ClientOnboardingPage from "./pages/onboarding-tasks/ClientOnboardingPage";
 
 const queryClient = new QueryClient();
 
@@ -104,6 +107,9 @@ const App = () => (
           {/* Onboarding CS */}
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/onboarding/:productId" element={<OnboardingProductPage />} />
+          <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
+          <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
+          <Route path="/onboarding-client" element={<ClientOnboardingPage />} />
           
           {/* Portal do Planejamento 2026 */}
           <Route path="/portal" element={<PortalLandingPage />} />
