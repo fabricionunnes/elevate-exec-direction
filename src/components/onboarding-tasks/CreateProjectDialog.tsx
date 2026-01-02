@@ -137,7 +137,7 @@ export const CreateProjectDialog = ({
         ...(productTemplates || []),
       ];
 
-      // Create tasks from templates with phase info
+      // Create tasks from templates with phase info and recurrence
       if (allTemplates.length > 0) {
         const today = new Date();
         
@@ -155,6 +155,8 @@ export const CreateProjectDialog = ({
           status: "pending" as const,
           // Store phase info in tags array: [phase_name, phase_order]
           tags: template.phase ? [template.phase, String(template.phase_order ?? 0)] : null,
+          recurrence: template.recurrence,
+          template_id: template.id,
         }));
 
         await supabase.from("onboarding_tasks").insert(tasks);
