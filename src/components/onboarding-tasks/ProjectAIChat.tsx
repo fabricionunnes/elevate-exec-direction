@@ -52,15 +52,29 @@ export const ProjectAIChat = ({
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      // First try to find as onboarding_user
       const { data: onboardingUser } = await supabase
         .from("onboarding_users")
         .select("id")
         .eq("user_id", user.id)
         .eq("project_id", projectId)
-        .single();
+        .maybeSingle();
       
       if (onboardingUser) {
         setCurrentUserId(onboardingUser.id);
+        return;
+      }
+
+      // If not found, check if user is staff (admin/cs/consultant)
+      const { data: staffUser } = await supabase
+        .from("onboarding_staff")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (staffUser) {
+        // Use staff id as current user id for chat
+        setCurrentUserId(staffUser.id);
       }
     }
   };
@@ -84,7 +98,11 @@ export const ProjectAIChat = ({
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || !currentUserId) return;
+    if (!input.trim()) return;
+    if (!currentUserId) {
+      toast.error("Usuário não identificado. Faça login novamente.");
+      return;
+    }
 
     const userMessage = input.trim();
     setInput("");

@@ -505,7 +505,7 @@ const OnboardingProjectPage = () => {
             </TabsTrigger>
             <TabsTrigger value="ai-coach" className="gap-2">
               <Sparkles className="h-4 w-4" />
-              IA Coach
+              IA Assistente
             </TabsTrigger>
           </TabsList>
 
