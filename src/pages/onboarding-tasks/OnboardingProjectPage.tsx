@@ -4,9 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -19,7 +19,8 @@ import {
   Calendar,
   MoreHorizontal,
   Trash2,
-  GripVertical,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -38,12 +39,16 @@ interface OnboardingTask {
   title: string;
   description: string | null;
   due_date: string | null;
+  start_date: string | null;
   completed_at: string | null;
   status: "pending" | "in_progress" | "completed";
   assignee_id: string | null;
   observations: string | null;
   sort_order: number;
+  priority: string | null;
+  tags: string[] | null;
   assignee?: { id: string; name: string; role: string };
+  responsible_staff?: { id: string; name: string } | null;
 }
 
 interface OnboardingUser {
@@ -58,8 +63,37 @@ interface Project {
   id: string;
   product_name: string;
   status: string;
-  company?: { name: string };
+  onboarding_company?: { name: string } | null;
 }
+
+interface TaskPhase {
+  name: string;
+  order: number;
+  tasks: OnboardingTask[];
+  completedCount: number;
+}
+
+const PHASE_COLORS: Record<string, string> = {
+  "Pré-Onboarding": "bg-blue-500",
+  "Onboarding & Setup": "bg-sky-500",
+  "Diagnóstico Comercial": "bg-yellow-500",
+  "Desenho do Processo": "bg-orange-500",
+  "Implementação CRM": "bg-green-500",
+  "Playbook & Padronização": "bg-purple-500",
+  "Treinamento & Adoção": "bg-pink-500",
+  "Estabilização & Governança": "bg-stone-500",
+};
+
+const PHASE_EMOJIS: Record<string, string> = {
+  "Pré-Onboarding": "🔵",
+  "Onboarding & Setup": "🟦",
+  "Diagnóstico Comercial": "🟨",
+  "Desenho do Processo": "🟧",
+  "Implementação CRM": "🟩",
+  "Playbook & Padronização": "🟪",
+  "Treinamento & Adoção": "🟫",
+  "Estabilização & Governança": "🤎",
+};
 
 const OnboardingProjectPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -73,6 +107,8 @@ const OnboardingProjectPage = () => {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [activeTab, setActiveTab] = useState("tasks");
   const [currentUserRole, setCurrentUserRole] = useState<"admin" | "cs" | "consultant" | "client" | null>(null);
+  const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
+  const [isStaffAdmin, setIsStaffAdmin] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -85,37 +121,57 @@ const OnboardingProjectPage = () => {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: onboardingUser } = await supabase
-          .from("onboarding_users")
-          .select("role")
+        // Check if user is staff admin
+        const { data: staffMember } = await supabase
+          .from("onboarding_staff")
+          .select("id, role")
           .eq("user_id", user.id)
-          .eq("project_id", projectId)
           .single();
         
-        if (onboardingUser) {
-          setCurrentUserRole(onboardingUser.role as "admin" | "cs" | "consultant" | "client");
+        if (staffMember && staffMember.role === "admin") {
+          setIsStaffAdmin(true);
+          setCurrentUserRole("admin");
+        } else {
+          const { data: onboardingUser } = await supabase
+            .from("onboarding_users")
+            .select("role")
+            .eq("user_id", user.id)
+            .eq("project_id", projectId)
+            .single();
+          
+          if (onboardingUser) {
+            setCurrentUserRole(onboardingUser.role as "admin" | "cs" | "consultant" | "client");
+          }
         }
       }
 
       // Fetch project
       const { data: projectData, error: projectError } = await supabase
         .from("onboarding_projects")
-        .select(`*, company:portal_companies(name)`)
+        .select(`*, onboarding_company:onboarding_companies(name)`)
         .eq("id", projectId)
         .single();
 
       if (projectError) throw projectError;
       setProject(projectData);
 
-      // Fetch tasks
+      // Fetch tasks with responsible staff
       const { data: tasksData, error: tasksError } = await supabase
         .from("onboarding_tasks")
-        .select(`*, assignee:onboarding_users(id, name, role)`)
+        .select(`
+          *,
+          assignee:onboarding_users(id, name, role),
+          responsible_staff:onboarding_staff(id, name)
+        `)
         .eq("project_id", projectId)
         .order("sort_order");
 
       if (tasksError) throw tasksError;
       setTasks(tasksData || []);
+
+      // Set all phases as expanded by default
+      const phases = new Set(tasksData?.map(t => t.tags?.[0] || "Sem fase").filter(Boolean) as string[]);
+      setExpandedPhases(phases);
 
       // Fetch users
       const { data: usersData, error: usersError } = await supabase
@@ -177,7 +233,7 @@ const OnboardingProjectPage = () => {
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    if (currentUserRole !== "admin") {
+    if (!isStaffAdmin && currentUserRole !== "admin") {
       toast.error("Apenas administradores podem excluir tarefas");
       return;
     }
@@ -196,7 +252,19 @@ const OnboardingProjectPage = () => {
     }
   };
 
-  const isAdmin = currentUserRole === "admin";
+  const togglePhase = (phaseName: string) => {
+    setExpandedPhases(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(phaseName)) {
+        newSet.delete(phaseName);
+      } else {
+        newSet.add(phaseName);
+      }
+      return newSet;
+    });
+  };
+
+  const isAdmin = isStaffAdmin || currentUserRole === "admin";
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -209,10 +277,21 @@ const OnboardingProjectPage = () => {
     }
   };
 
-  const getRoleBadge = (role: string) => {
+  const getPriorityBadge = (priority: string | null) => {
+    switch (priority) {
+      case "high":
+        return <Badge variant="destructive" className="text-xs">Alta</Badge>;
+      case "medium":
+        return <Badge variant="secondary" className="text-xs">Média</Badge>;
+      case "low":
+        return <Badge variant="outline" className="text-xs">Baixa</Badge>;
+      default:
+        return null;
+    }
+  };
+
+  const getResponsibleBadge = (role: string | null) => {
     switch (role) {
-      case "admin":
-        return <Badge className="bg-red-500 text-xs">Admin</Badge>;
       case "cs":
         return <Badge className="bg-blue-500 text-xs">CS</Badge>;
       case "consultant":
@@ -223,6 +302,30 @@ const OnboardingProjectPage = () => {
         return null;
     }
   };
+
+  // Group tasks by phase (stored in tags[0])
+  const groupedTasks = tasks.reduce<Record<string, TaskPhase>>((acc, task) => {
+    const phaseName = task.tags?.[0] || "Sem fase";
+    const phaseOrder = parseInt(task.tags?.[1] || "99");
+    
+    if (!acc[phaseName]) {
+      acc[phaseName] = {
+        name: phaseName,
+        order: phaseOrder,
+        tasks: [],
+        completedCount: 0,
+      };
+    }
+    
+    acc[phaseName].tasks.push(task);
+    if (task.status === "completed") {
+      acc[phaseName].completedCount++;
+    }
+    
+    return acc;
+  }, {});
+
+  const sortedPhases = Object.values(groupedTasks).sort((a, b) => a.order - b.order);
 
   if (loading) {
     return (
@@ -257,8 +360,8 @@ const OnboardingProjectPage = () => {
             </Button>
             <div>
               <h1 className="text-2xl font-bold">{project.product_name}</h1>
-              {project.company?.name && (
-                <p className="text-muted-foreground">{project.company.name}</p>
+              {project.onboarding_company?.name && (
+                <p className="text-muted-foreground">{project.onboarding_company.name}</p>
               )}
             </div>
           </div>
@@ -276,7 +379,7 @@ const OnboardingProjectPage = () => {
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">Progresso do Onboarding</span>
               <span className="font-medium">
-                {completedTasks}/{totalTasks} tarefas concluídas
+                {completedTasks}/{totalTasks} tarefas concluídas ({totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0}%)
               </span>
             </div>
             <div className="w-full bg-muted rounded-full h-3">
@@ -303,102 +406,141 @@ const OnboardingProjectPage = () => {
 
           <TabsContent value="tasks">
             {/* Add task */}
-            <div className="flex gap-2 mb-6">
-              <Input
-                placeholder="Adicionar nova tarefa..."
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
-              />
-              <Button onClick={handleAddTask}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
+            {isAdmin && (
+              <div className="flex gap-2 mb-6">
+                <Input
+                  placeholder="Adicionar nova tarefa..."
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
+                />
+                <Button onClick={handleAddTask}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
 
-            {/* Tasks list */}
-            <div className="space-y-2">
-              {tasks.map((task) => (
-                <Card
-                  key={task.id}
-                  className={`transition-all hover:shadow-md cursor-pointer ${
-                    task.status === "completed" ? "opacity-60" : ""
-                  }`}
-                  onClick={() => setSelectedTask(task)}
+            {/* Phases */}
+            <div className="space-y-4">
+              {sortedPhases.map((phase) => (
+                <Collapsible
+                  key={phase.name}
+                  open={expandedPhases.has(phase.name)}
+                  onOpenChange={() => togglePhase(phase.name)}
                 >
-                  <CardContent className="py-3 px-4">
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const nextStatus =
-                            task.status === "pending"
-                              ? "in_progress"
-                              : task.status === "in_progress"
-                              ? "completed"
-                              : "pending";
-                          handleStatusChange(task.id, nextStatus);
-                        }}
-                      >
-                        {getStatusIcon(task.status)}
-                      </button>
-
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className={`font-medium ${
-                            task.status === "completed" ? "line-through text-muted-foreground" : ""
-                          }`}
-                        >
-                          {task.title}
-                        </p>
-                        {task.description && (
-                          <p className="text-sm text-muted-foreground truncate">
-                            {task.description}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        {task.assignee && (
-                          <div className="flex items-center gap-1">
+                  <Card>
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {expandedPhases.has(phase.name) ? (
+                              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            )}
+                            <span className="text-lg">{PHASE_EMOJIS[phase.name] || "📋"}</span>
+                            <CardTitle className="text-lg">{phase.name}</CardTitle>
+                          </div>
+                          <div className="flex items-center gap-3">
                             <span className="text-sm text-muted-foreground">
-                              {task.assignee.name}
+                              {phase.completedCount}/{phase.tasks.length} concluídas
                             </span>
-                            {getRoleBadge(task.assignee.role)}
+                            <div className="w-24 bg-muted rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full transition-all ${PHASE_COLORS[phase.name] || "bg-primary"}`}
+                                style={{ width: `${phase.tasks.length ? (phase.completedCount / phase.tasks.length) * 100 : 0}%` }}
+                              />
+                            </div>
                           </div>
-                        )}
-
-                        {task.due_date && (
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Calendar className="h-3 w-3" />
-                            {format(new Date(task.due_date), "dd/MM")}
-                          </div>
-                        )}
-
-                        {isAdmin && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
+                        </div>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0 pb-4">
+                        <div className="space-y-2">
+                          {phase.tasks.map((task) => (
+                            <div
+                              key={task.id}
+                              className={`flex items-center gap-3 p-3 rounded-lg border bg-card hover:shadow-sm cursor-pointer transition-all ${
+                                task.status === "completed" ? "opacity-60" : ""
+                              }`}
+                              onClick={() => setSelectedTask(task)}
+                            >
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleDeleteTask(task.id);
+                                  const nextStatus =
+                                    task.status === "pending"
+                                      ? "in_progress"
+                                      : task.status === "in_progress"
+                                      ? "completed"
+                                      : "pending";
+                                  handleStatusChange(task.id, nextStatus);
                                 }}
-                                className="text-destructive"
                               >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                                {getStatusIcon(task.status)}
+                              </button>
+
+                              <div className="flex-1 min-w-0">
+                                <p
+                                  className={`font-medium ${
+                                    task.status === "completed" ? "line-through text-muted-foreground" : ""
+                                  }`}
+                                >
+                                  {task.title}
+                                </p>
+                                {task.description && (
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    {task.description}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {getPriorityBadge(task.priority)}
+                                
+                                {task.responsible_staff && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {task.responsible_staff.name}
+                                  </span>
+                                )}
+
+                                {task.due_date && (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Calendar className="h-3 w-3" />
+                                    {format(new Date(task.due_date), "dd/MM")}
+                                  </div>
+                                )}
+
+                                {isAdmin && (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteTask(task.id);
+                                        }}
+                                        className="text-destructive"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Excluir
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
               ))}
 
               {tasks.length === 0 && (
