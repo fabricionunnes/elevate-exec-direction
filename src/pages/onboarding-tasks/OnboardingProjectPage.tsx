@@ -300,11 +300,6 @@ const OnboardingProjectPage = () => {
 
       if (newStatus === "completed") {
         updates.completed_at = new Date().toISOString();
-
-        // If task is recurring, create next occurrence
-        if (task?.recurrence) {
-          await createNextRecurringTask(task);
-        }
       } else {
         updates.completed_at = null;
       }
@@ -312,7 +307,7 @@ const OnboardingProjectPage = () => {
       const { error } = await supabase.from("onboarding_tasks").update(updates).eq("id", taskId);
       if (error) throw error;
 
-      // Log history (status changes done via the list also need to be registered)
+      // Log history
       if (task && task.status !== newStatus) {
         await logTaskHistory({
           taskId,
@@ -326,47 +321,11 @@ const OnboardingProjectPage = () => {
       fetchProjectData();
 
       if (task?.recurrence && newStatus === "completed") {
-        toast.success("Tarefa concluída! Nova tarefa recorrente criada.");
+        toast.success("Tarefa concluída! Nova tarefa recorrente criada automaticamente.");
       }
     } catch (error: any) {
       console.error("Error updating task:", error);
       toast.error("Erro ao atualizar tarefa");
-    }
-  };
-
-  const createNextRecurringTask = async (task: OnboardingTask) => {
-    const today = new Date();
-    let nextDueDate: Date;
-    
-    switch (task.recurrence) {
-      case 'daily':
-        nextDueDate = new Date(today.setDate(today.getDate() + 1));
-        break;
-      case 'weekly':
-        nextDueDate = new Date(today.setDate(today.getDate() + 7));
-        break;
-      case 'monthly':
-        nextDueDate = new Date(today.setMonth(today.getMonth() + 1));
-        break;
-      default:
-        return;
-    }
-
-    const { error } = await supabase.from("onboarding_tasks").insert({
-      project_id: projectId,
-      title: task.title,
-      description: task.description,
-      due_date: nextDueDate.toISOString().split('T')[0],
-      priority: task.priority,
-      tags: task.tags,
-      recurrence: task.recurrence,
-      template_id: task.template_id,
-      sort_order: task.sort_order,
-      status: 'pending'
-    });
-
-    if (error) {
-      console.error("Error creating recurring task:", error);
     }
   };
 
@@ -474,15 +433,15 @@ const OnboardingProjectPage = () => {
     }
   };
 
-  // Group tasks by phase (stored in tags[0])
+  // Group tasks by phase (stored in tags[0], order in tags[1] or by first task sort_order)
   const groupedTasks = tasks.reduce<Record<string, TaskPhase>>((acc, task) => {
     const phaseName = task.tags?.[0] || "Sem fase";
-    const phaseOrder = parseInt(task.tags?.[1] || "99");
+    const phaseOrder = task.tags?.[1] ? parseInt(task.tags[1]) : undefined;
     
     if (!acc[phaseName]) {
       acc[phaseName] = {
         name: phaseName,
-        order: phaseOrder,
+        order: phaseOrder ?? task.sort_order,
         tasks: [],
         completedCount: 0,
       };
@@ -496,7 +455,19 @@ const OnboardingProjectPage = () => {
     return acc;
   }, {});
 
-  const sortedPhases = Object.values(groupedTasks).sort((a, b) => a.order - b.order);
+  // Sort phases by phase_order (from tags) and then sort tasks within each phase by due_date then sort_order
+  const sortedPhases = Object.values(groupedTasks)
+    .sort((a, b) => a.order - b.order)
+    .map(phase => ({
+      ...phase,
+      tasks: phase.tasks.slice().sort((ta, tb) => {
+        // Sort by due_date first, then by sort_order
+        const dueDateA = ta.due_date ? new Date(ta.due_date).getTime() : Infinity;
+        const dueDateB = tb.due_date ? new Date(tb.due_date).getTime() : Infinity;
+        if (dueDateA !== dueDateB) return dueDateA - dueDateB;
+        return ta.sort_order - tb.sort_order;
+      }),
+    }));
 
   if (loading) {
     return (
