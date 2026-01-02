@@ -726,6 +726,7 @@ const OnboardingProjectPage = () => {
             <NPSHistoryPanel
               projectId={projectId!}
               currentNps={project.current_nps}
+              userRole={isAdmin ? 'admin' : currentUserRole as 'cs' | 'consultant' | undefined}
             />
           </TabsContent>
         </Tabs>
