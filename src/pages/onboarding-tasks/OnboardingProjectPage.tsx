@@ -38,7 +38,8 @@ import { ProjectVariablesPanel } from "@/components/onboarding-tasks/ProjectVari
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
-import { Settings, Sparkles, Building2, Wand2 } from "lucide-react";
+import { Settings, Sparkles, Building2, Wand2, Target } from "lucide-react";
+import { MonthlyGoalsCard } from "@/components/onboarding-tasks/MonthlyGoalsCard";
 
 interface OnboardingTask {
   id: string;
@@ -593,6 +594,10 @@ const OnboardingProjectPage = () => {
               <Sparkles className="h-4 w-4" />
               IA Assistente
             </TabsTrigger>
+            <TabsTrigger value="goals" className="gap-2">
+              <Target className="h-4 w-4" />
+              Metas
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks">
@@ -779,6 +784,14 @@ const OnboardingProjectPage = () => {
               companyId={project.onboarding_company_id || ""}
               projectName={project.product_name}
               companyName={project.onboarding_company?.name}
+            />
+          </TabsContent>
+
+          <TabsContent value="goals">
+            <MonthlyGoalsCard
+              projectId={projectId!}
+              canEdit={isAdmin || currentUserRole === "cs" || currentUserRole === "consultant"}
+              currentStaffId={isStaffAdmin || currentUserRole === "cs" || currentUserRole === "consultant" ? currentUserId : null}
             />
           </TabsContent>
         </Tabs>
