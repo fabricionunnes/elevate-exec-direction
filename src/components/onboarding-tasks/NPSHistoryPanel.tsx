@@ -35,9 +35,10 @@ interface NPSResponse {
 interface NPSHistoryPanelProps {
   projectId: string;
   currentNps: number | null;
+  userRole?: 'admin' | 'cs' | 'consultant';
 }
 
-export function NPSHistoryPanel({ projectId, currentNps }: NPSHistoryPanelProps) {
+export function NPSHistoryPanel({ projectId, currentNps, userRole }: NPSHistoryPanelProps) {
   const [responses, setResponses] = useState<NPSResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -103,6 +104,7 @@ export function NPSHistoryPanel({ projectId, currentNps }: NPSHistoryPanelProps)
 
   const trend = getTrend();
   const averageNps = calculateAverageNps();
+  const canViewNpsLink = userRole === 'admin' || userRole === 'cs';
 
   if (loading) {
     return (
@@ -116,28 +118,30 @@ export function NPSHistoryPanel({ projectId, currentNps }: NPSHistoryPanelProps)
 
   return (
     <div className="space-y-4">
-      {/* NPS Link Card */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Link da Pesquisa NPS</CardTitle>
-          <CardDescription>Compartilhe este link com o cliente para coletar feedback</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <div className="flex-1 bg-muted rounded-md px-3 py-2 text-sm font-mono truncate">
-              {getNpsLink()}
+      {/* NPS Link Card - Only visible to admin and CS */}
+      {canViewNpsLink && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Link da Pesquisa NPS</CardTitle>
+            <CardDescription>Compartilhe este link com o cliente para coletar feedback</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <div className="flex-1 bg-muted rounded-md px-3 py-2 text-sm font-mono truncate">
+                {getNpsLink()}
+              </div>
+              <Button variant="outline" size="icon" onClick={copyNpsLink}>
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" asChild>
+                <a href={getNpsLink()} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
             </div>
-            <Button variant="outline" size="icon" onClick={copyNpsLink}>
-              <Copy className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" asChild>
-              <a href={getNpsLink()} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* NPS Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
