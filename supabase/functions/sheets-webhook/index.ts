@@ -208,17 +208,36 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verificar se empresa já existe pelo email ou nome
+    // Verificar se empresa já existe pelo CNPJ, email ou nome (nesta ordem de prioridade)
     let existingCompany = null;
-    if (email) {
+    
+    // Prioridade 1: CNPJ (mais confiável)
+    if (cnpj && cnpj.length > 0) {
+      const { data: byCnpj } = await supabase
+        .from("onboarding_companies")
+        .select("id, name")
+        .eq("cnpj", cnpj)
+        .maybeSingle();
+      existingCompany = byCnpj;
+      if (existingCompany) {
+        console.log("Empresa encontrada pelo CNPJ:", existingCompany.name);
+      }
+    }
+    
+    // Prioridade 2: Email
+    if (!existingCompany && email) {
       const { data: byEmail } = await supabase
         .from("onboarding_companies")
         .select("id, name")
         .eq("email", email)
         .maybeSingle();
       existingCompany = byEmail;
+      if (existingCompany) {
+        console.log("Empresa encontrada pelo email:", existingCompany.name);
+      }
     }
     
+    // Prioridade 3: Nome
     if (!existingCompany) {
       const { data: byName } = await supabase
         .from("onboarding_companies")
@@ -226,6 +245,9 @@ Deno.serve(async (req) => {
         .ilike("name", companyName)
         .maybeSingle();
       existingCompany = byName;
+      if (existingCompany) {
+        console.log("Empresa encontrada pelo nome:", existingCompany.name);
+      }
     }
 
     let companyId: string;
