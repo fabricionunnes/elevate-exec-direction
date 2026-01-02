@@ -13,58 +13,126 @@ type CreateStaffUserBody = {
   phone?: string | null;
 };
 
+type DeleteStaffUserBody = {
+  staff_id: string;
+  delete_auth_user?: boolean;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (!token) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const supabaseAuth = createClient(supabaseUrl, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+
+  const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
+  if (userError || !userData?.user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const callerUserId = userData.user.id;
+
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  // Only onboarding admins can create/delete staff users
+  const { data: callerStaff, error: callerStaffError } = await supabaseAdmin
+    .from("onboarding_staff")
+    .select("id")
+    .eq("user_id", callerUserId)
+    .eq("role", "admin")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (callerStaffError || !callerStaff) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Handle DELETE request
+  if (req.method === "DELETE") {
+    try {
+      const body = (await req.json()) as Partial<DeleteStaffUserBody>;
+      const staffId = body.staff_id;
+      const deleteAuthUser = body.delete_auth_user ?? true;
+
+      if (!staffId) {
+        return new Response(JSON.stringify({ error: "Missing staff_id" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Get staff record first
+      const { data: staffRecord, error: staffFetchError } = await supabaseAdmin
+        .from("onboarding_staff")
+        .select("id, user_id, email")
+        .eq("id", staffId)
+        .single();
+
+      if (staffFetchError || !staffRecord) {
+        return new Response(JSON.stringify({ error: "Staff not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Delete from onboarding_staff
+      const { error: deleteStaffError } = await supabaseAdmin
+        .from("onboarding_staff")
+        .delete()
+        .eq("id", staffId);
+
+      if (deleteStaffError) {
+        return new Response(JSON.stringify({ error: deleteStaffError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Delete auth user if requested and exists
+      if (deleteAuthUser && staffRecord.user_id) {
+        const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(staffRecord.user_id);
+        if (deleteAuthError) {
+          console.error("Failed to delete auth user:", deleteAuthError);
+          // Continue anyway, staff record is already deleted
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true, deleted_staff_id: staffId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return new Response(JSON.stringify({ error: message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
+  // Handle POST request (create/update)
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!token) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const supabaseAuth = createClient(supabaseUrl, anonKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    });
-
-    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
-    if (userError || !userData?.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const callerUserId = userData.user.id;
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    // Only onboarding admins can create/link staff users
-    const { data: callerStaff, error: callerStaffError } = await supabaseAdmin
-      .from("onboarding_staff")
-      .select("id")
-      .eq("user_id", callerUserId)
-      .eq("role", "admin")
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (callerStaffError || !callerStaff) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const body = (await req.json()) as Partial<CreateStaffUserBody>;
     const email = body.email?.trim().toLowerCase();
     const password = body.password;

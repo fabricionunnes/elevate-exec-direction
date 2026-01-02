@@ -18,7 +18,18 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -28,7 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -50,6 +61,8 @@ const OnboardingStaffPage = () => {
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showDialog, setShowDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingMember, setDeletingMember] = useState<Staff | null>(null);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -149,6 +162,34 @@ const OnboardingStaffPage = () => {
     } catch (error: any) {
       console.error("Error toggling status:", error);
       toast.error("Erro ao alterar status");
+    }
+  };
+
+  const openDeleteDialog = (member: Staff) => {
+    setDeletingMember(member);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingMember) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("create-staff-user", {
+        method: "DELETE",
+        body: {
+          staff_id: deletingMember.id,
+          delete_auth_user: true,
+        },
+      });
+
+      if (error) throw error;
+      toast.success("Membro excluído com sucesso");
+      setShowDeleteDialog(false);
+      setDeletingMember(null);
+      fetchStaff();
+    } catch (error: any) {
+      console.error("Error deleting staff:", error);
+      toast.error(error.message || "Erro ao excluir membro");
     }
   };
 
@@ -304,12 +345,21 @@ const OnboardingStaffPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => toggleStatus(member)}
+                        title={member.is_active ? "Desativar" : "Ativar"}
                       >
                         {member.is_active ? (
                           <UserX className="h-4 w-4 text-red-500" />
                         ) : (
                           <UserCheck className="h-4 w-4 text-green-500" />
                         )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openDeleteDialog(member)}
+                        title="Excluir"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                   </TableCell>
@@ -406,6 +456,32 @@ const OnboardingStaffPage = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir membro</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deletingMember?.name}</strong>?
+              {deletingMember?.user_id && (
+                <span className="block mt-2 text-destructive">
+                  O login deste usuário também será removido do sistema.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
