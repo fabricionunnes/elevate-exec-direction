@@ -40,6 +40,7 @@ import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBrief
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
 import { Settings, Sparkles, Building2, Wand2, Target } from "lucide-react";
 import { MonthlyGoalsCard } from "@/components/onboarding-tasks/MonthlyGoalsCard";
+import { RealtimeNotifications } from "@/components/onboarding-tasks/RealtimeNotifications";
 
 interface OnboardingTask {
   id: string;
@@ -516,6 +517,9 @@ const OnboardingProjectPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Realtime notifications for staff */}
+      <RealtimeNotifications />
+      
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
