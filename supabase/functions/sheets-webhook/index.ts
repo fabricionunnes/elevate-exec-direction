@@ -26,7 +26,8 @@ interface SheetData {
 // Mapeamento de nomes de serviços da Clint para product_id do sistema
 const PRODUCT_MAPPING: Record<string, { id: string; name: string }> = {
   // Adicione aqui os mapeamentos conforme os nomes usados na Clint
-  "core": { id: "core", name: "Core" },
+  "core": { id: "core", name: "UNV Core" },
+  "unv core": { id: "core", name: "UNV Core" },
   "control": { id: "control", name: "UNV Control" },
   "unv control": { id: "control", name: "UNV Control" },
   "growth room": { id: "growth-room", name: "Growth Room" },
@@ -139,6 +140,8 @@ Deno.serve(async (req) => {
     const companyName = String(
       data.empresa || 
       data["Nome fantasia da empresa"] || 
+      data["Razão social do cliente"] ||
+      data["Razao social do cliente"] ||
       data.nome_empresa || 
       data.company || 
       data.nome_cliente || 
