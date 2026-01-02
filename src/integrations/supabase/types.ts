@@ -1839,6 +1839,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_onboarding_admin: { Args: never; Returns: boolean }
       is_onboarding_project_member: {
         Args: { check_project_id: string }
         Returns: boolean

@@ -51,7 +51,7 @@ export const CreateProjectDialog = ({
 
   const fetchCompanies = async () => {
     const { data, error } = await supabase
-      .from("portal_companies")
+      .from("onboarding_companies")
       .select("id, name")
       .order("name");
 
@@ -83,7 +83,7 @@ export const CreateProjectDialog = ({
       // Create new company if needed
       if (createNewCompany) {
         const { data: newCompany, error: companyError } = await supabase
-          .from("portal_companies")
+          .from("onboarding_companies")
           .insert({ name: newCompanyName.trim() })
           .select("id")
           .single();
@@ -92,26 +92,15 @@ export const CreateProjectDialog = ({
         companyId = newCompany.id;
       }
 
-      // Get current user's portal_user id
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
-
-      const { data: portalUser } = await supabase
-        .from("portal_users")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
       const productName = productDetails[selectedProduct]?.name || selectedProduct;
 
-      // Create project
+      // Create project linked to onboarding_company
       const { data: project, error: projectError } = await supabase
         .from("onboarding_projects")
         .insert({
           product_id: selectedProduct,
           product_name: productName,
-          company_id: companyId,
-          created_by: portalUser?.id,
+          onboarding_company_id: companyId,
         })
         .select("id")
         .single();

@@ -17,8 +17,8 @@ interface OnboardingProject {
   product_name: string;
   status: string;
   created_at: string;
-  company_id: string;
-  company?: { name: string };
+  onboarding_company_id: string | null;
+  onboarding_company?: { name: string } | null;
   tasks_count?: number;
   completed_count?: number;
 }
@@ -40,7 +40,7 @@ const OnboardingTasksPage = () => {
         .from("onboarding_projects")
         .select(`
           *,
-          company:portal_companies(name)
+          onboarding_company:onboarding_companies(name)
         `)
         .order("created_at", { ascending: false });
 
@@ -78,7 +78,7 @@ const OnboardingTasksPage = () => {
   };
 
   const filteredProjects = projects.filter((project) => {
-    const companyName = project.company?.name || "";
+    const companyName = project.onboarding_company?.name || "";
     return (
       project.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       companyName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -165,8 +165,8 @@ const OnboardingTasksPage = () => {
                     <CardTitle className="text-lg">{project.product_name}</CardTitle>
                     {getStatusBadge(project.status)}
                   </div>
-                  {project.company?.name && (
-                    <p className="text-sm text-muted-foreground">{project.company.name}</p>
+                  {project.onboarding_company?.name && (
+                    <p className="text-sm text-muted-foreground">{project.onboarding_company.name}</p>
                   )}
                 </CardHeader>
                 <CardContent>
