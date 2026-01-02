@@ -114,14 +114,15 @@ export const CreateProjectDialog = ({
         .single();
 
       if (projectError) throw projectError;
-
-      // Copiar tarefas diretamente dos templates do produto (sem edge function)
+      // SEMPRE usar o template "master" que contém as 90 tarefas com múltiplas fases
+      // Independente do serviço escolhido, o template correto é o "master"
       const { data: templates, error: templatesError } = await supabase
         .from("onboarding_task_templates")
         .select(
-          "id, title, description, priority, sort_order, default_days_offset, duration_days, phase, recurrence"
+          "id, title, description, priority, sort_order, default_days_offset, duration_days, phase, recurrence, phase_order"
         )
-        .eq("product_id", selectedProduct)
+        .eq("product_id", "master")
+        .order("phase_order", { ascending: true })
         .order("sort_order", { ascending: true });
 
       if (templatesError) {
