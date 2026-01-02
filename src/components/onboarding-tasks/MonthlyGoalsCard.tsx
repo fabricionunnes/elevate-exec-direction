@@ -662,43 +662,80 @@ const BeforeAfterComparison = ({
   const historicalGoals = goals.filter(g => g.notes?.includes("históricos"));
   const currentGoals = goals.filter(g => !g.notes?.includes("históricos"));
   
+  // Sort current goals by date (most recent first)
+  const sortedCurrentGoals = [...currentGoals]
+    .filter(g => g.sales_target && g.sales_result)
+    .sort((a, b) => {
+      const dateA = new Date(a.year, a.month - 1);
+      const dateB = new Date(b.year, b.month - 1);
+      return dateB.getTime() - dateA.getTime();
+    });
+  
   const historicalWithBoth = historicalGoals.filter(g => g.sales_target && g.sales_result);
-  const currentWithBoth = currentGoals.filter(g => g.sales_target && g.sales_result);
+  
+  // Get data for different periods
+  const shortTermGoals = sortedCurrentGoals.slice(0, 1); // Last 1 month
+  const mediumTermGoals = sortedCurrentGoals.slice(0, 3); // Last 3 months
+  const longTermGoals = sortedCurrentGoals.slice(0, 12); // Last 12 months
   
   // If no data to compare, don't show the section
-  if (historicalWithBoth.length === 0 && currentWithBoth.length === 0) {
+  if (historicalWithBoth.length === 0 && sortedCurrentGoals.length === 0) {
     return null;
   }
 
-  // Calculate averages for historical period
-  const avgHistoricalTarget = historicalWithBoth.length > 0 
-    ? historicalWithBoth.reduce((sum, g) => sum + (g.sales_target || 0), 0) / historicalWithBoth.length 
-    : 0;
-  const avgHistoricalResult = historicalWithBoth.length > 0 
-    ? historicalWithBoth.reduce((sum, g) => sum + (g.sales_result || 0), 0) / historicalWithBoth.length 
-    : 0;
-  const avgHistoricalPerformance = avgHistoricalTarget > 0 
-    ? (avgHistoricalResult / avgHistoricalTarget) * 100 
-    : 0;
+  // Helper function to calculate averages
+  const calculateAverages = (goalsData: MonthlyGoal[]) => {
+    if (goalsData.length === 0) return { target: 0, result: 0, performance: 0 };
+    const avgTarget = goalsData.reduce((sum, g) => sum + (g.sales_target || 0), 0) / goalsData.length;
+    const avgResult = goalsData.reduce((sum, g) => sum + (g.sales_result || 0), 0) / goalsData.length;
+    const performance = avgTarget > 0 ? (avgResult / avgTarget) * 100 : 0;
+    return { target: avgTarget, result: avgResult, performance };
+  };
 
-  // Calculate averages for current period
-  const avgCurrentTarget = currentWithBoth.length > 0 
-    ? currentWithBoth.reduce((sum, g) => sum + (g.sales_target || 0), 0) / currentWithBoth.length 
-    : 0;
-  const avgCurrentResult = currentWithBoth.length > 0 
-    ? currentWithBoth.reduce((sum, g) => sum + (g.sales_result || 0), 0) / currentWithBoth.length 
-    : 0;
-  const avgCurrentPerformance = avgCurrentTarget > 0 
-    ? (avgCurrentResult / avgCurrentTarget) * 100 
-    : 0;
+  const historicalAvg = calculateAverages(historicalWithBoth);
+  const shortTermAvg = calculateAverages(shortTermGoals);
+  const mediumTermAvg = calculateAverages(mediumTermGoals);
+  const longTermAvg = calculateAverages(longTermGoals);
 
-  // Calculate changes
-  const performanceChange = avgCurrentPerformance - avgHistoricalPerformance;
-  const resultChange = avgHistoricalResult > 0 
-    ? ((avgCurrentResult - avgHistoricalResult) / avgHistoricalResult) * 100 
-    : 0;
+  // Calculate changes for each period
+  const calculateChange = (currentPerf: number, currentResult: number, histPerf: number, histResult: number) => {
+    const performanceChange = currentPerf - histPerf;
+    const resultChange = histResult > 0 ? ((currentResult - histResult) / histResult) * 100 : 0;
+    return { performanceChange, resultChange };
+  };
 
-  const hasComparison = historicalWithBoth.length > 0 && currentWithBoth.length > 0;
+  const shortTermChange = calculateChange(shortTermAvg.performance, shortTermAvg.result, historicalAvg.performance, historicalAvg.result);
+  const mediumTermChange = calculateChange(mediumTermAvg.performance, mediumTermAvg.result, historicalAvg.performance, historicalAvg.result);
+  const longTermChange = calculateChange(longTermAvg.performance, longTermAvg.result, historicalAvg.performance, historicalAvg.result);
+
+  const periods = [
+    { 
+      label: "Curto Prazo", 
+      sublabel: "Último mês",
+      months: shortTermGoals.length,
+      avg: shortTermAvg,
+      change: shortTermChange,
+      icon: "📅"
+    },
+    { 
+      label: "Médio Prazo", 
+      sublabel: "Últimos 3 meses",
+      months: mediumTermGoals.length,
+      avg: mediumTermAvg,
+      change: mediumTermChange,
+      icon: "📊"
+    },
+    { 
+      label: "Longo Prazo", 
+      sublabel: "Últimos 12 meses",
+      months: longTermGoals.length,
+      avg: longTermAvg,
+      change: longTermChange,
+      icon: "📈"
+    }
+  ];
+
+  const hasHistorical = historicalWithBoth.length > 0;
 
   return (
     <div className="pt-4 border-t">
@@ -707,121 +744,133 @@ const BeforeAfterComparison = ({
         Comparativo: Antes vs Depois do Acompanhamento
       </h4>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Before Card */}
-        <div className="border rounded-lg p-4 bg-muted/30">
-          <div className="flex items-center gap-2 mb-3">
-            <History className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium text-sm">ANTES</span>
-            <Badge variant="secondary" className="text-xs">
-              {historicalWithBoth.length} meses
-            </Badge>
-          </div>
-          {historicalWithBoth.length > 0 ? (
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Média de meta:</span>
-                <span className="font-medium">{formatCurrency(avgHistoricalTarget)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Média de resultado:</span>
-                <span className="font-medium">{formatCurrency(avgHistoricalResult)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Performance média:</span>
-                <span className={`font-medium ${
-                  avgHistoricalPerformance >= 100 ? "text-green-500" :
-                  avgHistoricalPerformance >= 80 ? "text-amber-500" :
-                  "text-red-500"
-                }`}>
-                  {avgHistoricalPerformance.toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Sem dados históricos. Clique em "Histórico" para registrar.
-            </p>
-          )}
+      {/* Historical Reference Card */}
+      <div className="border rounded-lg p-4 bg-muted/30 mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <History className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium text-sm">PERÍODO HISTÓRICO (Referência)</span>
+          <Badge variant="secondary" className="text-xs">
+            {historicalWithBoth.length} meses
+          </Badge>
         </div>
-
-        {/* After Card */}
-        <div className="border rounded-lg p-4 bg-primary/5">
-          <div className="flex items-center gap-2 mb-3">
-            <Target className="h-4 w-4 text-primary" />
-            <span className="font-medium text-sm">DEPOIS</span>
-            <Badge variant="default" className="text-xs">
-              {currentWithBoth.length} meses
-            </Badge>
-          </div>
-          {currentWithBoth.length > 0 ? (
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Média de meta:</span>
-                <span className="font-medium">{formatCurrency(avgCurrentTarget)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Média de resultado:</span>
-                <span className="font-medium">{formatCurrency(avgCurrentResult)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Performance média:</span>
-                <span className={`font-medium ${
-                  avgCurrentPerformance >= 100 ? "text-green-500" :
-                  avgCurrentPerformance >= 80 ? "text-amber-500" :
-                  "text-red-500"
-                }`}>
-                  {avgCurrentPerformance.toFixed(1)}%
-                </span>
-              </div>
+        {hasHistorical ? (
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <span className="text-muted-foreground block text-xs">Média de meta</span>
+              <span className="font-medium">{formatCurrency(historicalAvg.target)}</span>
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Sem dados do período atual ainda.
-            </p>
-          )}
-        </div>
+            <div>
+              <span className="text-muted-foreground block text-xs">Média de resultado</span>
+              <span className="font-medium">{formatCurrency(historicalAvg.result)}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground block text-xs">Performance média</span>
+              <span className={`font-medium ${
+                historicalAvg.performance >= 100 ? "text-green-500" :
+                historicalAvg.performance >= 80 ? "text-amber-500" :
+                "text-red-500"
+              }`}>
+                {historicalAvg.performance.toFixed(1)}%
+              </span>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Sem dados históricos. Clique em "Histórico" para registrar dados anteriores ao acompanhamento.
+          </p>
+        )}
       </div>
 
-      {/* Evolution Summary */}
-      {hasComparison && (
-        <div className={`mt-4 p-4 rounded-lg ${
-          performanceChange > 0 ? "bg-green-500/10" : 
-          performanceChange < 0 ? "bg-red-500/10" : 
-          "bg-muted"
-        }`}>
-          <div className="flex items-center justify-center gap-2 mb-2">
-            {performanceChange > 0 ? (
-              <TrendingUp className="h-5 w-5 text-green-500" />
-            ) : performanceChange < 0 ? (
-              <TrendingDown className="h-5 w-5 text-red-500" />
-            ) : null}
-            <span className="font-semibold">Evolução com o Acompanhamento</span>
-          </div>
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Variação de Performance</p>
-              <p className={`text-lg font-bold ${
-                performanceChange > 0 ? "text-green-500" : 
-                performanceChange < 0 ? "text-red-500" : 
-                "text-muted-foreground"
-              }`}>
-                {performanceChange > 0 ? "+" : ""}{performanceChange.toFixed(1)}pp
-              </p>
+      {/* Period Comparison Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {periods.map((period, index) => {
+          const hasData = period.months > 0;
+          const hasComparison = hasHistorical && hasData;
+          
+          return (
+            <div 
+              key={index} 
+              className={`border rounded-lg p-4 ${
+                hasComparison && period.change.performanceChange > 0 
+                  ? "bg-green-500/5 border-green-500/20" 
+                  : hasComparison && period.change.performanceChange < 0 
+                  ? "bg-red-500/5 border-red-500/20"
+                  : "bg-primary/5"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">{period.icon}</span>
+                <div>
+                  <span className="font-medium text-sm block">{period.label}</span>
+                  <span className="text-xs text-muted-foreground">{period.sublabel}</span>
+                </div>
+                <Badge variant="outline" className="text-xs ml-auto">
+                  {period.months} {period.months === 1 ? "mês" : "meses"}
+                </Badge>
+              </div>
+              
+              {hasData ? (
+                <div className="space-y-3">
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground text-xs">Resultado médio:</span>
+                      <span className="font-medium">{formatCurrency(period.avg.result)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground text-xs">Performance:</span>
+                      <span className={`font-medium ${
+                        period.avg.performance >= 100 ? "text-green-500" :
+                        period.avg.performance >= 80 ? "text-amber-500" :
+                        "text-red-500"
+                      }`}>
+                        {period.avg.performance.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {hasComparison && (
+                    <div className="pt-2 border-t border-dashed">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">vs Histórico:</span>
+                        <div className="flex items-center gap-2">
+                          {period.change.performanceChange > 0 ? (
+                            <TrendingUp className="h-3 w-3 text-green-500" />
+                          ) : period.change.performanceChange < 0 ? (
+                            <TrendingDown className="h-3 w-3 text-red-500" />
+                          ) : null}
+                          <span className={`text-sm font-bold ${
+                            period.change.performanceChange > 0 ? "text-green-500" : 
+                            period.change.performanceChange < 0 ? "text-red-500" : 
+                            "text-muted-foreground"
+                          }`}>
+                            {period.change.performanceChange > 0 ? "+" : ""}
+                            {period.change.performanceChange.toFixed(1)}pp
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs text-muted-foreground">Faturamento:</span>
+                        <span className={`text-sm font-bold ${
+                          period.change.resultChange > 0 ? "text-green-500" : 
+                          period.change.resultChange < 0 ? "text-red-500" : 
+                          "text-muted-foreground"
+                        }`}>
+                          {period.change.resultChange > 0 ? "+" : ""}
+                          {period.change.resultChange.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Sem dados para este período.
+                </p>
+              )}
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Crescimento de Faturamento</p>
-              <p className={`text-lg font-bold ${
-                resultChange > 0 ? "text-green-500" : 
-                resultChange < 0 ? "text-red-500" : 
-                "text-muted-foreground"
-              }`}>
-                {resultChange > 0 ? "+" : ""}{resultChange.toFixed(1)}%
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 };
