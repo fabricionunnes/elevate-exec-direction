@@ -52,6 +52,7 @@ const PRODUCT_MAPPING: Record<string, { id: string; name: string }> = {
   "salesforce": { id: "sales-force", name: "Sales Force" },
   "sales acceleration": { id: "sales-acceleration", name: "Sales Acceleration" },
   "sales-acceleration": { id: "sales-acceleration", name: "Sales Acceleration" },
+  "unv sales acceleration": { id: "sales-acceleration", name: "Sales Acceleration" },
   "aceleração": { id: "sales-acceleration", name: "Sales Acceleration" },
   "finance": { id: "finance", name: "Finance" },
   "finanças": { id: "finance", name: "Finance" },
