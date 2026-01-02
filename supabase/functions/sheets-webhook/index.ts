@@ -380,154 +380,115 @@ Deno.serve(async (req) => {
 
     console.log("Novo projeto criado:", newProject.id);
 
-    // Copiar tarefas: SEMPRE prioriza templates do produto; só usa projeto modelo se NÃO houver templates.
+    // Copiar tarefas: regra rígida — NUNCA inventar. Se não houver template, aborta e desfaz o projeto.
     try {
       const today = new Date();
 
-      const copyTasksFromTemplates = async (): Promise<boolean> => {
-        const { data: templates, error: templatesError } = await supabase
-          .from("onboarding_task_templates")
-          .select("id, title, description, priority, sort_order, default_days_offset, duration_days")
-          .eq("product_id", product.id)
-          .order("sort_order", { ascending: true });
+      const { data: templates, error: templatesError } = await supabase
+        .from("onboarding_task_templates")
+        .select("id, title, description, priority, sort_order, default_days_offset, duration_days")
+        .eq("product_id", product.id)
+        .order("sort_order", { ascending: true });
 
-        if (templatesError) {
-          console.error("Erro ao buscar templates de tarefas:", templatesError);
-          return false;
-        }
-
-        if (!templates || templates.length === 0) {
-          console.log(`Nenhum template de tarefa encontrado para o produto: ${product.id}`);
-          return false;
-        }
-
-        console.log(`Copiando ${templates.length} tarefas a partir de templates do produto ${product.id}`);
-
-        const tasksToInsert = templates.map((tpl, idx) => {
-          let dueDate: string | null = null;
-          const offset = (tpl.default_days_offset ?? 0) + (tpl.duration_days ?? 0);
-          if (offset > 0) {
-            const due = new Date(today);
-            due.setDate(due.getDate() + offset);
-            dueDate = due.toISOString().split("T")[0];
-          }
-
-          return {
-            project_id: newProject.id,
-            template_id: tpl.id,
-            title: tpl.title,
-            description: tpl.description,
-            priority: tpl.priority || "medium",
-            status: "pending",
-            due_date: dueDate,
-            start_date: null,
-            sort_order: tpl.sort_order ?? idx,
-            recurrence: null,
-            tags: null,
-            estimated_hours: null,
-          };
-        });
-
-        const { error: insertError } = await supabase.from("onboarding_tasks").insert(tasksToInsert);
-
-        if (insertError) {
-          console.error("Erro ao inserir tarefas (templates):", insertError);
-          return false;
-        }
-
-        console.log(`${tasksToInsert.length} tarefas criadas com sucesso (templates)`);
-        return true;
-      };
-
-      // 1) Prioridade: templates (fonte de verdade)
-      const usedTemplates = await copyTasksFromTemplates();
-      if (!usedTemplates) {
-        // 2) Fallback: projeto modelo (só quando não existe template)
-        const { data: templateProjects, error: templateProjectError } = await supabase
-          .from("onboarding_projects")
-          .select("id")
-          .eq("product_id", product.id)
-          .neq("id", newProject.id);
-
-        if (templateProjectError) {
-          console.error("Erro ao buscar projetos modelo:", templateProjectError);
-        } else if (templateProjects && templateProjects.length > 0) {
-          let bestTemplateProjectId: string | null = null;
-          let maxTasks = 0;
-
-          for (const proj of templateProjects) {
-            const { count } = await supabase
-              .from("onboarding_tasks")
-              .select("*", { count: "exact", head: true })
-              .eq("project_id", proj.id);
-
-            if (count && count > maxTasks) {
-              maxTasks = count;
-              bestTemplateProjectId = proj.id;
-            }
-          }
-
-          if (bestTemplateProjectId && maxTasks > 0) {
-            console.log(`Projeto modelo encontrado: ${bestTemplateProjectId} com ${maxTasks} tarefas`);
-
-            const { data: templateTasks, error: tasksError } = await supabase
-              .from("onboarding_tasks")
-              .select("*")
-              .eq("project_id", bestTemplateProjectId)
-              .order("sort_order", { ascending: true });
-
-            if (tasksError) {
-              console.error("Erro ao buscar tarefas do modelo:", tasksError);
-            } else if (templateTasks && templateTasks.length > 0) {
-              console.log(`Copiando ${templateTasks.length} tarefas do projeto modelo`);
-
-              const tasksToInsert = templateTasks.map((task, index) => {
-                let dueDate: string | null = null;
-                if (task.due_date) {
-                  const originalDue = new Date(task.due_date);
-                  const daysDiff = Math.floor(
-                    (originalDue.getTime() - new Date(task.created_at).getTime()) / (1000 * 60 * 60 * 24)
-                  );
-                  const newDue = new Date(today);
-                  newDue.setDate(newDue.getDate() + Math.max(0, daysDiff));
-                  dueDate = newDue.toISOString().split("T")[0];
-                }
-
-                return {
-                  project_id: newProject.id,
-                  template_id: task.template_id,
-                  title: task.title,
-                  description: task.description,
-                  priority: task.priority || "medium",
-                  status: "pending",
-                  due_date: dueDate,
-                  start_date: null,
-                  sort_order: index,
-                  recurrence: task.recurrence,
-                  tags: task.tags,
-                  estimated_hours: task.estimated_hours,
-                };
-              });
-
-              const { error: insertError } = await supabase.from("onboarding_tasks").insert(tasksToInsert);
-
-              if (insertError) {
-                console.error("Erro ao inserir tarefas:", insertError);
-              } else {
-                console.log(`${tasksToInsert.length} tarefas copiadas com sucesso do projeto modelo`);
-              }
-            } else {
-              console.log(`Projeto modelo ${bestTemplateProjectId} não tem tarefas; nenhuma tarefa criada.`);
-            }
-          } else {
-            console.log(`Nenhum projeto modelo com tarefas encontrado para: ${product.id}`);
-          }
-        } else {
-          console.log(`Nenhum projeto modelo encontrado para o produto: ${product.id}`);
-        }
+      if (templatesError) {
+        console.error("Erro ao buscar templates de tarefas:", templatesError);
+        // desfaz projeto para não ficar inconsistente
+        await supabase.from("onboarding_projects").delete().eq("id", newProject.id);
+        return new Response(
+          JSON.stringify({
+            error: "Erro ao buscar template de tarefas",
+            product_id: product.id,
+          }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
+
+      if (!templates || templates.length === 0) {
+        console.error(`Nenhum template de tarefa encontrado para o produto: ${product.id}`);
+        await supabase.from("onboarding_projects").delete().eq("id", newProject.id);
+        return new Response(
+          JSON.stringify({
+            error: "Template de tarefas não encontrado para este produto",
+            product_id: product.id,
+            service: serviceName,
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`Copiando ${templates.length} tarefas a partir de templates do produto ${product.id} para o projeto ${newProject.id}`);
+
+      const tasksToInsert = templates.map((tpl, idx) => {
+        let dueDate: string | null = null;
+        const offset = (tpl.default_days_offset ?? 0) + (tpl.duration_days ?? 0);
+        if (offset > 0) {
+          const due = new Date(today);
+          due.setDate(due.getDate() + offset);
+          dueDate = due.toISOString().split("T")[0];
+        }
+
+        return {
+          project_id: newProject.id,
+          template_id: tpl.id,
+          title: tpl.title,
+          description: tpl.description,
+          priority: tpl.priority || "medium",
+          status: "pending",
+          due_date: dueDate,
+          start_date: null,
+          sort_order: tpl.sort_order ?? idx,
+          recurrence: null,
+          tags: null,
+          estimated_hours: null,
+        };
+      });
+
+      const { error: insertError } = await supabase.from("onboarding_tasks").insert(tasksToInsert);
+      if (insertError) {
+        console.error("Erro ao inserir tarefas (templates):", insertError);
+        await supabase.from("onboarding_projects").delete().eq("id", newProject.id);
+        return new Response(
+          JSON.stringify({
+            error: "Erro ao criar tarefas do template",
+            product_id: product.id,
+          }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Verificação final: garante que as tarefas ficaram no projeto recém-criado
+      const { count: insertedCount } = await supabase
+        .from("onboarding_tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", newProject.id);
+
+      if ((insertedCount ?? 0) !== tasksToInsert.length) {
+        console.error("Inconsistência: tarefas não foram associadas corretamente ao projeto", {
+          projectId: newProject.id,
+          expected: tasksToInsert.length,
+          inserted: insertedCount ?? 0,
+        });
+        await supabase.from("onboarding_tasks").delete().eq("project_id", newProject.id);
+        await supabase.from("onboarding_projects").delete().eq("id", newProject.id);
+        return new Response(
+          JSON.stringify({
+            error: "Falha ao associar tarefas ao projeto",
+            product_id: product.id,
+          }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`${tasksToInsert.length} tarefas criadas com sucesso (templates) no projeto ${newProject.id}`);
     } catch (taskErr) {
       console.error("Erro ao copiar tarefas:", taskErr);
+      // evita projeto sem tarefas
+      await supabase.from("onboarding_tasks").delete().eq("project_id", newProject.id);
+      await supabase.from("onboarding_projects").delete().eq("id", newProject.id);
+      return new Response(
+        JSON.stringify({ error: "Erro ao copiar tarefas do template" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Notificar administradores e CS

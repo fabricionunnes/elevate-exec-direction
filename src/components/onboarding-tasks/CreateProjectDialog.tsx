@@ -128,39 +128,43 @@ export const CreateProjectDialog = ({
       }
 
       if (!templates || templates.length === 0) {
-        console.warn("Nenhum template encontrado para o produto:", selectedProduct);
-        toast.warning("Nenhum template de tarefa cadastrado para este produto");
-      } else {
-        const today = new Date();
-        const tasksToInsert = templates.map((tpl, idx) => {
-          let dueDate: string | null = null;
-          const offset = (tpl.default_days_offset ?? 0) + (tpl.duration_days ?? 0);
-          if (offset > 0) {
-            const due = new Date(today);
-            due.setDate(due.getDate() + offset);
-            dueDate = due.toISOString().split("T")[0];
-          }
-
-          return {
-            project_id: project.id,
-            template_id: tpl.id,
-            title: tpl.title,
-            description: tpl.description,
-            priority: tpl.priority || "medium",
-            status: "pending" as const,
-            due_date: dueDate,
-            sort_order: tpl.sort_order ?? idx,
-          };
-        });
-
-        const { error: insertError } = await supabase.from("onboarding_tasks").insert(tasksToInsert);
-        if (insertError) {
-          console.error("Erro ao inserir tarefas:", insertError);
-          throw new Error("Erro ao criar tarefas do template");
-        }
-        
-        console.log(`${templates.length} tarefas criadas a partir dos templates`);
+        console.error("Nenhum template encontrado para o produto:", selectedProduct);
+        // Regra: nunca "inventar" tarefas. Se não houver template, desfaz criação do projeto.
+        await supabase.from("onboarding_projects").delete().eq("id", project.id);
+        toast.error("Não existe template de tarefas para este produto");
+        throw new Error("Missing task templates");
       }
+
+      const today = new Date();
+      const tasksToInsert = templates.map((tpl, idx) => {
+        let dueDate: string | null = null;
+        const offset = (tpl.default_days_offset ?? 0) + (tpl.duration_days ?? 0);
+        if (offset > 0) {
+          const due = new Date(today);
+          due.setDate(due.getDate() + offset);
+          dueDate = due.toISOString().split("T")[0];
+        }
+
+        return {
+          project_id: project.id,
+          template_id: tpl.id,
+          title: tpl.title,
+          description: tpl.description,
+          priority: tpl.priority || "medium",
+          status: "pending" as const,
+          due_date: dueDate,
+          sort_order: tpl.sort_order ?? idx,
+        };
+      });
+
+      const { error: insertError } = await supabase.from("onboarding_tasks").insert(tasksToInsert);
+      if (insertError) {
+        console.error("Erro ao inserir tarefas:", insertError);
+        await supabase.from("onboarding_projects").delete().eq("id", project.id);
+        throw new Error("Erro ao criar tarefas do template");
+      }
+
+      console.log(`${templates.length} tarefas criadas a partir dos templates`);
 
       toast.success("Projeto criado com sucesso!");
       onOpenChange(false);
