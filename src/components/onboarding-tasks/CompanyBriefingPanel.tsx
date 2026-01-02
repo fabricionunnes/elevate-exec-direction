@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
@@ -12,10 +15,12 @@ import {
   MapPin,
   Target,
   Users,
-  Calendar,
   DollarSign,
   FileText,
   Briefcase,
+  Pencil,
+  X,
+  Save,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -50,15 +55,21 @@ interface CompanyData {
 
 interface CompanyBriefingPanelProps {
   companyId: string;
+  isAdmin?: boolean;
 }
 
-export const CompanyBriefingPanel = ({ companyId }: CompanyBriefingPanelProps) => {
+export const CompanyBriefingPanel = ({ companyId, isAdmin = false }: CompanyBriefingPanelProps) => {
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState<Partial<CompanyData>>({});
 
   useEffect(() => {
     if (companyId) {
       fetchCompanyData();
+    } else {
+      setLoading(false);
     }
   }, [companyId]);
 
@@ -72,22 +83,76 @@ export const CompanyBriefingPanel = ({ companyId }: CompanyBriefingPanelProps) =
           consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(id, name)
         `)
         .eq("id", companyId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      // Cast stakeholders to array if it's valid
-      const companyData: CompanyData = {
-        ...data,
-        stakeholders: Array.isArray(data.stakeholders) ? data.stakeholders : null,
-        expected_timeline: data.expected_timeline,
-      };
-      setCompany(companyData);
+      if (data) {
+        const companyData: CompanyData = {
+          ...data,
+          stakeholders: Array.isArray(data.stakeholders) ? data.stakeholders : null,
+          expected_timeline: data.expected_timeline,
+        };
+        setCompany(companyData);
+        setFormData(companyData);
+      }
     } catch (error: any) {
       console.error("Error fetching company:", error);
       toast.error("Erro ao carregar dados da empresa");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSave = async () => {
+    if (!company) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_companies")
+        .update({
+          name: formData.name,
+          cnpj: formData.cnpj,
+          segment: formData.segment,
+          website: formData.website,
+          phone: formData.phone,
+          email: formData.email,
+          address: formData.address,
+          company_description: formData.company_description,
+          main_challenges: formData.main_challenges,
+          goals_short_term: formData.goals_short_term,
+          goals_long_term: formData.goals_long_term,
+          target_audience: formData.target_audience,
+          competitors: formData.competitors,
+          kickoff_date: formData.kickoff_date,
+          contract_start_date: formData.contract_start_date,
+          contract_end_date: formData.contract_end_date,
+          contract_value: formData.contract_value,
+          billing_day: formData.billing_day,
+          notes: formData.notes,
+        })
+        .eq("id", company.id);
+
+      if (error) throw error;
+      
+      toast.success("Briefing atualizado com sucesso");
+      setIsEditing(false);
+      fetchCompanyData();
+    } catch (error: any) {
+      console.error("Error saving company:", error);
+      toast.error("Erro ao salvar briefing");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setFormData(company || {});
+    setIsEditing(false);
+  };
+
+  const updateField = (field: keyof CompanyData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   if (loading) {
@@ -122,8 +187,67 @@ export const CompanyBriefingPanel = ({ companyId }: CompanyBriefingPanelProps) =
     return format(new Date(date), "dd/MM/yyyy", { locale: ptBR });
   };
 
+  const renderField = (label: string, value: string | null, field: keyof CompanyData, type: "text" | "textarea" | "date" | "number" = "text") => {
+    if (isEditing) {
+      if (type === "textarea") {
+        return (
+          <div>
+            <label className="text-sm text-muted-foreground">{label}</label>
+            <Textarea
+              value={(formData[field] as string) || ""}
+              onChange={(e) => updateField(field, e.target.value)}
+              className="mt-1"
+              rows={3}
+            />
+          </div>
+        );
+      }
+      return (
+        <div>
+          <label className="text-sm text-muted-foreground">{label}</label>
+          <Input
+            type={type}
+            value={(formData[field] as string | number) || ""}
+            onChange={(e) => updateField(field, type === "number" ? parseFloat(e.target.value) || null : e.target.value)}
+            className="mt-1"
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <label className="text-sm text-muted-foreground">{label}</label>
+        <p className="font-medium whitespace-pre-wrap">{value || "-"}</p>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header com botão de edição */}
+      {isAdmin && (
+        <div className="flex justify-end gap-2">
+          {isEditing ? (
+            <>
+              <Button variant="outline" onClick={handleCancel} disabled={saving}>
+                <X className="h-4 w-4 mr-2" />
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} disabled={saving}>
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? "Salvando..." : "Salvar"}
+              </Button>
+            </>
+          ) : (
+            <Button variant="outline" onClick={() => setIsEditing(true)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Editar Briefing
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Informações Básicas */}
       <Card>
         <CardHeader>
@@ -134,75 +258,65 @@ export const CompanyBriefingPanel = ({ companyId }: CompanyBriefingPanelProps) =
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm text-muted-foreground">Nome da Empresa</label>
-              <p className="font-medium">{company.name}</p>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground">CNPJ</label>
-              <p className="font-medium">{company.cnpj || "-"}</p>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground">Segmento</label>
-              <p className="font-medium">{company.segment || "-"}</p>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground">Status</label>
-              <Badge variant={company.status === "active" ? "default" : "secondary"}>
-                {company.status === "active" ? "Ativo" : company.status}
-              </Badge>
-            </div>
+            {renderField("Nome da Empresa", company.name, "name")}
+            {renderField("CNPJ", company.cnpj, "cnpj")}
+            {renderField("Segmento", company.segment, "segment")}
+            {!isEditing && (
+              <div>
+                <label className="text-sm text-muted-foreground">Status</label>
+                <div className="mt-1">
+                  <Badge variant={company.status === "active" ? "default" : "secondary"}>
+                    {company.status === "active" ? "Ativo" : company.status}
+                  </Badge>
+                </div>
+              </div>
+            )}
           </div>
 
           <Separator />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {company.website && (
-              <div className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-muted-foreground" />
-                <a href={company.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                  {company.website}
-                </a>
-              </div>
-            )}
-            {company.phone && (
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{company.phone}</span>
-              </div>
-            )}
-            {company.email && (
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <a href={`mailto:${company.email}`} className="text-primary hover:underline">
-                  {company.email}
-                </a>
-              </div>
-            )}
-            {company.address && (
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{company.address}</span>
-              </div>
-            )}
+            {renderField("Website", company.website, "website")}
+            {renderField("Telefone", company.phone, "phone")}
+            {renderField("Email", company.email, "email")}
+            {renderField("Endereço", company.address, "address")}
           </div>
+
+          {!isEditing && (
+            <div className="flex flex-wrap gap-4 pt-2">
+              {company.website && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <a href={company.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    Abrir site
+                  </a>
+                </div>
+              )}
+              {company.email && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <a href={`mailto:${company.email}`} className="text-primary hover:underline">
+                    Enviar email
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Descrição e Contexto */}
-      {company.company_description && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Descrição da Empresa
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-wrap">{company.company_description}</p>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Descrição da Empresa
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {renderField("Descrição", company.company_description, "company_description", "textarea")}
+        </CardContent>
+      </Card>
 
       {/* Objetivos e Desafios */}
       <Card>
@@ -213,55 +327,25 @@ export const CompanyBriefingPanel = ({ companyId }: CompanyBriefingPanelProps) =
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {company.main_challenges && (
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Principais Desafios</label>
-              <p className="mt-1 whitespace-pre-wrap">{company.main_challenges}</p>
-            </div>
-          )}
-          {company.goals_short_term && (
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Metas de Curto Prazo</label>
-              <p className="mt-1 whitespace-pre-wrap">{company.goals_short_term}</p>
-            </div>
-          )}
-          {company.goals_long_term && (
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Metas de Longo Prazo</label>
-              <p className="mt-1 whitespace-pre-wrap">{company.goals_long_term}</p>
-            </div>
-          )}
-          {!company.main_challenges && !company.goals_short_term && !company.goals_long_term && (
-            <p className="text-muted-foreground text-center py-4">Nenhuma informação cadastrada</p>
-          )}
+          {renderField("Principais Desafios", company.main_challenges, "main_challenges", "textarea")}
+          {renderField("Metas de Curto Prazo", company.goals_short_term, "goals_short_term", "textarea")}
+          {renderField("Metas de Longo Prazo", company.goals_long_term, "goals_long_term", "textarea")}
         </CardContent>
       </Card>
 
       {/* Mercado */}
-      {(company.target_audience || company.competitors) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5" />
-              Mercado
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {company.target_audience && (
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Público-Alvo</label>
-                <p className="mt-1 whitespace-pre-wrap">{company.target_audience}</p>
-              </div>
-            )}
-            {company.competitors && (
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Concorrentes</label>
-                <p className="mt-1 whitespace-pre-wrap">{company.competitors}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Briefcase className="h-5 w-5" />
+            Mercado
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {renderField("Público-Alvo", company.target_audience, "target_audience", "textarea")}
+          {renderField("Concorrentes", company.competitors, "competitors", "textarea")}
+        </CardContent>
+      </Card>
 
       {/* Informações de Contrato */}
       <Card>
@@ -273,26 +357,38 @@ export const CompanyBriefingPanel = ({ companyId }: CompanyBriefingPanelProps) =
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm text-muted-foreground">Data de Kickoff</label>
-              <p className="font-medium">{formatDate(company.kickoff_date)}</p>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground">Início do Contrato</label>
-              <p className="font-medium">{formatDate(company.contract_start_date)}</p>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground">Fim do Contrato</label>
-              <p className="font-medium">{formatDate(company.contract_end_date)}</p>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground">Valor do Contrato</label>
-              <p className="font-medium">{formatCurrency(company.contract_value)}</p>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground">Dia de Cobrança</label>
-              <p className="font-medium">{company.billing_day || "-"}</p>
-            </div>
+            {isEditing ? (
+              <>
+                {renderField("Data de Kickoff", company.kickoff_date, "kickoff_date", "date")}
+                {renderField("Início do Contrato", company.contract_start_date, "contract_start_date", "date")}
+                {renderField("Fim do Contrato", company.contract_end_date, "contract_end_date", "date")}
+                {renderField("Valor do Contrato", company.contract_value?.toString() || null, "contract_value", "number")}
+                {renderField("Dia de Cobrança", company.billing_day?.toString() || null, "billing_day", "number")}
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="text-sm text-muted-foreground">Data de Kickoff</label>
+                  <p className="font-medium">{formatDate(company.kickoff_date)}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Início do Contrato</label>
+                  <p className="font-medium">{formatDate(company.contract_start_date)}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Fim do Contrato</label>
+                  <p className="font-medium">{formatDate(company.contract_end_date)}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Valor do Contrato</label>
+                  <p className="font-medium">{formatCurrency(company.contract_value)}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Dia de Cobrança</label>
+                  <p className="font-medium">{company.billing_day || "-"}</p>
+                </div>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -349,19 +445,17 @@ export const CompanyBriefingPanel = ({ companyId }: CompanyBriefingPanelProps) =
       )}
 
       {/* Notas */}
-      {company.notes && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Notas Internas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-wrap">{company.notes}</p>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Notas Internas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {renderField("Notas", company.notes, "notes", "textarea")}
+        </CardContent>
+      </Card>
     </div>
   );
 };
