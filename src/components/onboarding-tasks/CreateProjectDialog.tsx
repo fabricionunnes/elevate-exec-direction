@@ -115,49 +115,51 @@ export const CreateProjectDialog = ({
 
       if (projectError) throw projectError;
 
-      // Generate product-specific tasks using the edge function
-      // Each product has its own unique tasks - no master template
-      try {
-        const { data: generatedData, error: genError } = await supabase.functions.invoke(
-          "generate-playbook-tasks",
-          {
-            body: {
-              projectId: project.id,
-              companyId: companyId,
-              context: "",
-            },
+      // Copiar tarefas diretamente dos templates do produto (sem edge function)
+      const { data: templates, error: templatesError } = await supabase
+        .from("onboarding_task_templates")
+        .select("id, title, description, priority, sort_order, default_days_offset, duration_days")
+        .eq("product_id", selectedProduct)
+        .order("sort_order", { ascending: true });
+
+      if (templatesError) {
+        console.error("Erro ao buscar templates:", templatesError);
+        throw new Error("Erro ao buscar templates de tarefas");
+      }
+
+      if (!templates || templates.length === 0) {
+        console.warn("Nenhum template encontrado para o produto:", selectedProduct);
+        toast.warning("Nenhum template de tarefa cadastrado para este produto");
+      } else {
+        const today = new Date();
+        const tasksToInsert = templates.map((tpl, idx) => {
+          let dueDate: string | null = null;
+          const offset = (tpl.default_days_offset ?? 0) + (tpl.duration_days ?? 0);
+          if (offset > 0) {
+            const due = new Date(today);
+            due.setDate(due.getDate() + offset);
+            dueDate = due.toISOString().split("T")[0];
           }
-        );
 
-        if (genError) {
-          console.error("Error calling generate-playbook-tasks:", genError);
-          throw new Error("Erro ao gerar tarefas do produto");
-        }
-
-        if (generatedData?.tasks?.length > 0) {
-          const today = new Date();
-          
-          const productTasks = generatedData.tasks.map((task: any, index: number) => ({
+          return {
             project_id: project.id,
-            title: task.title,
-            description: task.description,
-            priority: task.priority || "medium",
-            due_date: task.due_date || (task.estimated_days 
-              ? new Date(today.getTime() + task.estimated_days * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-              : null),
-            sort_order: index,
+            template_id: tpl.id,
+            title: tpl.title,
+            description: tpl.description,
+            priority: tpl.priority || "medium",
             status: "pending" as const,
-            tags: task.phase ? [task.phase] : null,
-          }));
+            due_date: dueDate,
+            sort_order: tpl.sort_order ?? idx,
+          };
+        });
 
-          await supabase.from("onboarding_tasks").insert(productTasks);
-        } else {
-          console.warn("No tasks generated for product:", selectedProduct);
+        const { error: insertError } = await supabase.from("onboarding_tasks").insert(tasksToInsert);
+        if (insertError) {
+          console.error("Erro ao inserir tarefas:", insertError);
+          throw new Error("Erro ao criar tarefas do template");
         }
-      } catch (genErr) {
-        console.error("Error generating product tasks:", genErr);
-        toast.error("Erro ao gerar tarefas específicas do produto");
-        throw genErr;
+        
+        console.log(`${templates.length} tarefas criadas a partir dos templates`);
       }
 
       toast.success("Projeto criado com sucesso!");
