@@ -394,7 +394,8 @@ export type Database = {
           metadata: Json | null
           project_id: string
           role: string
-          user_id: string
+          staff_id: string | null
+          user_id: string | null
         }
         Insert: {
           content: string
@@ -403,7 +404,8 @@ export type Database = {
           metadata?: Json | null
           project_id: string
           role: string
-          user_id: string
+          staff_id?: string | null
+          user_id?: string | null
         }
         Update: {
           content?: string
@@ -412,7 +414,8 @@ export type Database = {
           metadata?: Json | null
           project_id?: string
           role?: string
-          user_id?: string
+          staff_id?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -420,6 +423,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_ai_chat_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
             referencedColumns: ["id"]
           },
           {
@@ -1892,6 +1902,10 @@ export type Database = {
         Returns: boolean
       }
       is_onboarding_admin: { Args: never; Returns: boolean }
+      is_onboarding_assigned_staff: {
+        Args: { check_project_id: string }
+        Returns: boolean
+      }
       is_onboarding_project_member: {
         Args: { check_project_id: string }
         Returns: boolean

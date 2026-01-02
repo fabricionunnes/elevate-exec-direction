@@ -49,6 +49,8 @@ export const ProjectAIChat = ({
     }
   }, [messages]);
 
+  const [isStaffUser, setIsStaffUser] = useState(false);
+
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -62,6 +64,7 @@ export const ProjectAIChat = ({
       
       if (onboardingUser) {
         setCurrentUserId(onboardingUser.id);
+        setIsStaffUser(false);
         return;
       }
 
@@ -73,8 +76,8 @@ export const ProjectAIChat = ({
         .maybeSingle();
 
       if (staffUser) {
-        // Use staff id as current user id for chat
         setCurrentUserId(staffUser.id);
+        setIsStaffUser(true);
       }
     }
   };
@@ -118,15 +121,23 @@ export const ProjectAIChat = ({
     setMessages((prev) => [...prev, tempUserMessage]);
 
     try {
+      // Build insert data based on user type (staff vs onboarding user)
+      const insertData: any = {
+        project_id: projectId,
+        role: "user",
+        content: userMessage,
+      };
+      
+      if (isStaffUser) {
+        insertData.staff_id = currentUserId;
+      } else {
+        insertData.user_id = currentUserId;
+      }
+
       // Save user message to DB
       const { data: savedUserMsg, error: userMsgError } = await supabase
         .from("onboarding_ai_chat")
-        .insert({
-          project_id: projectId,
-          user_id: currentUserId,
-          role: "user",
-          content: userMessage,
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -149,15 +160,23 @@ export const ProjectAIChat = ({
 
       const assistantContent = aiResponse?.response || "Desculpe, não consegui processar sua pergunta.";
 
+      // Build insert data for assistant message
+      const assistantInsertData: any = {
+        project_id: projectId,
+        role: "assistant",
+        content: assistantContent,
+      };
+      
+      if (isStaffUser) {
+        assistantInsertData.staff_id = currentUserId;
+      } else {
+        assistantInsertData.user_id = currentUserId;
+      }
+
       // Save assistant message to DB
       const { data: savedAssistantMsg, error: assistantMsgError } = await supabase
         .from("onboarding_ai_chat")
-        .insert({
-          project_id: projectId,
-          user_id: currentUserId,
-          role: "assistant",
-          content: assistantContent,
-        })
+        .insert(assistantInsertData)
         .select()
         .single();
 
