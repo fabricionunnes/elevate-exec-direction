@@ -36,7 +36,8 @@ import { TaskDetailsDialog } from "@/components/onboarding-tasks/TaskDetailsDial
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { ProjectVariablesPanel } from "@/components/onboarding-tasks/ProjectVariablesPanel";
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
-import { Settings, Sparkles } from "lucide-react";
+import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
+import { Settings, Sparkles, Building2 } from "lucide-react";
 
 interface OnboardingTask {
   id: string;
@@ -502,6 +503,10 @@ const OnboardingProjectPage = () => {
               <CheckCircle2 className="h-4 w-4" />
               Tarefas
             </TabsTrigger>
+            <TabsTrigger value="briefing" className="gap-2">
+              <Building2 className="h-4 w-4" />
+              Briefing
+            </TabsTrigger>
             <TabsTrigger value="variables" className="gap-2">
               <Settings className="h-4 w-4" />
               Variáveis
@@ -672,6 +677,10 @@ const OnboardingProjectPage = () => {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="briefing">
+            <CompanyBriefingPanel companyId={project.onboarding_company_id || ""} />
           </TabsContent>
 
           <TabsContent value="variables">
