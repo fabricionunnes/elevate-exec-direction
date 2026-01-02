@@ -37,7 +37,7 @@ interface Staff {
   id: string;
   name: string;
   email: string;
-  role: "cs" | "consultant";
+  role: "cs" | "consultant" | "admin";
   phone: string | null;
   is_active: boolean;
   created_at: string;
@@ -53,7 +53,7 @@ const OnboardingStaffPage = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    role: "cs" as "cs" | "consultant",
+    role: "cs" as "cs" | "consultant" | "admin",
     phone: "",
   });
 
