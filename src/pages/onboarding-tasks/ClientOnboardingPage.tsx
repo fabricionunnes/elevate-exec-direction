@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +39,7 @@ interface OnboardingUser {
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<any>(null);
   const [tasks, setTasks] = useState<OnboardingTask[]>([]);
@@ -47,26 +48,27 @@ const ClientOnboardingPage = () => {
 
   useEffect(() => {
     checkAuthAndLoadData();
-  }, []);
+  }, [projectId]);
 
   const checkAuthAndLoadData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        navigate("/portal/login");
+        navigate("/onboarding-tasks/login");
         return;
       }
 
-      // Find onboarding user
+      // Find onboarding user for this project
       const { data: onboardingUser, error: userError } = await supabase
         .from("onboarding_users")
         .select("*, project:onboarding_projects(*)")
         .eq("user_id", user.id)
+        .eq("project_id", projectId)
         .single();
 
       if (userError || !onboardingUser) {
-        toast.error("Você não tem acesso a nenhum projeto de onboarding");
-        navigate("/");
+        toast.error("Você não tem acesso a este projeto de onboarding");
+        navigate("/onboarding-tasks/login");
         return;
       }
 
@@ -99,7 +101,7 @@ const ClientOnboardingPage = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/portal/login");
+    navigate("/onboarding-tasks/login");
   };
 
   const getStatusIcon = (status: string) => {
