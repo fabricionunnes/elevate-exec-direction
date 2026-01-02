@@ -304,24 +304,52 @@ Deno.serve(async (req) => {
 
     console.log("Novo projeto criado:", newProject.id);
 
-    // Gerar tarefas do playbook
+    // Buscar templates de tarefas do banco de dados
     try {
-      const { error: tasksError } = await supabase.functions.invoke("generate-playbook-tasks", {
-        body: {
-          project_id: newProject.id,
-          product_id: product.id,
-          product_name: product.name,
-          company_name: companyName,
-        },
-      });
+      const { data: templates, error: templatesError } = await supabase
+        .from("onboarding_task_templates")
+        .select("*")
+        .eq("product_id", product.id)
+        .order("phase_order", { ascending: true })
+        .order("sort_order", { ascending: true });
 
-      if (tasksError) {
-        console.error("Erro ao gerar tarefas:", tasksError);
+      if (templatesError) {
+        console.error("Erro ao buscar templates:", templatesError);
+      } else if (templates && templates.length > 0) {
+        console.log(`Encontrados ${templates.length} templates para ${product.id}`);
+
+        const today = new Date();
+        const tasksToInsert = templates.map((template, index) => {
+          const dueDate = new Date(today);
+          dueDate.setDate(dueDate.getDate() + (template.default_days_offset || index * 3));
+
+          return {
+            project_id: newProject.id,
+            template_id: template.id,
+            title: template.title,
+            description: template.description,
+            priority: template.priority || "medium",
+            status: "pending",
+            due_date: dueDate.toISOString().split("T")[0],
+            sort_order: index,
+            recurrence: template.recurrence,
+          };
+        });
+
+        const { error: insertError } = await supabase
+          .from("onboarding_tasks")
+          .insert(tasksToInsert);
+
+        if (insertError) {
+          console.error("Erro ao inserir tarefas:", insertError);
+        } else {
+          console.log(`${tasksToInsert.length} tarefas criadas com sucesso`);
+        }
       } else {
-        console.log("Tarefas geradas com sucesso");
+        console.log(`Nenhum template encontrado para o produto: ${product.id}`);
       }
     } catch (taskErr) {
-      console.error("Erro ao invocar generate-playbook-tasks:", taskErr);
+      console.error("Erro ao criar tarefas a partir dos templates:", taskErr);
     }
 
     // Notificar administradores e CS
