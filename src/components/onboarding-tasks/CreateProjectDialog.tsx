@@ -115,37 +115,8 @@ export const CreateProjectDialog = ({
 
       if (projectError) throw projectError;
 
-      // Fetch master template tasks (applies to ALL products)
-      const { data: masterTemplates } = await supabase
-        .from("onboarding_task_templates")
-        .select("*")
-        .eq("product_id", "master")
-        .order("phase_order")
-        .order("sort_order");
-
-      // Create tasks from master templates first
-      if (masterTemplates && masterTemplates.length > 0) {
-        const today = new Date();
-        
-        const masterTasks = masterTemplates.map((template, index) => ({
-          project_id: project.id,
-          title: template.title,
-          description: template.description,
-          priority: template.priority,
-          due_date: template.default_days_offset != null 
-            ? new Date(today.getTime() + template.default_days_offset * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-            : null,
-          sort_order: index,
-          status: "pending" as const,
-          tags: template.phase ? [template.phase, String(template.phase_order ?? 0)] : null,
-          recurrence: template.recurrence,
-          template_id: template.id,
-        }));
-
-        await supabase.from("onboarding_tasks").insert(masterTasks);
-      }
-
       // Generate product-specific tasks using the edge function
+      // Each product has its own unique tasks - no master template
       try {
         const { data: generatedData, error: genError } = await supabase.functions.invoke(
           "generate-playbook-tasks",
@@ -158,9 +129,13 @@ export const CreateProjectDialog = ({
           }
         );
 
-        if (!genError && generatedData?.tasks?.length > 0) {
+        if (genError) {
+          console.error("Error calling generate-playbook-tasks:", genError);
+          throw new Error("Erro ao gerar tarefas do produto");
+        }
+
+        if (generatedData?.tasks?.length > 0) {
           const today = new Date();
-          const masterCount = masterTemplates?.length || 0;
           
           const productTasks = generatedData.tasks.map((task: any, index: number) => ({
             project_id: project.id,
@@ -170,16 +145,19 @@ export const CreateProjectDialog = ({
             due_date: task.due_date || (task.estimated_days 
               ? new Date(today.getTime() + task.estimated_days * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
               : null),
-            sort_order: masterCount + index,
+            sort_order: index,
             status: "pending" as const,
-            tags: task.phase ? [task.phase, String(index)] : null,
+            tags: task.phase ? [task.phase] : null,
           }));
 
           await supabase.from("onboarding_tasks").insert(productTasks);
+        } else {
+          console.warn("No tasks generated for product:", selectedProduct);
         }
       } catch (genErr) {
         console.error("Error generating product tasks:", genErr);
-        // Continue without product-specific tasks - master tasks are already created
+        toast.error("Erro ao gerar tarefas específicas do produto");
+        throw genErr;
       }
 
       toast.success("Projeto criado com sucesso!");
