@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.onboarding-ai-chat]
 verify_jwt = true
+
+[functions.generate-playbook-tasks]
+verify_jwt = true
