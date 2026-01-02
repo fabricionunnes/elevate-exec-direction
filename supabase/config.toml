@@ -3,6 +3,12 @@ project_id = "czmyjgdixwhpfasfugkm"
 [functions.create-admin]
 verify_jwt = false
 
+[functions.create-onboarding-user]
+verify_jwt = false
+
+[functions.create-staff-user]
+verify_jwt = false
+
 [functions.portal-ai-coach]
 verify_jwt = true
 
@@ -11,3 +17,6 @@ verify_jwt = true
 
 [functions.service-advisor-chat]
 verify_jwt = false
+
+[functions.onboarding-ai-chat]
+verify_jwt = true
