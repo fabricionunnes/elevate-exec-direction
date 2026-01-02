@@ -386,6 +386,298 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_projects: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          product_id: string
+          product_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          product_id: string
+          product_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          product_id?: string
+          product_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_projects_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "portal_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_task_templates: {
+        Row: {
+          created_at: string
+          default_days_offset: number | null
+          description: string | null
+          id: string
+          product_id: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          default_days_offset?: number | null
+          description?: string | null
+          id?: string
+          product_id: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          default_days_offset?: number | null
+          description?: string | null
+          id?: string
+          product_id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      onboarding_tasks: {
+        Row: {
+          assignee_id: string | null
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          observations: string | null
+          project_id: string
+          sort_order: number
+          status: Database["public"]["Enums"]["onboarding_task_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          observations?: string | null
+          project_id: string
+          sort_order?: number
+          status?: Database["public"]["Enums"]["onboarding_task_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          observations?: string | null
+          project_id?: string
+          sort_order?: number
+          status?: Database["public"]["Enums"]["onboarding_task_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_tasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_ticket_replies: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          ticket_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          ticket_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          ticket_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_ticket_replies_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_ticket_replies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_tickets: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string
+          id: string
+          message: string
+          project_id: string
+          status: Database["public"]["Enums"]["onboarding_ticket_status"]
+          subject: string
+          task_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          message: string
+          project_id: string
+          status?: Database["public"]["Enums"]["onboarding_ticket_status"]
+          subject: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          message?: string
+          project_id?: string
+          status?: Database["public"]["Enums"]["onboarding_ticket_status"]
+          subject?: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_tickets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_tickets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_tickets_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          password_changed: boolean
+          project_id: string
+          role: Database["public"]["Enums"]["onboarding_role"]
+          temp_password: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          password_changed?: boolean
+          project_id: string
+          role?: Database["public"]["Enums"]["onboarding_role"]
+          temp_password?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          password_changed?: boolean
+          project_id?: string
+          role?: Database["public"]["Enums"]["onboarding_role"]
+          temp_password?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_users_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_audit_logs: {
         Row: {
           action: string
@@ -1092,6 +1384,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_onboarding_project_member: {
+        Args: { check_project_id: string }
+        Returns: boolean
+      }
+      is_onboarding_staff: {
+        Args: { check_project_id: string }
+        Returns: boolean
+      }
       is_portal_admin_unv: { Args: { check_user_id: string }; Returns: boolean }
       is_portal_company_admin: {
         Args: { check_company_id: string; check_user_id: string }
@@ -1104,6 +1404,9 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      onboarding_role: "cs" | "consultant" | "client"
+      onboarding_task_status: "pending" | "in_progress" | "completed"
+      onboarding_ticket_status: "open" | "in_progress" | "resolved" | "closed"
       plan_status: "draft" | "published" | "archived"
       portal_role: "admin_unv" | "admin_company" | "member"
       progress_status: "on_track" | "attention" | "off_track" | "completed"
@@ -1235,6 +1538,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      onboarding_role: ["cs", "consultant", "client"],
+      onboarding_task_status: ["pending", "in_progress", "completed"],
+      onboarding_ticket_status: ["open", "in_progress", "resolved", "closed"],
       plan_status: ["draft", "published", "archived"],
       portal_role: ["admin_unv", "admin_company", "member"],
       progress_status: ["on_track", "attention", "off_track", "completed"],
