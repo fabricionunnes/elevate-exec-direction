@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ClientJourneyTrail } from "@/components/client-portal/ClientJourneyTrail";
-import { ClientTimelineView } from "@/components/client-portal/ClientTimelineView";
+import { ClientCalendarView } from "@/components/client-portal/ClientCalendarView";
 import { ClientTasksList } from "@/components/client-portal/ClientTasksList";
 import { ClientTaskDetailSheet } from "@/components/client-portal/ClientTaskDetailSheet";
 import { ClientSettingsSheet } from "@/components/client-portal/ClientSettingsSheet";
@@ -345,7 +345,7 @@ const ClientOnboardingPage = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
             >
-              <ClientTimelineView
+              <ClientCalendarView
                 tasks={tasks}
                 onTaskClick={handleTaskClick}
               />
