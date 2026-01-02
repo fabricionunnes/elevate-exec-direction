@@ -38,7 +38,7 @@ import { ProjectVariablesPanel } from "@/components/onboarding-tasks/ProjectVari
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
-import { Settings, Sparkles, Building2, Wand2, Target, UserCircle, Route, LayoutList, CalendarDays } from "lucide-react";
+import { Settings, Sparkles, Building2, Wand2, Target, UserCircle, Route, LayoutList, CalendarDays, LogOut } from "lucide-react";
 import { MonthlyGoalsCard } from "@/components/onboarding-tasks/MonthlyGoalsCard";
 import { RealtimeNotifications } from "@/components/onboarding-tasks/RealtimeNotifications";
 import { TasksGameTrailView } from "@/components/onboarding-tasks/TasksGameTrailView";
@@ -543,6 +543,17 @@ const OnboardingProjectPage = () => {
                 <Trash2 className="h-4 w-4" />
               </Button>
             )}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate("/onboarding-tasks/login");
+              }}
+              title="Sair"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 

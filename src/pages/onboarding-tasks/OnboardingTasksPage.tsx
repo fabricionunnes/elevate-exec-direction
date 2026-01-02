@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
@@ -215,6 +215,17 @@ const OnboardingTasksPage = () => {
             <Button onClick={() => setShowCreateDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Projeto
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate("/onboarding-tasks/login");
+              }}
+              title="Sair"
+            >
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>

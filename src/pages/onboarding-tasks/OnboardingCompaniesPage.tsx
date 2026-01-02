@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Building2, Search } from "lucide-react";
+import { ArrowLeft, Plus, Building2, Search, LogOut } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -149,12 +149,25 @@ const OnboardingCompaniesPage = () => {
               </p>
             </div>
           </div>
-          {canCreateCompany && (
-            <Button onClick={() => navigate("/onboarding-tasks/companies/new")}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Empresa
+          <div className="flex items-center gap-2">
+            {canCreateCompany && (
+              <Button onClick={() => navigate("/onboarding-tasks/companies/new")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Empresa
+              </Button>
+            )}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate("/onboarding-tasks/login");
+              }}
+              title="Sair"
+            >
+              <LogOut className="h-4 w-4" />
             </Button>
-          )}
+          </div>
         </div>
 
         {/* Search */}
