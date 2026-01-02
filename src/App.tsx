@@ -58,6 +58,9 @@ import OnboardingPage from "./pages/OnboardingPage";
 import OnboardingProductPage from "./pages/OnboardingProductPage";
 import OnboardingTasksPage from "./pages/onboarding-tasks/OnboardingTasksPage";
 import OnboardingProjectPage from "./pages/onboarding-tasks/OnboardingProjectPage";
+import OnboardingCompaniesPage from "./pages/onboarding-tasks/OnboardingCompaniesPage";
+import OnboardingCompanyDetailPage from "./pages/onboarding-tasks/OnboardingCompanyDetailPage";
+import OnboardingStaffPage from "./pages/onboarding-tasks/OnboardingStaffPage";
 import ClientOnboardingPage from "./pages/onboarding-tasks/ClientOnboardingPage";
 import OnboardingLoginPage from "./pages/onboarding-tasks/OnboardingLoginPage";
 
@@ -110,6 +113,9 @@ const App = () => (
           <Route path="/onboarding/:productId" element={<OnboardingProductPage />} />
           <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
           <Route path="/onboarding-tasks/login" element={<OnboardingLoginPage />} />
+          <Route path="/onboarding-tasks/companies" element={<OnboardingCompaniesPage />} />
+          <Route path="/onboarding-tasks/companies/:companyId" element={<OnboardingCompanyDetailPage />} />
+          <Route path="/onboarding-tasks/staff" element={<OnboardingStaffPage />} />
           <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
           <Route path="/onboarding-client/:projectId" element={<ClientOnboardingPage />} />
           
