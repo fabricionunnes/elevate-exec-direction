@@ -56,12 +56,26 @@ const OnboardingLoginPage = () => {
           .from("onboarding_staff")
           .select("id, role, name")
           .eq("user_id", data.user.id)
-          .single();
+          .maybeSingle();
 
         if (staffMember) {
           // Staff member found - redirect to appropriate page
           toast.success(`Bem-vindo, ${staffMember.name}!`);
           navigate("/onboarding-tasks");
+          return;
+        }
+
+        // Se existe staff com este email mas ainda não está vinculado ao login
+        const normalizedEmail = email.trim().toLowerCase();
+        const { data: staffByEmail } = await supabase
+          .from("onboarding_staff")
+          .select("id, user_id")
+          .eq("email", normalizedEmail)
+          .maybeSingle();
+
+        if (staffByEmail && !staffByEmail.user_id) {
+          toast.error("Seu usuário existe, mas o login ainda não está vinculado. Peça ao admin para recriar/vincular o acesso.");
+          await supabase.auth.signOut();
           return;
         }
 
