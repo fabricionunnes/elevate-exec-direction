@@ -380,14 +380,14 @@ Deno.serve(async (req) => {
 
     console.log("Novo projeto criado:", newProject.id);
 
-    // Copiar tarefas: SEMPRE usar template "master" (90 tarefas com 8 fases) independente do produto
+    // Copiar tarefas do template específico do produto
     try {
       const today = new Date();
 
       const { data: templates, error: templatesError } = await supabase
         .from("onboarding_task_templates")
         .select("id, title, description, priority, sort_order, default_days_offset, duration_days, phase, phase_order, recurrence")
-        .eq("product_id", "master")
+        .eq("product_id", product.id)
         .order("phase_order", { ascending: true })
         .order("sort_order", { ascending: true });
 

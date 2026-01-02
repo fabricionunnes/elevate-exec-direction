@@ -184,11 +184,11 @@ Deno.serve(async (req) => {
             console.error("Error creating onboarding user:", onboardingUserError);
           }
 
-          // SEMPRE usar o template "master" (90 tarefas com 8 fases) independente do produto
+          // Buscar templates específicos do produto
           const { data: templates } = await supabaseAdmin
             .from("onboarding_task_templates")
             .select("*")
-            .eq("product_id", "master")
+            .eq("product_id", productId)
             .order("phase_order")
             .order("sort_order");
 
