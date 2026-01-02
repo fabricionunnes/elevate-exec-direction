@@ -148,10 +148,20 @@ const OnboardingTasksPage = () => {
               </p>
             </div>
           </div>
-          <Button onClick={() => setShowCreateDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Projeto
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => navigate("/onboarding-tasks/companies")}>
+              <FolderOpen className="h-4 w-4 mr-2" />
+              Empresas
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/onboarding-tasks/staff")}>
+              <Users className="h-4 w-4 mr-2" />
+              Equipe
+            </Button>
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Projeto
+            </Button>
+          </div>
         </div>
 
         {/* Service Stats */}
