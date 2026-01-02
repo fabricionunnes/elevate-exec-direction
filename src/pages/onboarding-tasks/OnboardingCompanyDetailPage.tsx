@@ -553,9 +553,9 @@ const OnboardingCompanyDetailPage = () => {
                       <div className="space-y-3">
                         {projects.map((project) => (
                           <Card
-                            key={project.id}
+                          key={project.id}
                             className="cursor-pointer hover:shadow-md transition-shadow"
-                            onClick={() => navigate(`/onboarding-tasks/project/${project.id}`)}
+                            onClick={() => navigate(`/onboarding-tasks/${project.id}`)}
                           >
                             <CardContent className="py-4">
                               <div className="flex items-center justify-between">
