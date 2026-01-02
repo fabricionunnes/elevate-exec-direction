@@ -107,25 +107,28 @@ export const CreateProjectDialog = ({
 
       if (projectError) throw projectError;
 
-      // Fetch task templates for this product
+      // Fetch task templates for this product (with phase info)
       const { data: templates } = await supabase
         .from("onboarding_task_templates")
         .select("*")
         .eq("product_id", selectedProduct)
         .order("sort_order");
 
-      // Create tasks from templates
+      // Create tasks from templates with phase info
       if (templates && templates.length > 0) {
         const today = new Date();
         const tasks = templates.map((template) => ({
           project_id: project.id,
           title: template.title,
           description: template.description,
-          due_date: new Date(
-            today.getTime() + template.default_days_offset * 24 * 60 * 60 * 1000
-          ).toISOString().split("T")[0],
+          priority: template.priority,
+          due_date: template.default_days_offset != null 
+            ? new Date(today.getTime() + template.default_days_offset * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+            : null,
           sort_order: template.sort_order,
           status: "pending" as const,
+          // Store phase info in tags array: [phase_name, phase_order]
+          tags: template.phase ? [template.phase, String(template.phase_order ?? 0)] : null,
         }));
 
         await supabase.from("onboarding_tasks").insert(tasks);
