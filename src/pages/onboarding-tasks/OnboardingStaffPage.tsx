@@ -69,7 +69,7 @@ const OnboardingStaffPage = () => {
         .order("name");
 
       if (error) throw error;
-      setStaff(data || []);
+      setStaff((data || []) as Staff[]);
     } catch (error: any) {
       console.error("Error fetching staff:", error);
       toast.error("Erro ao carregar equipe");
