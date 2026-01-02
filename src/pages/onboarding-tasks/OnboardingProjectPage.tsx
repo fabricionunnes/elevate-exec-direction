@@ -33,6 +33,8 @@ import {
 import { ManageUsersDialog } from "@/components/onboarding-tasks/ManageUsersDialog";
 import { TaskDetailsDialog } from "@/components/onboarding-tasks/TaskDetailsDialog";
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
+import { ProjectVariablesPanel } from "@/components/onboarding-tasks/ProjectVariablesPanel";
+import { Settings } from "lucide-react";
 
 interface OnboardingTask {
   id: string;
@@ -61,6 +63,7 @@ interface OnboardingUser {
 
 interface Project {
   id: string;
+  product_id: string;
   product_name: string;
   status: string;
   onboarding_company_id: string | null;
@@ -399,6 +402,10 @@ const OnboardingProjectPage = () => {
               <CheckCircle2 className="h-4 w-4" />
               Tarefas
             </TabsTrigger>
+            <TabsTrigger value="variables" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Variáveis
+            </TabsTrigger>
             <TabsTrigger value="tickets" className="gap-2">
               <MessageSquare className="h-4 w-4" />
               Chamados
@@ -552,6 +559,14 @@ const OnboardingProjectPage = () => {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="variables">
+            <ProjectVariablesPanel
+              projectId={projectId!}
+              productId={project.product_id}
+              isAdmin={isAdmin}
+            />
           </TabsContent>
 
           <TabsContent value="tickets">
