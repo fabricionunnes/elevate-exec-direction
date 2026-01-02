@@ -37,7 +37,8 @@ import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { ProjectVariablesPanel } from "@/components/onboarding-tasks/ProjectVariablesPanel";
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
-import { Settings, Sparkles, Building2 } from "lucide-react";
+import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
+import { Settings, Sparkles, Building2, Wand2 } from "lucide-react";
 
 interface OnboardingTask {
   id: string;
@@ -119,6 +120,7 @@ const OnboardingProjectPage = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [isStaffAdmin, setIsStaffAdmin] = useState(false);
+  const [showGenerateTasksDialog, setShowGenerateTasksDialog] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -462,6 +464,12 @@ const OnboardingProjectPage = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {currentUserRole && currentUserRole !== "client" && (
+              <Button variant="outline" onClick={() => setShowGenerateTasksDialog(true)}>
+                <Wand2 className="h-4 w-4 mr-2" />
+                Gerar Tarefas
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setShowUsersDialog(true)}>
               <Users className="h-4 w-4 mr-2" />
               Usuários ({users.length})
@@ -729,6 +737,14 @@ const OnboardingProjectPage = () => {
         onDelete={handleDeleteTask}
         currentUserRole={currentUserRole}
         currentUserId={currentUserId}
+      />
+
+      <GenerateTasksDialog
+        open={showGenerateTasksDialog}
+        onOpenChange={setShowGenerateTasksDialog}
+        projectId={projectId!}
+        companyId={project.onboarding_company_id}
+        onTasksGenerated={fetchProjectData}
       />
     </div>
   );
