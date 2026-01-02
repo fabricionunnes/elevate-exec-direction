@@ -23,12 +23,14 @@ import {
   Users,
   FileText,
   Target,
-  Calendar,
   Briefcase,
   Plus,
   Trash2,
+  FolderOpen,
+  ExternalLink,
 } from "lucide-react";
 import { format } from "date-fns";
+import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
 
 interface Staff {
   id: string;
@@ -70,6 +72,13 @@ interface CompanyForm {
   notes: string;
 }
 
+interface Project {
+  id: string;
+  product_name: string;
+  status: string;
+  created_at: string;
+}
+
 const OnboardingCompanyDetailPage = () => {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
@@ -78,6 +87,8 @@ const OnboardingCompanyDetailPage = () => {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [showCreateProject, setShowCreateProject] = useState(false);
   const [activeTab, setActiveTab] = useState("info");
   
   const [form, setForm] = useState<CompanyForm>({
@@ -110,6 +121,7 @@ const OnboardingCompanyDetailPage = () => {
     fetchStaff();
     if (!isNew) {
       fetchCompany();
+      fetchProjects();
     }
   }, [companyId]);
 
@@ -167,6 +179,15 @@ const OnboardingCompanyDetailPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchProjects = async () => {
+    const { data } = await supabase
+      .from("onboarding_projects")
+      .select("*")
+      .eq("onboarding_company_id", companyId)
+      .order("created_at", { ascending: false });
+    setProjects(data || []);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -284,11 +305,17 @@ const OnboardingCompanyDetailPage = () => {
 
         <form onSubmit={handleSubmit}>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6">
+            <TabsList className="mb-6 flex-wrap">
               <TabsTrigger value="info" className="gap-2">
                 <Building2 className="h-4 w-4" />
                 Informações
               </TabsTrigger>
+              {!isNew && (
+                <TabsTrigger value="projects" className="gap-2">
+                  <FolderOpen className="h-4 w-4" />
+                  Projetos ({projects.length})
+                </TabsTrigger>
+              )}
               <TabsTrigger value="team" className="gap-2">
                 <Users className="h-4 w-4" />
                 Equipe
@@ -395,6 +422,68 @@ const OnboardingCompanyDetailPage = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Projects Tab */}
+            {!isNew && (
+              <TabsContent value="projects">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Projetos de Onboarding</CardTitle>
+                        <CardDescription>Gerencie os projetos desta empresa</CardDescription>
+                      </div>
+                      <Button type="button" onClick={() => setShowCreateProject(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Novo Projeto
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {projects.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FolderOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Nenhum projeto cadastrado</p>
+                        <Button type="button" variant="outline" className="mt-4" onClick={() => setShowCreateProject(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Criar Primeiro Projeto
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {projects.map((project) => (
+                          <Card
+                            key={project.id}
+                            className="cursor-pointer hover:shadow-md transition-shadow"
+                            onClick={() => navigate(`/onboarding-tasks/project/${project.id}`)}
+                          >
+                            <CardContent className="py-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <FolderOpen className="h-5 w-5 text-primary" />
+                                  <div>
+                                    <p className="font-medium">{project.product_name}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      Criado em {format(new Date(project.created_at), "dd/MM/yyyy")}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={project.status === "active" ? "default" : "secondary"}>
+                                    {project.status === "active" ? "Ativo" : project.status}
+                                  </Badge>
+                                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
 
             {/* Team Tab */}
             <TabsContent value="team">
@@ -672,6 +761,19 @@ const OnboardingCompanyDetailPage = () => {
             </TabsContent>
           </Tabs>
         </form>
+
+        {/* Create Project Dialog */}
+        {!isNew && companyId && (
+          <CreateProjectDialog
+            open={showCreateProject}
+            onOpenChange={setShowCreateProject}
+            preselectedCompanyId={companyId}
+            onSuccess={() => {
+              setShowCreateProject(false);
+              fetchProjects();
+            }}
+          />
+        )}
       </div>
     </div>
   );

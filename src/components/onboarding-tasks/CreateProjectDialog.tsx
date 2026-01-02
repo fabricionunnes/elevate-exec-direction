@@ -23,7 +23,9 @@ import { productDetails } from "@/data/productDetails";
 interface CreateProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onProjectCreated: () => void;
+  onProjectCreated?: () => void;
+  preselectedCompanyId?: string;
+  onSuccess?: () => void;
 }
 
 interface Company {
@@ -35,6 +37,8 @@ export const CreateProjectDialog = ({
   open,
   onOpenChange,
   onProjectCreated,
+  preselectedCompanyId,
+  onSuccess,
 }: CreateProjectDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -46,8 +50,12 @@ export const CreateProjectDialog = ({
   useEffect(() => {
     if (open) {
       fetchCompanies();
+      if (preselectedCompanyId) {
+        setSelectedCompany(preselectedCompanyId);
+        setCreateNewCompany(false);
+      }
     }
-  }, [open]);
+  }, [open, preselectedCompanyId]);
 
   const fetchCompanies = async () => {
     const { data, error } = await supabase
@@ -136,7 +144,8 @@ export const CreateProjectDialog = ({
 
       toast.success("Projeto criado com sucesso!");
       onOpenChange(false);
-      onProjectCreated();
+      onProjectCreated?.();
+      onSuccess?.();
       
       // Reset form
       setSelectedProduct("");
@@ -180,40 +189,42 @@ export const CreateProjectDialog = ({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Empresa</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setCreateNewCompany(!createNewCompany)}
-              >
-                {createNewCompany ? "Selecionar existente" : "Criar nova"}
-              </Button>
+          {!preselectedCompanyId && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Empresa</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCreateNewCompany(!createNewCompany)}
+                >
+                  {createNewCompany ? "Selecionar existente" : "Criar nova"}
+                </Button>
+              </div>
+              
+              {createNewCompany ? (
+                <Input
+                  placeholder="Nome da nova empresa"
+                  value={newCompanyName}
+                  onChange={(e) => setNewCompanyName(e.target.value)}
+                />
+              ) : (
+                <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
-            
-            {createNewCompany ? (
-              <Input
-                placeholder="Nome da nova empresa"
-                value={newCompanyName}
-                onChange={(e) => setNewCompanyName(e.target.value)}
-              />
-            ) : (
-              <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a empresa" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
