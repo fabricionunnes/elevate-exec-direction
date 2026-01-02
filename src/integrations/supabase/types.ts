@@ -2024,6 +2024,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_next_business_day: {
+        Args: { days_to_add: number; start_date: string }
+        Returns: string
+      }
       get_portal_company_id: {
         Args: { check_user_id: string }
         Returns: string
