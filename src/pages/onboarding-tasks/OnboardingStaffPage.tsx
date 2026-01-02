@@ -39,7 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2, LogOut } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -254,10 +254,23 @@ const OnboardingStaffPage = () => {
               </p>
             </div>
           </div>
-          <Button onClick={openNewDialog}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Membro
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={openNewDialog}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Membro
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate("/onboarding-tasks/login");
+              }}
+              title="Sair"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
