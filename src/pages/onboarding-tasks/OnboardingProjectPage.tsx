@@ -63,6 +63,7 @@ interface Project {
   id: string;
   product_name: string;
   status: string;
+  onboarding_company_id: string | null;
   onboarding_company?: { name: string } | null;
 }
 
@@ -148,7 +149,7 @@ const OnboardingProjectPage = () => {
       // Fetch project
       const { data: projectData, error: projectError } = await supabase
         .from("onboarding_projects")
-        .select(`*, onboarding_company:onboarding_companies(name)`)
+        .select(`*, onboarding_company_id, onboarding_company:onboarding_companies(name)`)
         .eq("id", projectId)
         .single();
 
@@ -573,6 +574,9 @@ const OnboardingProjectPage = () => {
         onClose={() => setSelectedTask(null)}
         onTaskUpdated={fetchProjectData}
         isAdmin={isAdmin}
+        companyId={project.onboarding_company_id || undefined}
+        projectId={projectId}
+        onDelete={handleDeleteTask}
       />
     </div>
   );
