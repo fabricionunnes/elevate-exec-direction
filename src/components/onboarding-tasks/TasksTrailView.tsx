@@ -114,7 +114,7 @@ export const TasksTrailView = ({ phases, onTaskClick, onStatusChange }: TasksTra
                 <Rocket className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h3 className="text-xl font-bold">Jornada de Onboarding</h3>
+                <h3 className="text-xl font-bold">Jornada</h3>
                 <p className="text-sm text-muted-foreground">
                   {completedTasks} de {totalTasks} tarefas concluídas
                 </p>

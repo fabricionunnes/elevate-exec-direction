@@ -67,14 +67,16 @@ const PHASE_ICONS = [
 ];
 
 const PHASE_COLORS = [
-  { bg: "from-blue-500 to-blue-600", glow: "shadow-blue-500/50", border: "border-blue-500" },
-  { bg: "from-purple-500 to-purple-600", glow: "shadow-purple-500/50", border: "border-purple-500" },
-  { bg: "from-amber-500 to-orange-500", glow: "shadow-amber-500/50", border: "border-amber-500" },
-  { bg: "from-green-500 to-emerald-500", glow: "shadow-green-500/50", border: "border-green-500" },
-  { bg: "from-pink-500 to-rose-500", glow: "shadow-pink-500/50", border: "border-pink-500" },
-  { bg: "from-cyan-500 to-teal-500", glow: "shadow-cyan-500/50", border: "border-cyan-500" },
-  { bg: "from-indigo-500 to-violet-500", glow: "shadow-indigo-500/50", border: "border-indigo-500" },
-  { bg: "from-yellow-500 to-amber-500", glow: "shadow-yellow-500/50", border: "border-yellow-500" },
+  { bg: "from-cyan-400 to-blue-500", glow: "shadow-cyan-500/50", border: "border-cyan-400", accent: "bg-cyan-500" },
+  { bg: "from-violet-500 to-purple-600", glow: "shadow-violet-500/50", border: "border-violet-500", accent: "bg-violet-500" },
+  { bg: "from-amber-400 to-orange-500", glow: "shadow-amber-500/50", border: "border-amber-400", accent: "bg-amber-500" },
+  { bg: "from-emerald-400 to-green-500", glow: "shadow-emerald-500/50", border: "border-emerald-400", accent: "bg-emerald-500" },
+  { bg: "from-rose-400 to-pink-500", glow: "shadow-rose-500/50", border: "border-rose-400", accent: "bg-rose-500" },
+  { bg: "from-teal-400 to-cyan-500", glow: "shadow-teal-500/50", border: "border-teal-400", accent: "bg-teal-500" },
+  { bg: "from-fuchsia-400 to-purple-500", glow: "shadow-fuchsia-500/50", border: "border-fuchsia-400", accent: "bg-fuchsia-500" },
+  { bg: "from-lime-400 to-green-500", glow: "shadow-lime-500/50", border: "border-lime-400", accent: "bg-lime-500" },
+  { bg: "from-sky-400 to-indigo-500", glow: "shadow-sky-500/50", border: "border-sky-400", accent: "bg-sky-500" },
+  { bg: "from-red-400 to-rose-500", glow: "shadow-red-500/50", border: "border-red-400", accent: "bg-red-500" },
 ];
 
 export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: TasksGameTrailViewProps) => {
@@ -96,7 +98,7 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary/80 to-primary/60 p-8 text-primary-foreground"
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-fuchsia-500 to-pink-500 p-8 text-white"
       >
         {/* Animated background effects */}
         <div className="absolute inset-0 overflow-hidden">
@@ -128,7 +130,7 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                 <Trophy className="h-10 w-10" />
               </motion.div>
               <div>
-                <h2 className="text-3xl font-black tracking-tight">Sua Jornada</h2>
+                <h2 className="text-3xl font-black tracking-tight">Jornada</h2>
                 <p className="text-white/80 font-medium">
                   {completedTasks} de {totalTasks} conquistas desbloqueadas
                 </p>
@@ -312,7 +314,6 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                     </div>
                   </div>
 
-                  {/* Tasks Grid */}
                   <AnimatePresence>
                     {isExpanded && (
                       <motion.div
@@ -320,11 +321,13 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="border-t bg-muted/30"
+                        className={`border-t bg-gradient-to-b from-${colorSet.accent.replace('bg-', '')}/5 to-transparent`}
                       >
                         <div className="p-5 grid gap-3">
                           {phase.tasks.map((task, taskIndex) => {
                             const taskStatus = getTaskStatus(task);
+                            const taskColorIndex = (phaseIndex + taskIndex) % PHASE_COLORS.length;
+                            const taskColor = PHASE_COLORS[taskColorIndex];
                             
                             return (
                               <motion.div
@@ -338,15 +341,17 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                                 }}
                                 className={`
                                   flex items-center gap-4 p-4 rounded-xl cursor-pointer
-                                  transition-all duration-200 group
+                                  transition-all duration-200 group relative overflow-hidden
                                   ${taskStatus === "completed" 
-                                    ? 'bg-green-500/10 border border-green-500/30' 
+                                    ? 'bg-gradient-to-r from-emerald-500/10 to-green-500/5 border-2 border-emerald-400/40' 
                                     : taskStatus === "active"
-                                      ? 'bg-amber-500/10 border border-amber-500/30'
-                                      : 'bg-card border border-border hover:border-primary/50 hover:shadow-md'
+                                      ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-2 border-amber-400/40'
+                                      : `bg-gradient-to-r from-${taskColor.accent.replace('bg-', '')}/5 to-transparent border-2 border-border hover:border-${taskColor.border.replace('border-', '')}/50 hover:shadow-lg hover:shadow-${taskColor.glow}`
                                   }
                                 `}
                               >
+                                {/* Colored left accent bar */}
+                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${taskStatus === "completed" ? 'bg-emerald-500' : taskStatus === "active" ? 'bg-amber-500' : taskColor.accent}`} />
                                 {/* Status Button */}
                                 <motion.button
                                   whileHover={{ scale: 1.1 }}
@@ -363,12 +368,12 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                                   }}
                                   className={`
                                     w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
-                                    transition-all duration-200
+                                    transition-all duration-200 ml-2
                                     ${taskStatus === "completed" 
-                                      ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' 
+                                      ? 'bg-gradient-to-br from-emerald-400 to-green-500 text-white shadow-lg shadow-emerald-500/40' 
                                       : taskStatus === "active"
-                                        ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30 animate-pulse'
-                                        : 'bg-muted text-muted-foreground group-hover:bg-primary/20'
+                                        ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/40 animate-pulse'
+                                        : `bg-gradient-to-br ${taskColor.bg} text-white/80 group-hover:text-white shadow-md ${taskColor.glow}`
                                     }
                                   `}
                                 >

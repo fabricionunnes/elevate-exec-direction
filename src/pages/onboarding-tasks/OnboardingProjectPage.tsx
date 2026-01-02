@@ -44,7 +44,7 @@ import { RealtimeNotifications } from "@/components/onboarding-tasks/RealtimeNot
 import { TasksGameTrailView } from "@/components/onboarding-tasks/TasksGameTrailView";
 import { TasksListView } from "@/components/onboarding-tasks/TasksListView";
 import { TasksScheduleView } from "@/components/onboarding-tasks/TasksScheduleView";
-import { ContactsContractsPanel } from "@/components/onboarding-tasks/ContactsContractsPanel";
+
 
 interface OnboardingTask {
   id: string;
@@ -566,7 +566,7 @@ const OnboardingProjectPage = () => {
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Progresso do Onboarding</span>
+              <span className="text-sm text-muted-foreground">Progresso da Jornada</span>
               <span className="font-medium">
                 {completedTasks}/{totalTasks} tarefas concluídas ({totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0}%)
               </span>
@@ -585,11 +585,7 @@ const OnboardingProjectPage = () => {
           <TabsList className="mb-6 flex-wrap">
             <TabsTrigger value="tasks" className="gap-2">
               <CheckCircle2 className="h-4 w-4" />
-              Trilha
-            </TabsTrigger>
-            <TabsTrigger value="contacts" className="gap-2">
-              <UserCircle className="h-4 w-4" />
-              Contatos
+              Jornada
             </TabsTrigger>
             <TabsTrigger value="briefing" className="gap-2">
               <Building2 className="h-4 w-4" />
@@ -684,17 +680,11 @@ const OnboardingProjectPage = () => {
               <div className="text-center py-12 text-muted-foreground">
                 <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Nenhuma tarefa ainda</p>
-                <p className="text-sm">Adicione tarefas para começar o onboarding</p>
+                <p className="text-sm">Adicione tarefas para começar a jornada</p>
               </div>
             )}
           </TabsContent>
 
-          <TabsContent value="contacts">
-            <ContactsContractsPanel 
-              companyId={project.onboarding_company_id || ""} 
-              isAdmin={isAdmin}
-            />
-          </TabsContent>
 
           <TabsContent value="briefing">
             <CompanyBriefingPanel 

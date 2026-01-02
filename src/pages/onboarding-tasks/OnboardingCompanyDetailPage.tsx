@@ -39,9 +39,11 @@ import {
   Trash2,
   FolderOpen,
   ExternalLink,
+  UserCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
+import { ContactsContractsPanel } from "@/components/onboarding-tasks/ContactsContractsPanel";
 
 interface Staff {
   id: string;
@@ -420,6 +422,10 @@ const OnboardingCompanyDetailPage = () => {
                 <Users className="h-4 w-4" />
                 Equipe
               </TabsTrigger>
+              <TabsTrigger value="contacts" className="gap-2">
+                <UserCircle className="h-4 w-4" />
+                Contatos
+              </TabsTrigger>
               <TabsTrigger value="contract" className="gap-2">
                 <FileText className="h-4 w-4" />
                 Contrato
@@ -427,10 +433,6 @@ const OnboardingCompanyDetailPage = () => {
               <TabsTrigger value="briefing" className="gap-2">
                 <Target className="h-4 w-4" />
                 Briefing & Metas
-              </TabsTrigger>
-              <TabsTrigger value="stakeholders" className="gap-2">
-                <Briefcase className="h-4 w-4" />
-                Stakeholders
               </TabsTrigger>
             </TabsList>
 
@@ -654,6 +656,16 @@ const OnboardingCompanyDetailPage = () => {
               </Card>
             </TabsContent>
 
+            {/* Contacts Tab */}
+            {!isNew && companyId && (
+              <TabsContent value="contacts">
+                <ContactsContractsPanel 
+                  companyId={companyId} 
+                  isAdmin={canEditCompany}
+                />
+              </TabsContent>
+            )}
+
             {/* Contract Tab */}
             <TabsContent value="contract">
               <Card>
@@ -790,86 +802,6 @@ const OnboardingCompanyDetailPage = () => {
               </Card>
             </TabsContent>
 
-            {/* Stakeholders Tab */}
-            <TabsContent value="stakeholders">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Stakeholders</CardTitle>
-                      <CardDescription>Contatos principais da empresa</CardDescription>
-                    </div>
-                    <Button type="button" onClick={addStakeholder}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {form.stakeholders.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Nenhum stakeholder cadastrado</p>
-                      <Button type="button" variant="outline" className="mt-4" onClick={addStakeholder}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Adicionar Stakeholder
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {form.stakeholders.map((stakeholder, index) => (
-                        <Card key={index}>
-                          <CardContent className="pt-4">
-                            <div className="flex justify-between items-start mb-4">
-                              <span className="font-medium">Stakeholder {index + 1}</span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeStakeholder(index)}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label>Nome</Label>
-                                <Input
-                                  value={stakeholder.name}
-                                  onChange={(e) => updateStakeholder(index, "name", e.target.value)}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Cargo</Label>
-                                <Input
-                                  value={stakeholder.role}
-                                  onChange={(e) => updateStakeholder(index, "role", e.target.value)}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Email</Label>
-                                <Input
-                                  type="email"
-                                  value={stakeholder.email}
-                                  onChange={(e) => updateStakeholder(index, "email", e.target.value)}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Telefone</Label>
-                                <Input
-                                  value={stakeholder.phone}
-                                  onChange={(e) => updateStakeholder(index, "phone", e.target.value)}
-                                />
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
         </form>
 
