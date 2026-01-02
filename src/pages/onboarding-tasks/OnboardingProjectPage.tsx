@@ -256,6 +256,39 @@ const OnboardingProjectPage = () => {
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!isStaffAdmin) {
+      toast.error("Apenas administradores podem excluir projetos");
+      return;
+    }
+    
+    if (!confirm(`Tem certeza que deseja excluir o projeto "${project?.product_name}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    
+    try {
+      // Delete related data first
+      await supabase.from("onboarding_tasks").delete().eq("project_id", projectId);
+      await supabase.from("onboarding_tickets").delete().eq("project_id", projectId);
+      await supabase.from("onboarding_users").delete().eq("project_id", projectId);
+      await supabase.from("onboarding_ai_chat").delete().eq("project_id", projectId);
+      
+      // Delete the project
+      const { error } = await supabase
+        .from("onboarding_projects")
+        .delete()
+        .eq("id", projectId);
+
+      if (error) throw error;
+      
+      toast.success("Projeto excluído com sucesso");
+      navigate("/onboarding-tasks");
+    } catch (error: any) {
+      console.error("Error deleting project:", error);
+      toast.error("Erro ao excluir projeto");
+    }
+  };
+
   const togglePhase = (phaseName: string) => {
     setExpandedPhases(prev => {
       const newSet = new Set(prev);
@@ -374,6 +407,15 @@ const OnboardingProjectPage = () => {
               <Users className="h-4 w-4 mr-2" />
               Usuários ({users.length})
             </Button>
+            {isStaffAdmin && (
+              <Button 
+                variant="destructive" 
+                size="icon"
+                onClick={handleDeleteProject}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
 
