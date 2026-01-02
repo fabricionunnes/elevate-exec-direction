@@ -35,7 +35,8 @@ import { ManageUsersDialog } from "@/components/onboarding-tasks/ManageUsersDial
 import { TaskDetailsDialog } from "@/components/onboarding-tasks/TaskDetailsDialog";
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { ProjectVariablesPanel } from "@/components/onboarding-tasks/ProjectVariablesPanel";
-import { Settings } from "lucide-react";
+import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
+import { Settings, Sparkles } from "lucide-react";
 
 interface OnboardingTask {
   id: string;
@@ -502,6 +503,10 @@ const OnboardingProjectPage = () => {
               <MessageSquare className="h-4 w-4" />
               Chamados
             </TabsTrigger>
+            <TabsTrigger value="ai-coach" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              IA Coach
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks">
@@ -672,6 +677,15 @@ const OnboardingProjectPage = () => {
 
           <TabsContent value="tickets">
             <TicketsPanel projectId={projectId!} users={users} />
+          </TabsContent>
+
+          <TabsContent value="ai-coach">
+            <ProjectAIChat
+              projectId={projectId!}
+              companyId={project.onboarding_company_id || ""}
+              projectName={project.product_name}
+              companyName={project.onboarding_company?.name}
+            />
           </TabsContent>
         </Tabs>
       </div>
