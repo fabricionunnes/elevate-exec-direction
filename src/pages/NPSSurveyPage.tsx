@@ -214,6 +214,7 @@ export default function NPSSurveyPage() {
               <div className="space-y-2">
                 <Label htmlFor="wouldRecommendWhy">
                   Por que você deu essa nota?
+                  <span className="text-destructive ml-1">*</span>
                 </Label>
                 <Textarea
                   id="wouldRecommendWhy"
@@ -221,6 +222,7 @@ export default function NPSSurveyPage() {
                   onChange={(e) => setWouldRecommendWhy(e.target.value)}
                   placeholder="Conte-nos o motivo da sua avaliação..."
                   rows={3}
+                  required
                 />
               </div>
 
@@ -228,6 +230,7 @@ export default function NPSSurveyPage() {
               <div className="space-y-2">
                 <Label htmlFor="whatCanImprove">
                   O que podemos melhorar?
+                  <span className="text-destructive ml-1">*</span>
                 </Label>
                 <Textarea
                   id="whatCanImprove"
@@ -235,13 +238,15 @@ export default function NPSSurveyPage() {
                   onChange={(e) => setWhatCanImprove(e.target.value)}
                   placeholder="Sugestões de melhoria..."
                   rows={3}
+                  required
                 />
               </div>
 
               {/* General feedback */}
               <div className="space-y-2">
                 <Label htmlFor="feedback">
-                  Comentários adicionais (opcional)
+                  Comentários adicionais
+                  <span className="text-destructive ml-1">*</span>
                 </Label>
                 <Textarea
                   id="feedback"
@@ -249,28 +254,37 @@ export default function NPSSurveyPage() {
                   onChange={(e) => setFeedback(e.target.value)}
                   placeholder="Qualquer outro comentário que queira compartilhar..."
                   rows={3}
+                  required
                 />
               </div>
 
               {/* Respondent info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
                 <div className="space-y-2">
-                  <Label htmlFor="respondentName">Seu nome (opcional)</Label>
+                  <Label htmlFor="respondentName">
+                    Seu nome
+                    <span className="text-destructive ml-1">*</span>
+                  </Label>
                   <Input
                     id="respondentName"
                     value={respondentName}
                     onChange={(e) => setRespondentName(e.target.value)}
                     placeholder="Nome completo"
+                    required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="respondentEmail">Seu e-mail (opcional)</Label>
+                  <Label htmlFor="respondentEmail">
+                    Seu e-mail
+                    <span className="text-destructive ml-1">*</span>
+                  </Label>
                   <Input
                     id="respondentEmail"
                     type="email"
                     value={respondentEmail}
                     onChange={(e) => setRespondentEmail(e.target.value)}
                     placeholder="email@exemplo.com"
+                    required
                   />
                 </div>
               </div>
