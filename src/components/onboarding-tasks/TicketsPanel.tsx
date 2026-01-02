@@ -177,7 +177,7 @@ export const TicketsPanel = ({ projectId, users }: TicketsPanelProps) => {
     }
   };
 
-  const handleUpdateStatus = async (ticketId: string, status: string) => {
+  const handleUpdateStatus = async (ticketId: string, status: "open" | "in_progress" | "resolved" | "closed") => {
     try {
       const { error } = await supabase
         .from("onboarding_tickets")

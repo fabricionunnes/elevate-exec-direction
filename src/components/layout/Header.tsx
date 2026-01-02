@@ -73,6 +73,7 @@ const navigation = [
   { name: "Planejamento", href: "/portal" },
   { name: "Diagnóstico", href: "/diagnostico" },
   { name: "FAQ", href: "/faq" },
+  { name: "Login", href: "/portal/login" },
 ];
 
 export function Header() {
