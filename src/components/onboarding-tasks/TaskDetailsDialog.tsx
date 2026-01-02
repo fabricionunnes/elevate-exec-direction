@@ -49,6 +49,7 @@ interface OnboardingTask {
   observations: string | null;
   sort_order: number;
   project_id?: string;
+  template_id?: string | null;
 }
 
 interface OnboardingUser {
@@ -67,6 +68,9 @@ interface TaskDetailsDialogProps {
   companyId?: string;
   projectId?: string;
   onDelete?: (taskId: string) => void;
+  currentUserRole?: "admin" | "cs" | "consultant" | "client" | null;
+  currentUserId?: string | null;
+  taskCreatedBy?: string | null;
 }
 
 export const TaskDetailsDialog = ({
@@ -78,6 +82,9 @@ export const TaskDetailsDialog = ({
   companyId,
   projectId,
   onDelete,
+  currentUserRole,
+  currentUserId,
+  taskCreatedBy,
 }: TaskDetailsDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [editedTask, setEditedTask] = useState<Partial<OnboardingTask>>({});
@@ -95,24 +102,51 @@ export const TaskDetailsDialog = ({
     }
   }, [task]);
 
+  // Determine what the consultant can edit
+  // Consultant can only edit dates/assignee of tasks they created (not templates)
+  const isConsultant = currentUserRole === "consultant";
+  const isTaskFromTemplate = task?.template_id !== null && task?.template_id !== undefined;
+  const isTaskCreatedByCurrentUser = taskCreatedBy === currentUserId;
+  
+  // Consultant can edit dates/assignee only on their own non-template tasks
+  const canEditDatesAndAssignee = isAdmin || (isConsultant && isTaskCreatedByCurrentUser && !isTaskFromTemplate);
+  
+  // Consultant can always change status and observations
+  const canEditStatusAndObservations = isAdmin || isConsultant || currentUserRole === "cs";
+  
+  // Only admin/CS can edit title and description
+  const canEditTitleAndDescription = isAdmin || currentUserRole === "cs";
+  
+  // Only admin can delete
+  const canDelete = isAdmin;
+
   const handleSave = async () => {
     if (!task) return;
 
     setLoading(true);
     try {
-      const updates: any = {
-        title: editedTask.title,
-        description: editedTask.description,
-        due_date: editedTask.due_date,
-        status: editedTask.status,
-        assignee_id: editedTask.assignee_id || null,
-        observations: editedTask.observations,
-      };
+      const updates: any = {};
 
-      if (editedTask.status === "completed" && task.status !== "completed") {
-        updates.completed_at = new Date().toISOString();
-      } else if (editedTask.status !== "completed") {
-        updates.completed_at = null;
+      // Only include fields the user can edit
+      if (canEditTitleAndDescription) {
+        updates.title = editedTask.title;
+        updates.description = editedTask.description;
+      }
+
+      if (canEditStatusAndObservations) {
+        updates.status = editedTask.status;
+        updates.observations = editedTask.observations;
+        
+        if (editedTask.status === "completed" && task.status !== "completed") {
+          updates.completed_at = new Date().toISOString();
+        } else if (editedTask.status !== "completed") {
+          updates.completed_at = null;
+        }
+      }
+
+      if (canEditDatesAndAssignee) {
+        updates.due_date = editedTask.due_date;
+        updates.assignee_id = editedTask.assignee_id || null;
       }
 
       const { error } = await supabase
@@ -165,7 +199,7 @@ export const TaskDetailsDialog = ({
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>Detalhes da Tarefa</DialogTitle>
-            {isAdmin && onDelete && (
+            {canDelete && onDelete && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
@@ -197,7 +231,7 @@ export const TaskDetailsDialog = ({
             <Input
               value={editedTask.title || ""}
               onChange={(e) => setEditedTask({ ...editedTask, title: e.target.value })}
-              disabled={!isAdmin}
+              disabled={!canEditTitleAndDescription}
             />
           </div>
 
@@ -207,7 +241,7 @@ export const TaskDetailsDialog = ({
               value={editedTask.description || ""}
               onChange={(e) => setEditedTask({ ...editedTask, description: e.target.value })}
               rows={3}
-              disabled={!isAdmin}
+              disabled={!canEditTitleAndDescription}
             />
           </div>
 
@@ -219,6 +253,7 @@ export const TaskDetailsDialog = ({
                 onValueChange={(value: "pending" | "in_progress" | "completed") =>
                   setEditedTask({ ...editedTask, status: value })
                 }
+                disabled={!canEditStatusAndObservations}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -241,7 +276,7 @@ export const TaskDetailsDialog = ({
                       "w-full justify-start text-left font-normal",
                       !editedTask.due_date && "text-muted-foreground"
                     )}
-                    disabled={!isAdmin}
+                    disabled={!canEditDatesAndAssignee}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {editedTask.due_date
@@ -274,7 +309,7 @@ export const TaskDetailsDialog = ({
               onValueChange={(value) =>
                 setEditedTask({ ...editedTask, assignee_id: value === "none" ? null : value })
               }
-              disabled={!isAdmin}
+              disabled={!canEditDatesAndAssignee}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecionar responsável" />
@@ -300,6 +335,7 @@ export const TaskDetailsDialog = ({
               value={editedTask.observations || ""}
               onChange={(e) => setEditedTask({ ...editedTask, observations: e.target.value })}
               rows={3}
+              disabled={!canEditStatusAndObservations}
             />
           </div>
 
