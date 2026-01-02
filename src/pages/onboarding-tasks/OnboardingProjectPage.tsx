@@ -228,14 +228,58 @@ const OnboardingProjectPage = () => {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "Pendente";
+      case "in_progress":
+        return "Em andamento";
+      case "completed":
+        return "Concluída";
+      default:
+        return status;
+    }
+  };
+
+  const logTaskHistory = async (params: {
+    taskId: string;
+    action: string;
+    fieldChanged?: string | null;
+    oldValue?: string | null;
+    newValue?: string | null;
+  }) => {
+    if (!currentUserId) return;
+
+    const isStaffActor = isStaffAdmin || currentUserRole === "admin" || currentUserRole === "cs" || currentUserRole === "consultant";
+
+    const insertData: any = {
+      task_id: params.taskId,
+      action: params.action,
+      field_changed: params.fieldChanged ?? null,
+      old_value: params.oldValue ?? null,
+      new_value: params.newValue ?? null,
+    };
+
+    if (isStaffActor) {
+      insertData.staff_id = currentUserId;
+    } else {
+      insertData.user_id = currentUserId;
+    }
+
+    const { error } = await supabase.from("onboarding_task_history").insert(insertData);
+    if (error) {
+      console.error("Error logging task history:", error);
+    }
+  };
+
   const handleStatusChange = async (taskId: string, newStatus: "pending" | "in_progress" | "completed") => {
     try {
-      const task = tasks.find(t => t.id === taskId);
+      const task = tasks.find((t) => t.id === taskId);
       const updates: any = { status: newStatus };
-      
+
       if (newStatus === "completed") {
         updates.completed_at = new Date().toISOString();
-        
+
         // If task is recurring, create next occurrence
         if (task?.recurrence) {
           await createNextRecurringTask(task);
@@ -244,14 +288,22 @@ const OnboardingProjectPage = () => {
         updates.completed_at = null;
       }
 
-      const { error } = await supabase
-        .from("onboarding_tasks")
-        .update(updates)
-        .eq("id", taskId);
-
+      const { error } = await supabase.from("onboarding_tasks").update(updates).eq("id", taskId);
       if (error) throw error;
+
+      // Log history (status changes done via the list also need to be registered)
+      if (task && task.status !== newStatus) {
+        await logTaskHistory({
+          taskId,
+          action: "status_change",
+          fieldChanged: "status",
+          oldValue: getStatusLabel(task.status),
+          newValue: getStatusLabel(newStatus),
+        });
+      }
+
       fetchProjectData();
-      
+
       if (task?.recurrence && newStatus === "completed") {
         toast.success("Tarefa concluída! Nova tarefa recorrente criada.");
       }
