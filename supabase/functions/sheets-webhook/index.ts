@@ -93,21 +93,32 @@ const PRODUCT_MAPPING: Record<string, { id: string; name: string }> = {
 function normalizeProductName(name: string): { id: string; name: string } | null {
   if (!name) return null;
 
+  const raw = name.toLowerCase().trim();
+
+  // Primeiro tenta o valor inteiro (caso seja exatamente um dos mapeados)
+  const direct = PRODUCT_MAPPING[raw];
+  if (direct) return direct;
+
   // Aceita múltiplos serviços na mesma célula (ex: "ads, social" / "ads + social")
-  const candidates = name
-    .toLowerCase()
+  const candidates = raw
     .split(/[,;+\/]|\s+e\s+/g)
     .map((s) => s.trim())
     .filter(Boolean);
-
-  // Primeiro tenta o valor inteiro (caso seja exatamente um dos mapeados)
-  const direct = PRODUCT_MAPPING[name.toLowerCase().trim()];
-  if (direct) return direct;
 
   for (const c of candidates) {
     const mapped = PRODUCT_MAPPING[c];
     if (mapped) return mapped;
   }
+
+  // Fallback: match por "contém" (ex: "UNV Fractional CRO (novo)")
+  // Escolhe o match mais específico (maior chave).
+  let bestKey: string | null = null;
+  for (const key of Object.keys(PRODUCT_MAPPING)) {
+    if (raw.includes(key)) {
+      if (!bestKey || key.length > bestKey.length) bestKey = key;
+    }
+  }
+  if (bestKey) return PRODUCT_MAPPING[bestKey];
 
   return null;
 }
