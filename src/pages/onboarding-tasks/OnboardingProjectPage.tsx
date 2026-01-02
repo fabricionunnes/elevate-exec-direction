@@ -50,7 +50,7 @@ interface OnboardingUser {
   id: string;
   name: string;
   email: string;
-  role: "cs" | "consultant" | "client";
+  role: "admin" | "cs" | "consultant" | "client";
   password_changed: boolean;
 }
 
@@ -72,6 +72,7 @@ const OnboardingProjectPage = () => {
   const [selectedTask, setSelectedTask] = useState<OnboardingTask | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [activeTab, setActiveTab] = useState("tasks");
+  const [currentUserRole, setCurrentUserRole] = useState<"admin" | "cs" | "consultant" | "client" | null>(null);
 
   useEffect(() => {
     if (projectId) {
@@ -81,6 +82,21 @@ const OnboardingProjectPage = () => {
 
   const fetchProjectData = async () => {
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: onboardingUser } = await supabase
+          .from("onboarding_users")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("project_id", projectId)
+          .single();
+        
+        if (onboardingUser) {
+          setCurrentUserRole(onboardingUser.role as "admin" | "cs" | "consultant" | "client");
+        }
+      }
+
       // Fetch project
       const { data: projectData, error: projectError } = await supabase
         .from("onboarding_projects")
@@ -161,6 +177,10 @@ const OnboardingProjectPage = () => {
   };
 
   const handleDeleteTask = async (taskId: string) => {
+    if (currentUserRole !== "admin") {
+      toast.error("Apenas administradores podem excluir tarefas");
+      return;
+    }
     try {
       const { error } = await supabase
         .from("onboarding_tasks")
@@ -176,6 +196,8 @@ const OnboardingProjectPage = () => {
     }
   };
 
+  const isAdmin = currentUserRole === "admin";
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
@@ -189,6 +211,8 @@ const OnboardingProjectPage = () => {
 
   const getRoleBadge = (role: string) => {
     switch (role) {
+      case "admin":
+        return <Badge className="bg-red-500 text-xs">Admin</Badge>;
       case "cs":
         return <Badge className="bg-blue-500 text-xs">CS</Badge>;
       case "consultant":
@@ -350,25 +374,27 @@ const OnboardingProjectPage = () => {
                           </div>
                         )}
 
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteTask(task.id);
-                              }}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {isAdmin && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteTask(task.id);
+                                }}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -404,6 +430,7 @@ const OnboardingProjectPage = () => {
         users={users}
         onClose={() => setSelectedTask(null)}
         onTaskUpdated={fetchProjectData}
+        isAdmin={isAdmin}
       />
     </div>
   );

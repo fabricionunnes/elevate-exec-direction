@@ -55,7 +55,7 @@ const OnboardingLoginPage = () => {
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
-  const [signupRole, setSignupRole] = useState<"cs" | "consultant" | "client" | "">("");
+  const [signupRole, setSignupRole] = useState<"admin" | "cs" | "consultant" | "client" | "">("");
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [companyName, setCompanyName] = useState("");
@@ -72,7 +72,7 @@ const OnboardingLoginPage = () => {
 
   // Load companies for CS/consultant signup
   useEffect(() => {
-    if (signupRole === "cs" || signupRole === "consultant") {
+    if (signupRole === "admin" || signupRole === "cs" || signupRole === "consultant") {
       loadCompanies();
     }
   }, [signupRole]);
@@ -182,7 +182,7 @@ const OnboardingLoginPage = () => {
       }
     }
 
-    if ((signupRole === "cs" || signupRole === "consultant") && selectedCompanies.length === 0) {
+    if ((signupRole === "admin" || signupRole === "cs" || signupRole === "consultant") && selectedCompanies.length === 0) {
       toast.error("Selecione pelo menos uma empresa");
       return;
     }
@@ -198,7 +198,7 @@ const OnboardingLoginPage = () => {
           role: signupRole,
           company_name: signupRole === "client" ? companyName.trim() : null,
           selected_products: signupRole === "client" ? selectedProducts : null,
-          selected_companies: (signupRole === "cs" || signupRole === "consultant") ? selectedCompanies : null,
+          selected_companies: (signupRole === "admin" || signupRole === "cs" || signupRole === "consultant") ? selectedCompanies : null,
           is_signup: true,
         },
       });
@@ -433,7 +433,7 @@ const OnboardingLoginPage = () => {
 
                 <div className="space-y-2">
                   <Label className="text-slate-300">Tipo de usuário</Label>
-                  <Select value={signupRole} onValueChange={(v) => setSignupRole(v as "cs" | "consultant" | "client")}>
+                  <Select value={signupRole} onValueChange={(v) => setSignupRole(v as "admin" | "cs" | "consultant" | "client")}>
                     <SelectTrigger className="bg-slate-800/50 border-slate-700 text-white">
                       <SelectValue placeholder="Selecione seu perfil" />
                     </SelectTrigger>
@@ -441,6 +441,7 @@ const OnboardingLoginPage = () => {
                       <SelectItem value="client">Cliente</SelectItem>
                       <SelectItem value="cs">CS (Customer Success)</SelectItem>
                       <SelectItem value="consultant">Consultor</SelectItem>
+                      <SelectItem value="admin">Administrador</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -493,7 +494,7 @@ const OnboardingLoginPage = () => {
                 )}
 
                 {/* CS/Consultant-specific fields */}
-                {(signupRole === "cs" || signupRole === "consultant") && (
+                {(signupRole === "admin" || signupRole === "cs" || signupRole === "consultant") && (
                   <div className="space-y-2">
                     <Label className="text-slate-300 flex items-center gap-2">
                       <Building2 className="w-4 h-4" />

@@ -42,7 +42,7 @@ interface OnboardingUser {
   id: string;
   name: string;
   email: string;
-  role: "cs" | "consultant" | "client";
+  role: "admin" | "cs" | "consultant" | "client";
 }
 
 interface TaskDetailsDialogProps {
@@ -50,6 +50,7 @@ interface TaskDetailsDialogProps {
   users: OnboardingUser[];
   onClose: () => void;
   onTaskUpdated: () => void;
+  isAdmin?: boolean;
 }
 
 export const TaskDetailsDialog = ({
@@ -57,6 +58,7 @@ export const TaskDetailsDialog = ({
   users,
   onClose,
   onTaskUpdated,
+  isAdmin = false,
 }: TaskDetailsDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [editedTask, setEditedTask] = useState<Partial<OnboardingTask>>({});
@@ -127,6 +129,8 @@ export const TaskDetailsDialog = ({
 
   const getRoleBadge = (role: string) => {
     switch (role) {
+      case "admin":
+        return <Badge className="bg-red-500 text-xs ml-2">Admin</Badge>;
       case "cs":
         return <Badge className="bg-blue-500 text-xs ml-2">CS</Badge>;
       case "consultant":
@@ -153,6 +157,7 @@ export const TaskDetailsDialog = ({
             <Input
               value={editedTask.title || ""}
               onChange={(e) => setEditedTask({ ...editedTask, title: e.target.value })}
+              disabled={!isAdmin}
             />
           </div>
 
@@ -162,6 +167,7 @@ export const TaskDetailsDialog = ({
               value={editedTask.description || ""}
               onChange={(e) => setEditedTask({ ...editedTask, description: e.target.value })}
               rows={3}
+              disabled={!isAdmin}
             />
           </div>
 
