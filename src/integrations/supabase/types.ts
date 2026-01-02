@@ -891,6 +891,7 @@ export type Database = {
           phase_order: number | null
           priority: string | null
           product_id: string
+          recurrence: string | null
           responsible_role: string | null
           sort_order: number
           title: string
@@ -906,6 +907,7 @@ export type Database = {
           phase_order?: number | null
           priority?: string | null
           product_id: string
+          recurrence?: string | null
           responsible_role?: string | null
           sort_order?: number
           title: string
@@ -921,6 +923,7 @@ export type Database = {
           phase_order?: number | null
           priority?: string | null
           product_id?: string
+          recurrence?: string | null
           responsible_role?: string | null
           sort_order?: number
           title?: string
@@ -940,11 +943,13 @@ export type Database = {
           observations: string | null
           priority: string | null
           project_id: string
+          recurrence: string | null
           responsible_staff_id: string | null
           sort_order: number
           start_date: string | null
           status: Database["public"]["Enums"]["onboarding_task_status"]
           tags: string[] | null
+          template_id: string | null
           title: string
           updated_at: string
         }
@@ -960,11 +965,13 @@ export type Database = {
           observations?: string | null
           priority?: string | null
           project_id: string
+          recurrence?: string | null
           responsible_staff_id?: string | null
           sort_order?: number
           start_date?: string | null
           status?: Database["public"]["Enums"]["onboarding_task_status"]
           tags?: string[] | null
+          template_id?: string | null
           title: string
           updated_at?: string
         }
@@ -980,11 +987,13 @@ export type Database = {
           observations?: string | null
           priority?: string | null
           project_id?: string
+          recurrence?: string | null
           responsible_staff_id?: string | null
           sort_order?: number
           start_date?: string | null
           status?: Database["public"]["Enums"]["onboarding_task_status"]
           tags?: string[] | null
+          template_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -1008,6 +1017,13 @@ export type Database = {
             columns: ["responsible_staff_id"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_tasks_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_task_templates"
             referencedColumns: ["id"]
           },
         ]
