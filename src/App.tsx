@@ -63,6 +63,7 @@ import OnboardingCompanyDetailPage from "./pages/onboarding-tasks/OnboardingComp
 import OnboardingStaffPage from "./pages/onboarding-tasks/OnboardingStaffPage";
 import ClientOnboardingPage from "./pages/onboarding-tasks/ClientOnboardingPage";
 import OnboardingLoginPage from "./pages/onboarding-tasks/OnboardingLoginPage";
+import OnboardingNewCompanyPage from "./pages/onboarding-tasks/OnboardingNewCompanyPage";
 
 const queryClient = new QueryClient();
 
@@ -114,6 +115,7 @@ const App = () => (
           <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
           <Route path="/onboarding-tasks/login" element={<OnboardingLoginPage />} />
           <Route path="/onboarding-tasks/companies" element={<OnboardingCompaniesPage />} />
+          <Route path="/onboarding-tasks/companies/new" element={<OnboardingNewCompanyPage />} />
           <Route path="/onboarding-tasks/companies/:companyId" element={<OnboardingCompanyDetailPage />} />
           <Route path="/onboarding-tasks/staff" element={<OnboardingStaffPage />} />
           <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
