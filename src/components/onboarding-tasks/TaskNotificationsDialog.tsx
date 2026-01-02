@@ -101,14 +101,23 @@ export const TaskNotificationsDialog = () => {
       
       // Only show dialog if there are notifications
       if (notifications.length > 0) {
-        // Check if we already showed notifications today
+        // Check if we're coming back from handling a notification
+        const notificationFlowActive = localStorage.getItem("notification_flow_active");
         const lastShown = localStorage.getItem("task_notifications_last_shown");
         const todayKey = format(new Date(), "yyyy-MM-dd");
         
-        if (lastShown !== todayKey) {
+        if (notificationFlowActive === "true") {
+          // Coming back from completing a task, show remaining
+          setOpen(true);
+          localStorage.removeItem("notification_flow_active");
+        } else if (lastShown !== todayKey) {
+          // First time today
           setOpen(true);
           localStorage.setItem("task_notifications_last_shown", todayKey);
         }
+      } else {
+        // No more tasks, clear the flow flag
+        localStorage.removeItem("notification_flow_active");
       }
     } catch (error) {
       console.error("Error checking notifications:", error);
@@ -118,6 +127,8 @@ export const TaskNotificationsDialog = () => {
   };
 
   const handleTaskClick = (task: TaskNotification) => {
+    // Set flag to indicate we're in notification flow
+    localStorage.setItem("notification_flow_active", "true");
     setOpen(false);
     // Navigate to project page with task ID in state so it can be opened
     navigate(`/onboarding-tasks/${task.project_id}`, { 
