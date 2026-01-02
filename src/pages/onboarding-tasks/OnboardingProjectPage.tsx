@@ -38,9 +38,11 @@ import { ProjectVariablesPanel } from "@/components/onboarding-tasks/ProjectVari
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
-import { Settings, Sparkles, Building2, Wand2, Target } from "lucide-react";
+import { Settings, Sparkles, Building2, Wand2, Target, UserCircle, Route, LayoutList } from "lucide-react";
 import { MonthlyGoalsCard } from "@/components/onboarding-tasks/MonthlyGoalsCard";
 import { RealtimeNotifications } from "@/components/onboarding-tasks/RealtimeNotifications";
+import { TasksTrailView } from "@/components/onboarding-tasks/TasksTrailView";
+import { ContactsContractsPanel } from "@/components/onboarding-tasks/ContactsContractsPanel";
 
 interface OnboardingTask {
   id: string;
@@ -124,6 +126,7 @@ const OnboardingProjectPage = () => {
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [isStaffAdmin, setIsStaffAdmin] = useState(false);
   const [showGenerateTasksDialog, setShowGenerateTasksDialog] = useState(false);
+  const [tasksViewMode, setTasksViewMode] = useState<"trail" | "list">("trail");
 
   useEffect(() => {
     if (projectId) {
@@ -577,10 +580,14 @@ const OnboardingProjectPage = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 flex-wrap">
             <TabsTrigger value="tasks" className="gap-2">
               <CheckCircle2 className="h-4 w-4" />
-              Tarefas
+              Trilha
+            </TabsTrigger>
+            <TabsTrigger value="contacts" className="gap-2">
+              <UserCircle className="h-4 w-4" />
+              Contatos
             </TabsTrigger>
             <TabsTrigger value="briefing" className="gap-2">
               <Building2 className="h-4 w-4" />
@@ -596,7 +603,7 @@ const OnboardingProjectPage = () => {
             </TabsTrigger>
             <TabsTrigger value="ai-coach" className="gap-2">
               <Sparkles className="h-4 w-4" />
-              IA Assistente
+              IA Coach
             </TabsTrigger>
             <TabsTrigger value="goals" className="gap-2">
               <Target className="h-4 w-4" />
@@ -605,161 +612,197 @@ const OnboardingProjectPage = () => {
           </TabsList>
 
           <TabsContent value="tasks">
-            {/* Add task */}
-            {isAdmin && (
-              <div className="flex gap-2 mb-6">
-                <Input
-                  placeholder="Adicionar nova tarefa..."
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
-                />
-                <Button onClick={handleAddTask}>
-                  <Plus className="h-4 w-4" />
+            {/* View Toggle and Add Task */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={tasksViewMode === "trail" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setTasksViewMode("trail")}
+                >
+                  <Route className="h-4 w-4 mr-2" />
+                  Trilha
+                </Button>
+                <Button
+                  variant={tasksViewMode === "list" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setTasksViewMode("list")}
+                >
+                  <LayoutList className="h-4 w-4 mr-2" />
+                  Lista
                 </Button>
               </div>
-            )}
-
-            {/* Phases */}
-            <div className="space-y-4">
-              {sortedPhases.map((phase) => (
-                <Collapsible
-                  key={phase.name}
-                  open={expandedPhases.has(phase.name)}
-                  onOpenChange={() => togglePhase(phase.name)}
-                >
-                  <Card>
-                    <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {expandedPhases.has(phase.name) ? (
-                              <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                            ) : (
-                              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                            )}
-                            <span className="text-lg">{PHASE_EMOJIS[phase.name] || "📋"}</span>
-                            <CardTitle className="text-lg">{phase.name}</CardTitle>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm text-muted-foreground">
-                              {phase.completedCount}/{phase.tasks.length} concluídas
-                            </span>
-                            <div className="w-24 bg-muted rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full transition-all ${PHASE_COLORS[phase.name] || "bg-primary"}`}
-                                style={{ width: `${phase.tasks.length ? (phase.completedCount / phase.tasks.length) * 100 : 0}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </CardHeader>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <CardContent className="pt-0 pb-4">
-                        <div className="space-y-2">
-                          {phase.tasks.map((task) => (
-                            <div
-                              key={task.id}
-                              className={`flex items-center gap-3 p-3 rounded-lg border bg-card hover:shadow-sm cursor-pointer transition-all ${
-                                task.status === "completed" ? "opacity-60" : ""
-                              }`}
-                              onClick={() => setSelectedTask(task)}
-                            >
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const nextStatus =
-                                    task.status === "pending"
-                                      ? "in_progress"
-                                      : task.status === "in_progress"
-                                      ? "completed"
-                                      : "pending";
-                                  handleStatusChange(task.id, nextStatus);
-                                }}
-                              >
-                                {getStatusIcon(task.status)}
-                              </button>
-
-                              <div className="flex-1 min-w-0">
-                                <p
-                                  className={`font-medium ${
-                                    task.status === "completed" ? "line-through text-muted-foreground" : ""
-                                  }`}
-                                >
-                                  {task.title}
-                                </p>
-                                {task.description && (
-                                  <p className="text-sm text-muted-foreground truncate">
-                                    {task.description}
-                                  </p>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                {task.recurrence && (
-                                  <Badge variant="outline" className="text-xs gap-1">
-                                    <RefreshCw className="h-3 w-3" />
-                                    {task.recurrence === 'daily' ? 'Diário' : 
-                                     task.recurrence === 'weekly' ? 'Semanal' : 
-                                     task.recurrence === 'monthly' ? 'Mensal' : task.recurrence}
-                                  </Badge>
-                                )}
-                                
-                                {getPriorityBadge(task.priority)}
-                                
-                                {task.responsible_staff && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {task.responsible_staff.name}
-                                  </span>
-                                )}
-
-                                {task.due_date && (
-                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    <Calendar className="h-3 w-3" />
-                                    {format(new Date(task.due_date), "dd/MM")}
-                                  </div>
-                                )}
-
-                                {isAdmin && (
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDeleteTask(task.id);
-                                        }}
-                                        className="text-destructive"
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Excluir
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-              ))}
-
-              {tasks.length === 0 && (
-                <div className="text-center py-12 text-muted-foreground">
-                  <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhuma tarefa ainda</p>
-                  <p className="text-sm">Adicione tarefas para começar o onboarding</p>
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Adicionar nova tarefa..."
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
+                    className="w-64"
+                  />
+                  <Button onClick={handleAddTask}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
               )}
             </div>
+
+            {tasksViewMode === "trail" ? (
+              <TasksTrailView
+                phases={sortedPhases}
+                onTaskClick={setSelectedTask}
+                onStatusChange={handleStatusChange}
+              />
+            ) : (
+              /* List View */
+              <div className="space-y-4">
+                {sortedPhases.map((phase) => (
+                  <Collapsible
+                    key={phase.name}
+                    open={expandedPhases.has(phase.name)}
+                    onOpenChange={() => togglePhase(phase.name)}
+                  >
+                    <Card>
+                      <CollapsibleTrigger asChild>
+                        <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {expandedPhases.has(phase.name) ? (
+                                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                              )}
+                              <span className="text-lg">{PHASE_EMOJIS[phase.name] || "📋"}</span>
+                              <CardTitle className="text-lg">{phase.name}</CardTitle>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm text-muted-foreground">
+                                {phase.completedCount}/{phase.tasks.length} concluídas
+                              </span>
+                              <div className="w-24 bg-muted rounded-full h-2">
+                                <div
+                                  className={`h-2 rounded-full transition-all ${PHASE_COLORS[phase.name] || "bg-primary"}`}
+                                  style={{ width: `${phase.tasks.length ? (phase.completedCount / phase.tasks.length) * 100 : 0}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <CardContent className="pt-0 pb-4">
+                          <div className="space-y-2">
+                            {phase.tasks.map((task) => (
+                              <div
+                                key={task.id}
+                                className={`flex items-center gap-3 p-3 rounded-lg border bg-card hover:shadow-sm cursor-pointer transition-all ${
+                                  task.status === "completed" ? "opacity-60" : ""
+                                }`}
+                                onClick={() => setSelectedTask(task)}
+                              >
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const nextStatus =
+                                      task.status === "pending"
+                                        ? "in_progress"
+                                        : task.status === "in_progress"
+                                        ? "completed"
+                                        : "pending";
+                                    handleStatusChange(task.id, nextStatus);
+                                  }}
+                                >
+                                  {getStatusIcon(task.status)}
+                                </button>
+
+                                <div className="flex-1 min-w-0">
+                                  <p
+                                    className={`font-medium ${
+                                      task.status === "completed" ? "line-through text-muted-foreground" : ""
+                                    }`}
+                                  >
+                                    {task.title}
+                                  </p>
+                                  {task.description && (
+                                    <p className="text-sm text-muted-foreground truncate">
+                                      {task.description}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {task.recurrence && (
+                                    <Badge variant="outline" className="text-xs gap-1">
+                                      <RefreshCw className="h-3 w-3" />
+                                      {task.recurrence === 'daily' ? 'Diário' : 
+                                       task.recurrence === 'weekly' ? 'Semanal' : 
+                                       task.recurrence === 'monthly' ? 'Mensal' : task.recurrence}
+                                    </Badge>
+                                  )}
+                                  
+                                  {getPriorityBadge(task.priority)}
+                                  
+                                  {task.responsible_staff && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {task.responsible_staff.name}
+                                    </span>
+                                  )}
+
+                                  {task.due_date && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Calendar className="h-3 w-3" />
+                                      {format(new Date(task.due_date), "dd/MM")}
+                                    </div>
+                                  )}
+
+                                  {isAdmin && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteTask(task.id);
+                                          }}
+                                          className="text-destructive"
+                                        >
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Excluir
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+                ))}
+
+                {tasks.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhuma tarefa ainda</p>
+                    <p className="text-sm">Adicione tarefas para começar o onboarding</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="contacts">
+            <ContactsContractsPanel 
+              companyId={project.onboarding_company_id || ""} 
+              isAdmin={isAdmin}
+            />
           </TabsContent>
 
           <TabsContent value="briefing">
