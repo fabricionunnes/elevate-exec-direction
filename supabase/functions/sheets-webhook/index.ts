@@ -97,20 +97,67 @@ Deno.serve(async (req) => {
     const data: SheetData = await req.json();
     console.log("Dados recebidos do Google Sheets:", JSON.stringify(data, null, 2));
 
-    // Extrair dados com fallbacks para diferentes nomes de colunas
-    const companyName = String(data.empresa || data.nome_empresa || data.company || data.nome_cliente || "Empresa sem nome");
-    const clientName = String(data.nome_cliente || data.cliente || data.nome || data.name || companyName);
-    const email = data.email || data.email_cliente || data.e_mail ? String(data.email || data.email_cliente || data.e_mail) : null;
-    const phone = data.telefone || data.phone || data.celular || data.whatsapp ? String(data.telefone || data.phone || data.celular || data.whatsapp) : null;
-    const serviceNameRaw = data.servico || data.produto || data.service || data.product;
-    const serviceName = serviceNameRaw ? String(serviceNameRaw) : null;
-    const contractValueRaw = data.valor || data.value || data.valor_contrato;
+    // Extrair dados com fallbacks para diferentes nomes de colunas (incluindo nomes da Clint)
+    const companyName = String(
+      data.empresa || 
+      data["Nome fantasia da empresa"] || 
+      data.nome_empresa || 
+      data.company || 
+      data.nome_cliente || 
+      data["Nome do cliente"] ||
+      "Empresa sem nome"
+    );
+    const clientName = String(
+      data.nome_cliente || 
+      data["Nome do cliente"] ||
+      data.cliente || 
+      data.nome || 
+      data.name || 
+      companyName
+    );
+    const email = data.email || data["E-mail do Cliente"] || data.email_cliente || data.e_mail 
+      ? String(data.email || data["E-mail do Cliente"] || data.email_cliente || data.e_mail) 
+      : null;
+    const phone = data.telefone || data["Telefone do cliente"] || data.phone || data.celular || data.whatsapp 
+      ? String(data.telefone || data["Telefone do cliente"] || data.phone || data.celular || data.whatsapp) 
+      : null;
+    
+    // Nome do serviço - importante para identificar o produto
+    const serviceNameRaw = 
+      data.servico || 
+      data.produto || 
+      data["Serviço (s)"] ||  // Nome exato da coluna na Clint
+      data["Servico (s)"] ||
+      data["Serviço"] ||
+      data["Servico"] ||
+      data.service || 
+      data.product;
+    const serviceName = serviceNameRaw ? String(serviceNameRaw).trim() : null;
+    
+    // Valor do contrato
+    const contractValueRaw = 
+      data.valor || 
+      data["Qual o valor total do contrato?"] ||
+      data["Qual o valor total que o cliente já pagou?"] ||
+      data.value || 
+      data.valor_contrato;
     const contractValue = contractValueRaw ? parseContractValue(String(contractValueRaw)) : null;
-    const segment = data.segmento || data.segment || data.nicho ? String(data.segmento || data.segment || data.nicho) : null;
-    const cnpj = data.cnpj ? String(data.cnpj) : null;
-    const website = data.website || data.site ? String(data.website || data.site) : null;
-    const address = data.endereco || data.address ? String(data.endereco || data.address) : null;
-    const notes = data.observacoes || data.notes || data.obs ? String(data.observacoes || data.notes || data.obs) : null;
+    
+    const segment = data.segmento || data.segment || data.nicho 
+      ? String(data.segmento || data.segment || data.nicho) 
+      : null;
+    const cnpj = data.cnpj || data["CNPJ ou CPF"] 
+      ? String(data.cnpj || data["CNPJ ou CPF"]) 
+      : null;
+    const website = data.website || data.site 
+      ? String(data.website || data.site) 
+      : null;
+    const address = data.endereco || data["Endereço Completo"] || data.address 
+      ? String(data.endereco || data["Endereço Completo"] || data.address) 
+      : null;
+    const notes = data.observacoes || data["Observações de pagamento"] || data.notes || data.obs 
+      ? String(data.observacoes || data["Observações de pagamento"] || data.notes || data.obs) 
+      : null;
 
     // Identificar o produto
     const product = serviceName ? normalizeProductName(serviceName) : null;
