@@ -66,9 +66,11 @@ export const ManageUsersDialog = ({
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
+    password: "",
     role: "client" as "admin" | "cs" | "consultant" | "client",
   });
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -163,21 +165,24 @@ export const ManageUsersDialog = ({
         setLoading(false);
       }
     } else {
-      // Para Cliente, criar usuário com email e senha
+      // Para Cliente, criar usuário com email e senha definida pelo staff
       if (!newUser.name.trim() || !newUser.email.trim()) {
         toast.error("Preencha nome e email");
         return;
       }
 
+      if (!newUser.password.trim() || newUser.password.length < 6) {
+        toast.error("Defina uma senha com pelo menos 6 caracteres");
+        return;
+      }
+
       setLoading(true);
       try {
-        const tempPassword = generateTempPassword();
-
-        // Use edge function to create user
+        // Use edge function to create user with the password defined by staff
         const { data, error } = await supabase.functions.invoke("create-onboarding-user", {
           body: {
             email: newUser.email.trim(),
-            password: tempPassword,
+            password: newUser.password.trim(),
             name: newUser.name.trim(),
             project_id: projectId,
             role: newUser.role,
@@ -200,9 +205,10 @@ export const ManageUsersDialog = ({
   };
 
   const resetForm = () => {
-    setNewUser({ name: "", email: "", role: "client" });
+    setNewUser({ name: "", email: "", password: "", role: "client" });
     setSelectedStaffId("");
     setShowAddForm(false);
+    setShowNewPassword(false);
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -339,8 +345,9 @@ export const ManageUsersDialog = ({
                 <Select
                   value={newUser.role}
                   onValueChange={(value: "admin" | "cs" | "consultant" | "client") => {
-                    setNewUser({ ...newUser, role: value, name: "", email: "" });
+                    setNewUser({ ...newUser, role: value, name: "", email: "", password: "" });
                     setSelectedStaffId("");
+                    setShowNewPassword(false);
                   }}
                 >
                   <SelectTrigger>
@@ -403,9 +410,28 @@ export const ManageUsersDialog = ({
                       onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                     />
                   </div>
-                  <div className="col-span-2">
+                  <div className="col-span-2 space-y-2">
+                    <Label>Senha do Cliente</Label>
+                    <div className="relative">
+                      <Input
+                        type={showNewPassword ? "text" : "password"}
+                        placeholder="Mínimo 6 caracteres"
+                        value={newUser.password}
+                        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                      >
+                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      Uma senha temporária será gerada automaticamente. O cliente deverá alterá-la no primeiro acesso.
+                      Defina a senha que o cliente usará para acessar o sistema.
                     </p>
                   </div>
                 </div>
