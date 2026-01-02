@@ -195,7 +195,7 @@ const OnboardingCompanyDetailPage = () => {
         goals_long_term: form.goals_long_term || null,
         target_audience: form.target_audience || null,
         competitors: form.competitors || null,
-        stakeholders: form.stakeholders as unknown as Record<string, unknown>[],
+        stakeholders: JSON.parse(JSON.stringify(form.stakeholders)),
         status: form.status,
         notes: form.notes || null,
       };
