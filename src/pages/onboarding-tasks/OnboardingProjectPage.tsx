@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -108,6 +108,7 @@ const PHASE_EMOJIS: Record<string, string> = {
 const OnboardingProjectPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<OnboardingTask[]>([]);
   const [users, setUsers] = useState<OnboardingUser[]>([]);
@@ -127,6 +128,19 @@ const OnboardingProjectPage = () => {
       fetchProjectData();
     }
   }, [projectId]);
+
+  // Open task from notification link
+  useEffect(() => {
+    const state = location.state as { openTaskId?: string } | null;
+    if (state?.openTaskId && tasks.length > 0) {
+      const taskToOpen = tasks.find(t => t.id === state.openTaskId);
+      if (taskToOpen) {
+        setSelectedTask(taskToOpen);
+        // Clear the state so it doesn't reopen on refresh
+        navigate(location.pathname, { replace: true, state: {} });
+      }
+    }
+  }, [tasks, location.state]);
 
   const fetchProjectData = async () => {
     try {

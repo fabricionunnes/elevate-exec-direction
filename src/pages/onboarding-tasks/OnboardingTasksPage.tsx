@@ -10,6 +10,7 @@ import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Bui
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
+import { TaskNotificationsDialog } from "@/components/onboarding-tasks/TaskNotificationsDialog";
 
 interface Staff {
   id: string;
@@ -446,6 +447,9 @@ const OnboardingTasksPage = () => {
         onOpenChange={setShowCreateDialog}
         onProjectCreated={fetchCompanies}
       />
+
+      {/* Task notifications popup */}
+      <TaskNotificationsDialog />
     </div>
   );
 };
