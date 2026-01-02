@@ -32,7 +32,7 @@ interface OnboardingUser {
   id: string;
   name: string;
   email: string;
-  role: "cs" | "consultant" | "client";
+  role: "admin" | "cs" | "consultant" | "client";
   password_changed: boolean;
   temp_password?: string;
 }
@@ -57,7 +57,7 @@ export const ManageUsersDialog = ({
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
-    role: "client" as "cs" | "consultant" | "client",
+    role: "client" as "admin" | "cs" | "consultant" | "client",
   });
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
 
@@ -129,6 +129,8 @@ export const ManageUsersDialog = ({
 
   const getRoleBadge = (role: string) => {
     switch (role) {
+      case "admin":
+        return <Badge className="bg-red-500">Admin</Badge>;
       case "cs":
         return <Badge className="bg-blue-500">CS</Badge>;
       case "consultant":
@@ -248,7 +250,7 @@ export const ManageUsersDialog = ({
                 <Label>Perfil</Label>
                 <Select
                   value={newUser.role}
-                  onValueChange={(value: "cs" | "consultant" | "client") =>
+                  onValueChange={(value: "admin" | "cs" | "consultant" | "client") =>
                     setNewUser({ ...newUser, role: value })
                   }
                 >
@@ -256,6 +258,7 @@ export const ManageUsersDialog = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="admin">Administrador</SelectItem>
                     <SelectItem value="cs">CS (Customer Success)</SelectItem>
                     <SelectItem value="consultant">Consultor</SelectItem>
                     <SelectItem value="client">Cliente (Dono da Empresa)</SelectItem>

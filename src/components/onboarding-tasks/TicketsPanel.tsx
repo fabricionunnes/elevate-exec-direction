@@ -27,7 +27,7 @@ interface OnboardingUser {
   id: string;
   name: string;
   email: string;
-  role: "cs" | "consultant" | "client";
+  role: "admin" | "cs" | "consultant" | "client";
 }
 
 interface Ticket {

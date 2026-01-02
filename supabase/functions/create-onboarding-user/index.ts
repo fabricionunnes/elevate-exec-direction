@@ -216,11 +216,11 @@ Deno.serve(async (req) => {
 
         console.log(`Client signup complete: ${email}, company: ${company_name}, products: ${selected_products.join(", ")}`);
 
-      } else if (role === "cs" || role === "consultant") {
-        // CS/Consultant signup: link to existing company projects
+      } else if (role === "admin" || role === "cs" || role === "consultant") {
+        // Admin/CS/Consultant signup: link to existing company projects
         if (!selected_companies || selected_companies.length === 0) {
           return new Response(
-            JSON.stringify({ error: "CS/Consultor precisa selecionar empresas" }),
+            JSON.stringify({ error: "Admin/CS/Consultor precisa selecionar empresas" }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }

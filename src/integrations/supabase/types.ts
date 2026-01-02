@@ -1404,7 +1404,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      onboarding_role: "cs" | "consultant" | "client"
+      onboarding_role: "cs" | "consultant" | "client" | "admin"
       onboarding_task_status: "pending" | "in_progress" | "completed"
       onboarding_ticket_status: "open" | "in_progress" | "resolved" | "closed"
       plan_status: "draft" | "published" | "archived"
@@ -1538,7 +1538,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      onboarding_role: ["cs", "consultant", "client"],
+      onboarding_role: ["cs", "consultant", "client", "admin"],
       onboarding_task_status: ["pending", "in_progress", "completed"],
       onboarding_ticket_status: ["open", "in_progress", "resolved", "closed"],
       plan_status: ["draft", "published", "archived"],
