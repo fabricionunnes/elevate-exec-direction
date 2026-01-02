@@ -96,6 +96,32 @@ serve(async (req) => {
     // 7. Project variables
     const productVariables = project?.product_variables || {};
 
+    // 8. Monthly goals (metas de vendas)
+    const { data: monthlyGoals } = await supabase
+      .from("onboarding_monthly_goals")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("year", { ascending: false })
+      .order("month", { ascending: false });
+
+    // 9. Subtasks for in-progress tasks
+    const inProgressTaskIds = tasks?.filter(t => t.status === "in_progress").map(t => t.id) || [];
+    const { data: subtasks } = await supabase
+      .from("onboarding_subtasks")
+      .select("*")
+      .in("task_id", inProgressTaskIds);
+
+    // 10. Task history (últimas ações)
+    const { data: taskHistory } = await supabase
+      .from("onboarding_task_history")
+      .select(`
+        *,
+        task:onboarding_tasks(title)
+      `)
+      .in("task_id", tasks?.map(t => t.id) || [])
+      .order("created_at", { ascending: false })
+      .limit(30);
+
     // Build comprehensive context
     const completedTasks = tasks?.filter(t => t.status === "completed") || [];
     const inProgressTasks = tasks?.filter(t => t.status === "in_progress") || [];
@@ -114,6 +140,97 @@ serve(async (req) => {
       const total = phaseTasks.length;
       return `- ${phase}: ${completed}/${total} concluídas (${Math.round((completed/total)*100)}%)`;
     }).join("\n");
+
+    // Process monthly goals for context
+    const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    
+    const historicalGoals = monthlyGoals?.filter(g => g.notes?.includes("históricos")) || [];
+    const currentGoals = monthlyGoals?.filter(g => !g.notes?.includes("históricos")) || [];
+    
+    const formatCurrency = (value: number | null) => {
+      if (value === null) return "N/A";
+      return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+    };
+
+    // Calculate before/after comparison
+    let beforeAfterComparison = "";
+    if (historicalGoals.length > 0 && currentGoals.length > 0) {
+      const historicalWithBoth = historicalGoals.filter(g => g.sales_target && g.sales_result);
+      const currentWithBoth = currentGoals.filter(g => g.sales_target && g.sales_result);
+      
+      if (historicalWithBoth.length > 0 && currentWithBoth.length > 0) {
+        const avgHistoricalTarget = historicalWithBoth.reduce((sum, g) => sum + (g.sales_target || 0), 0) / historicalWithBoth.length;
+        const avgHistoricalResult = historicalWithBoth.reduce((sum, g) => sum + (g.sales_result || 0), 0) / historicalWithBoth.length;
+        const avgHistoricalPerformance = (avgHistoricalResult / avgHistoricalTarget) * 100;
+        
+        const avgCurrentTarget = currentWithBoth.reduce((sum, g) => sum + (g.sales_target || 0), 0) / currentWithBoth.length;
+        const avgCurrentResult = currentWithBoth.reduce((sum, g) => sum + (g.sales_result || 0), 0) / currentWithBoth.length;
+        const avgCurrentPerformance = (avgCurrentResult / avgCurrentTarget) * 100;
+        
+        const performanceChange = avgCurrentPerformance - avgHistoricalPerformance;
+        const resultChange = ((avgCurrentResult - avgHistoricalResult) / avgHistoricalResult) * 100;
+        
+        beforeAfterComparison = `
+### Comparativo ANTES vs DEPOIS do Acompanhamento:
+**ANTES (${historicalWithBoth.length} meses):**
+- Média de meta: ${formatCurrency(avgHistoricalTarget)}
+- Média de resultado: ${formatCurrency(avgHistoricalResult)}
+- Performance média: ${avgHistoricalPerformance.toFixed(1)}%
+
+**DEPOIS (${currentWithBoth.length} meses):**
+- Média de meta: ${formatCurrency(avgCurrentTarget)}
+- Média de resultado: ${formatCurrency(avgCurrentResult)}
+- Performance média: ${avgCurrentPerformance.toFixed(1)}%
+
+**EVOLUÇÃO:**
+- Variação de performance: ${performanceChange > 0 ? '+' : ''}${performanceChange.toFixed(1)}pp
+- Crescimento de faturamento: ${resultChange > 0 ? '+' : ''}${resultChange.toFixed(1)}%
+`;
+      }
+    }
+
+    const goalsContext = `
+## METAS DE VENDAS
+
+### Metas Históricas (antes do acompanhamento):
+${historicalGoals.length > 0 ? historicalGoals.map(g => {
+  const perf = g.sales_target && g.sales_result ? ((g.sales_result / g.sales_target) * 100).toFixed(1) : "N/A";
+  return `- ${monthNames[g.month - 1]}/${g.year}: Meta ${formatCurrency(g.sales_target)} | Resultado ${formatCurrency(g.sales_result)} | Performance: ${perf}%`;
+}).join("\n") : "Nenhum dado histórico registrado"}
+
+### Metas Atuais (com acompanhamento):
+${currentGoals.length > 0 ? currentGoals.map(g => {
+  const perf = g.sales_target && g.sales_result ? ((g.sales_result / g.sales_target) * 100).toFixed(1) : "N/A";
+  return `- ${monthNames[g.month - 1]}/${g.year}: Meta ${formatCurrency(g.sales_target)} | Resultado ${formatCurrency(g.sales_result)} | Performance: ${perf}%`;
+}).join("\n") : "Nenhuma meta atual registrada"}
+
+${beforeAfterComparison}
+`;
+
+    // Process subtasks
+    const subtasksContext = subtasks && subtasks.length > 0 
+      ? `
+## SUBTAREFAS EM ANDAMENTO
+${inProgressTasks.map(task => {
+  const taskSubtasks = subtasks.filter(s => s.task_id === task.id);
+  if (taskSubtasks.length === 0) return "";
+  const completed = taskSubtasks.filter(s => s.is_completed).length;
+  return `### ${task.title} (${completed}/${taskSubtasks.length} subtarefas)
+${taskSubtasks.map(s => `- ${s.is_completed ? '✅' : '⬜'} ${s.title}`).join("\n")}`;
+}).filter(Boolean).join("\n\n")}
+`
+      : "";
+
+    // Process task history
+    const historyContext = taskHistory && taskHistory.length > 0
+      ? `
+## HISTÓRICO DE AÇÕES RECENTES
+${taskHistory.slice(0, 20).map(h => {
+  const date = new Date(h.created_at).toLocaleDateString('pt-BR');
+  return `- [${date}] ${h.action} em "${h.task?.title || 'Tarefa'}"${h.field_changed ? `: ${h.field_changed} de "${h.old_value}" para "${h.new_value}"` : ''}`;
+}).join("\n")}
+`
+      : "";
 
     const contextPrompt = `
 Você é um assistente de IA especializado em consultoria comercial e onboarding de clientes da UNV.
@@ -187,10 +304,16 @@ ${phasesSummary}
 ${completedTasks.slice(0, 10).map(t => `- ✅ ${t.title}${t.completed_at ? ` (concluída em ${new Date(t.completed_at).toLocaleDateString('pt-BR')})` : ''}`).join("\n") || "Nenhuma"}
 
 ### Tarefas em Andamento:
-${inProgressTasks.map(t => `- 🔄 ${t.title}${t.responsible_staff?.name ? ` (responsável: ${t.responsible_staff.name})` : ''}`).join("\n") || "Nenhuma"}
+${inProgressTasks.map(t => `- 🔄 ${t.title}${t.responsible_staff?.name ? ` (responsável: ${t.responsible_staff.name})` : ''}${t.due_date ? ` [prazo: ${new Date(t.due_date).toLocaleDateString('pt-BR')}]` : ''}`).join("\n") || "Nenhuma"}
 
 ### Tarefas Pendentes (próximas 10):
 ${pendingTasks.slice(0, 10).map(t => `- ⏳ ${t.title}${t.due_date ? ` (prazo: ${new Date(t.due_date).toLocaleDateString('pt-BR')})` : ''}`).join("\n") || "Nenhuma"}
+
+${subtasksContext}
+
+${goalsContext}
+
+${historyContext}
 
 ## ATUALIZAÇÕES RECENTES (Comentários)
 ${comments?.slice(0, 10).map(c => `- [${new Date(c.created_at).toLocaleDateString('pt-BR')}] ${c.user?.name || 'Usuário'} em "${c.task?.title}": ${c.content.substring(0, 100)}...`).join("\n") || "Nenhum comentário recente"}
@@ -214,6 +337,8 @@ INSTRUÇÕES:
 5. Destaque riscos ou pontos de atenção quando relevante
 6. Formate suas respostas usando Markdown para melhor legibilidade
 7. Seja direto e objetivo, mas amigável
+8. Quando perguntarem sobre evolução/crescimento, use os dados de metas históricas vs atuais
+9. Ao analisar performance, considere tanto os números absolutos quanto as porcentagens
 `;
 
     // Build messages for AI
