@@ -182,19 +182,20 @@ Deno.serve(async (req) => {
     const contractValue = contractValueRaw ? parseContractValue(String(contractValueRaw)) : null;
     
     const segment = data.segmento || data.segment || data.nicho 
-      ? String(data.segmento || data.segment || data.nicho) 
+      ? String(data.segmento || data.segment || data.nicho).trim() 
       : null;
-    const cnpj = data.cnpj || data["CNPJ ou CPF"] 
-      ? String(data.cnpj || data["CNPJ ou CPF"]) 
-      : null;
+
+    const cnpjRaw = data.cnpj || data["CNPJ ou CPF"]; 
+    const cnpj = cnpjRaw ? String(cnpjRaw).trim() || null : null;
+
     const website = data.website || data.site 
-      ? String(data.website || data.site) 
+      ? String(data.website || data.site).trim() 
       : null;
     const address = data.endereco || data["Endereço Completo"] || data.address 
-      ? String(data.endereco || data["Endereço Completo"] || data.address) 
+      ? String(data.endereco || data["Endereço Completo"] || data.address).trim() 
       : null;
     const notes = data.observacoes || data["Observações de pagamento"] || data.notes || data.obs 
-      ? String(data.observacoes || data["Observações de pagamento"] || data.notes || data.obs) 
+      ? String(data.observacoes || data["Observações de pagamento"] || data.notes || data.obs).trim() 
       : null;
 
     // Ignorar quando o Apps Script manda a linha de cabeçalho ou uma linha vazia
@@ -277,6 +278,32 @@ Deno.serve(async (req) => {
     if (existingCompany) {
       companyId = existingCompany.id;
       console.log("Empresa já existe:", existingCompany.name);
+
+      // Se a venda veio com um novo nome (ex: nome fantasia atualizado), atualiza os dados básicos
+      if (companyName && companyName !== "Empresa sem nome" && companyName.trim().length > 0 && companyName !== existingCompany.name) {
+        const { error: updateCompanyError } = await supabase
+          .from("onboarding_companies")
+          .update({
+            name: companyName,
+            email: email ?? undefined,
+            phone: phone ?? undefined,
+            segment: segment ?? undefined,
+            website: website ?? undefined,
+            address: address ?? undefined,
+            // mantém CNPJ se já existe; se vier preenchido e antes estava vazio, preenche
+            cnpj: cnpj ?? undefined,
+            // mantém notes existentes, só complementa quando vier algo
+            notes: notes ? `Origem: Clint/Google Sheets\n${notes}` : undefined,
+            contract_value: contractValue ?? undefined,
+          })
+          .eq("id", companyId);
+
+        if (updateCompanyError) {
+          console.warn("Não foi possível atualizar dados da empresa existente:", updateCompanyError);
+        } else {
+          console.log("Empresa atualizada com novo nome/dados:", companyName);
+        }
+      }
     } else {
       // Criar nova empresa
       const { data: newCompany, error: companyError } = await supabase
