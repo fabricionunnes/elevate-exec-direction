@@ -198,7 +198,7 @@ export const GenerateTasksDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-3xl h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -252,7 +252,7 @@ export const GenerateTasksDialog = ({
         )}
 
         {step === "review" && (
-          <ScrollArea className="flex-1 min-h-[200px] max-h-[60vh]">
+          <ScrollArea className="flex-1 min-h-0">
             <div className="space-y-3 pr-4">
               {generatedTasks.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
