@@ -97,10 +97,21 @@ const OnboardingStaffPage = () => {
           },
         });
 
-        if (authError) throw authError;
-        userId = authData.user?.id || null;
-        
-        toast.success("Usuário de login criado com sucesso");
+        // Se o usuário já existe, buscar o ID dele
+        if (authError) {
+          if (authError.message.includes("already registered") || authError.message.includes("User already registered")) {
+            // Usuário já existe - vamos apenas cadastrar o membro sem user_id
+            // O admin pode vincular depois ou usar edge function
+            toast.info("Email já registrado no sistema. Cadastrando membro sem login vinculado.");
+          } else {
+            throw authError;
+          }
+        } else {
+          userId = authData.user?.id || null;
+          if (userId) {
+            toast.success("Usuário de login criado com sucesso");
+          }
+        }
       }
 
       if (editingStaff) {
