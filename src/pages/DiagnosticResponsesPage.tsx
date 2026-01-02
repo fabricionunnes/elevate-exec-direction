@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { supabase } from "@/integrations/supabase/client";
+import AdminDiagnosticPDFReport from "@/components/AdminDiagnosticPDFReport";
 import { 
   Table, 
   TableBody, 
@@ -1240,6 +1241,14 @@ export default function DiagnosticResponsesPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* PDF Report */}
+              <div className="border-t border-border pt-6">
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  📄 Relatório em PDF
+                </h4>
+                <AdminDiagnosticPDFReport diagnostic={selectedResponse} />
               </div>
 
               {/* Ações */}
