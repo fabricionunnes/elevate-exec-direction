@@ -73,97 +73,82 @@ export const generateOnboardingSlides = (product: ProductDetail): ProductOnboard
   };
 
   const slides: OnboardingSlide[] = [
-    // Slide 1: Introduction - Energetic welcome
+    // Slide 1: Introduction
     {
-      title: `Que bom ter você aqui! 🙌`,
+      title: `Bem-vindo ao ${product.name}`,
       content: [
-        { text: `Você está entrando no ${product.name} – e a gente tá animado com isso!` },
-        { text: transformToSecondPerson(product.description) },
-        { text: "A partir de agora, você não está mais sozinho nessa jornada." },
+        { text: "Quem somos" },
+        { text: "Nossa metodologia" },
+        { text: "Por que você está aqui" },
       ],
       type: "intro",
       interactivePrompts: [
-        { question: "Como foi o processo de decisão até chegar aqui?", context: "Queremos conhecer sua história" },
-        { question: "O que você espera conquistar com a gente?" },
+        { question: "Qual foi sua jornada até chegar aqui?" },
+        { question: "O que te motivou a buscar essa solução?" },
       ],
     },
-    // Slide 2: What you will receive - Gift framing
+    // Slide 2: What you will receive
     {
-      title: "Olha o que preparamos pra você! 🎁",
-      content: product.deliverables.map((d, i) => ({
-        text: `${transformToSecondPerson(d)}${i === 0 ? " – isso é só o começo!" : ""}`,
-        details: findDetails(d),
+      title: "O que você vai receber",
+      content: product.deliverables.map((d) => ({
+        text: transformToSecondPerson(d),
       })),
       type: "deliverable",
       interactivePrompts: [
-        { question: "Qual desses é mais urgente pra você?", context: "Queremos priorizar o que importa" },
-        { question: "Você já tentou resolver algum desses pontos antes?" },
+        { question: "Qual desses é mais urgente pra você?" },
+        { question: "Já tentou resolver isso antes?" },
       ],
     },
-    // Slide 3: Problems we solve - Transformation focus
+    // Slide 3: Problems we solve
     {
-      title: "Adeus, dor de cabeça! 👋",
+      title: "Problemas que vamos resolver",
       content: product.problemsSolved.map((ps) => ({
-        text: `De "${transformToSecondPerson(ps.problem)}" para "${transformToSecondPerson(ps.result)}"`,
-        details: transformToSecondPerson(ps.solution),
+        text: transformToSecondPerson(ps.problem),
       })),
       type: "deliverable",
       interactivePrompts: [
-        { question: "Qual dessas situações você mais se identifica?", context: "Vamos entender seu cenário" },
-        { question: "Como isso afeta o dia a dia da sua empresa?" },
+        { question: "Qual desses mais te afeta?" },
+        { question: "Como isso impacta seu dia a dia?" },
       ],
     },
-    // Slide 4: Key Benefits - Celebration
+    // Slide 4: Key Benefits
     {
-      title: "O que você vai conquistar! 🏆",
+      title: "Resultados esperados",
       content: product.keyBenefits.map((b) => ({
         text: transformToSecondPerson(b),
       })),
       type: "deliverable",
       interactivePrompts: [
-        { question: "Qual desses benefícios mais te anima?", context: "Vamos celebrar juntos" },
-        { question: "Imagina quando isso virar realidade..." },
+        { question: "O que mais te anima aqui?" },
       ],
     },
-    // Slide 5: Time to results - Exciting expectations
+    // Slide 5: Time to results
     {
-      title: "Quando você vai ver resultado? 📈",
+      title: "Prazo e expectativas",
       content: [
-        { text: `${transformToSecondPerson(product.timeToResults)} – e a gente vai comemorar junto!` },
-        { text: transformToSecondPerson(product.whyRecommended) },
-        { text: "Lembra: a gente tá nessa contigo, passo a passo." },
+        { text: "Tempo para primeiros resultados" },
+        { text: "O que você precisa fazer" },
+        { text: "O que nós vamos fazer" },
       ],
       type: "expectations",
       interactivePrompts: [
-        { question: "Você consegue se comprometer com esse ritmo?", context: "Parceria é tudo" },
+        { question: "Você consegue se comprometer com esse ritmo?" },
         { question: "O que pode atrapalhar no caminho?" },
       ],
     },
-    // Slide 6: Next steps - Partnership closing
+    // Slide 6: Next steps
     {
-      title: "Bora começar? 🚀",
+      title: "Próximos passos",
       content: [
-        { 
-          text: "Primeiro, vamos alinhar tudo direitinho",
-          details: "Queremos ter certeza que você entende exatamente o que vai receber. Sem surpresas, só resultados!"
-        },
-        { 
-          text: "Depois, escolhemos juntos a data perfeita pra começar",
-          details: "A gente vai encontrar o momento ideal pra você, respeitando sua agenda."
-        },
-        { 
-          text: "Você vai receber todos os acessos e ferramentas",
-          details: "Plataforma, grupos, materiais, AI Advisor – tudo configurado e pronto pra você usar."
-        },
-        { 
-          text: "E aí... é só decolar! 🛫",
-          details: "No kick-off, a gente faz seu diagnóstico e define os primeiros passos juntos. Vai ser incrível!"
-        },
+        { text: "Alinhamento inicial" },
+        { text: "Definição de data de início" },
+        { text: "Liberação de acessos" },
+        { text: "Kick-off" },
       ],
       type: "next-steps",
       interactivePrompts: [
-        { question: "Tem alguma dúvida antes de seguirmos?", context: "Sem dúvidas, só conquistas" },
-        { question: "Qual data funciona melhor pra você começar?" },
+        { question: "Ficou alguma dúvida?" },
+        { question: "Qual data funciona pra você?" },
       ],
     },
   ];
