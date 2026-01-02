@@ -118,7 +118,9 @@ export const CreateProjectDialog = ({
       // Copiar tarefas diretamente dos templates do produto (sem edge function)
       const { data: templates, error: templatesError } = await supabase
         .from("onboarding_task_templates")
-        .select("id, title, description, priority, sort_order, default_days_offset, duration_days")
+        .select(
+          "id, title, description, priority, sort_order, default_days_offset, duration_days, phase, recurrence"
+        )
         .eq("product_id", selectedProduct)
         .order("sort_order", { ascending: true });
 
@@ -154,6 +156,9 @@ export const CreateProjectDialog = ({
           status: "pending" as const,
           due_date: dueDate,
           sort_order: tpl.sort_order ?? idx,
+          // Importante: manter a fase do template para não "parecer" tarefa inventada no painel
+          tags: tpl.phase ? [tpl.phase] : null,
+          recurrence: tpl.recurrence ?? null,
         };
       });
 
