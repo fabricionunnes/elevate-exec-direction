@@ -43,6 +43,7 @@ import { toast } from "sonner";
 import logoUnv from "@/assets/logo-unv.png";
 import { cn } from "@/lib/utils";
 import { productDetails } from "@/data/productDetails";
+import DiagnosticPDFReport from "@/components/DiagnosticPDFReport";
 
 interface FormData {
   companyName: string;
@@ -811,8 +812,22 @@ export default function ClientDiagnosticPage() {
             })}
           </div>
 
+          {/* PDF Report */}
+          <div className="mt-10 animate-fade-up" style={{ animationDelay: "0.4s" }}>
+            <div className="bg-gradient-to-r from-accent/10 via-accent/5 to-transparent rounded-2xl p-6 border border-accent/20 mb-6">
+              <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-accent" />
+                Salve seu diagnóstico
+              </h3>
+              <p className="text-muted-foreground text-sm mb-4">
+                Baixe o relatório completo em PDF para apresentar à sua equipe ou revisar quando precisar.
+              </p>
+              <DiagnosticPDFReport formData={formData} recommendations={recommendations} />
+            </div>
+          </div>
+
           {/* Next Steps */}
-          <div className="bg-card border border-border rounded-2xl p-8 text-center mt-8 animate-fade-up" style={{ animationDelay: "0.3s" }}>
+          <div className="bg-card border border-border rounded-2xl p-8 text-center mt-8 animate-fade-up" style={{ animationDelay: "0.5s" }}>
             <Sparkles className="h-10 w-10 text-accent mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-foreground mb-3">Próximos Passos</h3>
             <p className="text-muted-foreground mb-6">
