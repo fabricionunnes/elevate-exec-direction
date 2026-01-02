@@ -304,52 +304,99 @@ Deno.serve(async (req) => {
 
     console.log("Novo projeto criado:", newProject.id);
 
-    // Buscar templates de tarefas do banco de dados
+    // Buscar projeto modelo (o que tem mais tarefas para este produto)
     try {
-      const { data: templates, error: templatesError } = await supabase
-        .from("onboarding_task_templates")
-        .select("*")
+      // Primeiro, encontra o projeto modelo para este produto (excluindo o recém-criado)
+      const { data: templateProjects, error: templateProjectError } = await supabase
+        .from("onboarding_projects")
+        .select(`
+          id,
+          product_id,
+          onboarding_company_id
+        `)
         .eq("product_id", product.id)
-        .order("phase_order", { ascending: true })
-        .order("sort_order", { ascending: true });
+        .neq("id", newProject.id);
 
-      if (templatesError) {
-        console.error("Erro ao buscar templates:", templatesError);
-      } else if (templates && templates.length > 0) {
-        console.log(`Encontrados ${templates.length} templates para ${product.id}`);
+      if (templateProjectError) {
+        console.error("Erro ao buscar projetos modelo:", templateProjectError);
+      } else if (templateProjects && templateProjects.length > 0) {
+        // Busca a contagem de tarefas de cada projeto para encontrar o modelo
+        let bestTemplateProjectId: string | null = null;
+        let maxTasks = 0;
 
-        const today = new Date();
-        const tasksToInsert = templates.map((template, index) => {
-          const dueDate = new Date(today);
-          dueDate.setDate(dueDate.getDate() + (template.default_days_offset || index * 3));
+        for (const proj of templateProjects) {
+          const { count } = await supabase
+            .from("onboarding_tasks")
+            .select("*", { count: "exact", head: true })
+            .eq("project_id", proj.id);
 
-          return {
-            project_id: newProject.id,
-            template_id: template.id,
-            title: template.title,
-            description: template.description,
-            priority: template.priority || "medium",
-            status: "pending",
-            due_date: dueDate.toISOString().split("T")[0],
-            sort_order: index,
-            recurrence: template.recurrence,
-          };
-        });
+          if (count && count > maxTasks) {
+            maxTasks = count;
+            bestTemplateProjectId = proj.id;
+          }
+        }
 
-        const { error: insertError } = await supabase
-          .from("onboarding_tasks")
-          .insert(tasksToInsert);
+        if (bestTemplateProjectId && maxTasks > 0) {
+          console.log(`Projeto modelo encontrado: ${bestTemplateProjectId} com ${maxTasks} tarefas`);
 
-        if (insertError) {
-          console.error("Erro ao inserir tarefas:", insertError);
+          // Busca todas as tarefas do projeto modelo
+          const { data: templateTasks, error: tasksError } = await supabase
+            .from("onboarding_tasks")
+            .select("*")
+            .eq("project_id", bestTemplateProjectId)
+            .order("sort_order", { ascending: true });
+
+          if (tasksError) {
+            console.error("Erro ao buscar tarefas do modelo:", tasksError);
+          } else if (templateTasks && templateTasks.length > 0) {
+            console.log(`Copiando ${templateTasks.length} tarefas do projeto modelo`);
+
+            const today = new Date();
+            const tasksToInsert = templateTasks.map((task, index) => {
+              // Calcula nova data de vencimento baseada na data original relativa
+              let dueDate: string | null = null;
+              if (task.due_date) {
+                const originalDue = new Date(task.due_date);
+                const daysDiff = Math.floor((originalDue.getTime() - new Date(task.created_at).getTime()) / (1000 * 60 * 60 * 24));
+                const newDue = new Date(today);
+                newDue.setDate(newDue.getDate() + Math.max(0, daysDiff));
+                dueDate = newDue.toISOString().split("T")[0];
+              }
+
+              return {
+                project_id: newProject.id,
+                template_id: task.template_id,
+                title: task.title,
+                description: task.description,
+                priority: task.priority || "medium",
+                status: "pending",
+                due_date: dueDate,
+                start_date: null,
+                sort_order: index,
+                recurrence: task.recurrence,
+                tags: task.tags,
+                estimated_hours: task.estimated_hours,
+              };
+            });
+
+            const { error: insertError } = await supabase
+              .from("onboarding_tasks")
+              .insert(tasksToInsert);
+
+            if (insertError) {
+              console.error("Erro ao inserir tarefas:", insertError);
+            } else {
+              console.log(`${tasksToInsert.length} tarefas copiadas com sucesso do projeto modelo`);
+            }
+          }
         } else {
-          console.log(`${tasksToInsert.length} tarefas criadas com sucesso`);
+          console.log(`Nenhum projeto modelo com tarefas encontrado para: ${product.id}`);
         }
       } else {
-        console.log(`Nenhum template encontrado para o produto: ${product.id}`);
+        console.log(`Nenhum projeto modelo encontrado para o produto: ${product.id}`);
       }
     } catch (taskErr) {
-      console.error("Erro ao criar tarefas a partir dos templates:", taskErr);
+      console.error("Erro ao copiar tarefas do projeto modelo:", taskErr);
     }
 
     // Notificar administradores e CS
