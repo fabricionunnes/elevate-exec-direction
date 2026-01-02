@@ -750,7 +750,7 @@ const OnboardingProjectPage = () => {
         open={showGenerateTasksDialog}
         onOpenChange={setShowGenerateTasksDialog}
         projectId={projectId!}
-        companyId={project.onboarding_company_id}
+        productId={project.product_id}
         onTasksGenerated={fetchProjectData}
       />
     </div>
