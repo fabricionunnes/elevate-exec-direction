@@ -35,34 +35,46 @@ const OnboardingCompaniesPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
 
   useEffect(() => {
-    checkUserPermissions();
-    fetchCompanies();
+    initPage();
   }, []);
 
-  const checkUserPermissions = async () => {
+  const initPage = async () => {
+    const staffInfo = await checkUserPermissions();
+    if (staffInfo) {
+      await fetchCompanies(staffInfo.role, staffInfo.id);
+    } else {
+      setLoading(false);
+    }
+  };
+
+  const checkUserPermissions = async (): Promise<{ role: string; id: string } | null> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: staffMember } = await supabase
           .from("onboarding_staff")
-          .select("role")
+          .select("id, role")
           .eq("user_id", user.id)
           .single();
         
         if (staffMember) {
           setCurrentUserRole(staffMember.role);
+          setCurrentStaffId(staffMember.id);
+          return { role: staffMember.role, id: staffMember.id };
         }
       }
     } catch (error) {
       console.error("Error checking permissions:", error);
     }
+    return null;
   };
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = async (role: string, staffId: string) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("onboarding_companies")
         .select(`
           *,
@@ -70,6 +82,16 @@ const OnboardingCompaniesPage = () => {
           consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(id, name, role)
         `)
         .order("name");
+
+      // Filter based on role
+      if (role === "cs") {
+        query = query.eq("cs_id", staffId);
+      } else if (role === "consultant") {
+        query = query.eq("consultant_id", staffId);
+      }
+      // Admin sees all companies (no filter)
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setCompanies(data || []);
