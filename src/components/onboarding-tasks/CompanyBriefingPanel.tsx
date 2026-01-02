@@ -22,9 +22,11 @@ import {
   Pencil,
   X,
   Save,
+  ClipboardList,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { KickoffFormDialog } from "./KickoffFormDialog";
 
 const COMPANY_STATUS_OPTIONS = [
   { value: "active", label: "Ativa" },
@@ -74,6 +76,7 @@ export const CompanyBriefingPanel = ({ companyId, userRole, isStaffAdmin = false
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<CompanyData>>({});
+  const [showKickoffForm, setShowKickoffForm] = useState(false);
 
   useEffect(() => {
     if (companyId) {
@@ -254,7 +257,7 @@ export const CompanyBriefingPanel = ({ companyId, userRole, isStaffAdmin = false
 
   return (
     <div className="space-y-6">
-      {/* Header com botão de edição */}
+      {/* Header com botões de ação */}
       {canEdit && (
         <div className="flex justify-end gap-2">
           {isEditing ? (
@@ -269,13 +272,27 @@ export const CompanyBriefingPanel = ({ companyId, userRole, isStaffAdmin = false
               </Button>
             </>
           ) : (
-            <Button variant="outline" onClick={() => setIsEditing(true)}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Editar Briefing
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => setShowKickoffForm(true)}>
+                <ClipboardList className="h-4 w-4 mr-2" />
+                Formulário de Kickoff
+              </Button>
+              <Button variant="outline" onClick={() => setIsEditing(true)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Editar Briefing
+              </Button>
+            </>
           )}
         </div>
       )}
+
+      {/* Kickoff Form Dialog */}
+      <KickoffFormDialog
+        open={showKickoffForm}
+        onOpenChange={setShowKickoffForm}
+        companyId={companyId}
+        onSuccess={fetchCompanyData}
+      />
 
       {/* Informações Básicas */}
       <Card>
