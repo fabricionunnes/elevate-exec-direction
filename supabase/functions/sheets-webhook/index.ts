@@ -306,27 +306,19 @@ Deno.serve(async (req) => {
       console.log("Nova empresa criada:", companyId);
     }
 
-    // Verificar se já existe projeto para este produto nesta empresa
-    const { data: existingProject } = await supabase
+    // Sempre criar um novo projeto (a mesma empresa pode comprar o mesmo serviço mais de uma vez)
+    const { count: existingProjectsCount, error: existingProjectsCountError } = await supabase
       .from("onboarding_projects")
-      .select("id")
+      .select("id", { count: "exact", head: true })
       .eq("onboarding_company_id", companyId)
-      .eq("product_id", product.id)
-      .maybeSingle();
+      .eq("product_id", product.id);
 
-    if (existingProject) {
-      console.log("Projeto já existe para este produto");
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "Empresa já possui projeto para este produto",
-          company_id: companyId,
-          project_id: existingProject.id,
-          is_new: false
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (existingProjectsCountError) {
+      console.warn("Não foi possível contar projetos existentes:", existingProjectsCountError);
     }
+
+    const nextProjectNumber = (existingProjectsCount ?? 0) + 1;
+    const projectName = (existingProjectsCount ?? 0) > 0 ? `${product.name} #${nextProjectNumber}` : product.name;
 
     // Criar projeto
     const { data: newProject, error: projectError } = await supabase
@@ -334,7 +326,7 @@ Deno.serve(async (req) => {
       .insert({
         onboarding_company_id: companyId,
         product_id: product.id,
-        product_name: product.name,
+        product_name: projectName,
         status: "active",
       })
       .select("id")
