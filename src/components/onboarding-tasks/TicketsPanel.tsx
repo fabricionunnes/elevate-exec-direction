@@ -106,24 +106,70 @@ export const TicketsPanel = ({ projectId, users }: TicketsPanelProps) => {
     }
 
     try {
-      // Get current user's onboarding_user id
+      // Get current user's auth id
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
 
+      // First try to find user in onboarding_users for this project
+      let creatorId: string | null = null;
+      
       const { data: onboardingUser } = await supabase
         .from("onboarding_users")
         .select("id")
         .eq("project_id", projectId)
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (!onboardingUser) throw new Error("Usuário não encontrado no projeto");
+      if (onboardingUser) {
+        creatorId = onboardingUser.id;
+      } else {
+        // Check if user is staff admin - if so, create a temporary entry in onboarding_users
+        const { data: staffMember } = await supabase
+          .from("onboarding_staff")
+          .select("id, name, email, role")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (staffMember) {
+          // Check if staff already has an entry in onboarding_users for this project
+          const { data: existingStaffUser } = await supabase
+            .from("onboarding_users")
+            .select("id")
+            .eq("project_id", projectId)
+            .eq("email", staffMember.email)
+            .maybeSingle();
+
+          if (existingStaffUser) {
+            creatorId = existingStaffUser.id;
+          } else {
+            // Create entry for staff in onboarding_users
+            const { data: newStaffUser, error: insertError } = await supabase
+              .from("onboarding_users")
+              .insert({
+                project_id: projectId,
+                user_id: user.id,
+                name: staffMember.name,
+                email: staffMember.email,
+                role: staffMember.role === 'admin' ? 'admin' : staffMember.role as 'cs' | 'consultant',
+                password_changed: true,
+              })
+              .select("id")
+              .single();
+
+            if (insertError) throw insertError;
+            creatorId = newStaffUser.id;
+          }
+        }
+      }
+
+      if (!creatorId) throw new Error("Usuário não encontrado no projeto");
 
       const { error } = await supabase.from("onboarding_tickets").insert({
         project_id: projectId,
         subject: newTicket.subject.trim(),
         message: newTicket.message.trim(),
-        created_by: onboardingUser.id,
+        created_by: creatorId,
         assigned_to: newTicket.assigned_to || null,
       });
 
