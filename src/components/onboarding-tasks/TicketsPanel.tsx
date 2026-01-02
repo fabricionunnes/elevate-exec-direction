@@ -66,7 +66,48 @@ export const TicketsPanel = ({ projectId, users }: TicketsPanelProps) => {
 
   useEffect(() => {
     fetchTickets();
-  }, [projectId]);
+    
+    // Subscribe to real-time ticket changes
+    const ticketsChannel = supabase
+      .channel(`tickets-${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'onboarding_tickets',
+          filter: `project_id=eq.${projectId}`
+        },
+        () => {
+          fetchTickets();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to real-time ticket replies
+    const repliesChannel = supabase
+      .channel(`ticket-replies-${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'onboarding_ticket_replies'
+        },
+        (payload) => {
+          // Refresh if we have a selected ticket and the reply is for it
+          if (selectedTicket && payload.new && (payload.new as any).ticket_id === selectedTicket.id) {
+            handleSelectTicket(selectedTicket);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ticketsChannel);
+      supabase.removeChannel(repliesChannel);
+    };
+  }, [projectId, selectedTicket]);
 
   const fetchTickets = async () => {
     try {
@@ -255,7 +296,7 @@ export const TicketsPanel = ({ projectId, users }: TicketsPanelProps) => {
     }
   };
 
-  const staffUsers = users.filter((u) => u.role === "cs" || u.role === "consultant");
+  const staffUsers = users.filter((u) => u.role === "cs" || u.role === "consultant" || u.role === "admin");
 
   if (loading) {
     return <div className="py-12 text-center text-muted-foreground">Carregando chamados...</div>;
@@ -341,7 +382,7 @@ export const TicketsPanel = ({ projectId, users }: TicketsPanelProps) => {
                 <SelectContent>
                   {staffUsers.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
-                      {user.name} ({user.role === "cs" ? "CS" : "Consultor"})
+                      {user.name} ({user.role === "cs" ? "CS" : user.role === "consultant" ? "Consultor" : "Admin"})
                     </SelectItem>
                   ))}
                 </SelectContent>

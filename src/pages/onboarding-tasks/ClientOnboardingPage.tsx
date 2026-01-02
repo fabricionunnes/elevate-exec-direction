@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,16 +10,15 @@ import {
   List,
   Calendar,
   MessageSquare,
-  Bell,
-  ChevronRight,
+  Settings,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ClientJourneyTrail } from "@/components/client-portal/ClientJourneyTrail";
 import { ClientTimelineView } from "@/components/client-portal/ClientTimelineView";
 import { ClientTasksList } from "@/components/client-portal/ClientTasksList";
 import { ClientTaskDetailSheet } from "@/components/client-portal/ClientTaskDetailSheet";
+import { ClientSettingsSheet } from "@/components/client-portal/ClientSettingsSheet";
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
-import { Badge } from "@/components/ui/badge";
 
 interface OnboardingTask {
   id: string;
@@ -68,64 +67,119 @@ const ClientOnboardingPage = () => {
   const [activeView, setActiveView] = useState<ViewType>("trail");
   const [selectedTask, setSelectedTask] = useState<OnboardingTask | null>(null);
   const [showTaskDetail, setShowTaskDetail] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
-  useEffect(() => {
-    checkAuthAndLoadData();
+  const fetchTasks = useCallback(async () => {
+    if (!projectId) return;
+    
+    const { data: tasksData } = await supabase
+      .from("onboarding_tasks")
+      .select(`
+        *,
+        assignee:onboarding_users!onboarding_tasks_assignee_id_fkey(id, name, role),
+        responsible_staff:onboarding_staff!onboarding_tasks_responsible_staff_id_fkey(id, name)
+      `)
+      .eq("project_id", projectId)
+      .order("sort_order");
+
+    setTasks(tasksData || []);
   }, [projectId]);
 
-  const checkAuthAndLoadData = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate("/onboarding-tasks/login");
-        return;
+  const fetchUsers = useCallback(async () => {
+    if (!projectId) return;
+    
+    const { data: usersData } = await supabase
+      .from("onboarding_users")
+      .select("*")
+      .eq("project_id", projectId);
+
+    setUsers(usersData || []);
+  }, [projectId]);
+
+  useEffect(() => {
+    const checkAuthAndLoadData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          navigate("/onboarding-tasks/login");
+          return;
+        }
+
+        // Find onboarding user for this project
+        const { data: onboardingUser, error: userError } = await supabase
+          .from("onboarding_users")
+          .select("*, project:onboarding_projects(*, onboarding_company:onboarding_companies(name))")
+          .eq("user_id", user.id)
+          .eq("project_id", projectId)
+          .single();
+
+        if (userError || !onboardingUser) {
+          toast.error("Você não tem acesso a este projeto");
+          navigate("/onboarding-tasks/login");
+          return;
+        }
+
+        setCurrentUser(onboardingUser);
+        setProject(onboardingUser.project);
+        setCompany(onboardingUser.project?.onboarding_company);
+
+        await Promise.all([fetchTasks(), fetchUsers()]);
+      } catch (error: any) {
+        console.error("Error loading data:", error);
+        toast.error("Erro ao carregar dados");
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // Find onboarding user for this project
-      const { data: onboardingUser, error: userError } = await supabase
-        .from("onboarding_users")
-        .select("*, project:onboarding_projects(*, onboarding_company:onboarding_companies(name))")
-        .eq("user_id", user.id)
-        .eq("project_id", projectId)
-        .single();
+    checkAuthAndLoadData();
+  }, [projectId, navigate, fetchTasks, fetchUsers]);
 
-      if (userError || !onboardingUser) {
-        toast.error("Você não tem acesso a este projeto");
-        navigate("/onboarding-tasks/login");
-        return;
-      }
+  // Real-time subscriptions
+  useEffect(() => {
+    if (!projectId) return;
 
-      setCurrentUser(onboardingUser);
-      setProject(onboardingUser.project);
-      setCompany(onboardingUser.project?.onboarding_company);
+    // Subscribe to task changes
+    const tasksChannel = supabase
+      .channel(`client-tasks-${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'onboarding_tasks',
+          filter: `project_id=eq.${projectId}`
+        },
+        (payload) => {
+          console.log('Task change received:', payload);
+          fetchTasks();
+        }
+      )
+      .subscribe();
 
-      // Fetch tasks with assignees and responsible staff
-      const { data: tasksData } = await supabase
-        .from("onboarding_tasks")
-        .select(`
-          *,
-          assignee:onboarding_users!onboarding_tasks_assignee_id_fkey(id, name, role),
-          responsible_staff:onboarding_staff!onboarding_tasks_responsible_staff_id_fkey(id, name)
-        `)
-        .eq("project_id", onboardingUser.project_id)
-        .order("sort_order");
+    // Subscribe to ticket changes
+    const ticketsChannel = supabase
+      .channel(`client-tickets-${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'onboarding_tickets',
+          filter: `project_id=eq.${projectId}`
+        },
+        (payload) => {
+          console.log('Ticket change received:', payload);
+          // Tickets panel will handle its own refresh
+        }
+      )
+      .subscribe();
 
-      setTasks(tasksData || []);
-
-      // Fetch users
-      const { data: usersData } = await supabase
-        .from("onboarding_users")
-        .select("*")
-        .eq("project_id", onboardingUser.project_id);
-
-      setUsers(usersData || []);
-    } catch (error: any) {
-      console.error("Error loading data:", error);
-      toast.error("Erro ao carregar dados");
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => {
+      supabase.removeChannel(tasksChannel);
+      supabase.removeChannel(ticketsChannel);
+    };
+  }, [projectId, fetchTasks]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -222,7 +276,10 @@ const ClientOnboardingPage = () => {
                 {project.product_name}
               </p>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowSettings(true)}>
+                <Settings className="h-4 w-4" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -322,11 +379,18 @@ const ClientOnboardingPage = () => {
         </AnimatePresence>
       </main>
 
-      {/* Task detail sheet */}
       <ClientTaskDetailSheet
         task={selectedTask}
         open={showTaskDetail}
         onOpenChange={setShowTaskDetail}
+      />
+
+      {/* Settings sheet */}
+      <ClientSettingsSheet
+        open={showSettings}
+        onOpenChange={setShowSettings}
+        userName={currentUser?.name || ""}
+        userEmail={currentUser?.email || ""}
       />
 
       {/* Welcome card for first visit - shows on trail view */}
