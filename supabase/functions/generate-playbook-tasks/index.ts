@@ -351,6 +351,7 @@ ${existingTaskTitles.join(", ") || "Nenhuma"}
 4. Evite tarefas genéricas - seja específico com base nas informações do cliente
 5. Priorize tarefas que resolvam os desafios mencionados
 6. NÃO repita tarefas que já existem no projeto
+7. SEMPRE use o NOME DA EMPRESA (${company?.name || "a empresa"}) nos títulos e descrições, NUNCA o nome do produto/projeto
 
 ## FORMATO DE RESPOSTA:
 Retorne APENAS um JSON válido no seguinte formato (sem markdown, sem texto adicional):
@@ -368,7 +369,7 @@ Retorne APENAS um JSON válido no seguinte formato (sem markdown, sem texto adic
 }
 
 IMPORTANTE: 
-- Personalize os títulos e descrições com o nome da empresa e contexto específico
+- SEMPRE use o NOME DA EMPRESA "${company?.name || ""}" nos títulos e descrições, NUNCA use o nome do produto "${project?.product_name || ""}"
 - Conecte cada tarefa aos desafios e metas mencionados
 - Seja prático e acionável nas descrições`;
 
