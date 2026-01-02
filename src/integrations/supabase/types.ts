@@ -839,6 +839,7 @@ export type Database = {
           id: string
           new_value: string | null
           old_value: string | null
+          staff_id: string | null
           task_id: string
           user_id: string | null
         }
@@ -849,6 +850,7 @@ export type Database = {
           id?: string
           new_value?: string | null
           old_value?: string | null
+          staff_id?: string | null
           task_id: string
           user_id?: string | null
         }
@@ -859,22 +861,23 @@ export type Database = {
           id?: string
           new_value?: string | null
           old_value?: string | null
+          staff_id?: string | null
           task_id?: string
           user_id?: string | null
         }
         Relationships: [
           {
+            foreignKeyName: "onboarding_task_history_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "onboarding_task_history_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "onboarding_tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "onboarding_task_history_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "onboarding_users"
             referencedColumns: ["id"]
           },
         ]

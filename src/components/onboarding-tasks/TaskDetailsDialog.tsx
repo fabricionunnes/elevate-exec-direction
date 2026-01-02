@@ -126,15 +126,29 @@ export const TaskDetailsDialog = ({
 
   const logHistory = async (action: string, fieldChanged: string | null, oldValue: string | null, newValue: string | null) => {
     if (!currentUserId || !task) return;
+    
+    // Determine if current user is staff or onboarding_user
+    const isStaff = isAdmin || currentUserRole === "cs" || currentUserRole === "consultant";
+    
     try {
-      await supabase.from("onboarding_task_history").insert({
+      const insertData: any = {
         task_id: task.id,
-        user_id: currentUserId,
         action,
         field_changed: fieldChanged,
         old_value: oldValue,
         new_value: newValue,
-      });
+      };
+      
+      if (isStaff) {
+        insertData.staff_id = currentUserId;
+      } else {
+        insertData.user_id = currentUserId;
+      }
+      
+      const { error } = await supabase.from("onboarding_task_history").insert(insertData);
+      if (error) {
+        console.error("Error logging history:", error);
+      }
     } catch (error) {
       console.error("Error logging history:", error);
     }
