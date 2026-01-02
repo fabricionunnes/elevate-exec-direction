@@ -18,7 +18,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -41,12 +40,14 @@ interface Staff {
   phone: string | null;
   is_active: boolean;
   created_at: string;
+  user_id: string | null;
 }
 
 const OnboardingStaffPage = () => {
   const navigate = useNavigate();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showDialog, setShowDialog] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
@@ -55,6 +56,7 @@ const OnboardingStaffPage = () => {
     email: "",
     role: "cs" as "cs" | "consultant" | "admin",
     phone: "",
+    password: "",
   });
 
   useEffect(() => {
@@ -80,8 +82,27 @@ const OnboardingStaffPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
     
     try {
+      let userId: string | null = null;
+
+      // Se for novo membro e tiver senha, criar usuário de login
+      if (!editingStaff && formData.password) {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/onboarding-tasks`,
+          },
+        });
+
+        if (authError) throw authError;
+        userId = authData.user?.id || null;
+        
+        toast.success("Usuário de login criado com sucesso");
+      }
+
       if (editingStaff) {
         const { error } = await supabase
           .from("onboarding_staff")
@@ -103,6 +124,7 @@ const OnboardingStaffPage = () => {
             email: formData.email,
             role: formData.role,
             phone: formData.phone || null,
+            user_id: userId,
           });
 
         if (error) throw error;
@@ -111,11 +133,13 @@ const OnboardingStaffPage = () => {
 
       setShowDialog(false);
       setEditingStaff(null);
-      setFormData({ name: "", email: "", role: "cs", phone: "" });
+      setFormData({ name: "", email: "", role: "cs", phone: "", password: "" });
       fetchStaff();
     } catch (error: any) {
       console.error("Error saving staff:", error);
       toast.error(error.message || "Erro ao salvar membro");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -142,13 +166,14 @@ const OnboardingStaffPage = () => {
       email: member.email,
       role: member.role,
       phone: member.phone || "",
+      password: "",
     });
     setShowDialog(true);
   };
 
   const openNewDialog = () => {
     setEditingStaff(null);
-    setFormData({ name: "", email: "", role: "cs", phone: "" });
+    setFormData({ name: "", email: "", role: "cs", phone: "", password: "" });
     setShowDialog(true);
   };
 
@@ -159,11 +184,16 @@ const OnboardingStaffPage = () => {
   );
 
   const getRoleBadge = (role: string) => {
-    return role === "cs" ? (
-      <Badge className="bg-blue-500">CS</Badge>
-    ) : (
-      <Badge className="bg-purple-500">Consultor</Badge>
-    );
+    switch (role) {
+      case "admin":
+        return <Badge className="bg-amber-500">Admin</Badge>;
+      case "cs":
+        return <Badge className="bg-blue-500">CS</Badge>;
+      case "consultant":
+        return <Badge className="bg-purple-500">Consultor</Badge>;
+      default:
+        return <Badge variant="outline">{role}</Badge>;
+    }
   };
 
   if (loading) {
@@ -336,12 +366,13 @@ const OnboardingStaffPage = () => {
               <Label htmlFor="role">Função *</Label>
               <Select
                 value={formData.role}
-                onValueChange={(v) => setFormData({ ...formData, role: v as "cs" | "consultant" })}
+                onValueChange={(v) => setFormData({ ...formData, role: v as "cs" | "consultant" | "admin" })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="admin">Administrador</SelectItem>
                   <SelectItem value="cs">CS (Customer Success)</SelectItem>
                   <SelectItem value="consultant">Consultor</SelectItem>
                 </SelectContent>
@@ -355,12 +386,28 @@ const OnboardingStaffPage = () => {
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
+            {!editingStaff && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha de Acesso *</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Mínimo 6 caracteres"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  O membro poderá usar este email e senha para fazer login
+                </p>
+              </div>
+            )}
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">
-                {editingStaff ? "Salvar" : "Cadastrar"}
+              <Button type="submit" disabled={saving}>
+                {saving ? "Salvando..." : editingStaff ? "Salvar" : "Cadastrar"}
               </Button>
             </div>
           </form>
