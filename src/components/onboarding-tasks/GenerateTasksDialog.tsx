@@ -24,6 +24,7 @@ interface GeneratedTask {
   priority: "high" | "medium" | "low";
   responsible_role: "consultant" | "cs" | "client";
   estimated_days: number;
+  due_date?: string | null;
   selected?: boolean;
 }
 
@@ -129,7 +130,7 @@ export const GenerateTasksDialog = ({
 
       let sortOrder = (existingTasks?.[0]?.sort_order || 0) + 1;
 
-      // Create tasks
+      // Create tasks with due dates
       const tasksToInsert = selectedTasks.map((task) => {
         const phaseOrder = PHASE_ORDER[task.phase] ?? 99;
         return {
@@ -137,6 +138,7 @@ export const GenerateTasksDialog = ({
           title: task.title,
           description: task.description,
           priority: task.priority,
+          due_date: task.due_date || null,
           tags: [task.phase, String(phaseOrder)],
           sort_order: sortOrder++,
           status: "pending" as const,

@@ -123,27 +123,11 @@ export const CreateProjectDialog = ({
         .order("phase_order")
         .order("sort_order");
 
-      // Fetch product-specific task templates
-      const { data: productTemplates } = await supabase
-        .from("onboarding_task_templates")
-        .select("*")
-        .eq("product_id", selectedProduct)
-        .order("phase_order")
-        .order("sort_order");
-
-      // Combine master + product templates
-      const allTemplates = [
-        ...(masterTemplates || []),
-        ...(productTemplates || []),
-      ];
-
-      // Create tasks from templates with phase info and recurrence
-      if (allTemplates.length > 0) {
+      // Create tasks from master templates first
+      if (masterTemplates && masterTemplates.length > 0) {
         const today = new Date();
         
-        // Re-calculate sort_order to maintain proper ordering
-        // Master tasks come first, then product-specific tasks
-        const tasks = allTemplates.map((template, index) => ({
+        const masterTasks = masterTemplates.map((template, index) => ({
           project_id: project.id,
           title: template.title,
           description: template.description,
@@ -153,13 +137,49 @@ export const CreateProjectDialog = ({
             : null,
           sort_order: index,
           status: "pending" as const,
-          // Store phase info in tags array: [phase_name, phase_order]
           tags: template.phase ? [template.phase, String(template.phase_order ?? 0)] : null,
           recurrence: template.recurrence,
           template_id: template.id,
         }));
 
-        await supabase.from("onboarding_tasks").insert(tasks);
+        await supabase.from("onboarding_tasks").insert(masterTasks);
+      }
+
+      // Generate product-specific tasks using the edge function
+      try {
+        const { data: generatedData, error: genError } = await supabase.functions.invoke(
+          "generate-playbook-tasks",
+          {
+            body: {
+              projectId: project.id,
+              companyId: companyId,
+              context: "",
+            },
+          }
+        );
+
+        if (!genError && generatedData?.tasks?.length > 0) {
+          const today = new Date();
+          const masterCount = masterTemplates?.length || 0;
+          
+          const productTasks = generatedData.tasks.map((task: any, index: number) => ({
+            project_id: project.id,
+            title: task.title,
+            description: task.description,
+            priority: task.priority || "medium",
+            due_date: task.due_date || (task.estimated_days 
+              ? new Date(today.getTime() + task.estimated_days * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+              : null),
+            sort_order: masterCount + index,
+            status: "pending" as const,
+            tags: task.phase ? [task.phase, String(index)] : null,
+          }));
+
+          await supabase.from("onboarding_tasks").insert(productTasks);
+        }
+      } catch (genErr) {
+        console.error("Error generating product tasks:", genErr);
+        // Continue without product-specific tasks - master tasks are already created
       }
 
       toast.success("Projeto criado com sucesso!");

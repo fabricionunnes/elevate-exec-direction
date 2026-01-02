@@ -1414,7 +1414,7 @@ serve(async (req) => {
 
     console.log("Using product-specific tasks for:", productConfig.name);
 
-    // Generate tasks from product phases
+    // Generate tasks from product phases with calculated due dates
     const tasks: {
       title: string;
       description: string;
@@ -1422,11 +1422,16 @@ serve(async (req) => {
       priority: string;
       responsible_role: string;
       estimated_days: number;
+      due_date: string | null;
     }[] = [];
 
     const companyName = company?.name || "a empresa";
+    const projectCreatedAt = new Date(project.created_at);
+    let daysOffset = 0;
 
     for (const phase of productConfig.phases) {
+      const phaseIndex = productConfig.phases.indexOf(phase);
+      
       for (const taskTitle of phase.tasks) {
         // Skip if task already exists
         if (existingTaskTitles.includes(taskTitle.toLowerCase())) {
@@ -1437,7 +1442,6 @@ serve(async (req) => {
         const personalizedTitle = taskTitle.replace(/a empresa|o cliente/gi, companyName);
 
         // Determine priority based on phase order
-        const phaseIndex = productConfig.phases.indexOf(phase);
         let priority = "medium";
         if (phaseIndex === 0) priority = "high";
         if (phaseIndex === productConfig.phases.length - 1) priority = "low";
@@ -1461,9 +1465,20 @@ serve(async (req) => {
             taskTitle.toLowerCase().includes("implementar")) {
           estimated_days = 7;
         } else if (taskTitle.toLowerCase().includes("reunião") ||
-                   taskTitle.toLowerCase().includes("check-in")) {
+                   taskTitle.toLowerCase().includes("check-in") ||
+                   taskTitle.toLowerCase().includes("mensal")) {
           estimated_days = 1;
         }
+
+        // Calculate due date based on phase and task order
+        // Each phase gets proportional time based on 12 months
+        const phaseDuration = Math.ceil(365 / productConfig.phases.length); // days per phase
+        const phaseStartDay = phaseIndex * phaseDuration;
+        const taskIndex = phase.tasks.indexOf(taskTitle);
+        const taskSpacing = Math.ceil(phaseDuration / phase.tasks.length);
+        const taskDueDay = phaseStartDay + (taskIndex * taskSpacing);
+        
+        const dueDate = new Date(projectCreatedAt.getTime() + taskDueDay * 24 * 60 * 60 * 1000);
 
         tasks.push({
           title: personalizedTitle,
@@ -1471,13 +1486,16 @@ serve(async (req) => {
           phase: phase.name,
           priority,
           responsible_role,
-          estimated_days
+          estimated_days,
+          due_date: dueDate.toISOString().split("T")[0]
         });
+
+        daysOffset += estimated_days;
       }
     }
 
     // Limit to reasonable number of tasks
-    const limitedTasks = tasks.slice(0, 25);
+    const limitedTasks = tasks.slice(0, 40);
 
     console.log(`Generated ${limitedTasks.length} tasks for ${productConfig.name}`);
 
