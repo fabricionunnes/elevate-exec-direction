@@ -26,3 +26,6 @@ verify_jwt = true
 
 [functions.generate-monthly-tasks]
 verify_jwt = false
+
+[functions.sheets-webhook]
+verify_jwt = false
