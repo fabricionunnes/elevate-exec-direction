@@ -23,3 +23,6 @@ verify_jwt = true
 
 [functions.generate-playbook-tasks]
 verify_jwt = true
+
+[functions.generate-monthly-tasks]
+verify_jwt = false

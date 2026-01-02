@@ -630,6 +630,76 @@ export type Database = {
           },
         ]
       }
+      onboarding_monthly_goals: {
+        Row: {
+          created_at: string
+          id: string
+          month: number
+          notes: string | null
+          project_id: string
+          result_set_at: string | null
+          result_set_by: string | null
+          sales_result: number | null
+          sales_target: number | null
+          target_set_at: string | null
+          target_set_by: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month: number
+          notes?: string | null
+          project_id: string
+          result_set_at?: string | null
+          result_set_by?: string | null
+          sales_result?: number | null
+          sales_target?: number | null
+          target_set_at?: string | null
+          target_set_by?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month?: number
+          notes?: string | null
+          project_id?: string
+          result_set_at?: string | null
+          result_set_by?: string | null
+          sales_result?: number | null
+          sales_target?: number | null
+          target_set_at?: string | null
+          target_set_by?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_monthly_goals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_monthly_goals_result_set_by_fkey"
+            columns: ["result_set_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_monthly_goals_target_set_by_fkey"
+            columns: ["target_set_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_projects: {
         Row: {
           churn_risk: string | null
