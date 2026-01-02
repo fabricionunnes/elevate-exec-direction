@@ -252,7 +252,7 @@ export const GenerateTasksDialog = ({
         )}
 
         {step === "review" && (
-          <ScrollArea className="flex-1 max-h-[50vh]">
+          <ScrollArea className="flex-1 min-h-[200px] max-h-[60vh]">
             <div className="space-y-3 pr-4">
               {generatedTasks.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
