@@ -643,7 +643,185 @@ export const MonthlyGoalsCard = ({ projectId, canEdit, currentStaffId }: Monthly
             })}
           </div>
         </div>
+
+        {/* Before vs After Comparison */}
+        <BeforeAfterComparison goals={goals} formatCurrency={formatCurrency} />
       </CardContent>
     </Card>
+  );
+};
+
+// Before vs After Comparison Component
+const BeforeAfterComparison = ({ 
+  goals, 
+  formatCurrency 
+}: { 
+  goals: MonthlyGoal[]; 
+  formatCurrency: (value: number | null) => string;
+}) => {
+  const historicalGoals = goals.filter(g => g.notes?.includes("históricos"));
+  const currentGoals = goals.filter(g => !g.notes?.includes("históricos"));
+  
+  const historicalWithBoth = historicalGoals.filter(g => g.sales_target && g.sales_result);
+  const currentWithBoth = currentGoals.filter(g => g.sales_target && g.sales_result);
+  
+  // If no data to compare, don't show the section
+  if (historicalWithBoth.length === 0 && currentWithBoth.length === 0) {
+    return null;
+  }
+
+  // Calculate averages for historical period
+  const avgHistoricalTarget = historicalWithBoth.length > 0 
+    ? historicalWithBoth.reduce((sum, g) => sum + (g.sales_target || 0), 0) / historicalWithBoth.length 
+    : 0;
+  const avgHistoricalResult = historicalWithBoth.length > 0 
+    ? historicalWithBoth.reduce((sum, g) => sum + (g.sales_result || 0), 0) / historicalWithBoth.length 
+    : 0;
+  const avgHistoricalPerformance = avgHistoricalTarget > 0 
+    ? (avgHistoricalResult / avgHistoricalTarget) * 100 
+    : 0;
+
+  // Calculate averages for current period
+  const avgCurrentTarget = currentWithBoth.length > 0 
+    ? currentWithBoth.reduce((sum, g) => sum + (g.sales_target || 0), 0) / currentWithBoth.length 
+    : 0;
+  const avgCurrentResult = currentWithBoth.length > 0 
+    ? currentWithBoth.reduce((sum, g) => sum + (g.sales_result || 0), 0) / currentWithBoth.length 
+    : 0;
+  const avgCurrentPerformance = avgCurrentTarget > 0 
+    ? (avgCurrentResult / avgCurrentTarget) * 100 
+    : 0;
+
+  // Calculate changes
+  const performanceChange = avgCurrentPerformance - avgHistoricalPerformance;
+  const resultChange = avgHistoricalResult > 0 
+    ? ((avgCurrentResult - avgHistoricalResult) / avgHistoricalResult) * 100 
+    : 0;
+
+  const hasComparison = historicalWithBoth.length > 0 && currentWithBoth.length > 0;
+
+  return (
+    <div className="pt-4 border-t">
+      <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+        <TrendingUp className="h-4 w-4" />
+        Comparativo: Antes vs Depois do Acompanhamento
+      </h4>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Before Card */}
+        <div className="border rounded-lg p-4 bg-muted/30">
+          <div className="flex items-center gap-2 mb-3">
+            <History className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium text-sm">ANTES</span>
+            <Badge variant="secondary" className="text-xs">
+              {historicalWithBoth.length} meses
+            </Badge>
+          </div>
+          {historicalWithBoth.length > 0 ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Média de meta:</span>
+                <span className="font-medium">{formatCurrency(avgHistoricalTarget)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Média de resultado:</span>
+                <span className="font-medium">{formatCurrency(avgHistoricalResult)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Performance média:</span>
+                <span className={`font-medium ${
+                  avgHistoricalPerformance >= 100 ? "text-green-500" :
+                  avgHistoricalPerformance >= 80 ? "text-amber-500" :
+                  "text-red-500"
+                }`}>
+                  {avgHistoricalPerformance.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Sem dados históricos. Clique em "Histórico" para registrar.
+            </p>
+          )}
+        </div>
+
+        {/* After Card */}
+        <div className="border rounded-lg p-4 bg-primary/5">
+          <div className="flex items-center gap-2 mb-3">
+            <Target className="h-4 w-4 text-primary" />
+            <span className="font-medium text-sm">DEPOIS</span>
+            <Badge variant="default" className="text-xs">
+              {currentWithBoth.length} meses
+            </Badge>
+          </div>
+          {currentWithBoth.length > 0 ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Média de meta:</span>
+                <span className="font-medium">{formatCurrency(avgCurrentTarget)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Média de resultado:</span>
+                <span className="font-medium">{formatCurrency(avgCurrentResult)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Performance média:</span>
+                <span className={`font-medium ${
+                  avgCurrentPerformance >= 100 ? "text-green-500" :
+                  avgCurrentPerformance >= 80 ? "text-amber-500" :
+                  "text-red-500"
+                }`}>
+                  {avgCurrentPerformance.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Sem dados do período atual ainda.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Evolution Summary */}
+      {hasComparison && (
+        <div className={`mt-4 p-4 rounded-lg ${
+          performanceChange > 0 ? "bg-green-500/10" : 
+          performanceChange < 0 ? "bg-red-500/10" : 
+          "bg-muted"
+        }`}>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            {performanceChange > 0 ? (
+              <TrendingUp className="h-5 w-5 text-green-500" />
+            ) : performanceChange < 0 ? (
+              <TrendingDown className="h-5 w-5 text-red-500" />
+            ) : null}
+            <span className="font-semibold">Evolução com o Acompanhamento</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-center">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Variação de Performance</p>
+              <p className={`text-lg font-bold ${
+                performanceChange > 0 ? "text-green-500" : 
+                performanceChange < 0 ? "text-red-500" : 
+                "text-muted-foreground"
+              }`}>
+                {performanceChange > 0 ? "+" : ""}{performanceChange.toFixed(1)}pp
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Crescimento de Faturamento</p>
+              <p className={`text-lg font-bold ${
+                resultChange > 0 ? "text-green-500" : 
+                resultChange < 0 ? "text-red-500" : 
+                "text-muted-foreground"
+              }`}>
+                {resultChange > 0 ? "+" : ""}{resultChange.toFixed(1)}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
