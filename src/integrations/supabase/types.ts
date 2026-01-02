@@ -622,35 +622,62 @@ export type Database = {
       }
       onboarding_projects: {
         Row: {
+          churn_risk: string | null
+          client_dependency: string | null
+          client_feedback: string | null
+          communication_channel: string | null
           company_id: string | null
           created_at: string
           created_by: string | null
+          current_blockers: string | null
+          current_nps: number | null
           id: string
+          last_executive_checkpoint: string | null
           onboarding_company_id: string | null
           product_id: string
           product_name: string
+          product_variables: Json | null
+          project_complexity: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          churn_risk?: string | null
+          client_dependency?: string | null
+          client_feedback?: string | null
+          communication_channel?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
+          current_blockers?: string | null
+          current_nps?: number | null
           id?: string
+          last_executive_checkpoint?: string | null
           onboarding_company_id?: string | null
           product_id: string
           product_name: string
+          product_variables?: Json | null
+          project_complexity?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          churn_risk?: string | null
+          client_dependency?: string | null
+          client_feedback?: string | null
+          communication_channel?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
+          current_blockers?: string | null
+          current_nps?: number | null
           id?: string
+          last_executive_checkpoint?: string | null
           onboarding_company_id?: string | null
           product_id?: string
           product_name?: string
+          product_variables?: Json | null
+          project_complexity?: string | null
           status?: string
           updated_at?: string
         }
