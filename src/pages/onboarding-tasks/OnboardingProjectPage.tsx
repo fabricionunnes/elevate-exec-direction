@@ -115,6 +115,7 @@ const OnboardingProjectPage = () => {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [activeTab, setActiveTab] = useState("tasks");
   const [currentUserRole, setCurrentUserRole] = useState<"admin" | "cs" | "consultant" | "client" | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [isStaffAdmin, setIsStaffAdmin] = useState(false);
 
@@ -136,18 +137,24 @@ const OnboardingProjectPage = () => {
           .eq("user_id", user.id)
           .single();
         
-        if (staffMember && staffMember.role === "admin") {
-          setIsStaffAdmin(true);
-          setCurrentUserRole("admin");
+        if (staffMember) {
+          setCurrentUserId(staffMember.id);
+          if (staffMember.role === "admin") {
+            setIsStaffAdmin(true);
+            setCurrentUserRole("admin");
+          } else {
+            setCurrentUserRole(staffMember.role as "cs" | "consultant");
+          }
         } else {
           const { data: onboardingUser } = await supabase
             .from("onboarding_users")
-            .select("role")
+            .select("id, role")
             .eq("user_id", user.id)
             .eq("project_id", projectId)
             .single();
           
           if (onboardingUser) {
+            setCurrentUserId(onboardingUser.id);
             setCurrentUserRole(onboardingUser.role as "admin" | "cs" | "consultant" | "client");
           }
         }
@@ -707,6 +714,8 @@ const OnboardingProjectPage = () => {
         companyId={project.onboarding_company_id || undefined}
         projectId={projectId}
         onDelete={handleDeleteTask}
+        currentUserRole={currentUserRole}
+        currentUserId={currentUserId}
       />
     </div>
   );
