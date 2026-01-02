@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Target, TrendingUp, TrendingDown, CheckCircle2, Pencil, Save, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Target, TrendingUp, TrendingDown, CheckCircle2, Pencil, Save, X, ChevronLeft, ChevronRight, History, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface MonthlyGoal {
   id: string;
@@ -19,6 +22,7 @@ interface MonthlyGoal {
   target_set_at: string | null;
   result_set_at: string | null;
   notes: string | null;
+  is_historical?: boolean;
 }
 
 interface MonthlyGoalsCardProps {
@@ -42,6 +46,8 @@ export const MonthlyGoalsCard = ({ projectId, canEdit, currentStaffId }: Monthly
   const [targetValue, setTargetValue] = useState("");
   const [resultValue, setResultValue] = useState("");
   const [notesValue, setNotesValue] = useState("");
+  const [showHistoricalDialog, setShowHistoricalDialog] = useState(false);
+  const [historicalInputs, setHistoricalInputs] = useState<{[key: string]: { target: string; result: string }}>({});
 
   useEffect(() => {
     fetchGoals();
@@ -216,10 +222,33 @@ export const MonthlyGoalsCard = ({ projectId, canEdit, currentStaffId }: Monthly
 
   const performance = getPerformanceStatus();
 
-  // Get last 6 months for summary
+  // Get last 12 months for historical data entry (before current month)
+  const getHistoricalMonths = () => {
+    const result: { month: number; year: number; key: string }[] = [];
+    let m = new Date().getMonth(); // Start from previous month
+    let y = new Date().getFullYear();
+    
+    if (m === 0) {
+      m = 12;
+      y--;
+    }
+    
+    for (let i = 0; i < 12; i++) {
+      const key = `${y}-${m}`;
+      result.push({ month: m, year: y, key });
+      m--;
+      if (m === 0) {
+        m = 12;
+        y--;
+      }
+    }
+    return result;
+  };
+
+  // Get months for display - current month + 5 previous months
   const getRecentMonths = () => {
     const result: { month: number; year: number; goal?: MonthlyGoal }[] = [];
-    let m = new Date().getMonth() + 1;
+    let m = new Date().getMonth() + 1; // Current month
     let y = new Date().getFullYear();
     
     for (let i = 0; i < 6; i++) {
@@ -231,10 +260,77 @@ export const MonthlyGoalsCard = ({ projectId, canEdit, currentStaffId }: Monthly
         y--;
       }
     }
-    return result.reverse();
+    return result.reverse(); // Show oldest to newest (left to right)
   };
 
+  const handleSaveHistorical = async () => {
+    try {
+      const entries = Object.entries(historicalInputs).filter(
+        ([_, values]) => values.target || values.result
+      );
+
+      if (entries.length === 0) {
+        toast.error("Preencha pelo menos um mês");
+        return;
+      }
+
+      for (const [key, values] of entries) {
+        const [yearStr, monthStr] = key.split("-");
+        const year = parseInt(yearStr);
+        const month = parseInt(monthStr);
+        
+        const target = values.target ? parseFloat(values.target.replace(/[^\d.,]/g, "").replace(",", ".")) : null;
+        const result = values.result ? parseFloat(values.result.replace(/[^\d.,]/g, "").replace(",", ".")) : null;
+
+        if ((values.target && isNaN(target!)) || (values.result && isNaN(result!))) {
+          toast.error(`Valor inválido para ${MONTH_NAMES[month - 1]}/${year}`);
+          continue;
+        }
+
+        const existingGoal = goals.find(g => g.month === month && g.year === year);
+
+        if (existingGoal) {
+          const { error } = await supabase
+            .from("onboarding_monthly_goals")
+            .update({
+              sales_target: target ?? existingGoal.sales_target,
+              sales_result: result ?? existingGoal.sales_result,
+              notes: "Dados históricos (antes do acompanhamento)",
+            })
+            .eq("id", existingGoal.id);
+
+          if (error) throw error;
+        } else if (target !== null || result !== null) {
+          const { error } = await supabase
+            .from("onboarding_monthly_goals")
+            .insert({
+              project_id: projectId,
+              month,
+              year,
+              sales_target: target,
+              sales_result: result,
+              notes: "Dados históricos (antes do acompanhamento)",
+            });
+
+          if (error) throw error;
+        }
+      }
+
+      setShowHistoricalDialog(false);
+      setHistoricalInputs({});
+      fetchGoals();
+      toast.success("Dados históricos salvos com sucesso!");
+    } catch (error: any) {
+      console.error("Error saving historical data:", error);
+      toast.error("Erro ao salvar dados históricos");
+    }
+  };
+
+  const historicalMonths = getHistoricalMonths();
   const recentMonths = getRecentMonths();
+
+  // Check if there are any historical entries
+  const hasHistoricalData = goals.some(g => g.notes?.includes("históricos"));
 
   if (loading) {
     return (
@@ -257,6 +353,87 @@ export const MonthlyGoalsCard = ({ projectId, canEdit, currentStaffId }: Monthly
             Acompanhamento de Metas
           </CardTitle>
           <div className="flex items-center gap-2">
+            {canEdit && (
+              <Dialog open={showHistoricalDialog} onOpenChange={setShowHistoricalDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1">
+                    <History className="h-4 w-4" />
+                    Histórico
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <History className="h-5 w-5" />
+                      Registrar Dados Históricos
+                    </DialogTitle>
+                  </DialogHeader>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Registre as metas e resultados dos últimos 12 meses antes de iniciar o acompanhamento. 
+                    Isso permite visualizar a evolução "antes e depois" do cliente.
+                  </p>
+                  <ScrollArea className="h-[400px] pr-4">
+                    <div className="space-y-3">
+                      {historicalMonths.map(({ month, year, key }) => {
+                        const existingGoal = goals.find(g => g.month === month && g.year === year);
+                        const inputValues = historicalInputs[key] || { 
+                          target: existingGoal?.sales_target?.toString() || "", 
+                          result: existingGoal?.sales_result?.toString() || "" 
+                        };
+                        
+                        return (
+                          <div key={key} className="border rounded-lg p-3">
+                            <div className="font-medium text-sm mb-2 flex items-center justify-between">
+                              <span>{MONTH_NAMES[month - 1]} {year}</span>
+                              {existingGoal && (
+                                <Badge variant="outline" className="text-xs">
+                                  {existingGoal.notes?.includes("históricos") ? "Histórico" : "Atual"}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs text-muted-foreground">Meta (R$)</label>
+                                <Input
+                                  placeholder="Ex: 100000"
+                                  value={inputValues.target}
+                                  onChange={(e) => setHistoricalInputs(prev => ({
+                                    ...prev,
+                                    [key]: { ...prev[key], target: e.target.value, result: prev[key]?.result || inputValues.result }
+                                  }))}
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-muted-foreground">Resultado (R$)</label>
+                                <Input
+                                  placeholder="Ex: 95000"
+                                  value={inputValues.result}
+                                  onChange={(e) => setHistoricalInputs(prev => ({
+                                    ...prev,
+                                    [key]: { target: prev[key]?.target || inputValues.target, result: e.target.value }
+                                  }))}
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                  <div className="flex justify-end gap-2 pt-4 border-t">
+                    <Button variant="outline" onClick={() => setShowHistoricalDialog(false)}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleSaveHistorical}>
+                      <Save className="h-4 w-4 mr-1" />
+                      Salvar Histórico
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
             <Button variant="ghost" size="icon" onClick={() => navigateMonth("prev")}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -312,6 +489,12 @@ export const MonthlyGoalsCard = ({ projectId, canEdit, currentStaffId }: Monthly
                 Definida em {format(new Date(currentGoal.target_set_at), "dd/MM/yyyy", { locale: ptBR })}
               </p>
             )}
+            {currentGoal?.notes?.includes("históricos") && (
+              <Badge variant="secondary" className="text-xs">
+                <History className="h-3 w-3 mr-1" />
+                Dado histórico
+              </Badge>
+            )}
           </div>
 
           {/* Result Card */}
@@ -360,6 +543,12 @@ export const MonthlyGoalsCard = ({ projectId, canEdit, currentStaffId }: Monthly
                 Registrado em {format(new Date(currentGoal.result_set_at), "dd/MM/yyyy", { locale: ptBR })}
               </p>
             )}
+            {currentGoal?.notes?.includes("históricos") && (
+              <Badge variant="secondary" className="text-xs">
+                <History className="h-3 w-3 mr-1" />
+                Dado histórico
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -397,7 +586,7 @@ export const MonthlyGoalsCard = ({ projectId, canEdit, currentStaffId }: Monthly
           </div>
         )}
 
-        {/* Historical summary */}
+        {/* Historical summary - Current month first, then 5 previous */}
         <div className="pt-4 border-t">
           <h4 className="text-sm font-medium mb-3">Histórico Recente</h4>
           <div className="grid grid-cols-6 gap-2">
@@ -405,6 +594,7 @@ export const MonthlyGoalsCard = ({ projectId, canEdit, currentStaffId }: Monthly
               const hasTarget = goal?.sales_target != null;
               const hasResult = goal?.sales_result != null;
               const isCurrentSelection = month === selectedMonth && year === selectedYear;
+              const isHistorical = goal?.notes?.includes("históricos");
               const percentage = hasTarget && hasResult ? 
                 (goal.sales_result! / goal.sales_target!) * 100 : null;
               
@@ -419,6 +609,7 @@ export const MonthlyGoalsCard = ({ projectId, canEdit, currentStaffId }: Monthly
                   }}
                   className={`p-2 rounded-lg text-center transition-colors ${
                     isCurrentSelection ? "bg-primary text-primary-foreground" :
+                    isHistorical ? "bg-muted/50 hover:bg-muted" :
                     "hover:bg-muted"
                   }`}
                 >
@@ -443,6 +634,9 @@ export const MonthlyGoalsCard = ({ projectId, canEdit, currentStaffId }: Monthly
                     </Badge>
                   ) : (
                     <div className="h-5 mt-1" />
+                  )}
+                  {isHistorical && !isCurrentSelection && (
+                    <History className="h-3 w-3 mx-auto mt-1 opacity-50" />
                   )}
                 </button>
               );
