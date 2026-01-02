@@ -37,7 +37,7 @@ interface Staff {
   id: string;
   name: string;
   email: string;
-  role: string;
+  role: "cs" | "consultant";
   phone: string | null;
   is_active: boolean;
   created_at: string;
