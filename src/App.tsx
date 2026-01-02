@@ -59,6 +59,7 @@ import OnboardingProductPage from "./pages/OnboardingProductPage";
 import OnboardingTasksPage from "./pages/onboarding-tasks/OnboardingTasksPage";
 import OnboardingProjectPage from "./pages/onboarding-tasks/OnboardingProjectPage";
 import ClientOnboardingPage from "./pages/onboarding-tasks/ClientOnboardingPage";
+import OnboardingLoginPage from "./pages/onboarding-tasks/OnboardingLoginPage";
 
 const queryClient = new QueryClient();
 
@@ -108,8 +109,9 @@ const App = () => (
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/onboarding/:productId" element={<OnboardingProductPage />} />
           <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
+          <Route path="/onboarding-tasks/login" element={<OnboardingLoginPage />} />
           <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
-          <Route path="/onboarding-client" element={<ClientOnboardingPage />} />
+          <Route path="/onboarding-client/:projectId" element={<ClientOnboardingPage />} />
           
           {/* Portal do Planejamento 2026 */}
           <Route path="/portal" element={<PortalLandingPage />} />

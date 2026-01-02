@@ -80,28 +80,19 @@ export const ManageUsersDialog = ({
     try {
       const tempPassword = generateTempPassword();
 
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUser.email,
-        password: tempPassword,
-        options: {
-          emailRedirectTo: `${window.location.origin}/onboarding-client`,
+      // Use edge function to create user
+      const { data, error } = await supabase.functions.invoke("create-onboarding-user", {
+        body: {
+          email: newUser.email.trim(),
+          password: tempPassword,
+          name: newUser.name.trim(),
+          project_id: projectId,
+          role: newUser.role,
         },
       });
 
-      if (authError) throw authError;
-
-      // Create onboarding user
-      const { error: userError } = await supabase.from("onboarding_users").insert({
-        project_id: projectId,
-        user_id: authData.user?.id,
-        name: newUser.name.trim(),
-        email: newUser.email.trim(),
-        role: newUser.role,
-        temp_password: tempPassword,
-      });
-
-      if (userError) throw userError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast.success("Usuário criado com sucesso!");
       setNewUser({ name: "", email: "", role: "client" });
