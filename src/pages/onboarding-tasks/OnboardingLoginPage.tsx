@@ -120,6 +120,20 @@ const OnboardingLoginPage = () => {
       }
 
       if (data.user) {
+        // First, check if user is a staff member (admin, cs, consultant)
+        const { data: staffMember } = await supabase
+          .from("onboarding_staff")
+          .select("id, role, name")
+          .eq("user_id", data.user.id)
+          .single();
+
+        if (staffMember) {
+          // Staff member found - redirect to appropriate page
+          toast.success(`Bem-vindo, ${staffMember.name}!`);
+          navigate("/onboarding-tasks");
+          return;
+        }
+
         // Check if user exists in onboarding_users
         const { data: onboardingUsers, error: onboardingError } = await supabase
           .from("onboarding_users")
