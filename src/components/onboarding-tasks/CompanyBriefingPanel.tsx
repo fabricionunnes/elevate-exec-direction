@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   Building2,
@@ -24,6 +25,12 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const COMPANY_STATUS_OPTIONS = [
+  { value: "active", label: "Ativa" },
+  { value: "cancellation_requested", label: "Solicitou cancelamento" },
+  { value: "closed", label: "Encerrada" },
+];
 
 interface CompanyData {
   id: string;
@@ -55,10 +62,13 @@ interface CompanyData {
 
 interface CompanyBriefingPanelProps {
   companyId: string;
-  isAdmin?: boolean;
+  userRole?: "admin" | "cs" | "consultant" | "client" | null;
+  isStaffAdmin?: boolean;
 }
 
-export const CompanyBriefingPanel = ({ companyId, isAdmin = false }: CompanyBriefingPanelProps) => {
+export const CompanyBriefingPanel = ({ companyId, userRole, isStaffAdmin = false }: CompanyBriefingPanelProps) => {
+  // Apenas admin e CS podem editar o briefing
+  const canEdit = isStaffAdmin || userRole === "admin" || userRole === "cs";
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -114,6 +124,7 @@ export const CompanyBriefingPanel = ({ companyId, isAdmin = false }: CompanyBrie
           name: formData.name,
           cnpj: formData.cnpj,
           segment: formData.segment,
+          status: formData.status,
           website: formData.website,
           phone: formData.phone,
           email: formData.email,
@@ -223,10 +234,28 @@ export const CompanyBriefingPanel = ({ companyId, isAdmin = false }: CompanyBrie
     );
   };
 
+  const getStatusLabel = (status: string) => {
+    const option = COMPANY_STATUS_OPTIONS.find(o => o.value === status);
+    return option?.label || status;
+  };
+
+  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" => {
+    switch (status) {
+      case "active":
+        return "default";
+      case "cancellation_requested":
+        return "secondary";
+      case "closed":
+        return "destructive";
+      default:
+        return "default";
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header com botão de edição */}
-      {isAdmin && (
+      {canEdit && (
         <div className="flex justify-end gap-2">
           {isEditing ? (
             <>
@@ -261,16 +290,32 @@ export const CompanyBriefingPanel = ({ companyId, isAdmin = false }: CompanyBrie
             {renderField("Nome da Empresa", company.name, "name")}
             {renderField("CNPJ", company.cnpj, "cnpj")}
             {renderField("Segmento", company.segment, "segment")}
-            {!isEditing && (
-              <div>
-                <label className="text-sm text-muted-foreground">Status</label>
+            <div>
+              <label className="text-sm text-muted-foreground">Status</label>
+              {isEditing ? (
+                <Select
+                  value={formData.status || "active"}
+                  onValueChange={(value) => updateField("status", value)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMPANY_STATUS_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
                 <div className="mt-1">
-                  <Badge variant={company.status === "active" ? "default" : "secondary"}>
-                    {company.status === "active" ? "Ativo" : company.status}
+                  <Badge variant={getStatusVariant(company.status)}>
+                    {getStatusLabel(company.status)}
                   </Badge>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           <Separator />
