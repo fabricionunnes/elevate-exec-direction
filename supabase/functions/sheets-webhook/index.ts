@@ -69,8 +69,24 @@ const PRODUCT_MAPPING: Record<string, { id: string; name: string }> = {
 
 function normalizeProductName(name: string): { id: string; name: string } | null {
   if (!name) return null;
-  const normalized = name.toLowerCase().trim();
-  return PRODUCT_MAPPING[normalized] || null;
+
+  // Aceita múltiplos serviços na mesma célula (ex: "ads, social" / "ads + social")
+  const candidates = name
+    .toLowerCase()
+    .split(/[,;+\/]|\s+e\s+/g)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // Primeiro tenta o valor inteiro (caso seja exatamente um dos mapeados)
+  const direct = PRODUCT_MAPPING[name.toLowerCase().trim()];
+  if (direct) return direct;
+
+  for (const c of candidates) {
+    const mapped = PRODUCT_MAPPING[c];
+    if (mapped) return mapped;
+  }
+
+  return null;
 }
 
 function parseContractValue(value: string | number | undefined): number | null {
@@ -159,16 +175,33 @@ Deno.serve(async (req) => {
       ? String(data.observacoes || data["Observações de pagamento"] || data.notes || data.obs) 
       : null;
 
+    // Ignorar quando o Apps Script manda a linha de cabeçalho ou uma linha vazia
+    const isHeaderRow =
+      serviceName === "Serviço (s)" ||
+      companyName === "Nome fantasia da empresa" ||
+      email === "E-mail do Cliente";
+
+    if (!serviceName || serviceName.length === 0 || isHeaderRow) {
+      console.error("Payload inválido (linha vazia/cabeçalho)", { serviceName, companyName, email });
+      return new Response(
+        JSON.stringify({
+          error: "Linha sem serviço (ou cabeçalho). Preencha a coluna 'Serviço (s)' na linha do cliente.",
+          received: { service: serviceName, company: companyName, email },
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Identificar o produto
-    const product = serviceName ? normalizeProductName(serviceName) : null;
-    
+    const product = normalizeProductName(serviceName);
+
     if (!product) {
       console.error("Produto não identificado:", serviceName);
       return new Response(
-        JSON.stringify({ 
-          error: "Produto não identificado", 
+        JSON.stringify({
+          error: "Produto não identificado",
           received: serviceName,
-          available_products: Object.keys(PRODUCT_MAPPING)
+          available_products: Object.keys(PRODUCT_MAPPING),
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -181,7 +214,7 @@ Deno.serve(async (req) => {
         .from("onboarding_companies")
         .select("id, name")
         .eq("email", email)
-        .single();
+        .maybeSingle();
       existingCompany = byEmail;
     }
     
@@ -190,7 +223,7 @@ Deno.serve(async (req) => {
         .from("onboarding_companies")
         .select("id, name")
         .ilike("name", companyName)
-        .single();
+        .maybeSingle();
       existingCompany = byName;
     }
 
@@ -235,7 +268,7 @@ Deno.serve(async (req) => {
       .select("id")
       .eq("onboarding_company_id", companyId)
       .eq("product_id", product.id)
-      .single();
+      .maybeSingle();
 
     if (existingProject) {
       console.log("Projeto já existe para este produto");
