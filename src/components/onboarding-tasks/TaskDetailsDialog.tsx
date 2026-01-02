@@ -26,6 +26,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { TaskAttachments } from "./TaskAttachments";
+import { TaskHistory } from "./TaskHistory";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -120,20 +122,66 @@ export const TaskDetailsDialog = ({
   // Only admin can delete
   const canDelete = isAdmin;
 
+  const [historyKey, setHistoryKey] = useState(0);
+
+  const logHistory = async (action: string, fieldChanged: string | null, oldValue: string | null, newValue: string | null) => {
+    if (!currentUserId || !task) return;
+    try {
+      await supabase.from("onboarding_task_history").insert({
+        task_id: task.id,
+        user_id: currentUserId,
+        action,
+        field_changed: fieldChanged,
+        old_value: oldValue,
+        new_value: newValue,
+      });
+    } catch (error) {
+      console.error("Error logging history:", error);
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending": return "Pendente";
+      case "in_progress": return "Em andamento";
+      case "completed": return "Concluída";
+      default: return status;
+    }
+  };
+
+  const getUserName = (userId: string | null) => {
+    if (!userId) return "Nenhum";
+    const user = users.find(u => u.id === userId);
+    return user?.name || "Desconhecido";
+  };
+
   const handleSave = async () => {
     if (!task) return;
 
     setLoading(true);
     try {
       const updates: any = {};
+      const historyPromises: Promise<void>[] = [];
 
       // Only include fields the user can edit
       if (canEditTitleAndDescription) {
+        if (editedTask.title !== task.title) {
+          historyPromises.push(logHistory("edit", "título", task.title, editedTask.title || ""));
+        }
+        if (editedTask.description !== task.description) {
+          historyPromises.push(logHistory("edit", "descrição", task.description || "", editedTask.description || ""));
+        }
         updates.title = editedTask.title;
         updates.description = editedTask.description;
       }
 
       if (canEditStatusAndObservations) {
+        if (editedTask.status !== task.status) {
+          historyPromises.push(logHistory("status_change", "status", getStatusLabel(task.status), getStatusLabel(editedTask.status || "")));
+        }
+        if (editedTask.observations !== task.observations) {
+          historyPromises.push(logHistory("edit", "observações", task.observations || "", editedTask.observations || ""));
+        }
         updates.status = editedTask.status;
         updates.observations = editedTask.observations;
         
@@ -145,9 +193,18 @@ export const TaskDetailsDialog = ({
       }
 
       if (canEditDatesAndAssignee) {
+        if (editedTask.due_date !== task.due_date) {
+          historyPromises.push(logHistory("edit", "data de execução", task.due_date || "", editedTask.due_date || ""));
+        }
+        if (editedTask.assignee_id !== task.assignee_id) {
+          historyPromises.push(logHistory("assign", "responsável", getUserName(task.assignee_id), getUserName(editedTask.assignee_id || null)));
+        }
         updates.due_date = editedTask.due_date;
         updates.assignee_id = editedTask.assignee_id || null;
       }
+
+      // Log all history entries
+      await Promise.all(historyPromises);
 
       const { error } = await supabase
         .from("onboarding_tasks")
@@ -156,6 +213,7 @@ export const TaskDetailsDialog = ({
 
       if (error) throw error;
 
+      setHistoryKey(prev => prev + 1);
       toast.success("Tarefa atualizada");
       onTaskUpdated();
       onClose();
@@ -225,142 +283,153 @@ export const TaskDetailsDialog = ({
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 pt-4">
-          <div className="space-y-2">
-            <Label>Título</Label>
-            <Input
-              value={editedTask.title || ""}
-              onChange={(e) => setEditedTask({ ...editedTask, title: e.target.value })}
-              disabled={!canEditTitleAndDescription}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Descrição</Label>
-            <Textarea
-              value={editedTask.description || ""}
-              onChange={(e) => setEditedTask({ ...editedTask, description: e.target.value })}
-              rows={3}
-              disabled={!canEditTitleAndDescription}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <Tabs defaultValue="details" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="details">Detalhes</TabsTrigger>
+            <TabsTrigger value="history">Histórico</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="details" className="space-y-4 pt-4">
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label>Título</Label>
+              <Input
+                value={editedTask.title || ""}
+                onChange={(e) => setEditedTask({ ...editedTask, title: e.target.value })}
+                disabled={!canEditTitleAndDescription}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Descrição</Label>
+              <Textarea
+                value={editedTask.description || ""}
+                onChange={(e) => setEditedTask({ ...editedTask, description: e.target.value })}
+                rows={3}
+                disabled={!canEditTitleAndDescription}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={editedTask.status}
+                  onValueChange={(value: "pending" | "in_progress" | "completed") =>
+                    setEditedTask({ ...editedTask, status: value })
+                  }
+                  disabled={!canEditStatusAndObservations}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pendente</SelectItem>
+                    <SelectItem value="in_progress">Em andamento</SelectItem>
+                    <SelectItem value="completed">Concluída</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Data de Execução</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !editedTask.due_date && "text-muted-foreground"
+                      )}
+                      disabled={!canEditDatesAndAssignee}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {editedTask.due_date
+                        ? format(new Date(editedTask.due_date), "dd/MM/yyyy", { locale: ptBR })
+                        : "Selecionar"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={editedTask.due_date ? new Date(editedTask.due_date) : undefined}
+                      onSelect={(date) =>
+                        setEditedTask({
+                          ...editedTask,
+                          due_date: date ? date.toISOString().split("T")[0] : null,
+                        })
+                      }
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Responsável</Label>
               <Select
-                value={editedTask.status}
-                onValueChange={(value: "pending" | "in_progress" | "completed") =>
-                  setEditedTask({ ...editedTask, status: value })
+                value={editedTask.assignee_id || "none"}
+                onValueChange={(value) =>
+                  setEditedTask({ ...editedTask, assignee_id: value === "none" ? null : value })
                 }
-                disabled={!canEditStatusAndObservations}
+                disabled={!canEditDatesAndAssignee}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Selecionar responsável" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Pendente</SelectItem>
-                  <SelectItem value="in_progress">Em andamento</SelectItem>
-                  <SelectItem value="completed">Concluída</SelectItem>
+                  <SelectItem value="none">Sem responsável</SelectItem>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      <div className="flex items-center">
+                        {user.name}
+                        {getRoleBadge(user.role)}
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>Data de Execução</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !editedTask.due_date && "text-muted-foreground"
-                    )}
-                    disabled={!canEditDatesAndAssignee}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {editedTask.due_date
-                      ? format(new Date(editedTask.due_date), "dd/MM/yyyy", { locale: ptBR })
-                      : "Selecionar"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={editedTask.due_date ? new Date(editedTask.due_date) : undefined}
-                    onSelect={(date) =>
-                      setEditedTask({
-                        ...editedTask,
-                        due_date: date ? date.toISOString().split("T")[0] : null,
-                      })
-                    }
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Responsável</Label>
-            <Select
-              value={editedTask.assignee_id || "none"}
-              onValueChange={(value) =>
-                setEditedTask({ ...editedTask, assignee_id: value === "none" ? null : value })
-              }
-              disabled={!canEditDatesAndAssignee}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecionar responsável" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sem responsável</SelectItem>
-                {users.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    <div className="flex items-center">
-                      {user.name}
-                      {getRoleBadge(user.role)}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Observações</Label>
-            <Textarea
-              placeholder="Adicione observações sobre a execução..."
-              value={editedTask.observations || ""}
-              onChange={(e) => setEditedTask({ ...editedTask, observations: e.target.value })}
-              rows={3}
-              disabled={!canEditStatusAndObservations}
-            />
-          </div>
-
-          {/* Attachments section */}
-          {companyId && taskProjectId && (
-            <div className="border-t pt-4">
-              <TaskAttachments
-                taskId={task.id}
-                companyId={companyId}
-                projectId={taskProjectId}
-                isAdmin={isAdmin}
+              <Label>Observações</Label>
+              <Textarea
+                placeholder="Adicione observações sobre a execução..."
+                value={editedTask.observations || ""}
+                onChange={(e) => setEditedTask({ ...editedTask, observations: e.target.value })}
+                rows={3}
+                disabled={!canEditStatusAndObservations}
               />
             </div>
-          )}
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Salvar
-            </Button>
-          </div>
-        </div>
+            {/* Attachments section */}
+            {companyId && taskProjectId && (
+              <div className="border-t pt-4">
+                <TaskAttachments
+                  taskId={task.id}
+                  companyId={companyId}
+                  projectId={taskProjectId}
+                  isAdmin={isAdmin}
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} disabled={loading}>
+                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Salvar
+              </Button>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="history" className="pt-4">
+            <TaskHistory key={historyKey} taskId={task.id} />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
