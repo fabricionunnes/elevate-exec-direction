@@ -386,12 +386,247 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_ai_chat: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          project_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          project_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          project_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_ai_chat_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_ai_chat_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_companies: {
+        Row: {
+          address: string | null
+          billing_day: number | null
+          cnpj: string | null
+          company_description: string | null
+          competitors: string | null
+          consultant_id: string | null
+          contract_end_date: string | null
+          contract_start_date: string | null
+          contract_value: number | null
+          created_at: string
+          cs_id: string | null
+          email: string | null
+          expected_timeline: Json | null
+          goals_long_term: string | null
+          goals_short_term: string | null
+          id: string
+          kickoff_date: string | null
+          main_challenges: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          segment: string | null
+          stakeholders: Json | null
+          status: string
+          target_audience: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          billing_day?: number | null
+          cnpj?: string | null
+          company_description?: string | null
+          competitors?: string | null
+          consultant_id?: string | null
+          contract_end_date?: string | null
+          contract_start_date?: string | null
+          contract_value?: number | null
+          created_at?: string
+          cs_id?: string | null
+          email?: string | null
+          expected_timeline?: Json | null
+          goals_long_term?: string | null
+          goals_short_term?: string | null
+          id?: string
+          kickoff_date?: string | null
+          main_challenges?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          segment?: string | null
+          stakeholders?: Json | null
+          status?: string
+          target_audience?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          billing_day?: number | null
+          cnpj?: string | null
+          company_description?: string | null
+          competitors?: string | null
+          consultant_id?: string | null
+          contract_end_date?: string | null
+          contract_start_date?: string | null
+          contract_value?: number | null
+          created_at?: string
+          cs_id?: string | null
+          email?: string | null
+          expected_timeline?: Json | null
+          goals_long_term?: string | null
+          goals_short_term?: string | null
+          id?: string
+          kickoff_date?: string | null
+          main_challenges?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          segment?: string | null
+          stakeholders?: Json | null
+          status?: string
+          target_audience?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_companies_consultant_id_fkey"
+            columns: ["consultant_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_companies_cs_id_fkey"
+            columns: ["cs_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_documents: {
+        Row: {
+          category: string | null
+          company_id: string
+          created_at: string
+          description: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          project_id: string | null
+          task_id: string | null
+          ticket_id: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          category?: string | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          project_id?: string | null
+          task_id?: string | null
+          ticket_id?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          category?: string | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          project_id?: string | null
+          task_id?: string | null
+          ticket_id?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_documents_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_documents_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_projects: {
         Row: {
           company_id: string | null
           created_at: string
           created_by: string | null
           id: string
+          onboarding_company_id: string | null
           product_id: string
           product_name: string
           status: string
@@ -402,6 +637,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          onboarding_company_id?: string | null
           product_id: string
           product_name: string
           status?: string
@@ -412,6 +648,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          onboarding_company_id?: string | null
           product_id?: string
           product_name?: string
           status?: string
@@ -432,33 +669,226 @@ export type Database = {
             referencedRelation: "portal_users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "onboarding_projects_onboarding_company_id_fkey"
+            columns: ["onboarding_company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_staff: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          name: string
+          phone: string | null
+          role: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          name: string
+          phone?: string | null
+          role: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string | null
+          role?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      onboarding_subtasks: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          id: string
+          is_completed: boolean
+          sort_order: number
+          task_id: string
+          title: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          sort_order?: number
+          task_id: string
+          title: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          sort_order?: number
+          task_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_subtasks_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_subtasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_task_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          task_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          task_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_task_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_task_history: {
+        Row: {
+          action: string
+          created_at: string
+          field_changed: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          task_id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          task_id: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          task_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_task_history_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_task_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       onboarding_task_templates: {
         Row: {
+          checklist: Json | null
           created_at: string
           default_days_offset: number | null
           description: string | null
+          duration_days: number | null
           id: string
+          priority: string | null
           product_id: string
+          responsible_role: string | null
           sort_order: number
           title: string
         }
         Insert: {
+          checklist?: Json | null
           created_at?: string
           default_days_offset?: number | null
           description?: string | null
+          duration_days?: number | null
           id?: string
+          priority?: string | null
           product_id: string
+          responsible_role?: string | null
           sort_order?: number
           title: string
         }
         Update: {
+          checklist?: Json | null
           created_at?: string
           default_days_offset?: number | null
           description?: string | null
+          duration_days?: number | null
           id?: string
+          priority?: string | null
           product_id?: string
+          responsible_role?: string | null
           sort_order?: number
           title?: string
         }
@@ -466,44 +896,62 @@ export type Database = {
       }
       onboarding_tasks: {
         Row: {
+          actual_hours: number | null
           assignee_id: string | null
           completed_at: string | null
           created_at: string
           description: string | null
           due_date: string | null
+          estimated_hours: number | null
           id: string
           observations: string | null
+          priority: string | null
           project_id: string
+          responsible_staff_id: string | null
           sort_order: number
+          start_date: string | null
           status: Database["public"]["Enums"]["onboarding_task_status"]
+          tags: string[] | null
           title: string
           updated_at: string
         }
         Insert: {
+          actual_hours?: number | null
           assignee_id?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           id?: string
           observations?: string | null
+          priority?: string | null
           project_id: string
+          responsible_staff_id?: string | null
           sort_order?: number
+          start_date?: string | null
           status?: Database["public"]["Enums"]["onboarding_task_status"]
+          tags?: string[] | null
           title: string
           updated_at?: string
         }
         Update: {
+          actual_hours?: number | null
           assignee_id?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           id?: string
           observations?: string | null
+          priority?: string | null
           project_id?: string
+          responsible_staff_id?: string | null
           sort_order?: number
+          start_date?: string | null
           status?: Database["public"]["Enums"]["onboarding_task_status"]
+          tags?: string[] | null
           title?: string
           updated_at?: string
         }
@@ -520,6 +968,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_tasks_responsible_staff_id_fkey"
+            columns: ["responsible_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
             referencedColumns: ["id"]
           },
         ]
