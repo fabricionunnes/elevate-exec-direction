@@ -35,8 +35,12 @@ import {
   Users,
   UserCheck,
   Trash2,
-  MessageCircle
+  MessageCircle,
+  Download
 } from "lucide-react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import logoUnv from "@/assets/logo-unv.png";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -419,6 +423,204 @@ export default function DiagnosticResponsesPage() {
     }
   };
 
+  const generateClientPDF = async (response: DiagnosticResponse) => {
+    const diagnosticDate = new Date(response.created_at).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric"
+    });
+    const pains = response.main_pain.split(',').map(p => p.trim());
+
+    const pdfRevenueLabels: Record<string, string> = {
+      "menos-50k": "Menos de R$ 50k/mês",
+      "50k-100k": "R$ 50k a R$ 100k/mês",
+      "100k-200k": "R$ 100k a R$ 200k/mês",
+      "200k-500k": "R$ 200k a R$ 500k/mês",
+      "500k-1m": "R$ 500k a R$ 1M/mês",
+      "acima-1m": "Acima de R$ 1M/mês",
+    };
+
+    const pdfTeamLabels: Record<string, string> = {
+      "sozinho": "Vende sozinho",
+      "1-3": "1 a 3 vendedores",
+      "4-10": "4 a 10 vendedores",
+      "11-20": "11 a 20 vendedores",
+      "20+": "Mais de 20 vendedores",
+    };
+
+    const pdfPainLabels: Record<string, string> = {
+      "sem-processo": "Sem processo comercial definido",
+      "inconsistencia": "Vendas inconsistentes mês a mês",
+      "time-desalinhado": "Time desalinhado ou sem padrão",
+      "poucos-leads": "Poucos leads qualificados",
+      "conversao-baixa": "Baixa conversão de propostas",
+      "escala": "Dificuldade em escalar vendas",
+      "lideranca-fraca": "Líderes não cobram ou desenvolvem",
+      "autoridade": "Falta de autoridade no mercado",
+      "sem-diretor-comercial": "Sem diretor comercial ou gestor",
+      "rotatividade-time": "Alta rotatividade ou dificuldade de contratar",
+      "sem-clareza-financeira": "Sem clareza financeira",
+      "sobrecarga-decisao": "Peso da solidão e sobrecarga de decisões",
+      "atendimento-lento": "Atendimento lento ou time não dá conta",
+    };
+
+    const pdfUrgencyLabels: Record<string, string> = {
+      "imediata": "Imediata",
+      "alta": "Nos próximos 30 dias",
+      "normal": "Nos próximos 90 dias",
+      "exploratoria": "Exploratório",
+    };
+
+    // Create temporary hidden div
+    const container = document.createElement("div");
+    container.style.position = "absolute";
+    container.style.left = "-9999px";
+    container.style.width = "800px";
+    container.style.backgroundColor = "#0f172a";
+    container.style.color = "white";
+    container.style.padding = "48px";
+    container.style.borderRadius = "16px";
+    container.style.fontFamily = "system-ui, sans-serif";
+
+    container.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 24px; margin-bottom: 32px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <img src="${logoUnv}" alt="UNV" style="height: 48px;" />
+          <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 16px;">
+            <h1 style="font-size: 20px; font-weight: bold; color: white; margin: 0;">Relatório de Diagnóstico</h1>
+            <p style="font-size: 14px; color: #9ca3af; margin: 4px 0 0 0;">Análise Comercial Personalizada</p>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <p style="font-size: 14px; color: #9ca3af; margin: 0;">Data do diagnóstico</p>
+          <p style="font-size: 14px; font-weight: 500; color: white; margin: 4px 0 0 0;">${diagnosticDate}</p>
+        </div>
+      </div>
+
+      <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 24px; margin-bottom: 32px; border: 1px solid rgba(255,255,255,0.1);">
+        <h2 style="font-size: 18px; font-weight: bold; color: white; margin: 0 0 16px 0;">📊 Dados da Empresa</h2>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+          <div>
+            <p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px 0;">Empresa</p>
+            <p style="font-weight: 600; color: white; margin: 0;">${response.company_name}</p>
+          </div>
+          <div>
+            <p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px 0;">Responsável</p>
+            <p style="font-weight: 600; color: white; margin: 0;">${response.contact_name}</p>
+          </div>
+          <div>
+            <p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px 0;">Faturamento</p>
+            <p style="font-weight: 600; color: white; margin: 0;">${pdfRevenueLabels[response.revenue] || response.revenue}</p>
+          </div>
+          <div>
+            <p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px 0;">Equipe Comercial</p>
+            <p style="font-weight: 600; color: white; margin: 0;">${pdfTeamLabels[response.team_size] || response.team_size}</p>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 16px;">
+          <div>
+            <p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px 0;">WhatsApp</p>
+            <p style="font-weight: 600; color: white; margin: 0;">${response.whatsapp}</p>
+          </div>
+          ${response.email ? `<div>
+            <p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px 0;">E-mail</p>
+            <p style="font-weight: 600; color: white; margin: 0;">${response.email}</p>
+          </div>` : ""}
+        </div>
+      </div>
+
+      <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 24px; margin-bottom: 32px; border: 1px solid rgba(255,255,255,0.1);">
+        <h2 style="font-size: 18px; font-weight: bold; color: white; margin: 0 0 16px 0;">🎯 Diagnóstico Identificado</h2>
+        <div style="margin-bottom: 16px;">
+          <p style="font-size: 12px; color: #9ca3af; margin: 0 0 8px 0;">Desafios Principais</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            ${pains.map(pain => `<span style="padding: 6px 12px; background: rgba(196,30,58,0.2); color: #C41E3A; font-size: 14px; border-radius: 8px; border: 1px solid rgba(196,30,58,0.3);">${pdfPainLabels[pain] || pain}</span>`).join("")}
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+          <div>
+            <p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px 0;">Urgência</p>
+            <p style="font-weight: 500; color: white; margin: 0;">${pdfUrgencyLabels[response.urgency] || response.urgency}</p>
+          </div>
+          <div>
+            <p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px 0;">Processo Comercial</p>
+            <p style="font-weight: 500; color: white; margin: 0;">${response.has_sales_process ? "Sim, possui" : "Não possui"}</p>
+          </div>
+        </div>
+        ${response.why_diagnostic ? `<div style="margin-top: 16px;">
+          <p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px 0;">Motivação do Diagnóstico</p>
+          <p style="font-size: 14px; color: #d1d5db; font-style: italic; margin: 0;">"${response.why_diagnostic}"</p>
+        </div>` : ""}
+        ${response.biggest_challenge ? `<div style="margin-top: 16px;">
+          <p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px 0;">Maior Desafio</p>
+          <p style="font-size: 14px; color: #d1d5db; margin: 0;">"${response.biggest_challenge}"</p>
+        </div>` : ""}
+      </div>
+
+      ${response.recommended_product ? `<div style="background: rgba(196,30,58,0.1); border-radius: 12px; padding: 24px; margin-bottom: 32px; border: 2px solid #C41E3A;">
+        <h2 style="font-size: 20px; font-weight: bold; color: white; margin: 0 0 16px 0;">✨ Serviço Recomendado</h2>
+        <span style="display: inline-block; padding: 8px 16px; background: #C41E3A; color: white; font-weight: bold; border-radius: 8px; font-size: 18px;">${response.recommended_product}</span>
+        <p style="font-size: 14px; color: #9ca3af; margin: 16px 0 0 0;">Este serviço foi selecionado com base no seu perfil, faturamento, tamanho de equipe e desafios identificados.</p>
+      </div>` : ""}
+
+      <div style="background: linear-gradient(to right, rgba(196,30,58,0.2), transparent); border-radius: 12px; padding: 24px; border: 1px solid rgba(196,30,58,0.3);">
+        <h3 style="font-size: 18px; font-weight: bold; color: white; margin: 0 0 12px 0;">📈 Próximos Passos</h3>
+        <p style="font-size: 14px; color: #d1d5db; margin: 0 0 16px 0;">Nossa equipe entrará em contato pelo WhatsApp para agendar sua reunião de diagnóstico aprofundado. Nessa conversa, vamos entender melhor seu cenário e definir juntos o melhor caminho.</p>
+        <div style="display: flex; align-items: center; gap: 16px; font-size: 14px;">
+          <span style="color: #9ca3af;">Contato:</span>
+          <span style="color: white; font-weight: 500;">${response.whatsapp}</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <img src="${logoUnv}" alt="UNV" style="height: 32px; opacity: 0.6;" />
+          <p style="font-size: 12px; color: #6b7280; margin: 0;">© ${new Date().getFullYear()} UNV. Todos os direitos reservados.</p>
+        </div>
+        <p style="font-size: 12px; color: #6b7280; margin: 0;">Relatório gerado a partir do diagnóstico realizado em ${diagnosticDate}.</p>
+      </div>
+    `;
+
+    document.body.appendChild(container);
+
+    try {
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#0f172a"
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`Diagnostico_UNV_${response.company_name.replace(/\s+/g, "_")}.pdf`);
+      toast.success("PDF gerado com sucesso!");
+    } finally {
+      document.body.removeChild(container);
+    }
+  };
+
   const filteredResponses = responses.filter(r => 
     r.company_name.toLowerCase().includes(search.toLowerCase()) ||
     r.contact_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -665,6 +867,14 @@ export default function DiagnosticResponsesPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => generateClientPDF(response)}
+                                title="Baixar PDF"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
