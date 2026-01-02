@@ -44,6 +44,8 @@ import { RealtimeNotifications } from "@/components/onboarding-tasks/RealtimeNot
 import { TasksGameTrailView } from "@/components/onboarding-tasks/TasksGameTrailView";
 import { TasksListView } from "@/components/onboarding-tasks/TasksListView";
 import { TasksScheduleView } from "@/components/onboarding-tasks/TasksScheduleView";
+import { NPSHistoryPanel } from "@/components/onboarding-tasks/NPSHistoryPanel";
+import { TrendingUp } from "lucide-react";
 
 
 interface OnboardingTask {
@@ -78,6 +80,7 @@ interface Project {
   product_id: string;
   product_name: string;
   status: string;
+  current_nps: number | null;
   onboarding_company_id: string | null;
   onboarding_company?: { name: string } | null;
 }
@@ -187,7 +190,7 @@ const OnboardingProjectPage = () => {
       // Fetch project
       const { data: projectData, error: projectError } = await supabase
         .from("onboarding_projects")
-        .select(`*, onboarding_company_id, onboarding_company:onboarding_companies(name)`)
+        .select(`*, onboarding_company_id, current_nps, onboarding_company:onboarding_companies(name)`)
         .eq("id", projectId)
         .single();
 
@@ -588,6 +591,10 @@ const OnboardingProjectPage = () => {
               <Target className="h-4 w-4" />
               Metas
             </TabsTrigger>
+            <TabsTrigger value="nps" className="gap-2">
+              <TrendingUp className="h-4 w-4" />
+              NPS
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks">
@@ -701,6 +708,13 @@ const OnboardingProjectPage = () => {
               projectId={projectId!}
               canEdit={isAdmin || currentUserRole === "cs" || currentUserRole === "consultant"}
               currentStaffId={isStaffAdmin || currentUserRole === "cs" || currentUserRole === "consultant" ? currentUserId : null}
+            />
+          </TabsContent>
+
+          <TabsContent value="nps">
+            <NPSHistoryPanel
+              projectId={projectId!}
+              currentNps={project.current_nps}
             />
           </TabsContent>
         </Tabs>

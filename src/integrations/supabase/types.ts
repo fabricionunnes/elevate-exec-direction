@@ -764,6 +764,50 @@ export type Database = {
           },
         ]
       }
+      onboarding_nps_responses: {
+        Row: {
+          created_at: string
+          feedback: string | null
+          id: string
+          project_id: string
+          respondent_email: string | null
+          respondent_name: string | null
+          score: number
+          what_can_improve: string | null
+          would_recommend_why: string | null
+        }
+        Insert: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          project_id: string
+          respondent_email?: string | null
+          respondent_name?: string | null
+          score: number
+          what_can_improve?: string | null
+          would_recommend_why?: string | null
+        }
+        Update: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          project_id?: string
+          respondent_email?: string | null
+          respondent_name?: string | null
+          score?: number
+          what_can_improve?: string | null
+          would_recommend_why?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_nps_responses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_projects: {
         Row: {
           churn_risk: string | null

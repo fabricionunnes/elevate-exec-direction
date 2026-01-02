@@ -64,6 +64,7 @@ import OnboardingStaffPage from "./pages/onboarding-tasks/OnboardingStaffPage";
 import ClientOnboardingPage from "./pages/onboarding-tasks/ClientOnboardingPage";
 import OnboardingLoginPage from "./pages/onboarding-tasks/OnboardingLoginPage";
 import OnboardingNewCompanyPage from "./pages/onboarding-tasks/OnboardingNewCompanyPage";
+import NPSSurveyPage from "./pages/NPSSurveyPage";
 
 const queryClient = new QueryClient();
 
@@ -120,6 +121,7 @@ const App = () => (
           <Route path="/onboarding-tasks/staff" element={<OnboardingStaffPage />} />
           <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
           <Route path="/onboarding-client/:projectId" element={<ClientOnboardingPage />} />
+          <Route path="/nps" element={<NPSSurveyPage />} />
           
           {/* Portal do Planejamento 2026 */}
           <Route path="/portal" element={<PortalLandingPage />} />
