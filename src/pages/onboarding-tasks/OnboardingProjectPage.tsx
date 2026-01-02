@@ -455,19 +455,29 @@ const OnboardingProjectPage = () => {
     return acc;
   }, {});
 
-  // Sort phases by phase_order (from tags) and then sort tasks within each phase by due_date then sort_order
+  // Sort phases by the earliest due_date of their tasks, then sort tasks within each phase by due_date
   const sortedPhases = Object.values(groupedTasks)
-    .sort((a, b) => a.order - b.order)
-    .map(phase => ({
-      ...phase,
-      tasks: phase.tasks.slice().sort((ta, tb) => {
-        // Sort by due_date first, then by sort_order
-        const dueDateA = ta.due_date ? new Date(ta.due_date).getTime() : Infinity;
-        const dueDateB = tb.due_date ? new Date(tb.due_date).getTime() : Infinity;
-        if (dueDateA !== dueDateB) return dueDateA - dueDateB;
-        return ta.sort_order - tb.sort_order;
-      }),
-    }));
+    .map(phase => {
+      // Calculate the earliest due_date for this phase
+      const earliestDueDate = phase.tasks.reduce((earliest, task) => {
+        if (!task.due_date) return earliest;
+        const taskDate = new Date(task.due_date).getTime();
+        return earliest === Infinity ? taskDate : Math.min(earliest, taskDate);
+      }, Infinity);
+      
+      return {
+        ...phase,
+        earliestDueDate,
+        tasks: phase.tasks.slice().sort((ta, tb) => {
+          // Sort by due_date first, then by sort_order
+          const dueDateA = ta.due_date ? new Date(ta.due_date).getTime() : Infinity;
+          const dueDateB = tb.due_date ? new Date(tb.due_date).getTime() : Infinity;
+          if (dueDateA !== dueDateB) return dueDateA - dueDateB;
+          return ta.sort_order - tb.sort_order;
+        }),
+      };
+    })
+    .sort((a, b) => a.earliestDueDate - b.earliestDueDate);
 
   if (loading) {
     return (
