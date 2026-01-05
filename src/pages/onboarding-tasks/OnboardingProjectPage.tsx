@@ -150,6 +150,32 @@ const OnboardingProjectPage = () => {
     }
   }, [projectId]);
 
+  // Real-time subscription for task updates
+  useEffect(() => {
+    if (!projectId) return;
+
+    const tasksChannel = supabase
+      .channel(`staff-tasks-${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'onboarding_tasks',
+          filter: `project_id=eq.${projectId}`
+        },
+        (payload) => {
+          console.log('Task change received (staff):', payload);
+          fetchProjectData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(tasksChannel);
+    };
+  }, [projectId]);
+
   const fetchStaffList = async () => {
     const { data } = await supabase
       .from("onboarding_staff")
