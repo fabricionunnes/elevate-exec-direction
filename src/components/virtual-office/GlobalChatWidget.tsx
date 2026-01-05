@@ -81,6 +81,17 @@ const GlobalChatWidget = () => {
   const [totalUnread, setTotalUnread] = useState(0);
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const activeConversationRef = useRef<Conversation | null>(null);
+  const isOpenRef = useRef(false);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    activeConversationRef.current = activeConversation;
+  }, [activeConversation]);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
 
   useEffect(() => {
     let unsubscribeGlobal: (() => void) | null = null;
@@ -265,11 +276,15 @@ const GlobalChatWidget = () => {
           if (!isDMToMe && !isRoomMessage) return;
           if (isFromMe) return; // Don't notify for own messages
 
-          // Play notification sound
-          playNotificationSound();
-
-          // Update unread count
-          updateUnreadCount(newMsg, staffId);
+          // Check if this conversation is currently open
+          const isConversationOpen = checkIfConversationIsOpen(newMsg, staffId);
+          
+          if (!isConversationOpen) {
+            // Play notification sound only if conversation is not open
+            playNotificationSound();
+            // Update unread count only if conversation is not open
+            updateUnreadCount(newMsg, staffId);
+          }
         }
       )
       .subscribe();
@@ -277,6 +292,24 @@ const GlobalChatWidget = () => {
     return () => {
       supabase.removeChannel(channel);
     };
+  };
+
+  const checkIfConversationIsOpen = (msg: Message, currentStaffId: string): boolean => {
+    // Use a ref to get current activeConversation state
+    const conv = activeConversationRef.current;
+    if (!conv || !isOpenRef.current) return false;
+    
+    // Check if it's a room message and the room is open
+    if (!msg.recipient_staff_id && conv.type === "room" && conv.id === msg.room_id) {
+      return true;
+    }
+    
+    // Check if it's a DM and the DM conversation with this sender is open
+    if (msg.recipient_staff_id === currentStaffId && conv.type === "dm" && conv.recipientId === msg.staff_id) {
+      return true;
+    }
+    
+    return false;
   };
 
   const updateUnreadCount = (msg: Message, currentStaffId: string) => {
