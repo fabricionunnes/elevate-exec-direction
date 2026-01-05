@@ -304,7 +304,7 @@ const DashboardMetrics = ({
     };
   }, [projects, npsResponses]);
 
-  // Goals metrics - projects meeting their sales goals
+  // Goals metrics - projects meeting their sales goals with projection ranges
   const goalsMetrics = useMemo(() => {
     // Get month and year from dateRange start (to filter goals by period)
     const periodMonth = dateRange.start.getMonth() + 1; // 1-indexed
@@ -323,27 +323,55 @@ const DashboardMetrics = ({
     // Count projects with goals set (has target)
     const projectsWithGoals = filteredGoals.filter(g => g.sales_target && g.sales_target > 0);
     
-    // Count projects that met their goal (result >= target)
-    const projectsMeetingGoal = projectsWithGoals.filter(g => 
-      g.sales_result !== null && 
-      g.sales_target !== null && 
-      g.sales_result >= g.sales_target
-    );
+    // Calculate projection percentage for each project
+    const projectsWithProjection = projectsWithGoals.map(g => {
+      const result = g.sales_result || 0;
+      const target = g.sales_target || 1;
+      const projectionPercent = Math.round((result / target) * 100);
+      return { ...g, projectionPercent };
+    });
+    
+    // Count projects that met their goal (result >= target) - 100% or more
+    const meetingGoalList = projectsWithProjection.filter(g => g.projectionPercent >= 100);
+    
+    // Count projects above 70% projection (but not meeting 100%)
+    const above70List = projectsWithProjection.filter(g => g.projectionPercent >= 70 && g.projectionPercent < 100);
+    
+    // Count projects between 50-70%
+    const between50And70List = projectsWithProjection.filter(g => g.projectionPercent >= 50 && g.projectionPercent < 70);
+    
+    // Count projects below 50%
+    const below50List = projectsWithProjection.filter(g => g.projectionPercent < 50);
     
     const totalWithGoals = projectsWithGoals.length;
-    const meetingGoal = projectsMeetingGoal.length;
-    const notMeetingGoal = totalWithGoals - meetingGoal;
+    const meetingGoal = meetingGoalList.length;
+    const above70 = above70List.length;
+    const between50And70 = between50And70List.length;
+    const below50 = below50List.length;
+    
     const goalRate = totalWithGoals > 0 
       ? Math.round((meetingGoal / totalWithGoals) * 100) 
       : 0;
     
+    // Get project IDs for filtering
+    const meetingGoalProjectIds = meetingGoalList.map(g => g.project_id);
+    const above70ProjectIds = above70List.map(g => g.project_id);
+    const between50And70ProjectIds = between50And70List.map(g => g.project_id);
+    const below50ProjectIds = below50List.map(g => g.project_id);
+    
     return {
       totalWithGoals,
       meetingGoal,
-      notMeetingGoal,
+      above70,
+      between50And70,
+      below50,
       goalRate,
       periodMonth,
-      periodYear
+      periodYear,
+      meetingGoalProjectIds,
+      above70ProjectIds,
+      between50And70ProjectIds,
+      below50ProjectIds
     };
   }, [projects, monthlyGoals, dateRange]);
 
@@ -706,36 +734,6 @@ const DashboardMetrics = ({
             </CardContent>
           </Card>
 
-          {/* Goals Meeting Rate Card */}
-          <Card 
-            className={cn(
-              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
-              isCardActive("goals", "meeting") && "ring-2 ring-teal-500"
-            )}
-            onClick={() => handleCardClick("goals", "meeting")}
-          >
-            <div className="absolute top-0 left-0 w-1 h-full bg-teal-500" />
-            <CardContent className="pt-4 pl-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Batendo Meta</p>
-                  <p className={cn(
-                    "text-2xl font-bold mt-1",
-                    goalsMetrics.goalRate >= 70 ? "text-teal-500" : 
-                    goalsMetrics.goalRate >= 40 ? "text-amber-500" : "text-red-500"
-                  )}>
-                    {goalsMetrics.goalRate}%
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {goalsMetrics.meetingGoal}/{goalsMetrics.totalWithGoals} projetos
-                  </p>
-                </div>
-                <div className="h-10 w-10 rounded-full bg-teal-500/10 flex items-center justify-center">
-                  <Target className="h-5 w-5 text-teal-500" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Charts Row for Services */}
@@ -976,6 +974,155 @@ const DashboardMetrics = ({
                 </div>
                 <div className="h-10 w-10 rounded-full bg-gray-400/10 flex items-center justify-center">
                   <UserX className="h-5 w-5 text-gray-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* METAS Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Target className="h-5 w-5 text-teal-500" />
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Metas</h3>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {/* Batendo Meta Card */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("goals", "meeting") && "ring-2 ring-teal-500"
+            )}
+            onClick={() => handleCardClick("goals", "meeting")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-teal-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Batendo Meta</p>
+                  <p className={cn(
+                    "text-2xl font-bold mt-1",
+                    goalsMetrics.goalRate >= 70 ? "text-teal-500" : 
+                    goalsMetrics.goalRate >= 40 ? "text-amber-500" : "text-red-500"
+                  )}>
+                    {goalsMetrics.goalRate}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {goalsMetrics.meetingGoal}/{goalsMetrics.totalWithGoals} projetos
+                  </p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-teal-500/10 flex items-center justify-center">
+                  <Target className="h-5 w-5 text-teal-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Projetando 100%+ Card */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("goals", "100plus") && "ring-2 ring-green-500"
+            )}
+            onClick={() => handleCardClick("goals", "100plus")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-green-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">≥100%</p>
+                  <p className="text-2xl font-bold mt-1 text-green-500">
+                    {goalsMetrics.meetingGoal}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    projetos
+                  </p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5 text-green-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Acima de 70% Card */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("goals", "above70") && "ring-2 ring-blue-500"
+            )}
+            onClick={() => handleCardClick("goals", "above70")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">70-99%</p>
+                  <p className="text-2xl font-bold mt-1 text-blue-500">
+                    {goalsMetrics.above70}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    projetos
+                  </p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5 text-blue-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Entre 50-70% Card */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("goals", "between50and70") && "ring-2 ring-amber-500"
+            )}
+            onClick={() => handleCardClick("goals", "between50and70")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">50-69%</p>
+                  <p className="text-2xl font-bold mt-1 text-amber-500">
+                    {goalsMetrics.between50And70}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    projetos
+                  </p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Abaixo de 50% Card */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("goals", "below50") && "ring-2 ring-red-500"
+            )}
+            onClick={() => handleCardClick("goals", "below50")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">&lt;50%</p>
+                  <p className="text-2xl font-bold mt-1 text-red-500">
+                    {goalsMetrics.below50}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    projetos
+                  </p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <TrendingDown className="h-5 w-5 text-red-500" />
                 </div>
               </div>
             </CardContent>
