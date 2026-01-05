@@ -173,11 +173,10 @@ export const TaskDetailsDialog = ({
   const handleSave = async () => {
     if (!task) return;
 
-    // Validate: cannot set in_progress or completed without a responsible staff
-    // Check both the original task and if there's one being assigned in this save
+    // Validate: cannot set in_progress or completed without a responsible (assignee)
     const newStatus = editedTask.status;
-    const hasResponsible = task.responsible_staff || (task as any).responsible_staff_id;
-    if ((newStatus === "in_progress" || newStatus === "completed") && !hasResponsible) {
+    const effectiveAssigneeId = (editedTask.assignee_id ?? task.assignee_id) || null;
+    if ((newStatus === "in_progress" || newStatus === "completed") && !effectiveAssigneeId) {
       toast.error("Atribua um responsável antes de alterar o status da tarefa");
       return;
     }
