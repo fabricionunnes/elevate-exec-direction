@@ -42,6 +42,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatPhone } from "@/lib/utils";
 
 interface Contact {
   id: string;
@@ -728,8 +729,8 @@ const ContactCard = ({
         {contact.phone && (
           <div className="flex items-center gap-2">
             <Phone className="h-3 w-3" />
-            <a href={`tel:${contact.phone}`} className="hover:text-primary">
-              {contact.phone}
+            <a href={`tel:${contact.phone.replace(/\D/g, '')}`} className="hover:text-primary">
+              {formatPhone(contact.phone)}
             </a>
           </div>
         )}

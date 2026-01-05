@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { formatPhone } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -330,7 +331,7 @@ const OnboardingStaffPage = () => {
                   <TableCell className="font-medium">{member.name}</TableCell>
                   <TableCell>{member.email}</TableCell>
                   <TableCell>{getRoleBadge(member.role)}</TableCell>
-                  <TableCell>{member.phone || "-"}</TableCell>
+                  <TableCell>{formatPhone(member.phone) || "-"}</TableCell>
                   <TableCell>
                     {member.is_active ? (
                       <Badge variant="outline" className="text-green-600 border-green-600">
