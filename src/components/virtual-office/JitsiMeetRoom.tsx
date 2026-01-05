@@ -19,6 +19,7 @@ const JitsiMeetRoom = ({ roomName, displayName, onLeave }: JitsiMeetRoomProps) =
   const apiRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasJoinedRef = useRef(false);
 
   useEffect(() => {
     // Load Jitsi Meet External API script from public Jitsi server
@@ -127,17 +128,20 @@ const JitsiMeetRoom = ({ roomName, displayName, onLeave }: JitsiMeetRoomProps) =
       apiRef.current.addListener("videoConferenceJoined", () => {
         setIsLoading(false);
         setError(null);
+        hasJoinedRef.current = true;
         console.log("Successfully joined video conference");
       });
 
       apiRef.current.addListener("videoConferenceLeft", () => {
         console.log("Left video conference");
-        onLeave();
+        // Only trigger onLeave if user had actually joined the conference
+        if (hasJoinedRef.current) {
+          onLeave();
+        }
       });
 
-      apiRef.current.addListener("readyToClose", () => {
-        onLeave();
-      });
+      // Don't listen to readyToClose - it fires when clicking "I am the host" login button
+      // which causes unwanted exit. User can leave via our "Sair" button or Jitsi's hangup.
 
       // Set loading to false after a timeout as fallback
       setTimeout(() => {
