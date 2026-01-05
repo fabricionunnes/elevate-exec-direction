@@ -1037,7 +1037,7 @@ const DashboardMetrics = ({
                     {goalsMetrics.meetingGoal}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    projetos
+                    projetando
                   </p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
@@ -1064,7 +1064,7 @@ const DashboardMetrics = ({
                     {goalsMetrics.above70}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    projetos
+                    projetando
                   </p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
@@ -1091,7 +1091,7 @@ const DashboardMetrics = ({
                     {goalsMetrics.between50And70}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    projetos
+                    projetando
                   </p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
@@ -1118,7 +1118,7 @@ const DashboardMetrics = ({
                     {goalsMetrics.below50}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    projetos
+                    projetando
                   </p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center">
