@@ -737,18 +737,18 @@ const DashboardMetrics = ({
             </CardContent>
           </Card>
 
-          {/* Completion Rate */}
+          {/* Completed Today */}
           <Card className="relative overflow-hidden">
             <div className="absolute top-0 left-0 w-1 h-full bg-green-500" />
             <CardContent className="pt-4 pl-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Conclusão</p>
-                  <p className="text-2xl font-bold mt-1 text-green-500">{completionRate}%</p>
-                  <Progress value={completionRate} className="h-1.5 mt-2 w-16" />
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Concluídas Hoje</p>
+                  <p className="text-2xl font-bold mt-1 text-green-500">{taskMetrics.todayCompleted}</p>
+                  <p className="text-xs text-muted-foreground">{taskMetrics.totalCompleted} no total</p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                  <Target className="h-5 w-5 text-green-500" />
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
                 </div>
               </div>
             </CardContent>
