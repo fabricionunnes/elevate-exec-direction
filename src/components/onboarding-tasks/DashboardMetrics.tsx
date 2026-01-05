@@ -431,16 +431,30 @@ const DashboardMetrics = ({
   ].filter(d => d.value > 0);
 
   const projectStatusData = [
-    { name: "Ativos", value: projectMetrics.activeProjects, color: "#22c55e" },
-    { name: "Sinalizaram", value: projectMetrics.cancellationSignaled, color: "#f59e0b" },
-    { name: "Aviso", value: projectMetrics.noticePeriod, color: "#f97316" },
-    { name: "Encerrados", value: projectMetrics.closedProjects, color: "#ef4444" },
+    { name: "Ativos", value: projectMetrics.activeProjects, color: "#22c55e", status: "active" },
+    { name: "Sinalizaram", value: projectMetrics.cancellationSignaled, color: "#f59e0b", status: "cancellation_signaled" },
+    { name: "Aviso", value: projectMetrics.noticePeriod, color: "#f97316", status: "notice_period" },
+    { name: "Encerrados", value: projectMetrics.closedProjects, color: "#ef4444", status: "closed" },
   ].filter(d => d.value > 0);
 
   const churnData = [
-    { name: "Encerrados", value: churnMetrics.closedInPeriod },
-    { name: "Sinalizaram", value: churnMetrics.signaledInPeriod },
+    { name: "Encerrados", value: churnMetrics.closedInPeriod, status: "closed" },
+    { name: "Sinalizaram", value: churnMetrics.signaledInPeriod, status: "cancellation_signaled" },
   ];
+
+  // Handle pie chart click for status filtering
+  const handlePieClick = (data: { status: string }) => {
+    if (data?.status) {
+      handleCardClick("status", data.status);
+    }
+  };
+
+  // Handle bar chart click for churn filtering
+  const handleBarClick = (data: { status: string }) => {
+    if (data?.status) {
+      handleCardClick("status", data.status);
+    }
+  };
 
   if (loading) {
     return (
@@ -786,9 +800,11 @@ const DashboardMetrics = ({
                         outerRadius={65}
                         paddingAngle={2}
                         dataKey="value"
+                        onClick={(data) => handlePieClick(data)}
+                        style={{ cursor: 'pointer' }}
                       >
                         {projectStatusData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                          <Cell key={`cell-${index}`} fill={entry.color} style={{ cursor: 'pointer' }} />
                         ))}
                       </Pie>
                       <Tooltip 
@@ -847,16 +863,30 @@ const DashboardMetrics = ({
                       fill="#ef4444" 
                       radius={[0, 4, 4, 0]}
                       barSize={20}
+                      onClick={(data) => handleBarClick(data)}
+                      style={{ cursor: 'pointer' }}
                     />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="text-center p-2 bg-red-500/10 rounded-lg">
+                <div 
+                  className={cn(
+                    "text-center p-2 bg-red-500/10 rounded-lg cursor-pointer transition-all hover:bg-red-500/20",
+                    isCardActive("status", "closed") && "ring-2 ring-red-500"
+                  )}
+                  onClick={() => handleCardClick("status", "closed")}
+                >
                   <p className="text-xl font-bold text-red-500">{churnMetrics.closedInPeriod}</p>
                   <p className="text-xs text-muted-foreground">Encerrados</p>
                 </div>
-                <div className="text-center p-2 bg-amber-500/10 rounded-lg">
+                <div 
+                  className={cn(
+                    "text-center p-2 bg-amber-500/10 rounded-lg cursor-pointer transition-all hover:bg-amber-500/20",
+                    isCardActive("status", "cancellation_signaled") && "ring-2 ring-amber-500"
+                  )}
+                  onClick={() => handleCardClick("status", "cancellation_signaled")}
+                >
                   <p className="text-xl font-bold text-amber-500">{projectMetrics.churnSignaled}</p>
                   <p className="text-xs text-muted-foreground">Em Risco</p>
                 </div>
