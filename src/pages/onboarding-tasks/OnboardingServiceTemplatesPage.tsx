@@ -97,16 +97,16 @@ export default function OnboardingServiceTemplatesPage() {
       return;
     }
 
-    // Check if admin
-    const { data: roleData } = await supabase
-      .from('user_roles')
+    // Check if admin in onboarding_staff
+    const { data: staffData } = await supabase
+      .from('onboarding_staff')
       .select('role')
       .eq('user_id', user.id)
-      .eq('role', 'admin')
-      .maybeSingle();
+      .eq('is_active', true)
+      .single();
 
-    if (!roleData) {
-      toast.error('Acesso negado');
+    if (!staffData || staffData.role !== 'admin') {
+      toast.error('Acesso negado. Apenas administradores.');
       navigate('/onboarding-tasks');
       return;
     }
