@@ -28,6 +28,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { KickoffFormDialog } from "./KickoffFormDialog";
 import { formatPhone } from "@/lib/utils";
+import { COMPANY_SEGMENTS } from "@/data/companySegments";
 
 const COMPANY_STATUS_OPTIONS = [
   { value: "active", label: "Ativa" },
@@ -307,7 +308,28 @@ export const CompanyBriefingPanel = ({ companyId, userRole, isStaffAdmin = false
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {renderField("Nome da Empresa", company.name, "name")}
             {renderField("CNPJ", company.cnpj, "cnpj")}
-            {renderField("Segmento", company.segment, "segment")}
+            <div>
+              <label className="text-sm text-muted-foreground">Segmento</label>
+              {isEditing ? (
+                <Select
+                  value={formData.segment || ""}
+                  onValueChange={(value) => updateField("segment", value)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Selecione o segmento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMPANY_SEGMENTS.map((seg) => (
+                      <SelectItem key={seg} value={seg}>
+                        {seg}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="font-medium">{company.segment || "-"}</p>
+              )}
+            </div>
             <div>
               <label className="text-sm text-muted-foreground">Status</label>
               {isEditing ? (

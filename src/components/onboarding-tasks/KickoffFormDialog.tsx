@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { COMPANY_SEGMENTS } from "@/data/companySegments";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
@@ -325,13 +327,19 @@ export const KickoffFormDialog = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="segment">Segmento/Nicho</Label>
-                <Input
-                  id="segment"
-                  value={formData.segment}
-                  onChange={(e) => updateField("segment", e.target.value)}
-                  placeholder="Ex: Tecnologia, Varejo, Serviços..."
-                />
+                <Label>Segmento/Nicho</Label>
+                <Select value={formData.segment} onValueChange={(value) => updateField("segment", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o segmento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMPANY_SEGMENTS.map((seg) => (
+                      <SelectItem key={seg} value={seg}>
+                        {seg}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="website">Website</Label>

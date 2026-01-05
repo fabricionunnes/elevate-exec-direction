@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
+import { COMPANY_SEGMENTS } from "@/data/companySegments";
 import { ContactsContractsPanel } from "@/components/onboarding-tasks/ContactsContractsPanel";
 
 interface Staff {
@@ -465,12 +466,19 @@ const OnboardingCompanyDetailPage = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="segment">Segmento</Label>
-                      <Input
-                        id="segment"
-                        value={form.segment}
-                        onChange={(e) => setForm({ ...form, segment: e.target.value })}
-                      />
+                      <Label>Segmento</Label>
+                      <Select value={form.segment} onValueChange={(value) => setForm({ ...form, segment: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o segmento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COMPANY_SEGMENTS.map((seg) => (
+                            <SelectItem key={seg} value={seg}>
+                              {seg}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="website">Website</Label>
