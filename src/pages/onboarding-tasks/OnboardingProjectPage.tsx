@@ -22,6 +22,7 @@ import {
   ChevronDown,
   ChevronRight,
   RefreshCw,
+  Search,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -142,6 +143,7 @@ const OnboardingProjectPage = () => {
   const [showGenerateTasksDialog, setShowGenerateTasksDialog] = useState(false);
   const [tasksViewMode, setTasksViewMode] = useState<"trail" | "list" | "schedule">("trail");
   const [staffList, setStaffList] = useState<{ id: string; name: string; role: string }[]>([]);
+  const [taskSearchQuery, setTaskSearchQuery] = useState("");
 
   useEffect(() => {
     if (projectId) {
@@ -517,7 +519,15 @@ const OnboardingProjectPage = () => {
   };
 
   // Group tasks by phase (stored in tags[0], order in tags[1] or by first task sort_order)
-  const groupedTasks = tasks.reduce<Record<string, TaskPhase>>((acc, task) => {
+  // Filter tasks based on search query
+  const filteredTasks = taskSearchQuery.trim()
+    ? tasks.filter(task => 
+        task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+        task.description?.toLowerCase().includes(taskSearchQuery.toLowerCase())
+      )
+    : tasks;
+
+  const groupedTasks = filteredTasks.reduce<Record<string, TaskPhase>>((acc, task) => {
     const phaseName = task.tags?.[0] || "Sem fase";
     const phaseOrder = task.tags?.[1] ? parseInt(task.tags[1]) : undefined;
     
@@ -749,51 +759,70 @@ const OnboardingProjectPage = () => {
           </TabsList>
 
           <TabsContent value="tasks">
-            {/* View Toggle and Add Task */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={tasksViewMode === "trail" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTasksViewMode("trail")}
-                >
-                  <Route className="h-4 w-4 mr-2" />
-                  Trilha
-                </Button>
-                <Button
-                  variant={tasksViewMode === "list" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTasksViewMode("list")}
-                >
-                  <LayoutList className="h-4 w-4 mr-2" />
-                  Lista
-                </Button>
-                <Button
-                  variant={tasksViewMode === "schedule" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTasksViewMode("schedule")}
-                >
-                  <CalendarDays className="h-4 w-4 mr-2" />
-                  Cronograma
-                </Button>
+            {/* Search, View Toggle and Add Task */}
+            <div className="flex flex-col gap-4 mb-6">
+              {/* Search */}
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar tarefa pelo nome..."
+                  value={taskSearchQuery}
+                  onChange={(e) => setTaskSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-              {canAddTasks && (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Adicionar nova tarefa..."
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
-                    className="w-64"
-                  />
-                  <Button onClick={handleAddTask}>
-                    <Plus className="h-4 w-4" />
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={tasksViewMode === "trail" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTasksViewMode("trail")}
+                  >
+                    <Route className="h-4 w-4 mr-2" />
+                    Trilha
+                  </Button>
+                  <Button
+                    variant={tasksViewMode === "list" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTasksViewMode("list")}
+                  >
+                    <LayoutList className="h-4 w-4 mr-2" />
+                    Lista
+                  </Button>
+                  <Button
+                    variant={tasksViewMode === "schedule" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTasksViewMode("schedule")}
+                  >
+                    <CalendarDays className="h-4 w-4 mr-2" />
+                    Cronograma
                   </Button>
                 </div>
-              )}
+                {canAddTasks && (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Adicionar nova tarefa..."
+                      value={newTaskTitle}
+                      onChange={(e) => setNewTaskTitle(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
+                      className="w-64"
+                    />
+                    <Button onClick={handleAddTask}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {tasksViewMode === "trail" ? (
+            {taskSearchQuery && filteredTasks.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhuma tarefa encontrada</p>
+                <p className="text-sm">Tente buscar por outro termo</p>
+              </div>
+            ) : tasksViewMode === "trail" ? (
               <TasksGameTrailView
                 phases={sortedPhases}
                 onTaskClick={setSelectedTask}
@@ -801,7 +830,7 @@ const OnboardingProjectPage = () => {
               />
             ) : tasksViewMode === "schedule" ? (
               <TasksScheduleView
-                tasks={tasks}
+                tasks={filteredTasks}
                 onTaskClick={setSelectedTask}
                 onStatusChange={handleStatusChange}
               />
