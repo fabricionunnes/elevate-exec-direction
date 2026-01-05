@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft } from "lucide-react";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -102,6 +102,10 @@ const OnboardingTasksPage = () => {
   const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null }[]>([]);
   const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null }[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string }[]>([]);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const companiesPerPage = 10;
 
   useEffect(() => {
     checkUserPermissions();
@@ -375,6 +379,18 @@ const OnboardingTasksPage = () => {
     });
   }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse]);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter]);
+
+  // Paginated companies
+  const totalPages = Math.ceil(filteredCompanies.length / companiesPerPage);
+  const paginatedCompanies = useMemo(() => {
+    const startIndex = (currentPage - 1) * companiesPerPage;
+    return filteredCompanies.slice(startIndex, startIndex + companiesPerPage);
+  }, [filteredCompanies, currentPage, companiesPerPage]);
+
   // Filtered projects for dashboard metrics (respects consultant and service filters)
   const filteredProjects = useMemo(() => {
     return allProjects.filter((project) => {
@@ -646,7 +662,17 @@ const OnboardingTasksPage = () => {
           </Card>
         ) : (
           <div className="space-y-4">
-            {filteredCompanies.map((company) => (
+            {/* Companies count and pagination info */}
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                Mostrando {((currentPage - 1) * companiesPerPage) + 1}-{Math.min(currentPage * companiesPerPage, filteredCompanies.length)} de {filteredCompanies.length} empresas
+              </span>
+              {totalPages > 1 && (
+                <span>Página {currentPage} de {totalPages}</span>
+              )}
+            </div>
+
+            {paginatedCompanies.map((company) => (
               <div key={company.id} className="space-y-2">
                 {/* Company Card */}
                 <Card
@@ -801,6 +827,57 @@ const OnboardingTasksPage = () => {
                 )}
               </div>
             ))}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => {
+                      // Show first, last, current, and adjacent pages
+                      return page === 1 || 
+                             page === totalPages || 
+                             Math.abs(page - currentPage) <= 1;
+                    })
+                    .map((page, idx, arr) => (
+                      <div key={page} className="flex items-center">
+                        {idx > 0 && arr[idx - 1] !== page - 1 && (
+                          <span className="px-2 text-muted-foreground">...</span>
+                        )}
+                        <Button
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          className="min-w-[40px]"
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      </div>
+                    ))
+                  }
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Próximo
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
