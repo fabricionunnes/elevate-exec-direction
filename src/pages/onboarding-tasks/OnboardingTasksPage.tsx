@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
@@ -175,6 +175,7 @@ const OnboardingTasksPage = () => {
     setExpandedCompanyId(expandedCompanyId === companyId ? null : companyId);
   };
 
+  const isAdmin = currentUserRole === "admin";
   const canCreateCompany = currentUserRole === "admin" || currentUserRole === "cs";
 
   if (loading) {
@@ -202,6 +203,12 @@ const OnboardingTasksPage = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button variant="outline" onClick={() => navigate("/onboarding-tasks/services")}>
+                <Package className="h-4 w-4 mr-2" />
+                Serviços
+              </Button>
+            )}
             <Button variant="outline" onClick={() => navigate("/onboarding-tasks/staff")}>
               <Users className="h-4 w-4 mr-2" />
               Equipe
