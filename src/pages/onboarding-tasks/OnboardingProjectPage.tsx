@@ -611,7 +611,20 @@ const OnboardingProjectPage = () => {
               <div>
                 <h1 className="text-2xl font-bold">{project.product_name}</h1>
                 {project.onboarding_company?.name && (
-                  <p className="text-muted-foreground">{project.onboarding_company.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-muted-foreground">{project.onboarding_company.name}</p>
+                    {project.onboarding_company_id && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 px-2 text-xs"
+                        onClick={() => navigate(`/onboarding-tasks/companies/${project.onboarding_company_id}`)}
+                      >
+                        <Building2 className="h-3 w-3 mr-1" />
+                        Ver Empresa
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
