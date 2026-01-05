@@ -46,7 +46,8 @@ import { ProjectVariablesPanel } from "@/components/onboarding-tasks/ProjectVari
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
-import { Settings, Sparkles, Building2, Wand2, Target, UserCircle, Route, LayoutList, CalendarDays, LogOut } from "lucide-react";
+import { GeneratePDFTasksDialog } from "@/components/onboarding-tasks/GeneratePDFTasksDialog";
+import { Settings, Sparkles, Building2, Wand2, Target, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp } from "lucide-react";
 import { ChurnReasonDialog } from "@/components/onboarding-tasks/ChurnReasonDialog";
 import { NoticePeriodDialog } from "@/components/onboarding-tasks/NoticePeriodDialog";
 import { MonthlyGoalsCard } from "@/components/onboarding-tasks/MonthlyGoalsCard";
@@ -146,6 +147,7 @@ const OnboardingProjectPage = () => {
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [isStaffAdmin, setIsStaffAdmin] = useState(false);
   const [showGenerateTasksDialog, setShowGenerateTasksDialog] = useState(false);
+  const [showPDFTasksDialog, setShowPDFTasksDialog] = useState(false);
   const [tasksViewMode, setTasksViewMode] = useState<"trail" | "list" | "schedule">("trail");
   const [staffList, setStaffList] = useState<{ id: string; name: string; role: string }[]>([]);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
@@ -796,10 +798,16 @@ const OnboardingProjectPage = () => {
             </div>
             <div className="flex items-center gap-2">
               {currentUserRole && currentUserRole !== "client" && (
-                <Button variant="outline" onClick={() => setShowGenerateTasksDialog(true)}>
-                  <Wand2 className="h-4 w-4 mr-2" />
-                  Gerar Tarefas
-                </Button>
+                <>
+                  <Button variant="outline" onClick={() => setShowPDFTasksDialog(true)}>
+                    <FileUp className="h-4 w-4 mr-2" />
+                    Plano via PDF
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowGenerateTasksDialog(true)}>
+                    <Wand2 className="h-4 w-4 mr-2" />
+                    Gerar Tarefas
+                  </Button>
+                </>
               )}
               <Button variant="outline" onClick={() => setShowUsersDialog(true)}>
                 <Users className="h-4 w-4 mr-2" />
@@ -1115,6 +1123,14 @@ const OnboardingProjectPage = () => {
         onOpenChange={setShowGenerateTasksDialog}
         projectId={projectId!}
         productId={project.product_id}
+        onTasksGenerated={fetchProjectData}
+      />
+
+      <GeneratePDFTasksDialog
+        open={showPDFTasksDialog}
+        onOpenChange={setShowPDFTasksDialog}
+        projectId={projectId!}
+        companyName={project.onboarding_company?.name}
         onTasksGenerated={fetchProjectData}
       />
 
