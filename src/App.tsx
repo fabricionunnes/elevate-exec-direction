@@ -67,6 +67,7 @@ import OnboardingNewCompanyPage from "./pages/onboarding-tasks/OnboardingNewComp
 import OnboardingServicesPage from "./pages/onboarding-tasks/OnboardingServicesPage";
 import OnboardingServiceTemplatesPage from "./pages/onboarding-tasks/OnboardingServiceTemplatesPage";
 import OnboardingBulkTemplatesPage from "./pages/onboarding-tasks/OnboardingBulkTemplatesPage";
+import OnboardingImportPage from "./pages/onboarding-tasks/OnboardingImportPage";
 import NPSSurveyPage from "./pages/NPSSurveyPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
@@ -129,6 +130,7 @@ const App = () => (
             <Route path="/onboarding-tasks/services" element={<OnboardingServicesPage />} />
             <Route path="/onboarding-tasks/services/bulk" element={<OnboardingBulkTemplatesPage />} />
             <Route path="/onboarding-tasks/services/:serviceSlug/templates" element={<OnboardingServiceTemplatesPage />} />
+            <Route path="/onboarding-tasks/import" element={<OnboardingImportPage />} />
             <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
           </Route>
           
