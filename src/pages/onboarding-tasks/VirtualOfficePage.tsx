@@ -108,6 +108,7 @@ const VirtualOfficePage = () => {
   const [newRoom, setNewRoom] = useState({ name: "", description: "", meet_link: "", team_type: "all" });
   const [isInVideoCall, setIsInVideoCall] = useState(false);
   const [activeTab, setActiveTab] = useState("office");
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -118,12 +119,39 @@ const VirtualOfficePage = () => {
     if (selectedRoom) {
       fetchMessages(selectedRoom.id);
       subscribeToMessages(selectedRoom.id);
+      // Clear unread count when room is selected
+      setUnreadCounts((prev) => ({ ...prev, [selectedRoom.id]: 0 }));
     }
   }, [selectedRoom]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Global subscription for all room messages (for unread indicators)
+  useEffect(() => {
+    const channel = supabase
+      .channel("all-room-messages")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "virtual_office_messages" },
+        (payload) => {
+          const newMsg = payload.new as Message;
+          // Only increment if it's not the current room and not from the current user
+          if (newMsg.room_id !== selectedRoom?.id && newMsg.staff_id !== currentStaff?.id) {
+            setUnreadCounts((prev) => ({
+              ...prev,
+              [newMsg.room_id]: (prev[newMsg.room_id] || 0) + 1,
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedRoom?.id, currentStaff?.id]);
 
   const initializeData = async () => {
     try {
@@ -400,6 +428,17 @@ const VirtualOfficePage = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Dashboard button */}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2 hidden sm:flex"
+            onClick={() => navigate("/onboarding-tasks")}
+          >
+            <ExternalLink className="h-4 w-4" />
+            Dashboard
+          </Button>
+
           {/* Status selector */}
           <Select value={myStatus} onValueChange={(value) => updatePresence(currentStaff?.id || "", value as PresenceStatus)}>
             <SelectTrigger className="w-[140px] h-8">
@@ -488,75 +527,79 @@ const VirtualOfficePage = () => {
         <aside className="w-64 border-r bg-card hidden md:flex flex-col">
           <div className="p-3 border-b flex items-center justify-between">
             <h2 className="font-medium text-sm">Salas</h2>
-            <Dialog open={showCreateRoom} onOpenChange={setShowCreateRoom}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Nova Sala</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div>
-                    <Label>Nome da Sala</Label>
-                    <Input
-                      value={newRoom.name}
-                      onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
-                      placeholder="Ex: Reunião de Vendas"
-                    />
+            {isAdmin && (
+              <Dialog open={showCreateRoom} onOpenChange={setShowCreateRoom}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Nova Sala</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div>
+                      <Label>Nome da Sala</Label>
+                      <Input
+                        value={newRoom.name}
+                        onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
+                        placeholder="Ex: Reunião de Vendas"
+                      />
+                    </div>
+                    <div>
+                      <Label>Descrição</Label>
+                      <Textarea
+                        value={newRoom.description}
+                        onChange={(e) => setNewRoom({ ...newRoom, description: e.target.value })}
+                        placeholder="Descreva o propósito da sala"
+                      />
+                    </div>
+                    <div>
+                      <Label>Link do Google Meet</Label>
+                      <Input
+                        value={newRoom.meet_link}
+                        onChange={(e) => setNewRoom({ ...newRoom, meet_link: e.target.value })}
+                        placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                      />
+                    </div>
+                    <div>
+                      <Label>Equipe</Label>
+                      <Select value={newRoom.team_type} onValueChange={(v) => setNewRoom({ ...newRoom, team_type: v })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          <SelectItem value="consultants">Consultores</SelectItem>
+                          <SelectItem value="cs">Customer Success</SelectItem>
+                          <SelectItem value="admin">Administração</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div>
-                    <Label>Descrição</Label>
-                    <Textarea
-                      value={newRoom.description}
-                      onChange={(e) => setNewRoom({ ...newRoom, description: e.target.value })}
-                      placeholder="Descreva o propósito da sala"
-                    />
-                  </div>
-                  <div>
-                    <Label>Link do Google Meet</Label>
-                    <Input
-                      value={newRoom.meet_link}
-                      onChange={(e) => setNewRoom({ ...newRoom, meet_link: e.target.value })}
-                      placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                    />
-                  </div>
-                  <div>
-                    <Label>Equipe</Label>
-                    <Select value={newRoom.team_type} onValueChange={(v) => setNewRoom({ ...newRoom, team_type: v })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="consultants">Consultores</SelectItem>
-                        <SelectItem value="cs">Customer Success</SelectItem>
-                        <SelectItem value="admin">Administração</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowCreateRoom(false)}>Cancelar</Button>
-                  <Button onClick={createRoom}>Criar Sala</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowCreateRoom(false)}>Cancelar</Button>
+                    <Button onClick={createRoom}>Criar Sala</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
           
           <ScrollArea className="flex-1">
             <div className="p-2 space-y-1">
               {rooms.map((room) => {
                 const roomPresences = presences.filter((p) => p.room_id === room.id && p.status !== "offline");
+                const unreadCount = unreadCounts[room.id] || 0;
                 
                 return (
                   <div
                     key={room.id}
                     className={cn(
                       "p-2 rounded-lg cursor-pointer transition-colors group",
-                      selectedRoom?.id === room.id ? "bg-primary/10" : "hover:bg-muted/50"
+                      selectedRoom?.id === room.id ? "bg-primary/10" : "hover:bg-muted/50",
+                      unreadCount > 0 && selectedRoom?.id !== room.id && "border-l-2 border-primary"
                     )}
                     onClick={() => setSelectedRoom(room)}
                   >
@@ -564,6 +607,11 @@ const VirtualOfficePage = () => {
                       <div className="flex items-center gap-2 min-w-0">
                         <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="font-medium text-sm truncate">{room.name}</span>
+                        {unreadCount > 0 && selectedRoom?.id !== room.id && (
+                          <Badge variant="default" className="h-5 min-w-5 px-1.5 text-[10px]">
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </Badge>
+                        )}
                       </div>
                       {isAdmin && (
                         <Button
