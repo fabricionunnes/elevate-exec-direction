@@ -409,12 +409,15 @@ const OnboardingTasksPage = () => {
 
   // Handle metric card filter
   const handleMetricFilterChange = (filter: { type: string; value: string } | null) => {
+    // Get the previous filter to check what we're toggling
+    const previousFilter = activeMetricFilter;
     setActiveMetricFilter(filter);
-    // When clicking on a status card, also update the status filter
+    
     if (filter?.type === "status") {
       setFilterStatus(filter.value);
-    } else if (filter === null) {
-      // Clear metric filter but keep other filters
+    } else if (filter === null && previousFilter?.type === "status") {
+      // When clearing a status filter, reset to "all"
+      setFilterStatus("all");
     }
   };
 
