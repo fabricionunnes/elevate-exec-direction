@@ -371,17 +371,16 @@ const OnboardingTasksPage = () => {
   const todayTasks = useMemo(() => {
     const today = startOfDay(new Date());
     return allTasks.filter((t) => {
-      if (!t.due_date) return false;
+      if (!t.due_date || t.status === "completed") return false;
       if (!filteredProjectIds.has(t.project_id)) return false;
 
       const dueDate = normalizeDueDate(t.due_date);
 
-      // Period filter (due date must be inside the selected period)
-      if (!isWithinInterval(dueDate, { start: dateRange.start, end: dateRange.end })) return false;
-
+      // Today tasks: show ALL tasks due today regardless of period filter
+      // This ensures we always see what needs to be done today
       return dueDate.getTime() === today.getTime();
     });
-  }, [allTasks, filteredProjectIds, dateRange.start, dateRange.end]);
+  }, [allTasks, filteredProjectIds]);
 
 
   // Handle metric card filter

@@ -147,8 +147,14 @@ const DashboardMetrics = ({
 
     // Use pre-filtered task lists from parent (these already respect consultant/company/project rules)
     const todayTasksCount = todayTasks.length;
-    const todayCompleted = todayTasks.filter(t => t.status === "completed").length;
     const overdueTasksCount = overdueTasks.length;
+
+    // Count tasks completed TODAY (by completed_at date)
+    const todayCompleted = filteredTasks.filter(t => {
+      if (t.status !== "completed" || !t.completed_at) return false;
+      const completedDate = format(parseISO(t.completed_at), "yyyy-MM-dd");
+      return completedDate === today;
+    }).length;
 
     const totalCompleted = filteredTasks.filter(t => t.status === "completed").length;
     const totalPending = filteredTasks.filter(t => t.status === "pending").length;
