@@ -144,10 +144,30 @@ const DashboardMetrics = ({
 
   // Project-based metrics
   const projectMetrics = useMemo(() => {
+    // Current totals (all projects, not filtered by period)
     const activeProjects = projects.filter(p => p.status === "active").length;
     const cancellationSignaled = projects.filter(p => p.status === "cancellation_signaled").length;
     const noticePeriod = projects.filter(p => p.status === "notice_period").length;
     const closedProjects = projects.filter(p => p.status === "closed" || p.status === "completed").length;
+    
+    // Projects that changed to each status within the date range
+    const activeInPeriod = projects.filter(p => {
+      if (p.status !== "active") return false;
+      const changedAt = new Date(p.updated_at);
+      return isWithinInterval(changedAt, { start: dateRange.start, end: dateRange.end });
+    }).length;
+
+    const cancellationSignaledInPeriod = projects.filter(p => {
+      if (p.status !== "cancellation_signaled") return false;
+      const changedAt = new Date(p.updated_at);
+      return isWithinInterval(changedAt, { start: dateRange.start, end: dateRange.end });
+    }).length;
+
+    const noticePeriodInPeriod = projects.filter(p => {
+      if (p.status !== "notice_period") return false;
+      const changedAt = new Date(p.updated_at);
+      return isWithinInterval(changedAt, { start: dateRange.start, end: dateRange.end });
+    }).length;
     
     // Count reactivated projects within the date range
     const reactivatedInPeriod = projects.filter(p => {
@@ -163,6 +183,10 @@ const DashboardMetrics = ({
       closedProjects,
       churnSignaled: cancellationSignaled + noticePeriod,
       reactivatedInPeriod,
+      // Period-specific counts
+      activeInPeriod,
+      cancellationSignaledInPeriod,
+      noticePeriodInPeriod,
     };
   }, [projects, dateRange]);
 
@@ -472,17 +496,17 @@ const DashboardMetrics = ({
           <Card 
             className={cn(
               "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
-              isCardActive("projects", "active") && "ring-2 ring-emerald-500"
+              isCardActive("status", "active") && "ring-2 ring-emerald-500"
             )}
-            onClick={() => handleCardClick("projects", "active")}
+            onClick={() => handleCardClick("status", "active")}
           >
             <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
             <CardContent className="pt-4 pl-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Serviços</p>
-                  <p className="text-2xl font-bold mt-1">{projectMetrics.activeProjects}</p>
-                  <p className="text-xs text-muted-foreground">ativos</p>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Ativaram</p>
+                  <p className="text-2xl font-bold mt-1">{projectMetrics.activeInPeriod}</p>
+                  <p className="text-xs text-muted-foreground">no período ({projectMetrics.activeProjects} total)</p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
                   <Zap className="h-5 w-5 text-emerald-500" />
@@ -504,8 +528,8 @@ const DashboardMetrics = ({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Sinalizaram</p>
-                  <p className="text-2xl font-bold mt-1 text-amber-500">{projectMetrics.cancellationSignaled}</p>
-                  <p className="text-xs text-muted-foreground">serviços</p>
+                  <p className="text-2xl font-bold mt-1 text-amber-500">{projectMetrics.cancellationSignaledInPeriod}</p>
+                  <p className="text-xs text-muted-foreground">no período ({projectMetrics.cancellationSignaled} total)</p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
                   <XCircle className="h-5 w-5 text-amber-500" />
@@ -527,8 +551,8 @@ const DashboardMetrics = ({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Aviso</p>
-                  <p className="text-2xl font-bold mt-1 text-orange-500">{projectMetrics.noticePeriod}</p>
-                  <p className="text-xs text-muted-foreground">serviços</p>
+                  <p className="text-2xl font-bold mt-1 text-orange-500">{projectMetrics.noticePeriodInPeriod}</p>
+                  <p className="text-xs text-muted-foreground">no período ({projectMetrics.noticePeriod} total)</p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-orange-500/10 flex items-center justify-center">
                   <Clock className="h-5 w-5 text-orange-500" />

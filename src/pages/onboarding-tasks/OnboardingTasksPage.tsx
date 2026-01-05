@@ -321,6 +321,7 @@ const OnboardingTasksPage = () => {
         company.projects?.some(p => p.product_id === filterService);
       
       // Status filter - filter by project (service) status, not company status
+      // When filtering via metric cards, also check if status changed in selected period
       const matchesStatus = 
         filterStatus === "all" || 
         company.projects?.some(p => p.status === filterStatus);
@@ -352,6 +353,21 @@ const OnboardingTasksPage = () => {
         } else if (activeMetricFilter.type === "nps" && activeMetricFilter.value === "not_responded") {
           // Filter companies that have at least one project WITHOUT NPS response
           matchesMetricFilter = company.projects?.some(p => !projectsWithNpsResponse.has(p.id)) ?? false;
+        } else if (activeMetricFilter.type === "status" && activeMetricFilter.value === "reactivated") {
+          // Filter companies with projects reactivated in the period
+          matchesMetricFilter = company.projects?.some(p => {
+            if (!p.reactivated_at) return false;
+            const reactivatedDate = new Date(p.reactivated_at);
+            return isWithinInterval(reactivatedDate, { start: dateRange.start, end: dateRange.end });
+          }) ?? false;
+        } else if (activeMetricFilter.type === "status") {
+          // For status filters from cards (active, cancellation_signaled, notice_period), 
+          // filter by projects that changed to this status in the selected period
+          matchesMetricFilter = company.projects?.some(p => {
+            if (p.status !== activeMetricFilter.value) return false;
+            const updatedAt = new Date(p.updated_at);
+            return isWithinInterval(updatedAt, { start: dateRange.start, end: dateRange.end });
+          }) ?? false;
         }
       }
       
