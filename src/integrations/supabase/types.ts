@@ -2242,6 +2242,7 @@ export type Database = {
           id: string
           is_deleted: boolean | null
           message_type: string
+          recipient_staff_id: string | null
           reply_to_id: string | null
           room_id: string
           staff_id: string
@@ -2252,6 +2253,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean | null
           message_type?: string
+          recipient_staff_id?: string | null
           reply_to_id?: string | null
           room_id: string
           staff_id: string
@@ -2262,11 +2264,19 @@ export type Database = {
           id?: string
           is_deleted?: boolean | null
           message_type?: string
+          recipient_staff_id?: string | null
           reply_to_id?: string | null
           room_id?: string
           staff_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "virtual_office_messages_recipient_staff_id_fkey"
+            columns: ["recipient_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "virtual_office_messages_reply_to_id_fkey"
             columns: ["reply_to_id"]
@@ -2428,6 +2438,58 @@ export type Database = {
           {
             foreignKeyName: "virtual_office_rooms_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      virtual_office_unread: {
+        Row: {
+          from_staff_id: string | null
+          id: string
+          last_read_at: string | null
+          room_id: string | null
+          staff_id: string
+          unread_count: number
+          updated_at: string | null
+        }
+        Insert: {
+          from_staff_id?: string | null
+          id?: string
+          last_read_at?: string | null
+          room_id?: string | null
+          staff_id: string
+          unread_count?: number
+          updated_at?: string | null
+        }
+        Update: {
+          from_staff_id?: string | null
+          id?: string
+          last_read_at?: string | null
+          room_id?: string | null
+          staff_id?: string
+          unread_count?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_office_unread_from_staff_id_fkey"
+            columns: ["from_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_office_unread_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_office_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_office_unread_staff_id_fkey"
+            columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
             referencedColumns: ["id"]
