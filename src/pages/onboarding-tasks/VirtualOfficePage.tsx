@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import JitsiMeetRoom from "@/components/virtual-office/JitsiMeetRoom";
+
 
 interface Room {
   id: string;
@@ -600,8 +600,13 @@ const VirtualOfficePage = () => {
                       size="sm"
                       className="gap-2"
                       onClick={() => {
-                        setIsInVideoCall(true);
-                        updatePresence(currentStaff?.id || "", "in_meeting", selectedRoom.id);
+                        if (selectedRoom.meet_link) {
+                          window.open(selectedRoom.meet_link, "_blank");
+                          setIsInVideoCall(true);
+                          updatePresence(currentStaff?.id || "", "in_meeting", selectedRoom.id);
+                        } else {
+                          toast.error("Esta sala não possui um link de reunião configurado");
+                        }
                       }}
                     >
                       <Video className="h-4 w-4" />
@@ -611,62 +616,48 @@ const VirtualOfficePage = () => {
                 </div>
               </div>
 
-              {/* Video Call or Chat */}
-              {isInVideoCall ? (
-                <div className="flex-1 relative">
-                  <JitsiMeetRoom
-                    roomName={selectedRoom.id}
-                    displayName={currentStaff?.name || "Usuário"}
-                    onLeave={() => {
-                      setIsInVideoCall(false);
-                      updatePresence(currentStaff?.id || "", "online", selectedRoom.id);
-                    }}
-                  />
-                </div>
-              ) : (
-                <>
-                  {/* Messages */}
-                  <ScrollArea className="flex-1 p-4">
-                    <div className="space-y-4">
-                      {messages.length === 0 ? (
-                        <div className="text-center text-muted-foreground py-8">
-                          <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-30" />
-                          <p className="text-sm">Nenhuma mensagem ainda</p>
-                          <p className="text-xs">Seja o primeiro a enviar uma mensagem!</p>
-                        </div>
-                      ) : (
-                        messages.map((msg) => {
-                          const isOwn = msg.staff_id === currentStaff?.id;
-                          const staffName = getStaffName(msg.staff_id);
-                          
-                          return (
-                            <div key={msg.id} className={cn("flex gap-3", isOwn && "flex-row-reverse")}>
-                              <Avatar className="h-8 w-8 shrink-0">
-                                <AvatarFallback className={cn("text-xs", isOwn ? "bg-primary text-primary-foreground" : "bg-muted")}>
-                                  {getStaffInitials(staffName)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className={cn("max-w-[70%]", isOwn && "text-right")}>
-                                <div className="flex items-center gap-2 mb-1">
-                                  {!isOwn && <span className="text-xs font-medium">{staffName}</span>}
-                                  <span className="text-[10px] text-muted-foreground">
-                                    {format(new Date(msg.created_at), "HH:mm", { locale: ptBR })}
-                                  </span>
-                                </div>
-                                <div className={cn(
-                                  "p-3 rounded-lg",
-                                  isOwn ? "bg-primary text-primary-foreground" : "bg-muted"
-                                )}>
-                                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                      <div ref={messagesEndRef} />
+              {/* Messages */}
+              <ScrollArea className="flex-1 p-4">
+                <div className="space-y-4">
+                  {messages.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Nenhuma mensagem ainda</p>
+                      <p className="text-xs">Seja o primeiro a enviar uma mensagem!</p>
                     </div>
-                  </ScrollArea>
+                  ) : (
+                    messages.map((msg) => {
+                      const isOwn = msg.staff_id === currentStaff?.id;
+                      const staffName = getStaffName(msg.staff_id);
+                      
+                      return (
+                        <div key={msg.id} className={cn("flex gap-3", isOwn && "flex-row-reverse")}>
+                          <Avatar className="h-8 w-8 shrink-0">
+                            <AvatarFallback className={cn("text-xs", isOwn ? "bg-primary text-primary-foreground" : "bg-muted")}>
+                              {getStaffInitials(staffName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className={cn("max-w-[70%]", isOwn && "text-right")}>
+                            <div className="flex items-center gap-2 mb-1">
+                              {!isOwn && <span className="text-xs font-medium">{staffName}</span>}
+                              <span className="text-[10px] text-muted-foreground">
+                                {format(new Date(msg.created_at), "HH:mm", { locale: ptBR })}
+                              </span>
+                            </div>
+                            <div className={cn(
+                              "p-3 rounded-lg",
+                              isOwn ? "bg-primary text-primary-foreground" : "bg-muted"
+                            )}>
+                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              </ScrollArea>
 
                   {/* Message Input */}
                   <div className="border-t p-3 bg-card">
@@ -682,8 +673,6 @@ const VirtualOfficePage = () => {
                       </Button>
                     </div>
                   </div>
-                </>
-              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
