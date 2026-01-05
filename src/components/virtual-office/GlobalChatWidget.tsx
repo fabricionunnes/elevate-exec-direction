@@ -246,25 +246,16 @@ const GlobalChatWidget = () => {
         (payload) => {
           const newMsg = payload.new as Message;
           
-          // Check if this message is relevant to current user
-          const isRelevant = newMsg.staff_id === staffId || 
-            newMsg.recipient_staff_id === staffId ||
-            newMsg.recipient_staff_id === null;
+          // Check if this message is relevant to current user (DM to me, or room message)
+          const isDMToMe = newMsg.recipient_staff_id === staffId;
+          const isRoomMessage = newMsg.recipient_staff_id === null;
+          const isFromMe = newMsg.staff_id === staffId;
           
-          if (!isRelevant) return;
+          if (!isDMToMe && !isRoomMessage) return;
+          if (isFromMe) return; // Don't notify for own messages
 
-          // Update unread count if not viewing this conversation
-          if (activeConversation) {
-            const isCurrentConv = 
-              (activeConversation.type === "room" && newMsg.room_id === activeConversation.id && !newMsg.recipient_staff_id) ||
-              (activeConversation.type === "dm" && activeConversation.recipientId === newMsg.staff_id);
-            
-            if (!isCurrentConv && newMsg.staff_id !== staffId) {
-              updateUnreadCount(newMsg);
-            }
-          } else if (newMsg.staff_id !== staffId) {
-            updateUnreadCount(newMsg);
-          }
+          // Update unread count
+          updateUnreadCount(newMsg, staffId);
         }
       )
       .subscribe();
@@ -274,17 +265,50 @@ const GlobalChatWidget = () => {
     };
   };
 
-  const updateUnreadCount = (msg: Message) => {
+  const updateUnreadCount = (msg: Message, currentStaffId: string) => {
     setConversations((prev) => {
-      return prev.map((conv) => {
+      // Check if conversation already exists
+      let found = false;
+      const updated = prev.map((conv) => {
         if (conv.type === "room" && conv.id === msg.room_id && !msg.recipient_staff_id) {
-          return { ...conv, unreadCount: conv.unreadCount + 1 };
+          found = true;
+          return { 
+            ...conv, 
+            unreadCount: conv.unreadCount + 1,
+            lastMessage: msg.content,
+            lastMessageTime: msg.created_at
+          };
         }
         if (conv.type === "dm" && conv.recipientId === msg.staff_id) {
-          return { ...conv, unreadCount: conv.unreadCount + 1 };
+          found = true;
+          return { 
+            ...conv, 
+            unreadCount: conv.unreadCount + 1,
+            lastMessage: msg.content,
+            lastMessageTime: msg.created_at
+          };
         }
         return conv;
       });
+
+      // If DM from someone not in conversations list, add them
+      if (!found && msg.recipient_staff_id === currentStaffId) {
+        const sender = staffMembers.find(s => s.id === msg.staff_id);
+        if (sender) {
+          const newConv: Conversation = {
+            type: "dm",
+            id: `dm-${sender.id}`,
+            name: sender.name,
+            recipientId: sender.id,
+            lastMessage: msg.content,
+            lastMessageTime: msg.created_at,
+            unreadCount: 1,
+          };
+          return [newConv, ...updated];
+        }
+      }
+
+      return updated;
     });
   };
 
@@ -509,13 +533,16 @@ const GlobalChatWidget = () => {
       {/* Floating button */}
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+        className={cn(
+          "fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50",
+          totalUnread > 0 && "animate-pulse"
+        )}
         size="icon"
       >
         <MessageCircle className="h-6 w-6" />
         {totalUnread > 0 && (
           <Badge
-            className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-xs"
+            className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-xs animate-bounce"
             variant="destructive"
           >
             {totalUnread > 99 ? "99+" : totalUnread}
