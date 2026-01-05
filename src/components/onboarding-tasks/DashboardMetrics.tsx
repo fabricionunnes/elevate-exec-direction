@@ -327,6 +327,18 @@ const DashboardMetrics = ({
       g.year === periodYear
     );
     
+    // Get project IDs that have goals registered for this period
+    const projectsWithGoalsIds = new Set(
+      filteredGoals
+        .filter(g => g.sales_target && g.sales_target > 0)
+        .map(g => g.project_id)
+    );
+    
+    // Count projects without goals (filtered projects that don't have a goal for this period)
+    const projectsWithoutGoalsList = projects.filter(p => !projectsWithGoalsIds.has(p.id));
+    const noGoalCount = projectsWithoutGoalsList.length;
+    const noGoalProjectIds = projectsWithoutGoalsList.map(p => p.id);
+    
     // Count projects with goals set (has target)
     const projectsWithGoals = filteredGoals.filter(g => g.sales_target && g.sales_target > 0);
     
@@ -361,6 +373,7 @@ const DashboardMetrics = ({
     const between50And70 = between50And70List.length;
     const below50 = below50List.length;
     
+    // Goal rate: % of projects WITH GOALS that are projecting to meet goal
     const goalRate = totalWithGoals > 0 
       ? Math.round((meetingGoal / totalWithGoals) * 100) 
       : 0;
@@ -377,13 +390,15 @@ const DashboardMetrics = ({
       above70,
       between50And70,
       below50,
+      noGoalCount,
       goalRate,
       periodMonth,
       periodYear,
       meetingGoalProjectIds,
       above70ProjectIds,
       between50And70ProjectIds,
-      below50ProjectIds
+      below50ProjectIds,
+      noGoalProjectIds
     };
   }, [projects, monthlyGoals, dateRange]);
 
@@ -1000,7 +1015,7 @@ const DashboardMetrics = ({
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Metas</h3>
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           {/* Batendo Meta Card */}
           <Card 
             className={cn(
@@ -1135,6 +1150,33 @@ const DashboardMetrics = ({
                 </div>
                 <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center">
                   <TrendingDown className="h-5 w-5 text-red-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sem Meta Lançada Card */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("goals", "noGoal") && "ring-2 ring-gray-500"
+            )}
+            onClick={() => handleCardClick("goals", "noGoal")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-gray-400" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Sem Meta</p>
+                  <p className="text-2xl font-bold mt-1 text-gray-500">
+                    {goalsMetrics.noGoalCount}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    projetos
+                  </p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-gray-500/10 flex items-center justify-center">
+                  <FileWarning className="h-5 w-5 text-gray-500" />
                 </div>
               </div>
             </CardContent>

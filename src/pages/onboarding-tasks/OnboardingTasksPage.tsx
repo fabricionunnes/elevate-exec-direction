@@ -360,6 +360,7 @@ const OnboardingTasksPage = () => {
     const above70Ids = new Set<string>(); // 70-99%
     const between50And70Ids = new Set<string>(); // 50-69%
     const below50Ids = new Set<string>(); // <50%
+    const projectsWithGoalsIds = new Set<string>(); // Projects that have goals for this period
     
     monthlyGoals.forEach(g => {
       // Only include goals for filtered projects
@@ -369,6 +370,8 @@ const OnboardingTasksPage = () => {
         g.year === periodYear &&
         g.sales_target && g.sales_target > 0
       ) {
+        projectsWithGoalsIds.add(g.project_id);
+        
         const result = g.sales_result || 0;
         const achievementPercent = result / g.sales_target;
         // Project to end of month based on time elapsed
@@ -388,11 +391,20 @@ const OnboardingTasksPage = () => {
       }
     });
     
+    // Projects without goals: filtered projects that don't have a goal for this period
+    const noGoalIds = new Set<string>();
+    filteredProjectIdSet.forEach(projectId => {
+      if (!projectsWithGoalsIds.has(projectId)) {
+        noGoalIds.add(projectId);
+      }
+    });
+    
     return {
       meetingGoal: meetingGoalIds,
       above70: above70Ids,
       between50And70: between50And70Ids,
-      below50: below50Ids
+      below50: below50Ids,
+      noGoal: noGoalIds
     };
   }, [monthlyGoals, dateRange, allProjects, filterConsultant, filterService, filterStatus, companies]);
 
@@ -477,6 +489,8 @@ const OnboardingTasksPage = () => {
             matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.between50And70.has(p.id)) ?? false;
           } else if (activeMetricFilter.value === "below50") {
             matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.below50.has(p.id)) ?? false;
+          } else if (activeMetricFilter.value === "noGoal") {
+            matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.noGoal.has(p.id)) ?? false;
           }
         }
       }
