@@ -43,8 +43,8 @@ serve(async (req) => {
         .from("onboarding_companies")
         .select(`
           *,
-          cs:onboarding_staff!onboarding_companies_cs_id_fkey(name, email, role),
-          consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(name, email, role)
+          cs:onboarding_staff!onboarding_companies_cs_id_fkey(name, email, role, phone),
+          consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(name, email, role, phone)
         `)
         .eq("id", companyId)
         .single();
@@ -56,22 +56,35 @@ serve(async (req) => {
       .from("onboarding_tasks")
       .select(`
         *,
-        assignee:onboarding_users(name, role),
-        responsible_staff:onboarding_staff(name, role)
+        assignee:onboarding_users(name, role, email),
+        responsible_staff:onboarding_staff(name, role, email)
       `)
       .eq("project_id", projectId)
       .order("sort_order");
 
-    // 4. Tickets
+    // 4. Tickets with replies
     const { data: tickets } = await supabase
       .from("onboarding_tickets")
       .select(`
         *,
-        created_by_user:onboarding_users!onboarding_tickets_created_by_fkey(name)
+        created_by_user:onboarding_users!onboarding_tickets_created_by_fkey(name, email),
+        assigned_to_user:onboarding_users!onboarding_tickets_assigned_to_fkey(name)
       `)
       .eq("project_id", projectId)
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(20);
+
+    // 4b. Ticket replies for recent tickets
+    const ticketIds = tickets?.map(t => t.id) || [];
+    const { data: ticketReplies } = await supabase
+      .from("onboarding_ticket_replies")
+      .select(`
+        *,
+        user:onboarding_users(name)
+      `)
+      .in("ticket_id", ticketIds)
+      .order("created_at", { ascending: false })
+      .limit(50);
 
     // 5. Task comments (recent updates)
     const { data: comments } = await supabase
@@ -83,7 +96,7 @@ serve(async (req) => {
       `)
       .in("task_id", tasks?.map(t => t.id) || [])
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(30);
 
     // 6. Documents
     const { data: documents } = await supabase
@@ -91,7 +104,7 @@ serve(async (req) => {
       .select("*")
       .eq("company_id", companyId)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(30);
 
     // 7. Project variables
     const productVariables = project?.product_variables || {};
@@ -116,11 +129,40 @@ serve(async (req) => {
       .from("onboarding_task_history")
       .select(`
         *,
-        task:onboarding_tasks(title)
+        task:onboarding_tasks(title),
+        staff:onboarding_staff(name),
+        user:onboarding_users(name)
       `)
       .in("task_id", tasks?.map(t => t.id) || [])
       .order("created_at", { ascending: false })
-      .limit(30);
+      .limit(40);
+
+    // 11. NPS Responses
+    const { data: npsResponses } = await supabase
+      .from("onboarding_nps_responses")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false });
+
+    // 12. Onboarding Users (contacts/users from this project)
+    const { data: onboardingUsers } = await supabase
+      .from("onboarding_users")
+      .select("*")
+      .eq("project_id", projectId);
+
+    // 13. All projects from this company (to see other services)
+    const { data: companyProjects } = await supabase
+      .from("onboarding_projects")
+      .select("id, product_name, status, created_at, churn_risk, current_nps")
+      .eq("onboarding_company_id", companyId);
+
+    // 14. Notifications related to this project
+    const { data: notifications } = await supabase
+      .from("onboarding_notifications")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .limit(20);
 
     // Build comprehensive context
     const completedTasks = tasks?.filter(t => t.status === "completed") || [];
@@ -225,9 +267,75 @@ ${taskSubtasks.map(s => `- ${s.is_completed ? '✅' : '⬜'} ${s.title}`).join("
     const historyContext = taskHistory && taskHistory.length > 0
       ? `
 ## HISTÓRICO DE AÇÕES RECENTES
-${taskHistory.slice(0, 20).map(h => {
+${taskHistory.slice(0, 30).map(h => {
   const date = new Date(h.created_at).toLocaleDateString('pt-BR');
-  return `- [${date}] ${h.action} em "${h.task?.title || 'Tarefa'}"${h.field_changed ? `: ${h.field_changed} de "${h.old_value}" para "${h.new_value}"` : ''}`;
+  const actor = h.staff?.name || h.user?.name || 'Sistema';
+  return `- [${date}] ${actor}: ${h.action} em "${h.task?.title || 'Tarefa'}"${h.field_changed ? `: ${h.field_changed} de "${h.old_value}" para "${h.new_value}"` : ''}`;
+}).join("\n")}
+`
+      : "";
+
+    // NPS Context
+    const npsContext = npsResponses && npsResponses.length > 0
+      ? `
+## PESQUISAS NPS
+### Resumo:
+- Total de respostas: ${npsResponses.length}
+- NPS atual do projeto: ${project?.current_nps ?? 'N/A'}
+- Média das notas: ${(npsResponses.reduce((sum, r) => sum + r.score, 0) / npsResponses.length).toFixed(1)}
+
+### Respostas detalhadas:
+${npsResponses.map(r => {
+  const date = new Date(r.created_at).toLocaleDateString('pt-BR');
+  const category = r.score >= 9 ? 'Promotor' : r.score >= 7 ? 'Neutro' : 'Detrator';
+  return `- [${date}] ${r.respondent_name || 'Anônimo'} - Nota: ${r.score}/10 (${category})
+  ${r.feedback ? `  Feedback: ${r.feedback}` : ''}
+  ${r.would_recommend_why ? `  Por que recomendaria: ${r.would_recommend_why}` : ''}
+  ${r.what_can_improve ? `  O que pode melhorar: ${r.what_can_improve}` : ''}`;
+}).join("\n")}
+`
+      : "";
+
+    // Users/Contacts Context
+    const usersContext = onboardingUsers && onboardingUsers.length > 0
+      ? `
+## USUÁRIOS/CONTATOS DO PROJETO
+${onboardingUsers.map(u => `- ${u.name} (${u.role}) - ${u.email}`).join("\n")}
+`
+      : "";
+
+    // Other projects context
+    const otherProjectsContext = companyProjects && companyProjects.length > 1
+      ? `
+## OUTROS SERVIÇOS CONTRATADOS PELA EMPRESA
+${companyProjects.filter(p => p.id !== projectId).map(p => {
+  return `- ${p.product_name}: Status ${p.status}${p.churn_risk ? ` | Risco: ${p.churn_risk}` : ''}${p.current_nps ? ` | NPS: ${p.current_nps}` : ''}`;
+}).join("\n")}
+`
+      : "";
+
+    // Tickets with replies context
+    const ticketsContext = tickets && tickets.length > 0
+      ? `
+## CHAMADOS/TICKETS DETALHADOS
+${tickets.map(t => {
+  const replies = ticketReplies?.filter(r => r.ticket_id === t.id) || [];
+  return `### [${t.status.toUpperCase()}] ${t.subject}
+- Criado por: ${t.created_by_user?.name || 'Usuário'} em ${new Date(t.created_at).toLocaleDateString('pt-BR')}
+- Mensagem: ${t.message.substring(0, 200)}${t.message.length > 200 ? '...' : ''}
+${replies.length > 0 ? `- Respostas (${replies.length}):
+${replies.slice(0, 3).map(r => `  - ${r.user?.name || 'Usuário'}: ${r.message.substring(0, 100)}...`).join("\n")}` : '- Sem respostas ainda'}`;
+}).join("\n\n")}
+`
+      : "## CHAMADOS/TICKETS\nNenhum chamado registrado";
+
+    // Notifications context
+    const notificationsContext = notifications && notifications.length > 0
+      ? `
+## NOTIFICAÇÕES RECENTES
+${notifications.slice(0, 10).map(n => {
+  const date = new Date(n.created_at).toLocaleDateString('pt-BR');
+  return `- [${date}] ${n.title}: ${n.message}${n.is_read ? '' : ' (não lida)'}`;
 }).join("\n")}
 `
       : "";
@@ -244,6 +352,8 @@ Você tem acesso COMPLETO a todas as informações deste projeto e empresa. Use 
 - Canal de Comunicação: ${project?.communication_channel || "N/A"}
 - Feedback do Cliente: ${project?.client_feedback || "N/A"}
 - Bloqueios Atuais: ${project?.current_blockers || "Nenhum"}
+- NPS Atual: ${project?.current_nps ?? "N/A"}
+- Dependência do Cliente: ${project?.client_dependency || "N/A"}
 
 ## INFORMAÇÕES DA EMPRESA
 ${company ? `
@@ -254,6 +364,7 @@ ${company ? `
 - Telefone: ${company.phone || "N/A"}
 - Email: ${company.email || "N/A"}
 - Endereço: ${company.address || "N/A"}
+- Status da Empresa: ${company.status || "N/A"}
 
 ### Briefing/Descrição da Empresa:
 ${company.company_description || "N/A"}
@@ -278,17 +389,25 @@ ${company.competitors || "N/A"}
 - Início do Contrato: ${company.contract_start_date || "N/A"}
 - Fim do Contrato: ${company.contract_end_date || "N/A"}
 - Valor do Contrato: ${company.contract_value ? `R$ ${company.contract_value}` : "N/A"}
+- Dia de Faturamento: ${company.billing_day || "N/A"}
 
 ### Equipe Responsável:
-- CS: ${company.cs?.name || "Não atribuído"}
-- Consultor: ${company.consultant?.name || "Não atribuído"}
+- CS: ${company.cs?.name || "Não atribuído"} ${company.cs?.email ? `(${company.cs.email})` : ''} ${company.cs?.phone ? `- ${company.cs.phone}` : ''}
+- Consultor: ${company.consultant?.name || "Não atribuído"} ${company.consultant?.email ? `(${company.consultant.email})` : ''} ${company.consultant?.phone ? `- ${company.consultant.phone}` : ''}
 
 ### Stakeholders:
 ${JSON.stringify(company.stakeholders || [], null, 2)}
 
+### Cronograma Esperado:
+${JSON.stringify(company.expected_timeline || [], null, 2)}
+
 ### Notas Adicionais:
 ${company.notes || "N/A"}
 ` : "Informações da empresa não disponíveis"}
+
+${usersContext}
+
+${otherProjectsContext}
 
 ## PROGRESSO DO ONBOARDING
 Total de Tarefas: ${tasks?.length || 0}
@@ -300,29 +419,35 @@ Total de Tarefas: ${tasks?.length || 0}
 ### Progresso por Fase:
 ${phasesSummary}
 
-### Tarefas Concluídas (últimas 10):
-${completedTasks.slice(0, 10).map(t => `- ✅ ${t.title}${t.completed_at ? ` (concluída em ${new Date(t.completed_at).toLocaleDateString('pt-BR')})` : ''}`).join("\n") || "Nenhuma"}
+### Tarefas Concluídas (últimas 15):
+${completedTasks.slice(0, 15).map(t => `- ✅ ${t.title}${t.completed_at ? ` (concluída em ${new Date(t.completed_at).toLocaleDateString('pt-BR')})` : ''}${t.responsible_staff?.name ? ` por ${t.responsible_staff.name}` : ''}`).join("\n") || "Nenhuma"}
 
 ### Tarefas em Andamento:
-${inProgressTasks.map(t => `- 🔄 ${t.title}${t.responsible_staff?.name ? ` (responsável: ${t.responsible_staff.name})` : ''}${t.due_date ? ` [prazo: ${new Date(t.due_date).toLocaleDateString('pt-BR')}]` : ''}`).join("\n") || "Nenhuma"}
+${inProgressTasks.map(t => `- 🔄 ${t.title}${t.responsible_staff?.name ? ` (responsável: ${t.responsible_staff.name})` : ''}${t.due_date ? ` [prazo: ${new Date(t.due_date).toLocaleDateString('pt-BR')}]` : ''}${t.description ? `\n  Descrição: ${t.description.substring(0, 150)}...` : ''}`).join("\n") || "Nenhuma"}
 
-### Tarefas Pendentes (próximas 10):
-${pendingTasks.slice(0, 10).map(t => `- ⏳ ${t.title}${t.due_date ? ` (prazo: ${new Date(t.due_date).toLocaleDateString('pt-BR')})` : ''}`).join("\n") || "Nenhuma"}
+### Tarefas Pendentes (próximas 15):
+${pendingTasks.slice(0, 15).map(t => `- ⏳ ${t.title}${t.due_date ? ` (prazo: ${new Date(t.due_date).toLocaleDateString('pt-BR')})` : ''}${t.priority ? ` [${t.priority}]` : ''}`).join("\n") || "Nenhuma"}
+
+### Tarefas Atrasadas:
+${tasks?.filter(t => t.status !== "completed" && t.due_date && new Date(t.due_date) < new Date()).map(t => `- ⚠️ ${t.title} (venceu em ${new Date(t.due_date!).toLocaleDateString('pt-BR')})`).join("\n") || "Nenhuma tarefa atrasada"}
 
 ${subtasksContext}
 
 ${goalsContext}
 
+${npsContext}
+
 ${historyContext}
 
 ## ATUALIZAÇÕES RECENTES (Comentários)
-${comments?.slice(0, 10).map(c => `- [${new Date(c.created_at).toLocaleDateString('pt-BR')}] ${c.user?.name || 'Usuário'} em "${c.task?.title}": ${c.content.substring(0, 100)}...`).join("\n") || "Nenhum comentário recente"}
+${comments?.slice(0, 15).map(c => `- [${new Date(c.created_at).toLocaleDateString('pt-BR')}] ${c.user?.name || 'Usuário'} em "${c.task?.title}": ${c.content.substring(0, 150)}...`).join("\n") || "Nenhum comentário recente"}
 
-## CHAMADOS/TICKETS
-${tickets?.map(t => `- [${t.status}] ${t.subject} - ${t.created_by_user?.name || 'Usuário'}`).join("\n") || "Nenhum chamado"}
+${ticketsContext}
+
+${notificationsContext}
 
 ## DOCUMENTOS ANEXADOS
-${documents?.map(d => `- ${d.file_name} (${d.category || 'geral'}) - ${d.description || 'sem descrição'}`).join("\n") || "Nenhum documento"}
+${documents?.map(d => `- ${d.file_name} (${d.category || 'geral'}) - ${d.description || 'sem descrição'} [${new Date(d.created_at).toLocaleDateString('pt-BR')}]`).join("\n") || "Nenhum documento"}
 
 ## VARIÁVEIS DO PROJETO
 ${Object.keys(productVariables).length > 0 ? JSON.stringify(productVariables, null, 2) : "Nenhuma variável definida"}
@@ -334,11 +459,14 @@ INSTRUÇÕES:
 2. Seja preciso e use os dados reais do contexto acima
 3. Se perguntarem sobre algo que não está nos dados, informe que não tem essa informação
 4. Dê sugestões práticas baseadas no contexto real da empresa
-5. Destaque riscos ou pontos de atenção quando relevante
+5. Destaque riscos ou pontos de atenção quando relevante (tarefas atrasadas, NPS baixo, tickets abertos, etc)
 6. Formate suas respostas usando Markdown para melhor legibilidade
 7. Seja direto e objetivo, mas amigável
 8. Quando perguntarem sobre evolução/crescimento, use os dados de metas históricas vs atuais
 9. Ao analisar performance, considere tanto os números absolutos quanto as porcentagens
+10. Considere o contexto de todos os serviços contratados pela empresa ao dar recomendações
+11. Use informações de NPS para avaliar satisfação do cliente
+12. Considere o histórico de ações para entender o engajamento da equipe
 `;
 
     // Build messages for AI
