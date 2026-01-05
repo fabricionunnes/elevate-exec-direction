@@ -975,6 +975,7 @@ const OnboardingProjectPage = () => {
                 onStatusChange={handleStatusChange}
                 onTaskAdded={fetchProjectData}
                 singleProjectId={projectId}
+                staffList={staffList}
               />
             ) : (
               <TasksListView
