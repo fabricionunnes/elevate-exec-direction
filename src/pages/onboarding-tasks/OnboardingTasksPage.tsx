@@ -100,7 +100,7 @@ const OnboardingTasksPage = () => {
     end: endOfMonth(new Date()),
   }));
   const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null }[]>([]);
-  const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null }[]>([]);
+  const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null }[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
   
@@ -276,6 +276,7 @@ const OnboardingTasksPage = () => {
         updated_at: p.updated_at,
         consultant_id: p.consultant_id,
         reactivated_at: p.reactivated_at,
+        onboarding_company_id: p.onboarding_company_id,
       })));
 
       setCompanies(companiesWithProjects);
@@ -318,7 +319,7 @@ const OnboardingTasksPage = () => {
     return new Set(npsResponses.map(r => r.project_id));
   }, [npsResponses]);
 
-  // Calculate projects by goal projection ranges for the selected period
+  // Calculate projects by goal projection ranges for the selected period (respects all filters)
   const projectsGoalRanges = useMemo(() => {
     const periodMonth = dateRange.start.getMonth() + 1;
     const periodYear = dateRange.start.getFullYear();
@@ -330,13 +331,40 @@ const OnboardingTasksPage = () => {
     const currentDay = isCurrentMonth ? today.getDate() : daysInMonth;
     const timeElapsedPercent = currentDay / daysInMonth;
     
+    // Get company IDs that match the status filter
+    const statusFilteredCompanyIds = filterStatus === "all" 
+      ? null 
+      : new Set(companies.filter(c => c.status === filterStatus).map(c => c.id));
+    
+    // Build set of filtered project IDs based on consultant, service, and status filters
+    const filteredProjectIdSet = new Set(
+      allProjects
+        .filter((project) => {
+          const matchesConsultant = 
+            filterConsultant === "all" || 
+            project.consultant_id === filterConsultant;
+          
+          const matchesService = 
+            filterService === "all" || 
+            project.product_id === filterService;
+          
+          const matchesStatus = statusFilteredCompanyIds === null || 
+            (project.onboarding_company_id && statusFilteredCompanyIds.has(project.onboarding_company_id));
+          
+          return matchesConsultant && matchesService && matchesStatus;
+        })
+        .map(p => p.id)
+    );
+    
     const meetingGoalIds = new Set<string>(); // >=100%
     const above70Ids = new Set<string>(); // 70-99%
     const between50And70Ids = new Set<string>(); // 50-69%
     const below50Ids = new Set<string>(); // <50%
     
     monthlyGoals.forEach(g => {
+      // Only include goals for filtered projects
       if (
+        filteredProjectIdSet.has(g.project_id) &&
         g.month === periodMonth &&
         g.year === periodYear &&
         g.sales_target && g.sales_target > 0
@@ -366,7 +394,7 @@ const OnboardingTasksPage = () => {
       between50And70: between50And70Ids,
       below50: below50Ids
     };
-  }, [monthlyGoals, dateRange]);
+  }, [monthlyGoals, dateRange, allProjects, filterConsultant, filterService, filterStatus, companies]);
 
   const filteredCompanies = useMemo(() => {
     return companies.filter((company) => {
@@ -469,8 +497,13 @@ const OnboardingTasksPage = () => {
     return filteredCompanies.slice(startIndex, startIndex + companiesPerPage);
   }, [filteredCompanies, currentPage, companiesPerPage]);
 
-  // Filtered projects for dashboard metrics (respects consultant and service filters)
+  // Filtered projects for dashboard metrics (respects consultant, service, and status filters)
   const filteredProjects = useMemo(() => {
+    // Get company IDs that match the status filter
+    const statusFilteredCompanyIds = filterStatus === "all" 
+      ? null 
+      : new Set(companies.filter(c => c.status === filterStatus).map(c => c.id));
+    
     return allProjects.filter((project) => {
       const matchesConsultant = 
         filterConsultant === "all" || 
@@ -480,9 +513,13 @@ const OnboardingTasksPage = () => {
         filterService === "all" || 
         project.product_id === filterService;
       
-      return matchesConsultant && matchesService;
+      // Check if project belongs to a company that matches status filter
+      const matchesStatus = statusFilteredCompanyIds === null || 
+        (project.onboarding_company_id && statusFilteredCompanyIds.has(project.onboarding_company_id));
+      
+      return matchesConsultant && matchesService && matchesStatus;
     });
-  }, [allProjects, filterConsultant, filterService]);
+  }, [allProjects, filterConsultant, filterService, filterStatus, companies]);
 
   // For consultants, don't show consultant filter as active since it's auto-applied
   const hasActiveFilters = (currentUserRole !== "consultant" && filterConsultant !== "all") || filterService !== "all" || filterStatus !== "all" || activeMetricFilter !== null;
