@@ -829,6 +829,7 @@ export type Database = {
           current_nps: number | null
           id: string
           last_executive_checkpoint: string | null
+          notice_end_date: string | null
           onboarding_company_id: string | null
           product_id: string
           product_name: string
@@ -855,6 +856,7 @@ export type Database = {
           current_nps?: number | null
           id?: string
           last_executive_checkpoint?: string | null
+          notice_end_date?: string | null
           onboarding_company_id?: string | null
           product_id: string
           product_name: string
@@ -881,6 +883,7 @@ export type Database = {
           current_nps?: number | null
           id?: string
           last_executive_checkpoint?: string | null
+          notice_end_date?: string | null
           onboarding_company_id?: string | null
           product_id?: string
           product_name?: string
@@ -2368,6 +2371,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_notice_period_ending: { Args: never; Returns: undefined }
       get_next_business_day: {
         Args: { days_to_add: number; start_date: string }
         Returns: string

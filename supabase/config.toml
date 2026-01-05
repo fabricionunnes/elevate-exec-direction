@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.google-calendar]
 verify_jwt = true
+
+[functions.check-notice-periods]
+verify_jwt = false
+
+[functions.generate-ai-tasks]
+verify_jwt = true
