@@ -342,12 +342,11 @@ const OnboardingTasksPage = () => {
 
       const dueDate = normalizeDueDate(t.due_date);
 
-      // Period filter (due date must be inside the selected period)
-      if (!isWithinInterval(dueDate, { start: dateRange.start, end: dateRange.end })) return false;
-
+      // Overdue tasks: show ALL overdue regardless of period filter
+      // This ensures we see the full backlog of pending work
       return isBefore(dueDate, todayStart);
     });
-  }, [allTasks, filteredProjectIds, dateRange.start, dateRange.end]);
+  }, [allTasks, filteredProjectIds]);
 
   const todayTasks = useMemo(() => {
     const today = startOfDay(new Date());
