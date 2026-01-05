@@ -22,7 +22,8 @@ import {
   Percent,
   FileWarning
 } from "lucide-react";
-import { format, isBefore, startOfDay, isWithinInterval } from "date-fns";
+import { format, isBefore, startOfDay, isWithinInterval, eachDayOfInterval, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { 
   PieChart, 
@@ -34,7 +35,10 @@ import {
   XAxis, 
   YAxis, 
   Tooltip,
-  Legend
+  Legend,
+  AreaChart,
+  Area,
+  CartesianGrid
 } from "recharts";
 import { TasksListDialog } from "./TasksListDialog";
 
@@ -43,6 +47,7 @@ interface Task {
   status: string;
   due_date: string | null;
   project_id: string;
+  completed_at: string | null;
 }
 
 interface Project {
@@ -104,7 +109,7 @@ const DashboardMetrics = ({
   const fetchData = async () => {
     try {
       const [tasksResult, npsResult, goalsResult] = await Promise.all([
-        supabase.from("onboarding_tasks").select("id, status, due_date, project_id"),
+        supabase.from("onboarding_tasks").select("id, status, due_date, project_id, completed_at"),
         supabase.from("onboarding_nps_responses").select("project_id, score"),
         supabase.from("onboarding_monthly_goals").select("project_id, month, year, sales_target, sales_result")
       ]);
@@ -151,6 +156,26 @@ const DashboardMetrics = ({
       totalTasks: allTasks.length,
     };
   }, [allTasks]);
+
+  // Calculate completed tasks by day for the filtered period
+  const completedByDayData = useMemo(() => {
+    const days = eachDayOfInterval({ start: dateRange.start, end: dateRange.end });
+    
+    return days.map(day => {
+      const dayStr = format(day, "yyyy-MM-dd");
+      const completedCount = allTasks.filter(t => {
+        if (!t.completed_at) return false;
+        const completedDate = format(parseISO(t.completed_at), "yyyy-MM-dd");
+        return completedDate === dayStr;
+      }).length;
+      
+      return {
+        date: format(day, "dd/MM", { locale: ptBR }),
+        fullDate: format(day, "dd 'de' MMM", { locale: ptBR }),
+        concluídas: completedCount,
+      };
+    });
+  }, [allTasks, dateRange]);
 
   // Project-based metrics
   const projectMetrics = useMemo(() => {
@@ -587,6 +612,72 @@ const DashboardMetrics = ({
             </CardContent>
           </Card>
         </div>
+
+        {/* Completed Tasks by Day Chart */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              Tarefas Concluídas por Dia
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[180px]">
+              {completedByDayData.some(d => d.concluídas > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={completedByDayData}>
+                    <defs>
+                      <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 10 }}
+                      stroke="hsl(var(--muted-foreground))"
+                      tickLine={false}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 10 }}
+                      stroke="hsl(var(--muted-foreground))"
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload[0]) {
+                          return payload[0].payload.fullDate;
+                        }
+                        return label;
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="concluídas" 
+                      stroke="#22c55e" 
+                      strokeWidth={2}
+                      fillOpacity={1} 
+                      fill="url(#colorCompleted)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <p className="text-sm text-muted-foreground">Nenhuma tarefa concluída no período</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* EMPRESAS Section */}
