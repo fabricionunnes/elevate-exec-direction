@@ -95,6 +95,7 @@ const OnboardingTasksPage = () => {
     end: endOfMonth(new Date()),
   }));
   const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null }[]>([]);
+  const [allProjects, setAllProjects] = useState<{ id: string; product_name: string; status: string; created_at: string; updated_at: string }[]>([]);
 
   useEffect(() => {
     checkUserPermissions();
@@ -219,6 +220,15 @@ const OnboardingTasksPage = () => {
           completed_tasks: completedTasks,
         };
       });
+
+      // Store all projects for dashboard metrics
+      setAllProjects((projectsData || []).map(p => ({
+        id: p.id,
+        product_name: p.product_name,
+        status: p.status,
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+      })));
 
       setCompanies(companiesWithProjects);
     } catch (error: any) {
@@ -439,6 +449,7 @@ const OnboardingTasksPage = () => {
         {/* Dashboard Metrics */}
         <DashboardMetrics 
           companies={companies} 
+          projects={allProjects}
           onFilterChange={handleMetricFilterChange}
           activeMetricFilter={activeMetricFilter}
           dateRange={dateRange}

@@ -28,6 +28,14 @@ interface Task {
   project_id: string;
 }
 
+interface Project {
+  id: string;
+  product_name: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 interface Company {
   id: string;
   name: string;
@@ -39,6 +47,7 @@ interface Company {
 
 interface DashboardMetricsProps {
   companies: Company[];
+  projects: Project[];
   onFilterChange: (filter: { type: string; value: string } | null) => void;
   activeMetricFilter: { type: string; value: string } | null;
   dateRange: { start: Date; end: Date };
@@ -49,6 +58,7 @@ interface DashboardMetricsProps {
 
 const DashboardMetrics = ({ 
   companies, 
+  projects,
   onFilterChange, 
   activeMetricFilter,
   dateRange,
@@ -106,12 +116,25 @@ const DashboardMetrics = ({
     };
   }, [allTasks]);
 
+  // Project-based metrics (for service-level churn)
+  const projectMetrics = useMemo(() => {
+    const activeProjects = projects.filter(p => p.status === "active").length;
+    const cancellationSignaled = projects.filter(p => p.status === "cancellation_signaled").length;
+    const noticePeriod = projects.filter(p => p.status === "notice_period").length;
+    const closedProjects = projects.filter(p => p.status === "closed" || p.status === "completed").length;
+
+    return {
+      activeProjects,
+      cancellationSignaled,
+      noticePeriod,
+      closedProjects,
+      churnSignaled: cancellationSignaled + noticePeriod,
+    };
+  }, [projects]);
+
   // Company metrics based on filtered companies
   const companyMetrics = useMemo(() => {
     const activeCompanies = companies.filter(c => c.status === "active").length;
-    const cancellationSignaled = companies.filter(c => c.status === "cancellation_signaled").length;
-    const noticePeriod = companies.filter(c => c.status === "notice_period").length;
-    const closedCompanies = companies.filter(c => c.status === "closed").length;
     
     // Contracts ending in the selected period
     const contractsEndingInPeriod = companies.filter(c => {
@@ -122,32 +145,29 @@ const DashboardMetrics = ({
 
     return {
       activeCompanies,
-      cancellationSignaled,
-      noticePeriod,
-      closedCompanies,
       contractsEndingInPeriod,
-      churnSignaled: cancellationSignaled + noticePeriod,
     };
   }, [companies, dateRange]);
 
-  // Calculate churn for the period
+  // Calculate churn for the period based on PROJECTS (services)
   const churnMetrics = useMemo(() => {
-    // Companies that changed to closed status in this period
-    const closedInPeriod = companies.filter(c => {
-      if (c.status !== "closed" || !c.status_changed_at) return false;
-      const changedAt = new Date(c.status_changed_at);
+    // Projects that changed to closed/completed status in this period
+    const closedInPeriod = projects.filter(p => {
+      if ((p.status !== "closed" && p.status !== "completed")) return false;
+      // Use updated_at as a proxy for when status changed
+      const changedAt = new Date(p.updated_at);
       return isWithinInterval(changedAt, { start: dateRange.start, end: dateRange.end });
     }).length;
 
-    // Companies that signaled cancellation in this period
-    const signaledInPeriod = companies.filter(c => {
-      if ((c.status !== "cancellation_signaled" && c.status !== "notice_period") || !c.status_changed_at) return false;
-      const changedAt = new Date(c.status_changed_at);
+    // Projects that signaled cancellation in this period
+    const signaledInPeriod = projects.filter(p => {
+      if (p.status !== "cancellation_signaled" && p.status !== "notice_period") return false;
+      const changedAt = new Date(p.updated_at);
       return isWithinInterval(changedAt, { start: dateRange.start, end: dateRange.end });
     }).length;
 
     // Total active at start of period (approximation)
-    const totalActiveStart = companyMetrics.activeCompanies + closedInPeriod + signaledInPeriod;
+    const totalActiveStart = projectMetrics.activeProjects + closedInPeriod + signaledInPeriod;
     
     const churnRate = totalActiveStart > 0 
       ? Math.round((closedInPeriod / totalActiveStart) * 100) 
@@ -158,7 +178,7 @@ const DashboardMetrics = ({
       signaledInPeriod,
       churnRate,
     };
-  }, [companies, dateRange, companyMetrics]);
+  }, [projects, dateRange, projectMetrics]);
 
   const completionRate = taskMetrics.totalTasks > 0 
     ? Math.round((taskMetrics.totalCompleted / taskMetrics.totalTasks) * 100) 
@@ -322,9 +342,9 @@ const DashboardMetrics = ({
               <XCircle className="h-4 w-4 text-amber-500" />
               <span className="text-xs text-muted-foreground font-medium">Sinalizaram</span>
             </div>
-            <div className="text-2xl font-bold text-amber-500">{companyMetrics.cancellationSignaled}</div>
+            <div className="text-2xl font-bold text-amber-500">{projectMetrics.cancellationSignaled}</div>
             <div className="text-xs text-muted-foreground">
-              cancelamento
+              serviços
             </div>
           </CardContent>
         </Card>
@@ -342,9 +362,9 @@ const DashboardMetrics = ({
               <CalendarX className="h-4 w-4 text-orange-500" />
               <span className="text-xs text-muted-foreground font-medium">Cumprindo Aviso</span>
             </div>
-            <div className="text-2xl font-bold text-orange-500">{companyMetrics.noticePeriod}</div>
+            <div className="text-2xl font-bold text-orange-500">{projectMetrics.noticePeriod}</div>
             <div className="text-xs text-muted-foreground">
-              empresas
+              serviços
             </div>
           </CardContent>
         </Card>
@@ -456,7 +476,7 @@ const DashboardMetrics = ({
                   Sinalizaram Cancel.
                 </span>
                 <Badge variant="secondary" className="text-amber-500">
-                  {companyMetrics.cancellationSignaled}
+                  {projectMetrics.cancellationSignaled}
                 </Badge>
               </div>
               <div 
@@ -468,7 +488,7 @@ const DashboardMetrics = ({
                   Cumprindo Aviso
                 </span>
                 <Badge variant="secondary" className="text-orange-500">
-                  {companyMetrics.noticePeriod}
+                  {projectMetrics.noticePeriod}
                 </Badge>
               </div>
               <div 
@@ -477,10 +497,10 @@ const DashboardMetrics = ({
               >
                 <span className="text-sm flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-red-500" />
-                  Encerradas
+                  Encerrados
                 </span>
                 <Badge variant="secondary" className="text-red-500">
-                  {companyMetrics.closedCompanies}
+                  {projectMetrics.closedProjects}
                 </Badge>
               </div>
             </div>
