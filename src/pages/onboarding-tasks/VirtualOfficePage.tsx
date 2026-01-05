@@ -35,9 +35,11 @@ import {
   Trash2,
   Link as LinkIcon,
   PhoneOff,
-  Calendar
+  Calendar,
+  History
 } from "lucide-react";
 import { format } from "date-fns";
+import ChatHistoryTab from "@/components/virtual-office/ChatHistoryTab";
 import { ptBR } from "date-fns/locale";
 import GoogleCalendarTab from "@/components/virtual-office/GoogleCalendarTab";
 
@@ -515,11 +517,19 @@ const VirtualOfficePage = () => {
               <Calendar className="h-4 w-4" />
               Minha Agenda
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="history" className="gap-2">
+                <History className="h-4 w-4" />
+                Histórico
+              </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
       </div>
 
-      {activeTab === "calendar" ? (
+      {activeTab === "history" && isAdmin ? (
+        <ChatHistoryTab staffMembers={staffMembers} rooms={rooms} />
+      ) : activeTab === "calendar" ? (
         <GoogleCalendarTab />
       ) : (
       <div className="flex-1 flex overflow-hidden">
