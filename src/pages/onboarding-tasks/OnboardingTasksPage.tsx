@@ -123,7 +123,8 @@ const OnboardingTasksPage = () => {
     try {
       const { data, error } = await supabase
         .from("onboarding_tasks")
-        .select("id, status, due_date, project_id, responsible_staff_id, completed_at");
+        .select("id, status, due_date, project_id, responsible_staff_id, completed_at")
+        .limit(10000);
 
       if (error) throw error;
       setAllTasks(data || []);
