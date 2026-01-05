@@ -108,23 +108,29 @@ export const TaskDetailsDialog = ({
     }
   }, [task]);
 
-  // Determine what the consultant can edit
-  // Consultant can only edit dates/assignee of tasks they created (not templates)
+  // Determine what each role can edit
   const isConsultant = currentUserRole === "consultant";
-  const isTaskFromTemplate = task?.template_id !== null && task?.template_id !== undefined;
-  const isTaskCreatedByCurrentUser = taskCreatedBy === currentUserId;
+  const isCS = currentUserRole === "cs";
+  const isStaffRole = isConsultant || isCS;
   
-  // Consultant can edit dates/assignee only on their own non-template tasks
-  const canEditDatesAndAssignee = isAdmin || (isConsultant && isTaskCreatedByCurrentUser && !isTaskFromTemplate);
+  // CS and Consultant can edit dates and assignee (but only assign to themselves)
+  const canEditDatesAndAssignee = isAdmin || isStaffRole;
   
-  // Consultant can always change status and observations
-  const canEditStatusAndObservations = isAdmin || isConsultant || currentUserRole === "cs";
+  // CS and Consultant can change status and observations
+  const canEditStatusAndObservations = isAdmin || isStaffRole;
   
   // Only admin/CS can edit title and description
-  const canEditTitleAndDescription = isAdmin || currentUserRole === "cs";
+  const canEditTitleAndDescription = isAdmin || isCS;
   
   // Only admin can delete
   const canDelete = isAdmin;
+  
+  // For assignee selection: staff can only assign to themselves, admin can assign to anyone
+  const availableAssignees = isAdmin 
+    ? users 
+    : isStaffRole 
+      ? users.filter(u => u.id === currentUserId)
+      : [];
 
   const [historyKey, setHistoryKey] = useState(0);
 
@@ -434,7 +440,7 @@ export const TaskDetailsDialog = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem responsável</SelectItem>
-                  {users.map((user) => (
+                  {availableAssignees.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       <div className="flex items-center">
                         {user.name}
