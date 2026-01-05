@@ -167,6 +167,12 @@ export const TasksScheduleView = ({
 
   const handleTaskNavigate = (task: OnboardingTask) => {
     setShowDayDialog(false);
+    // If in single project mode, just open the task details
+    if (singleProjectId) {
+      onTaskClick(task);
+      return;
+    }
+    // Otherwise, navigate to the project page
     const projectId = task.project_id;
     if (projectId) {
       navigate(`/onboarding-tasks/${projectId}?task=${task.id}`);
