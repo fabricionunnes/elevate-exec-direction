@@ -835,6 +835,45 @@ export type Database = {
           },
         ]
       }
+      onboarding_nps_celebrations: {
+        Row: {
+          created_at: string
+          id: string
+          nps_response_id: string
+          seen_at: string | null
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nps_response_id: string
+          seen_at?: string | null
+          staff_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nps_response_id?: string
+          seen_at?: string | null
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_nps_celebrations_nps_response_id_fkey"
+            columns: ["nps_response_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_nps_responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_nps_celebrations_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_nps_responses: {
         Row: {
           created_at: string
