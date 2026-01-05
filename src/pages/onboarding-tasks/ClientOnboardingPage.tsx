@@ -11,6 +11,7 @@ import {
   Calendar,
   MessageSquare,
   Settings,
+  BarChart3,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ClientJourneyTrail } from "@/components/client-portal/ClientJourneyTrail";
@@ -18,6 +19,7 @@ import { ClientCalendarView } from "@/components/client-portal/ClientCalendarVie
 import { ClientTasksList } from "@/components/client-portal/ClientTasksList";
 import { ClientTaskDetailSheet } from "@/components/client-portal/ClientTaskDetailSheet";
 import { ClientSettingsSheet } from "@/components/client-portal/ClientSettingsSheet";
+import { ClientMetricsView } from "@/components/client-portal/ClientMetricsView";
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 
 interface OnboardingTask {
@@ -54,7 +56,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "trail" | "timeline" | "list" | "tickets";
+type ViewType = "trail" | "timeline" | "list" | "metrics" | "tickets";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -261,6 +263,7 @@ const ClientOnboardingPage = () => {
     { id: "trail" as ViewType, icon: Map, label: "Trilha" },
     { id: "timeline" as ViewType, icon: Calendar, label: "Cronograma" },
     { id: "list" as ViewType, icon: List, label: "Lista" },
+    { id: "metrics" as ViewType, icon: BarChart3, label: "Métricas" },
     { id: "tickets" as ViewType, icon: MessageSquare, label: "Chamados" },
   ];
 
@@ -365,6 +368,17 @@ const ClientOnboardingPage = () => {
                 tasks={tasks}
                 onTaskClick={handleTaskClick}
               />
+            </motion.div>
+          )}
+
+          {activeView === "metrics" && (
+            <motion.div
+              key="metrics"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientMetricsView projectId={project.id} />
             </motion.div>
           )}
 
