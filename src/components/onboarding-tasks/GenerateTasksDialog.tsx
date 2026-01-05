@@ -325,8 +325,8 @@ export const GenerateTasksDialog = ({
                     <span>📋 {aiContext.pendingCount} pendentes</span>
                   </div>
                 )}
-                <ScrollArea className="flex-1 -mx-6 px-6">
-                  <div className="space-y-3 pr-4">
+                <ScrollArea className="flex-1 max-h-[400px] -mx-6 px-6">
+                  <div className="space-y-3 pr-4 pb-2">
                     {aiTasks.map((task, index) => (
                       <Card 
                         key={index} 
@@ -346,7 +346,7 @@ export const GenerateTasksDialog = ({
                               className="mt-1"
                             />
                             <div className="flex-1 space-y-2">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium">{task.title}</span>
                                 {getPriorityBadge(task.priority)}
                                 {task.phase && (
