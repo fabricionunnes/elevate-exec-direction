@@ -232,30 +232,6 @@ const DashboardMetrics = ({
 
   return (
     <div className="space-y-4 mb-6">
-      {/* Date Filter */}
-      <div className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Período:</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => changeMonth("prev")}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm font-medium min-w-[140px] text-center">
-            {format(dateRange.start, "MMMM yyyy", { locale: ptBR })}
-          </span>
-          <Button variant="ghost" size="icon" onClick={() => changeMonth("next")}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        {activeMetricFilter && (
-          <Button variant="outline" size="sm" onClick={() => onFilterChange(null)}>
-            <XCircle className="h-3 w-3 mr-1" />
-            Limpar filtro de card
-          </Button>
-        )}
-      </div>
 
       {/* Primary metrics row */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
