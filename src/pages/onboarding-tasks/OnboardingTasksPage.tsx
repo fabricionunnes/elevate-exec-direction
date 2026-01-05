@@ -588,7 +588,7 @@ const OnboardingTasksPage = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">Gestão de Onboarding</h1>
+              <h1 className="text-3xl font-bold">Dashboard de Acompanhamento</h1>
               <p className="text-muted-foreground">
                 Gerencie tarefas e acompanhamento de clientes
               </p>
