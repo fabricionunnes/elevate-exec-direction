@@ -324,6 +324,8 @@ const OnboardingTasksPage = () => {
       // Metric card filters
       let matchesMetricFilter = true;
       if (activeMetricFilter) {
+        const today = startOfDay(new Date());
+        
         if (activeMetricFilter.type === "contracts" && activeMetricFilter.value === "ending") {
           // Filter companies with contracts ending in the selected period
           if (!company.contract_end_date) {
@@ -331,6 +333,14 @@ const OnboardingTasksPage = () => {
           } else {
             const endDate = new Date(company.contract_end_date);
             matchesMetricFilter = isWithinInterval(endDate, { start: dateRange.start, end: dateRange.end });
+          }
+        } else if (activeMetricFilter.type === "contracts" && activeMetricFilter.value === "expired") {
+          // Filter companies with expired contracts (end date before today)
+          if (!company.contract_end_date) {
+            matchesMetricFilter = false;
+          } else {
+            const endDate = new Date(company.contract_end_date);
+            matchesMetricFilter = isBefore(endDate, today);
           }
         } else if (activeMetricFilter.type === "nps" && activeMetricFilter.value === "responded") {
           // Filter companies that have at least one project with NPS response
