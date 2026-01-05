@@ -589,7 +589,119 @@ const DashboardMetrics = ({
               </div>
             </CardContent>
           </Card>
+        </div>
 
+        {/* Charts Row for Services */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Project Status Chart */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                Status dos Serviços
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[160px] flex items-center justify-center">
+                {projectStatusData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={projectStatusData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={65}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {projectStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Legend 
+                        verticalAlign="bottom" 
+                        height={36}
+                        formatter={(value) => <span className="text-xs">{value}</span>}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Sem serviços</p>
+                )}
+              </div>
+              <div className="text-center mt-2">
+                <p className="text-lg font-bold">{projects.length}</p>
+                <p className="text-xs text-muted-foreground">serviços totais</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Churn Chart */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <TrendingDown className="h-4 w-4 text-red-500" />
+                Churn do Período
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[120px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={churnData} layout="vertical">
+                    <XAxis type="number" hide />
+                    <YAxis 
+                      type="category" 
+                      dataKey="name" 
+                      width={80}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Bar 
+                      dataKey="value" 
+                      fill="#ef4444" 
+                      radius={[0, 4, 4, 0]}
+                      barSize={20}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="text-center p-2 bg-red-500/10 rounded-lg">
+                  <p className="text-xl font-bold text-red-500">{churnMetrics.closedInPeriod}</p>
+                  <p className="text-xs text-muted-foreground">Encerrados</p>
+                </div>
+                <div className="text-center p-2 bg-amber-500/10 rounded-lg">
+                  <p className="text-xl font-bold text-amber-500">{projectMetrics.churnSignaled}</p>
+                  <p className="text-xs text-muted-foreground">Em Risco</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* NPS Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Star className="h-5 w-5 text-yellow-500" />
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">NPS</h3>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {/* NPS Average Card */}
           <Card className="relative overflow-hidden">
             <div className={cn(
@@ -705,108 +817,6 @@ const DashboardMetrics = ({
                 </div>
                 <div className="h-10 w-10 rounded-full bg-gray-400/10 flex items-center justify-center">
                   <UserX className="h-5 w-5 text-gray-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Charts Row for Services */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Project Status Chart */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                Status dos Serviços
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[160px] flex items-center justify-center">
-                {projectStatusData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={projectStatusData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={45}
-                        outerRadius={65}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {projectStatusData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px'
-                        }}
-                      />
-                      <Legend 
-                        verticalAlign="bottom" 
-                        height={36}
-                        formatter={(value) => <span className="text-xs">{value}</span>}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Sem serviços</p>
-                )}
-              </div>
-              <div className="text-center mt-2">
-                <p className="text-lg font-bold">{projects.length}</p>
-                <p className="text-xs text-muted-foreground">serviços totais</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Churn Chart */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-red-500" />
-                Churn do Período
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[120px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={churnData} layout="vertical">
-                    <XAxis type="number" hide />
-                    <YAxis 
-                      type="category" 
-                      dataKey="name" 
-                      width={80}
-                      tick={{ fontSize: 12 }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Bar 
-                      dataKey="value" 
-                      fill="#ef4444" 
-                      radius={[0, 4, 4, 0]}
-                      barSize={20}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="text-center p-2 bg-red-500/10 rounded-lg">
-                  <p className="text-xl font-bold text-red-500">{churnMetrics.closedInPeriod}</p>
-                  <p className="text-xs text-muted-foreground">Encerrados</p>
-                </div>
-                <div className="text-center p-2 bg-amber-500/10 rounded-lg">
-                  <p className="text-xl font-bold text-amber-500">{projectMetrics.churnSignaled}</p>
-                  <p className="text-xs text-muted-foreground">Em Risco</p>
                 </div>
               </div>
             </CardContent>
