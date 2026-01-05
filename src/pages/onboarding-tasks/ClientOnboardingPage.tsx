@@ -81,7 +81,7 @@ const ClientOnboardingPage = () => {
         responsible_staff:onboarding_staff!onboarding_tasks_responsible_staff_id_fkey(id, name)
       `)
       .eq("project_id", projectId)
-      .eq("is_internal", false) // Filter out internal tasks for clients
+      .or("is_internal.eq.false,is_internal.is.null") // Filter out internal tasks for clients
       .order("sort_order");
 
     setTasks(tasksData || []);
