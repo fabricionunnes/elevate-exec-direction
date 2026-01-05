@@ -549,20 +549,52 @@ export default function OnboardingServiceTemplatesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Fase</Label>
-                <Input
-                  placeholder="Digite o nome da fase..."
-                  value={formData.phase}
-                  onChange={e => setFormData(prev => ({ ...prev, phase: e.target.value }))}
-                  list="phase-suggestions"
-                />
-                <datalist id="phase-suggestions">
-                  {uniquePhases.map(phase => (
-                    <option key={phase} value={phase} />
-                  ))}
-                </datalist>
-                <p className="text-xs text-muted-foreground">
-                  Digite uma nova fase ou selecione uma existente da lista
-                </p>
+                {uniquePhases.length > 0 ? (
+                  <>
+                    <Select
+                      value={formData.phase && uniquePhases.includes(formData.phase) ? formData.phase : '__new__'}
+                      onValueChange={value => {
+                        if (value === '__new__') {
+                          setFormData(prev => ({ ...prev, phase: '' }));
+                        } else {
+                          setFormData(prev => ({ ...prev, phase: value }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma fase..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {uniquePhases.map(phase => (
+                          <SelectItem key={phase} value={phase}>{phase}</SelectItem>
+                        ))}
+                        <SelectItem value="__new__" className="text-primary font-medium">
+                          + Criar nova fase
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {(formData.phase === '' || (formData.phase && !uniquePhases.includes(formData.phase))) && (
+                      <Input
+                        placeholder="Nome da nova fase..."
+                        value={formData.phase}
+                        onChange={e => setFormData(prev => ({ ...prev, phase: e.target.value }))}
+                        className="mt-2"
+                        autoFocus
+                      />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Input
+                      placeholder="Digite o nome da fase..."
+                      value={formData.phase}
+                      onChange={e => setFormData(prev => ({ ...prev, phase: e.target.value }))}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Nenhuma fase existente. Digite o nome da primeira fase.
+                    </p>
+                  </>
+                )}
               </div>
 
               <div className="space-y-2">
