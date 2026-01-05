@@ -83,22 +83,27 @@ const DashboardMetrics = ({
   todayTasks
 }: DashboardMetricsProps) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
+  const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAllTasks();
+    fetchData();
   }, []);
 
-  const fetchAllTasks = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
-        .from("onboarding_tasks")
-        .select("id, status, due_date, project_id");
+      const [tasksResult, npsResult] = await Promise.all([
+        supabase.from("onboarding_tasks").select("id, status, due_date, project_id"),
+        supabase.from("onboarding_nps_responses").select("project_id, score")
+      ]);
 
-      if (error) throw error;
-      setAllTasks(data || []);
+      if (tasksResult.error) throw tasksResult.error;
+      if (npsResult.error) throw npsResult.error;
+      
+      setAllTasks(tasksResult.data || []);
+      setNpsResponses(npsResult.data || []);
     } catch (error) {
-      console.error("Error fetching tasks:", error);
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
@@ -200,24 +205,28 @@ const DashboardMetrics = ({
     };
   }, [projects, dateRange, projectMetrics]);
 
-  // NPS metrics
+  // NPS metrics - calculated from actual responses, filtered by projects
   const npsMetrics = useMemo(() => {
-    const projectsWithNps = projects.filter(p => p.current_nps !== null && p.current_nps !== undefined);
-    const totalWithNps = projectsWithNps.length;
+    // Get project IDs from filtered projects (respects consultant and service filters)
+    const filteredProjectIds = new Set(projects.map(p => p.id));
     
-    if (totalWithNps === 0) {
-      return { averageNps: null, promoters: 0, detractors: 0, neutrals: 0, totalWithNps: 0 };
+    // Filter NPS responses to only include those from filtered projects
+    const filteredResponses = npsResponses.filter(r => filteredProjectIds.has(r.project_id));
+    const totalResponses = filteredResponses.length;
+    
+    if (totalResponses === 0) {
+      return { averageNps: null, promoters: 0, detractors: 0, neutrals: 0, totalResponses: 0 };
     }
     
-    const sumNps = projectsWithNps.reduce((sum, p) => sum + (p.current_nps || 0), 0);
-    const averageNps = Math.round((sumNps / totalWithNps) * 10) / 10;
+    const sumNps = filteredResponses.reduce((sum, r) => sum + r.score, 0);
+    const averageNps = Math.round((sumNps / totalResponses) * 10) / 10;
     
-    const promoters = projectsWithNps.filter(p => (p.current_nps || 0) >= 9).length;
-    const detractors = projectsWithNps.filter(p => (p.current_nps || 0) <= 6).length;
-    const neutrals = projectsWithNps.filter(p => (p.current_nps || 0) >= 7 && (p.current_nps || 0) <= 8).length;
+    const promoters = filteredResponses.filter(r => r.score >= 9).length;
+    const detractors = filteredResponses.filter(r => r.score <= 6).length;
+    const neutrals = filteredResponses.filter(r => r.score >= 7 && r.score <= 8).length;
     
-    return { averageNps, promoters, detractors, neutrals, totalWithNps };
-  }, [projects]);
+    return { averageNps, promoters, detractors, neutrals, totalResponses };
+  }, [projects, npsResponses]);
 
   const completionRate = taskMetrics.totalTasks > 0 
     ? Math.round((taskMetrics.totalCompleted / taskMetrics.totalTasks) * 100) 
@@ -570,7 +579,7 @@ const DashboardMetrics = ({
                     {npsMetrics.averageNps !== null ? npsMetrics.averageNps : "—"}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {npsMetrics.totalWithNps} avaliações
+                    {npsMetrics.totalResponses} respostas
                   </p>
                 </div>
                 <div className={cn(
