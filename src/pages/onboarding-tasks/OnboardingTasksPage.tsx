@@ -95,7 +95,7 @@ const OnboardingTasksPage = () => {
     end: endOfMonth(new Date()),
   }));
   const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null }[]>([]);
-  const [allProjects, setAllProjects] = useState<{ id: string; product_name: string; status: string; created_at: string; updated_at: string }[]>([]);
+  const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null }[]>([]);
 
   useEffect(() => {
     checkUserPermissions();
@@ -224,10 +224,12 @@ const OnboardingTasksPage = () => {
       // Store all projects for dashboard metrics
       setAllProjects((projectsData || []).map(p => ({
         id: p.id,
+        product_id: p.product_id,
         product_name: p.product_name,
         status: p.status,
         created_at: p.created_at,
         updated_at: p.updated_at,
+        consultant_id: p.consultant_id,
       })));
 
       setCompanies(companiesWithProjects);
@@ -303,6 +305,21 @@ const OnboardingTasksPage = () => {
       return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
     });
   }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange]);
+
+  // Filtered projects for dashboard metrics (respects consultant and service filters)
+  const filteredProjects = useMemo(() => {
+    return allProjects.filter((project) => {
+      const matchesConsultant = 
+        filterConsultant === "all" || 
+        project.consultant_id === filterConsultant;
+      
+      const matchesService = 
+        filterService === "all" || 
+        project.product_id === filterService;
+      
+      return matchesConsultant && matchesService;
+    });
+  }, [allProjects, filterConsultant, filterService]);
 
   const hasActiveFilters = filterConsultant !== "all" || filterService !== "all" || filterStatus !== "all" || activeMetricFilter !== null;
 
@@ -449,7 +466,7 @@ const OnboardingTasksPage = () => {
         {/* Dashboard Metrics */}
         <DashboardMetrics 
           companies={companies} 
-          projects={allProjects}
+          projects={filteredProjects}
           onFilterChange={handleMetricFilterChange}
           activeMetricFilter={activeMetricFilter}
           dateRange={dateRange}
