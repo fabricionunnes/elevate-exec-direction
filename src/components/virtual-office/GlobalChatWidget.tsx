@@ -83,7 +83,56 @@ const GlobalChatWidget = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    initializeChat();
+    let unsubscribeGlobal: (() => void) | null = null;
+
+    const init = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: staffData } = await supabase
+          .from("onboarding_staff")
+          .select("id, name, email, role")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .single();
+
+        if (!staffData) return;
+
+        setCurrentStaff(staffData);
+
+        // Fetch all data
+        const [staffRes, roomsRes, presenceRes] = await Promise.all([
+          supabase.from("onboarding_staff").select("id, name, email, role").eq("is_active", true),
+          supabase.from("virtual_office_rooms").select("id, name").eq("is_active", true),
+          supabase.from("virtual_office_presence").select("staff_id, status"),
+        ]);
+
+        setStaffMembers(staffRes.data || []);
+        setRooms(roomsRes.data || []);
+        setPresences(presenceRes.data || []);
+
+        // Build conversations list
+        await buildConversations(staffData.id, roomsRes.data || [], staffRes.data || []);
+
+        // Subscribe to presence
+        subscribeToPresence();
+        
+        // Subscribe to new messages globally - store cleanup
+        unsubscribeGlobal = subscribeToGlobalMessages(staffData.id);
+
+      } catch (error) {
+        console.error("Error initializing chat:", error);
+      }
+    };
+
+    init();
+
+    return () => {
+      if (unsubscribeGlobal) {
+        unsubscribeGlobal();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -104,46 +153,7 @@ const GlobalChatWidget = () => {
     setTotalUnread(total);
   }, [conversations]);
 
-  const initializeChat = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: staffData } = await supabase
-        .from("onboarding_staff")
-        .select("id, name, email, role")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
-
-      if (!staffData) return;
-
-      setCurrentStaff(staffData);
-
-      // Fetch all data
-      const [staffRes, roomsRes, presenceRes] = await Promise.all([
-        supabase.from("onboarding_staff").select("id, name, email, role").eq("is_active", true),
-        supabase.from("virtual_office_rooms").select("id, name").eq("is_active", true),
-        supabase.from("virtual_office_presence").select("staff_id, status"),
-      ]);
-
-      setStaffMembers(staffRes.data || []);
-      setRooms(roomsRes.data || []);
-      setPresences(presenceRes.data || []);
-
-      // Build conversations list
-      await buildConversations(staffData.id, roomsRes.data || [], staffRes.data || []);
-
-      // Subscribe to presence
-      subscribeToPresence();
-      
-      // Subscribe to new messages globally
-      subscribeToGlobalMessages(staffData.id);
-
-    } catch (error) {
-      console.error("Error initializing chat:", error);
-    }
-  };
+  // initializeChat moved to useEffect above
 
   const buildConversations = async (staffId: string, roomsList: Room[], staffList: StaffMember[]) => {
     const convs: Conversation[] = [];
