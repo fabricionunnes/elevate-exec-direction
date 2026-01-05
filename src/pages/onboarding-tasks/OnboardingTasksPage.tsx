@@ -849,43 +849,52 @@ const OnboardingTasksPage = () => {
           
           {/* Only show consultant filter for admins and CS */}
           {currentUserRole !== "consultant" && (
-            <Select value={filterConsultant} onValueChange={setFilterConsultant}>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground font-medium">Consultores</span>
+              <Select value={filterConsultant} onValueChange={setFilterConsultant}>
+                <SelectTrigger className="w-[150px] h-10">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {consultants.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted-foreground font-medium">Serviços</span>
+            <Select value={filterService} onValueChange={setFilterService}>
               <SelectTrigger className="w-[150px] h-10">
-                <SelectValue placeholder="Consultor" />
+                <SelectValue placeholder="Selecione..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos consultores</SelectItem>
-                {consultants.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+                {services.map((s) => (
+                  <SelectItem key={s.id} value={s.slug}>{s.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          )}
+          </div>
 
-          <Select value={filterService} onValueChange={setFilterService}>
-            <SelectTrigger className="w-[150px] h-10">
-              <SelectValue placeholder="Serviço" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos serviços</SelectItem>
-              {services.map((s) => (
-                <SelectItem key={s.id} value={s.slug}>{s.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[150px] h-10">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos status</SelectItem>
-              <SelectItem value="active">Ativo</SelectItem>
-              <SelectItem value="cancellation_signaled">Sinalizou Cancelamento</SelectItem>
-              <SelectItem value="notice_period">Cumprindo Aviso</SelectItem>
-              <SelectItem value="closed">Encerrado</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted-foreground font-medium">Status</span>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[150px] h-10">
+                <SelectValue placeholder="Selecione..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="active">Ativo</SelectItem>
+                <SelectItem value="cancellation_signaled">Sinalizou Cancelamento</SelectItem>
+                <SelectItem value="notice_period">Cumprindo Aviso</SelectItem>
+                <SelectItem value="closed">Encerrado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="h-10">
