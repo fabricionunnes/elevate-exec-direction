@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.generate-ai-tasks]
 verify_jwt = true
+
+[functions.generate-pdf-tasks]
+verify_jwt = true
