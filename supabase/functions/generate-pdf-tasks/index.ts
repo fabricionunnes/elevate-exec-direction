@@ -26,15 +26,26 @@ serve(async (req) => {
     const mode = formData.get('mode') as string | null; // 'preview' or 'create'
     const selectedTasksJson = formData.get('selectedTasks') as string | null;
 
-    // Mode: create - just insert pre-selected tasks
+    // Mode: create - insert pre-selected tasks + create completed planning task with PDF
     if (mode === 'create' && selectedTasksJson && projectId) {
       console.log(`Creating selected tasks for project ${projectId}`);
       
       const selectedTasks = JSON.parse(selectedTasksJson);
+      const pdfFileForCreate = formData.get('file') as File | null;
+      const summary = formData.get('summary') as string | null;
       
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      // Get project info for company_id
+      const { data: projectData } = await supabase
+        .from('onboarding_projects')
+        .select('onboarding_company_id')
+        .eq('id', projectId)
+        .single();
+
+      const companyId = projectData?.onboarding_company_id;
 
       // Get current max sort_order
       const { data: existingTasks } = await supabase
@@ -46,7 +57,77 @@ serve(async (req) => {
 
       let sortOrder = (existingTasks?.[0]?.sort_order || 0) + 1;
 
-      // Insert tasks with calculated due dates
+      // 1. Create the "Planejamento Estratégico" completed task FIRST
+      const planningTaskData = {
+        project_id: projectId,
+        title: 'Planejamento Estratégico',
+        description: summary || 'Documento de planejamento estratégico analisado e distribuído em ações.',
+        tags: ['Planejamento'],
+        priority: 'high',
+        sort_order: sortOrder,
+        status: 'done',
+        is_internal: false,
+        completed_at: new Date().toISOString(),
+      };
+
+      const { data: planningTask, error: planningError } = await supabase
+        .from('onboarding_tasks')
+        .insert(planningTaskData)
+        .select('id')
+        .single();
+
+      if (planningError) {
+        console.error('Error creating planning task:', planningError);
+        throw new Error('Erro ao criar tarefa de planejamento');
+      }
+
+      console.log('Created planning task:', planningTask.id);
+
+      // 2. Upload PDF to storage and link to the planning task
+      if (pdfFileForCreate && companyId) {
+        try {
+          const arrayBuffer = await pdfFileForCreate.arrayBuffer();
+          const fileBuffer = new Uint8Array(arrayBuffer);
+          const fileName = `${Date.now()}-${pdfFileForCreate.name}`;
+          const filePath = `${companyId}/${projectId}/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('onboarding-documents')
+            .upload(filePath, fileBuffer, {
+              contentType: 'application/pdf',
+              upsert: false,
+            });
+
+          if (uploadError) {
+            console.error('Error uploading PDF:', uploadError);
+          } else {
+            // Create document record linked to the planning task
+            const { error: docError } = await supabase
+              .from('onboarding_documents')
+              .insert({
+                company_id: companyId,
+                project_id: projectId,
+                task_id: planningTask.id,
+                file_name: pdfFileForCreate.name,
+                file_path: filePath,
+                file_size: pdfFileForCreate.size,
+                file_type: 'application/pdf',
+                category: 'Planejamento',
+                description: 'Documento de Planejamento Estratégico',
+              });
+
+            if (docError) {
+              console.error('Error creating document record:', docError);
+            } else {
+              console.log('PDF uploaded and linked to planning task');
+            }
+          }
+        } catch (uploadErr) {
+          console.error('Error in PDF upload process:', uploadErr);
+        }
+      }
+
+      // 3. Insert action tasks with calculated due dates
       const today = new Date();
       const tasksToInsert = selectedTasks.map((task: any, index: number) => {
         const daysFromNow = task.days_from_now || 30;
@@ -59,7 +140,7 @@ serve(async (req) => {
           description: task.description || null,
           tags: [task.phase || 'Plano de Ação'],
           priority: ['high', 'medium', 'low'].includes(task.priority) ? task.priority : 'medium',
-          sort_order: sortOrder + index,
+          sort_order: sortOrder + 1 + index, // +1 because planning task is first
           status: 'pending',
           is_internal: false,
           due_date: dueDate.toISOString().split('T')[0],
@@ -80,7 +161,8 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({
         success: true,
-        tasksCreated: tasksToInsert.length,
+        tasksCreated: tasksToInsert.length + 1, // +1 for planning task
+        planningTaskId: planningTask.id,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

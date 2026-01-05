@@ -139,6 +139,11 @@ export const GeneratePDFTasksDialog = ({
       formData.append('projectId', projectId);
       formData.append('mode', 'create');
       formData.append('selectedTasks', JSON.stringify(selectedTasks));
+      formData.append('summary', summary);
+      // Send the PDF file to be saved with the planning task
+      if (selectedFile) {
+        formData.append('file', selectedFile);
+      }
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-pdf-tasks`,
@@ -159,7 +164,7 @@ export const GeneratePDFTasksDialog = ({
 
       setCreatedCount(data.tasksCreated);
       setStep('done');
-      toast.success(`${data.tasksCreated} tarefas criadas com sucesso!`);
+      toast.success(`${data.tasksCreated} tarefas criadas com sucesso! Planejamento salvo.`);
       onTasksGenerated();
 
     } catch (err) {
