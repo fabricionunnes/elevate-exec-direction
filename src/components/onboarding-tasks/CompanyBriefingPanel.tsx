@@ -622,9 +622,12 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                   const calculatedCAC = cac.sales_quantity_3_months && cac.sales_quantity_3_months > 0 
                     ? totalAds3Months / cac.sales_quantity_3_months 
                     : null;
+                  const ticketMedio = cac.sales_quantity_3_months && cac.sales_quantity_3_months > 0 && cac.sales_value_3_months
+                    ? cac.sales_value_3_months / cac.sales_quantity_3_months
+                    : null;
 
                   return (
-                    <div key={cac.id} className="p-4 rounded-lg border space-y-3">
+                    <div key={cac.id} className="p-4 rounded-lg border space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">{cac.form_title || "Levantamento CAC"}</p>
@@ -632,60 +635,101 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                             Enviado em {format(new Date(cac.submitted_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                           </p>
                         </div>
-                        {calculatedCAC && (
-                          <Badge variant="secondary" className="text-lg">
-                            CAC: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(calculatedCAC)}
-                          </Badge>
-                        )}
                       </div>
                       
-                      <Separator />
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <label className="text-muted-foreground">Facebook ADS/mês</label>
-                          <p className="font-medium">
-                            {cac.facebook_ads_investment 
-                              ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cac.facebook_ads_investment)
+                      {/* Métricas Principais */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Calculator className="h-4 w-4 text-primary" />
+                            <label className="text-sm font-medium text-primary">CAC - Custo de Aquisição</label>
+                          </div>
+                          <p className="text-2xl font-bold text-primary">
+                            {calculatedCAC 
+                              ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(calculatedCAC)
                               : "-"}
                           </p>
-                        </div>
-                        <div>
-                          <label className="text-muted-foreground">Google ADS/mês</label>
-                          <p className="font-medium">
-                            {cac.google_ads_investment 
-                              ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cac.google_ads_investment)
-                              : "-"}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Investimento total (3 meses) ÷ Número de vendas
                           </p>
                         </div>
-                        <div>
-                          <label className="text-muted-foreground">LinkedIn ADS/mês</label>
-                          <p className="font-medium">
-                            {cac.linkedin_ads_investment 
-                              ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cac.linkedin_ads_investment)
+                        <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                          <div className="flex items-center gap-2 mb-1">
+                            <DollarSign className="h-4 w-4 text-green-600" />
+                            <label className="text-sm font-medium text-green-600">Ticket Médio</label>
+                          </div>
+                          <p className="text-2xl font-bold text-green-600">
+                            {ticketMedio 
+                              ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(ticketMedio)
                               : "-"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Faturamento ÷ Número de vendas (3 meses)
                           </p>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <label className="text-muted-foreground">Total investido/mês</label>
-                          <p className="font-medium">
-                            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalAdsInvestment)}
-                          </p>
+                      <Separator />
+                      
+                      {/* Investimentos em Mídia */}
+                      <div>
+                        <p className="text-sm font-medium mb-3">Investimento em Mídia Paga (mensal)</p>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                          <div className="p-3 rounded-lg bg-muted/50">
+                            <label className="text-muted-foreground text-xs">Facebook ADS</label>
+                            <p className="font-medium">
+                              {cac.facebook_ads_investment 
+                                ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cac.facebook_ads_investment)
+                                : "R$ 0,00"}
+                            </p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-muted/50">
+                            <label className="text-muted-foreground text-xs">Google ADS</label>
+                            <p className="font-medium">
+                              {cac.google_ads_investment 
+                                ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cac.google_ads_investment)
+                                : "R$ 0,00"}
+                            </p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-muted/50">
+                            <label className="text-muted-foreground text-xs">LinkedIn ADS</label>
+                            <p className="font-medium">
+                              {cac.linkedin_ads_investment 
+                                ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cac.linkedin_ads_investment)
+                                : "R$ 0,00"}
+                            </p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+                            <label className="text-muted-foreground text-xs">Total/mês</label>
+                            <p className="font-semibold text-primary">
+                              {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalAdsInvestment)}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <label className="text-muted-foreground">Vendas (últimos 3 meses)</label>
-                          <p className="font-medium">{cac.sales_quantity_3_months || "-"} vendas</p>
-                        </div>
-                        <div>
-                          <label className="text-muted-foreground">Faturamento (últimos 3 meses)</label>
-                          <p className="font-medium">
-                            {cac.sales_value_3_months 
-                              ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cac.sales_value_3_months)
-                              : "-"}
-                          </p>
+                      </div>
+
+                      {/* Resultados de Vendas */}
+                      <div>
+                        <p className="text-sm font-medium mb-3">Resultados de Vendas (últimos 3 meses)</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div className="p-3 rounded-lg bg-muted/50">
+                            <label className="text-muted-foreground text-xs">Quantidade de Vendas</label>
+                            <p className="font-medium text-lg">{cac.sales_quantity_3_months || 0} vendas</p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-muted/50">
+                            <label className="text-muted-foreground text-xs">Faturamento Total</label>
+                            <p className="font-medium text-lg">
+                              {cac.sales_value_3_months 
+                                ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cac.sales_value_3_months)
+                                : "R$ 0,00"}
+                            </p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-muted/50">
+                            <label className="text-muted-foreground text-xs">Investimento em Ads (3 meses)</label>
+                            <p className="font-medium text-lg">
+                              {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalAds3Months)}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
