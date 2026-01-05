@@ -52,6 +52,7 @@ interface OnboardingTask {
   sort_order: number;
   project_id?: string;
   template_id?: string | null;
+  responsible_staff?: { id: string; name: string } | null;
 }
 
 interface OnboardingUser {
@@ -171,6 +172,13 @@ export const TaskDetailsDialog = ({
 
   const handleSave = async () => {
     if (!task) return;
+
+    // Validate: cannot set in_progress or completed without a responsible staff
+    const newStatus = editedTask.status;
+    if ((newStatus === "in_progress" || newStatus === "completed") && !task.responsible_staff) {
+      toast.error("Atribua um responsável antes de alterar o status da tarefa");
+      return;
+    }
 
     setLoading(true);
     try {
