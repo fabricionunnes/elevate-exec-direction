@@ -677,188 +677,6 @@ const DashboardMetrics = ({
 
   return (
     <div className="space-y-6 mb-6">
-      {/* TAREFAS Section */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <ListTodo className="h-5 w-5 text-blue-500" />
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tarefas</h3>
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* Today's Tasks */}
-          <Card 
-            className={cn(
-              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5"
-            )}
-            onClick={() => {
-              setTasksDialogType("today");
-              setTasksDialogIds(todayTasks.map(t => t.id));
-              setTasksDialogOpen(true);
-            }}
-          >
-            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
-            <CardContent className="pt-4 pl-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Hoje</p>
-                  <p className="text-2xl font-bold mt-1">{taskMetrics.todayTasks}</p>
-                  <p className="text-xs text-muted-foreground">{taskMetrics.todayCompleted} feitas</p>
-                </div>
-                <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-                  <ListTodo className="h-5 w-5 text-blue-500" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Overdue Tasks */}
-          <Card 
-            className={cn(
-              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5"
-            )}
-            onClick={() => {
-              setTasksDialogType("overdue");
-              setTasksDialogIds(overdueTasks.map(t => t.id));
-              setTasksDialogOpen(true);
-            }}
-          >
-            <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
-            <CardContent className="pt-4 pl-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Atrasadas</p>
-                  <p className="text-2xl font-bold mt-1 text-red-500">{taskMetrics.overdueTasks}</p>
-                  <p className="text-xs text-muted-foreground">{overdueRate}% do total</p>
-                </div>
-                <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center">
-                  <AlertTriangle className="h-5 w-5 text-red-500" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Completed Today */}
-          <Card className="relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-green-500" />
-            <CardContent className="pt-4 pl-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Concluídas Hoje</p>
-                  <p className="text-2xl font-bold mt-1 text-green-500">{taskMetrics.todayCompleted}</p>
-                  <p className="text-xs text-muted-foreground">{taskMetrics.totalCompleted} no total</p>
-                </div>
-                <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Task Distribution Chart */}
-          <Card className="row-span-1">
-            <CardContent className="pt-4">
-              <div className="h-[100px] flex items-center justify-center">
-                {taskStatusData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={taskStatusData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={30}
-                        outerRadius={45}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {taskStatusData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px'
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Sem tarefas</p>
-                )}
-              </div>
-              <p className="text-center text-xs text-muted-foreground mt-1">{taskMetrics.totalTasks} totais</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Completed Tasks by Day Chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-              Tarefas Concluídas por Dia
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[180px]">
-              {completedByDayData.some(d => d.concluídas > 0) ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={completedByDayData}>
-                    <defs>
-                      <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fontSize: 10 }}
-                      stroke="hsl(var(--muted-foreground))"
-                      tickLine={false}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 10 }}
-                      stroke="hsl(var(--muted-foreground))"
-                      tickLine={false}
-                      axisLine={false}
-                      allowDecimals={false}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                      labelFormatter={(label, payload) => {
-                        if (payload && payload[0]) {
-                          return payload[0].payload.fullDate;
-                        }
-                        return label;
-                      }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="concluídas" 
-                      stroke="#22c55e" 
-                      strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorCompleted)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center">
-                  <p className="text-sm text-muted-foreground">Nenhuma tarefa concluída no período</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* EMPRESAS Section */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
@@ -1257,6 +1075,188 @@ const DashboardMetrics = ({
               ) : (
                 <div className="h-full flex items-center justify-center">
                   <p className="text-sm text-muted-foreground">Sem dados de churn no ano</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* TAREFAS Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <ListTodo className="h-5 w-5 text-blue-500" />
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tarefas</h3>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* Today's Tasks */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5"
+            )}
+            onClick={() => {
+              setTasksDialogType("today");
+              setTasksDialogIds(todayTasks.map(t => t.id));
+              setTasksDialogOpen(true);
+            }}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Hoje</p>
+                  <p className="text-2xl font-bold mt-1">{taskMetrics.todayTasks}</p>
+                  <p className="text-xs text-muted-foreground">{taskMetrics.todayCompleted} feitas</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <ListTodo className="h-5 w-5 text-blue-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Overdue Tasks */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5"
+            )}
+            onClick={() => {
+              setTasksDialogType("overdue");
+              setTasksDialogIds(overdueTasks.map(t => t.id));
+              setTasksDialogOpen(true);
+            }}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Atrasadas</p>
+                  <p className="text-2xl font-bold mt-1 text-red-500">{taskMetrics.overdueTasks}</p>
+                  <p className="text-xs text-muted-foreground">{overdueRate}% do total</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Completed Today */}
+          <Card className="relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-green-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Concluídas Hoje</p>
+                  <p className="text-2xl font-bold mt-1 text-green-500">{taskMetrics.todayCompleted}</p>
+                  <p className="text-xs text-muted-foreground">{taskMetrics.totalCompleted} no total</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Task Distribution Chart */}
+          <Card className="row-span-1">
+            <CardContent className="pt-4">
+              <div className="h-[100px] flex items-center justify-center">
+                {taskStatusData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={taskStatusData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={30}
+                        outerRadius={45}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {taskStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Sem tarefas</p>
+                )}
+              </div>
+              <p className="text-center text-xs text-muted-foreground mt-1">{taskMetrics.totalTasks} totais</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Completed Tasks by Day Chart */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              Tarefas Concluídas por Dia
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[180px]">
+              {completedByDayData.some(d => d.concluídas > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={completedByDayData}>
+                    <defs>
+                      <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 10 }}
+                      stroke="hsl(var(--muted-foreground))"
+                      tickLine={false}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 10 }}
+                      stroke="hsl(var(--muted-foreground))"
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload[0]) {
+                          return payload[0].payload.fullDate;
+                        }
+                        return label;
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="concluídas" 
+                      stroke="#22c55e" 
+                      strokeWidth={2}
+                      fillOpacity={1} 
+                      fill="url(#colorCompleted)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <p className="text-sm text-muted-foreground">Nenhuma tarefa concluída no período</p>
                 </div>
               )}
             </div>
