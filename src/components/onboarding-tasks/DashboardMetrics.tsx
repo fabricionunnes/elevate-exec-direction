@@ -15,7 +15,8 @@ import {
   Clock,
   Target,
   Zap,
-  RotateCcw
+  RotateCcw,
+  Star
 } from "lucide-react";
 import { format, isBefore, startOfDay, isWithinInterval } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ interface Project {
   updated_at: string;
   consultant_id: string | null;
   reactivated_at?: string | null;
+  current_nps?: number | null;
 }
 
 interface Company {
@@ -197,6 +199,25 @@ const DashboardMetrics = ({
       churnRate,
     };
   }, [projects, dateRange, projectMetrics]);
+
+  // NPS metrics
+  const npsMetrics = useMemo(() => {
+    const projectsWithNps = projects.filter(p => p.current_nps !== null && p.current_nps !== undefined);
+    const totalWithNps = projectsWithNps.length;
+    
+    if (totalWithNps === 0) {
+      return { averageNps: null, promoters: 0, detractors: 0, neutrals: 0, totalWithNps: 0 };
+    }
+    
+    const sumNps = projectsWithNps.reduce((sum, p) => sum + (p.current_nps || 0), 0);
+    const averageNps = Math.round((sumNps / totalWithNps) * 10) / 10;
+    
+    const promoters = projectsWithNps.filter(p => (p.current_nps || 0) >= 9).length;
+    const detractors = projectsWithNps.filter(p => (p.current_nps || 0) <= 6).length;
+    const neutrals = projectsWithNps.filter(p => (p.current_nps || 0) >= 7 && (p.current_nps || 0) <= 8).length;
+    
+    return { averageNps, promoters, detractors, neutrals, totalWithNps };
+  }, [projects]);
 
   const completionRate = taskMetrics.totalTasks > 0 
     ? Math.round((taskMetrics.totalCompleted / taskMetrics.totalTasks) * 100) 
@@ -523,6 +544,47 @@ const DashboardMetrics = ({
                 </div>
                 <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center">
                   <TrendingDown className="h-5 w-5 text-red-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* NPS Card */}
+          <Card className="relative overflow-hidden">
+            <div className={cn(
+              "absolute top-0 left-0 w-1 h-full",
+              npsMetrics.averageNps === null ? "bg-gray-400" :
+              npsMetrics.averageNps >= 9 ? "bg-green-500" :
+              npsMetrics.averageNps >= 7 ? "bg-yellow-500" : "bg-red-500"
+            )} />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">NPS Médio</p>
+                  <p className={cn(
+                    "text-2xl font-bold mt-1",
+                    npsMetrics.averageNps === null ? "text-muted-foreground" :
+                    npsMetrics.averageNps >= 9 ? "text-green-500" :
+                    npsMetrics.averageNps >= 7 ? "text-yellow-500" : "text-red-500"
+                  )}>
+                    {npsMetrics.averageNps !== null ? npsMetrics.averageNps : "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {npsMetrics.totalWithNps} avaliações
+                  </p>
+                </div>
+                <div className={cn(
+                  "h-10 w-10 rounded-full flex items-center justify-center",
+                  npsMetrics.averageNps === null ? "bg-gray-400/10" :
+                  npsMetrics.averageNps >= 9 ? "bg-green-500/10" :
+                  npsMetrics.averageNps >= 7 ? "bg-yellow-500/10" : "bg-red-500/10"
+                )}>
+                  <Star className={cn(
+                    "h-5 w-5",
+                    npsMetrics.averageNps === null ? "text-gray-400" :
+                    npsMetrics.averageNps >= 9 ? "text-green-500" :
+                    npsMetrics.averageNps >= 7 ? "text-yellow-500" : "text-red-500"
+                  )} />
                 </div>
               </div>
             </CardContent>
