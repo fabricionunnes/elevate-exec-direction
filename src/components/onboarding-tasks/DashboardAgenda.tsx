@@ -1,14 +1,19 @@
 import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, isPast, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
+import { motion } from "framer-motion";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isPast, addMonths, subMonths, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, Building2, X, Package } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, Building2, Package, Plus, ExternalLink, Circle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Task {
   id: string;
@@ -35,17 +40,27 @@ interface DashboardAgendaProps {
   projects: Project[];
   companies: Company[];
   filteredProjectIds: Set<string>;
+  onTaskAdded?: () => void;
 }
 
-export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds }: DashboardAgendaProps) => {
+export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds, onTaskAdded }: DashboardAgendaProps) => {
   const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showDayDialog, setShowDayDialog] = useState(false);
+  const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskProjectId, setNewTaskProjectId] = useState("");
+  const [addingTask, setAddingTask] = useState(false);
 
   // Create maps for quick lookup
   const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
   const companyMap = useMemo(() => new Map(companies.map(c => [c.id, c])), [companies]);
+
+  // Available projects for adding tasks
+  const availableProjects = useMemo(() => {
+    return projects.filter(p => filteredProjectIds.has(p.id));
+  }, [projects, filteredProjectIds]);
 
   // Get tasks by date
   const tasksByDate = useMemo(() => {
@@ -54,7 +69,7 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
     tasks.forEach(task => {
       if (!task.due_date || !filteredProjectIds.has(task.project_id)) return;
       
-      const dateKey = format(new Date(task.due_date), "yyyy-MM-dd");
+      const dateKey = format(parseISO(task.due_date), "yyyy-MM-dd");
       if (!map.has(dateKey)) {
         map.set(dateKey, []);
       }
@@ -86,6 +101,43 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
     setShowDayDialog(true);
   };
 
+  const handleAddTaskClick = (date: Date) => {
+    setSelectedDate(date);
+    setNewTaskTitle("");
+    setNewTaskProjectId("");
+    setShowAddTaskDialog(true);
+  };
+
+  const handleAddTask = async () => {
+    if (!newTaskTitle.trim() || !newTaskProjectId || !selectedDate) return;
+
+    setAddingTask(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_tasks")
+        .insert({
+          title: newTaskTitle.trim(),
+          project_id: newTaskProjectId,
+          due_date: format(selectedDate, "yyyy-MM-dd"),
+          status: "pending",
+          sort_order: 0,
+        });
+
+      if (error) throw error;
+
+      toast.success("Tarefa adicionada com sucesso!");
+      setShowAddTaskDialog(false);
+      setNewTaskTitle("");
+      setNewTaskProjectId("");
+      onTaskAdded?.();
+    } catch (error) {
+      console.error("Error adding task:", error);
+      toast.error("Erro ao adicionar tarefa");
+    } finally {
+      setAddingTask(false);
+    }
+  };
+
   const getTasksCountForDay = (date: Date) => {
     const dateKey = format(date, "yyyy-MM-dd");
     return tasksByDate.get(dateKey)?.length || 0;
@@ -95,11 +147,13 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
     const dateKey = format(date, "yyyy-MM-dd");
     const dayTasks = tasksByDate.get(dateKey) || [];
     
-    const hasOverdue = dayTasks.some(t => t.status !== "completed" && isPast(new Date(t.due_date!)) && !isToday(new Date(t.due_date!)));
+    if (dayTasks.length === 0) return null;
+    
+    const hasOverdue = dayTasks.some(t => t.status !== "completed" && isPast(date) && !isToday(date));
     const hasToday = isToday(date) && dayTasks.some(t => t.status !== "completed");
     const hasInProgress = dayTasks.some(t => t.status === "in_progress");
-    const allCompleted = dayTasks.length > 0 && dayTasks.every(t => t.status === "completed");
-    const hasPending = dayTasks.some(t => t.status === "pending" && !isPast(new Date(t.due_date!)));
+    const allCompleted = dayTasks.every(t => t.status === "completed");
+    const hasPending = dayTasks.some(t => t.status === "pending" && !isPast(date));
     
     if (hasOverdue) return "overdue";
     if (hasToday) return "today";
@@ -173,24 +227,22 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
               const isTodayDate = isToday(day);
               
               return (
-                <motion.button
+                <motion.div
                   key={index}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => taskCount > 0 && handleDayClick(day)}
-                  disabled={taskCount === 0}
+                  onClick={() => handleDayClick(day)}
                   className={`
                     relative p-1 sm:p-2 rounded-lg text-center transition-all min-h-[48px] sm:min-h-[60px]
-                    flex flex-col items-center justify-start
+                    flex flex-col items-center justify-start cursor-pointer group
                     ${!isCurrentMonth ? 'opacity-30' : ''}
-                    ${taskCount > 0 ? 'cursor-pointer hover:ring-2 hover:ring-primary/50' : 'cursor-default'}
                     ${isTodayDate ? 'ring-2 ring-primary' : ''}
                     ${dayStatus === 'overdue' ? 'bg-red-50 dark:bg-red-950/30' : ''}
                     ${dayStatus === 'today' ? 'bg-orange-50 dark:bg-orange-950/30' : ''}
                     ${dayStatus === 'in_progress' ? 'bg-amber-50 dark:bg-amber-950/30' : ''}
                     ${dayStatus === 'completed' ? 'bg-green-50 dark:bg-green-950/30' : ''}
                     ${dayStatus === 'pending' ? 'bg-blue-50 dark:bg-blue-950/30' : ''}
-                    ${!dayStatus && isCurrentMonth ? 'bg-muted/30' : ''}
+                    ${!dayStatus && isCurrentMonth ? 'bg-muted/30 hover:bg-muted/50' : ''}
                   `}
                 >
                   <span className={`
@@ -219,7 +271,22 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
                       </Badge>
                     </div>
                   )}
-                </motion.button>
+
+                  {/* Add button on hover */}
+                  {isCurrentMonth && taskCount === 0 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity bottom-1 right-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddTaskClick(day);
+                      }}
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  )}
+                </motion.div>
               );
             })}
           </div>
@@ -252,11 +319,24 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
 
       {/* Day Tasks Dialog */}
       <Dialog open={showDayDialog} onOpenChange={setShowDayDialog}>
-        <DialogContent className="max-w-lg max-h-[80vh]">
+        <DialogContent className="max-w-lg max-h-[85vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-primary" />
-              {selectedDate && format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+            <DialogTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5 text-primary" />
+                {selectedDate && format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowDayDialog(false);
+                  if (selectedDate) handleAddTaskClick(selectedDate);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Adicionar
+              </Button>
             </DialogTitle>
           </DialogHeader>
           
@@ -264,7 +344,20 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
             <div className="space-y-2">
               {selectedDayTasks.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  Nenhuma tarefa para este dia
+                  <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Nenhuma tarefa para este dia</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => {
+                      setShowDayDialog(false);
+                      if (selectedDate) handleAddTaskClick(selectedDate);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Adicionar tarefa
+                  </Button>
                 </div>
               ) : (
                 selectedDayTasks.map(task => {
@@ -300,7 +393,7 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
                           ) : isOverdue ? (
                             <AlertCircle className="h-5 w-5 text-red-500" />
                           ) : (
-                            <CalendarIcon className="h-5 w-5 text-blue-500" />
+                            <Circle className="h-5 w-5 text-blue-500" />
                           )}
                         </div>
                         
@@ -326,21 +419,8 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
                           </div>
                         </div>
 
-                        {/* Status Badge */}
-                        <Badge 
-                          variant="secondary"
-                          className={`
-                            text-[10px] shrink-0
-                            ${task.status === "completed" ? 'bg-green-500 text-white' : ''}
-                            ${task.status === "in_progress" ? 'bg-amber-500 text-white' : ''}
-                            ${task.status === "pending" && isOverdue ? 'bg-red-500 text-white' : ''}
-                            ${task.status === "pending" && !isOverdue ? 'bg-blue-500 text-white' : ''}
-                          `}
-                        >
-                          {task.status === "completed" ? "Concluída" : 
-                           task.status === "in_progress" ? "Em andamento" : 
-                           isOverdue ? "Atrasada" : "Pendente"}
-                        </Badge>
+                        {/* Navigate icon */}
+                        <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
                       </div>
                     </motion.div>
                   );
@@ -351,9 +431,74 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
 
           {selectedDayTasks.length > 0 && (
             <div className="text-center text-xs text-muted-foreground pt-2 border-t">
-              Clique em uma tarefa para ver detalhes
+              Clique em uma tarefa para abrir no projeto
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Task Dialog */}
+      <Dialog open={showAddTaskDialog} onOpenChange={setShowAddTaskDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-primary" />
+              Nova Tarefa
+              {selectedDate && (
+                <Badge variant="outline" className="ml-2">
+                  {format(selectedDate, "dd/MM/yyyy")}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="agenda-task-title">Título da Tarefa</Label>
+              <Input
+                id="agenda-task-title"
+                placeholder="Ex: Reunião de alinhamento..."
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="agenda-task-project">Projeto</Label>
+              <Select value={newTaskProjectId} onValueChange={setNewTaskProjectId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o projeto..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProjects.map((project) => {
+                    const company = project.onboarding_company_id 
+                      ? companyMap.get(project.onboarding_company_id) 
+                      : null;
+                    return (
+                      <SelectItem key={project.id} value={project.id}>
+                        <span className="flex items-center gap-2">
+                          {company && <span className="text-muted-foreground">{company.name} -</span>}
+                          <span>{project.product_name}</span>
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddTaskDialog(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleAddTask} 
+              disabled={!newTaskTitle.trim() || !newTaskProjectId || addingTask}
+            >
+              {addingTask ? "Adicionando..." : "Adicionar Tarefa"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

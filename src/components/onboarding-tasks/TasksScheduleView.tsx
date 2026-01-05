@@ -1,8 +1,14 @@
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   CheckCircle2,
   Circle,
@@ -11,9 +17,16 @@ import {
   ChevronRight,
   Calendar as CalendarIcon,
   RefreshCw,
+  Plus,
+  Building2,
+  Package,
+  AlertCircle,
+  ExternalLink,
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, isToday, startOfWeek, endOfWeek, addDays } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, isToday, startOfWeek, endOfWeek, addDays, isPast, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface OnboardingTask {
   id: string;
@@ -31,19 +44,57 @@ interface OnboardingTask {
   recurrence: string | null;
   template_id: string | null;
   is_internal?: boolean;
+  project_id?: string;
   assignee?: { id: string; name: string; role: string };
   responsible_staff?: { id: string; name: string } | null;
+}
+
+interface Project {
+  id: string;
+  product_name: string;
+  onboarding_company_id?: string | null;
+}
+
+interface Company {
+  id: string;
+  name: string;
 }
 
 interface TasksScheduleViewProps {
   tasks: OnboardingTask[];
   onTaskClick: (task: OnboardingTask) => void;
   onStatusChange: (taskId: string, status: "pending" | "in_progress" | "completed") => void;
+  projects?: Project[];
+  companies?: Company[];
+  currentStaffId?: string | null;
+  currentUserRole?: string | null;
+  showAllCompanies?: boolean;
+  onTaskAdded?: () => void;
 }
 
-export const TasksScheduleView = ({ tasks, onTaskClick, onStatusChange }: TasksScheduleViewProps) => {
+export const TasksScheduleView = ({ 
+  tasks, 
+  onTaskClick, 
+  onStatusChange,
+  projects = [],
+  companies = [],
+  currentStaffId,
+  currentUserRole,
+  showAllCompanies = false,
+  onTaskAdded
+}: TasksScheduleViewProps) => {
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"month" | "week">("month");
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showDayDialog, setShowDayDialog] = useState(false);
+  const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskProjectId, setNewTaskProjectId] = useState("");
+  const [addingTask, setAddingTask] = useState(false);
+
+  const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
+  const companyMap = useMemo(() => new Map(companies.map(c => [c.id, c])), [companies]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -61,7 +112,7 @@ export const TasksScheduleView = ({ tasks, onTaskClick, onStatusChange }: TasksS
     const map: Record<string, OnboardingTask[]> = {};
     tasks.forEach(task => {
       if (task.due_date) {
-        const dateKey = format(new Date(task.due_date), "yyyy-MM-dd");
+        const dateKey = format(parseISO(task.due_date), "yyyy-MM-dd");
         if (!map[dateKey]) map[dateKey] = [];
         map[dateKey].push(task);
       }
@@ -81,23 +132,95 @@ export const TasksScheduleView = ({ tasks, onTaskClick, onStatusChange }: TasksS
     setCurrentDate(new Date());
   };
 
-  const getStatusStyles = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-500 text-white";
-      case "in_progress":
-        return "bg-amber-500 text-white";
-      default:
-        return "bg-primary/10 text-primary border border-primary/20";
+  const getStatusForDay = (date: Date) => {
+    const dateKey = format(date, "yyyy-MM-dd");
+    const dayTasks = tasksByDate[dateKey] || [];
+    
+    if (dayTasks.length === 0) return null;
+    
+    const hasOverdue = dayTasks.some(t => t.status !== "completed" && isPast(date) && !isToday(date));
+    const hasToday = isToday(date) && dayTasks.some(t => t.status !== "completed");
+    const hasInProgress = dayTasks.some(t => t.status === "in_progress");
+    const allCompleted = dayTasks.every(t => t.status === "completed");
+    
+    if (hasOverdue) return "overdue";
+    if (hasToday) return "today";
+    if (hasInProgress) return "in_progress";
+    if (allCompleted) return "completed";
+    return "pending";
+  };
+
+  const handleDayClick = (day: Date) => {
+    setSelectedDate(day);
+    setShowDayDialog(true);
+  };
+
+  const handleAddTaskClick = (day: Date) => {
+    setSelectedDate(day);
+    setNewTaskTitle("");
+    setNewTaskProjectId("");
+    setShowAddTaskDialog(true);
+  };
+
+  const handleTaskNavigate = (task: OnboardingTask) => {
+    setShowDayDialog(false);
+    const projectId = task.project_id;
+    if (projectId) {
+      navigate(`/onboarding-tasks/${projectId}?task=${task.id}`);
+    } else {
+      onTaskClick(task);
     }
   };
+
+  const handleAddTask = async () => {
+    if (!newTaskTitle.trim() || !newTaskProjectId || !selectedDate) return;
+
+    setAddingTask(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_tasks")
+        .insert({
+          title: newTaskTitle.trim(),
+          project_id: newTaskProjectId,
+          due_date: format(selectedDate, "yyyy-MM-dd"),
+          status: "pending",
+          sort_order: 0,
+        });
+
+      if (error) throw error;
+
+      toast.success("Tarefa adicionada com sucesso!");
+      setShowAddTaskDialog(false);
+      setNewTaskTitle("");
+      setNewTaskProjectId("");
+      onTaskAdded?.();
+    } catch (error) {
+      console.error("Error adding task:", error);
+      toast.error("Erro ao adicionar tarefa");
+    } finally {
+      setAddingTask(false);
+    }
+  };
+
+  const getTaskInfo = (task: OnboardingTask) => {
+    const projectId = task.project_id;
+    const project = projectId ? projectMap.get(projectId) : null;
+    const company = project?.onboarding_company_id ? companyMap.get(project.onboarding_company_id) : null;
+    return { project, company };
+  };
+
+  const selectedDayTasks = useMemo(() => {
+    if (!selectedDate) return [];
+    const dateKey = format(selectedDate, "yyyy-MM-dd");
+    return tasksByDate[dateKey] || [];
+  }, [selectedDate, tasksByDate]);
 
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
   // Stats for the header
   const tasksThisMonth = tasks.filter(t => {
     if (!t.due_date) return false;
-    const dueDate = new Date(t.due_date);
+    const dueDate = parseISO(t.due_date);
     return isSameMonth(dueDate, currentDate);
   });
   const completedThisMonth = tasksThisMonth.filter(t => t.status === "completed").length;
@@ -184,6 +307,7 @@ export const TasksScheduleView = ({ tasks, onTaskClick, onStatusChange }: TasksS
             const dayTasks = tasksByDate[dateKey] || [];
             const isCurrentMonth = isSameMonth(day, currentDate);
             const isCurrentDay = isToday(day);
+            const dayStatus = getStatusForDay(day);
 
             return (
               <motion.div
@@ -192,53 +316,96 @@ export const TasksScheduleView = ({ tasks, onTaskClick, onStatusChange }: TasksS
                 animate={{ opacity: 1 }}
                 transition={{ delay: index * 0.01 }}
                 className={`
-                  min-h-[100px] border-b border-r p-2 relative
+                  min-h-[100px] border-b border-r p-2 relative group cursor-pointer
                   ${viewMode === "week" ? "min-h-[200px]" : ""}
                   ${!isCurrentMonth && viewMode === "month" ? "bg-muted/30" : "bg-card"}
                   ${isCurrentDay ? "ring-2 ring-primary ring-inset" : ""}
+                  ${dayStatus === "overdue" ? "bg-red-50 dark:bg-red-950/20" : ""}
+                  ${dayStatus === "today" ? "bg-orange-50 dark:bg-orange-950/20" : ""}
+                  ${dayStatus === "completed" ? "bg-green-50 dark:bg-green-950/20" : ""}
+                  hover:bg-muted/50 transition-colors
                 `}
+                onClick={() => handleDayClick(day)}
               >
                 {/* Day Number */}
-                <div className={`
-                  text-sm font-medium mb-2
-                  ${isCurrentDay 
-                    ? "w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center" 
-                    : !isCurrentMonth ? "text-muted-foreground/50" : ""
-                  }
-                `}>
-                  {format(day, "d")}
+                <div className="flex items-center justify-between mb-2">
+                  <div className={`
+                    text-sm font-medium
+                    ${isCurrentDay 
+                      ? "w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center" 
+                      : !isCurrentMonth ? "text-muted-foreground/50" : ""
+                    }
+                    ${dayStatus === "overdue" ? "text-red-600 dark:text-red-400" : ""}
+                  `}>
+                    {format(day, "d")}
+                  </div>
+                  
+                  {/* Add task button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddTaskClick(day);
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
 
                 {/* Tasks */}
                 <div className="space-y-1">
-                  {dayTasks.slice(0, viewMode === "week" ? 10 : 3).map((task) => (
-                    <motion.div
-                      key={task.id}
-                      whileHover={{ scale: 1.02 }}
-                      onClick={() => onTaskClick(task)}
-                      className={`
-                        text-xs p-1.5 rounded cursor-pointer truncate
-                        transition-all duration-200
-                        ${getStatusStyles(task.status)}
-                      `}
-                    >
-                      <div className="flex items-center gap-1">
-                        {task.status === "completed" ? (
-                          <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
-                        ) : task.status === "in_progress" ? (
-                          <Clock className="h-3 w-3 flex-shrink-0" />
-                        ) : (
-                          <Circle className="h-3 w-3 flex-shrink-0" />
+                  {dayTasks.slice(0, viewMode === "week" ? 10 : 3).map((task) => {
+                    const { project, company } = getTaskInfo(task);
+                    const isOverdue = task.status !== "completed" && isPast(day) && !isToday(day);
+                    
+                    return (
+                      <motion.div
+                        key={task.id}
+                        whileHover={{ scale: 1.02 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTaskNavigate(task);
+                        }}
+                        className={`
+                          text-xs p-1.5 rounded cursor-pointer truncate
+                          transition-all duration-200
+                          ${task.status === "completed" 
+                            ? "bg-green-500 text-white" 
+                            : task.status === "in_progress"
+                              ? "bg-amber-500 text-white"
+                              : isOverdue
+                                ? "bg-red-500 text-white"
+                                : "bg-primary/10 text-primary border border-primary/20"
+                          }
+                        `}
+                      >
+                        <div className="flex items-center gap-1">
+                          {task.status === "completed" ? (
+                            <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+                          ) : task.status === "in_progress" ? (
+                            <Clock className="h-3 w-3 flex-shrink-0" />
+                          ) : isOverdue ? (
+                            <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                          ) : (
+                            <Circle className="h-3 w-3 flex-shrink-0" />
+                          )}
+                          <span className="truncate">{task.title}</span>
+                          {task.recurrence && (
+                            <RefreshCw className="h-2.5 w-2.5 flex-shrink-0 ml-auto" />
+                          )}
+                        </div>
+                        {showAllCompanies && company && (
+                          <div className="text-[10px] opacity-75 mt-0.5 truncate">
+                            {company.name}
+                          </div>
                         )}
-                        <span className="truncate">{task.title}</span>
-                        {task.recurrence && (
-                          <RefreshCw className="h-2.5 w-2.5 flex-shrink-0 ml-auto" />
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    );
+                  })}
                   {dayTasks.length > (viewMode === "week" ? 10 : 3) && (
-                    <div className="text-xs text-muted-foreground text-center py-1">
+                    <div className="text-xs text-muted-foreground text-center py-1 bg-muted/50 rounded">
                       +{dayTasks.length - (viewMode === "week" ? 10 : 3)} mais
                     </div>
                   )}
@@ -246,10 +413,16 @@ export const TasksScheduleView = ({ tasks, onTaskClick, onStatusChange }: TasksS
 
                 {/* Task count badge for busy days */}
                 {dayTasks.length > 0 && viewMode === "month" && (
-                  <div className="absolute top-2 right-2">
+                  <div className="absolute top-2 right-8">
                     <Badge 
                       variant="secondary" 
-                      className="h-5 w-5 p-0 flex items-center justify-center text-xs"
+                      className={`
+                        h-5 w-5 p-0 flex items-center justify-center text-xs
+                        ${dayStatus === "overdue" ? "bg-red-500 text-white" : ""}
+                        ${dayStatus === "today" ? "bg-orange-500 text-white" : ""}
+                        ${dayStatus === "completed" ? "bg-green-500 text-white" : ""}
+                        ${dayStatus === "in_progress" ? "bg-amber-500 text-white" : ""}
+                      `}
                     >
                       {dayTasks.length}
                     </Badge>
@@ -261,6 +434,30 @@ export const TasksScheduleView = ({ tasks, onTaskClick, onStatusChange }: TasksS
         </div>
       </Card>
 
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-4 text-xs">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-red-500" />
+          <span className="text-muted-foreground">Atrasado</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-orange-500" />
+          <span className="text-muted-foreground">Hoje</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-amber-500" />
+          <span className="text-muted-foreground">Em andamento</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-green-500" />
+          <span className="text-muted-foreground">Concluído</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-primary/20 border border-primary/30" />
+          <span className="text-muted-foreground">Pendente</span>
+        </div>
+      </div>
+
       {/* Tasks without dates */}
       {tasks.filter(t => !t.due_date).length > 0 && (
         <Card className="p-4">
@@ -269,46 +466,55 @@ export const TasksScheduleView = ({ tasks, onTaskClick, onStatusChange }: TasksS
             Tarefas sem data definida ({tasks.filter(t => !t.due_date).length})
           </h3>
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-            {tasks.filter(t => !t.due_date).slice(0, 6).map((task) => (
-              <motion.div
-                key={task.id}
-                whileHover={{ scale: 1.01 }}
-                onClick={() => onTaskClick(task)}
-                className={`
-                  flex items-center gap-3 p-3 rounded-lg cursor-pointer border
-                  transition-all duration-200 hover:shadow-sm
-                  ${task.status === "completed" ? "bg-green-500/5 border-green-500/20" : "bg-card"}
-                `}
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const nextStatus =
-                      task.status === "pending"
-                        ? "in_progress"
-                        : task.status === "in_progress"
-                          ? "completed"
-                          : "pending";
-                    onStatusChange(task.id, nextStatus);
-                  }}
-                  className="flex-shrink-0"
+            {tasks.filter(t => !t.due_date).slice(0, 6).map((task) => {
+              const { project, company } = getTaskInfo(task);
+              
+              return (
+                <motion.div
+                  key={task.id}
+                  whileHover={{ scale: 1.01 }}
+                  onClick={() => handleTaskNavigate(task)}
+                  className={`
+                    flex items-center gap-3 p-3 rounded-lg cursor-pointer border
+                    transition-all duration-200 hover:shadow-sm
+                    ${task.status === "completed" ? "bg-green-500/5 border-green-500/20" : "bg-card"}
+                  `}
                 >
-                  {task.status === "completed" ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  ) : task.status === "in_progress" ? (
-                    <Clock className="h-5 w-5 text-amber-500" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-muted-foreground" />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const nextStatus =
+                        task.status === "pending"
+                          ? "in_progress"
+                          : task.status === "in_progress"
+                            ? "completed"
+                            : "pending";
+                      onStatusChange(task.id, nextStatus);
+                    }}
+                    className="flex-shrink-0"
+                  >
+                    {task.status === "completed" ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    ) : task.status === "in_progress" ? (
+                      <Clock className="h-5 w-5 text-amber-500" />
+                    ) : (
+                      <Circle className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-sm truncate block ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
+                      {task.title}
+                    </span>
+                    {showAllCompanies && company && (
+                      <span className="text-xs text-muted-foreground truncate block">{company.name}</span>
+                    )}
+                  </div>
+                  {task.priority === "high" && (
+                    <Badge variant="destructive" className="text-xs ml-auto">!</Badge>
                   )}
-                </button>
-                <span className={`text-sm truncate ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
-                  {task.title}
-                </span>
-                {task.priority === "high" && (
-                  <Badge variant="destructive" className="text-xs ml-auto">!</Badge>
-                )}
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
           {tasks.filter(t => !t.due_date).length > 6 && (
             <p className="text-sm text-muted-foreground mt-3 text-center">
@@ -317,6 +523,191 @@ export const TasksScheduleView = ({ tasks, onTaskClick, onStatusChange }: TasksS
           )}
         </Card>
       )}
+
+      {/* Day Tasks Dialog */}
+      <Dialog open={showDayDialog} onOpenChange={setShowDayDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5 text-primary" />
+                {selectedDate && format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowDayDialog(false);
+                  if (selectedDate) handleAddTaskClick(selectedDate);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Adicionar
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="space-y-2">
+              {selectedDayTasks.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Nenhuma tarefa para este dia</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => {
+                      setShowDayDialog(false);
+                      if (selectedDate) handleAddTaskClick(selectedDate);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Adicionar tarefa
+                  </Button>
+                </div>
+              ) : (
+                selectedDayTasks.map(task => {
+                  const { project, company } = getTaskInfo(task);
+                  const isOverdue = task.status !== "completed" && selectedDate && isPast(selectedDate) && !isToday(selectedDate);
+
+                  return (
+                    <motion.div
+                      key={task.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={() => handleTaskNavigate(task)}
+                      className={`
+                        p-3 rounded-lg border cursor-pointer transition-all
+                        hover:shadow-md hover:border-primary/50
+                        ${task.status === "completed" 
+                          ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50" 
+                          : task.status === "in_progress"
+                            ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50"
+                            : isOverdue
+                              ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50"
+                              : "bg-card"
+                        }
+                      `}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Status Icon */}
+                        <div className="mt-0.5">
+                          {task.status === "completed" ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                          ) : task.status === "in_progress" ? (
+                            <Clock className="h-5 w-5 text-amber-600" />
+                          ) : isOverdue ? (
+                            <AlertCircle className="h-5 w-5 text-red-500" />
+                          ) : (
+                            <Circle className="h-5 w-5 text-blue-500" />
+                          )}
+                        </div>
+
+                        {/* Task Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-medium text-sm ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
+                            {task.title}
+                          </p>
+
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            {company && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Building2 className="h-3 w-3" />
+                                <span className="truncate max-w-[120px]">{company.name}</span>
+                              </div>
+                            )}
+                            {project && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Package className="h-3 w-3" />
+                                <span className="truncate max-w-[100px]">{project.product_name}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Navigate icon */}
+                        <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+                      </div>
+                    </motion.div>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+
+          {selectedDayTasks.length > 0 && (
+            <div className="text-center text-xs text-muted-foreground pt-2 border-t">
+              Clique em uma tarefa para abrir no projeto
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Task Dialog */}
+      <Dialog open={showAddTaskDialog} onOpenChange={setShowAddTaskDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-primary" />
+              Nova Tarefa
+              {selectedDate && (
+                <Badge variant="outline" className="ml-2">
+                  {format(selectedDate, "dd/MM/yyyy")}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="task-title">Título da Tarefa</Label>
+              <Input
+                id="task-title"
+                placeholder="Ex: Reunião de alinhamento..."
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="task-project">Projeto</Label>
+              <Select value={newTaskProjectId} onValueChange={setNewTaskProjectId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o projeto..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => {
+                    const company = project.onboarding_company_id 
+                      ? companyMap.get(project.onboarding_company_id) 
+                      : null;
+                    return (
+                      <SelectItem key={project.id} value={project.id}>
+                        <span className="flex items-center gap-2">
+                          {company && <span className="text-muted-foreground">{company.name} -</span>}
+                          <span>{project.product_name}</span>
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddTaskDialog(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleAddTask} 
+              disabled={!newTaskTitle.trim() || !newTaskProjectId || addingTask}
+            >
+              {addingTask ? "Adicionando..." : "Adicionar Tarefa"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
