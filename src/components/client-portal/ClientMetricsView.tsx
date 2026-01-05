@@ -327,10 +327,10 @@ export const ClientMetricsView = ({ projectId }: ClientMetricsViewProps) => {
                 </div>
 
                 <div className="text-center p-4 rounded-xl bg-white/80 dark:bg-card/80 border">
-                  <p className="text-sm text-muted-foreground mb-2">Se quiser vender</p>
-                  <p className="text-2xl font-bold text-green-600">{formatCurrency(totalSalesValue * 10)}</p>
+                  <p className="text-sm text-muted-foreground mb-2">Se quiser vender 3x mais</p>
+                  <p className="text-2xl font-bold text-green-600">{formatCurrency(totalSalesValue * 3)}</p>
                   <p className="text-sm text-muted-foreground my-2">precisa investir</p>
-                  <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalInvestment3Months * 10)}</p>
+                  <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalInvestment3Months * 3)}</p>
                 </div>
               </div>
             </div>

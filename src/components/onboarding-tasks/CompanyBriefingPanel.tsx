@@ -667,12 +667,12 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                             <p className="text-2xl font-bold text-orange-600">{formatCurr(cac_value)}</p>
                           </div>
 
-                          {/* Projeção 10x */}
+                          {/* Projeção 3x */}
                           <div className="text-center p-4 rounded-lg bg-white/50 dark:bg-card/50 border">
-                            <p className="text-sm text-muted-foreground mb-2">Se quiser vender</p>
-                            <p className="text-2xl font-bold text-green-600">{formatCurr(totalSalesValue * 10)}</p>
+                            <p className="text-sm text-muted-foreground mb-2">Se quiser vender 3x mais</p>
+                            <p className="text-2xl font-bold text-green-600">{formatCurr(totalSalesValue * 3)}</p>
                             <p className="text-sm text-muted-foreground my-2">precisa investir</p>
-                            <p className="text-2xl font-bold text-orange-600">{formatCurr(totalInvestment3Months * 10)}</p>
+                            <p className="text-2xl font-bold text-orange-600">{formatCurr(totalInvestment3Months * 3)}</p>
                           </div>
                         </div>
                       </div>
