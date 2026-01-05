@@ -385,11 +385,56 @@ export default function OnboardingImportPage() {
           product_id: service.slug,
           product_name: projectName,
           status: 'active',
+          cs_id: selectedCS || null,
+          consultant_id: selectedConsultant || null,
         })
         .select('id')
         .single();
 
       if (projectError) throw projectError;
+
+      // 3. Create staff as project users
+      const staffToAdd: { staff_id: string; role: 'cs' | 'consultant' }[] = [];
+      if (selectedCS) staffToAdd.push({ staff_id: selectedCS, role: 'cs' });
+      if (selectedConsultant && selectedConsultant !== selectedCS) {
+        staffToAdd.push({ staff_id: selectedConsultant, role: 'consultant' });
+      }
+
+      for (const staffMember of staffToAdd) {
+        // Get staff info
+        const staffInfo = staff.find(s => s.id === staffMember.staff_id);
+        if (!staffInfo) continue;
+
+        // Get staff's auth user_id
+        const { data: staffData } = await supabase
+          .from('onboarding_staff')
+          .select('user_id, email, name')
+          .eq('id', staffMember.staff_id)
+          .single();
+
+        if (staffData?.user_id) {
+          // Check if user already exists for this project
+          const { data: existingUser } = await supabase
+            .from('onboarding_users')
+            .select('id')
+            .eq('project_id', newProject.id)
+            .eq('user_id', staffData.user_id)
+            .single();
+
+          if (!existingUser) {
+            await supabase
+              .from('onboarding_users')
+              .insert({
+                project_id: newProject.id,
+                user_id: staffData.user_id,
+                email: staffData.email,
+                name: staffData.name,
+                role: staffMember.role,
+                password_changed: true,
+              });
+          }
+        }
+      }
 
       setProgress(50);
 
