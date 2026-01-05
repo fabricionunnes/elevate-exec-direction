@@ -16,7 +16,10 @@ import {
   Target,
   Zap,
   RotateCcw,
-  Star
+  Star,
+  UserCheck,
+  UserX,
+  Percent
 } from "lucide-react";
 import { format, isBefore, startOfDay, isWithinInterval } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -209,13 +212,32 @@ const DashboardMetrics = ({
   const npsMetrics = useMemo(() => {
     // Get project IDs from filtered projects (respects consultant and service filters)
     const filteredProjectIds = new Set(projects.map(p => p.id));
+    const totalFilteredProjects = filteredProjectIds.size;
     
     // Filter NPS responses to only include those from filtered projects
     const filteredResponses = npsResponses.filter(r => filteredProjectIds.has(r.project_id));
     const totalResponses = filteredResponses.length;
     
+    // Get unique projects that have at least one response
+    const projectsWithResponse = new Set(filteredResponses.map(r => r.project_id));
+    const respondedCount = projectsWithResponse.size;
+    const notRespondedCount = totalFilteredProjects - respondedCount;
+    const responseRate = totalFilteredProjects > 0 
+      ? Math.round((respondedCount / totalFilteredProjects) * 100) 
+      : 0;
+    
     if (totalResponses === 0) {
-      return { averageNps: null, promoters: 0, detractors: 0, neutrals: 0, totalResponses: 0 };
+      return { 
+        averageNps: null, 
+        promoters: 0, 
+        detractors: 0, 
+        neutrals: 0, 
+        totalResponses: 0,
+        respondedCount: 0,
+        notRespondedCount: totalFilteredProjects,
+        responseRate: 0,
+        totalProjects: totalFilteredProjects
+      };
     }
     
     const sumNps = filteredResponses.reduce((sum, r) => sum + r.score, 0);
@@ -225,7 +247,17 @@ const DashboardMetrics = ({
     const detractors = filteredResponses.filter(r => r.score <= 6).length;
     const neutrals = filteredResponses.filter(r => r.score >= 7 && r.score <= 8).length;
     
-    return { averageNps, promoters, detractors, neutrals, totalResponses };
+    return { 
+      averageNps, 
+      promoters, 
+      detractors, 
+      neutrals, 
+      totalResponses,
+      respondedCount,
+      notRespondedCount,
+      responseRate,
+      totalProjects: totalFilteredProjects
+    };
   }, [projects, npsResponses]);
 
   const completionRate = taskMetrics.totalTasks > 0 
@@ -558,7 +590,7 @@ const DashboardMetrics = ({
             </CardContent>
           </Card>
 
-          {/* NPS Card */}
+          {/* NPS Average Card */}
           <Card className="relative overflow-hidden">
             <div className={cn(
               "absolute top-0 left-0 w-1 h-full",
@@ -594,6 +626,85 @@ const DashboardMetrics = ({
                     npsMetrics.averageNps >= 9 ? "text-green-500" :
                     npsMetrics.averageNps >= 7 ? "text-yellow-500" : "text-red-500"
                   )} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* NPS Response Rate Card */}
+          <Card className="relative overflow-hidden">
+            <div className={cn(
+              "absolute top-0 left-0 w-1 h-full",
+              npsMetrics.responseRate >= 70 ? "bg-green-500" :
+              npsMetrics.responseRate >= 40 ? "bg-yellow-500" : "bg-orange-500"
+            )} />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Taxa Resposta</p>
+                  <p className={cn(
+                    "text-2xl font-bold mt-1",
+                    npsMetrics.responseRate >= 70 ? "text-green-500" :
+                    npsMetrics.responseRate >= 40 ? "text-yellow-500" : "text-orange-500"
+                  )}>
+                    {npsMetrics.responseRate}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    de {npsMetrics.totalProjects} serviços
+                  </p>
+                </div>
+                <div className={cn(
+                  "h-10 w-10 rounded-full flex items-center justify-center",
+                  npsMetrics.responseRate >= 70 ? "bg-green-500/10" :
+                  npsMetrics.responseRate >= 40 ? "bg-yellow-500/10" : "bg-orange-500/10"
+                )}>
+                  <Percent className={cn(
+                    "h-5 w-5",
+                    npsMetrics.responseRate >= 70 ? "text-green-500" :
+                    npsMetrics.responseRate >= 40 ? "text-yellow-500" : "text-orange-500"
+                  )} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* NPS Responded Card */}
+          <Card className="relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Responderam</p>
+                  <p className="text-2xl font-bold mt-1 text-blue-500">
+                    {npsMetrics.respondedCount}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    serviços
+                  </p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <UserCheck className="h-5 w-5 text-blue-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* NPS Not Responded Card */}
+          <Card className="relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-gray-400" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Não Responderam</p>
+                  <p className="text-2xl font-bold mt-1 text-gray-500">
+                    {npsMetrics.notRespondedCount}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    serviços
+                  </p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-gray-400/10 flex items-center justify-center">
+                  <UserX className="h-5 w-5 text-gray-400" />
                 </div>
               </div>
             </CardContent>
