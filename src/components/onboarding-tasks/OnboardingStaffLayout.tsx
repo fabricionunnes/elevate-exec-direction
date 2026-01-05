@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimeNotifications } from "./RealtimeNotifications";
+import GlobalChatWidget from "@/components/virtual-office/GlobalChatWidget";
 
 export const OnboardingStaffLayout = () => {
   const [isStaff, setIsStaff] = useState<boolean | null>(null);
@@ -52,6 +53,8 @@ export const OnboardingStaffLayout = () => {
     <>
       {/* Notificações globais para staff */}
       {isStaff && <RealtimeNotifications />}
+      {/* Chat global para staff */}
+      {isStaff && <GlobalChatWidget />}
       <Outlet />
     </>
   );
