@@ -974,6 +974,7 @@ const OnboardingProjectPage = () => {
                 onTaskClick={setSelectedTask}
                 onStatusChange={handleStatusChange}
                 onTaskAdded={fetchProjectData}
+                singleProjectId={projectId}
               />
             ) : (
               <TasksListView
