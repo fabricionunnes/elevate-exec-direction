@@ -96,7 +96,7 @@ const OnboardingTasksPage = () => {
     end: endOfMonth(new Date()),
   }));
   const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null }[]>([]);
-  const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null }[]>([]);
+  const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null }[]>([]);
 
   useEffect(() => {
     checkUserPermissions();
@@ -237,6 +237,7 @@ const OnboardingTasksPage = () => {
         created_at: p.created_at,
         updated_at: p.updated_at,
         consultant_id: p.consultant_id,
+        reactivated_at: p.reactivated_at,
       })));
 
       setCompanies(companiesWithProjects);

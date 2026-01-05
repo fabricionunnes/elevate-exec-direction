@@ -408,13 +408,23 @@ const OnboardingProjectPage = () => {
   const handleProjectUpdate = async (field: string, value: string | null) => {
     if (!projectId) return;
     try {
+      const updateData: Record<string, string | null> = { [field]: value };
+      
+      // Check if reactivating from cancellation status
+      if (field === "status" && value === "active") {
+        const currentStatus = project?.status;
+        if (currentStatus === "cancellation_signaled" || currentStatus === "notice_period") {
+          updateData.reactivated_at = new Date().toISOString();
+        }
+      }
+      
       const { error } = await supabase
         .from("onboarding_projects")
-        .update({ [field]: value })
+        .update(updateData)
         .eq("id", projectId);
       
       if (error) throw error;
-      setProject(prev => prev ? { ...prev, [field]: value } : null);
+      setProject(prev => prev ? { ...prev, ...updateData } : null);
       toast.success("Projeto atualizado");
     } catch (error) {
       console.error("Error updating project:", error);

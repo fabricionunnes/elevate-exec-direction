@@ -831,6 +831,7 @@ export type Database = {
           product_name: string
           product_variables: Json | null
           project_complexity: string | null
+          reactivated_at: string | null
           status: string
           updated_at: string
         }
@@ -853,6 +854,7 @@ export type Database = {
           product_name: string
           product_variables?: Json | null
           project_complexity?: string | null
+          reactivated_at?: string | null
           status?: string
           updated_at?: string
         }
@@ -875,6 +877,7 @@ export type Database = {
           product_name?: string
           product_variables?: Json | null
           project_complexity?: string | null
+          reactivated_at?: string | null
           status?: string
           updated_at?: string
         }
