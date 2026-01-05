@@ -70,9 +70,12 @@ export default function OnboardingBulkTemplatesPage() {
   
   // Create tab state
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [phaseMode, setPhaseMode] = useState<'existing' | 'new'>('new');
+  const [selectedExistingPhase, setSelectedExistingPhase] = useState('');
   const [phaseName, setPhaseName] = useState('');
   const [phaseOrder, setPhaseOrder] = useState(1);
   const [tasks, setTasks] = useState<TaskToCreate[]>([]);
+  const [existingPhases, setExistingPhases] = useState<string[]>([]);
   
   // Delete tab state
   const [phases, setPhases] = useState<PhaseInfo[]>([]);
@@ -82,6 +85,7 @@ export default function OnboardingBulkTemplatesPage() {
   useEffect(() => {
     checkAdmin();
     fetchServices();
+    fetchExistingPhases();
   }, []);
 
   const checkAdmin = async () => {
@@ -121,6 +125,21 @@ export default function OnboardingBulkTemplatesPage() {
     }
 
     setServices(data || []);
+  };
+
+  const fetchExistingPhases = async () => {
+    const { data, error } = await supabase
+      .from('onboarding_task_templates')
+      .select('phase')
+      .not('phase', 'is', null);
+
+    if (error) {
+      console.error('Erro ao carregar fases:', error);
+      return;
+    }
+
+    const uniquePhases = [...new Set(data?.map(t => t.phase).filter(Boolean) as string[])].sort();
+    setExistingPhases(uniquePhases);
   };
 
   const fetchPhases = async () => {
@@ -204,8 +223,10 @@ export default function OnboardingBulkTemplatesPage() {
   };
 
   const handleSave = async () => {
-    if (!phaseName.trim()) {
-      toast.error('Digite o nome da fase');
+    const finalPhaseName = phaseMode === 'existing' ? selectedExistingPhase : phaseName;
+    
+    if (!finalPhaseName.trim()) {
+      toast.error(phaseMode === 'existing' ? 'Selecione uma fase' : 'Digite o nome da fase');
       return;
     }
 
@@ -233,7 +254,7 @@ export default function OnboardingBulkTemplatesPage() {
           product_id: serviceSlug,
           title: task.title,
           description: task.description || null,
-          phase: phaseName,
+          phase: finalPhaseName,
           phase_order: phaseOrder,
           sort_order: task.sort_order,
           priority: task.priority,
@@ -252,9 +273,13 @@ export default function OnboardingBulkTemplatesPage() {
 
       toast.success(`${tasks.length} tarefa(s) adicionada(s) a ${selectedServices.length} serviço(s)`);
       
+      setPhaseMode('new');
+      setSelectedExistingPhase('');
       setPhaseName('');
       setPhaseOrder(1);
       setTasks([]);
+      setSelectedServices([]);
+      fetchExistingPhases();
       setSelectedServices([]);
     } catch (error: any) {
       toast.error('Erro ao salvar: ' + error.message);
@@ -385,52 +410,83 @@ export default function OnboardingBulkTemplatesPage() {
               <CardHeader>
                 <CardTitle className="text-lg">1. Configure a Fase</CardTitle>
                 <CardDescription>
-                  Defina o nome e a ordem da fase que conterá as tarefas
+                  Selecione uma fase existente ou crie uma nova
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="phase-name">Nome da Fase *</Label>
-                    <Input
-                      id="phase-name"
-                      value={phaseName}
-                      onChange={e => setPhaseName(e.target.value)}
-                      placeholder="Ex: Diagnóstico, Implementação..."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phase-order">Ordem da Fase</Label>
-                    <Input
-                      id="phase-order"
-                      type="number"
-                      min={1}
-                      value={phaseOrder}
-                      onChange={e => setPhaseOrder(parseInt(e.target.value) || 1)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Define a posição da fase na trilha (1 = primeira)
-                    </p>
-                  </div>
+              <CardContent className="space-y-4">
+                <div className="flex gap-4">
+                  <Button
+                    variant={phaseMode === 'existing' ? 'default' : 'outline'}
+                    onClick={() => setPhaseMode('existing')}
+                    className="flex-1"
+                  >
+                    Fase Existente
+                  </Button>
+                  <Button
+                    variant={phaseMode === 'new' ? 'default' : 'outline'}
+                    onClick={() => setPhaseMode('new')}
+                    className="flex-1"
+                  >
+                    Nova Fase
+                  </Button>
                 </div>
+
+                {phaseMode === 'existing' ? (
+                  <div className="space-y-2">
+                    <Label>Selecione a Fase *</Label>
+                    <Select
+                      value={selectedExistingPhase}
+                      onValueChange={setSelectedExistingPhase}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Escolha uma fase..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {existingPhases.map(phase => (
+                          <SelectItem key={phase} value={phase}>{phase}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {existingPhases.length === 0 && (
+                      <p className="text-sm text-muted-foreground">Nenhuma fase existente encontrada</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="phase-name">Nome da Fase *</Label>
+                      <Input
+                        id="phase-name"
+                        value={phaseName}
+                        onChange={e => setPhaseName(e.target.value)}
+                        placeholder="Ex: Diagnóstico, Implementação..."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phase-order">Ordem da Fase</Label>
+                      <Input
+                        id="phase-order"
+                        type="number"
+                        min={1}
+                        value={phaseOrder}
+                        onChange={e => setPhaseOrder(parseInt(e.target.value) || 1)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Define a posição da fase na trilha (1 = primeira)
+                      </p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Step 2: Tasks */}
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">2. Crie as Tarefas</CardTitle>
-                    <CardDescription>
-                      Adicione todas as tarefas desta fase antes de selecionar os serviços
-                    </CardDescription>
-                  </div>
-                  <Button onClick={addTask} size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nova Tarefa
-                  </Button>
-                </div>
+                <CardTitle className="text-lg">2. Crie as Tarefas</CardTitle>
+                <CardDescription>
+                  Adicione todas as tarefas desta fase antes de selecionar os serviços
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {tasks.length === 0 ? (
@@ -540,6 +596,12 @@ export default function OnboardingBulkTemplatesPage() {
                         </div>
                       </div>
                     ))}
+                    
+                    {/* Add Task Button - below the last task */}
+                    <Button variant="outline" className="w-full" onClick={addTask}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Adicionar outra tarefa
+                    </Button>
                   </div>
                 )}
               </CardContent>
@@ -600,7 +662,7 @@ export default function OnboardingBulkTemplatesPage() {
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={saving || !phaseName || selectedServices.length === 0 || tasks.length === 0}
+                disabled={saving || (phaseMode === 'existing' ? !selectedExistingPhase : !phaseName) || selectedServices.length === 0 || tasks.length === 0}
               >
                 {saving ? (
                   'Salvando...'
