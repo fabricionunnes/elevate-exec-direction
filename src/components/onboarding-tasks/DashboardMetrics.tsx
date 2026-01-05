@@ -245,215 +245,329 @@ const DashboardMetrics = ({
 
   return (
     <div className="space-y-6 mb-6">
-      {/* KPI Cards Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-        {/* Today's Tasks */}
-        <Card 
-          className={cn(
-            "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
-            isCardActive("tasks", "today") && "ring-2 ring-blue-500"
-          )}
-          onClick={() => handleCardClick("tasks", "today")}
-        >
-          <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
-          <CardContent className="pt-4 pl-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Hoje</p>
-                <p className="text-2xl font-bold mt-1">{taskMetrics.todayTasks}</p>
-                <p className="text-xs text-muted-foreground">{taskMetrics.todayCompleted} feitas</p>
+      {/* TAREFAS Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <ListTodo className="h-5 w-5 text-blue-500" />
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tarefas</h3>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* Today's Tasks */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("tasks", "today") && "ring-2 ring-blue-500"
+            )}
+            onClick={() => handleCardClick("tasks", "today")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Hoje</p>
+                  <p className="text-2xl font-bold mt-1">{taskMetrics.todayTasks}</p>
+                  <p className="text-xs text-muted-foreground">{taskMetrics.todayCompleted} feitas</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <ListTodo className="h-5 w-5 text-blue-500" />
+                </div>
               </div>
-              <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <ListTodo className="h-5 w-5 text-blue-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Overdue Tasks */}
-        <Card 
-          className={cn(
-            "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
-            isCardActive("tasks", "overdue") && "ring-2 ring-red-500"
-          )}
-          onClick={() => handleCardClick("tasks", "overdue")}
-        >
-          <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
-          <CardContent className="pt-4 pl-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Atrasadas</p>
-                <p className="text-2xl font-bold mt-1 text-red-500">{taskMetrics.overdueTasks}</p>
-                <p className="text-xs text-muted-foreground">{overdueRate}% do total</p>
+          {/* Overdue Tasks */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("tasks", "overdue") && "ring-2 ring-red-500"
+            )}
+            onClick={() => handleCardClick("tasks", "overdue")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Atrasadas</p>
+                  <p className="text-2xl font-bold mt-1 text-red-500">{taskMetrics.overdueTasks}</p>
+                  <p className="text-xs text-muted-foreground">{overdueRate}% do total</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                </div>
               </div>
-              <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Completion Rate */}
-        <Card className="relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-green-500" />
-          <CardContent className="pt-4 pl-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Conclusão</p>
-                <p className="text-2xl font-bold mt-1 text-green-500">{completionRate}%</p>
-                <Progress value={completionRate} className="h-1.5 mt-2 w-16" />
+          {/* Completion Rate */}
+          <Card className="relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-green-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Conclusão</p>
+                  <p className="text-2xl font-bold mt-1 text-green-500">{completionRate}%</p>
+                  <Progress value={completionRate} className="h-1.5 mt-2 w-16" />
+                </div>
+                <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <Target className="h-5 w-5 text-green-500" />
+                </div>
               </div>
-              <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                <Target className="h-5 w-5 text-green-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Active Companies */}
-        <Card 
-          className={cn(
-            "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
-            isCardActive("status", "active") && "ring-2 ring-primary"
-          )}
-          onClick={() => handleCardClick("status", "active")}
-        >
-          <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-          <CardContent className="pt-4 pl-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Empresas</p>
-                <p className="text-2xl font-bold mt-1">{companyMetrics.activeCompanies}</p>
-                <p className="text-xs text-muted-foreground">ativas</p>
+          {/* Task Distribution Chart */}
+          <Card className="row-span-1">
+            <CardContent className="pt-4">
+              <div className="h-[100px] flex items-center justify-center">
+                {taskStatusData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={taskStatusData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={30}
+                        outerRadius={45}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {taskStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Sem tarefas</p>
+                )}
               </div>
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Building2 className="h-5 w-5 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Active Services */}
-        <Card 
-          className={cn(
-            "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
-            isCardActive("projects", "active") && "ring-2 ring-emerald-500"
-          )}
-          onClick={() => handleCardClick("projects", "active")}
-        >
-          <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
-          <CardContent className="pt-4 pl-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Serviços</p>
-                <p className="text-2xl font-bold mt-1">{projectMetrics.activeProjects}</p>
-                <p className="text-xs text-muted-foreground">ativos</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                <Zap className="h-5 w-5 text-emerald-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Churn Signaled */}
-        <Card 
-          className={cn(
-            "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
-            isCardActive("status", "cancellation_signaled") && "ring-2 ring-amber-500"
-          )}
-          onClick={() => handleCardClick("status", "cancellation_signaled")}
-        >
-          <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
-          <CardContent className="pt-4 pl-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Sinalizaram</p>
-                <p className="text-2xl font-bold mt-1 text-amber-500">{projectMetrics.cancellationSignaled}</p>
-                <p className="text-xs text-muted-foreground">serviços</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
-                <XCircle className="h-5 w-5 text-amber-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Notice Period */}
-        <Card 
-          className={cn(
-            "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
-            isCardActive("status", "notice_period") && "ring-2 ring-orange-500"
-          )}
-          onClick={() => handleCardClick("status", "notice_period")}
-        >
-          <div className="absolute top-0 left-0 w-1 h-full bg-orange-500" />
-          <CardContent className="pt-4 pl-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Aviso</p>
-                <p className="text-2xl font-bold mt-1 text-orange-500">{projectMetrics.noticePeriod}</p>
-                <p className="text-xs text-muted-foreground">serviços</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-orange-500/10 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-orange-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Contracts Ending */}
-        <Card 
-          className={cn(
-            "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
-            isCardActive("contracts", "ending") && "ring-2 ring-purple-500"
-          )}
-          onClick={() => handleCardClick("contracts", "ending")}
-        >
-          <div className="absolute top-0 left-0 w-1 h-full bg-purple-500" />
-          <CardContent className="pt-4 pl-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Vencendo</p>
-                <p className="text-2xl font-bold mt-1 text-purple-500">{companyMetrics.contractsEndingInPeriod}</p>
-                <p className="text-xs text-muted-foreground">contratos</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-purple-500/10 flex items-center justify-center">
-                <CalendarX className="h-5 w-5 text-purple-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              <p className="text-center text-xs text-muted-foreground mt-1">{taskMetrics.totalTasks} totais</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Task Distribution Chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-              Distribuição de Tarefas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[180px] flex items-center justify-center">
-              {taskStatusData.length > 0 ? (
+      {/* EMPRESAS Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Building2 className="h-5 w-5 text-primary" />
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Empresas & Serviços</h3>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {/* Active Companies */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("status", "active") && "ring-2 ring-primary"
+            )}
+            onClick={() => handleCardClick("status", "active")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Empresas</p>
+                  <p className="text-2xl font-bold mt-1">{companyMetrics.activeCompanies}</p>
+                  <p className="text-xs text-muted-foreground">ativas</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Building2 className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Active Services */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("projects", "active") && "ring-2 ring-emerald-500"
+            )}
+            onClick={() => handleCardClick("projects", "active")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Serviços</p>
+                  <p className="text-2xl font-bold mt-1">{projectMetrics.activeProjects}</p>
+                  <p className="text-xs text-muted-foreground">ativos</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                  <Zap className="h-5 w-5 text-emerald-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Churn Signaled */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("status", "cancellation_signaled") && "ring-2 ring-amber-500"
+            )}
+            onClick={() => handleCardClick("status", "cancellation_signaled")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Sinalizaram</p>
+                  <p className="text-2xl font-bold mt-1 text-amber-500">{projectMetrics.cancellationSignaled}</p>
+                  <p className="text-xs text-muted-foreground">serviços</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                  <XCircle className="h-5 w-5 text-amber-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Notice Period */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("status", "notice_period") && "ring-2 ring-orange-500"
+            )}
+            onClick={() => handleCardClick("status", "notice_period")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-orange-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Aviso</p>
+                  <p className="text-2xl font-bold mt-1 text-orange-500">{projectMetrics.noticePeriod}</p>
+                  <p className="text-xs text-muted-foreground">serviços</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-orange-500/10 flex items-center justify-center">
+                  <Clock className="h-5 w-5 text-orange-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Contracts Ending */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("contracts", "ending") && "ring-2 ring-purple-500"
+            )}
+            onClick={() => handleCardClick("contracts", "ending")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-purple-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Vencendo</p>
+                  <p className="text-2xl font-bold mt-1 text-purple-500">{companyMetrics.contractsEndingInPeriod}</p>
+                  <p className="text-xs text-muted-foreground">contratos</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-purple-500/10 flex items-center justify-center">
+                  <CalendarX className="h-5 w-5 text-purple-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Churn Rate Mini Card */}
+          <Card className="relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Churn</p>
+                  <p className="text-2xl font-bold mt-1 text-red-500">{churnMetrics.churnRate}%</p>
+                  <p className="text-xs text-muted-foreground">{churnMetrics.closedInPeriod} encerrados</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <TrendingDown className="h-5 w-5 text-red-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Row for Services */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Project Status Chart */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                Status dos Serviços
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[160px] flex items-center justify-center">
+                {projectStatusData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={projectStatusData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={65}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {projectStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Legend 
+                        verticalAlign="bottom" 
+                        height={36}
+                        formatter={(value) => <span className="text-xs">{value}</span>}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Sem serviços</p>
+                )}
+              </div>
+              <div className="text-center mt-2">
+                <p className="text-lg font-bold">{projects.length}</p>
+                <p className="text-xs text-muted-foreground">serviços totais</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Churn Chart */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <TrendingDown className="h-4 w-4 text-red-500" />
+                Churn do Período
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[120px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={taskStatusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={70}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {taskStatusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
+                  <BarChart data={churnData} layout="vertical">
+                    <XAxis type="number" hide />
+                    <YAxis 
+                      type="category" 
+                      dataKey="name" 
+                      width={80}
+                      tick={{ fontSize: 12 }}
+                    />
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: 'hsl(var(--card))', 
@@ -461,122 +575,28 @@ const DashboardMetrics = ({
                         borderRadius: '8px'
                       }}
                     />
-                    <Legend 
-                      verticalAlign="bottom" 
-                      height={36}
-                      formatter={(value) => <span className="text-xs">{value}</span>}
+                    <Bar 
+                      dataKey="value" 
+                      fill="#ef4444" 
+                      radius={[0, 4, 4, 0]}
+                      barSize={20}
                     />
-                  </PieChart>
+                  </BarChart>
                 </ResponsiveContainer>
-              ) : (
-                <p className="text-sm text-muted-foreground">Sem tarefas</p>
-              )}
-            </div>
-            <div className="text-center mt-2">
-              <p className="text-2xl font-bold">{taskMetrics.totalTasks}</p>
-              <p className="text-xs text-muted-foreground">tarefas totais</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Project Status Chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              Status dos Serviços
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[180px] flex items-center justify-center">
-              {projectStatusData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={projectStatusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={70}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {projectStatusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Legend 
-                      verticalAlign="bottom" 
-                      height={36}
-                      formatter={(value) => <span className="text-xs">{value}</span>}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="text-sm text-muted-foreground">Sem serviços</p>
-              )}
-            </div>
-            <div className="text-center mt-2">
-              <p className="text-2xl font-bold">{projects.length}</p>
-              <p className="text-xs text-muted-foreground">serviços totais</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Churn Chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingDown className="h-4 w-4 text-red-500" />
-              Churn do Período
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[180px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={churnData} layout="vertical">
-                  <XAxis type="number" hide />
-                  <YAxis 
-                    type="category" 
-                    dataKey="name" 
-                    width={80}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Bar 
-                    dataKey="value" 
-                    fill="#ef4444" 
-                    radius={[0, 4, 4, 0]}
-                    barSize={24}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="grid grid-cols-2 gap-4 mt-4">
-              <div className="text-center p-3 bg-red-500/10 rounded-lg">
-                <p className="text-2xl font-bold text-red-500">{churnMetrics.churnRate}%</p>
-                <p className="text-xs text-muted-foreground">Taxa de Churn</p>
               </div>
-              <div className="text-center p-3 bg-amber-500/10 rounded-lg">
-                <p className="text-2xl font-bold text-amber-500">{projectMetrics.churnSignaled}</p>
-                <p className="text-xs text-muted-foreground">Em Risco</p>
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="text-center p-2 bg-red-500/10 rounded-lg">
+                  <p className="text-xl font-bold text-red-500">{churnMetrics.closedInPeriod}</p>
+                  <p className="text-xs text-muted-foreground">Encerrados</p>
+                </div>
+                <div className="text-center p-2 bg-amber-500/10 rounded-lg">
+                  <p className="text-xl font-bold text-amber-500">{projectMetrics.churnSignaled}</p>
+                  <p className="text-xs text-muted-foreground">Em Risco</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
