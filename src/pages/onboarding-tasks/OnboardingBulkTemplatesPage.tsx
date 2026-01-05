@@ -45,7 +45,7 @@ const ROLES = [
 ];
 
 const RECURRENCE_OPTIONS = [
-  { value: '', label: 'Sem recorrência' },
+  { value: 'none', label: 'Sem recorrência' },
   { value: 'daily', label: 'Diária' },
   { value: 'weekly', label: 'Semanal' },
   { value: 'bimonthly', label: 'Quinzenal' },
@@ -138,7 +138,7 @@ export default function OnboardingBulkTemplatesPage() {
       default_days_offset: 0,
       duration_days: 1,
       responsible_role: 'consultant',
-      recurrence: '',
+      recurrence: 'none',
       sort_order: tasks.length + 1
     };
     setTasks(prev => [...prev, newTask]);
@@ -192,7 +192,7 @@ export default function OnboardingBulkTemplatesPage() {
           default_days_offset: task.default_days_offset,
           duration_days: task.duration_days,
           responsible_role: task.responsible_role,
-          recurrence: task.recurrence || null
+          recurrence: task.recurrence === 'none' ? null : task.recurrence
         }))
       );
 
