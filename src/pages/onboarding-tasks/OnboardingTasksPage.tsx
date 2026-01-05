@@ -997,6 +997,10 @@ const OnboardingTasksPage = () => {
           onDateRangeChange={setDateRange}
           overdueTasks={overdueTasks}
           todayTasks={todayTasks}
+          onDataRefresh={() => {
+            fetchAllTasks();
+            fetchCompanies();
+          }}
         />
 
         {/* Companies List */}

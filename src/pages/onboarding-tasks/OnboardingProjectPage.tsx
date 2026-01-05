@@ -970,9 +970,10 @@ const OnboardingProjectPage = () => {
               />
             ) : tasksViewMode === "schedule" ? (
               <TasksScheduleView
-                tasks={filteredTasks}
+                tasks={filteredTasks.map(t => ({ ...t, project_id: projectId }))}
                 onTaskClick={setSelectedTask}
                 onStatusChange={handleStatusChange}
+                onTaskAdded={fetchProjectData}
               />
             ) : (
               <TasksListView
