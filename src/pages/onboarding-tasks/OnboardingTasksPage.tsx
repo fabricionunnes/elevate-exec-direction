@@ -102,6 +102,7 @@ const OnboardingTasksPage = () => {
   const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null }[]>([]);
   const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null }[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string }[]>([]);
+  const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -113,6 +114,7 @@ const OnboardingTasksPage = () => {
     fetchFiltersData();
     fetchAllTasks();
     fetchNpsResponses();
+    fetchMonthlyGoals();
   }, []);
 
   const fetchAllTasks = async () => {
@@ -138,6 +140,19 @@ const OnboardingTasksPage = () => {
       setNpsResponses(data || []);
     } catch (error) {
       console.error("Error fetching NPS responses:", error);
+    }
+  };
+
+  const fetchMonthlyGoals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("onboarding_monthly_goals")
+        .select("project_id, month, year, sales_target, sales_result");
+
+      if (error) throw error;
+      setMonthlyGoals(data || []);
+    } catch (error) {
+      console.error("Error fetching monthly goals:", error);
     }
   };
 
@@ -303,6 +318,28 @@ const OnboardingTasksPage = () => {
     return new Set(npsResponses.map(r => r.project_id));
   }, [npsResponses]);
 
+  // Calculate projects meeting their goals for the selected period
+  const projectsMeetingGoal = useMemo(() => {
+    const periodMonth = dateRange.start.getMonth() + 1;
+    const periodYear = dateRange.start.getFullYear();
+    
+    const meetingGoalIds = new Set<string>();
+    
+    monthlyGoals.forEach(g => {
+      if (
+        g.month === periodMonth &&
+        g.year === periodYear &&
+        g.sales_target && g.sales_target > 0 &&
+        g.sales_result !== null &&
+        g.sales_result >= g.sales_target
+      ) {
+        meetingGoalIds.add(g.project_id);
+      }
+    });
+    
+    return meetingGoalIds;
+  }, [monthlyGoals, dateRange]);
+
   const filteredCompanies = useMemo(() => {
     return companies.filter((company) => {
       // Text search filter
@@ -372,12 +409,15 @@ const OnboardingTasksPage = () => {
             const updatedAt = new Date(p.updated_at);
             return isWithinInterval(updatedAt, { start: dateRange.start, end: dateRange.end });
           }) ?? false;
+        } else if (activeMetricFilter.type === "goals" && activeMetricFilter.value === "meeting") {
+          // Filter companies that have at least one project meeting their goal
+          matchesMetricFilter = company.projects?.some(p => projectsMeetingGoal.has(p.id)) ?? false;
         }
       }
       
       return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
     });
-  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsMeetingGoal]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
