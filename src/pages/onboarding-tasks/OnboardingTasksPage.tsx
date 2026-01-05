@@ -58,6 +58,7 @@ const OnboardingTasksPage = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [companySearchTerm, setCompanySearchTerm] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [expandedCompanyId, setExpandedCompanyId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
@@ -229,7 +230,7 @@ const OnboardingTasksPage = () => {
                   <ChevronDown className="h-4 w-4 ml-2" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuContent align="end" className="w-72">
                 {canCreateCompany && (
                   <>
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies/new")}>
@@ -239,27 +240,37 @@ const OnboardingTasksPage = () => {
                     <DropdownMenuSeparator />
                   </>
                 )}
+                <div className="px-2 py-2">
+                  <Input
+                    placeholder="Buscar empresa..."
+                    value={companySearchTerm}
+                    onChange={(e) => setCompanySearchTerm(e.target.value)}
+                    className="h-8"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+                <DropdownMenuSeparator />
                 {companies.length > 0 ? (
                   <ScrollArea className="max-h-64">
-                    {companies.slice(0, 15).map((company) => (
-                      <DropdownMenuItem
-                        key={company.id}
-                        onClick={() => navigate(`/onboarding-tasks/companies/${company.id}`)}
-                        className="flex items-center justify-between"
-                      >
-                        <span className="truncate">{company.name}</span>
-                        <Badge variant={company.status === "active" ? "default" : "secondary"} className="ml-2 text-xs">
-                          {company.status === "active" ? "Ativa" : company.status}
-                        </Badge>
-                      </DropdownMenuItem>
-                    ))}
-                    {companies.length > 15 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies")}>
-                          Ver todas ({companies.length})
+                    {companies
+                      .filter((c) => c.name.toLowerCase().includes(companySearchTerm.toLowerCase()))
+                      .slice(0, 20)
+                      .map((company) => (
+                        <DropdownMenuItem
+                          key={company.id}
+                          onClick={() => navigate(`/onboarding-tasks/companies/${company.id}`)}
+                          className="flex items-center justify-between"
+                        >
+                          <span className="truncate">{company.name}</span>
+                          <Badge variant={company.status === "active" ? "default" : "secondary"} className="ml-2 text-xs">
+                            {company.status === "active" ? "Ativa" : company.status}
+                          </Badge>
                         </DropdownMenuItem>
-                      </>
+                      ))}
+                    {companies.filter((c) => c.name.toLowerCase().includes(companySearchTerm.toLowerCase())).length === 0 && (
+                      <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                        Nenhuma empresa encontrada
+                      </div>
                     )}
                   </ScrollArea>
                 ) : (
