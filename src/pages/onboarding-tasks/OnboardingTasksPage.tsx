@@ -914,21 +914,21 @@ const OnboardingTasksPage = () => {
             </div>
 
             {paginatedCompanies.map((company) => (
-              <div key={company.id} className="space-y-2">
+              <div key={company.id}>
                 {/* Company Card */}
                 <Card
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-[#0A2240] bg-gradient-to-r from-[#0A2240]/5 to-transparent"
                   onClick={() => handleCompanyClick(company.id)}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Building2 className="h-6 w-6 text-primary" />
+                        <div className="h-12 w-12 rounded-lg bg-[#0A2240] flex items-center justify-center shadow-md">
+                          <Building2 className="h-6 w-6 text-white" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-semibold">{company.name}</h3>
+                            <h3 className="text-lg font-bold text-[#0A2240] uppercase tracking-wide">{company.name}</h3>
                             {getStatusBadge(company.status)}
                           </div>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -953,9 +953,9 @@ const OnboardingTasksPage = () => {
                             Consultor: {company.consultant?.name || "—"}
                           </div>
                         </div>
-                        <ChevronRight
-                          className={`h-5 w-5 text-muted-foreground transition-transform ${
-                            expandedCompanyId === company.id ? "rotate-90" : ""
+                        <ChevronDown
+                          className={`h-5 w-5 text-[#0A2240] transition-transform ${
+                            expandedCompanyId === company.id ? "rotate-180" : ""
                           }`}
                         />
                       </div>
@@ -965,7 +965,7 @@ const OnboardingTasksPage = () => {
                     {company.total_tasks ? (
                       <div className="mt-3 w-full bg-muted rounded-full h-2">
                         <div
-                          className="bg-primary h-2 rounded-full transition-all"
+                          className="bg-[#C41E3A] h-2 rounded-full transition-all"
                           style={{
                             width: `${(company.completed_tasks! / company.total_tasks) * 100}%`,
                           }}
@@ -977,24 +977,29 @@ const OnboardingTasksPage = () => {
 
                 {/* Expanded Projects */}
                 {expandedCompanyId === company.id && (
-                  <div className="ml-8 space-y-2">
+                  <div className="mt-1 ml-6 pl-6 border-l-2 border-dashed border-muted-foreground/30 space-y-2 py-2">
                     {company.projects && company.projects.length > 0 ? (
                       company.projects.map((project) => (
                         <Card
                           key={project.id}
-                          className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-primary"
+                          className="cursor-pointer hover:shadow-md transition-all bg-white border border-muted hover:border-primary/50"
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/onboarding-tasks/${project.id}`);
                           }}
                         >
-                          <CardContent className="p-4">
+                          <CardContent className="p-3">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <FolderOpen className="h-5 w-5 text-primary" />
+                                <div className="h-9 w-9 rounded-md bg-primary/10 flex items-center justify-center">
+                                  <Package className="h-4 w-4 text-primary" />
+                                </div>
                                 <div>
-                                  <h4 className="font-medium">{project.product_name}</h4>
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Serviço</span>
+                                    <h4 className="font-semibold text-foreground">{project.product_name}</h4>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                                     <Calendar className="h-3 w-3" />
                                     <span>
                                       {format(new Date(project.created_at), "dd MMM yyyy", {
@@ -1032,7 +1037,7 @@ const OnboardingTasksPage = () => {
                         </Card>
                       ))
                     ) : (
-                      <Card className="border-dashed">
+                      <Card className="border-dashed bg-muted/30">
                         <CardContent className="p-4 text-center text-muted-foreground">
                           <p className="text-sm">Nenhum projeto nesta empresa</p>
                           <Button
@@ -1055,7 +1060,7 @@ const OnboardingTasksPage = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="ml-2 text-muted-foreground"
+                      className="text-muted-foreground hover:text-primary"
                       onClick={(e) => {
                         e.stopPropagation();
                         navigate(`/onboarding-tasks/companies/${company.id}`);
