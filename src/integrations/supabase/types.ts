@@ -446,10 +446,16 @@ export type Database = {
           company_name: string
           created_at: string
           facebook_ads_investment: number | null
+          facebook_sales_quantity: number | null
+          facebook_sales_value: number | null
           form_title: string | null
           google_ads_investment: number | null
+          google_sales_quantity: number | null
+          google_sales_value: number | null
           id: string
           linkedin_ads_investment: number | null
+          linkedin_sales_quantity: number | null
+          linkedin_sales_value: number | null
           project_id: string
           sales_quantity_3_months: number | null
           sales_value_3_months: number | null
@@ -459,10 +465,16 @@ export type Database = {
           company_name: string
           created_at?: string
           facebook_ads_investment?: number | null
+          facebook_sales_quantity?: number | null
+          facebook_sales_value?: number | null
           form_title?: string | null
           google_ads_investment?: number | null
+          google_sales_quantity?: number | null
+          google_sales_value?: number | null
           id?: string
           linkedin_ads_investment?: number | null
+          linkedin_sales_quantity?: number | null
+          linkedin_sales_value?: number | null
           project_id: string
           sales_quantity_3_months?: number | null
           sales_value_3_months?: number | null
@@ -472,10 +484,16 @@ export type Database = {
           company_name?: string
           created_at?: string
           facebook_ads_investment?: number | null
+          facebook_sales_quantity?: number | null
+          facebook_sales_value?: number | null
           form_title?: string | null
           google_ads_investment?: number | null
+          google_sales_quantity?: number | null
+          google_sales_value?: number | null
           id?: string
           linkedin_ads_investment?: number | null
+          linkedin_sales_quantity?: number | null
+          linkedin_sales_value?: number | null
           project_id?: string
           sales_quantity_3_months?: number | null
           sales_value_3_months?: number | null
