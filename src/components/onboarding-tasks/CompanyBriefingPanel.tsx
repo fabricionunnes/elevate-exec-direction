@@ -27,6 +27,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { KickoffFormDialog } from "./KickoffFormDialog";
+import { formatPhone } from "@/lib/utils";
 
 const COMPANY_STATUS_OPTIONS = [
   { value: "active", label: "Ativa" },
@@ -339,7 +340,19 @@ export const CompanyBriefingPanel = ({ companyId, userRole, isStaffAdmin = false
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {renderField("Website", company.website, "website")}
-            {renderField("Telefone", company.phone, "phone")}
+            <div>
+              <label className="text-sm text-muted-foreground">Telefone</label>
+              {isEditing ? (
+                <Input
+                  value={(formData.phone as string) || ""}
+                  onChange={(e) => updateField("phone", e.target.value)}
+                  className="mt-1"
+                  placeholder="(31) 99999-9999"
+                />
+              ) : (
+                <p className="font-medium">{formatPhone(company.phone) || "-"}</p>
+              )}
+            </div>
             {renderField("Email", company.email, "email")}
             {renderField("Endereço", company.address, "address")}
           </div>
