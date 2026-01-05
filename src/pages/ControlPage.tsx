@@ -154,7 +154,7 @@ const structuralGains = [
 ];
 
 const icp = [
-  { label: "Faturamento", value: "R$ 100k–400k/mês", icon: BarChart3 },
+  { label: "Faturamento", value: "a partir de R$ 50k/mês", icon: BarChart3 },
 ];
 
 const icpHas = [
@@ -249,7 +249,7 @@ export default function ControlPage() {
         ]}
         arrow="Sustenta execução e impede regressão."
         targetAudience={{
-          revenue: "R$ 100k a R$ 400k/mês"
+          revenue: "a partir de R$ 50k/mês"
         }}
         schedule={[
           { period: "Semanal", description: "Acompanhamento via WhatsApp" },
@@ -339,7 +339,7 @@ export default function ControlPage() {
                   Faturamento
                 </p>
                 <p className="font-semibold text-foreground text-2xl">
-                  R$ 100k–400k/mês
+                  a partir de R$ 50k/mês
                 </p>
               </div>
             </div>
