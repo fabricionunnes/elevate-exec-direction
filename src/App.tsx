@@ -68,6 +68,7 @@ import OnboardingServicesPage from "./pages/onboarding-tasks/OnboardingServicesP
 import OnboardingServiceTemplatesPage from "./pages/onboarding-tasks/OnboardingServiceTemplatesPage";
 import OnboardingBulkTemplatesPage from "./pages/onboarding-tasks/OnboardingBulkTemplatesPage";
 import NPSSurveyPage from "./pages/NPSSurveyPage";
+import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
 const queryClient = new QueryClient();
 
@@ -116,16 +117,21 @@ const App = () => (
           {/* Onboarding CS */}
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/onboarding/:productId" element={<OnboardingProductPage />} />
-          <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
-          <Route path="/onboarding-tasks/login" element={<OnboardingLoginPage />} />
-          <Route path="/onboarding-tasks/companies" element={<OnboardingCompaniesPage />} />
-          <Route path="/onboarding-tasks/companies/new" element={<OnboardingNewCompanyPage />} />
-          <Route path="/onboarding-tasks/companies/:companyId" element={<OnboardingCompanyDetailPage />} />
-          <Route path="/onboarding-tasks/staff" element={<OnboardingStaffPage />} />
-          <Route path="/onboarding-tasks/services" element={<OnboardingServicesPage />} />
-          <Route path="/onboarding-tasks/services/bulk" element={<OnboardingBulkTemplatesPage />} />
-          <Route path="/onboarding-tasks/services/:serviceSlug/templates" element={<OnboardingServiceTemplatesPage />} />
-          <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
+          
+          {/* Staff pages with global notifications */}
+          <Route element={<OnboardingStaffLayout />}>
+            <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
+            <Route path="/onboarding-tasks/login" element={<OnboardingLoginPage />} />
+            <Route path="/onboarding-tasks/companies" element={<OnboardingCompaniesPage />} />
+            <Route path="/onboarding-tasks/companies/new" element={<OnboardingNewCompanyPage />} />
+            <Route path="/onboarding-tasks/companies/:companyId" element={<OnboardingCompanyDetailPage />} />
+            <Route path="/onboarding-tasks/staff" element={<OnboardingStaffPage />} />
+            <Route path="/onboarding-tasks/services" element={<OnboardingServicesPage />} />
+            <Route path="/onboarding-tasks/services/bulk" element={<OnboardingBulkTemplatesPage />} />
+            <Route path="/onboarding-tasks/services/:serviceSlug/templates" element={<OnboardingServiceTemplatesPage />} />
+            <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
+          </Route>
+          
           <Route path="/onboarding-client/:projectId" element={<ClientOnboardingPage />} />
           <Route path="/nps" element={<NPSSurveyPage />} />
           
