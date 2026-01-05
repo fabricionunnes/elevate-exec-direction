@@ -92,7 +92,7 @@ const OnboardingTasksPage = () => {
     start: startOfMonth(new Date()),
     end: endOfMonth(new Date()),
   }));
-  const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string }[]>([]);
+  const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null }[]>([]);
 
   useEffect(() => {
     checkUserPermissions();
@@ -105,7 +105,7 @@ const OnboardingTasksPage = () => {
     try {
       const { data, error } = await supabase
         .from("onboarding_tasks")
-        .select("id, status, due_date, project_id");
+        .select("id, status, due_date, project_id, responsible_staff_id");
 
       if (error) throw error;
       setAllTasks(data || []);
@@ -260,9 +260,21 @@ const OnboardingTasksPage = () => {
         company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (company.segment && company.segment.toLowerCase().includes(searchTerm.toLowerCase()));
       
-      // Consultant filter
-      const matchesConsultant = 
-        filterConsultant === "all" || company.consultant_id === filterConsultant;
+      // Consultant filter - check if company has projects with tasks assigned to this consultant
+      let matchesConsultant = filterConsultant === "all";
+      if (!matchesConsultant) {
+        // Check if company has the consultant directly assigned
+        if (company.consultant_id === filterConsultant) {
+          matchesConsultant = true;
+        } else {
+          // Check if any project has tasks with this consultant as responsible
+          const companyProjectIds = company.projects?.map(p => p.id) || [];
+          const hasTasksWithConsultant = allTasks.some(
+            task => companyProjectIds.includes(task.project_id) && task.responsible_staff_id === filterConsultant
+          );
+          matchesConsultant = hasTasksWithConsultant;
+        }
+      }
       
       // Service filter - check if company has any project with the selected service (using slug)
       const matchesService = 
@@ -289,7 +301,7 @@ const OnboardingTasksPage = () => {
       
       return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
     });
-  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, allTasks]);
 
   const hasActiveFilters = filterConsultant !== "all" || filterService !== "all" || filterStatus !== "all" || activeMetricFilter !== null;
 
