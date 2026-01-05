@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, ChevronLeft } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X } from "lucide-react";
+import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
@@ -491,26 +492,10 @@ const OnboardingTasksPage = () => {
         {/* Search and Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
           {/* Date Period Selector */}
-          <div className="flex items-center gap-1 bg-muted/50 rounded-lg px-2 py-1 h-10">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-              const newStart = new Date(dateRange.start);
-              newStart.setMonth(newStart.getMonth() - 1);
-              setDateRange({ start: startOfMonth(newStart), end: endOfMonth(newStart) });
-            }}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm font-medium min-w-[100px] text-center">
-              {format(dateRange.start, "MMM yyyy", { locale: ptBR })}
-            </span>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-              const newStart = new Date(dateRange.start);
-              newStart.setMonth(newStart.getMonth() + 1);
-              setDateRange({ start: startOfMonth(newStart), end: endOfMonth(newStart) });
-            }}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+          <MonthYearPicker 
+            value={dateRange.start} 
+            onChange={setDateRange} 
+          />
 
           <div className="relative flex-1 min-w-[180px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
