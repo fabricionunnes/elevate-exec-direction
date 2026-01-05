@@ -19,7 +19,8 @@ import {
   Star,
   UserCheck,
   UserX,
-  Percent
+  Percent,
+  FileWarning
 } from "lucide-react";
 import { format, isBefore, startOfDay, isWithinInterval } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -167,6 +168,7 @@ const DashboardMetrics = ({
 
   // Company metrics
   const companyMetrics = useMemo(() => {
+    const today = startOfDay(new Date());
     const activeCompanies = companies.filter(c => c.status === "active").length;
     
     const contractsEndingInPeriod = companies.filter(c => {
@@ -175,9 +177,17 @@ const DashboardMetrics = ({
       return isWithinInterval(endDate, { start: dateRange.start, end: dateRange.end });
     }).length;
 
+    // Contracts that have already expired (end date is before today)
+    const expiredContracts = companies.filter(c => {
+      if (!c.contract_end_date) return false;
+      const endDate = new Date(c.contract_end_date);
+      return isBefore(endDate, today);
+    }).length;
+
     return {
       activeCompanies,
       contractsEndingInPeriod,
+      expiredContracts,
     };
   }, [companies, dateRange]);
 
@@ -568,6 +578,29 @@ const DashboardMetrics = ({
                 </div>
                 <div className="h-10 w-10 rounded-full bg-cyan-500/10 flex items-center justify-center">
                   <RotateCcw className="h-5 w-5 text-cyan-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Expired Contracts Card */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("contracts", "expired") && "ring-2 ring-rose-500"
+            )}
+            onClick={() => handleCardClick("contracts", "expired")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Vencidos</p>
+                  <p className="text-2xl font-bold mt-1 text-rose-500">{companyMetrics.expiredContracts}</p>
+                  <p className="text-xs text-muted-foreground">contratos</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-rose-500/10 flex items-center justify-center">
+                  <FileWarning className="h-5 w-5 text-rose-500" />
                 </div>
               </div>
             </CardContent>
