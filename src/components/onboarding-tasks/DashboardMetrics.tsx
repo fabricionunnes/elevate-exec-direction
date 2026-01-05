@@ -135,23 +135,29 @@ const DashboardMetrics = ({
     }
   };
 
-  // Calculate task metrics
+  // Filter tasks by filtered projects
+  const filteredTasks = useMemo(() => {
+    const filteredProjectIds = new Set(projects.map(p => p.id));
+    return allTasks.filter(t => filteredProjectIds.has(t.project_id));
+  }, [allTasks, projects]);
+
+  // Calculate task metrics (respects project filters)
   const taskMetrics = useMemo(() => {
     const today = format(new Date(), "yyyy-MM-dd");
     const todayStart = startOfDay(new Date());
     
-    const todayTasksCount = allTasks.filter(t => t.due_date === today).length;
-    const todayCompleted = allTasks.filter(t => t.due_date === today && t.status === "completed").length;
+    const todayTasksCount = filteredTasks.filter(t => t.due_date === today).length;
+    const todayCompleted = filteredTasks.filter(t => t.due_date === today && t.status === "completed").length;
     
-    const overdueTasksCount = allTasks.filter(t => {
+    const overdueTasksCount = filteredTasks.filter(t => {
       if (!t.due_date || t.status === "completed") return false;
       const dueDate = new Date(t.due_date);
       return isBefore(dueDate, todayStart);
     }).length;
     
-    const totalCompleted = allTasks.filter(t => t.status === "completed").length;
-    const totalPending = allTasks.filter(t => t.status === "pending").length;
-    const totalInProgress = allTasks.filter(t => t.status === "in_progress").length;
+    const totalCompleted = filteredTasks.filter(t => t.status === "completed").length;
+    const totalPending = filteredTasks.filter(t => t.status === "pending").length;
+    const totalInProgress = filteredTasks.filter(t => t.status === "in_progress").length;
     
     return {
       todayTasks: todayTasksCount,
@@ -160,17 +166,17 @@ const DashboardMetrics = ({
       totalPending,
       totalInProgress,
       totalCompleted,
-      totalTasks: allTasks.length,
+      totalTasks: filteredTasks.length,
     };
-  }, [allTasks]);
+  }, [filteredTasks]);
 
-  // Calculate completed tasks by day for the filtered period
+  // Calculate completed tasks by day for the filtered period (respects project filters)
   const completedByDayData = useMemo(() => {
     const days = eachDayOfInterval({ start: dateRange.start, end: dateRange.end });
     
     return days.map(day => {
       const dayStr = format(day, "yyyy-MM-dd");
-      const completedCount = allTasks.filter(t => {
+      const completedCount = filteredTasks.filter(t => {
         if (!t.completed_at) return false;
         const completedDate = format(parseISO(t.completed_at), "yyyy-MM-dd");
         return completedDate === dayStr;
@@ -182,7 +188,7 @@ const DashboardMetrics = ({
         concluídas: completedCount,
       };
     });
-  }, [allTasks, dateRange]);
+  }, [filteredTasks, dateRange]);
 
   // Project-based metrics
   const projectMetrics = useMemo(() => {
@@ -232,19 +238,33 @@ const DashboardMetrics = ({
     };
   }, [projects, dateRange]);
 
-  // Company metrics
+  // Get filtered company IDs from filtered projects
+  const filteredCompanyIds = useMemo(() => {
+    return new Set(
+      projects
+        .filter(p => p.onboarding_company_id)
+        .map(p => p.onboarding_company_id)
+    );
+  }, [projects]);
+
+  // Filtered companies based on filtered projects
+  const filteredCompanies = useMemo(() => {
+    return companies.filter(c => filteredCompanyIds.has(c.id));
+  }, [companies, filteredCompanyIds]);
+
+  // Company metrics (respects project filters)
   const companyMetrics = useMemo(() => {
     const today = startOfDay(new Date());
-    const activeCompanies = companies.filter(c => c.status === "active").length;
+    const activeCompanies = filteredCompanies.filter(c => c.status === "active").length;
     
-    const contractsEndingInPeriod = companies.filter(c => {
+    const contractsEndingInPeriod = filteredCompanies.filter(c => {
       if (!c.contract_end_date) return false;
       const endDate = new Date(c.contract_end_date);
       return isWithinInterval(endDate, { start: dateRange.start, end: dateRange.end });
     }).length;
 
     // Contracts that have already expired (end date is before today)
-    const expiredContracts = companies.filter(c => {
+    const expiredContracts = filteredCompanies.filter(c => {
       if (!c.contract_end_date) return false;
       const endDate = new Date(c.contract_end_date);
       return isBefore(endDate, today);
@@ -255,7 +275,7 @@ const DashboardMetrics = ({
       contractsEndingInPeriod,
       expiredContracts,
     };
-  }, [companies, dateRange]);
+  }, [filteredCompanies, dateRange]);
 
   // Churn metrics
   const churnMetrics = useMemo(() => {
@@ -334,19 +354,9 @@ const DashboardMetrics = ({
     });
   }, [projects, dateRange]);
 
-  // LTV metrics - average client lifetime and value (respects project filters)
+  // LTV metrics - average client lifetime and value (uses filteredCompanies)
   const ltvMetrics = useMemo(() => {
     const today = new Date();
-    
-    // Get unique company IDs from filtered projects
-    const filteredCompanyIds = new Set(
-      projects
-        .filter(p => p.onboarding_company_id)
-        .map(p => p.onboarding_company_id)
-    );
-    
-    // Filter companies to only those with filtered projects
-    const filteredCompanies = companies.filter(c => filteredCompanyIds.has(c.id));
     
     // Calculate lifetime for each company based on contract dates or created_at
     const companiesWithLifetime = filteredCompanies.map(company => {
@@ -413,7 +423,7 @@ const DashboardMetrics = ({
       totalCompanies,
       companiesWithValue: companiesWithValue.length,
     };
-  }, [companies, projects]);
+  }, [filteredCompanies]);
 
   // NPS metrics - calculated from actual responses, filtered by projects
   const npsMetrics = useMemo(() => {
