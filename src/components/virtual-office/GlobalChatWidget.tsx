@@ -267,22 +267,28 @@ const GlobalChatWidget = () => {
         { event: "INSERT", schema: "public", table: "virtual_office_messages" },
         (payload) => {
           const newMsg = payload.new as Message;
-          
-          // Check if this message is relevant to current user (DM to me, or room message)
+
           const isDMToMe = newMsg.recipient_staff_id === staffId;
           const isRoomMessage = newMsg.recipient_staff_id === null;
           const isFromMe = newMsg.staff_id === staffId;
-          
-          if (!isDMToMe && !isRoomMessage) return;
-          if (isFromMe) return; // Don't notify for own messages
 
-          // Check if this conversation is currently open
+          if (!isDMToMe && !isRoomMessage) return;
+          if (isFromMe) return;
+
           const isConversationOpen = checkIfConversationIsOpen(newMsg, staffId);
-          
+
+          // Debug leve (ajuda a confirmar que o realtime está chegando)
+          console.log("[chat] new message", {
+            isDMToMe,
+            isRoomMessage,
+            isConversationOpen,
+            from: newMsg.staff_id,
+            to: newMsg.recipient_staff_id,
+            room: newMsg.room_id,
+          });
+
           if (!isConversationOpen) {
-            // Play notification sound only if conversation is not open
             playNotificationSound();
-            // Update unread count only if conversation is not open
             updateUnreadCount(newMsg, staffId);
           }
         }
@@ -295,20 +301,21 @@ const GlobalChatWidget = () => {
   };
 
   const checkIfConversationIsOpen = (msg: Message, currentStaffId: string): boolean => {
-    // Use a ref to get current activeConversation state
     const conv = activeConversationRef.current;
     if (!conv || !isOpenRef.current) return false;
-    
-    // Check if it's a room message and the room is open
+
     if (!msg.recipient_staff_id && conv.type === "room" && conv.id === msg.room_id) {
       return true;
     }
-    
-    // Check if it's a DM and the DM conversation with this sender is open
-    if (msg.recipient_staff_id === currentStaffId && conv.type === "dm" && conv.recipientId === msg.staff_id) {
+
+    if (
+      msg.recipient_staff_id === currentStaffId &&
+      conv.type === "dm" &&
+      conv.recipientId === msg.staff_id
+    ) {
       return true;
     }
-    
+
     return false;
   };
 
@@ -505,15 +512,24 @@ const GlobalChatWidget = () => {
       if (activeConversation.type === "room") {
         insertData.room_id = activeConversation.id;
       } else {
-        // For DM, we need a room_id too - use a default or create virtual
-        // Using first room as fallback for FK constraint
-        insertData.room_id = rooms[0]?.id;
-        insertData.recipient_staff_id = activeConversation.recipientId;
+        const recipientId = activeConversation.recipientId;
+        if (!recipientId) {
+          console.error("DM sem recipientId - não enviando.", activeConversation);
+          return;
+        }
+
+        // Para DM, ainda precisamos de um room_id por constraint. Usamos a primeira sala ativa como container.
+        const fallbackRoomId = rooms[0]?.id;
+        if (!fallbackRoomId) {
+          console.error("Nenhuma sala disponível para enviar DM (room_id obrigatório).", rooms);
+          return;
+        }
+
+        insertData.room_id = fallbackRoomId;
+        insertData.recipient_staff_id = recipientId;
       }
 
-      const { error } = await supabase
-        .from("virtual_office_messages")
-        .insert(insertData);
+      const { error } = await supabase.from("virtual_office_messages").insert(insertData);
 
       if (error) throw error;
       setNewMessage("");
