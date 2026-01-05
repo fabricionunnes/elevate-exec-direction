@@ -80,6 +80,7 @@ const OnboardingTasksPage = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [expandedCompanyId, setExpandedCompanyId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
   
   // Filter states
   const [filterConsultant, setFilterConsultant] = useState<string>("all");
@@ -123,12 +124,18 @@ const OnboardingTasksPage = () => {
       if (user) {
         const { data: staffMember } = await supabase
           .from("onboarding_staff")
-          .select("role")
+          .select("id, role")
           .eq("user_id", user.id)
           .single();
         
         if (staffMember) {
           setCurrentUserRole(staffMember.role);
+          setCurrentStaffId(staffMember.id);
+          
+          // For consultants, auto-filter to their own projects
+          if (staffMember.role === "consultant") {
+            setFilterConsultant(staffMember.id);
+          }
         }
       }
     } catch (error) {
@@ -321,10 +328,14 @@ const OnboardingTasksPage = () => {
     });
   }, [allProjects, filterConsultant, filterService]);
 
-  const hasActiveFilters = filterConsultant !== "all" || filterService !== "all" || filterStatus !== "all" || activeMetricFilter !== null;
+  // For consultants, don't show consultant filter as active since it's auto-applied
+  const hasActiveFilters = (currentUserRole !== "consultant" && filterConsultant !== "all") || filterService !== "all" || filterStatus !== "all" || activeMetricFilter !== null;
 
   const clearFilters = () => {
-    setFilterConsultant("all");
+    // For consultants, keep their own filter active
+    if (currentUserRole !== "consultant") {
+      setFilterConsultant("all");
+    }
     setFilterService("all");
     setFilterStatus("all");
     setActiveMetricFilter(null);
@@ -487,17 +498,20 @@ const OnboardingTasksPage = () => {
             />
           </div>
           
-          <Select value={filterConsultant} onValueChange={setFilterConsultant}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Consultor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos consultores</SelectItem>
-              {consultants.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Only show consultant filter for admins and CS */}
+          {currentUserRole !== "consultant" && (
+            <Select value={filterConsultant} onValueChange={setFilterConsultant}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Consultor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos consultores</SelectItem>
+                {consultants.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           <Select value={filterService} onValueChange={setFilterService}>
             <SelectTrigger className="w-[180px]">
