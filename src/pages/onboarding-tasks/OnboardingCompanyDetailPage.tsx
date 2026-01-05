@@ -609,15 +609,15 @@ const OnboardingCompanyDetailPage = () => {
                     <div className="space-y-2">
                       <Label htmlFor="cs">CS Responsável</Label>
                       <Select 
-                        value={form.cs_id} 
-                        onValueChange={(v) => setForm({ ...form, cs_id: v })}
+                        value={form.cs_id || "none"} 
+                        onValueChange={(v) => setForm({ ...form, cs_id: v === "none" ? "" : v })}
                         disabled={!canEditCS}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um CS" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nenhum</SelectItem>
+                          <SelectItem value="none">Nenhum</SelectItem>
                           {csOptions.map((cs) => (
                             <SelectItem key={cs.id} value={cs.id}>
                               {cs.name}
@@ -632,15 +632,15 @@ const OnboardingCompanyDetailPage = () => {
                     <div className="space-y-2">
                       <Label htmlFor="consultant">Consultor Responsável</Label>
                       <Select
-                        value={form.consultant_id}
-                        onValueChange={(v) => setForm({ ...form, consultant_id: v })}
+                        value={form.consultant_id || "none"}
+                        onValueChange={(v) => setForm({ ...form, consultant_id: v === "none" ? "" : v })}
                         disabled={!canEditConsultant}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um consultor" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nenhum</SelectItem>
+                          <SelectItem value="none">Nenhum</SelectItem>
                           {consultantOptions.map((c) => (
                             <SelectItem key={c.id} value={c.id}>
                               {c.name}
