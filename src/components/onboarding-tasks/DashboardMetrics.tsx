@@ -14,7 +14,8 @@ import {
   TrendingDown,
   Clock,
   Target,
-  Zap
+  Zap,
+  RotateCcw
 } from "lucide-react";
 import { format, isBefore, startOfDay, isWithinInterval } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ interface Project {
   created_at: string;
   updated_at: string;
   consultant_id: string | null;
+  reactivated_at?: string | null;
 }
 
 interface Company {
@@ -135,6 +137,13 @@ const DashboardMetrics = ({
     const cancellationSignaled = projects.filter(p => p.status === "cancellation_signaled").length;
     const noticePeriod = projects.filter(p => p.status === "notice_period").length;
     const closedProjects = projects.filter(p => p.status === "closed" || p.status === "completed").length;
+    
+    // Count reactivated projects within the date range
+    const reactivatedInPeriod = projects.filter(p => {
+      if (!p.reactivated_at) return false;
+      const reactivatedDate = new Date(p.reactivated_at);
+      return isWithinInterval(reactivatedDate, { start: dateRange.start, end: dateRange.end });
+    }).length;
 
     return {
       activeProjects,
@@ -142,8 +151,9 @@ const DashboardMetrics = ({
       noticePeriod,
       closedProjects,
       churnSignaled: cancellationSignaled + noticePeriod,
+      reactivatedInPeriod,
     };
-  }, [projects]);
+  }, [projects, dateRange]);
 
   // Company metrics
   const companyMetrics = useMemo(() => {
@@ -473,6 +483,29 @@ const DashboardMetrics = ({
                 </div>
                 <div className="h-10 w-10 rounded-full bg-purple-500/10 flex items-center justify-center">
                   <CalendarX className="h-5 w-5 text-purple-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Reactivated Card */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("status", "reactivated") && "ring-2 ring-cyan-500"
+            )}
+            onClick={() => handleCardClick("status", "reactivated")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Revertidos</p>
+                  <p className="text-2xl font-bold mt-1 text-cyan-500">{projectMetrics.reactivatedInPeriod}</p>
+                  <p className="text-xs text-muted-foreground">no período</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-cyan-500/10 flex items-center justify-center">
+                  <RotateCcw className="h-5 w-5 text-cyan-500" />
                 </div>
               </div>
             </CardContent>
