@@ -88,6 +88,9 @@ const PRODUCT_MAPPING: Record<string, { id: string; name: string }> = {
   "le désir": { id: "le-desir", name: "UNV Le Désir" },
   "unv le desir": { id: "le-desir", name: "UNV Le Désir" },
   "unv le désir": { id: "le-desir", name: "UNV Le Désir" },
+  "sirius": { id: "sirius", name: "Sirius" },
+  "programa sirius": { id: "sirius", name: "Sirius" },
+  "unv sirius": { id: "sirius", name: "Sirius" },
 };
 
 function normalizeProductName(name: string): { id: string; name: string } | null {
