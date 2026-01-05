@@ -151,12 +151,24 @@ const GlobalChatWidget = () => {
   }, [messages]);
 
   useEffect(() => {
+    let unsubscribeMessages: (() => void) | undefined;
+    let unsubscribeReads: (() => void) | undefined;
+
     if (activeConversation) {
       fetchMessages();
-      subscribeToMessages();
-      subscribeToMessageReads();
+      unsubscribeMessages = subscribeToMessages();
+      unsubscribeReads = subscribeToMessageReads();
+    } else {
+      setMessages([]);
+      setMessageReads([]);
     }
-  }, [activeConversation]);
+
+    return () => {
+      unsubscribeMessages?.();
+      unsubscribeReads?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversation?.id]);
 
   useEffect(() => {
     // Calculate total unread
