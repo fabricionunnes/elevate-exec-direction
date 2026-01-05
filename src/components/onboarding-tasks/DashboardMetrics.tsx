@@ -20,7 +20,8 @@ import {
   UserX,
   Percent,
   FileWarning,
-  DollarSign
+  DollarSign,
+  Calendar
 } from "lucide-react";
 import { format, isBefore, startOfDay, isWithinInterval, eachDayOfInterval, parseISO, eachMonthOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -40,13 +41,16 @@ import {
   Tooltip
 } from "recharts";
 import { TasksListDialog } from "./TasksListDialog";
+import { DashboardAgenda } from "./DashboardAgenda";
 
 interface Task {
   id: string;
+  title?: string;
   status: string;
   due_date: string | null;
   project_id: string;
   completed_at: string | null;
+  responsible_staff_id?: string | null;
 }
 
 interface Project {
@@ -115,7 +119,7 @@ const DashboardMetrics = ({
       while (true) {
         const { data, error } = await supabase
           .from("onboarding_tasks")
-          .select("id, status, due_date, project_id, completed_at")
+          .select("id, title, status, due_date, project_id, completed_at, responsible_staff_id")
           .range(from, from + pageSize - 1);
 
         if (error) throw error;
@@ -143,10 +147,12 @@ const DashboardMetrics = ({
     }
   };
 
+  // Project IDs for filtering
+  const filteredProjectIds = useMemo(() => new Set(projects.map(p => p.id)), [projects]);
+
   const filteredTasks = useMemo(() => {
-    const filteredProjectIds = new Set(projects.map(p => p.id));
     return allTasks.filter(t => filteredProjectIds.has(t.project_id));
-  }, [allTasks, projects]);
+  }, [allTasks, filteredProjectIds]);
 
   const taskMetrics = useMemo(() => {
     const today = format(new Date(), "yyyy-MM-dd");
@@ -430,11 +436,12 @@ const DashboardMetrics = ({
 
       {/* Tabbed Details - Mobile Optimized */}
       <Tabs defaultValue="empresas" className="w-full">
-        <TabsList className="w-full grid grid-cols-4 h-8 sm:h-9">
-          <TabsTrigger value="empresas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-1 sm:px-2"><Building2 className="h-3 w-3" /><span className="hidden xs:inline">Empresas</span><span className="xs:hidden">Emp</span></TabsTrigger>
-          <TabsTrigger value="tarefas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-1 sm:px-2"><ListTodo className="h-3 w-3" /><span className="hidden xs:inline">Tarefas</span><span className="xs:hidden">Tar</span></TabsTrigger>
-          <TabsTrigger value="metas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-1 sm:px-2"><Target className="h-3 w-3" />Metas</TabsTrigger>
-          <TabsTrigger value="nps" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-1 sm:px-2"><Star className="h-3 w-3" />NPS</TabsTrigger>
+        <TabsList className="w-full grid grid-cols-5 h-8 sm:h-9">
+          <TabsTrigger value="empresas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Building2 className="h-3 w-3" /><span className="hidden sm:inline">Empresas</span><span className="sm:hidden">Emp</span></TabsTrigger>
+          <TabsTrigger value="agenda" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Calendar className="h-3 w-3" /><span className="hidden sm:inline">Agenda</span><span className="sm:hidden">Ag</span></TabsTrigger>
+          <TabsTrigger value="tarefas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><ListTodo className="h-3 w-3" /><span className="hidden sm:inline">Tarefas</span><span className="sm:hidden">Tar</span></TabsTrigger>
+          <TabsTrigger value="metas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Target className="h-3 w-3" />Metas</TabsTrigger>
+          <TabsTrigger value="nps" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Star className="h-3 w-3" />NPS</TabsTrigger>
         </TabsList>
 
         <TabsContent value="empresas" className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
@@ -471,6 +478,15 @@ const DashboardMetrics = ({
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="agenda" className="mt-2 sm:mt-3">
+          <DashboardAgenda
+            tasks={allTasks}
+            projects={projects}
+            companies={companies}
+            filteredProjectIds={filteredProjectIds}
+          />
         </TabsContent>
 
         <TabsContent value="tarefas" className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
