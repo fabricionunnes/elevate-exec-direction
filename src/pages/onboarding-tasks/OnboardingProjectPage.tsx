@@ -53,6 +53,7 @@ import { TasksGameTrailView } from "@/components/onboarding-tasks/TasksGameTrail
 import { TasksListView } from "@/components/onboarding-tasks/TasksListView";
 import { TasksScheduleView } from "@/components/onboarding-tasks/TasksScheduleView";
 import { NPSHistoryPanel } from "@/components/onboarding-tasks/NPSHistoryPanel";
+import { ProjectUrgentTasks } from "@/components/onboarding-tasks/ProjectUrgentTasks";
 import { TrendingUp } from "lucide-react";
 
 
@@ -724,6 +725,9 @@ const OnboardingProjectPage = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Urgent Tasks Highlight */}
+        <ProjectUrgentTasks tasks={tasks} onTaskClick={setSelectedTask} />
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
