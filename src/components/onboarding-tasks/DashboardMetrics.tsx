@@ -30,10 +30,12 @@ interface Task {
 
 interface Project {
   id: string;
+  product_id: string;
   product_name: string;
   status: string;
   created_at: string;
   updated_at: string;
+  consultant_id: string | null;
 }
 
 interface Company {
