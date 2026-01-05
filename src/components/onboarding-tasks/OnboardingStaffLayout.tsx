@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimeNotifications } from "./RealtimeNotifications";
+import { NpsCelebrationPopup } from "./NpsCelebrationPopup";
 import GlobalChatWidget from "@/components/virtual-office/GlobalChatWidget";
 
 export const OnboardingStaffLayout = () => {
@@ -53,6 +54,8 @@ export const OnboardingStaffLayout = () => {
     <>
       {/* Notificações globais para staff */}
       {isStaff && <RealtimeNotifications />}
+      {/* Celebração NPS 10 para staff */}
+      {isStaff && <NpsCelebrationPopup />}
       {/* Chat global para staff */}
       {isStaff && <GlobalChatWidget />}
       <Outlet />
