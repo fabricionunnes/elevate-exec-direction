@@ -276,7 +276,7 @@ export default function NPSSurveyPage() {
                 <div className="space-y-2">
                   <Label htmlFor="respondentEmail">
                     Seu e-mail
-                    <span className="text-destructive ml-1">*</span>
+                    <span className="text-muted-foreground ml-1 text-xs">(opcional)</span>
                   </Label>
                   <Input
                     id="respondentEmail"
@@ -284,7 +284,6 @@ export default function NPSSurveyPage() {
                     value={respondentEmail}
                     onChange={(e) => setRespondentEmail(e.target.value)}
                     placeholder="email@exemplo.com"
-                    required
                   />
                 </div>
               </div>
