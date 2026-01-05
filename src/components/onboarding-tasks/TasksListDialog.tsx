@@ -39,23 +39,32 @@ interface TaskWithDetails {
 interface TasksListDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  type: "overdue" | "today";
+  type: "overdue" | "today" | "status";
   taskIds: string[];
+  status?: "completed" | "pending" | "in_progress";
+  projectIds?: string[];
 }
 
-export function TasksListDialog({ open, onOpenChange, type, taskIds }: TasksListDialogProps) {
+export function TasksListDialog({ open, onOpenChange, type, taskIds, status, projectIds }: TasksListDialogProps) {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<TaskWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (open && taskIds.length > 0) {
+    if (!open) return;
+
+    if (type === "status") {
+      fetchTasksByStatus();
+      return;
+    }
+
+    if (taskIds.length > 0) {
       fetchTasksDetails();
-    } else if (open && taskIds.length === 0) {
+    } else {
       setTasks([]);
       setLoading(false);
     }
-  }, [open, taskIds]);
+  }, [open, type, status, taskIds, projectIds]);
 
   const fetchTasksDetails = async () => {
     setLoading(true);
@@ -63,7 +72,8 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds }: TasksList
       // Fetch tasks with project info
       const { data: tasksData, error } = await supabase
         .from("onboarding_tasks")
-        .select(`
+        .select(
+          `
           id,
           title,
           status,
@@ -79,7 +89,8 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds }: TasksList
               name
             )
           )
-        `)
+        `
+        )
         .in("id", taskIds)
         .order("due_date", { ascending: true });
 
@@ -100,6 +111,69 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds }: TasksList
       setTasks(formattedTasks);
     } catch (error) {
       console.error("Error fetching tasks details:", error);
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTasksByStatus = async () => {
+    setLoading(true);
+    try {
+      if (!status) {
+        setTasks([]);
+        return;
+      }
+
+      const baseProjectIds = projectIds ?? [];
+      if (baseProjectIds.length === 0) {
+        setTasks([]);
+        return;
+      }
+
+      const { data: tasksData, error } = await supabase
+        .from("onboarding_tasks")
+        .select(
+          `
+          id,
+          title,
+          status,
+          priority,
+          due_date,
+          project_id,
+          onboarding_projects!inner (
+            id,
+            product_name,
+            onboarding_company_id,
+            onboarding_companies (
+              id,
+              name
+            )
+          )
+        `
+        )
+        .in("project_id", baseProjectIds)
+        .eq("status", status as "pending" | "in_progress" | "completed")
+        .order("due_date", { ascending: true })
+        .limit(200);
+
+      if (error) throw error;
+
+      const formattedTasks: TaskWithDetails[] = (tasksData || []).map((task: any) => ({
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        priority: task.priority,
+        due_date: task.due_date,
+        project_id: task.project_id,
+        project_name: task.onboarding_projects?.product_name || "Projeto",
+        company_id: task.onboarding_projects?.onboarding_company_id || null,
+        company_name: task.onboarding_projects?.onboarding_companies?.name || null,
+      }));
+
+      setTasks(formattedTasks);
+    } catch (error) {
+      console.error("Error fetching tasks by status:", error);
       setTasks([]);
     } finally {
       setLoading(false);
@@ -135,7 +209,16 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds }: TasksList
     }
   };
 
-  const title = type === "overdue" ? "Tarefas Atrasadas" : "Tarefas de Hoje";
+  const title =
+    type === "overdue"
+      ? "Tarefas Atrasadas"
+      : type === "today"
+        ? "Tarefas de Hoje"
+        : status === "completed"
+          ? "Tarefas Concluídas"
+          : status === "pending"
+            ? "Tarefas Pendentes"
+            : "Tarefas em Progresso";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -149,7 +232,7 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds }: TasksList
             )}
             {title}
             <Badge variant="outline" className="ml-2">
-              {taskIds.length} {taskIds.length === 1 ? "tarefa" : "tarefas"}
+              {type === "status" ? tasks.length : taskIds.length} {((type === "status" ? tasks.length : taskIds.length) === 1) ? "tarefa" : "tarefas"}
             </Badge>
           </DialogTitle>
         </DialogHeader>
@@ -166,9 +249,11 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds }: TasksList
               <CheckCircle2 className="h-12 w-12 mb-4 text-green-500" />
               <p className="font-medium">Nenhuma tarefa encontrada</p>
               <p className="text-sm">
-                {type === "overdue" 
-                  ? "Não há tarefas atrasadas no momento" 
-                  : "Não há tarefas para hoje"}
+                {type === "overdue"
+                  ? "Não há tarefas atrasadas no momento"
+                  : type === "today"
+                    ? "Não há tarefas para hoje"
+                    : "Não há tarefas para este filtro"}
               </p>
             </div>
           ) : (
