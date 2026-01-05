@@ -250,7 +250,16 @@ const DashboardMetrics = ({
   // Company metrics (respects project filters)
   const companyMetrics = useMemo(() => {
     const today = startOfDay(new Date());
-    const activeCompanies = filteredCompanies.filter(c => c.status === "active").length;
+    
+    // Build a set of company IDs that have at least one active project
+    const companiesWithActiveProjects = new Set(
+      projects.filter(p => p.status === "active").map(p => p.onboarding_company_id).filter(Boolean)
+    );
+    
+    // Active companies = status "active" AND has at least one active project
+    const activeCompanies = filteredCompanies.filter(c => 
+      c.status === "active" && companiesWithActiveProjects.has(c.id)
+    ).length;
     
     const contractsEndingInPeriod = filteredCompanies.filter(c => {
       if (!c.contract_end_date) return false;
@@ -270,7 +279,7 @@ const DashboardMetrics = ({
       contractsEndingInPeriod,
       expiredContracts,
     };
-  }, [filteredCompanies, dateRange]);
+  }, [filteredCompanies, dateRange, projects]);
 
   // Churn metrics
   const churnMetrics = useMemo(() => {
