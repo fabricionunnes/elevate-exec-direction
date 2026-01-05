@@ -144,17 +144,12 @@ const DashboardMetrics = ({
   // Calculate task metrics (respects project filters)
   const taskMetrics = useMemo(() => {
     const today = format(new Date(), "yyyy-MM-dd");
-    const todayStart = startOfDay(new Date());
-    
-    const todayTasksCount = filteredTasks.filter(t => t.due_date === today).length;
-    const todayCompleted = filteredTasks.filter(t => t.due_date === today && t.status === "completed").length;
-    
-    const overdueTasksCount = filteredTasks.filter(t => {
-      if (!t.due_date || t.status === "completed") return false;
-      const dueDate = new Date(t.due_date);
-      return isBefore(dueDate, todayStart);
-    }).length;
-    
+
+    // Use pre-filtered task lists from parent (these already respect consultant/company/project rules)
+    const todayTasksCount = todayTasks.length;
+    const todayCompleted = todayTasks.filter(t => t.status === "completed").length;
+    const overdueTasksCount = overdueTasks.length;
+
     const totalCompleted = filteredTasks.filter(t => t.status === "completed").length;
     const totalPending = filteredTasks.filter(t => t.status === "pending").length;
     const totalInProgress = filteredTasks.filter(t => t.status === "in_progress").length;
@@ -168,7 +163,7 @@ const DashboardMetrics = ({
       totalCompleted,
       totalTasks: filteredTasks.length,
     };
-  }, [filteredTasks]);
+  }, [filteredTasks, overdueTasks, todayTasks]);
 
   // Calculate completed tasks by day for the filtered period (respects project filters)
   const completedByDayData = useMemo(() => {
