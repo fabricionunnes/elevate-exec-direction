@@ -22,7 +22,7 @@ import {
   Percent,
   FileWarning
 } from "lucide-react";
-import { format, isBefore, startOfDay, isWithinInterval, eachDayOfInterval, parseISO } from "date-fns";
+import { format, isBefore, startOfDay, isWithinInterval, eachDayOfInterval, parseISO, eachMonthOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { 
@@ -38,7 +38,9 @@ import {
   Legend,
   AreaChart,
   Area,
-  CartesianGrid
+  CartesianGrid,
+  LineChart,
+  Line
 } from "recharts";
 import { TasksListDialog } from "./TasksListDialog";
 
@@ -276,6 +278,56 @@ const DashboardMetrics = ({
       churnRate,
     };
   }, [projects, dateRange, projectMetrics]);
+
+  // Monthly churn rate for the year
+  const monthlyChurnData = useMemo(() => {
+    const currentYear = dateRange.start.getFullYear();
+    const yearStart = startOfYear(new Date(currentYear, 0, 1));
+    const yearEnd = endOfYear(new Date(currentYear, 0, 1));
+    
+    const months = eachMonthOfInterval({ start: yearStart, end: yearEnd });
+    
+    return months.map(monthDate => {
+      const monthStart = startOfMonth(monthDate);
+      const monthEnd = endOfMonth(monthDate);
+      
+      // Projects that closed in this month
+      const closedInMonth = projects.filter(p => {
+        if (p.status !== "closed" && p.status !== "completed") return false;
+        const changedAt = new Date(p.updated_at);
+        return isWithinInterval(changedAt, { start: monthStart, end: monthEnd });
+      }).length;
+      
+      // Projects that were active at the start of the month
+      // = currently active + closed after this month + those who signaled after this month
+      const activeAtMonthStart = projects.filter(p => {
+        const createdAt = new Date(p.created_at);
+        // Project existed before or during this month
+        if (createdAt > monthEnd) return false;
+        
+        // If closed/completed, check if it was still active at month start
+        if (p.status === "closed" || p.status === "completed") {
+          const changedAt = new Date(p.updated_at);
+          return changedAt >= monthStart; // Was still active at beginning of month
+        }
+        
+        // If signaled/notice, it's still active technically
+        return true;
+      }).length;
+      
+      const churnRate = activeAtMonthStart > 0 
+        ? Math.round((closedInMonth / activeAtMonthStart) * 100 * 10) / 10
+        : 0;
+      
+      return {
+        month: format(monthDate, "MMM", { locale: ptBR }),
+        fullMonth: format(monthDate, "MMMM 'de' yyyy", { locale: ptBR }),
+        churn: churnRate,
+        closed: closedInMonth,
+        total: activeAtMonthStart,
+      };
+    });
+  }, [projects, dateRange]);
 
   // NPS metrics - calculated from actual responses, filtered by projects
   const npsMetrics = useMemo(() => {
@@ -985,6 +1037,68 @@ const DashboardMetrics = ({
             </CardContent>
           </Card>
         </div>
+
+        {/* Monthly Churn Rate Chart */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Percent className="h-4 w-4 text-red-500" />
+              Churn Mensal ({dateRange.start.getFullYear()})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[200px]">
+              {monthlyChurnData.some(d => d.churn > 0 || d.total > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={monthlyChurnData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fontSize: 11 }}
+                      stroke="hsl(var(--muted-foreground))"
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 11 }}
+                      stroke="hsl(var(--muted-foreground))"
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `${value}%`}
+                      domain={[0, 'auto']}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                      formatter={(value: number) => [`${value}%`, 'Churn']}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload[0]) {
+                          const data = payload[0].payload;
+                          return `${data.fullMonth} - ${data.closed} de ${data.total} serviços`;
+                        }
+                        return label;
+                      }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="churn" 
+                      stroke="#ef4444" 
+                      strokeWidth={2}
+                      dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, fill: '#ef4444' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <p className="text-sm text-muted-foreground">Sem dados de churn no ano</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* NPS Section */}
