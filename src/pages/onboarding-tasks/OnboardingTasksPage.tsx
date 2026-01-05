@@ -67,7 +67,9 @@ interface Company {
   cs?: Staff;
   consultant?: Staff;
   kickoff_date: string | null;
+  contract_start_date: string | null;
   contract_end_date: string | null;
+  contract_value: number | null;
   status_changed_at?: string | null;
   created_at: string;
   projects?: OnboardingProject[];

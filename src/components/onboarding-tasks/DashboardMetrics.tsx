@@ -20,9 +20,11 @@ import {
   UserCheck,
   UserX,
   Percent,
-  FileWarning
+  FileWarning,
+  Timer,
+  DollarSign
 } from "lucide-react";
-import { format, isBefore, startOfDay, isWithinInterval, eachDayOfInterval, parseISO, eachMonthOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
+import { format, isBefore, startOfDay, isWithinInterval, eachDayOfInterval, parseISO, eachMonthOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { 
@@ -69,6 +71,8 @@ interface Company {
   name: string;
   status: string;
   contract_end_date: string | null;
+  contract_start_date: string | null;
+  contract_value: number | null;
   status_changed_at?: string | null;
   created_at: string;
 }
@@ -328,6 +332,76 @@ const DashboardMetrics = ({
       };
     });
   }, [projects, dateRange]);
+
+  // LTV metrics - average client lifetime and value
+  const ltvMetrics = useMemo(() => {
+    const today = new Date();
+    
+    // Calculate lifetime for each company based on contract dates or created_at
+    const companiesWithLifetime = companies.map(company => {
+      let startDate: Date;
+      let endDate: Date;
+      
+      // Use contract_start_date if available, otherwise created_at
+      if (company.contract_start_date) {
+        startDate = new Date(company.contract_start_date);
+      } else {
+        startDate = new Date(company.created_at);
+      }
+      
+      // For closed companies, use contract_end_date or status_changed_at
+      // For active companies, calculate until today
+      if (company.status === "closed" || company.status === "inactive") {
+        if (company.contract_end_date) {
+          endDate = new Date(company.contract_end_date);
+        } else if (company.status_changed_at) {
+          endDate = new Date(company.status_changed_at);
+        } else {
+          endDate = today;
+        }
+      } else {
+        endDate = today;
+      }
+      
+      const lifetimeMonths = Math.max(0, differenceInMonths(endDate, startDate));
+      const contractValue = company.contract_value || 0;
+      const ltv = contractValue * lifetimeMonths;
+      
+      return {
+        ...company,
+        lifetimeMonths,
+        ltv,
+      };
+    });
+    
+    // Calculate averages
+    const totalCompanies = companiesWithLifetime.length;
+    
+    if (totalCompanies === 0) {
+      return {
+        averageLifetimeMonths: 0,
+        averageLTV: 0,
+        totalCompanies: 0,
+      };
+    }
+    
+    const totalLifetime = companiesWithLifetime.reduce((sum, c) => sum + c.lifetimeMonths, 0);
+    const averageLifetimeMonths = Math.round((totalLifetime / totalCompanies) * 10) / 10;
+    
+    // Only consider companies with contract value for LTV average
+    const companiesWithValue = companiesWithLifetime.filter(c => c.ltv > 0);
+    const totalLTV = companiesWithValue.reduce((sum, c) => sum + c.ltv, 0);
+    const averageLTV = companiesWithValue.length > 0 
+      ? Math.round(totalLTV / companiesWithValue.length)
+      : 0;
+    
+    return {
+      averageLifetimeMonths,
+      averageLTV,
+      totalCompanies,
+      companiesWithValue: companiesWithValue.length,
+    };
+  }, [companies]);
 
   // NPS metrics - calculated from actual responses, filtered by projects
   const npsMetrics = useMemo(() => {
@@ -913,6 +987,46 @@ const DashboardMetrics = ({
                 </div>
                 <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center">
                   <TrendingDown className="h-5 w-5 text-red-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* LTV - Average Lifetime Card */}
+          <Card className="relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Tempo Médio</p>
+                  <p className="text-2xl font-bold mt-1 text-indigo-500">{ltvMetrics.averageLifetimeMonths}</p>
+                  <p className="text-xs text-muted-foreground">meses</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center">
+                  <Timer className="h-5 w-5 text-indigo-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* LTV - Average Value Card */}
+          <Card className="relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-teal-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">LTV Médio</p>
+                  <p className="text-2xl font-bold mt-1 text-teal-500">
+                    {ltvMetrics.averageLTV > 0 
+                      ? `R$ ${(ltvMetrics.averageLTV / 1000).toFixed(0)}k` 
+                      : "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {ltvMetrics.companiesWithValue || 0} com valor
+                  </p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-teal-500/10 flex items-center justify-center">
+                  <DollarSign className="h-5 w-5 text-teal-500" />
                 </div>
               </div>
             </CardContent>
