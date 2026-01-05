@@ -121,13 +121,28 @@ const OnboardingTasksPage = () => {
 
   const fetchAllTasks = async () => {
     try {
-      const { data, error } = await supabase
-        .from("onboarding_tasks")
-        .select("id, status, due_date, project_id, responsible_staff_id, completed_at")
-        .limit(10000);
+      // IMPORTANT: PostgREST has a default max of 1000 rows per request.
+      // Use pagination to guarantee we load the full dataset used by dashboard metrics.
+      const pageSize = 1000;
+      let from = 0;
+      let all: { id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null; completed_at: string | null }[] = [];
 
-      if (error) throw error;
-      setAllTasks(data || []);
+      while (true) {
+        const { data, error } = await supabase
+          .from("onboarding_tasks")
+          .select("id, status, due_date, project_id, responsible_staff_id, completed_at")
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+
+        const batch = data || [];
+        all = all.concat(batch);
+
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+
+      setAllTasks(all);
     } catch (error) {
       console.error("Error fetching tasks:", error);
     }

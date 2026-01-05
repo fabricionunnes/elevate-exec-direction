@@ -115,17 +115,38 @@ const DashboardMetrics = ({
 
   const fetchData = async () => {
     try {
-      const [tasksResult, npsResult, goalsResult] = await Promise.all([
-        supabase.from("onboarding_tasks").select("id, status, due_date, project_id, completed_at").limit(10000),
+      // IMPORTANT: PostgREST has a default max of 1000 rows per request.
+      // Paginate tasks to ensure dashboard KPIs are complete.
+      const pageSize = 1000;
+      let from = 0;
+      let allTasksData: Task[] = [];
+
+      while (true) {
+        const { data, error } = await supabase
+          .from("onboarding_tasks")
+          .select("id, status, due_date, project_id, completed_at")
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+
+        const batch = data || [];
+        allTasksData = allTasksData.concat(batch);
+
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+
+      const [npsResult, goalsResult] = await Promise.all([
         supabase.from("onboarding_nps_responses").select("project_id, score"),
-        supabase.from("onboarding_monthly_goals").select("project_id, month, year, sales_target, sales_result")
+        supabase
+          .from("onboarding_monthly_goals")
+          .select("project_id, month, year, sales_target, sales_result"),
       ]);
 
-      if (tasksResult.error) throw tasksResult.error;
       if (npsResult.error) throw npsResult.error;
       if (goalsResult.error) throw goalsResult.error;
-      
-      setAllTasks(tasksResult.data || []);
+
+      setAllTasks(allTasksData);
       setNpsResponses(npsResult.data || []);
       setMonthlyGoals(goalsResult.data || []);
     } catch (error) {
