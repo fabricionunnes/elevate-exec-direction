@@ -105,8 +105,8 @@ export default function OnboardingServicesPage() {
     }
   };
 
-  const getTemplateCount = (slug: string) => {
-    return templateCounts.find(tc => tc.product_id === slug)?.count || 0;
+  const getTemplateCount = (serviceId: string) => {
+    return templateCounts.find(tc => tc.product_id === serviceId)?.count || 0;
   };
 
   const handleLogout = async () => {
@@ -195,7 +195,7 @@ export default function OnboardingServicesPage() {
   };
 
   const handleDelete = async (service: Service) => {
-    const count = getTemplateCount(service.slug);
+    const count = getTemplateCount(service.id);
     if (count > 0) {
       toast.error(`Não é possível excluir. Este serviço possui ${count} tarefas cadastradas.`);
       return;
@@ -272,7 +272,7 @@ export default function OnboardingServicesPage() {
                       <Badge variant="secondary">Inativo</Badge>
                     )}
                     <Badge variant="outline">
-                      {getTemplateCount(service.slug)} tarefas
+                      {getTemplateCount(service.id)} tarefas
                     </Badge>
                   </div>
                 </div>
@@ -304,7 +304,7 @@ export default function OnboardingServicesPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => handleDelete(service)}
-                    disabled={getTemplateCount(service.slug) > 0}
+                    disabled={getTemplateCount(service.id) > 0}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
