@@ -3,8 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calculator, DollarSign, Target, TrendingUp, Trophy, History, Check, X, Pencil } from "lucide-react";
-import { format } from "date-fns";
+import { Calculator, DollarSign, Target, TrendingUp, Trophy, History, Check, X, Pencil, TrendingDown } from "lucide-react";
+import { format, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 
@@ -151,6 +151,16 @@ export const ClientMetricsView = ({ projectId }: ClientMetricsViewProps) => {
     ? Math.min(100, (currentGoal.sales_result / currentGoal.sales_target) * 100)
     : 0;
 
+  // Calculate projection based on days elapsed in month
+  const today = new Date();
+  const totalDaysInMonth = getDaysInMonth(today);
+  const daysPassed = today.getDate();
+  const timeProgress = daysPassed / totalDaysInMonth;
+  
+  const projection = currentGoal?.sales_target && currentGoal.sales_result && timeProgress > 0
+    ? ((currentGoal.sales_result / currentGoal.sales_target) / timeProgress) * 100
+    : null;
+
   return (
     <div className="space-y-6">
       {/* Meta do Mês Atual */}
@@ -207,6 +217,33 @@ export const ClientMetricsView = ({ projectId }: ClientMetricsViewProps) => {
                   />
                 </div>
               </div>
+
+              {/* Projection */}
+              {projection !== null && (
+                <div className={`p-3 rounded-xl border flex items-center gap-3 ${
+                  projection >= 100 ? 'bg-green-500/10 border-green-500/30' :
+                  projection >= 70 ? 'bg-amber-500/10 border-amber-500/30' :
+                  'bg-red-500/10 border-red-500/30'
+                }`}>
+                  {projection >= 100 ? (
+                    <TrendingUp className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <TrendingDown className="h-5 w-5 text-red-500" />
+                  )}
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground">
+                      Projeção para fim do mês ({totalDaysInMonth - daysPassed} dias restantes)
+                    </p>
+                    <p className={`text-lg font-bold ${
+                      projection >= 100 ? 'text-green-600' :
+                      projection >= 70 ? 'text-amber-600' :
+                      'text-red-600'
+                    }`}>
+                      {projection.toFixed(0)}% da meta
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Edit button */}
               {editingResult ? (
