@@ -47,6 +47,8 @@ interface OnboardingProject {
   status: string;
   created_at: string;
   onboarding_company_id: string | null;
+  consultant_id: string | null;
+  cs_id: string | null;
   tasks_count?: number;
   completed_count?: number;
 }
@@ -260,21 +262,10 @@ const OnboardingTasksPage = () => {
         company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (company.segment && company.segment.toLowerCase().includes(searchTerm.toLowerCase()));
       
-      // Consultant filter - check if company has projects with tasks assigned to this consultant
-      let matchesConsultant = filterConsultant === "all";
-      if (!matchesConsultant) {
-        // Check if company has the consultant directly assigned
-        if (company.consultant_id === filterConsultant) {
-          matchesConsultant = true;
-        } else {
-          // Check if any project has tasks with this consultant as responsible
-          const companyProjectIds = company.projects?.map(p => p.id) || [];
-          const hasTasksWithConsultant = allTasks.some(
-            task => companyProjectIds.includes(task.project_id) && task.responsible_staff_id === filterConsultant
-          );
-          matchesConsultant = hasTasksWithConsultant;
-        }
-      }
+      // Consultant filter - check if company has any project with this consultant assigned
+      const matchesConsultant = 
+        filterConsultant === "all" || 
+        company.projects?.some(p => p.consultant_id === filterConsultant);
       
       // Service filter - check if company has any project with the selected service (using slug)
       const matchesService = 
@@ -301,7 +292,7 @@ const OnboardingTasksPage = () => {
       
       return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
     });
-  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, allTasks]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange]);
 
   const hasActiveFilters = filterConsultant !== "all" || filterService !== "all" || filterStatus !== "all" || activeMetricFilter !== null;
 

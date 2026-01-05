@@ -818,8 +818,10 @@ export type Database = {
           client_feedback: string | null
           communication_channel: string | null
           company_id: string | null
+          consultant_id: string | null
           created_at: string
           created_by: string | null
+          cs_id: string | null
           current_blockers: string | null
           current_nps: number | null
           id: string
@@ -838,8 +840,10 @@ export type Database = {
           client_feedback?: string | null
           communication_channel?: string | null
           company_id?: string | null
+          consultant_id?: string | null
           created_at?: string
           created_by?: string | null
+          cs_id?: string | null
           current_blockers?: string | null
           current_nps?: number | null
           id?: string
@@ -858,8 +862,10 @@ export type Database = {
           client_feedback?: string | null
           communication_channel?: string | null
           company_id?: string | null
+          consultant_id?: string | null
           created_at?: string
           created_by?: string | null
+          cs_id?: string | null
           current_blockers?: string | null
           current_nps?: number | null
           id?: string
@@ -881,10 +887,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "onboarding_projects_consultant_id_fkey"
+            columns: ["consultant_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "onboarding_projects_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_projects_cs_id_fkey"
+            columns: ["cs_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
             referencedColumns: ["id"]
           },
           {
