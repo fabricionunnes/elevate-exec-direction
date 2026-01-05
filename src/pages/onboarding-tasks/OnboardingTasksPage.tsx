@@ -306,9 +306,10 @@ const OnboardingTasksPage = () => {
         company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (company.segment && company.segment.toLowerCase().includes(searchTerm.toLowerCase()));
       
-      // Consultant filter - check if company has any project with this consultant assigned
+      // Consultant filter - check company's consultant OR if any project has this consultant assigned
       const matchesConsultant = 
         filterConsultant === "all" || 
+        company.consultant_id === filterConsultant ||
         company.projects?.some(p => p.consultant_id === filterConsultant);
       
       // Service filter - check if company has any project with the selected service (using slug)
