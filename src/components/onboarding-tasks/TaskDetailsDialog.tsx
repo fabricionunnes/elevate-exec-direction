@@ -202,6 +202,26 @@ export const TaskDetailsDialog = ({
       }
 
       if (canEditStatusAndObservations) {
+        // Auto-assign to current user when completing (CS/Consultant)
+        const isCompletingTask = editedTask.status === "completed" && task.status !== "completed";
+        const isStaffRole = currentUserRole === "cs" || currentUserRole === "consultant";
+        
+        if (isCompletingTask && isStaffRole && currentUserId) {
+          // Auto-assign to current staff member if not already assigned
+          if (!editedTask.assignee_id && !task.assignee_id) {
+            // Find the onboarding_user for this staff member in this project
+            // The currentUserId here is the staff_id, we need to use it directly
+            updates.assignee_id = currentUserId;
+            historyPromises.push(logHistory("assign", "responsável", "Nenhum", "Auto-atribuído ao concluir"));
+          }
+          // Set due_date to today if completing
+          const today = format(new Date(), "yyyy-MM-dd");
+          if (editedTask.due_date !== today) {
+            historyPromises.push(logHistory("edit", "data de execução", task.due_date || "", today));
+          }
+          updates.due_date = today;
+        }
+        
         if (editedTask.status !== task.status) {
           historyPromises.push(logHistory("status_change", "status", getStatusLabel(task.status), getStatusLabel(editedTask.status || "")));
         }
@@ -219,14 +239,14 @@ export const TaskDetailsDialog = ({
       }
 
       if (canEditDatesAndAssignee) {
-        if (editedTask.due_date !== task.due_date) {
+        if (editedTask.due_date !== task.due_date && !updates.due_date) {
           historyPromises.push(logHistory("edit", "data de execução", task.due_date || "", editedTask.due_date || ""));
+          updates.due_date = editedTask.due_date;
         }
-        if (editedTask.assignee_id !== task.assignee_id) {
+        if (editedTask.assignee_id !== task.assignee_id && !updates.assignee_id) {
           historyPromises.push(logHistory("assign", "responsável", getUserName(task.assignee_id), getUserName(editedTask.assignee_id || null)));
+          updates.assignee_id = editedTask.assignee_id || null;
         }
-        updates.due_date = editedTask.due_date;
-        updates.assignee_id = editedTask.assignee_id || null;
       }
 
       // Admin/CS can toggle internal visibility
