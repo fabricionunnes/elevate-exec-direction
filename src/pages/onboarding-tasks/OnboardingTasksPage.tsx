@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload } from "lucide-react";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -431,10 +431,16 @@ const OnboardingTasksPage = () => {
           </div>
           <div className="flex items-center gap-2">
             {isAdmin && (
-              <Button variant="outline" onClick={() => navigate("/onboarding-tasks/services")}>
-                <Package className="h-4 w-4 mr-2" />
-                Serviços
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => navigate("/onboarding-tasks/import")}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/onboarding-tasks/services")}>
+                  <Package className="h-4 w-4 mr-2" />
+                  Serviços
+                </Button>
+              </>
             )}
             <Button variant="outline" onClick={() => navigate("/onboarding-tasks/staff")}>
               <Users className="h-4 w-4 mr-2" />
