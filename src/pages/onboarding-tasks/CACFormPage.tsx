@@ -15,8 +15,6 @@ const CACFormPage = () => {
   const [submitted, setSubmitted] = useState(false);
   
   const [formData, setFormData] = useState({
-    company_name: "",
-    form_title: "",
     facebook_ads_investment: "",
     google_ads_investment: "",
     linkedin_ads_investment: "",
@@ -36,19 +34,13 @@ const CACFormPage = () => {
       return;
     }
 
-    if (!formData.company_name.trim()) {
-      toast.error("Nome da empresa é obrigatório");
-      return;
-    }
-
     setLoading(true);
     try {
       const { error } = await supabase
         .from("onboarding_cac_forms")
         .insert({
           project_id: projectId,
-          company_name: formData.company_name.trim(),
-          form_title: formData.form_title.trim() || null,
+          company_name: "Via Link",
           facebook_ads_investment: formData.facebook_ads_investment ? parseFloat(formData.facebook_ads_investment) : null,
           google_ads_investment: formData.google_ads_investment ? parseFloat(formData.google_ads_investment) : null,
           linkedin_ads_investment: formData.linkedin_ads_investment ? parseFloat(formData.linkedin_ads_investment) : null,
@@ -92,29 +84,7 @@ const CACFormPage = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="company_name">
-                Nome da empresa <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="company_name"
-                placeholder="Digite o seu nome"
-                value={formData.company_name}
-                onChange={(e) => handleChange("company_name", e.target.value)}
-                required
-              />
-            </div>
-
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="form_title">Dê um título ao formulário</Label>
-                <Input
-                  id="form_title"
-                  placeholder="Ex: Levantamento Q1 2025"
-                  value={formData.form_title}
-                  onChange={(e) => handleChange("form_title", e.target.value)}
-                />
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="facebook_ads">
