@@ -104,12 +104,14 @@ export const TaskDetailsDialog = ({
 
   useEffect(() => {
     if (task) {
+      // For staff, use responsible_staff_id as the assignee display
+      const effectiveAssigneeId = task.responsible_staff?.id || task.assignee_id;
       setEditedTask({
         title: task.title,
         description: task.description,
         due_date: task.due_date,
         status: task.status,
-        assignee_id: task.assignee_id,
+        assignee_id: effectiveAssigneeId,
         observations: task.observations,
         is_internal: task.is_internal ?? false,
       });
@@ -229,16 +231,15 @@ export const TaskDetailsDialog = ({
       }
 
       if (canEditStatusAndObservations) {
-        // Auto-assign to current user when completing (CS/Consultant)
+        // Auto-assign to current staff when completing (CS/Consultant)
         const isCompletingTask = editedTask.status === "completed" && task.status !== "completed";
         const isStaffRole = currentUserRole === "cs" || currentUserRole === "consultant";
         
         if (isCompletingTask && isStaffRole && currentUserId) {
           // Auto-assign to current staff member if not already assigned
-          if (!editedTask.assignee_id && !task.assignee_id) {
-            // Find the onboarding_user for this staff member in this project
-            // The currentUserId here is the staff_id, we need to use it directly
-            updates.assignee_id = currentUserId;
+          // Staff uses responsible_staff_id, not assignee_id
+          if (!task.responsible_staff?.id) {
+            updates.responsible_staff_id = currentUserId;
             historyPromises.push(logHistory("assign", "responsável", "Nenhum", "Auto-atribuído ao concluir"));
           }
           // Set due_date to today if completing
@@ -270,9 +271,26 @@ export const TaskDetailsDialog = ({
           historyPromises.push(logHistory("edit", "data de execução", task.due_date || "", editedTask.due_date || ""));
           updates.due_date = editedTask.due_date;
         }
-        if (editedTask.assignee_id !== task.assignee_id && !updates.assignee_id) {
-          historyPromises.push(logHistory("assign", "responsável", getUserName(task.assignee_id), getUserName(editedTask.assignee_id || null)));
-          updates.assignee_id = editedTask.assignee_id || null;
+        
+        // Handle assignee changes
+        // Staff (CS/Consultant) assigns to responsible_staff_id, Admin can do both
+        if (editedTask.assignee_id !== task.assignee_id && !updates.responsible_staff_id) {
+          const oldName = task.responsible_staff?.name || getUserName(task.assignee_id);
+          const newName = getUserName(editedTask.assignee_id || null);
+          historyPromises.push(logHistory("assign", "responsável", oldName, newName));
+          
+          if (isStaffRole && editedTask.assignee_id) {
+            // Staff assigns to responsible_staff_id
+            updates.responsible_staff_id = editedTask.assignee_id;
+          } else if (isAdmin) {
+            // Admin: check if the ID is from staffList or users
+            const isStaffId = staffList.some(s => s.id === editedTask.assignee_id);
+            if (isStaffId) {
+              updates.responsible_staff_id = editedTask.assignee_id;
+            } else {
+              updates.assignee_id = editedTask.assignee_id || null;
+            }
+          }
         }
       }
 
