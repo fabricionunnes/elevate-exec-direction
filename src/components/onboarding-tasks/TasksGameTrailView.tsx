@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -95,40 +94,20 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
   return (
     <div className="space-y-8">
       {/* Hero Progress Banner */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-fuchsia-500 to-pink-500 p-8 text-white"
-      >
-        {/* Animated background effects */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-fuchsia-500 to-pink-500 p-8 text-white">
+        {/* Static background effects */}
         <div className="absolute inset-0 overflow-hidden">
-          <motion.div 
-            animate={{ rotate: 360 }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="absolute -top-1/2 -right-1/2 w-full h-full bg-gradient-to-br from-white/10 to-transparent rounded-full"
-          />
-          <motion.div 
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 4, repeat: Infinity }}
-            className="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full blur-xl"
-          />
-          <motion.div 
-            animate={{ scale: [1.2, 1, 1.2] }}
-            transition={{ duration: 5, repeat: Infinity }}
-            className="absolute bottom-5 right-20 w-32 h-32 bg-white/5 rounded-full blur-2xl"
-          />
+          <div className="absolute -top-1/2 -right-1/2 w-full h-full bg-gradient-to-br from-white/10 to-transparent rounded-full" />
+          <div className="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full blur-xl" />
+          <div className="absolute bottom-5 right-20 w-32 h-32 bg-white/5 rounded-full blur-2xl" />
         </div>
 
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <motion.div 
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="p-4 rounded-2xl bg-white/20 backdrop-blur-sm"
-              >
+              <div className="p-4 rounded-2xl bg-white/20 backdrop-blur-sm">
                 <Trophy className="h-10 w-10" />
-              </motion.div>
+              </div>
               <div>
                 <h2 className="text-3xl font-black tracking-tight">Jornada</h2>
                 <p className="text-white/80 font-medium">
@@ -137,14 +116,9 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
               </div>
             </div>
             <div className="text-right">
-              <motion.div
-                key={overallProgress}
-                initial={{ scale: 1.2 }}
-                animate={{ scale: 1 }}
-                className="text-6xl font-black"
-              >
+              <div className="text-6xl font-black">
                 {overallProgress}%
-              </motion.div>
+              </div>
               <p className="text-white/70 font-medium">completo</p>
             </div>
           </div>
@@ -152,18 +126,10 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
           {/* XP Bar */}
           <div className="relative">
             <div className="h-6 bg-black/20 rounded-full overflow-hidden backdrop-blur-sm">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${overallProgress}%` }}
-                transition={{ duration: 1, ease: "easeOut" }}
-                className="h-full bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 rounded-full relative"
-              >
-                <motion.div
-                  animate={{ x: ["0%", "100%", "0%"] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                />
-              </motion.div>
+              <div
+                style={{ width: `${overallProgress}%` }}
+                className="h-full bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 rounded-full relative transition-all duration-500"
+              />
             </div>
             {/* Level markers */}
             <div className="absolute inset-0 flex justify-between items-center px-2 pointer-events-none">
@@ -177,7 +143,7 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Game Trail - Snake Path */}
       <div className="relative py-8">
@@ -210,24 +176,18 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                     stroke={isCompleted || isActive ? "hsl(var(--primary))" : "hsl(var(--muted))"}
                     strokeWidth="2"
                     strokeDasharray={isCompleted ? "none" : "5,5"}
-                    className="transition-all duration-500"
+                    className="transition-all duration-300"
                   />
                 </svg>
               )}
 
               {/* Phase Card */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: phaseIndex * 0.1 }}
-                className={`relative flex ${isLeft ? 'justify-start' : 'justify-end'} mb-8`}
-              >
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
+              <div className={`relative flex ${isLeft ? 'justify-start' : 'justify-end'} mb-8`}>
+                <div
                   className={`
                     w-full md:w-4/5 lg:w-3/4 rounded-2xl overflow-hidden
-                    bg-card border-2 transition-all duration-300 cursor-pointer
-                    ${isExpanded ? `${colorSet.border} shadow-lg ${colorSet.glow}` : 'border-border hover:border-muted-foreground/50'}
+                    bg-card border-2 transition-all duration-200 cursor-pointer
+                    ${isExpanded ? `${colorSet.border} shadow-lg` : 'border-border hover:border-muted-foreground/50'}
                   `}
                   onClick={() => setExpandedPhase(isExpanded ? null : phaseIndex)}
                 >
@@ -238,15 +198,13 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                   `}>
                     <div className="flex items-center gap-4">
                       {/* Phase Icon/Number */}
-                      <motion.div
-                        animate={isActive ? { scale: [1, 1.1, 1] } : {}}
-                        transition={{ duration: 1.5, repeat: Infinity }}
+                      <div
                         className={`
-                          w-14 h-14 rounded-xl flex items-center justify-center
+                          w-14 h-14 rounded-xl flex items-center justify-center transition-transform duration-200
                           ${isCompleted 
                             ? 'bg-white/20 text-white' 
                             : isActive 
-                              ? `bg-gradient-to-br ${colorSet.bg} text-white shadow-lg ${colorSet.glow}`
+                              ? `bg-gradient-to-br ${colorSet.bg} text-white shadow-lg`
                               : 'bg-muted text-muted-foreground'
                           }
                         `}
@@ -256,7 +214,7 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                         ) : (
                           <span className="font-bold text-xl">{phaseIndex + 1}</span>
                         )}
-                      </motion.div>
+                      </div>
 
                       <div>
                         <h3 className={`text-xl font-bold ${isCompleted ? 'text-white' : ''}`}>
@@ -267,7 +225,7 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                             {phase.completedCount}/{phase.tasks.length} tarefas
                           </span>
                           {isActive && (
-                            <Badge className="bg-amber-500 text-white text-xs animate-pulse">
+                            <Badge className="bg-amber-500 text-white text-xs">
                               Em progresso
                             </Badge>
                           )}
@@ -287,7 +245,7 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                             stroke={isCompleted ? "rgba(255,255,255,0.3)" : "hsl(var(--muted))"}
                             strokeWidth="4"
                           />
-                          <motion.circle
+                          <circle
                             cx="24"
                             cy="24"
                             r="20"
@@ -295,9 +253,8 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                             stroke={isCompleted ? "white" : "hsl(var(--primary))"}
                             strokeWidth="4"
                             strokeLinecap="round"
-                            initial={{ strokeDasharray: "0 126" }}
-                            animate={{ strokeDasharray: `${phaseProgress * 1.26} 126` }}
-                            transition={{ duration: 1 }}
+                            strokeDasharray={`${phaseProgress * 1.26} 126`}
+                            className="transition-all duration-300"
                           />
                         </svg>
                         <span className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${isCompleted ? 'text-white' : ''}`}>
@@ -305,149 +262,118 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                         </span>
                       </div>
 
-                      <motion.div
-                        animate={{ rotate: isExpanded ? 180 : 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <ChevronDown className={`h-6 w-6 ${isCompleted ? 'text-white' : 'text-muted-foreground'}`} />
-                      </motion.div>
+                      <ChevronDown 
+                        className={`h-6 w-6 transition-transform duration-200 ${isCompleted ? 'text-white' : 'text-muted-foreground'} ${isExpanded ? 'rotate-180' : ''}`} 
+                      />
                     </div>
                   </div>
 
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className={`border-t bg-gradient-to-b from-${colorSet.accent.replace('bg-', '')}/5 to-transparent`}
-                      >
-                        <div className="p-5 grid gap-3">
-                          {phase.tasks.map((task, taskIndex) => {
-                            const taskStatus = getTaskStatus(task);
-                            const taskColorIndex = (phaseIndex + taskIndex) % PHASE_COLORS.length;
-                            const taskColor = PHASE_COLORS[taskColorIndex];
+                  {isExpanded && (
+                    <div className="border-t p-5 grid gap-3">
+                      {phase.tasks.map((task, taskIndex) => {
+                        const taskStatus = getTaskStatus(task);
+                        const taskColorIndex = (phaseIndex + taskIndex) % PHASE_COLORS.length;
+                        const taskColor = PHASE_COLORS[taskColorIndex];
+                        
+                        return (
+                          <div
+                            key={task.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTaskClick(task);
+                            }}
+                            className={`
+                              flex items-center gap-4 p-4 rounded-xl cursor-pointer
+                              transition-colors duration-150 group relative overflow-hidden
+                              ${taskStatus === "completed" 
+                                ? 'bg-gradient-to-r from-emerald-500/10 to-green-500/5 border-2 border-emerald-400/40' 
+                                : taskStatus === "active"
+                                  ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-2 border-amber-400/40'
+                                  : 'bg-card border-2 border-border hover:border-muted-foreground/50'
+                              }
+                            `}
+                          >
+                            {/* Colored left accent bar */}
+                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${taskStatus === "completed" ? 'bg-emerald-500' : taskStatus === "active" ? 'bg-amber-500' : taskColor.accent}`} />
                             
-                            return (
-                              <motion.div
-                                key={task.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: taskIndex * 0.03 }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onTaskClick(task);
-                                }}
-                                className={`
-                                  flex items-center gap-4 p-4 rounded-xl cursor-pointer
-                                  transition-all duration-200 group relative overflow-hidden
-                                  ${taskStatus === "completed" 
-                                    ? 'bg-gradient-to-r from-emerald-500/10 to-green-500/5 border-2 border-emerald-400/40' 
-                                    : taskStatus === "active"
-                                      ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-2 border-amber-400/40'
-                                      : `bg-gradient-to-r from-${taskColor.accent.replace('bg-', '')}/5 to-transparent border-2 border-border hover:border-${taskColor.border.replace('border-', '')}/50 hover:shadow-lg hover:shadow-${taskColor.glow}`
-                                  }
-                                `}
-                              >
-                                {/* Colored left accent bar */}
-                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${taskStatus === "completed" ? 'bg-emerald-500' : taskStatus === "active" ? 'bg-amber-500' : taskColor.accent}`} />
-                                {/* Status Button */}
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const nextStatus =
-                                      task.status === "pending"
-                                        ? "in_progress"
-                                        : task.status === "in_progress"
-                                          ? "completed"
-                                          : "pending";
-                                    onStatusChange(task.id, nextStatus);
-                                  }}
-                                  className={`
-                                    w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
-                                    transition-all duration-200 ml-2
-                                    ${taskStatus === "completed" 
-                                      ? 'bg-gradient-to-br from-emerald-400 to-green-500 text-white shadow-lg shadow-emerald-500/40' 
-                                      : taskStatus === "active"
-                                        ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/40 animate-pulse'
-                                        : `bg-gradient-to-br ${taskColor.bg} text-white/80 group-hover:text-white shadow-md ${taskColor.glow}`
-                                    }
-                                  `}
-                                >
-                                  {taskStatus === "completed" ? (
-                                    <CheckCircle2 className="h-5 w-5" />
-                                  ) : taskStatus === "active" ? (
-                                    <Clock className="h-5 w-5" />
-                                  ) : (
-                                    <Circle className="h-5 w-5" />
-                                  )}
-                                </motion.button>
+                            {/* Status Button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const nextStatus =
+                                  task.status === "pending"
+                                    ? "in_progress"
+                                    : task.status === "in_progress"
+                                      ? "completed"
+                                      : "pending";
+                                onStatusChange(task.id, nextStatus);
+                              }}
+                              className={`
+                                w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
+                                transition-transform duration-150 ml-2 hover:scale-110
+                                ${taskStatus === "completed" 
+                                  ? 'bg-gradient-to-br from-emerald-400 to-green-500 text-white shadow-lg' 
+                                  : taskStatus === "active"
+                                    ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg'
+                                    : `bg-gradient-to-br ${taskColor.bg} text-white/80 group-hover:text-white shadow-md`
+                                }
+                              `}
+                            >
+                              {taskStatus === "completed" ? (
+                                <CheckCircle2 className="h-5 w-5" />
+                              ) : taskStatus === "active" ? (
+                                <Clock className="h-5 w-5" />
+                              ) : (
+                                <Circle className="h-5 w-5" />
+                              )}
+                            </button>
 
-                                {/* Task Content */}
-                                <div className="flex-1 min-w-0">
-                                  <p className={`font-medium truncate ${taskStatus === "completed" ? 'line-through text-muted-foreground' : ''}`}>
-                                    {task.title}
-                                  </p>
-                                </div>
+                            {/* Task Content */}
+                            <div className="flex-1 min-w-0">
+                              <p className={`font-medium truncate ${taskStatus === "completed" ? 'line-through text-muted-foreground' : ''}`}>
+                                {task.title}
+                              </p>
+                            </div>
 
-                                {/* Task Meta */}
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  {task.recurrence && (
-                                    <Badge variant="outline" className="text-xs gap-1">
-                                      <RefreshCw className="h-3 w-3" />
-                                    </Badge>
-                                  )}
-                                  {task.priority === "high" && (
-                                    <Badge className="bg-red-500 text-white text-xs">!</Badge>
-                                  )}
-                                  {task.due_date && (
-                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                      <Calendar className="h-3 w-3" />
-                                      {format(new Date(task.due_date), "dd/MM")}
-                                    </span>
-                                  )}
-                                </div>
+                            {/* Task Meta */}
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {task.recurrence && (
+                                <Badge variant="outline" className="text-xs gap-1">
+                                  <RefreshCw className="h-3 w-3" />
+                                </Badge>
+                              )}
+                              {task.priority === "high" && (
+                                <Badge className="bg-red-500 text-white text-xs">!</Badge>
+                              )}
+                              {task.due_date && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {format(new Date(task.due_date), "dd/MM")}
+                                </span>
+                              )}
+                            </div>
 
-                                {/* XP Badge */}
-                                {taskStatus === "completed" && (
-                                  <motion.div
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    className="flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-600"
-                                  >
-                                    <Star className="h-3 w-3 fill-current" />
-                                    <span className="text-xs font-bold">+10</span>
-                                  </motion.div>
-                                )}
-                              </motion.div>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              </motion.div>
+                            {/* XP Badge */}
+                            {taskStatus === "completed" && (
+                              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-600">
+                                <Star className="h-3 w-3 fill-current" />
+                                <span className="text-xs font-bold">+10</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           );
         })}
 
         {/* Final Trophy */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: phases.length * 0.1 }}
-          className="flex justify-center"
-        >
-          <motion.div
-            animate={overallProgress === 100 ? { 
-              scale: [1, 1.05, 1],
-              rotate: [0, 5, -5, 0]
-            } : {}}
-            transition={{ duration: 2, repeat: Infinity }}
+        <div className="flex justify-center">
+          <div
             className={`
               w-24 h-24 rounded-full flex items-center justify-center
               ${overallProgress === 100 
@@ -457,17 +383,13 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
             `}
           >
             <Trophy className={`h-12 w-12 ${overallProgress === 100 ? 'text-white' : 'text-muted-foreground'}`} />
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
         
         {overallProgress === 100 && (
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mt-4 text-2xl font-bold bg-gradient-to-r from-yellow-500 to-amber-500 bg-clip-text text-transparent"
-          >
+          <p className="text-center mt-4 text-2xl font-bold bg-gradient-to-r from-yellow-500 to-amber-500 bg-clip-text text-transparent">
             🎉 Parabéns! Jornada Completa!
-          </motion.p>
+          </p>
         )}
       </div>
     </div>
