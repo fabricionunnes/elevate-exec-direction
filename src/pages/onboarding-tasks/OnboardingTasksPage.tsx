@@ -338,13 +338,24 @@ const OnboardingTasksPage = () => {
       ? null 
       : new Set(companies.filter(c => c.status === filterStatus).map(c => c.id));
     
+    // Build a map of company_id to consultant_id for fallback lookup
+    const companyConsultantMap = new Map(
+      companies.map(c => [c.id, c.consultant_id])
+    );
+    
     // Build set of filtered project IDs based on consultant, service, and status filters
     const filteredProjectIdSet = new Set(
       allProjects
         .filter((project) => {
+          // Check consultant: project's consultant OR company's consultant
+          const companyConsultantId = project.onboarding_company_id 
+            ? companyConsultantMap.get(project.onboarding_company_id)
+            : null;
+          
           const matchesConsultant = 
             filterConsultant === "all" || 
-            project.consultant_id === filterConsultant;
+            project.consultant_id === filterConsultant ||
+            companyConsultantId === filterConsultant;
           
           const matchesService = 
             filterService === "all" || 
@@ -520,10 +531,21 @@ const OnboardingTasksPage = () => {
       ? null 
       : new Set(companies.filter(c => c.status === filterStatus).map(c => c.id));
     
+    // Build a map of company_id to consultant_id for fallback lookup
+    const companyConsultantMap = new Map(
+      companies.map(c => [c.id, c.consultant_id])
+    );
+    
     return allProjects.filter((project) => {
+      // Check consultant: project's consultant OR company's consultant
+      const companyConsultantId = project.onboarding_company_id 
+        ? companyConsultantMap.get(project.onboarding_company_id)
+        : null;
+      
       const matchesConsultant = 
         filterConsultant === "all" || 
-        project.consultant_id === filterConsultant;
+        project.consultant_id === filterConsultant ||
+        companyConsultantId === filterConsultant;
       
       const matchesService = 
         filterService === "all" || 
