@@ -60,6 +60,12 @@ interface Company {
   name: string;
 }
 
+interface Staff {
+  id: string;
+  name: string;
+  role: string;
+}
+
 interface TasksScheduleViewProps {
   tasks: OnboardingTask[];
   onTaskClick: (task: OnboardingTask) => void;
@@ -72,7 +78,20 @@ interface TasksScheduleViewProps {
   onTaskAdded?: () => void;
   /** When inside a single project page, pass the projectId to skip the project selector */
   singleProjectId?: string;
+  /** Staff list for assigning responsible */
+  staffList?: Staff[];
 }
+
+const TASK_PHASES = [
+  "Pré-Onboarding",
+  "Onboarding & Setup",
+  "Diagnóstico Comercial",
+  "Desenho do Processo",
+  "Implementação CRM",
+  "Playbook & Padronização",
+  "Treinamento & Adoção",
+  "Estabilização & Governança",
+];
 
 export const TasksScheduleView = ({ 
   tasks, 
@@ -84,7 +103,8 @@ export const TasksScheduleView = ({
   currentUserRole,
   showAllCompanies = false,
   onTaskAdded,
-  singleProjectId
+  singleProjectId,
+  staffList = []
 }: TasksScheduleViewProps) => {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -94,6 +114,8 @@ export const TasksScheduleView = ({
   const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskProjectId, setNewTaskProjectId] = useState(singleProjectId || "");
+  const [newTaskResponsibleId, setNewTaskResponsibleId] = useState("");
+  const [newTaskPhase, setNewTaskPhase] = useState("");
   const [addingTask, setAddingTask] = useState(false);
 
   const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
@@ -162,6 +184,8 @@ export const TasksScheduleView = ({
     setSelectedDate(day);
     setNewTaskTitle("");
     setNewTaskProjectId(singleProjectId || "");
+    setNewTaskResponsibleId("");
+    setNewTaskPhase("");
     setShowAddTaskDialog(true);
   };
 
@@ -187,15 +211,27 @@ export const TasksScheduleView = ({
 
     setAddingTask(true);
     try {
+      const insertData: any = {
+        title: newTaskTitle.trim(),
+        project_id: targetProjectId,
+        due_date: format(selectedDate, "yyyy-MM-dd"),
+        status: "pending",
+        sort_order: 0,
+      };
+
+      // Add responsible staff if selected
+      if (newTaskResponsibleId) {
+        insertData.responsible_staff_id = newTaskResponsibleId;
+      }
+
+      // Add phase as tag if selected
+      if (newTaskPhase) {
+        insertData.tags = [newTaskPhase];
+      }
+
       const { error } = await supabase
         .from("onboarding_tasks")
-        .insert({
-          title: newTaskTitle.trim(),
-          project_id: targetProjectId,
-          due_date: format(selectedDate, "yyyy-MM-dd"),
-          status: "pending",
-          sort_order: 0,
-        });
+        .insert(insertData);
 
       if (error) throw error;
 
@@ -203,6 +239,8 @@ export const TasksScheduleView = ({
       setShowAddTaskDialog(false);
       setNewTaskTitle("");
       setNewTaskProjectId(singleProjectId || "");
+      setNewTaskResponsibleId("");
+      setNewTaskPhase("");
       onTaskAdded?.();
     } catch (error) {
       console.error("Error adding task:", error);
@@ -671,7 +709,7 @@ export const TasksScheduleView = ({
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="task-title">Título da Tarefa</Label>
+              <Label htmlFor="task-title">Título da Tarefa *</Label>
               <Input
                 id="task-title"
                 placeholder="Ex: Reunião de alinhamento..."
@@ -683,7 +721,7 @@ export const TasksScheduleView = ({
             {/* Only show project selector if not in single project mode */}
             {!singleProjectId && (
               <div className="space-y-2">
-                <Label htmlFor="task-project">Projeto</Label>
+                <Label htmlFor="task-project">Projeto *</Label>
                 <Select value={newTaskProjectId} onValueChange={setNewTaskProjectId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o projeto..." />
@@ -702,6 +740,47 @@ export const TasksScheduleView = ({
                         </SelectItem>
                       );
                     })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Phase selector */}
+            <div className="space-y-2">
+              <Label htmlFor="task-phase">Fase</Label>
+              <Select value={newTaskPhase} onValueChange={setNewTaskPhase}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a fase (opcional)..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {TASK_PHASES.map((phase) => (
+                    <SelectItem key={phase} value={phase}>
+                      {phase}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Responsible staff selector */}
+            {staffList.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="task-responsible">Responsável</Label>
+                <Select value={newTaskResponsibleId} onValueChange={setNewTaskResponsibleId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o responsável (opcional)..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffList.map((staff) => (
+                      <SelectItem key={staff.id} value={staff.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{staff.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({staff.role === "consultant" ? "Consultor" : staff.role === "cs" ? "CS" : staff.role})
+                          </span>
+                        </span>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
