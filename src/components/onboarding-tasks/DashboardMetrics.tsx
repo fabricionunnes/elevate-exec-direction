@@ -151,15 +151,27 @@ const DashboardMetrics = ({
     const today = format(new Date(), "yyyy-MM-dd");
     const todayTasksCount = todayTasks.length;
     const overdueTasksCount = overdueTasks.length;
-    const todayCompleted = filteredTasks.filter(t => {
+    const todayCompletedTasks = filteredTasks.filter(t => {
       if (t.status !== "completed" || !t.completed_at) return false;
       return format(parseISO(t.completed_at), "yyyy-MM-dd") === today;
-    }).length;
-    const totalCompleted = filteredTasks.filter(t => t.status === "completed").length;
-    const totalPending = filteredTasks.filter(t => t.status === "pending").length;
-    const totalInProgress = filteredTasks.filter(t => t.status === "in_progress").length;
+    });
+    const completedTasks = filteredTasks.filter(t => t.status === "completed");
+    const pendingTasks = filteredTasks.filter(t => t.status === "pending");
+    const inProgressTasks = filteredTasks.filter(t => t.status === "in_progress");
     
-    return { todayTasks: todayTasksCount, todayCompleted, overdueTasks: overdueTasksCount, totalPending, totalInProgress, totalCompleted, totalTasks: filteredTasks.length };
+    return { 
+      todayTasks: todayTasksCount, 
+      todayCompleted: todayCompletedTasks.length, 
+      todayCompletedIds: todayCompletedTasks.map(t => t.id),
+      overdueTasks: overdueTasksCount, 
+      totalPending: pendingTasks.length, 
+      pendingIds: pendingTasks.map(t => t.id),
+      totalInProgress: inProgressTasks.length, 
+      inProgressIds: inProgressTasks.map(t => t.id),
+      totalCompleted: completedTasks.length, 
+      completedIds: completedTasks.map(t => t.id),
+      totalTasks: filteredTasks.length 
+    };
   }, [filteredTasks, overdueTasks, todayTasks]);
 
   const completedByDayData = useMemo(() => {
@@ -462,10 +474,10 @@ const DashboardMetrics = ({
 
         <TabsContent value="tarefas" className="mt-3 space-y-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Card><CardContent className="p-3 text-center"><p className="text-xl font-bold text-green-500">{taskMetrics.todayCompleted}</p><p className="text-[10px] text-muted-foreground">Concluídas Hoje</p></CardContent></Card>
-            <Card><CardContent className="p-3 text-center"><p className="text-xl font-bold">{taskMetrics.totalCompleted}</p><p className="text-[10px] text-muted-foreground">Total Concluídas</p></CardContent></Card>
-            <Card><CardContent className="p-3 text-center"><p className="text-xl font-bold text-amber-500">{taskMetrics.totalPending}</p><p className="text-[10px] text-muted-foreground">Pendentes</p></CardContent></Card>
-            <Card><CardContent className="p-3 text-center"><p className="text-xl font-bold text-blue-500">{taskMetrics.totalInProgress}</p><p className="text-[10px] text-muted-foreground">Em Progresso</p></CardContent></Card>
+            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("today"); setTasksDialogIds(taskMetrics.todayCompletedIds); setTasksDialogOpen(true); }}><CardContent className="p-3 text-center"><p className="text-xl font-bold text-green-500">{taskMetrics.todayCompleted}</p><p className="text-[10px] text-muted-foreground">Concluídas Hoje</p></CardContent></Card>
+            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("today"); setTasksDialogIds(taskMetrics.completedIds); setTasksDialogOpen(true); }}><CardContent className="p-3 text-center"><p className="text-xl font-bold">{taskMetrics.totalCompleted}</p><p className="text-[10px] text-muted-foreground">Total Concluídas</p></CardContent></Card>
+            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("today"); setTasksDialogIds(taskMetrics.pendingIds); setTasksDialogOpen(true); }}><CardContent className="p-3 text-center"><p className="text-xl font-bold text-amber-500">{taskMetrics.totalPending}</p><p className="text-[10px] text-muted-foreground">Pendentes</p></CardContent></Card>
+            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("today"); setTasksDialogIds(taskMetrics.inProgressIds); setTasksDialogOpen(true); }}><CardContent className="p-3 text-center"><p className="text-xl font-bold text-blue-500">{taskMetrics.totalInProgress}</p><p className="text-[10px] text-muted-foreground">Em Progresso</p></CardContent></Card>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Card>
