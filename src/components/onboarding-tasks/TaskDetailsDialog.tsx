@@ -112,6 +112,7 @@ export const TaskDetailsDialog = ({
   const isConsultant = currentUserRole === "consultant";
   const isCS = currentUserRole === "cs";
   const isStaffRole = isConsultant || isCS;
+  const isTaskCreatedByCurrentUser = taskCreatedBy === currentUserId;
   
   // CS and Consultant can edit dates and assignee (but only assign to themselves)
   const canEditDatesAndAssignee = isAdmin || isStaffRole;
@@ -119,8 +120,11 @@ export const TaskDetailsDialog = ({
   // CS and Consultant can change status and observations
   const canEditStatusAndObservations = isAdmin || isStaffRole;
   
-  // Only admin/CS can edit title and description
-  const canEditTitleAndDescription = isAdmin || isCS;
+  // Title: Admin/CS can always edit, Consultant only if they created the task
+  const canEditTitle = isAdmin || isCS || (isConsultant && isTaskCreatedByCurrentUser);
+  
+  // Description: Admin/CS/Consultant can edit
+  const canEditDescription = isAdmin || isCS || isConsultant;
   
   // Only admin can delete
   const canDelete = isAdmin;
@@ -196,14 +200,17 @@ export const TaskDetailsDialog = ({
       const historyPromises: Promise<void>[] = [];
 
       // Only include fields the user can edit
-      if (canEditTitleAndDescription) {
+      if (canEditTitle) {
         if (editedTask.title !== task.title) {
           historyPromises.push(logHistory("edit", "título", task.title, editedTask.title || ""));
         }
+        updates.title = editedTask.title;
+      }
+      
+      if (canEditDescription) {
         if (editedTask.description !== task.description) {
           historyPromises.push(logHistory("edit", "descrição", task.description || "", editedTask.description || ""));
         }
-        updates.title = editedTask.title;
         updates.description = editedTask.description;
       }
 
@@ -355,7 +362,7 @@ export const TaskDetailsDialog = ({
               <Input
                 value={editedTask.title || ""}
                 onChange={(e) => setEditedTask({ ...editedTask, title: e.target.value })}
-                disabled={!canEditTitleAndDescription}
+                disabled={!canEditTitle}
               />
             </div>
 
@@ -365,7 +372,7 @@ export const TaskDetailsDialog = ({
                 value={editedTask.description || ""}
                 onChange={(e) => setEditedTask({ ...editedTask, description: e.target.value })}
                 rows={3}
-                disabled={!canEditTitleAndDescription}
+                disabled={!canEditDescription}
               />
             </div>
 
