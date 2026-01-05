@@ -73,13 +73,13 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("Usuário não autenticado");
 
-        // Get onboarding user id
+        // Try to get onboarding user id first
         const { data: onboardingUser } = await supabase
           .from("onboarding_users")
           .select("id")
           .eq("user_id", user.id)
           .eq("project_id", projectId)
-          .single();
+          .maybeSingle();
 
         const filePath = `${companyId}/tasks/${taskId}/${Date.now()}_${file.name}`;
 
@@ -90,7 +90,7 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
 
         if (uploadError) throw uploadError;
 
-        // Create document record
+        // Create document record (uploaded_by can be null for staff members)
         const { error: docError } = await supabase
           .from("onboarding_documents")
           .insert({
