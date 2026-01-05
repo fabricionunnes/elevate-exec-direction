@@ -2235,6 +2235,42 @@ export type Database = {
         }
         Relationships: []
       }
+      virtual_office_message_reads: {
+        Row: {
+          id: string
+          message_id: string
+          read_at: string
+          staff_id: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          read_at?: string
+          staff_id: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          read_at?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_office_message_reads_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_office_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_office_message_reads_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       virtual_office_messages: {
         Row: {
           content: string

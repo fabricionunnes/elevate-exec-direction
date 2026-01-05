@@ -15,10 +15,18 @@ import {
   Users, 
   User, 
   ArrowLeft,
-  Circle
+  Circle,
+  Check,
+  CheckCheck
 } from "lucide-react";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+interface MessageRead {
+  message_id: string;
+  staff_id: string;
+  read_at: string;
+}
 
 interface StaffMember {
   id: string;
@@ -66,6 +74,7 @@ const GlobalChatWidget = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [messageReads, setMessageReads] = useState<MessageRead[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"conversations" | "people">("conversations");
   const [totalUnread, setTotalUnread] = useState(0);
@@ -84,6 +93,7 @@ const GlobalChatWidget = () => {
     if (activeConversation) {
       fetchMessages();
       subscribeToMessages();
+      subscribeToMessageReads();
     }
   }, [activeConversation]);
 
@@ -303,6 +313,34 @@ const GlobalChatWidget = () => {
       const { data } = await query;
       setMessages(data || []);
 
+      // Fetch message reads for these messages
+      if (data && data.length > 0) {
+        const messageIds = data.map(m => m.id);
+        const { data: reads } = await supabase
+          .from("virtual_office_message_reads")
+          .select("message_id, staff_id, read_at")
+          .in("message_id", messageIds);
+        
+        setMessageReads(reads || []);
+
+        // Mark messages from others as read
+        const myUnreadMessages = data.filter(
+          msg => msg.staff_id !== currentStaff.id
+        );
+        
+        for (const msg of myUnreadMessages) {
+          const alreadyRead = reads?.some(
+            r => r.message_id === msg.id && r.staff_id === currentStaff.id
+          );
+          if (!alreadyRead) {
+            await supabase.from("virtual_office_message_reads").insert({
+              message_id: msg.id,
+              staff_id: currentStaff.id,
+            });
+          }
+        }
+      }
+
       // Clear unread
       setConversations((prev) =>
         prev.map((c) => (c.id === activeConversation.id ? { ...c, unreadCount: 0 } : c))
@@ -314,6 +352,33 @@ const GlobalChatWidget = () => {
     }
   };
 
+  const subscribeToMessageReads = () => {
+    if (!activeConversation || !currentStaff) return;
+
+    const channel = supabase
+      .channel(`reads-${activeConversation.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "virtual_office_message_reads" },
+        (payload) => {
+          const newRead = payload.new as MessageRead;
+          setMessageReads((prev) => [...prev, newRead]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
+  const isMessageRead = (messageId: string, senderId: string): boolean => {
+    // Check if anyone other than sender has read the message
+    return messageReads.some(
+      read => read.message_id === messageId && read.staff_id !== senderId
+    );
+  };
+
   const subscribeToMessages = () => {
     if (!activeConversation || !currentStaff) return;
 
@@ -322,7 +387,7 @@ const GlobalChatWidget = () => {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "virtual_office_messages" },
-        (payload) => {
+        async (payload) => {
           const newMsg = payload.new as Message;
           
           // Check if message belongs to current conversation
@@ -338,6 +403,14 @@ const GlobalChatWidget = () => {
 
           if (belongs) {
             setMessages((prev) => [...prev, newMsg]);
+            
+            // Mark as read if from someone else
+            if (newMsg.staff_id !== currentStaff.id) {
+              await supabase.from("virtual_office_message_reads").insert({
+                message_id: newMsg.id,
+                staff_id: currentStaff.id,
+              });
+            }
           }
         }
       )
@@ -604,6 +677,7 @@ const GlobalChatWidget = () => {
                     {messages.map((msg) => {
                       const isOwn = msg.staff_id === currentStaff.id;
                       const senderName = getStaffName(msg.staff_id);
+                      const wasRead = isOwn && isMessageRead(msg.id, msg.staff_id);
 
                       return (
                         <div
@@ -633,14 +707,23 @@ const GlobalChatWidget = () => {
                             <p className="text-sm whitespace-pre-wrap break-words">
                               {msg.content}
                             </p>
-                            <p
+                            <div
                               className={cn(
-                                "text-[10px] mt-1",
+                                "flex items-center justify-end gap-1 mt-1",
                                 isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
                               )}
                             >
-                              {format(parseISO(msg.created_at), "HH:mm", { locale: ptBR })}
-                            </p>
+                              <span className="text-[10px]">
+                                {format(parseISO(msg.created_at), "HH:mm", { locale: ptBR })}
+                              </span>
+                              {isOwn && (
+                                wasRead ? (
+                                  <CheckCheck className="h-3.5 w-3.5 text-blue-400" />
+                                ) : (
+                                  <Check className="h-3.5 w-3.5" />
+                                )
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
