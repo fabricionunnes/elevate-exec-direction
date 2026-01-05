@@ -98,8 +98,9 @@ const DashboardMetrics = ({
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
-  const [tasksDialogType, setTasksDialogType] = useState<"overdue" | "today">("overdue");
+  const [tasksDialogType, setTasksDialogType] = useState<"overdue" | "today" | "status">("overdue");
   const [tasksDialogIds, setTasksDialogIds] = useState<string[]>([]);
+  const [tasksDialogStatus, setTasksDialogStatus] = useState<"completed" | "pending" | "in_progress" | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -474,10 +475,10 @@ const DashboardMetrics = ({
 
         <TabsContent value="tarefas" className="mt-3 space-y-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("today"); setTasksDialogIds(taskMetrics.todayCompletedIds); setTasksDialogOpen(true); }}><CardContent className="p-3 text-center"><p className="text-xl font-bold text-green-500">{taskMetrics.todayCompleted}</p><p className="text-[10px] text-muted-foreground">Concluídas Hoje</p></CardContent></Card>
-            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("today"); setTasksDialogIds(taskMetrics.completedIds); setTasksDialogOpen(true); }}><CardContent className="p-3 text-center"><p className="text-xl font-bold">{taskMetrics.totalCompleted}</p><p className="text-[10px] text-muted-foreground">Total Concluídas</p></CardContent></Card>
-            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("today"); setTasksDialogIds(taskMetrics.pendingIds); setTasksDialogOpen(true); }}><CardContent className="p-3 text-center"><p className="text-xl font-bold text-amber-500">{taskMetrics.totalPending}</p><p className="text-[10px] text-muted-foreground">Pendentes</p></CardContent></Card>
-            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("today"); setTasksDialogIds(taskMetrics.inProgressIds); setTasksDialogOpen(true); }}><CardContent className="p-3 text-center"><p className="text-xl font-bold text-blue-500">{taskMetrics.totalInProgress}</p><p className="text-[10px] text-muted-foreground">Em Progresso</p></CardContent></Card>
+            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("today"); setTasksDialogStatus(null); setTasksDialogIds(taskMetrics.todayCompletedIds); setTasksDialogOpen(true); }}><CardContent className="p-3 text-center"><p className="text-xl font-bold text-green-500">{taskMetrics.todayCompleted}</p><p className="text-[10px] text-muted-foreground">Concluídas Hoje</p></CardContent></Card>
+            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("status"); setTasksDialogStatus("completed"); setTasksDialogIds([]); setTasksDialogOpen(true); }}><CardContent className="p-3 text-center"><p className="text-xl font-bold">{taskMetrics.totalCompleted}</p><p className="text-[10px] text-muted-foreground">Total Concluídas</p></CardContent></Card>
+            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("status"); setTasksDialogStatus("pending"); setTasksDialogIds([]); setTasksDialogOpen(true); }}><CardContent className="p-3 text-center"><p className="text-xl font-bold text-amber-500">{taskMetrics.totalPending}</p><p className="text-[10px] text-muted-foreground">Pendentes</p></CardContent></Card>
+            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("status"); setTasksDialogStatus("in_progress"); setTasksDialogIds([]); setTasksDialogOpen(true); }}><CardContent className="p-3 text-center"><p className="text-xl font-bold text-blue-500">{taskMetrics.totalInProgress}</p><p className="text-[10px] text-muted-foreground">Em Progresso</p></CardContent></Card>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Card>
@@ -538,7 +539,14 @@ const DashboardMetrics = ({
         </TabsContent>
       </Tabs>
 
-      <TasksListDialog open={tasksDialogOpen} onOpenChange={setTasksDialogOpen} type={tasksDialogType} taskIds={tasksDialogIds} />
+      <TasksListDialog
+        open={tasksDialogOpen}
+        onOpenChange={setTasksDialogOpen}
+        type={tasksDialogType}
+        taskIds={tasksDialogIds}
+        status={tasksDialogStatus ?? undefined}
+        projectIds={projects.map((p) => p.id)}
+      />
     </div>
   );
 };
