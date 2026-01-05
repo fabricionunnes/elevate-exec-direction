@@ -291,62 +291,79 @@ const OnboardingTasksPage = () => {
     }
   };
 
-  // Calculate overdue and today tasks for dashboard (respects project filters)
+  // Calculate overdue and today tasks for dashboard (respects project + period filters)
   const filteredProjectIds = useMemo(() => {
     // If tasks are assigned to the consultant, we should also include those projects
-    const responsibleProjectIds = filterConsultant === "all"
-      ? null
-      : new Set(allTasks.filter(t => t.responsible_staff_id === filterConsultant).map(t => t.project_id));
+    const responsibleProjectIds =
+      filterConsultant === "all"
+        ? null
+        : new Set(allTasks.filter((t) => t.responsible_staff_id === filterConsultant).map((t) => t.project_id));
 
     // Build a map of company_id to consultant_id for fallback lookup
-    const companyConsultantMap = new Map(
-      companies.map(c => [c.id, c.consultant_id])
-    );
+    const companyConsultantMap = new Map(companies.map((c) => [c.id, c.consultant_id]));
 
     const projectIds = new Set(
-      allProjects.filter((project) => {
-        // Check consultant: project's consultant OR company's consultant OR tasks assigned to consultant
-        const companyConsultantId = project.onboarding_company_id 
-          ? companyConsultantMap.get(project.onboarding_company_id)
-          : null;
+      allProjects
+        .filter((project) => {
+          // Check consultant: project's consultant OR company's consultant OR tasks assigned to consultant
+          const companyConsultantId = project.onboarding_company_id
+            ? companyConsultantMap.get(project.onboarding_company_id)
+            : null;
 
-        const matchesConsultant = 
-          filterConsultant === "all" || 
-          project.consultant_id === filterConsultant ||
-          companyConsultantId === filterConsultant ||
-          (responsibleProjectIds?.has(project.id) ?? false);
+          const matchesConsultant =
+            filterConsultant === "all" ||
+            project.consultant_id === filterConsultant ||
+            companyConsultantId === filterConsultant ||
+            (responsibleProjectIds?.has(project.id) ?? false);
 
-        const matchesService = 
-          filterService === "all" || 
-          project.product_id === filterService;
+          const matchesService = filterService === "all" || project.product_id === filterService;
 
-        // Status filter is project status
-        const matchesStatus = filterStatus === "all" || project.status === filterStatus;
+          // Status filter is project status
+          const matchesStatus = filterStatus === "all" || project.status === filterStatus;
 
-        return matchesConsultant && matchesService && matchesStatus;
-      }).map(p => p.id)
+          return matchesConsultant && matchesService && matchesStatus;
+        })
+        .map((p) => p.id)
     );
 
     return projectIds;
   }, [allProjects, allTasks, filterConsultant, filterService, filterStatus, companies]);
 
+  const normalizeDueDate = (due: string) => {
+    // Ensure date-only strings are parsed as local midnight for consistent "today/overdue" checks
+    return startOfDay(new Date(due.includes("T") ? due : `${due}T00:00:00`));
+  };
+
   const overdueTasks = useMemo(() => {
     const todayStart = startOfDay(new Date());
-    return allTasks.filter(t => {
+    return allTasks.filter((t) => {
       if (!t.due_date || t.status === "completed") return false;
       if (!filteredProjectIds.has(t.project_id)) return false;
-      const dueDate = new Date(t.due_date);
+
+      const dueDate = normalizeDueDate(t.due_date);
+
+      // Period filter (due date must be inside the selected period)
+      if (!isWithinInterval(dueDate, { start: dateRange.start, end: dateRange.end })) return false;
+
       return isBefore(dueDate, todayStart);
     });
-  }, [allTasks, filteredProjectIds]);
+  }, [allTasks, filteredProjectIds, dateRange.start, dateRange.end]);
 
   const todayTasks = useMemo(() => {
-    const today = format(new Date(), "yyyy-MM-dd");
-    return allTasks.filter(t => {
+    const today = startOfDay(new Date());
+    return allTasks.filter((t) => {
+      if (!t.due_date) return false;
       if (!filteredProjectIds.has(t.project_id)) return false;
-      return t.due_date === today;
+
+      const dueDate = normalizeDueDate(t.due_date);
+
+      // Period filter (due date must be inside the selected period)
+      if (!isWithinInterval(dueDate, { start: dateRange.start, end: dateRange.end })) return false;
+
+      return dueDate.getTime() === today.getTime();
     });
-  }, [allTasks, filteredProjectIds]);
+  }, [allTasks, filteredProjectIds, dateRange.start, dateRange.end]);
+
 
   // Handle metric card filter
   const handleMetricFilterChange = (filter: { type: string; value: string } | null) => {
