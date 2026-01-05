@@ -48,12 +48,6 @@ const GoogleCalendarTab = () => {
         return;
       }
 
-      const response = await supabase.functions.invoke("google-calendar", {
-        body: {},
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      // Check if the URL has action parameter
       const { data, error } = await supabase.functions.invoke("google-calendar?action=check-connection", {
         body: {},
       });
