@@ -149,10 +149,92 @@ const OnboardingProjectPage = () => {
   const [showChurnDialog, setShowChurnDialog] = useState(false);
   const [churnLoading, setChurnLoading] = useState(false);
 
+  // Check for attention/risk alerts when opening project
+  const checkProjectAlerts = async () => {
+    if (!projectId) return;
+
+    try {
+      // Fetch project NPS
+      const { data: projectData } = await supabase
+        .from("onboarding_projects")
+        .select("current_nps, product_name, onboarding_company:onboarding_companies(name)")
+        .eq("id", projectId)
+        .single();
+
+      if (!projectData) return;
+
+      const currentNps = projectData.current_nps;
+      const companyName = projectData.onboarding_company?.name || projectData.product_name;
+
+      // Calculate goal projection for current month
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+
+      const { data: goalData } = await supabase
+        .from("onboarding_monthly_goals")
+        .select("sales_target, sales_result")
+        .eq("project_id", projectId)
+        .eq("month", currentMonth)
+        .eq("year", currentYear)
+        .single();
+
+      let projectionPercent: number | null = null;
+
+      if (goalData?.sales_target && goalData.sales_target > 0) {
+        const result = goalData.sales_result || 0;
+        const target = goalData.sales_target;
+        
+        // Calculate time progression
+        const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+        const currentDay = now.getDate();
+        const timeProgress = currentDay / daysInMonth;
+        
+        // Calculate weighted projection
+        if (timeProgress > 0) {
+          projectionPercent = ((result / target) / timeProgress) * 100;
+        }
+      }
+
+      // Check for RISK condition (more severe) - NPS < 7 AND projection < 50%
+      const isRisk = (currentNps !== null && currentNps < 7) && 
+                     (projectionPercent !== null && projectionPercent < 50);
+
+      // Check for ATTENTION condition - NPS < 8 OR projection < 80%
+      const isAttention = !isRisk && (
+        (currentNps !== null && currentNps < 8) ||
+        (projectionPercent !== null && projectionPercent < 80)
+      );
+
+      if (isRisk) {
+        const reasons = [];
+        if (currentNps !== null && currentNps < 7) reasons.push(`NPS ${currentNps}`);
+        if (projectionPercent !== null && projectionPercent < 50) reasons.push(`Projeção ${Math.round(projectionPercent)}%`);
+        
+        toast.error(`🚨 EMPRESA EM RISCO: ${companyName}`, {
+          description: `Indicadores críticos: ${reasons.join(" | ")}`,
+          duration: 15000,
+        });
+      } else if (isAttention) {
+        const reasons = [];
+        if (currentNps !== null && currentNps < 8) reasons.push(`NPS ${currentNps}`);
+        if (projectionPercent !== null && projectionPercent < 80) reasons.push(`Projeção ${Math.round(projectionPercent)}%`);
+        
+        toast.warning(`⚠️ PONTO DE ATENÇÃO: ${companyName}`, {
+          description: `Indicadores: ${reasons.join(" | ")}`,
+          duration: 10000,
+        });
+      }
+    } catch (error) {
+      console.error("Error checking project alerts:", error);
+    }
+  };
+
   useEffect(() => {
     if (projectId) {
       fetchProjectData();
       fetchStaffList();
+      checkProjectAlerts();
     }
   }, [projectId]);
 
