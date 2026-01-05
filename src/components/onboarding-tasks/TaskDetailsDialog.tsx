@@ -22,7 +22,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { CalendarIcon, Loader2, Trash2 } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { TaskAttachments } from "./TaskAttachments";
@@ -367,18 +367,18 @@ export const TaskDetailsDialog = ({
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {editedTask.due_date
-                        ? format(new Date(editedTask.due_date), "dd/MM/yyyy", { locale: ptBR })
+                        ? format(parseISO(editedTask.due_date), "dd/MM/yyyy", { locale: ptBR })
                         : "Selecionar"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={editedTask.due_date ? new Date(editedTask.due_date) : undefined}
+                      selected={editedTask.due_date ? parseISO(editedTask.due_date) : undefined}
                       onSelect={(date) =>
                         setEditedTask({
                           ...editedTask,
-                          due_date: date ? date.toISOString().split("T")[0] : null,
+                          due_date: date ? format(date, "yyyy-MM-dd") : null,
                         })
                       }
                       initialFocus
