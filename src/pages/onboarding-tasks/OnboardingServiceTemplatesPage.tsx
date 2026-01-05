@@ -11,7 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Pencil, Trash2, LogOut, ListTodo, GripVertical, Copy } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, LogOut, ListTodo, GripVertical, Copy, EyeOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 interface TaskTemplate {
   id: string;
@@ -28,6 +29,7 @@ interface TaskTemplate {
   recurrence: string | null;
   checklist: any;
   created_at: string;
+  is_internal: boolean;
 }
 
 interface Service {
@@ -74,7 +76,8 @@ export default function OnboardingServiceTemplatesPage() {
     default_days_offset: 0,
     duration_days: 1,
     responsible_role: 'consultant',
-    recurrence: ''
+    recurrence: '',
+    is_internal: false
   });
 
   useEffect(() => {
@@ -168,7 +171,8 @@ export default function OnboardingServiceTemplatesPage() {
       default_days_offset: 0,
       duration_days: 1,
       responsible_role: 'consultant',
-      recurrence: ''
+      recurrence: '',
+      is_internal: false
     });
     setDialogOpen(true);
   };
@@ -185,7 +189,8 @@ export default function OnboardingServiceTemplatesPage() {
       default_days_offset: template.default_days_offset || 0,
       duration_days: template.duration_days || 1,
       responsible_role: template.responsible_role || 'consultant',
-      recurrence: template.recurrence || ''
+      recurrence: template.recurrence || '',
+      is_internal: template.is_internal || false
     });
     setDialogOpen(true);
   };
@@ -211,7 +216,8 @@ export default function OnboardingServiceTemplatesPage() {
         default_days_offset: formData.default_days_offset,
         duration_days: formData.duration_days,
         responsible_role: formData.responsible_role,
-        recurrence: formData.recurrence || null
+        recurrence: formData.recurrence || null,
+        is_internal: formData.is_internal
       };
 
       if (editingTemplate) {
@@ -255,7 +261,8 @@ export default function OnboardingServiceTemplatesPage() {
           duration_days: template.duration_days,
           responsible_role: template.responsible_role,
           recurrence: template.recurrence,
-          checklist: template.checklist
+          checklist: template.checklist,
+          is_internal: template.is_internal
         });
 
       if (error) throw error;
@@ -381,6 +388,12 @@ export default function OnboardingServiceTemplatesPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-medium truncate">{template.title}</span>
+                          {template.is_internal && (
+                            <Badge variant="secondary" className="text-xs gap-1">
+                              <EyeOff className="h-3 w-3" />
+                              Interna
+                            </Badge>
+                          )}
                           {getPriorityBadge(template.priority)}
                           {getRoleBadge(template.responsible_role)}
                           {template.recurrence && (
@@ -463,6 +476,12 @@ export default function OnboardingServiceTemplatesPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-medium truncate">{template.title}</span>
+                          {template.is_internal && (
+                            <Badge variant="secondary" className="text-xs gap-1">
+                              <EyeOff className="h-3 w-3" />
+                              Interna
+                            </Badge>
+                          )}
                           {getPriorityBadge(template.priority)}
                           {getRoleBadge(template.responsible_role)}
                         </div>
@@ -701,6 +720,23 @@ export default function OnboardingServiceTemplatesPage() {
                   }))}
                 />
               </div>
+            </div>
+
+            {/* Tarefa Interna */}
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label className="font-medium flex items-center gap-2">
+                  <EyeOff className="h-4 w-4" />
+                  Tarefa Interna
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Visível apenas para CS, Consultores e Administradores. Clientes não verão esta tarefa.
+                </p>
+              </div>
+              <Switch
+                checked={formData.is_internal}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_internal: checked }))}
+              />
             </div>
           </div>
 
