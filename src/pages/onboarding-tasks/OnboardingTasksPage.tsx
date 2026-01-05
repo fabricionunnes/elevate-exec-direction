@@ -291,30 +291,52 @@ const OnboardingTasksPage = () => {
     }
   };
 
-  // Calculate overdue and today tasks for dashboard (respects project + period filters)
+  // Calculate overdue and today tasks for dashboard (respects consultant/service/status filters)
   const filteredProjectIds = useMemo(() => {
-    // If tasks are assigned to the consultant, we should also include those projects
+    if (filterConsultant === "all" && filterService === "all" && filterStatus === "all") {
+      return new Set(allProjects.map((p) => p.id));
+    }
+
+    // If tasks are directly linked to a consultant, include their projects too
     const responsibleProjectIds =
       filterConsultant === "all"
+        ? new Set<string>()
+        : new Set(
+            allTasks
+              .filter((t) => t.responsible_staff_id === filterConsultant)
+              .map((t) => t.project_id)
+          );
+
+    // If consultant is responsible for the company, ALL company tasks/projects are theirs
+    const companyPortfolioProjectIds =
+      filterConsultant === "all"
+        ? new Set<string>()
+        : new Set(
+            companies
+              .filter((c) => c.consultant_id === filterConsultant)
+              .flatMap((c) => c.projects?.map((p) => p.id) ?? [])
+          );
+
+    // Also include projects where consultant is set at the project level
+    const projectPortfolioProjectIds =
+      filterConsultant === "all"
+        ? new Set<string>()
+        : new Set(allProjects.filter((p) => p.consultant_id === filterConsultant).map((p) => p.id));
+
+    const consultantProjectIds =
+      filterConsultant === "all"
         ? null
-        : new Set(allTasks.filter((t) => t.responsible_staff_id === filterConsultant).map((t) => t.project_id));
+        : new Set<string>([
+            ...responsibleProjectIds,
+            ...companyPortfolioProjectIds,
+            ...projectPortfolioProjectIds,
+          ]);
 
-    // Build a map of company_id to consultant_id for fallback lookup
-    const companyConsultantMap = new Map(companies.map((c) => [c.id, c.consultant_id]));
-
-    const projectIds = new Set(
+    return new Set(
       allProjects
         .filter((project) => {
-          // Check consultant: project's consultant OR company's consultant OR tasks assigned to consultant
-          const companyConsultantId = project.onboarding_company_id
-            ? companyConsultantMap.get(project.onboarding_company_id)
-            : null;
-
           const matchesConsultant =
-            filterConsultant === "all" ||
-            project.consultant_id === filterConsultant ||
-            companyConsultantId === filterConsultant ||
-            (responsibleProjectIds?.has(project.id) ?? false);
+            filterConsultant === "all" || (consultantProjectIds?.has(project.id) ?? false);
 
           const matchesService = filterService === "all" || project.product_id === filterService;
 
@@ -325,9 +347,7 @@ const OnboardingTasksPage = () => {
         })
         .map((p) => p.id)
     );
-
-    return projectIds;
-  }, [allProjects, allTasks, filterConsultant, filterService, filterStatus, companies]);
+  }, [allProjects, allTasks, companies, filterConsultant, filterService, filterStatus]);
 
   const normalizeDueDate = (due: string) => {
     // Ensure date-only strings are parsed as local midnight for consistent "today/overdue" checks
@@ -585,38 +605,54 @@ const OnboardingTasksPage = () => {
 
   // Filtered projects for dashboard metrics (respects consultant, service, and status filters)
   const filteredProjects = useMemo(() => {
-    // If tasks are assigned to the consultant, we should also include those projects
-    const responsibleProjectIds = filterConsultant === "all"
-      ? null
-      : new Set(allTasks.filter(t => t.responsible_staff_id === filterConsultant).map(t => t.project_id));
+    if (filterConsultant === "all" && filterService === "all" && filterStatus === "all") {
+      return allProjects;
+    }
 
-    // Build a map of company_id to consultant_id for fallback lookup
-    const companyConsultantMap = new Map(
-      companies.map(c => [c.id, c.consultant_id])
-    );
+    const responsibleProjectIds =
+      filterConsultant === "all"
+        ? new Set<string>()
+        : new Set(
+            allTasks
+              .filter((t) => t.responsible_staff_id === filterConsultant)
+              .map((t) => t.project_id)
+          );
+
+    const companyPortfolioProjectIds =
+      filterConsultant === "all"
+        ? new Set<string>()
+        : new Set(
+            companies
+              .filter((c) => c.consultant_id === filterConsultant)
+              .flatMap((c) => c.projects?.map((p) => p.id) ?? [])
+          );
+
+    const projectPortfolioProjectIds =
+      filterConsultant === "all"
+        ? new Set<string>()
+        : new Set(allProjects.filter((p) => p.consultant_id === filterConsultant).map((p) => p.id));
+
+    const consultantProjectIds =
+      filterConsultant === "all"
+        ? null
+        : new Set<string>([
+            ...responsibleProjectIds,
+            ...companyPortfolioProjectIds,
+            ...projectPortfolioProjectIds,
+          ]);
 
     return allProjects.filter((project) => {
-      // Check consultant: project's consultant OR company's consultant OR tasks assigned to consultant
-      const companyConsultantId = project.onboarding_company_id 
-        ? companyConsultantMap.get(project.onboarding_company_id)
-        : null;
+      const matchesConsultant =
+        filterConsultant === "all" || (consultantProjectIds?.has(project.id) ?? false);
 
-      const matchesConsultant = 
-        filterConsultant === "all" || 
-        project.consultant_id === filterConsultant ||
-        companyConsultantId === filterConsultant ||
-        (responsibleProjectIds?.has(project.id) ?? false);
-
-      const matchesService = 
-        filterService === "all" || 
-        project.product_id === filterService;
+      const matchesService = filterService === "all" || project.product_id === filterService;
 
       // Status filter is project status
       const matchesStatus = filterStatus === "all" || project.status === filterStatus;
 
       return matchesConsultant && matchesService && matchesStatus;
     });
-  }, [allProjects, allTasks, filterConsultant, filterService, filterStatus, companies]);
+  }, [allProjects, allTasks, companies, filterConsultant, filterService, filterStatus]);
 
   // For consultants, don't show consultant filter as active since it's auto-applied
   const hasActiveFilters = (currentUserRole !== "consultant" && filterConsultant !== "all") || filterService !== "all" || filterStatus !== "all" || activeMetricFilter !== null;
