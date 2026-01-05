@@ -64,9 +64,16 @@ interface OnboardingUser {
   role: "admin" | "cs" | "consultant" | "client";
 }
 
+interface StaffMember {
+  id: string;
+  name: string;
+  role: string;
+}
+
 interface TaskDetailsDialogProps {
   task: OnboardingTask | null;
   users: OnboardingUser[];
+  staffList?: StaffMember[];
   onClose: () => void;
   onTaskUpdated: () => void;
   isAdmin?: boolean;
@@ -81,6 +88,7 @@ interface TaskDetailsDialogProps {
 export const TaskDetailsDialog = ({
   task,
   users,
+  staffList = [],
   onClose,
   onTaskUpdated,
   isAdmin = false,
@@ -130,10 +138,16 @@ export const TaskDetailsDialog = ({
   const canDelete = isAdmin;
   
   // For assignee selection: staff can only assign to themselves, admin can assign to anyone
+  // Staff users are in staffList, not users array
+  const currentStaffMember = staffList.find(s => s.id === currentUserId);
+  const selfAsAssignee = currentStaffMember 
+    ? [{ id: currentStaffMember.id, name: currentStaffMember.name, email: '', role: currentStaffMember.role as "admin" | "cs" | "consultant" | "client" }]
+    : [];
+  
   const availableAssignees = isAdmin 
-    ? users 
+    ? [...users, ...staffList.map(s => ({ id: s.id, name: s.name, email: '', role: s.role as "admin" | "cs" | "consultant" | "client" }))]
     : isStaffRole 
-      ? users.filter(u => u.id === currentUserId)
+      ? selfAsAssignee
       : [];
 
   const [historyKey, setHistoryKey] = useState(0);
