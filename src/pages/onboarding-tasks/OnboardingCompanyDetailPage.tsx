@@ -510,16 +510,26 @@ const OnboardingCompanyDetailPage = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="status">Status</Label>
-                    <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                    <Select 
+                      value={form.status} 
+                      onValueChange={(v) => setForm({ ...form, status: v })}
+                      disabled={currentUserRole !== "admin" && currentUserRole !== "cs"}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="active">Ativa</SelectItem>
-                        <SelectItem value="inactive">Inativa</SelectItem>
-                        <SelectItem value="churned">Churned</SelectItem>
+                        <SelectItem value="active">Ativo</SelectItem>
+                        <SelectItem value="cancellation_signaled">Sinalizou Cancelamento</SelectItem>
+                        <SelectItem value="notice_period">Cumprindo Aviso</SelectItem>
+                        <SelectItem value="closed">Encerrado</SelectItem>
                       </SelectContent>
                     </Select>
+                    {currentUserRole !== "admin" && currentUserRole !== "cs" && (
+                      <p className="text-xs text-muted-foreground">
+                        Apenas CS ou Admin podem alterar o status
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>

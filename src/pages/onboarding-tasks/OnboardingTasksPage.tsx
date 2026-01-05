@@ -214,7 +214,7 @@ const OnboardingTasksPage = () => {
     const matchesConsultant = 
       filterConsultant === "all" || company.consultant_id === filterConsultant;
     
-    // Service filter - check if company has any project with the selected service
+    // Service filter - check if company has any project with the selected service (using slug)
     const matchesService = 
       filterService === "all" || 
       company.projects?.some(p => p.product_id === filterService);
@@ -237,15 +237,13 @@ const OnboardingTasksPage = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return <Badge className="bg-green-500">Ativa</Badge>;
-      case "inactive":
-        return <Badge variant="secondary">Inativa</Badge>;
-      case "churned":
-        return <Badge variant="destructive">Churned</Badge>;
-      case "completed":
-        return <Badge className="bg-blue-500">Concluído</Badge>;
-      case "paused":
-        return <Badge variant="secondary">Pausado</Badge>;
+        return <Badge className="bg-green-500">Ativo</Badge>;
+      case "cancellation_signaled":
+        return <Badge className="bg-amber-500">Sinalizou Cancelamento</Badge>;
+      case "notice_period":
+        return <Badge className="bg-orange-500">Cumprindo Aviso</Badge>;
+      case "closed":
+        return <Badge variant="destructive">Encerrado</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -403,20 +401,21 @@ const OnboardingTasksPage = () => {
             <SelectContent>
               <SelectItem value="all">Todos serviços</SelectItem>
               {services.map((s) => (
-                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                <SelectItem key={s.id} value={s.slug}>{s.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
 
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos status</SelectItem>
-              <SelectItem value="active">Ativa</SelectItem>
-              <SelectItem value="inactive">Inativa</SelectItem>
-              <SelectItem value="churned">Churned</SelectItem>
+              <SelectItem value="active">Ativo</SelectItem>
+              <SelectItem value="cancellation_signaled">Sinalizou Cancelamento</SelectItem>
+              <SelectItem value="notice_period">Cumprindo Aviso</SelectItem>
+              <SelectItem value="closed">Encerrado</SelectItem>
             </SelectContent>
           </Select>
 

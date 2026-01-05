@@ -467,6 +467,7 @@ export type Database = {
           segment: string | null
           stakeholders: Json | null
           status: string
+          status_changed_at: string | null
           target_audience: string | null
           updated_at: string
           website: string | null
@@ -496,6 +497,7 @@ export type Database = {
           segment?: string | null
           stakeholders?: Json | null
           status?: string
+          status_changed_at?: string | null
           target_audience?: string | null
           updated_at?: string
           website?: string | null
@@ -525,6 +527,7 @@ export type Database = {
           segment?: string | null
           stakeholders?: Json | null
           status?: string
+          status_changed_at?: string | null
           target_audience?: string | null
           updated_at?: string
           website?: string | null
