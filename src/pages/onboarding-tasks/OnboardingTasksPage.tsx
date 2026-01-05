@@ -318,26 +318,43 @@ const OnboardingTasksPage = () => {
     return new Set(npsResponses.map(r => r.project_id));
   }, [npsResponses]);
 
-  // Calculate projects meeting their goals for the selected period
-  const projectsMeetingGoal = useMemo(() => {
+  // Calculate projects by goal projection ranges for the selected period
+  const projectsGoalRanges = useMemo(() => {
     const periodMonth = dateRange.start.getMonth() + 1;
     const periodYear = dateRange.start.getFullYear();
     
-    const meetingGoalIds = new Set<string>();
+    const meetingGoalIds = new Set<string>(); // >=100%
+    const above70Ids = new Set<string>(); // 70-99%
+    const between50And70Ids = new Set<string>(); // 50-69%
+    const below50Ids = new Set<string>(); // <50%
     
     monthlyGoals.forEach(g => {
       if (
         g.month === periodMonth &&
         g.year === periodYear &&
-        g.sales_target && g.sales_target > 0 &&
-        g.sales_result !== null &&
-        g.sales_result >= g.sales_target
+        g.sales_target && g.sales_target > 0
       ) {
-        meetingGoalIds.add(g.project_id);
+        const result = g.sales_result || 0;
+        const projectionPercent = Math.round((result / g.sales_target) * 100);
+        
+        if (projectionPercent >= 100) {
+          meetingGoalIds.add(g.project_id);
+        } else if (projectionPercent >= 70) {
+          above70Ids.add(g.project_id);
+        } else if (projectionPercent >= 50) {
+          between50And70Ids.add(g.project_id);
+        } else {
+          below50Ids.add(g.project_id);
+        }
       }
     });
     
-    return meetingGoalIds;
+    return {
+      meetingGoal: meetingGoalIds,
+      above70: above70Ids,
+      between50And70: between50And70Ids,
+      below50: below50Ids
+    };
   }, [monthlyGoals, dateRange]);
 
   const filteredCompanies = useMemo(() => {
@@ -409,15 +426,25 @@ const OnboardingTasksPage = () => {
             const updatedAt = new Date(p.updated_at);
             return isWithinInterval(updatedAt, { start: dateRange.start, end: dateRange.end });
           }) ?? false;
-        } else if (activeMetricFilter.type === "goals" && activeMetricFilter.value === "meeting") {
-          // Filter companies that have at least one project meeting their goal
-          matchesMetricFilter = company.projects?.some(p => projectsMeetingGoal.has(p.id)) ?? false;
+        } else if (activeMetricFilter.type === "goals") {
+          // Filter by goal projection ranges
+          if (activeMetricFilter.value === "meeting") {
+            matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.meetingGoal.has(p.id)) ?? false;
+          } else if (activeMetricFilter.value === "100plus") {
+            matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.meetingGoal.has(p.id)) ?? false;
+          } else if (activeMetricFilter.value === "above70") {
+            matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.above70.has(p.id)) ?? false;
+          } else if (activeMetricFilter.value === "between50and70") {
+            matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.between50And70.has(p.id)) ?? false;
+          } else if (activeMetricFilter.value === "below50") {
+            matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.below50.has(p.id)) ?? false;
+          }
         }
       }
       
       return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
     });
-  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsMeetingGoal]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsGoalRanges]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
