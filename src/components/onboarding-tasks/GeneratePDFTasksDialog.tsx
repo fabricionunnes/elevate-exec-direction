@@ -20,7 +20,8 @@ interface ExtractedTask {
   description: string;
   phase: string;
   priority: 'high' | 'medium' | 'low';
-  estimated_days: number;
+  days_from_now: number;
+  estimated_hours: number | null;
 }
 
 interface GeneratePDFTasksDialogProps {
@@ -231,6 +232,12 @@ export const GeneratePDFTasksDialog = ({
     low: 'Baixa',
   };
 
+  const formatDueDate = (daysFromNow: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() + daysFromNow);
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  };
+
   // Group tasks by phase
   const tasksByPhase = extractedTasks.reduce((acc, task) => {
     const phase = task.phase || 'Sem fase';
@@ -394,7 +401,12 @@ export const GeneratePDFTasksDialog = ({
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2">
-                                <p className="font-medium text-sm">{task.title}</p>
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm">{task.title}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    Prazo: {formatDueDate(task.days_from_now)} ({task.days_from_now}d)
+                                  </p>
+                                </div>
                                 <div className="flex items-center gap-1 shrink-0">
                                   <Badge variant="outline" className={priorityColors[task.priority]}>
                                     {priorityLabels[task.priority]}

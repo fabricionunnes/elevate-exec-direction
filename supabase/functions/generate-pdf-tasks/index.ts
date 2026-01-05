@@ -46,17 +46,26 @@ serve(async (req) => {
 
       let sortOrder = (existingTasks?.[0]?.sort_order || 0) + 1;
 
-      // Insert tasks
-      const tasksToInsert = selectedTasks.map((task: any, index: number) => ({
-        project_id: projectId,
-        title: task.title?.substring(0, 255) || `Ação ${index + 1}`,
-        description: task.description || null,
-        tags: [task.phase || 'Plano de Ação', String(index + 1)],
-        priority: ['high', 'medium', 'low'].includes(task.priority) ? task.priority : 'medium',
-        sort_order: sortOrder + index,
-        status: 'pending',
-        is_internal: false,
-      }));
+      // Insert tasks with calculated due dates
+      const today = new Date();
+      const tasksToInsert = selectedTasks.map((task: any, index: number) => {
+        const daysFromNow = task.days_from_now || 30;
+        const dueDate = new Date(today);
+        dueDate.setDate(dueDate.getDate() + daysFromNow);
+        
+        return {
+          project_id: projectId,
+          title: task.title?.substring(0, 255) || `Ação ${index + 1}`,
+          description: task.description || null,
+          tags: [task.phase || 'Plano de Ação'],
+          priority: ['high', 'medium', 'low'].includes(task.priority) ? task.priority : 'medium',
+          sort_order: sortOrder + index,
+          status: 'pending',
+          is_internal: false,
+          due_date: dueDate.toISOString().split('T')[0],
+          estimated_hours: task.estimated_hours || null,
+        };
+      });
 
       if (tasksToInsert.length > 0) {
         const { error: insertError } = await supabase
@@ -112,18 +121,31 @@ serve(async (req) => {
             content: `Você é um especialista em planejamento estratégico e gestão de projetos. 
 Sua tarefa é analisar documentos de planejamento estratégico e extrair TODAS as ações, tarefas e iniciativas propostas.
 
+DISTRIBUIÇÃO TEMPORAL (CRÍTICO):
+- Distribua TODAS as tarefas nos PRÓXIMOS 90 DIAS (3 meses)
+- PRIORIZE as ações que geram resultados mais rápidos e impacto comercial imediato nas PRIMEIRAS SEMANAS
+- Ações de vendas, captação de clientes e geração de receita = primeiros 30 dias
+- Ações de estruturação, processos e treinamentos = dias 30-60
+- Ações de consolidação, ajustes e melhorias contínuas = dias 60-90
+
 Para cada ação identificada, extraia:
 - title: Título curto e objetivo da ação (máximo 80 caracteres)
 - description: Descrição detalhada da ação
 - phase: Fase ou categoria da ação (ex: "Estratégia Comercial", "Marketing", "Processos", "Pessoas", etc.)
-- priority: Prioridade (high, medium, low) - baseada na urgência indicada no documento
-- estimated_days: Estimativa de dias para execução (número inteiro)
+- priority: Prioridade (high, medium, low) - baseada no impacto nos resultados
+- days_from_now: Em quantos dias a partir de hoje esta tarefa deve ser concluída (1 a 90)
+- estimated_hours: Estimativa de horas para execução (número inteiro)
+
+REGRAS DE PRIORIZAÇÃO:
+1. HIGH (primeiros 30 dias): Ações de vendas diretas, campanhas, captação de leads, ativação de clientes
+2. MEDIUM (30-60 dias): Treinamentos, criação de processos, playbooks, estruturação
+3. LOW (60-90 dias): Documentação, ajustes finos, melhorias incrementais
 
 IMPORTANTE:
 - Extraia TODAS as ações mencionadas, mesmo que pareçam pequenas
 - Mantenha a linguagem original do documento
 - Se uma ação tiver subtarefas, liste cada uma separadamente
-- Agrupe por fases lógicas baseadas no conteúdo do documento
+- Ordene as tarefas por days_from_now (mais urgentes primeiro)
 
 Retorne APENAS um JSON válido no formato:
 {
@@ -133,7 +155,8 @@ Retorne APENAS um JSON válido no formato:
       "description": "string", 
       "phase": "string",
       "priority": "high" | "medium" | "low",
-      "estimated_days": number
+      "days_from_now": number,
+      "estimated_hours": number
     }
   ],
   "summary": "Resumo breve do plano estratégico"
@@ -144,7 +167,7 @@ Retorne APENAS um JSON válido no formato:
             content: [
               {
                 type: 'text',
-                text: `Analise este documento de planejamento estratégico${companyName ? ` da empresa "${companyName}"` : ''} e extraia todas as ações propostas em formato JSON.`
+                text: `Analise este documento de planejamento estratégico${companyName ? ` da empresa "${companyName}"` : ''} e extraia todas as ações propostas, distribuídas nos próximos 90 dias com foco em resultados imediatos primeiro. Retorne em formato JSON.`
               },
               {
                 type: 'image_url',
@@ -250,7 +273,8 @@ Retorne APENAS um JSON válido no formato:
         description: t.description,
         phase: t.phase,
         priority: t.priority,
-        estimated_days: t.estimated_days,
+        days_from_now: t.days_from_now || 30,
+        estimated_hours: t.estimated_hours || null,
       })),
       summary,
       totalTasks: tasks.length,
