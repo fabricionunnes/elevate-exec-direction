@@ -654,50 +654,27 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                         </div>
                       </div>
 
-                      {/* Máquina de Dinheiro - Visualização */}
+                      {/* Custo por Venda */}
                       <div className="p-6 rounded-xl bg-gradient-to-r from-amber-500/10 via-green-500/10 to-emerald-500/10 border border-amber-500/20">
-                        <p className="text-sm font-semibold text-center mb-4">💰 Máquina de Dinheiro do Tráfego</p>
+                        <p className="text-sm font-semibold text-center mb-4">💰 Economia do Tráfego</p>
                         
-                        <div className="flex items-center justify-center gap-4 flex-wrap">
-                          {/* Entrada */}
-                          <div className="text-center p-4 rounded-lg bg-red-500/10 border border-red-500/20 min-w-[140px]">
-                            <p className="text-xs text-muted-foreground mb-1">Você Investe</p>
-                            <p className="text-xl font-bold text-red-600">{formatCurr(totalInvestment3Months)}</p>
-                            <p className="text-xs text-muted-foreground">em 3 meses</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Custo por venda */}
+                          <div className="text-center p-4 rounded-lg bg-white/50 dark:bg-card/50 border">
+                            <p className="text-sm text-muted-foreground mb-2">Para cada venda de</p>
+                            <p className="text-2xl font-bold text-green-600">{formatCurr(ticketMedio)}</p>
+                            <p className="text-sm text-muted-foreground my-2">você gasta</p>
+                            <p className="text-2xl font-bold text-orange-600">{formatCurr(cac_value)}</p>
                           </div>
 
-                          {/* Seta */}
-                          <div className="text-3xl">→</div>
-
-                          {/* Processo */}
-                          <div className="text-center p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 min-w-[140px]">
-                            <p className="text-xs text-muted-foreground mb-1">Gera</p>
-                            <p className="text-xl font-bold text-blue-600">{totalSalesQty}</p>
-                            <p className="text-xs text-muted-foreground">vendas</p>
-                          </div>
-
-                          {/* Seta */}
-                          <div className="text-3xl">→</div>
-
-                          {/* Saída */}
-                          <div className="text-center p-4 rounded-lg bg-green-500/10 border border-green-500/20 min-w-[140px]">
-                            <p className="text-xs text-muted-foreground mb-1">Você Fatura</p>
-                            <p className="text-xl font-bold text-green-600">{formatCurr(totalSalesValue)}</p>
-                            <p className="text-xs text-muted-foreground">em 3 meses</p>
+                          {/* Projeção 10x */}
+                          <div className="text-center p-4 rounded-lg bg-white/50 dark:bg-card/50 border">
+                            <p className="text-sm text-muted-foreground mb-2">Se quiser vender</p>
+                            <p className="text-2xl font-bold text-green-600">{formatCurr(totalSalesValue * 10)}</p>
+                            <p className="text-sm text-muted-foreground my-2">precisa investir</p>
+                            <p className="text-2xl font-bold text-orange-600">{formatCurr(totalInvestment3Months * 10)}</p>
                           </div>
                         </div>
-
-                        {/* Multiplicador */}
-                        {moneyMultiplier && (
-                          <div className="text-center mt-4 p-3 rounded-lg bg-emerald-500/20 border border-emerald-500/30">
-                            <p className="text-sm">
-                              Para cada <span className="font-bold">R$ 1,00</span> investido, retornam{" "}
-                              <span className="font-bold text-emerald-600 text-lg">
-                                R$ {moneyMultiplier.toFixed(2)}
-                              </span>
-                            </p>
-                          </div>
-                        )}
                       </div>
                       
                       {/* Métricas Principais */}
