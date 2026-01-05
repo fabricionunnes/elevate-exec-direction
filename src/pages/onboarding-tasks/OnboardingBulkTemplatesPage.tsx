@@ -307,15 +307,23 @@ export default function OnboardingBulkTemplatesPage() {
     setDeleting(true);
 
     try {
-      const { error } = await supabase
-        .from('onboarding_task_templates')
-        .delete()
-        .in('phase', selectedPhases)
-        .in('product_id', deleteServices);
+      // Delete templates for each combination of phase and service
+      let deletedCount = 0;
+      for (const phase of selectedPhases) {
+        for (const serviceSlug of deleteServices) {
+          const { data, error } = await supabase
+            .from('onboarding_task_templates')
+            .delete()
+            .eq('phase', phase)
+            .eq('product_id', serviceSlug)
+            .select();
 
-      if (error) throw error;
+          if (error) throw error;
+          deletedCount += data?.length || 0;
+        }
+      }
 
-      toast.success(`Fases excluídas com sucesso`);
+      toast.success(`${deletedCount} template(s) excluído(s) com sucesso`);
       
       setSelectedPhases([]);
       setDeleteServices([]);
