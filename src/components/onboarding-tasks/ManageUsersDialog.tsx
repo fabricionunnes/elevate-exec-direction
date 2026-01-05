@@ -339,112 +339,118 @@ export const ManageUsersDialog = ({
 
           {/* Add user form */}
           {showAddForm ? (
-            <div className="border rounded-lg p-4 space-y-4">
-              <div className="space-y-2">
-                <Label>Tipo de Usuário</Label>
-                <Select
-                  value={newUser.role}
-                  onValueChange={(value: "admin" | "cs" | "consultant" | "client") => {
-                    setNewUser({ ...newUser, role: value, name: "", email: "", password: "" });
-                    setSelectedStaffId("");
-                    setShowNewPassword(false);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cs">CS (Customer Success)</SelectItem>
-                    <SelectItem value="consultant">Consultor</SelectItem>
-                    <SelectItem value="client">Cliente (Dono da Empresa)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {isStaffRole(newUser.role) ? (
-                // Seleção de Staff existente
-                <div className="space-y-2">
-                  <Label>Selecionar {newUser.role === "cs" ? "CS" : "Consultor"}</Label>
-                  <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={`Selecione um ${newUser.role === "cs" ? "CS" : "Consultor"}`} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredStaff.length === 0 ? (
-                        <div className="p-2 text-sm text-muted-foreground text-center">
-                          Nenhum {newUser.role === "cs" ? "CS" : "Consultor"} cadastrado
-                        </div>
-                      ) : (
-                        filteredStaff.map((staff) => (
-                          <SelectItem key={staff.id} value={staff.id}>
-                            <div className="flex flex-col">
-                              <span>{staff.name}</span>
-                              <span className="text-xs text-muted-foreground">{staff.email}</span>
-                            </div>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    O membro da equipe será vinculado a este projeto com acesso imediato.
-                  </p>
-                </div>
-              ) : (
-                // Formulário para Cliente
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Nome do Cliente</Label>
-                    <Input
-                      placeholder="Nome completo"
-                      value={newUser.name}
-                      onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Email do Cliente</Label>
-                    <Input
-                      type="email"
-                      placeholder="email@empresa.com"
-                      value={newUser.email}
-                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label>Senha do Cliente</Label>
-                    <div className="relative">
-                      <Input
-                        type={showNewPassword ? "text" : "password"}
-                        placeholder="Mínimo 6 caracteres"
-                        value={newUser.password}
-                        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                        className="pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                      >
-                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Defina a senha que o cliente usará para acessar o sistema.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={resetForm}>
+            <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Novo Usuário</h4>
+                <Button variant="ghost" size="sm" onClick={resetForm}>
                   Cancelar
                 </Button>
-                <Button onClick={handleAddUser} disabled={loading}>
-                  {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {isStaffRole(newUser.role) ? "Vincular" : "Criar Cliente"}
-                </Button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Tipo de Usuário</Label>
+                  <Select
+                    value={newUser.role}
+                    onValueChange={(value: "admin" | "cs" | "consultant" | "client") => {
+                      setNewUser({ ...newUser, role: value, name: "", email: "", password: "" });
+                      setSelectedStaffId("");
+                      setShowNewPassword(false);
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="client">Cliente (Dono da Empresa)</SelectItem>
+                      <SelectItem value="cs">CS (Customer Success)</SelectItem>
+                      <SelectItem value="consultant">Consultor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {isStaffRole(newUser.role) ? (
+                  // Seleção de Staff existente
+                  <div className="space-y-2">
+                    <Label>Selecionar {newUser.role === "cs" ? "CS" : "Consultor"}</Label>
+                    <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={`Selecione um ${newUser.role === "cs" ? "CS" : "Consultor"}`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredStaff.length === 0 ? (
+                          <div className="p-2 text-sm text-muted-foreground text-center">
+                            Nenhum {newUser.role === "cs" ? "CS" : "Consultor"} cadastrado
+                          </div>
+                        ) : (
+                          filteredStaff.map((staff) => (
+                            <SelectItem key={staff.id} value={staff.id}>
+                              <span>{staff.name}</span>
+                              <span className="text-xs text-muted-foreground ml-2">({staff.email})</span>
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      O membro da equipe será vinculado a este projeto com acesso imediato.
+                    </p>
+                  </div>
+                ) : (
+                  // Formulário para Cliente
+                  <div className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Nome do Cliente</Label>
+                        <Input
+                          placeholder="Nome completo"
+                          value={newUser.name}
+                          onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Email do Cliente</Label>
+                        <Input
+                          type="email"
+                          placeholder="email@empresa.com"
+                          value={newUser.email}
+                          onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Senha do Cliente</Label>
+                      <div className="relative">
+                        <Input
+                          type={showNewPassword ? "text" : "password"}
+                          placeholder="Mínimo 6 caracteres"
+                          value={newUser.password}
+                          onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                        >
+                          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Defina a senha que o cliente usará para acessar o sistema.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-2">
+                  <Button onClick={handleAddUser} disabled={loading}>
+                    {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {isStaffRole(newUser.role) ? "Vincular ao Projeto" : "Criar Cliente"}
+                  </Button>
+                </div>
               </div>
             </div>
           ) : (
