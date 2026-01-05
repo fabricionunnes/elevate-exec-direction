@@ -831,6 +831,25 @@ const DashboardMetrics = ({
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {/* Total Companies */}
+          <Card 
+            className="relative overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-slate-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Total</p>
+                  <p className="text-2xl font-bold mt-1">{filteredCompanies.length}</p>
+                  <p className="text-xs text-muted-foreground">empresas</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-slate-500/10 flex items-center justify-center">
+                  <Building2 className="h-5 w-5 text-slate-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Active Companies */}
           <Card 
             className={cn(
@@ -843,35 +862,12 @@ const DashboardMetrics = ({
             <CardContent className="pt-4 pl-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Empresas</p>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Ativas</p>
                   <p className="text-2xl font-bold mt-1">{companyMetrics.activeCompanies}</p>
-                  <p className="text-xs text-muted-foreground">ativas</p>
+                  <p className="text-xs text-muted-foreground">empresas</p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Building2 className="h-5 w-5 text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Active Services */}
-          <Card 
-            className={cn(
-              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
-              isCardActive("status", "active") && "ring-2 ring-emerald-500"
-            )}
-            onClick={() => handleCardClick("status", "active")}
-          >
-            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
-            <CardContent className="pt-4 pl-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Ativaram</p>
-                  <p className="text-2xl font-bold mt-1">{projectMetrics.activeInPeriod}</p>
-                  <p className="text-xs text-muted-foreground">no período ({projectMetrics.activeProjects} total)</p>
-                </div>
-                <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                  <Zap className="h-5 w-5 text-emerald-500" />
+                  <Zap className="h-5 w-5 text-primary" />
                 </div>
               </div>
             </CardContent>
