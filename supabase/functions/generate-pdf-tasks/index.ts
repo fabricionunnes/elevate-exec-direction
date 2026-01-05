@@ -30,9 +30,18 @@ serve(async (req) => {
 
     console.log(`Processing PDF for project ${projectId}, file: ${pdfFile.name}, size: ${pdfFile.size}`);
 
-    // Read file as base64
+    // Read file as base64 using chunked approach to avoid stack overflow
     const arrayBuffer = await pdfFile.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    // Convert to base64 in chunks to avoid "Maximum call stack size exceeded"
+    let binaryString = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.slice(i, i + chunkSize);
+      binaryString += String.fromCharCode(...chunk);
+    }
+    const base64 = btoa(binaryString);
 
     // Use Gemini to extract tasks from the PDF
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
