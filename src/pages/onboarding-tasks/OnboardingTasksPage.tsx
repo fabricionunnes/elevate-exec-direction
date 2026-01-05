@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, Filter, X } from "lucide-react";
-import { format } from "date-fns";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X } from "lucide-react";
+import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
 import { TaskNotificationsDialog } from "@/components/onboarding-tasks/TaskNotificationsDialog";
@@ -62,6 +62,7 @@ interface Company {
   consultant?: Staff;
   kickoff_date: string | null;
   contract_end_date: string | null;
+  status_changed_at?: string | null;
   created_at: string;
   projects?: OnboardingProject[];
   total_tasks?: number;
@@ -84,12 +85,34 @@ const OnboardingTasksPage = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [consultants, setConsultants] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  
+  // Dashboard filter states
+  const [activeMetricFilter, setActiveMetricFilter] = useState<{ type: string; value: string } | null>(null);
+  const [dateRange, setDateRange] = useState(() => ({
+    start: startOfMonth(new Date()),
+    end: endOfMonth(new Date()),
+  }));
+  const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string }[]>([]);
 
   useEffect(() => {
     checkUserPermissions();
     fetchCompanies();
     fetchFiltersData();
+    fetchAllTasks();
   }, []);
+
+  const fetchAllTasks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("onboarding_tasks")
+        .select("id, status, due_date, project_id");
+
+      if (error) throw error;
+      setAllTasks(data || []);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+    }
+  };
 
   const checkUserPermissions = async () => {
     try {
@@ -204,34 +227,77 @@ const OnboardingTasksPage = () => {
     }
   };
 
-  const filteredCompanies = companies.filter((company) => {
-    // Text search filter
-    const matchesSearch =
-      company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (company.segment && company.segment.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    // Consultant filter
-    const matchesConsultant = 
-      filterConsultant === "all" || company.consultant_id === filterConsultant;
-    
-    // Service filter - check if company has any project with the selected service (using slug)
-    const matchesService = 
-      filterService === "all" || 
-      company.projects?.some(p => p.product_id === filterService);
-    
-    // Status filter
-    const matchesStatus = 
-      filterStatus === "all" || company.status === filterStatus;
-    
-    return matchesSearch && matchesConsultant && matchesService && matchesStatus;
-  });
+  // Calculate overdue and today tasks for dashboard
+  const overdueTasks = useMemo(() => {
+    const todayStart = startOfDay(new Date());
+    return allTasks.filter(t => {
+      if (!t.due_date || t.status === "completed") return false;
+      const dueDate = new Date(t.due_date);
+      return isBefore(dueDate, todayStart);
+    });
+  }, [allTasks]);
 
-  const hasActiveFilters = filterConsultant !== "all" || filterService !== "all" || filterStatus !== "all";
+  const todayTasks = useMemo(() => {
+    const today = format(new Date(), "yyyy-MM-dd");
+    return allTasks.filter(t => t.due_date === today);
+  }, [allTasks]);
+
+  // Handle metric card filter
+  const handleMetricFilterChange = (filter: { type: string; value: string } | null) => {
+    setActiveMetricFilter(filter);
+    // When clicking on a status card, also update the status filter
+    if (filter?.type === "status") {
+      setFilterStatus(filter.value);
+    } else if (filter === null) {
+      // Clear metric filter but keep other filters
+    }
+  };
+
+  const filteredCompanies = useMemo(() => {
+    return companies.filter((company) => {
+      // Text search filter
+      const matchesSearch =
+        company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (company.segment && company.segment.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      // Consultant filter
+      const matchesConsultant = 
+        filterConsultant === "all" || company.consultant_id === filterConsultant;
+      
+      // Service filter - check if company has any project with the selected service (using slug)
+      const matchesService = 
+        filterService === "all" || 
+        company.projects?.some(p => p.product_id === filterService);
+      
+      // Status filter
+      const matchesStatus = 
+        filterStatus === "all" || company.status === filterStatus;
+      
+      // Metric card filters
+      let matchesMetricFilter = true;
+      if (activeMetricFilter) {
+        if (activeMetricFilter.type === "contracts" && activeMetricFilter.value === "ending") {
+          // Filter companies with contracts ending in the selected period
+          if (!company.contract_end_date) {
+            matchesMetricFilter = false;
+          } else {
+            const endDate = new Date(company.contract_end_date);
+            matchesMetricFilter = isWithinInterval(endDate, { start: dateRange.start, end: dateRange.end });
+          }
+        }
+      }
+      
+      return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
+    });
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange]);
+
+  const hasActiveFilters = filterConsultant !== "all" || filterService !== "all" || filterStatus !== "all" || activeMetricFilter !== null;
 
   const clearFilters = () => {
     setFilterConsultant("all");
     setFilterService("all");
     setFilterStatus("all");
+    setActiveMetricFilter(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -368,7 +434,15 @@ const OnboardingTasksPage = () => {
         </div>
 
         {/* Dashboard Metrics */}
-        <DashboardMetrics companies={companies} />
+        <DashboardMetrics 
+          companies={companies} 
+          onFilterChange={handleMetricFilterChange}
+          activeMetricFilter={activeMetricFilter}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          overdueTasks={overdueTasks}
+          todayTasks={todayTasks}
+        />
 
         {/* Search and Filters */}
         <div className="flex flex-wrap gap-4 mb-6">
