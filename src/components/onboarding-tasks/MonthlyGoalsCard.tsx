@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Target, TrendingUp, TrendingDown, CheckCircle2, Pencil, Save, X, ChevronLeft, ChevronRight, History, Plus } from "lucide-react";
-import { format } from "date-fns";
+import { format, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -221,6 +221,29 @@ export const MonthlyGoalsCard = ({ projectId, canEdit, currentStaffId }: Monthly
   };
 
   const performance = getPerformanceStatus();
+
+  // Calculate projection for current month
+  const getProjection = () => {
+    const today = new Date();
+    const isCurrentMonth = selectedMonth === today.getMonth() + 1 && selectedYear === today.getFullYear();
+    
+    if (!isCurrentMonth || !currentGoal?.sales_target || !currentGoal?.sales_result) {
+      return null;
+    }
+    
+    const totalDaysInMonth = getDaysInMonth(today);
+    const daysPassed = today.getDate();
+    const timeProgress = daysPassed / totalDaysInMonth;
+    
+    if (timeProgress <= 0) return null;
+    
+    return {
+      percentage: ((currentGoal.sales_result / currentGoal.sales_target) / timeProgress) * 100,
+      daysRemaining: totalDaysInMonth - daysPassed
+    };
+  };
+
+  const projection = getProjection();
 
   // Get last 12 months for historical data entry (before current month)
   const getHistoricalMonths = () => {
@@ -563,6 +586,36 @@ export const MonthlyGoalsCard = ({ projectId, canEdit, currentStaffId }: Monthly
             <span className={`font-medium ${performance.color}`}>
               {performance.label} ({performance.percentage.toFixed(1)}%)
             </span>
+          </div>
+        )}
+
+        {/* Projection indicator for current month */}
+        {projection && (
+          <div className={`flex items-center justify-between p-3 rounded-lg border ${
+            projection.percentage >= 100 ? "bg-green-500/10 border-green-500/30" :
+            projection.percentage >= 70 ? "bg-amber-500/10 border-amber-500/30" :
+            "bg-red-500/10 border-red-500/30"
+          }`}>
+            <div className="flex items-center gap-2">
+              {projection.percentage >= 100 ? (
+                <TrendingUp className="h-5 w-5 text-green-500" />
+              ) : (
+                <TrendingDown className="h-5 w-5 text-red-500" />
+              )}
+              <div>
+                <p className="text-xs text-muted-foreground">Projeção para fim do mês</p>
+                <p className={`font-bold ${
+                  projection.percentage >= 100 ? "text-green-600" :
+                  projection.percentage >= 70 ? "text-amber-600" :
+                  "text-red-600"
+                }`}>
+                  {projection.percentage.toFixed(0)}% da meta
+                </p>
+              </div>
+            </div>
+            <Badge variant="outline" className="text-xs">
+              {projection.daysRemaining} dias restantes
+            </Badge>
           </div>
         )}
 
