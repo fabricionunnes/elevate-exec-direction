@@ -64,6 +64,7 @@ interface Project {
   consultant_id: string | null;
   reactivated_at?: string | null;
   current_nps?: number | null;
+  onboarding_company_id?: string | null;
 }
 
 interface Company {
@@ -333,12 +334,22 @@ const DashboardMetrics = ({
     });
   }, [projects, dateRange]);
 
-  // LTV metrics - average client lifetime and value
+  // LTV metrics - average client lifetime and value (respects project filters)
   const ltvMetrics = useMemo(() => {
     const today = new Date();
     
+    // Get unique company IDs from filtered projects
+    const filteredCompanyIds = new Set(
+      projects
+        .filter(p => p.onboarding_company_id)
+        .map(p => p.onboarding_company_id)
+    );
+    
+    // Filter companies to only those with filtered projects
+    const filteredCompanies = companies.filter(c => filteredCompanyIds.has(c.id));
+    
     // Calculate lifetime for each company based on contract dates or created_at
-    const companiesWithLifetime = companies.map(company => {
+    const companiesWithLifetime = filteredCompanies.map(company => {
       let startDate: Date;
       let endDate: Date;
       
@@ -382,6 +393,7 @@ const DashboardMetrics = ({
         averageLifetimeMonths: 0,
         averageLTV: 0,
         totalCompanies: 0,
+        companiesWithValue: 0,
       };
     }
     
@@ -401,7 +413,7 @@ const DashboardMetrics = ({
       totalCompanies,
       companiesWithValue: companiesWithValue.length,
     };
-  }, [companies]);
+  }, [companies, projects]);
 
   // NPS metrics - calculated from actual responses, filtered by projects
   const npsMetrics = useMemo(() => {
