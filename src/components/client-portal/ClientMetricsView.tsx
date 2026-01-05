@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calculator, DollarSign, Target, TrendingUp, Trophy, History, Check, X, Pencil, TrendingDown } from "lucide-react";
+import { Calculator, DollarSign, Target, TrendingUp, Trophy, History, Check, X, Pencil, TrendingDown, Lock } from "lucide-react";
 import { format, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -37,6 +37,8 @@ export const ClientMetricsView = ({ projectId }: ClientMetricsViewProps) => {
   const [editingResult, setEditingResult] = useState(false);
   const [resultValue, setResultValue] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [addingGoal, setAddingGoal] = useState(false);
+  const [newTargetValue, setNewTargetValue] = useState<string>("");
 
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
@@ -125,6 +127,34 @@ export const ClientMetricsView = ({ projectId }: ClientMetricsViewProps) => {
     }
   };
 
+  // Cliente pode apenas INSERIR meta, não pode alterar depois
+  const handleAddGoal = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_monthly_goals")
+        .insert({
+          project_id: projectId,
+          month: currentMonth,
+          year: currentYear,
+          sales_target: parseFloat(newTargetValue) || null,
+          target_set_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      toast.success("Meta cadastrada com sucesso!");
+      setAddingGoal(false);
+      setNewTargetValue("");
+      fetchData();
+    } catch (error: any) {
+      console.error("Error adding goal:", error);
+      toast.error("Erro ao cadastrar meta");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -175,10 +205,16 @@ export const ClientMetricsView = ({ projectId }: ClientMetricsViewProps) => {
           {currentGoal ? (
             <>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl bg-primary/5 border text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Meta</p>
+                <div className="p-4 rounded-xl bg-primary/5 border text-center relative">
+                  <div className="absolute top-2 right-2">
+                    <Lock className="h-3 w-3 text-muted-foreground" />
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-1">Meta (definida)</p>
                   <p className="text-xl font-bold text-primary">
                     {formatCurrency(currentGoal.sales_target)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Apenas CS pode alterar
                   </p>
                 </div>
                 <div className="p-4 rounded-xl bg-green-500/5 border text-center">
@@ -281,8 +317,57 @@ export const ClientMetricsView = ({ projectId }: ClientMetricsViewProps) => {
               )}
             </>
           ) : (
-            <div className="text-center py-4 text-muted-foreground">
-              <p className="text-sm">Nenhuma meta definida para este mês</p>
+            <div className="text-center py-4 space-y-3">
+              {addingGoal ? (
+                <>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Informe a meta de vendas para {getMonthName(currentMonth)}</p>
+                    <Input
+                      type="number"
+                      value={newTargetValue}
+                      onChange={(e) => setNewTargetValue(e.target.value)}
+                      className="text-center"
+                      placeholder="Ex: 50000"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => {
+                        setAddingGoal(false);
+                        setNewTargetValue("");
+                      }}
+                      disabled={saving}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Cancelar
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={handleAddGoal}
+                      disabled={saving || !newTargetValue}
+                    >
+                      <Check className="h-4 w-4 mr-1" />
+                      {saving ? "Salvando..." : "Cadastrar"}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">Nenhuma meta definida para este mês</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setAddingGoal(true)}
+                  >
+                    <Target className="h-4 w-4 mr-2" />
+                    Cadastrar Meta
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </CardContent>
