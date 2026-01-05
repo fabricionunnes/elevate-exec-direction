@@ -1052,6 +1052,7 @@ const OnboardingProjectPage = () => {
       <TaskDetailsDialog
         task={selectedTask}
         users={users}
+        staffList={staffList}
         onClose={() => setSelectedTask(null)}
         onTaskUpdated={fetchProjectData}
         isAdmin={isAdmin}
