@@ -23,6 +23,9 @@ import {
   X,
   Save,
   ClipboardList,
+  Link2,
+  Copy,
+  Calculator,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -64,16 +67,30 @@ interface CompanyData {
   consultant?: { id: string; name: string } | null;
 }
 
+interface CACFormData {
+  id: string;
+  company_name: string;
+  form_title: string | null;
+  facebook_ads_investment: number | null;
+  google_ads_investment: number | null;
+  linkedin_ads_investment: number | null;
+  sales_quantity_3_months: number | null;
+  sales_value_3_months: number | null;
+  submitted_at: string;
+}
+
 interface CompanyBriefingPanelProps {
   companyId: string;
+  projectId?: string;
   userRole?: "admin" | "cs" | "consultant" | "client" | null;
   isStaffAdmin?: boolean;
 }
 
-export const CompanyBriefingPanel = ({ companyId, userRole, isStaffAdmin = false }: CompanyBriefingPanelProps) => {
+export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAdmin = false }: CompanyBriefingPanelProps) => {
   // Apenas admin e CS podem editar o briefing
   const canEdit = isStaffAdmin || userRole === "admin" || userRole === "cs";
   const [company, setCompany] = useState<CompanyData | null>(null);
+  const [cacForms, setCacForms] = useState<CACFormData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -86,7 +103,10 @@ export const CompanyBriefingPanel = ({ companyId, userRole, isStaffAdmin = false
     } else {
       setLoading(false);
     }
-  }, [companyId]);
+    if (projectId) {
+      fetchCACForms();
+    }
+  }, [companyId, projectId]);
 
   const fetchCompanyData = async () => {
     try {
@@ -115,6 +135,22 @@ export const CompanyBriefingPanel = ({ companyId, userRole, isStaffAdmin = false
       toast.error("Erro ao carregar dados da empresa");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCACForms = async () => {
+    if (!projectId) return;
+    try {
+      const { data, error } = await supabase
+        .from("onboarding_cac_forms")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("submitted_at", { ascending: false });
+
+      if (error) throw error;
+      setCacForms(data || []);
+    } catch (error: any) {
+      console.error("Error fetching CAC forms:", error);
     }
   };
 
@@ -537,6 +573,126 @@ export const CompanyBriefingPanel = ({ companyId, userRole, isStaffAdmin = false
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Formulário CAC */}
+      {projectId && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calculator className="h-5 w-5" />
+              CAC - Custo de Aquisição de Clientes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Link do formulário */}
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+              <Link2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <code className="text-sm flex-1 truncate">
+                {window.location.origin}/cac-form/{projectId}
+              </code>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/cac-form/${projectId}`);
+                  toast.success("Link copiado!");
+                }}
+              >
+                <Copy className="h-4 w-4 mr-1" />
+                Copiar
+              </Button>
+            </div>
+
+            {/* Respostas do formulário */}
+            {cacForms.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum formulário CAC preenchido. Envie o link acima para o cliente.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {cacForms.map((cac) => {
+                  const totalAdsInvestment = 
+                    (cac.facebook_ads_investment || 0) + 
+                    (cac.google_ads_investment || 0) + 
+                    (cac.linkedin_ads_investment || 0);
+                  const totalAds3Months = totalAdsInvestment * 3;
+                  const calculatedCAC = cac.sales_quantity_3_months && cac.sales_quantity_3_months > 0 
+                    ? totalAds3Months / cac.sales_quantity_3_months 
+                    : null;
+
+                  return (
+                    <div key={cac.id} className="p-4 rounded-lg border space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{cac.form_title || "Levantamento CAC"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Enviado em {format(new Date(cac.submitted_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          </p>
+                        </div>
+                        {calculatedCAC && (
+                          <Badge variant="secondary" className="text-lg">
+                            CAC: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(calculatedCAC)}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <label className="text-muted-foreground">Facebook ADS/mês</label>
+                          <p className="font-medium">
+                            {cac.facebook_ads_investment 
+                              ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cac.facebook_ads_investment)
+                              : "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-muted-foreground">Google ADS/mês</label>
+                          <p className="font-medium">
+                            {cac.google_ads_investment 
+                              ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cac.google_ads_investment)
+                              : "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-muted-foreground">LinkedIn ADS/mês</label>
+                          <p className="font-medium">
+                            {cac.linkedin_ads_investment 
+                              ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cac.linkedin_ads_investment)
+                              : "-"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <label className="text-muted-foreground">Total investido/mês</label>
+                          <p className="font-medium">
+                            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalAdsInvestment)}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-muted-foreground">Vendas (últimos 3 meses)</label>
+                          <p className="font-medium">{cac.sales_quantity_3_months || "-"} vendas</p>
+                        </div>
+                        <div>
+                          <label className="text-muted-foreground">Faturamento (últimos 3 meses)</label>
+                          <p className="font-medium">
+                            {cac.sales_value_3_months 
+                              ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cac.sales_value_3_months)
+                              : "-"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
