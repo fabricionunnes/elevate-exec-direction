@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { 
@@ -33,10 +34,12 @@ import {
   Edit,
   Trash2,
   Link as LinkIcon,
-  PhoneOff
+  PhoneOff,
+  Calendar
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import GoogleCalendarTab from "@/components/virtual-office/GoogleCalendarTab";
 
 
 interface Room {
@@ -104,6 +107,7 @@ const VirtualOfficePage = () => {
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [newRoom, setNewRoom] = useState({ name: "", description: "", meet_link: "", team_type: "all" });
   const [isInVideoCall, setIsInVideoCall] = useState(false);
+  const [activeTab, setActiveTab] = useState("office");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -460,7 +464,25 @@ const VirtualOfficePage = () => {
           </Sheet>
         </div>
       </header>
+      {/* Tabs */}
+      <div className="border-b bg-card px-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="h-10">
+            <TabsTrigger value="office" className="gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Salas
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="gap-2">
+              <Calendar className="h-4 w-4" />
+              Minha Agenda
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
+      {activeTab === "calendar" ? (
+        <GoogleCalendarTab />
+      ) : (
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Rooms */}
         <aside className="w-64 border-r bg-card hidden md:flex flex-col">
@@ -681,6 +703,7 @@ const VirtualOfficePage = () => {
           )}
         </main>
       </div>
+      )}
 
       {/* Edit Room Dialog */}
       <Dialog open={showEditRoom} onOpenChange={setShowEditRoom}>

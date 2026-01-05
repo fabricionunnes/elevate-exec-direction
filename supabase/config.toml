@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.sheets-webhook]
 verify_jwt = false
+
+[functions.google-calendar]
+verify_jwt = true
