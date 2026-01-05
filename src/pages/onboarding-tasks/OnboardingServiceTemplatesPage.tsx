@@ -549,25 +549,20 @@ export default function OnboardingServiceTemplatesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Fase</Label>
-                <Select
-                  value={formData.phase}
-                  onValueChange={value => setFormData(prev => ({ ...prev, phase: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione ou digite nova..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {uniquePhases.map(phase => (
-                      <SelectItem key={phase} value={phase}>{phase}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <Input
-                  placeholder="Ou digite uma nova fase..."
-                  value={formData.phase && !uniquePhases.includes(formData.phase) ? formData.phase : ''}
+                  placeholder="Digite o nome da fase..."
+                  value={formData.phase}
                   onChange={e => setFormData(prev => ({ ...prev, phase: e.target.value }))}
-                  className="mt-2"
+                  list="phase-suggestions"
                 />
+                <datalist id="phase-suggestions">
+                  {uniquePhases.map(phase => (
+                    <option key={phase} value={phase} />
+                  ))}
+                </datalist>
+                <p className="text-xs text-muted-foreground">
+                  Digite uma nova fase ou selecione uma existente da lista
+                </p>
               </div>
 
               <div className="space-y-2">
