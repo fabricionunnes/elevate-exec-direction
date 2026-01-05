@@ -297,6 +297,11 @@ const OnboardingTasksPage = () => {
     const statusFilteredCompanyIds = filterStatus === "all" 
       ? null 
       : new Set(companies.filter(c => c.status === filterStatus).map(c => c.id));
+
+    // If tasks are assigned to the consultant, we should also include those projects
+    const responsibleProjectIds = filterConsultant === "all"
+      ? null
+      : new Set(allTasks.filter(t => t.responsible_staff_id === filterConsultant).map(t => t.project_id));
     
     // Build a map of company_id to consultant_id for fallback lookup
     const companyConsultantMap = new Map(
@@ -305,7 +310,7 @@ const OnboardingTasksPage = () => {
     
     const projectIds = new Set(
       allProjects.filter((project) => {
-        // Check consultant: project's consultant OR company's consultant
+        // Check consultant: project's consultant OR company's consultant OR tasks assigned to consultant
         const companyConsultantId = project.onboarding_company_id 
           ? companyConsultantMap.get(project.onboarding_company_id)
           : null;
@@ -313,7 +318,8 @@ const OnboardingTasksPage = () => {
         const matchesConsultant = 
           filterConsultant === "all" || 
           project.consultant_id === filterConsultant ||
-          companyConsultantId === filterConsultant;
+          companyConsultantId === filterConsultant ||
+          (responsibleProjectIds?.has(project.id) ?? false);
         
         const matchesService = 
           filterService === "all" || 
@@ -328,7 +334,7 @@ const OnboardingTasksPage = () => {
     );
     
     return projectIds;
-  }, [allProjects, filterConsultant, filterService, filterStatus, companies]);
+  }, [allProjects, allTasks, filterConsultant, filterService, filterStatus, companies]);
 
   const overdueTasks = useMemo(() => {
     const todayStart = startOfDay(new Date());
@@ -573,6 +579,11 @@ const OnboardingTasksPage = () => {
     const statusFilteredCompanyIds = filterStatus === "all" 
       ? null 
       : new Set(companies.filter(c => c.status === filterStatus).map(c => c.id));
+
+    // If tasks are assigned to the consultant, we should also include those projects
+    const responsibleProjectIds = filterConsultant === "all"
+      ? null
+      : new Set(allTasks.filter(t => t.responsible_staff_id === filterConsultant).map(t => t.project_id));
     
     // Build a map of company_id to consultant_id for fallback lookup
     const companyConsultantMap = new Map(
@@ -580,7 +591,7 @@ const OnboardingTasksPage = () => {
     );
     
     return allProjects.filter((project) => {
-      // Check consultant: project's consultant OR company's consultant
+      // Check consultant: project's consultant OR company's consultant OR tasks assigned to consultant
       const companyConsultantId = project.onboarding_company_id 
         ? companyConsultantMap.get(project.onboarding_company_id)
         : null;
@@ -588,7 +599,8 @@ const OnboardingTasksPage = () => {
       const matchesConsultant = 
         filterConsultant === "all" || 
         project.consultant_id === filterConsultant ||
-        companyConsultantId === filterConsultant;
+        companyConsultantId === filterConsultant ||
+        (responsibleProjectIds?.has(project.id) ?? false);
       
       const matchesService = 
         filterService === "all" || 
@@ -600,7 +612,7 @@ const OnboardingTasksPage = () => {
       
       return matchesConsultant && matchesService && matchesStatus;
     });
-  }, [allProjects, filterConsultant, filterService, filterStatus, companies]);
+  }, [allProjects, allTasks, filterConsultant, filterService, filterStatus, companies]);
 
   // For consultants, don't show consultant filter as active since it's auto-applied
   const hasActiveFilters = (currentUserRole !== "consultant" && filterConsultant !== "all") || filterService !== "all" || filterStatus !== "all" || activeMetricFilter !== null;
