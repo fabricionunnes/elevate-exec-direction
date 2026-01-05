@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Maximize2, Minimize2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { PhoneOff } from "lucide-react";
 
 interface JitsiMeetRoomProps {
   roomName: string;
@@ -18,9 +17,6 @@ declare global {
 const JitsiMeetRoom = ({ roomName, displayName, onLeave }: JitsiMeetRoomProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<any>(null);
-  const [isAudioMuted, setIsAudioMuted] = useState(false);
-  const [isVideoMuted, setIsVideoMuted] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -139,14 +135,6 @@ const JitsiMeetRoom = ({ roomName, displayName, onLeave }: JitsiMeetRoomProps) =
         onLeave();
       });
 
-      apiRef.current.addListener("audioMuteStatusChanged", (event: any) => {
-        setIsAudioMuted(event.muted);
-      });
-
-      apiRef.current.addListener("videoMuteStatusChanged", (event: any) => {
-        setIsVideoMuted(event.muted);
-      });
-
       apiRef.current.addListener("readyToClose", () => {
         onLeave();
       });
@@ -163,33 +151,11 @@ const JitsiMeetRoom = ({ roomName, displayName, onLeave }: JitsiMeetRoomProps) =
     }
   };
 
-  const toggleAudio = () => {
-    if (apiRef.current) {
-      apiRef.current.executeCommand("toggleAudio");
-    }
-  };
-
-  const toggleVideo = () => {
-    if (apiRef.current) {
-      apiRef.current.executeCommand("toggleVideo");
-    }
-  };
-
   const hangup = () => {
     if (apiRef.current) {
       apiRef.current.executeCommand("hangup");
     }
     onLeave();
-  };
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.parentElement?.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
-    }
   };
 
   if (error) {
@@ -219,42 +185,16 @@ const JitsiMeetRoom = ({ roomName, displayName, onLeave }: JitsiMeetRoomProps) =
       
       <div ref={containerRef} className="flex-1 bg-black rounded-lg overflow-hidden" style={{ minHeight: "400px" }} />
       
-      {/* Custom Controls Bar */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-background/90 backdrop-blur rounded-full px-4 py-2 shadow-lg z-20">
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("rounded-full", isAudioMuted && "bg-destructive/20 text-destructive")}
-          onClick={toggleAudio}
-        >
-          {isAudioMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-        </Button>
-        
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("rounded-full", isVideoMuted && "bg-destructive/20 text-destructive")}
-          onClick={toggleVideo}
-        >
-          {isVideoMuted ? <VideoOff className="h-5 w-5" /> : <Video className="h-5 w-5" />}
-        </Button>
-        
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-full"
-          onClick={toggleFullscreen}
-        >
-          {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
-        </Button>
-        
+      {/* Minimal external controls (Jitsi has its own toolbar) */}
+      <div className="absolute bottom-4 right-4 z-20">
         <Button
           variant="destructive"
-          size="icon"
-          className="rounded-full"
+          size="sm"
+          className="rounded-full shadow-lg"
           onClick={hangup}
         >
-          <PhoneOff className="h-5 w-5" />
+          <PhoneOff className="h-4 w-4 mr-1" />
+          Sair
         </Button>
       </div>
     </div>
