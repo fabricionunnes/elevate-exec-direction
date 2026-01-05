@@ -477,18 +477,6 @@ const OnboardingTasksPage = () => {
           </div>
         </div>
 
-        {/* Dashboard Metrics */}
-        <DashboardMetrics 
-          companies={companies} 
-          projects={filteredProjects}
-          onFilterChange={handleMetricFilterChange}
-          activeMetricFilter={activeMetricFilter}
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          overdueTasks={overdueTasks}
-          todayTasks={todayTasks}
-        />
-
         {/* Search and Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
           {/* Date Period Selector */}
@@ -561,6 +549,18 @@ const OnboardingTasksPage = () => {
             </Button>
           )}
         </div>
+
+        {/* Dashboard Metrics */}
+        <DashboardMetrics 
+          companies={companies} 
+          projects={filteredProjects}
+          onFilterChange={handleMetricFilterChange}
+          activeMetricFilter={activeMetricFilter}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          overdueTasks={overdueTasks}
+          todayTasks={todayTasks}
+        />
 
         {/* Companies List */}
         {filteredCompanies.length === 0 ? (
