@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
 import { TaskNotificationsDialog } from "@/components/onboarding-tasks/TaskNotificationsDialog";
+import DashboardMetrics from "@/components/onboarding-tasks/DashboardMetrics";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,6 +61,7 @@ interface Company {
   cs?: Staff;
   consultant?: Staff;
   kickoff_date: string | null;
+  contract_end_date: string | null;
   created_at: string;
   projects?: OnboardingProject[];
   total_tasks?: number;
@@ -367,39 +369,8 @@ const OnboardingTasksPage = () => {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{companies.length}</div>
-              <div className="text-sm text-muted-foreground">Empresas</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-green-500">
-                {companies.filter((c) => c.status === "active").length}
-              </div>
-              <div className="text-sm text-muted-foreground">Ativas</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-blue-500">
-                {companies.reduce((acc, c) => acc + (c.projects?.length || 0), 0)}
-              </div>
-              <div className="text-sm text-muted-foreground">Projetos</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-amber-500">
-                {companies.filter((c) => !c.kickoff_date).length}
-              </div>
-              <div className="text-sm text-muted-foreground">Sem Kickoff</div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Dashboard Metrics */}
+        <DashboardMetrics companies={companies} />
 
         {/* Search and Filters */}
         <div className="flex flex-wrap gap-4 mb-6">
