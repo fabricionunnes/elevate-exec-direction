@@ -36,15 +36,6 @@ interface Service {
   slug: string;
 }
 
-const PHASES = [
-  'Diagnóstico',
-  'Implementação',
-  'Evolução',
-  'Escala',
-  'Maturidade',
-  'Ongoing'
-];
-
 const PRIORITIES = [
   { value: 'high', label: 'Alta' },
   { value: 'medium', label: 'Média' },
@@ -163,14 +154,14 @@ export default function OnboardingServiceTemplatesPage() {
       .filter(t => t.phase === phase)
       .reduce((max, t) => Math.max(max, t.sort_order), 0);
     
-    const phaseOrder = PHASES.indexOf(phase || '') + 1;
+    const existingPhaseOrder = templates.find(t => t.phase === phase)?.phase_order || 1;
 
     setEditingTemplate(null);
     setFormData({
       title: '',
       description: '',
       phase: phase || '',
-      phase_order: phaseOrder || 1,
+      phase_order: existingPhaseOrder,
       sort_order: maxSortOrder + 1,
       priority: 'medium',
       default_days_offset: 0,
@@ -205,12 +196,15 @@ export default function OnboardingServiceTemplatesPage() {
     }
 
     try {
+      // Get phase order from existing templates or use formData value
+      const existingPhaseOrder = templates.find(t => t.phase === formData.phase)?.phase_order || formData.phase_order;
+      
       const templateData = {
         product_id: serviceSlug!,
         title: formData.title,
         description: formData.description || null,
         phase: formData.phase || null,
-        phase_order: formData.phase ? PHASES.indexOf(formData.phase) + 1 : null,
+        phase_order: existingPhaseOrder,
         sort_order: formData.sort_order,
         priority: formData.priority,
         default_days_offset: formData.default_days_offset,
@@ -292,13 +286,21 @@ export default function OnboardingServiceTemplatesPage() {
     }
   };
 
-  const groupedTemplates = PHASES.reduce((acc, phase) => {
-    acc[phase] = templates.filter(t => t.phase === phase);
+  // Extract unique phases from templates, ordered by phase_order
+  const uniquePhases = [...new Set(templates.map(t => t.phase).filter(Boolean))]
+    .sort((a, b) => {
+      const orderA = templates.find(t => t.phase === a)?.phase_order || 999;
+      const orderB = templates.find(t => t.phase === b)?.phase_order || 999;
+      return orderA - orderB;
+    }) as string[];
+
+  const groupedTemplates = uniquePhases.reduce((acc, phase) => {
+    acc[phase] = templates.filter(t => t.phase === phase).sort((a, b) => a.sort_order - b.sort_order);
     return acc;
   }, {} as Record<string, TaskTemplate[]>);
 
-  // Add templates without phase
-  const unassignedTemplates = templates.filter(t => !t.phase || !PHASES.includes(t.phase));
+  // Templates without phase
+  const unassignedTemplates = templates.filter(t => !t.phase);
 
   const getPriorityBadge = (priority: string | null) => {
     switch (priority) {
@@ -358,8 +360,8 @@ export default function OnboardingServiceTemplatesPage() {
           </p>
         </div>
 
-        <Accordion type="multiple" defaultValue={PHASES} className="space-y-4">
-          {PHASES.map(phase => (
+        <Accordion type="multiple" defaultValue={uniquePhases} className="space-y-4">
+          {uniquePhases.map(phase => (
             <AccordionItem key={phase} value={phase} className="border rounded-lg px-4">
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-3">
@@ -552,14 +554,20 @@ export default function OnboardingServiceTemplatesPage() {
                   onValueChange={value => setFormData(prev => ({ ...prev, phase: value }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
+                    <SelectValue placeholder="Selecione ou digite nova..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {PHASES.map(phase => (
+                    {uniquePhases.map(phase => (
                       <SelectItem key={phase} value={phase}>{phase}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <Input
+                  placeholder="Ou digite uma nova fase..."
+                  value={formData.phase && !uniquePhases.includes(formData.phase) ? formData.phase : ''}
+                  onChange={e => setFormData(prev => ({ ...prev, phase: e.target.value }))}
+                  className="mt-2"
+                />
               </div>
 
               <div className="space-y-2">
