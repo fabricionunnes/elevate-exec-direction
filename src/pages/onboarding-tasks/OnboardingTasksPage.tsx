@@ -47,9 +47,12 @@ interface OnboardingProject {
   product_name: string;
   status: string;
   created_at: string;
+  updated_at: string;
   onboarding_company_id: string | null;
   consultant_id: string | null;
   cs_id: string | null;
+  current_nps?: number | null;
+  reactivated_at?: string | null;
   tasks_count?: number;
   completed_count?: number;
 }
