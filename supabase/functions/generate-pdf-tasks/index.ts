@@ -197,15 +197,46 @@ Retorne APENAS um JSON válido no formato:
     }
 
     let parsedTasks;
+    let tasks: any[] = [];
+    let summary = '';
+
     try {
       parsedTasks = JSON.parse(jsonContent);
+      tasks = parsedTasks.tasks || [];
+      summary = parsedTasks.summary || '';
     } catch (parseError) {
-      console.error('JSON parse error:', parseError, 'Content:', jsonContent);
-      throw new Error('Erro ao processar resposta da IA. O formato do PDF pode não ser suportado.');
+      console.error('JSON parse error:', parseError, 'Attempting recovery...');
+      
+      // Try to recover partial JSON by extracting individual task objects
+      try {
+        // Find all task objects using regex
+        const taskRegex = /\{\s*"title"\s*:\s*"[^"]*"[^}]*"estimated_days"\s*:\s*\d+\s*\}/g;
+        const matches = jsonContent.match(taskRegex);
+        
+        if (matches && matches.length > 0) {
+          console.log(`Recovered ${matches.length} tasks from partial JSON`);
+          tasks = matches.map((match: string) => {
+            try {
+              return JSON.parse(match);
+            } catch {
+              return null;
+            }
+          }).filter((t: any) => t !== null);
+        }
+        
+        // Try to extract summary
+        const summaryMatch = jsonContent.match(/"summary"\s*:\s*"([^"]*)"/);
+        if (summaryMatch) {
+          summary = summaryMatch[1];
+        }
+      } catch (recoveryError) {
+        console.error('Recovery also failed:', recoveryError);
+      }
+      
+      if (tasks.length === 0) {
+        throw new Error('Não foi possível extrair as ações do documento. Tente um PDF mais simples ou menor.');
+      }
     }
-
-    const tasks = parsedTasks.tasks || [];
-    const summary = parsedTasks.summary || '';
 
     console.log(`Extracted ${tasks.length} tasks from PDF (preview mode)`);
 
