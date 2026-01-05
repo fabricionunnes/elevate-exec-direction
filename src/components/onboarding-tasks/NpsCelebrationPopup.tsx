@@ -22,35 +22,13 @@ interface CelebrationData {
 
 export const NpsCelebrationPopup = () => {
   const [celebration, setCelebration] = useState<CelebrationData | null>(null);
-  const [staffId, setStaffId] = useState<string | null>(null);
 
-  // Get current staff id
+  // Subscribe to NPS responses with score 10 immediately
   useEffect(() => {
-    const getStaffId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: staff } = await supabase
-        .from("onboarding_staff")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
-
-      if (staff) {
-        setStaffId(staff.id);
-      }
-    };
-
-    getStaffId();
-  }, []);
-
-  // Subscribe to NPS responses with score 10
-  useEffect(() => {
-    if (!staffId) return;
-
+    console.log('[NpsCelebration] Setting up realtime subscription');
+    
     const channel = supabase
-      .channel('nps-celebration')
+      .channel('nps-celebration-global')
       .on(
         'postgres_changes',
         {
@@ -59,13 +37,19 @@ export const NpsCelebrationPopup = () => {
           table: 'onboarding_nps_responses',
         },
         async (payload) => {
+          console.log('[NpsCelebration] Received NPS response:', payload);
           const newResponse = payload.new as any;
           
           // Only celebrate score 10
-          if (newResponse.score !== 10) return;
+          if (newResponse.score !== 10) {
+            console.log('[NpsCelebration] Score is not 10, ignoring');
+            return;
+          }
+
+          console.log('[NpsCelebration] Score is 10! Fetching project details...');
 
           // Fetch project details with consultant name
-          const { data: project } = await supabase
+          const { data: project, error } = await supabase
             .from("onboarding_projects")
             .select(`
               id,
@@ -79,7 +63,17 @@ export const NpsCelebrationPopup = () => {
             .eq("id", newResponse.project_id)
             .single();
 
-          if (!project) return;
+          if (error) {
+            console.error('[NpsCelebration] Error fetching project:', error);
+            return;
+          }
+
+          if (!project) {
+            console.log('[NpsCelebration] Project not found');
+            return;
+          }
+
+          console.log('[NpsCelebration] Project details:', project);
 
           const consultantName = (project.consultant as any)?.name || (project.cs as any)?.name || "Consultor";
           const companyName = (project.onboarding_companies as any)?.name || "Cliente";
@@ -96,12 +90,15 @@ export const NpsCelebrationPopup = () => {
           triggerConfetti();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[NpsCelebration] Subscription status:', status);
+      });
 
     return () => {
+      console.log('[NpsCelebration] Cleaning up subscription');
       supabase.removeChannel(channel);
     };
-  }, [staffId]);
+  }, []);
 
   const triggerConfetti = () => {
     const count = 200;
