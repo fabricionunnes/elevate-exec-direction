@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,15 +64,6 @@ const PHASE_ICONS: Record<string, React.ReactNode> = {
   "Ativação": <CheckCircle2 className="h-5 w-5" />,
 };
 
-const PHASE_COLORS: Record<string, { bg: string; border: string; text: string; gradient: string }> = {
-  default: { 
-    bg: "bg-primary/10", 
-    border: "border-primary/30", 
-    text: "text-primary",
-    gradient: "from-primary/20 to-primary/5"
-  },
-};
-
 export const TasksTrailView = ({ phases, onTaskClick, onStatusChange }: TasksTrailViewProps) => {
   const [expandedPhase, setExpandedPhase] = useState<string | null>(phases[0]?.name || null);
 
@@ -86,7 +76,7 @@ export const TasksTrailView = ({ phases, onTaskClick, onStatusChange }: TasksTra
       case "completed":
         return <CheckCircle2 className="h-5 w-5 text-green-500" />;
       case "in_progress":
-        return <Clock className="h-5 w-5 text-amber-500 animate-pulse" />;
+        return <Clock className="h-5 w-5 text-amber-500" />;
       default:
         return <Circle className="h-5 w-5 text-muted-foreground/50" />;
     }
@@ -101,11 +91,7 @@ export const TasksTrailView = ({ phases, onTaskClick, onStatusChange }: TasksTra
   return (
     <div className="space-y-6">
       {/* Overall Progress Hero */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-background border p-6"
-      >
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-background border p-6">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-4">
@@ -127,7 +113,7 @@ export const TasksTrailView = ({ phases, onTaskClick, onStatusChange }: TasksTra
           </div>
           <Progress value={overallProgress} className="h-3" />
         </div>
-      </motion.div>
+      </div>
 
       {/* Trail */}
       <div className="relative">
@@ -143,26 +129,18 @@ export const TasksTrailView = ({ phases, onTaskClick, onStatusChange }: TasksTra
               : 0;
 
             return (
-              <motion.div
-                key={phase.name}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: phaseIndex * 0.1 }}
-                className="relative"
-              >
+              <div key={phase.name} className="relative">
                 {/* Phase Node */}
                 <div className="flex items-start gap-4">
                   {/* Node Circle */}
-                  <motion.div 
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
+                  <div 
                     className={`
                       relative z-10 flex items-center justify-center w-12 h-12 rounded-full cursor-pointer
-                      transition-all duration-300 shadow-lg
+                      transition-transform duration-200 shadow-lg hover:scale-105
                       ${phaseStatus === "completed" 
                         ? "bg-green-500 text-white shadow-green-500/30" 
                         : phaseStatus === "in_progress"
-                        ? "bg-amber-500 text-white shadow-amber-500/30 animate-pulse"
+                        ? "bg-amber-500 text-white shadow-amber-500/30"
                         : "bg-muted text-muted-foreground border-2 border-dashed border-muted-foreground/30"
                       }
                     `}
@@ -173,12 +151,12 @@ export const TasksTrailView = ({ phases, onTaskClick, onStatusChange }: TasksTra
                     ) : (
                       PHASE_ICONS[phase.name] || <span className="text-lg font-bold">{phaseIndex + 1}</span>
                     )}
-                  </motion.div>
+                  </div>
 
                   {/* Phase Card */}
                   <Card 
                     className={`
-                      flex-1 cursor-pointer transition-all duration-300 overflow-hidden
+                      flex-1 cursor-pointer transition-all duration-200 overflow-hidden
                       ${isExpanded ? "ring-2 ring-primary/50" : "hover:shadow-md"}
                       ${phaseStatus === "completed" ? "bg-green-500/5" : ""}
                     `}
@@ -198,103 +176,84 @@ export const TasksTrailView = ({ phases, onTaskClick, onStatusChange }: TasksTra
                           <div className="w-24">
                             <Progress value={phaseProgress} className="h-2" />
                           </div>
-                          <motion.div
-                            animate={{ rotate: isExpanded ? 90 : 0 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                          </motion.div>
+                          <ChevronRight 
+                            className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} 
+                          />
                         </div>
                       </div>
 
                       {/* Tasks */}
-                      <AnimatePresence>
-                        {isExpanded && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="mt-4 space-y-2 border-t pt-4"
-                          >
-                            {phase.tasks.map((task, taskIndex) => (
-                              <motion.div
-                                key={task.id}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: taskIndex * 0.05 }}
-                                className={`
-                                  flex items-center gap-3 p-3 rounded-lg border
-                                  transition-all duration-200 cursor-pointer
-                                  ${task.status === "completed" 
-                                    ? "bg-green-500/5 border-green-500/20" 
-                                    : task.status === "in_progress"
-                                    ? "bg-amber-500/5 border-amber-500/20"
-                                    : "bg-card hover:bg-muted/50"
-                                  }
-                                `}
+                      {isExpanded && (
+                        <div className="mt-4 space-y-2 border-t pt-4">
+                          {phase.tasks.map((task) => (
+                            <div
+                              key={task.id}
+                              className={`
+                                flex items-center gap-3 p-3 rounded-lg border
+                                transition-colors duration-150 cursor-pointer
+                                ${task.status === "completed" 
+                                  ? "bg-green-500/5 border-green-500/20" 
+                                  : task.status === "in_progress"
+                                  ? "bg-amber-500/5 border-amber-500/20"
+                                  : "bg-card hover:bg-muted/50"
+                                }
+                              `}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onTaskClick(task);
+                              }}
+                            >
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onTaskClick(task);
+                                  const nextStatus =
+                                    task.status === "pending"
+                                      ? "in_progress"
+                                      : task.status === "in_progress"
+                                      ? "completed"
+                                      : "pending";
+                                  onStatusChange(task.id, nextStatus);
                                 }}
+                                className="flex-shrink-0"
                               >
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const nextStatus =
-                                      task.status === "pending"
-                                        ? "in_progress"
-                                        : task.status === "in_progress"
-                                        ? "completed"
-                                        : "pending";
-                                    onStatusChange(task.id, nextStatus);
-                                  }}
-                                  className="flex-shrink-0"
-                                >
-                                  {getStatusIcon(task.status)}
-                                </button>
+                                {getStatusIcon(task.status)}
+                              </button>
 
-                                <div className="flex-1 min-w-0">
-                                  <p className={`font-medium ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
-                                    {task.title}
-                                  </p>
-                                </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`font-medium ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
+                                  {task.title}
+                                </p>
+                              </div>
 
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  {task.recurrence && (
-                                    <Badge variant="outline" className="text-xs gap-1">
-                                      <RefreshCw className="h-3 w-3" />
-                                    </Badge>
-                                  )}
-                                  {task.priority === "high" && (
-                                    <Badge variant="destructive" className="text-xs">Alta</Badge>
-                                  )}
-                                  {task.due_date && (
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                      <Calendar className="h-3 w-3" />
-                                      {format(new Date(task.due_date), "dd/MM")}
-                                    </div>
-                                  )}
-                                </div>
-                              </motion.div>
-                            ))}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {task.recurrence && (
+                                  <Badge variant="outline" className="text-xs gap-1">
+                                    <RefreshCw className="h-3 w-3" />
+                                  </Badge>
+                                )}
+                                {task.priority === "high" && (
+                                  <Badge variant="destructive" className="text-xs">Alta</Badge>
+                                )}
+                                {task.due_date && (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Calendar className="h-3 w-3" />
+                                    {format(new Date(task.due_date), "dd/MM")}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
-              </motion.div>
+              </div>
             );
           })}
 
           {/* Finish Line */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: phases.length * 0.1 }}
-            className="flex items-center gap-4"
-          >
+          <div className="flex items-center gap-4">
             <div className={`
               relative z-10 flex items-center justify-center w-12 h-12 rounded-full
               ${overallProgress === 100 
@@ -309,7 +268,7 @@ export const TasksTrailView = ({ phases, onTaskClick, onStatusChange }: TasksTra
                 {overallProgress === 100 ? "🎉 Onboarding Concluído!" : "Meta: Concluir Onboarding"}
               </p>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </div>
