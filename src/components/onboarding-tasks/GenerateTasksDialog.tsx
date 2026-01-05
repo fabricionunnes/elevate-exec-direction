@@ -30,6 +30,7 @@ type TemplateTask = {
   phase?: string | null;
   phase_order?: number | null;
   recurrence?: string | null;
+  is_internal?: boolean;
 };
 
 type AISuggestedTask = {
@@ -87,7 +88,7 @@ export const GenerateTasksDialog = ({
       try {
         const { data, error } = await supabase
           .from("onboarding_task_templates")
-          .select("id,title,description,priority,sort_order,default_days_offset,duration_days,phase,phase_order,recurrence")
+          .select("id,title,description,priority,sort_order,default_days_offset,duration_days,phase,phase_order,recurrence,is_internal")
           .eq("product_id", productId)
           .order("phase_order", { ascending: true })
           .order("sort_order", { ascending: true });
@@ -245,6 +246,7 @@ export const GenerateTasksDialog = ({
           recurrence: tpl.recurrence ?? null,
           tags: tpl.phase ? [tpl.phase, String(tpl.phase_order ?? 99)] : null,
           estimated_hours: null,
+          is_internal: tpl.is_internal ?? false,
         };
       });
 

@@ -1256,6 +1256,7 @@ export type Database = {
           description: string | null
           duration_days: number | null
           id: string
+          is_internal: boolean
           phase: string | null
           phase_order: number | null
           priority: string | null
@@ -1272,6 +1273,7 @@ export type Database = {
           description?: string | null
           duration_days?: number | null
           id?: string
+          is_internal?: boolean
           phase?: string | null
           phase_order?: number | null
           priority?: string | null
@@ -1288,6 +1290,7 @@ export type Database = {
           description?: string | null
           duration_days?: number | null
           id?: string
+          is_internal?: boolean
           phase?: string | null
           phase_order?: number | null
           priority?: string | null

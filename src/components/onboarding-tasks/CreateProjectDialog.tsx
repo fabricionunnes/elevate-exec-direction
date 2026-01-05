@@ -119,7 +119,7 @@ export const CreateProjectDialog = ({
       const { data: templates, error: templatesError } = await supabase
         .from("onboarding_task_templates")
         .select(
-          "id, title, description, priority, sort_order, default_days_offset, duration_days, phase, recurrence, phase_order"
+          "id, title, description, priority, sort_order, default_days_offset, duration_days, phase, recurrence, phase_order, is_internal"
         )
         .eq("product_id", selectedProduct)
         .order("phase_order", { ascending: true })
@@ -160,6 +160,7 @@ export const CreateProjectDialog = ({
           // Importante: manter a fase do template para não "parecer" tarefa inventada no painel
           tags: tpl.phase ? [tpl.phase] : null,
           recurrence: tpl.recurrence ?? null,
+          is_internal: tpl.is_internal ?? false,
         };
       });
 

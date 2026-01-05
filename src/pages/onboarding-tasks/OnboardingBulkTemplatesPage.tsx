@@ -11,7 +11,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Trash2, LogOut, Layers, Save, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, LogOut, Layers, Save, AlertTriangle, EyeOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 interface Service {
   id: string;
@@ -30,6 +31,7 @@ interface TaskToCreate {
   responsible_role: string;
   recurrence: string;
   sort_order: number;
+  is_internal: boolean;
 }
 
 interface PhaseInfo {
@@ -207,7 +209,8 @@ export default function OnboardingBulkTemplatesPage() {
       duration_days: 1,
       responsible_role: 'consultant',
       recurrence: 'none',
-      sort_order: tasks.length + 1
+      sort_order: tasks.length + 1,
+      is_internal: false
     };
     setTasks(prev => [...prev, newTask]);
   };
@@ -261,7 +264,8 @@ export default function OnboardingBulkTemplatesPage() {
           default_days_offset: task.default_days_offset,
           duration_days: task.duration_days,
           responsible_role: task.responsible_role,
-          recurrence: task.recurrence === 'none' ? null : task.recurrence
+          recurrence: task.recurrence === 'none' ? null : task.recurrence,
+          is_internal: task.is_internal
         }))
       );
 
@@ -592,6 +596,23 @@ export default function OnboardingBulkTemplatesPage() {
                                 ))}
                               </SelectContent>
                             </Select>
+                          </div>
+
+                          {/* Internal Task Toggle */}
+                          <div className="col-span-full flex items-center justify-between rounded-lg border p-3">
+                            <div className="space-y-0.5">
+                              <Label className="font-medium flex items-center gap-2">
+                                <EyeOff className="h-4 w-4" />
+                                Tarefa Interna
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                Não visível para clientes
+                              </p>
+                            </div>
+                            <Switch
+                              checked={task.is_internal}
+                              onCheckedChange={(checked) => updateTask(task.id, 'is_internal', checked)}
+                            />
                           </div>
                         </div>
                       </div>
