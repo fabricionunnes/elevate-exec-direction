@@ -24,7 +24,6 @@ export default function NPSSurveyPage() {
   const [whatCanImprove, setWhatCanImprove] = useState('');
   const [wouldRecommendWhy, setWouldRecommendWhy] = useState('');
   const [respondentName, setRespondentName] = useState('');
-  const [respondentEmail, setRespondentEmail] = useState('');
 
   useEffect(() => {
     const fetchProjectInfo = async () => {
@@ -84,7 +83,7 @@ export default function NPSSurveyPage() {
           what_can_improve: whatCanImprove.trim() || null,
           would_recommend_why: wouldRecommendWhy.trim() || null,
           respondent_name: respondentName.trim() || null,
-          respondent_email: respondentEmail.trim() || null,
+          respondent_email: null,
         });
 
       if (error) throw error;
@@ -259,7 +258,7 @@ export default function NPSSurveyPage() {
               </div>
 
               {/* Respondent info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+              <div className="pt-4 border-t">
                 <div className="space-y-2">
                   <Label htmlFor="respondentName">
                     Seu nome
@@ -271,19 +270,6 @@ export default function NPSSurveyPage() {
                     onChange={(e) => setRespondentName(e.target.value)}
                     placeholder="Nome completo"
                     required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="respondentEmail">
-                    Seu e-mail
-                    <span className="text-muted-foreground ml-1 text-xs">(opcional)</span>
-                  </Label>
-                  <Input
-                    id="respondentEmail"
-                    type="email"
-                    value={respondentEmail}
-                    onChange={(e) => setRespondentEmail(e.target.value)}
-                    placeholder="email@exemplo.com"
                   />
                 </div>
               </div>
