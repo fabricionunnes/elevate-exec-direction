@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Pencil, Trash2, ListTodo, LogOut, Package } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, ListTodo, LogOut, Package, Layers } from 'lucide-react';
 
 interface Service {
   id: string;
@@ -242,6 +242,10 @@ export default function OnboardingServicesPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => navigate('/onboarding-tasks/services/bulk')}>
+              <Layers className="h-4 w-4 mr-2" />
+              Adicionar em Lote
+            </Button>
             <Button onClick={openCreateDialog}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Serviço

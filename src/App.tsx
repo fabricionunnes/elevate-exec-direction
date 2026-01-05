@@ -66,6 +66,7 @@ import OnboardingLoginPage from "./pages/onboarding-tasks/OnboardingLoginPage";
 import OnboardingNewCompanyPage from "./pages/onboarding-tasks/OnboardingNewCompanyPage";
 import OnboardingServicesPage from "./pages/onboarding-tasks/OnboardingServicesPage";
 import OnboardingServiceTemplatesPage from "./pages/onboarding-tasks/OnboardingServiceTemplatesPage";
+import OnboardingBulkTemplatesPage from "./pages/onboarding-tasks/OnboardingBulkTemplatesPage";
 import NPSSurveyPage from "./pages/NPSSurveyPage";
 
 const queryClient = new QueryClient();
@@ -122,6 +123,7 @@ const App = () => (
           <Route path="/onboarding-tasks/companies/:companyId" element={<OnboardingCompanyDetailPage />} />
           <Route path="/onboarding-tasks/staff" element={<OnboardingStaffPage />} />
           <Route path="/onboarding-tasks/services" element={<OnboardingServicesPage />} />
+          <Route path="/onboarding-tasks/services/bulk" element={<OnboardingBulkTemplatesPage />} />
           <Route path="/onboarding-tasks/services/:serviceSlug/templates" element={<OnboardingServiceTemplatesPage />} />
           <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
           <Route path="/onboarding-client/:projectId" element={<ClientOnboardingPage />} />
