@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video } from "lucide-react";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -789,6 +789,10 @@ const OnboardingTasksPage = () => {
                     <Users className="h-4 w-4 mr-2" />
                     Equipe
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/office")}>
+                    <Video className="h-4 w-4 mr-2" />
+                    Escritório Virtual
+                  </DropdownMenuItem>
                   {isAdmin && (
                     <>
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/services")}>
@@ -821,6 +825,10 @@ const OnboardingTasksPage = () => {
                 <Button variant="outline" onClick={() => navigate("/onboarding-tasks/staff")}>
                   <Users className="h-4 w-4 mr-2" />
                   Equipe
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/onboarding-tasks/office")}>
+                  <Video className="h-4 w-4 mr-2" />
+                  Escritório
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
