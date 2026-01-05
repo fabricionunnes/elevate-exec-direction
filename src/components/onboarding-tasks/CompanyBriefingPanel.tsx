@@ -623,63 +623,28 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                   const formatCurr = (val: number | null) => 
                     val ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val) : "R$ 0,00";
                   
-                  // Calculate per-channel CAC and ticket
-                  const calcChannelMetrics = (investment: number | null, salesQty: number | null, salesValue: number | null) => {
-                    const inv3Months = (investment || 0) * 3;
-                    const cac = salesQty && salesQty > 0 ? inv3Months / salesQty : null;
-                    const ticket = salesQty && salesQty > 0 && salesValue ? salesValue / salesQty : null;
-                    return { cac, ticket, investment: investment || 0, salesQty: salesQty || 0, salesValue: salesValue || 0 };
-                  };
-
-                  const facebook = calcChannelMetrics(cac.facebook_ads_investment, cac.facebook_sales_quantity, cac.facebook_sales_value);
-                  const google = calcChannelMetrics(cac.google_ads_investment, cac.google_sales_quantity, cac.google_sales_value);
-                  const linkedin = calcChannelMetrics(cac.linkedin_ads_investment, cac.linkedin_sales_quantity, cac.linkedin_sales_value);
-
-                  // Totals
-                  const totalInvestment = facebook.investment + google.investment + linkedin.investment;
-                  const totalSalesQty = facebook.salesQty + google.salesQty + linkedin.salesQty;
-                  const totalSalesValue = facebook.salesValue + google.salesValue + linkedin.salesValue;
-                  const totalCAC = totalSalesQty > 0 ? (totalInvestment * 3) / totalSalesQty : null;
-                  const totalTicket = totalSalesQty > 0 ? totalSalesValue / totalSalesQty : null;
-
-                  const renderChannelCard = (
-                    name: string, 
-                    metrics: { cac: number | null; ticket: number | null; investment: number; salesQty: number; salesValue: number },
-                    bgColor: string,
-                    borderColor: string
-                  ) => (
-                    <div className={`p-4 rounded-lg ${bgColor} border ${borderColor} space-y-3`}>
-                      <h4 className="font-semibold text-sm">{name}</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <p className="text-xs text-muted-foreground">CAC</p>
-                          <p className="font-bold text-lg">{metrics.cac ? formatCurr(metrics.cac) : "-"}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Ticket Médio</p>
-                          <p className="font-bold text-lg">{metrics.ticket ? formatCurr(metrics.ticket) : "-"}</p>
-                        </div>
-                      </div>
-                      <Separator />
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div>
-                          <p className="text-muted-foreground">Investimento/mês</p>
-                          <p className="font-medium">{formatCurr(metrics.investment)}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Vendas</p>
-                          <p className="font-medium">{metrics.salesQty}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Faturamento</p>
-                          <p className="font-medium">{formatCurr(metrics.salesValue)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  );
+                  // Calculate totals
+                  const totalInvestment = 
+                    (cac.facebook_ads_investment || 0) + 
+                    (cac.google_ads_investment || 0) + 
+                    (cac.linkedin_ads_investment || 0);
+                  const totalInvestment3Months = totalInvestment * 3;
+                  const totalSalesQty = cac.sales_quantity_3_months || 0;
+                  const totalSalesValue = cac.sales_value_3_months || 0;
+                  
+                  // Core metrics
+                  const cac_value = totalSalesQty > 0 ? totalInvestment3Months / totalSalesQty : null;
+                  const ticketMedio = totalSalesQty > 0 && totalSalesValue > 0 ? totalSalesValue / totalSalesQty : null;
+                  
+                  // ROI = (Faturamento - Investimento) / Investimento * 100
+                  const lucroLiquido = totalSalesValue - totalInvestment3Months;
+                  const roi = totalInvestment3Months > 0 ? (lucroLiquido / totalInvestment3Months) * 100 : null;
+                  
+                  // Money Machine: for each R$1 invested, how much returns
+                  const moneyMultiplier = totalInvestment3Months > 0 ? totalSalesValue / totalInvestment3Months : null;
 
                   return (
-                    <div key={cac.id} className="p-4 rounded-lg border space-y-4">
+                    <div key={cac.id} className="p-4 rounded-lg border space-y-6">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">Levantamento CAC</p>
@@ -688,66 +653,129 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                           </p>
                         </div>
                       </div>
+
+                      {/* Máquina de Dinheiro - Visualização */}
+                      <div className="p-6 rounded-xl bg-gradient-to-r from-amber-500/10 via-green-500/10 to-emerald-500/10 border border-amber-500/20">
+                        <p className="text-sm font-semibold text-center mb-4">💰 Máquina de Dinheiro do Tráfego</p>
+                        
+                        <div className="flex items-center justify-center gap-4 flex-wrap">
+                          {/* Entrada */}
+                          <div className="text-center p-4 rounded-lg bg-red-500/10 border border-red-500/20 min-w-[140px]">
+                            <p className="text-xs text-muted-foreground mb-1">Você Investe</p>
+                            <p className="text-xl font-bold text-red-600">{formatCurr(totalInvestment3Months)}</p>
+                            <p className="text-xs text-muted-foreground">em 3 meses</p>
+                          </div>
+
+                          {/* Seta */}
+                          <div className="text-3xl">→</div>
+
+                          {/* Processo */}
+                          <div className="text-center p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 min-w-[140px]">
+                            <p className="text-xs text-muted-foreground mb-1">Gera</p>
+                            <p className="text-xl font-bold text-blue-600">{totalSalesQty}</p>
+                            <p className="text-xs text-muted-foreground">vendas</p>
+                          </div>
+
+                          {/* Seta */}
+                          <div className="text-3xl">→</div>
+
+                          {/* Saída */}
+                          <div className="text-center p-4 rounded-lg bg-green-500/10 border border-green-500/20 min-w-[140px]">
+                            <p className="text-xs text-muted-foreground mb-1">Você Fatura</p>
+                            <p className="text-xl font-bold text-green-600">{formatCurr(totalSalesValue)}</p>
+                            <p className="text-xs text-muted-foreground">em 3 meses</p>
+                          </div>
+                        </div>
+
+                        {/* Multiplicador */}
+                        {moneyMultiplier && (
+                          <div className="text-center mt-4 p-3 rounded-lg bg-emerald-500/20 border border-emerald-500/30">
+                            <p className="text-sm">
+                              Para cada <span className="font-bold">R$ 1,00</span> investido, retornam{" "}
+                              <span className="font-bold text-emerald-600 text-lg">
+                                R$ {moneyMultiplier.toFixed(2)}
+                              </span>
+                            </p>
+                          </div>
+                        )}
+                      </div>
                       
-                      {/* Totais Gerais */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Métricas Principais */}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                           <div className="flex items-center gap-2 mb-1">
                             <Calculator className="h-4 w-4 text-primary" />
-                            <label className="text-sm font-medium text-primary">CAC Geral</label>
+                            <label className="text-sm font-medium text-primary">CAC</label>
                           </div>
                           <p className="text-2xl font-bold text-primary">
-                            {totalCAC ? formatCurr(totalCAC) : "-"}
+                            {cac_value ? formatCurr(cac_value) : "-"}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Total de todos os canais
+                            Custo por cliente
                           </p>
                         </div>
+                        
                         <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
                           <div className="flex items-center gap-2 mb-1">
                             <DollarSign className="h-4 w-4 text-green-600" />
-                            <label className="text-sm font-medium text-green-600">Ticket Médio Geral</label>
+                            <label className="text-sm font-medium text-green-600">Ticket Médio</label>
                           </div>
                           <p className="text-2xl font-bold text-green-600">
-                            {totalTicket ? formatCurr(totalTicket) : "-"}
+                            {ticketMedio ? formatCurr(ticketMedio) : "-"}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Média de todos os canais
+                            Valor por venda
+                          </p>
+                        </div>
+
+                        <div className={`p-4 rounded-lg ${roi && roi > 0 ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Target className="h-4 w-4" />
+                            <label className={`text-sm font-medium ${roi && roi > 0 ? 'text-emerald-600' : 'text-red-600'}`}>ROI do Tráfego</label>
+                          </div>
+                          <p className={`text-2xl font-bold ${roi && roi > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {roi ? `${roi.toFixed(0)}%` : "-"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Retorno sobre investimento
+                          </p>
+                        </div>
+
+                        <div className={`p-4 rounded-lg ${lucroLiquido > 0 ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <DollarSign className="h-4 w-4" />
+                            <label className={`text-sm font-medium ${lucroLiquido > 0 ? 'text-emerald-600' : 'text-red-600'}`}>Lucro Líquido</label>
+                          </div>
+                          <p className={`text-2xl font-bold ${lucroLiquido > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {formatCurr(lucroLiquido)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Faturamento - Investimento
                           </p>
                         </div>
                       </div>
 
                       <Separator />
-                      
-                      {/* CAC e Ticket por Canal */}
-                      <div>
-                        <p className="text-sm font-medium mb-3">Métricas por Canal</p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {renderChannelCard("Facebook ADS", facebook, "bg-blue-500/5", "border-blue-500/20")}
-                          {renderChannelCard("Google ADS", google, "bg-red-500/5", "border-red-500/20")}
-                          {renderChannelCard("LinkedIn ADS", linkedin, "bg-sky-500/5", "border-sky-500/20")}
-                        </div>
-                      </div>
 
-                      {/* Resumo Totais */}
+                      {/* Detalhes do Investimento */}
                       <div>
-                        <p className="text-sm font-medium mb-3">Resumo (3 meses)</p>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                          <div className="p-3 rounded-lg bg-muted/50">
-                            <label className="text-muted-foreground text-xs">Investimento Total/mês</label>
-                            <p className="font-medium">{formatCurr(totalInvestment)}</p>
+                        <p className="text-sm font-medium mb-3">Investimento Mensal por Canal</p>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+                          <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                            <label className="text-muted-foreground text-xs">Facebook ADS</label>
+                            <p className="font-medium">{formatCurr(cac.facebook_ads_investment)}</p>
                           </div>
-                          <div className="p-3 rounded-lg bg-muted/50">
-                            <label className="text-muted-foreground text-xs">Total de Vendas</label>
-                            <p className="font-medium">{totalSalesQty} vendas</p>
+                          <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+                            <label className="text-muted-foreground text-xs">Google ADS</label>
+                            <p className="font-medium">{formatCurr(cac.google_ads_investment)}</p>
                           </div>
-                          <div className="p-3 rounded-lg bg-muted/50">
-                            <label className="text-muted-foreground text-xs">Faturamento Total</label>
-                            <p className="font-medium">{formatCurr(totalSalesValue)}</p>
+                          <div className="p-3 rounded-lg bg-sky-500/5 border border-sky-500/20">
+                            <label className="text-muted-foreground text-xs">LinkedIn ADS</label>
+                            <p className="font-medium">{formatCurr(cac.linkedin_ads_investment)}</p>
                           </div>
                           <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
-                            <label className="text-muted-foreground text-xs">Investimento 3 meses</label>
-                            <p className="font-semibold text-primary">{formatCurr(totalInvestment * 3)}</p>
+                            <label className="text-muted-foreground text-xs">Total/mês</label>
+                            <p className="font-semibold text-primary">{formatCurr(totalInvestment)}</p>
                           </div>
                         </div>
                       </div>
