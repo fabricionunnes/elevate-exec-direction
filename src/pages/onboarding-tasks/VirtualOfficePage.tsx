@@ -84,6 +84,7 @@ interface Message {
   id: string;
   room_id: string;
   staff_id: string;
+  recipient_staff_id?: string | null;
   content: string;
   message_type: string;
   created_at: string;
@@ -148,6 +149,10 @@ const VirtualOfficePage = () => {
         { event: "INSERT", schema: "public", table: "virtual_office_messages" },
         (payload) => {
           const newMsg = payload.new as Message;
+
+          // Ignorar DMs (senão elas contam como "mensagem do grupo")
+          if (newMsg.recipient_staff_id) return;
+
           // Only increment if it's not the current room and not from the current user
           if (newMsg.room_id !== selectedRoom?.id && newMsg.staff_id !== currentStaff?.id) {
             setUnreadCounts((prev) => ({
@@ -281,10 +286,11 @@ const VirtualOfficePage = () => {
       .select("*")
       .eq("room_id", roomId)
       .eq("is_deleted", false)
+      .is("recipient_staff_id", null)
       .order("created_at", { ascending: true })
       .limit(100);
 
-    setMessages(data || []);
+    setMessages((data || []) as Message[]);
   };
 
   const subscribeToMessages = (roomId: string) => {
@@ -294,7 +300,10 @@ const VirtualOfficePage = () => {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "virtual_office_messages", filter: `room_id=eq.${roomId}` },
         (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
+          const msg = payload.new as Message;
+          // Ignorar DMs (elas usam room_id como fallback, mas têm recipient_staff_id)
+          if (msg.recipient_staff_id) return;
+          setMessages((prev) => [...prev, msg]);
         }
       )
       .subscribe();
