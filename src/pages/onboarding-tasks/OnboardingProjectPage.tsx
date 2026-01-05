@@ -31,6 +31,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ManageUsersDialog } from "@/components/onboarding-tasks/ManageUsersDialog";
 import { TaskDetailsDialog } from "@/components/onboarding-tasks/TaskDetailsDialog";
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
@@ -83,6 +90,8 @@ interface Project {
   current_nps: number | null;
   onboarding_company_id: string | null;
   onboarding_company?: { name: string } | null;
+  consultant_id: string | null;
+  cs_id: string | null;
 }
 
 interface TaskPhase {
@@ -132,12 +141,23 @@ const OnboardingProjectPage = () => {
   const [isStaffAdmin, setIsStaffAdmin] = useState(false);
   const [showGenerateTasksDialog, setShowGenerateTasksDialog] = useState(false);
   const [tasksViewMode, setTasksViewMode] = useState<"trail" | "list" | "schedule">("trail");
+  const [staffList, setStaffList] = useState<{ id: string; name: string; role: string }[]>([]);
 
   useEffect(() => {
     if (projectId) {
       fetchProjectData();
+      fetchStaffList();
     }
   }, [projectId]);
+
+  const fetchStaffList = async () => {
+    const { data } = await supabase
+      .from("onboarding_staff")
+      .select("id, name, role")
+      .eq("is_active", true)
+      .order("name");
+    setStaffList(data || []);
+  };
 
   // Open task from notification link
   useEffect(() => {
@@ -385,6 +405,23 @@ const OnboardingProjectPage = () => {
     }
   };
 
+  const handleProjectUpdate = async (field: string, value: string | null) => {
+    if (!projectId) return;
+    try {
+      const { error } = await supabase
+        .from("onboarding_projects")
+        .update({ [field]: value })
+        .eq("id", projectId);
+      
+      if (error) throw error;
+      setProject(prev => prev ? { ...prev, [field]: value } : null);
+      toast.success("Projeto atualizado");
+    } catch (error) {
+      console.error("Error updating project:", error);
+      toast.error("Erro ao atualizar projeto");
+    }
+  };
+
   const togglePhase = (phaseName: string) => {
     setExpandedPhases(prev => {
       const newSet = new Set(prev);
@@ -398,7 +435,7 @@ const OnboardingProjectPage = () => {
   };
 
   const isAdmin = isStaffAdmin || currentUserRole === "admin";
-
+  const canAddTasks = isAdmin || currentUserRole === "cs" || currentUserRole === "consultant";
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
@@ -511,50 +548,110 @@ const OnboardingProjectPage = () => {
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">{project.product_name}</h1>
-              {project.onboarding_company?.name && (
-                <p className="text-muted-foreground">{project.onboarding_company.name}</p>
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold">{project.product_name}</h1>
+                {project.onboarding_company?.name && (
+                  <p className="text-muted-foreground">{project.onboarding_company.name}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {currentUserRole && currentUserRole !== "client" && (
+                <Button variant="outline" onClick={() => setShowGenerateTasksDialog(true)}>
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  Gerar Tarefas
+                </Button>
               )}
+              <Button variant="outline" onClick={() => setShowUsersDialog(true)}>
+                <Users className="h-4 w-4 mr-2" />
+                Usuários ({users.length})
+              </Button>
+              {isStaffAdmin && (
+                <Button 
+                  variant="destructive" 
+                  size="icon"
+                  onClick={handleDeleteProject}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  navigate("/onboarding-tasks/login");
+                }}
+                title="Sair"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {currentUserRole && currentUserRole !== "client" && (
-              <Button variant="outline" onClick={() => setShowGenerateTasksDialog(true)}>
-                <Wand2 className="h-4 w-4 mr-2" />
-                Gerar Tarefas
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => setShowUsersDialog(true)}>
-              <Users className="h-4 w-4 mr-2" />
-              Usuários ({users.length})
-            </Button>
-            {isStaffAdmin && (
-              <Button 
-                variant="destructive" 
-                size="icon"
-                onClick={handleDeleteProject}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={async () => {
-                await supabase.auth.signOut();
-                navigate("/onboarding-tasks/login");
-              }}
-              title="Sair"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
+
+          {/* Project Settings Row - Only for admin/cs */}
+          {(isAdmin || currentUserRole === "cs") && (
+            <div className="flex flex-wrap gap-4 pl-14">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Status:</span>
+                <Select 
+                  value={project.status} 
+                  onValueChange={(value) => handleProjectUpdate("status", value)}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativo</SelectItem>
+                    <SelectItem value="cancellation_signaled">Sinalizou Cancelamento</SelectItem>
+                    <SelectItem value="notice_period">Cumprindo Aviso</SelectItem>
+                    <SelectItem value="completed">Concluído</SelectItem>
+                    <SelectItem value="closed">Encerrado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Consultor:</span>
+                <Select 
+                  value={project.consultant_id || "none"} 
+                  onValueChange={(value) => handleProjectUpdate("consultant_id", value === "none" ? null : value)}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Selecionar..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {staffList.filter(s => s.role === "consultant").map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">CS:</span>
+                <Select 
+                  value={project.cs_id || "none"} 
+                  onValueChange={(value) => handleProjectUpdate("cs_id", value === "none" ? null : value)}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Selecionar..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {staffList.filter(s => s.role === "cs").map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Progress */}
@@ -637,7 +734,7 @@ const OnboardingProjectPage = () => {
                   Cronograma
                 </Button>
               </div>
-              {isAdmin && (
+              {canAddTasks && (
                 <div className="flex gap-2">
                   <Input
                     placeholder="Adicionar nova tarefa..."
