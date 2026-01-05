@@ -56,6 +56,7 @@ import { TasksListView } from "@/components/onboarding-tasks/TasksListView";
 import { TasksScheduleView } from "@/components/onboarding-tasks/TasksScheduleView";
 import { NPSHistoryPanel } from "@/components/onboarding-tasks/NPSHistoryPanel";
 import { ProjectUrgentTasks } from "@/components/onboarding-tasks/ProjectUrgentTasks";
+import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
 import { TrendingUp } from "lucide-react";
 
 
@@ -754,6 +755,16 @@ const OnboardingProjectPage = () => {
     <div className="min-h-screen bg-background">
       {/* Realtime notifications for staff */}
       <RealtimeNotifications />
+      
+      {/* Goal Projection Alert Dialog */}
+      {projectId && project && (
+        <GoalProjectionAlertDialog
+          projectId={projectId}
+          companyName={project.onboarding_company?.name || project.product_name}
+          isStaff={true}
+          onNavigateToGoals={() => setActiveTab("goals")}
+        />
+      )}
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}

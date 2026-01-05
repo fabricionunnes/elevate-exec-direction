@@ -21,6 +21,7 @@ import { ClientTaskDetailSheet } from "@/components/client-portal/ClientTaskDeta
 import { ClientSettingsSheet } from "@/components/client-portal/ClientSettingsSheet";
 import { ClientMetricsView } from "@/components/client-portal/ClientMetricsView";
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
+import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
 
 interface OnboardingTask {
   id: string;
@@ -269,6 +270,16 @@ const ClientOnboardingPage = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      {/* Goal Projection Alert Dialog for clients */}
+      {projectId && project && (
+        <GoalProjectionAlertDialog
+          projectId={projectId}
+          companyName={company?.name || project.product_name}
+          isStaff={false}
+          onNavigateToGoals={() => setActiveView("metrics")}
+        />
+      )}
+      
       {/* Header - Mobile optimized */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b">
         <div className="px-4 py-3">
