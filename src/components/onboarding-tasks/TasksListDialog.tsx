@@ -108,7 +108,7 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds }: TasksList
 
   const handleTaskClick = (task: TaskWithDetails) => {
     onOpenChange(false);
-    navigate(`/onboarding-tasks/project/${task.project_id}?task=${task.id}`);
+    navigate(`/onboarding-tasks/${task.project_id}?task=${task.id}`);
   };
 
   const getStatusIcon = (status: string) => {
