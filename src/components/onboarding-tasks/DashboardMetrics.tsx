@@ -781,7 +781,13 @@ const DashboardMetrics = ({
           </Card>
 
           {/* NPS Responded Card */}
-          <Card className="relative overflow-hidden">
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("nps", "responded") && "ring-2 ring-blue-500"
+            )}
+            onClick={() => handleCardClick("nps", "responded")}
+          >
             <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
             <CardContent className="pt-4 pl-4">
               <div className="flex items-center justify-between">
@@ -802,7 +808,13 @@ const DashboardMetrics = ({
           </Card>
 
           {/* NPS Not Responded Card */}
-          <Card className="relative overflow-hidden">
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("nps", "not_responded") && "ring-2 ring-gray-500"
+            )}
+            onClick={() => handleCardClick("nps", "not_responded")}
+          >
             <div className="absolute top-0 left-0 w-1 h-full bg-gray-400" />
             <CardContent className="pt-4 pl-4">
               <div className="flex items-center justify-between">

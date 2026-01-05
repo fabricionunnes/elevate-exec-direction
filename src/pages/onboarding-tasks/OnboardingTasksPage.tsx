@@ -101,12 +101,14 @@ const OnboardingTasksPage = () => {
   }));
   const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null }[]>([]);
   const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null }[]>([]);
+  const [npsResponses, setNpsResponses] = useState<{ project_id: string }[]>([]);
 
   useEffect(() => {
     checkUserPermissions();
     fetchCompanies();
     fetchFiltersData();
     fetchAllTasks();
+    fetchNpsResponses();
   }, []);
 
   const fetchAllTasks = async () => {
@@ -119,6 +121,19 @@ const OnboardingTasksPage = () => {
       setAllTasks(data || []);
     } catch (error) {
       console.error("Error fetching tasks:", error);
+    }
+  };
+
+  const fetchNpsResponses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("onboarding_nps_responses")
+        .select("project_id");
+
+      if (error) throw error;
+      setNpsResponses(data || []);
+    } catch (error) {
+      console.error("Error fetching NPS responses:", error);
     }
   };
 
@@ -279,6 +294,11 @@ const OnboardingTasksPage = () => {
     }
   };
 
+  // Get set of project IDs that have NPS responses
+  const projectsWithNpsResponse = useMemo(() => {
+    return new Set(npsResponses.map(r => r.project_id));
+  }, [npsResponses]);
+
   const filteredCompanies = useMemo(() => {
     return companies.filter((company) => {
       // Text search filter
@@ -312,12 +332,18 @@ const OnboardingTasksPage = () => {
             const endDate = new Date(company.contract_end_date);
             matchesMetricFilter = isWithinInterval(endDate, { start: dateRange.start, end: dateRange.end });
           }
+        } else if (activeMetricFilter.type === "nps" && activeMetricFilter.value === "responded") {
+          // Filter companies that have at least one project with NPS response
+          matchesMetricFilter = company.projects?.some(p => projectsWithNpsResponse.has(p.id)) ?? false;
+        } else if (activeMetricFilter.type === "nps" && activeMetricFilter.value === "not_responded") {
+          // Filter companies that have at least one project WITHOUT NPS response
+          matchesMetricFilter = company.projects?.some(p => !projectsWithNpsResponse.has(p.id)) ?? false;
         }
       }
       
       return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
     });
-  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse]);
 
   // Filtered projects for dashboard metrics (respects consultant and service filters)
   const filteredProjects = useMemo(() => {
