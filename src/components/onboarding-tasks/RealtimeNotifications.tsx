@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { playNotificationSound } from "@/lib/notificationSound";
 
 interface Notification {
   id: string;
@@ -120,15 +121,6 @@ export const RealtimeNotifications = () => {
     };
   }, [staffId]);
 
-  const playNotificationSound = () => {
-    try {
-      const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQAAAHqp0dqkbyEFRp/d2qRiDwJJot3aqFoFBEqi3NilVwkHTqDa1aNVCgdPo9rWoVQPCU6h2taeTxANT5/Y1ZtNEQ9Rndfcl0oSEFKb1dqVRxQRVZnT2JFEFhNXmNHVjEIXFViX0dOJPhkWWZbQ0oU7GhdblM/RgzcbGFyTzdB/NRwZXZLNz3wyHRpdks3Ney4eG16Rzc96Lh8cXpHNz3kuHx1eks3PeS0fHl6Szc95LR8eXpLNz3ktHx5eks3PeS0fHl6Szc95LR8eXpLNz3ktHx5eks3PeS0fHl6Szc95LR8eXpLNz3k=");
-      audio.volume = 0.5;
-      audio.play().catch(() => {});
-    } catch (e) {
-      // Ignore audio errors
-    }
-  };
 
   const handleMarkAsRead = async (notificationId: string) => {
     await supabase

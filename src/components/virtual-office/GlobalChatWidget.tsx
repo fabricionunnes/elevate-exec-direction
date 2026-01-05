@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { playNotificationSound } from "@/lib/notificationSound";
 import { 
   MessageCircle, 
   X, 
@@ -253,6 +254,9 @@ const GlobalChatWidget = () => {
           
           if (!isDMToMe && !isRoomMessage) return;
           if (isFromMe) return; // Don't notify for own messages
+
+          // Play notification sound
+          playNotificationSound();
 
           // Update unread count
           updateUnreadCount(newMsg, staffId);
