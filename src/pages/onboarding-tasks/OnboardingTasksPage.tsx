@@ -6,7 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
@@ -213,12 +221,54 @@ const OnboardingTasksPage = () => {
               <Users className="h-4 w-4 mr-2" />
               Equipe
             </Button>
-            {canCreateCompany && (
-              <Button variant="outline" onClick={() => navigate("/onboarding-tasks/companies/new")}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Empresa
-              </Button>
-            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Building2 className="h-4 w-4 mr-2" />
+                  Empresas
+                  <ChevronDown className="h-4 w-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                {canCreateCompany && (
+                  <>
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies/new")}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Nova Empresa
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                {companies.length > 0 ? (
+                  <ScrollArea className="max-h-64">
+                    {companies.slice(0, 15).map((company) => (
+                      <DropdownMenuItem
+                        key={company.id}
+                        onClick={() => navigate(`/onboarding-tasks/companies/${company.id}`)}
+                        className="flex items-center justify-between"
+                      >
+                        <span className="truncate">{company.name}</span>
+                        <Badge variant={company.status === "active" ? "default" : "secondary"} className="ml-2 text-xs">
+                          {company.status === "active" ? "Ativa" : company.status}
+                        </Badge>
+                      </DropdownMenuItem>
+                    ))}
+                    {companies.length > 15 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies")}>
+                          Ver todas ({companies.length})
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </ScrollArea>
+                ) : (
+                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                    Nenhuma empresa cadastrada
+                  </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={() => setShowCreateDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Projeto
