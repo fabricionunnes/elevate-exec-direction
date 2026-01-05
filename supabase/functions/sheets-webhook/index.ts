@@ -387,12 +387,41 @@ Deno.serve(async (req) => {
     try {
       const today = new Date();
 
-      const { data: templates, error: templatesError } = await supabase
-        .from("onboarding_task_templates")
-        .select("id, title, description, priority, sort_order, default_days_offset, duration_days, phase, phase_order, recurrence")
-        .eq("product_id", product.id)
-        .order("phase_order", { ascending: true })
-        .order("sort_order", { ascending: true });
+      // Buscar o UUID do serviço pelo slug para poder buscar templates por ambos
+      const { data: serviceData } = await supabase
+        .from("onboarding_services")
+        .select("id")
+        .eq("slug", product.id)
+        .maybeSingle();
+      
+      const serviceUuid = serviceData?.id;
+      console.log(`Serviço ${product.id} tem UUID: ${serviceUuid}`);
+
+      // Buscar templates por slug OU por UUID do serviço
+      let templates = [];
+      let templatesError = null;
+
+      if (serviceUuid) {
+        // Buscar por ambos: slug e UUID
+        const { data, error } = await supabase
+          .from("onboarding_task_templates")
+          .select("id, title, description, priority, sort_order, default_days_offset, duration_days, phase, phase_order, recurrence")
+          .or(`product_id.eq.${product.id},product_id.eq.${serviceUuid}`)
+          .order("phase_order", { ascending: true })
+          .order("sort_order", { ascending: true });
+        templates = data || [];
+        templatesError = error;
+      } else {
+        // Fallback: buscar apenas por slug
+        const { data, error } = await supabase
+          .from("onboarding_task_templates")
+          .select("id, title, description, priority, sort_order, default_days_offset, duration_days, phase, phase_order, recurrence")
+          .eq("product_id", product.id)
+          .order("phase_order", { ascending: true })
+          .order("sort_order", { ascending: true });
+        templates = data || [];
+        templatesError = error;
+      }
 
       if (templatesError) {
         console.error("Erro ao buscar templates de tarefas:", templatesError);
@@ -408,12 +437,13 @@ Deno.serve(async (req) => {
       }
 
       if (!templates || templates.length === 0) {
-        console.error(`Nenhum template de tarefa encontrado para o produto: ${product.id}`);
+        console.error(`Nenhum template de tarefa encontrado para o produto: ${product.id} (UUID: ${serviceUuid})`);
         await supabase.from("onboarding_projects").delete().eq("id", newProject.id);
         return new Response(
           JSON.stringify({
             error: "Template de tarefas não encontrado para este produto",
             product_id: product.id,
+            service_uuid: serviceUuid,
             service: serviceName,
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
