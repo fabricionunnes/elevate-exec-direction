@@ -23,7 +23,61 @@ serve(async (req) => {
     const pdfFile = formData.get('file') as File | null;
     const projectId = formData.get('projectId') as string | null;
     const companyName = formData.get('companyName') as string | null;
+    const mode = formData.get('mode') as string | null; // 'preview' or 'create'
+    const selectedTasksJson = formData.get('selectedTasks') as string | null;
 
+    // Mode: create - just insert pre-selected tasks
+    if (mode === 'create' && selectedTasksJson && projectId) {
+      console.log(`Creating selected tasks for project ${projectId}`);
+      
+      const selectedTasks = JSON.parse(selectedTasksJson);
+      
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      // Get current max sort_order
+      const { data: existingTasks } = await supabase
+        .from('onboarding_tasks')
+        .select('sort_order')
+        .eq('project_id', projectId)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+
+      let sortOrder = (existingTasks?.[0]?.sort_order || 0) + 1;
+
+      // Insert tasks
+      const tasksToInsert = selectedTasks.map((task: any, index: number) => ({
+        project_id: projectId,
+        title: task.title?.substring(0, 255) || `Ação ${index + 1}`,
+        description: task.description || null,
+        tags: [task.phase || 'Plano de Ação', String(index + 1)],
+        priority: ['high', 'medium', 'low'].includes(task.priority) ? task.priority : 'medium',
+        sort_order: sortOrder + index,
+        status: 'pending',
+        is_internal: false,
+      }));
+
+      if (tasksToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('onboarding_tasks')
+          .insert(tasksToInsert);
+
+        if (insertError) {
+          console.error('Error inserting tasks:', insertError);
+          throw new Error('Erro ao salvar tarefas no banco de dados');
+        }
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        tasksCreated: tasksToInsert.length,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Mode: preview (default) - analyze PDF and return tasks for review
     if (!pdfFile || !projectId) {
       throw new Error('Missing required fields: file and projectId');
     }
@@ -153,51 +207,22 @@ Retorne APENAS um JSON válido no formato:
     const tasks = parsedTasks.tasks || [];
     const summary = parsedTasks.summary || '';
 
-    console.log(`Extracted ${tasks.length} tasks from PDF`);
+    console.log(`Extracted ${tasks.length} tasks from PDF (preview mode)`);
 
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Get current max sort_order
-    const { data: existingTasks } = await supabase
-      .from('onboarding_tasks')
-      .select('sort_order')
-      .eq('project_id', projectId)
-      .order('sort_order', { ascending: false })
-      .limit(1);
-
-    let sortOrder = (existingTasks?.[0]?.sort_order || 0) + 1;
-
-    // Insert tasks
-    const tasksToInsert = tasks.map((task: any, index: number) => ({
-      project_id: projectId,
-      title: task.title?.substring(0, 255) || `Ação ${index + 1}`,
-      description: task.description || null,
-      tags: [task.phase || 'Plano de Ação', String(index + 1)],
-      priority: ['high', 'medium', 'low'].includes(task.priority) ? task.priority : 'medium',
-      sort_order: sortOrder + index,
-      status: 'pending',
-      is_internal: false,
-    }));
-
-    if (tasksToInsert.length > 0) {
-      const { error: insertError } = await supabase
-        .from('onboarding_tasks')
-        .insert(tasksToInsert);
-
-      if (insertError) {
-        console.error('Error inserting tasks:', insertError);
-        throw new Error('Erro ao salvar tarefas no banco de dados');
-      }
-    }
-
+    // Return tasks for preview - don't insert yet
     return new Response(JSON.stringify({
       success: true,
-      tasksCreated: tasksToInsert.length,
+      mode: 'preview',
+      tasks: tasks.map((t: any, index: number) => ({
+        id: `temp-${index}`,
+        title: t.title,
+        description: t.description,
+        phase: t.phase,
+        priority: t.priority,
+        estimated_days: t.estimated_days,
+      })),
       summary,
-      tasks: tasks.map((t: any) => ({ title: t.title, phase: t.phase })),
+      totalTasks: tasks.length,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
