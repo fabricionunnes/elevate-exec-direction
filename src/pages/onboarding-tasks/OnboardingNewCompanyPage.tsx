@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { COMPANY_SEGMENTS } from "@/data/companySegments";
 
 interface Staff {
   id: string;
@@ -172,13 +173,19 @@ const OnboardingNewCompanyPage = () => {
 
               {/* Segmento */}
               <div className="space-y-2">
-                <Label htmlFor="segment">Segmento</Label>
-                <Input
-                  id="segment"
-                  value={segment}
-                  onChange={(e) => setSegment(e.target.value)}
-                  placeholder="Ex: Tecnologia, Varejo, Serviços..."
-                />
+                <Label>Segmento</Label>
+                <Select value={segment} onValueChange={setSegment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o segmento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMPANY_SEGMENTS.map((seg) => (
+                      <SelectItem key={seg} value={seg}>
+                        {seg}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Grid 2 colunas */}
