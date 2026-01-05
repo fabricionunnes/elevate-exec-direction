@@ -116,7 +116,7 @@ const DashboardMetrics = ({
   const fetchData = async () => {
     try {
       const [tasksResult, npsResult, goalsResult] = await Promise.all([
-        supabase.from("onboarding_tasks").select("id, status, due_date, project_id, completed_at"),
+        supabase.from("onboarding_tasks").select("id, status, due_date, project_id, completed_at").limit(10000),
         supabase.from("onboarding_nps_responses").select("project_id, score"),
         supabase.from("onboarding_monthly_goals").select("project_id, month, year, sales_target, sales_result")
       ]);
