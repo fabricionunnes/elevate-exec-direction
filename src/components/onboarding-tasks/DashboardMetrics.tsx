@@ -92,7 +92,10 @@ const DashboardMetrics = ({ companies }: DashboardMetricsProps) => {
 
   // Company metrics
   const activeCompanies = companies.filter(c => c.status === "active").length;
-  const churnSignaled = companies.filter(c => c.status === "churned" || c.status === "paused").length;
+  const churnSignaled = companies.filter(c => 
+    c.status === "cancellation_signaled" || c.status === "notice_period"
+  ).length;
+  const closedCompanies = companies.filter(c => c.status === "closed").length;
   
   const today = new Date();
   const thisMonth = today.getMonth();
@@ -194,7 +197,7 @@ const DashboardMetrics = ({ companies }: DashboardMetricsProps) => {
             </div>
             <div className="text-2xl font-bold text-amber-500">{churnSignaled}</div>
             <div className="text-xs text-muted-foreground">
-              churned ou pausado
+              cancelamento ou aviso
             </div>
           </CardContent>
         </Card>
@@ -272,10 +275,19 @@ const DashboardMetrics = ({ companies }: DashboardMetricsProps) => {
               <div className="flex items-center justify-between">
                 <span className="text-sm flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-amber-500" />
-                  Pausadas/Churned
+                  Sinalizaram Cancel./Aviso
                 </span>
                 <Badge variant="secondary" className="text-amber-500">
                   {churnSignaled}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-red-500" />
+                  Encerradas
+                </span>
+                <Badge variant="secondary" className="text-red-500">
+                  {closedCompanies}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
