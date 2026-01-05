@@ -20,7 +20,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  X
+  X,
+  Users
 } from 'lucide-react';
 import { addDays, parse, isValid } from 'date-fns';
 
@@ -51,6 +52,12 @@ interface Service {
   slug: string;
 }
 
+interface Staff {
+  id: string;
+  name: string;
+  role: string;
+}
+
 interface ImportResult {
   companyId: string;
   companyName: string;
@@ -66,25 +73,39 @@ export default function OnboardingImportPage() {
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
   const [selectedService, setSelectedService] = useState<string>('');
+  const [selectedCS, setSelectedCS] = useState<string>('');
+  const [selectedConsultant, setSelectedConsultant] = useState<string>('');
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
   const [selectedSections, setSelectedSections] = useState<string[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch services on mount
+  // Fetch services and staff on mount
   useState(() => {
-    const fetchServices = async () => {
-      const { data } = await supabase
+    const fetchData = async () => {
+      // Fetch services
+      const { data: servicesData } = await supabase
         .from('onboarding_services')
         .select('id, name, slug')
         .eq('is_active', true)
         .order('name');
       
-      if (data) setServices(data);
+      if (servicesData) setServices(servicesData);
+
+      // Fetch staff (CS and Consultants)
+      const { data: staffData } = await supabase
+        .from('onboarding_staff')
+        .select('id, name, role')
+        .eq('is_active', true)
+        .in('role', ['cs', 'consultant', 'admin'])
+        .order('name');
+      
+      if (staffData) setStaff(staffData);
     };
-    fetchServices();
+    fetchData();
   });
 
   const parseCSV = useCallback((content: string): ParsedData | null => {
@@ -311,6 +332,17 @@ export default function OnboardingImportPage() {
 
       if (existingCompany) {
         companyId = existingCompany.id;
+        
+        // Update CS and Consultant if provided
+        if (selectedCS || selectedConsultant) {
+          await supabase
+            .from('onboarding_companies')
+            .update({
+              cs_id: selectedCS || null,
+              consultant_id: selectedConsultant || null,
+            })
+            .eq('id', companyId);
+        }
       } else {
         const { data: newCompany, error: companyError } = await supabase
           .from('onboarding_companies')
@@ -318,6 +350,8 @@ export default function OnboardingImportPage() {
             name: parsedData.companyName,
             contract_value: parsedData.contractValue,
             status: 'active',
+            cs_id: selectedCS || null,
+            consultant_id: selectedConsultant || null,
           })
           .select('id')
           .single();
@@ -523,8 +557,52 @@ export default function OnboardingImportPage() {
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  3. Equipe Responsável
+                </CardTitle>
+                <CardDescription>
+                  Selecione o CS e Consultor responsáveis pela empresa
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="mb-2 block">CS Responsável</Label>
+                  <Select value={selectedCS} onValueChange={setSelectedCS}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um CS..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {staff.filter(s => s.role === 'cs' || s.role === 'admin').map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="mb-2 block">Consultor Responsável</Label>
+                  <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um Consultor..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {staff.filter(s => s.role === 'consultant' || s.role === 'admin').map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
                   <FolderOpen className="h-5 w-5" />
-                  3. Selecione o Serviço
+                  4. Selecione o Serviço
                 </CardTitle>
                 <CardDescription>
                   Escolha qual serviço será associado a este projeto
@@ -550,7 +628,7 @@ export default function OnboardingImportPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ListTodo className="h-5 w-5" />
-                  4. Seções a Importar
+                  5. Seções a Importar
                 </CardTitle>
                 <CardDescription>
                   Selecione quais seções deseja importar ({getSelectedTaskCount()} tarefas selecionadas)
