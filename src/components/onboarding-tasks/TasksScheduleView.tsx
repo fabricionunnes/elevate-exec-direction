@@ -70,6 +70,8 @@ interface TasksScheduleViewProps {
   currentUserRole?: string | null;
   showAllCompanies?: boolean;
   onTaskAdded?: () => void;
+  /** When inside a single project page, pass the projectId to skip the project selector */
+  singleProjectId?: string;
 }
 
 export const TasksScheduleView = ({ 
@@ -81,7 +83,8 @@ export const TasksScheduleView = ({
   currentStaffId,
   currentUserRole,
   showAllCompanies = false,
-  onTaskAdded
+  onTaskAdded,
+  singleProjectId
 }: TasksScheduleViewProps) => {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -90,7 +93,7 @@ export const TasksScheduleView = ({
   const [showDayDialog, setShowDayDialog] = useState(false);
   const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskProjectId, setNewTaskProjectId] = useState("");
+  const [newTaskProjectId, setNewTaskProjectId] = useState(singleProjectId || "");
   const [addingTask, setAddingTask] = useState(false);
 
   const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
@@ -158,7 +161,7 @@ export const TasksScheduleView = ({
   const handleAddTaskClick = (day: Date) => {
     setSelectedDate(day);
     setNewTaskTitle("");
-    setNewTaskProjectId("");
+    setNewTaskProjectId(singleProjectId || "");
     setShowAddTaskDialog(true);
   };
 
@@ -173,7 +176,8 @@ export const TasksScheduleView = ({
   };
 
   const handleAddTask = async () => {
-    if (!newTaskTitle.trim() || !newTaskProjectId || !selectedDate) return;
+    const targetProjectId = singleProjectId || newTaskProjectId;
+    if (!newTaskTitle.trim() || !targetProjectId || !selectedDate) return;
 
     setAddingTask(true);
     try {
@@ -181,7 +185,7 @@ export const TasksScheduleView = ({
         .from("onboarding_tasks")
         .insert({
           title: newTaskTitle.trim(),
-          project_id: newTaskProjectId,
+          project_id: targetProjectId,
           due_date: format(selectedDate, "yyyy-MM-dd"),
           status: "pending",
           sort_order: 0,
@@ -192,7 +196,7 @@ export const TasksScheduleView = ({
       toast.success("Tarefa adicionada com sucesso!");
       setShowAddTaskDialog(false);
       setNewTaskTitle("");
-      setNewTaskProjectId("");
+      setNewTaskProjectId(singleProjectId || "");
       onTaskAdded?.();
     } catch (error) {
       console.error("Error adding task:", error);
@@ -670,29 +674,32 @@ export const TasksScheduleView = ({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="task-project">Projeto</Label>
-              <Select value={newTaskProjectId} onValueChange={setNewTaskProjectId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o projeto..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => {
-                    const company = project.onboarding_company_id 
-                      ? companyMap.get(project.onboarding_company_id) 
-                      : null;
-                    return (
-                      <SelectItem key={project.id} value={project.id}>
-                        <span className="flex items-center gap-2">
-                          {company && <span className="text-muted-foreground">{company.name} -</span>}
-                          <span>{project.product_name}</span>
-                        </span>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Only show project selector if not in single project mode */}
+            {!singleProjectId && (
+              <div className="space-y-2">
+                <Label htmlFor="task-project">Projeto</Label>
+                <Select value={newTaskProjectId} onValueChange={setNewTaskProjectId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o projeto..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((project) => {
+                      const company = project.onboarding_company_id 
+                        ? companyMap.get(project.onboarding_company_id) 
+                        : null;
+                      return (
+                        <SelectItem key={project.id} value={project.id}>
+                          <span className="flex items-center gap-2">
+                            {company && <span className="text-muted-foreground">{company.name} -</span>}
+                            <span>{project.product_name}</span>
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -701,7 +708,7 @@ export const TasksScheduleView = ({
             </Button>
             <Button 
               onClick={handleAddTask} 
-              disabled={!newTaskTitle.trim() || !newTaskProjectId || addingTask}
+              disabled={!newTaskTitle.trim() || (!singleProjectId && !newTaskProjectId) || addingTask}
             >
               {addingTask ? "Adicionando..." : "Adicionar Tarefa"}
             </Button>
