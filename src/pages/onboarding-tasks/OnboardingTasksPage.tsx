@@ -103,7 +103,7 @@ const OnboardingTasksPage = () => {
   }));
   const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null; completed_at: string | null }[]>([]);
   const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null }[]>([]);
-  const [npsResponses, setNpsResponses] = useState<{ project_id: string }[]>([]);
+  const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
   
   // Pagination state
@@ -152,7 +152,7 @@ const OnboardingTasksPage = () => {
     try {
       const { data, error } = await supabase
         .from("onboarding_nps_responses")
-        .select("project_id");
+        .select("project_id, score");
 
       if (error) throw error;
       setNpsResponses(data || []);
@@ -426,6 +426,22 @@ const OnboardingTasksPage = () => {
     return new Set(npsResponses.map(r => r.project_id));
   }, [npsResponses]);
 
+  // Get sets of project IDs by NPS category (promoters: 9-10, detractors: 0-6)
+  const projectsNpsCategories = useMemo(() => {
+    const promoters = new Set<string>();
+    const detractors = new Set<string>();
+    
+    npsResponses.forEach(r => {
+      if (r.score >= 9) {
+        promoters.add(r.project_id);
+      } else if (r.score <= 6) {
+        detractors.add(r.project_id);
+      }
+    });
+    
+    return { promoters, detractors };
+  }, [npsResponses]);
+
   // Calculate projects by goal projection ranges for the selected period (respects all filters)
   const projectsGoalRanges = useMemo(() => {
     const periodMonth = dateRange.start.getMonth() + 1;
@@ -580,6 +596,12 @@ const OnboardingTasksPage = () => {
         } else if (activeMetricFilter.type === "nps" && activeMetricFilter.value === "not_responded") {
           // Filter companies that have at least one project WITHOUT NPS response
           matchesMetricFilter = company.projects?.some(p => !projectsWithNpsResponse.has(p.id)) ?? false;
+        } else if (activeMetricFilter.type === "nps" && activeMetricFilter.value === "promoters") {
+          // Filter companies that have at least one project with NPS >= 9
+          matchesMetricFilter = company.projects?.some(p => projectsNpsCategories.promoters.has(p.id)) ?? false;
+        } else if (activeMetricFilter.type === "nps" && activeMetricFilter.value === "detractors") {
+          // Filter companies that have at least one project with NPS <= 6
+          matchesMetricFilter = company.projects?.some(p => projectsNpsCategories.detractors.has(p.id)) ?? false;
         } else if (activeMetricFilter.type === "status" && activeMetricFilter.value === "reactivated") {
           // Filter companies with projects reactivated in the period
           matchesMetricFilter = company.projects?.some(p => {
@@ -615,7 +637,7 @@ const OnboardingTasksPage = () => {
       
       return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
     });
-  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsGoalRanges]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, projectsGoalRanges]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
