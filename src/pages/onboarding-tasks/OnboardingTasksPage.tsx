@@ -6,7 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, Filter, X } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
+import { TaskNotificationsDialog } from "@/components/onboarding-tasks/TaskNotificationsDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,10 +19,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
-import { TaskNotificationsDialog } from "@/components/onboarding-tasks/TaskNotificationsDialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface Service {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 interface Staff {
   id: string;
@@ -62,10 +75,18 @@ const OnboardingTasksPage = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [expandedCompanyId, setExpandedCompanyId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  
+  // Filter states
+  const [filterConsultant, setFilterConsultant] = useState<string>("all");
+  const [filterService, setFilterService] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [consultants, setConsultants] = useState<Staff[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
 
   useEffect(() => {
     checkUserPermissions();
     fetchCompanies();
+    fetchFiltersData();
   }, []);
 
   const checkUserPermissions = async () => {
@@ -84,6 +105,31 @@ const OnboardingTasksPage = () => {
       }
     } catch (error) {
       console.error("Error checking permissions:", error);
+    }
+  };
+
+  const fetchFiltersData = async () => {
+    try {
+      // Fetch consultants
+      const { data: consultantsData } = await supabase
+        .from("onboarding_staff")
+        .select("id, name, role")
+        .eq("role", "consultant")
+        .eq("is_active", true)
+        .order("name");
+      
+      setConsultants(consultantsData || []);
+
+      // Fetch services
+      const { data: servicesData } = await supabase
+        .from("onboarding_services")
+        .select("id, name, slug")
+        .eq("is_active", true)
+        .order("name");
+      
+      setServices(servicesData || []);
+    } catch (error) {
+      console.error("Error fetching filters data:", error);
     }
   };
 
@@ -157,11 +203,34 @@ const OnboardingTasksPage = () => {
   };
 
   const filteredCompanies = companies.filter((company) => {
+    // Text search filter
     const matchesSearch =
       company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (company.segment && company.segment.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesSearch;
+    
+    // Consultant filter
+    const matchesConsultant = 
+      filterConsultant === "all" || company.consultant_id === filterConsultant;
+    
+    // Service filter - check if company has any project with the selected service
+    const matchesService = 
+      filterService === "all" || 
+      company.projects?.some(p => p.product_id === filterService);
+    
+    // Status filter
+    const matchesStatus = 
+      filterStatus === "all" || company.status === filterStatus;
+    
+    return matchesSearch && matchesConsultant && matchesService && matchesStatus;
   });
+
+  const hasActiveFilters = filterConsultant !== "all" || filterService !== "all" || filterStatus !== "all";
+
+  const clearFilters = () => {
+    setFilterConsultant("all");
+    setFilterService("all");
+    setFilterStatus("all");
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -332,15 +401,60 @@ const OnboardingTasksPage = () => {
           </Card>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome ou segmento..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 max-w-md"
-          />
+        {/* Search and Filters */}
+        <div className="flex flex-wrap gap-4 mb-6">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou segmento..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          <Select value={filterConsultant} onValueChange={setFilterConsultant}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Consultor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos consultores</SelectItem>
+              {consultants.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterService} onValueChange={setFilterService}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Serviço" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos serviços</SelectItem>
+              {services.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos status</SelectItem>
+              <SelectItem value="active">Ativa</SelectItem>
+              <SelectItem value="inactive">Inativa</SelectItem>
+              <SelectItem value="churned">Churned</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-10">
+              <X className="h-4 w-4 mr-1" />
+              Limpar
+            </Button>
+          )}
         </div>
 
         {/* Companies List */}
