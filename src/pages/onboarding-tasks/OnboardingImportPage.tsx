@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -78,6 +79,7 @@ export default function OnboardingImportPage() {
   const [selectedCS, setSelectedCS] = useState<string>('');
   const [selectedConsultant, setSelectedConsultant] = useState<string>('');
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
+  const [editedCompanyName, setEditedCompanyName] = useState<string>('');
   const [selectedSections, setSelectedSections] = useState<string[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [progress, setProgress] = useState(0);
@@ -281,6 +283,7 @@ export default function OnboardingImportPage() {
       
       if (data) {
         setParsedData(data);
+        setEditedCompanyName(data.companyName); // Set editable company name
         setSelectedSections(data.sections); // Select all by default
         toast.success(`${data.tasks.length} tarefas encontradas em ${data.sections.length} seções`);
       }
@@ -323,11 +326,12 @@ export default function OnboardingImportPage() {
 
       // 1. Create or find company
       let companyId: string;
+      const companyNameToUse = editedCompanyName.trim() || parsedData.companyName;
       
       const { data: existingCompany } = await supabase
         .from('onboarding_companies')
         .select('id')
-        .ilike('name', parsedData.companyName)
+        .ilike('name', companyNameToUse)
         .single();
 
       if (existingCompany) {
@@ -347,7 +351,7 @@ export default function OnboardingImportPage() {
         const { data: newCompany, error: companyError } = await supabase
           .from('onboarding_companies')
           .insert({
-            name: parsedData.companyName,
+            name: companyNameToUse,
             contract_value: parsedData.contractValue,
             status: 'active',
             cs_id: selectedCS || null,
@@ -371,8 +375,8 @@ export default function OnboardingImportPage() {
 
       const projectNumber = (existingProjects?.length || 0) + 1;
       const projectName = projectNumber > 1 
-        ? `${parsedData.companyName} - ${service.name} (${projectNumber})`
-        : `${parsedData.companyName} - ${service.name}`;
+        ? `${companyNameToUse} - ${service.name} (${projectNumber})`
+        : `${companyNameToUse} - ${service.name}`;
 
       const { data: newProject, error: projectError } = await supabase
         .from('onboarding_projects')
@@ -427,7 +431,7 @@ export default function OnboardingImportPage() {
 
       setImportResult({
         companyId,
-        companyName: parsedData.companyName,
+        companyName: companyNameToUse,
         projectId: newProject.id,
         projectName,
         tasksImported: imported,
@@ -522,8 +526,13 @@ export default function OnboardingImportPage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-muted-foreground">Empresa</Label>
-                    <p className="font-medium">{parsedData.companyName}</p>
+                    <Label className="text-muted-foreground mb-2 block">Empresa</Label>
+                    <Input 
+                      value={editedCompanyName}
+                      onChange={(e) => setEditedCompanyName(e.target.value)}
+                      placeholder="Nome da empresa"
+                      className="font-medium"
+                    />
                   </div>
                   {parsedData.contractValue && (
                     <div>
