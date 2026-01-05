@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,7 +85,7 @@ export const ContactsContractsPanel = ({ companyId, isAdmin }: ContactsContracts
     email: "",
     notes: "",
   });
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
 
   useEffect(() => {
     if (companyId) {
@@ -189,67 +189,76 @@ export const ContactsContractsPanel = ({ companyId, isAdmin }: ContactsContracts
     saveContacts(updatedContacts);
   };
 
-  const handleUploadContract = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const triggerContractUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.doc,.docx';
+    input.style.display = 'none';
+    input.onchange = async (e) => {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
+      if (!file) return;
 
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
-      toast.error("Arquivo muito grande. Máximo 10MB.");
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const timestamp = Date.now();
-      const filePath = `${companyId}/contracts/${timestamp}_${file.name}`;
-
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from("onboarding-documents")
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      let uploaderId = null;
-
-      if (user) {
-        const { data: onboardingUser } = await supabase
-          .from("onboarding_users")
-          .select("id")
-          .eq("user_id", user.id)
-          .single();
-        uploaderId = onboardingUser?.id;
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        toast.error("Arquivo muito grande. Máximo 10MB.");
+        document.body.removeChild(input);
+        return;
       }
 
-      // Save document record
-      const { error: docError } = await supabase
-        .from("onboarding_documents")
-        .insert({
-          company_id: companyId,
-          file_name: file.name,
-          file_path: filePath,
-          file_size: file.size,
-          file_type: file.type,
-          category: "contract",
-          uploaded_by: uploaderId,
-        });
+      setUploading(true);
+      try {
+        const timestamp = Date.now();
+        const filePath = `${companyId}/contracts/${timestamp}_${file.name}`;
 
-      if (docError) throw docError;
+        // Upload to storage
+        const { error: uploadError } = await supabase.storage
+          .from("onboarding-documents")
+          .upload(filePath, file);
 
-      toast.success("Contrato anexado com sucesso");
-      fetchData();
-    } catch (error) {
-      console.error("Error uploading contract:", error);
-      toast.error("Erro ao fazer upload do contrato");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+        if (uploadError) throw uploadError;
+
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        let uploaderId = null;
+
+        if (user) {
+          // Try onboarding_users first
+          const { data: onboardingUser } = await supabase
+            .from("onboarding_users")
+            .select("id")
+            .eq("user_id", user.id)
+            .single();
+          uploaderId = onboardingUser?.id || null;
+        }
+
+        // Save document record
+        const { error: docError } = await supabase
+          .from("onboarding_documents")
+          .insert({
+            company_id: companyId,
+            file_name: file.name,
+            file_path: filePath,
+            file_size: file.size,
+            file_type: file.type,
+            category: "contract",
+            uploaded_by: uploaderId,
+          });
+
+        if (docError) throw docError;
+
+        toast.success("Contrato anexado com sucesso");
+        fetchData();
+      } catch (error: any) {
+        console.error("Error uploading contract:", error);
+        toast.error("Erro ao fazer upload do contrato: " + (error.message || "Erro desconhecido"));
+      } finally {
+        setUploading(false);
+        document.body.removeChild(input);
       }
-    }
+    };
+    document.body.appendChild(input);
+    input.click();
   };
 
   const handleDownloadContract = async (contract: Contract) => {
@@ -540,28 +549,19 @@ export const ContactsContractsPanel = ({ companyId, isAdmin }: ContactsContracts
                 Contratos e Documentos
               </CardTitle>
               {isAdmin && (
-                <div>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleUploadContract}
-                    className="hidden"
-                    accept=".pdf,.doc,.docx"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                  >
-                    {uploading ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Upload className="h-4 w-4 mr-2" />
-                    )}
-                    Anexar Contrato
-                  </Button>
-                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={triggerContractUpload}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4 mr-2" />
+                  )}
+                  Anexar Contrato
+                </Button>
               )}
             </CardHeader>
             <CardContent>
