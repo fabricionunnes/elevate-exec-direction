@@ -813,6 +813,9 @@ export type Database = {
       }
       onboarding_projects: {
         Row: {
+          churn_date: string | null
+          churn_notes: string | null
+          churn_reason: string | null
           churn_risk: string | null
           client_dependency: string | null
           client_feedback: string | null
@@ -836,6 +839,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          churn_date?: string | null
+          churn_notes?: string | null
+          churn_reason?: string | null
           churn_risk?: string | null
           client_dependency?: string | null
           client_feedback?: string | null
@@ -859,6 +865,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          churn_date?: string | null
+          churn_notes?: string | null
+          churn_reason?: string | null
           churn_risk?: string | null
           client_dependency?: string | null
           client_feedback?: string | null
