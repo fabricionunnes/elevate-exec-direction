@@ -293,46 +293,40 @@ const OnboardingTasksPage = () => {
 
   // Calculate overdue and today tasks for dashboard (respects project filters)
   const filteredProjectIds = useMemo(() => {
-    // Get company IDs that match the status filter
-    const statusFilteredCompanyIds = filterStatus === "all" 
-      ? null 
-      : new Set(companies.filter(c => c.status === filterStatus).map(c => c.id));
-
     // If tasks are assigned to the consultant, we should also include those projects
     const responsibleProjectIds = filterConsultant === "all"
       ? null
       : new Set(allTasks.filter(t => t.responsible_staff_id === filterConsultant).map(t => t.project_id));
-    
+
     // Build a map of company_id to consultant_id for fallback lookup
     const companyConsultantMap = new Map(
       companies.map(c => [c.id, c.consultant_id])
     );
-    
+
     const projectIds = new Set(
       allProjects.filter((project) => {
         // Check consultant: project's consultant OR company's consultant OR tasks assigned to consultant
         const companyConsultantId = project.onboarding_company_id 
           ? companyConsultantMap.get(project.onboarding_company_id)
           : null;
-        
+
         const matchesConsultant = 
           filterConsultant === "all" || 
           project.consultant_id === filterConsultant ||
           companyConsultantId === filterConsultant ||
           (responsibleProjectIds?.has(project.id) ?? false);
-        
+
         const matchesService = 
           filterService === "all" || 
           project.product_id === filterService;
-        
-        // Check if project belongs to a company that matches status filter
-        const matchesStatus = statusFilteredCompanyIds === null || 
-          (project.onboarding_company_id && statusFilteredCompanyIds.has(project.onboarding_company_id));
-        
+
+        // Status filter is project status
+        const matchesStatus = filterStatus === "all" || project.status === filterStatus;
+
         return matchesConsultant && matchesService && matchesStatus;
       }).map(p => p.id)
     );
-    
+
     return projectIds;
   }, [allProjects, allTasks, filterConsultant, filterService, filterStatus, companies]);
 
@@ -575,41 +569,35 @@ const OnboardingTasksPage = () => {
 
   // Filtered projects for dashboard metrics (respects consultant, service, and status filters)
   const filteredProjects = useMemo(() => {
-    // Get company IDs that match the status filter
-    const statusFilteredCompanyIds = filterStatus === "all" 
-      ? null 
-      : new Set(companies.filter(c => c.status === filterStatus).map(c => c.id));
-
     // If tasks are assigned to the consultant, we should also include those projects
     const responsibleProjectIds = filterConsultant === "all"
       ? null
       : new Set(allTasks.filter(t => t.responsible_staff_id === filterConsultant).map(t => t.project_id));
-    
+
     // Build a map of company_id to consultant_id for fallback lookup
     const companyConsultantMap = new Map(
       companies.map(c => [c.id, c.consultant_id])
     );
-    
+
     return allProjects.filter((project) => {
       // Check consultant: project's consultant OR company's consultant OR tasks assigned to consultant
       const companyConsultantId = project.onboarding_company_id 
         ? companyConsultantMap.get(project.onboarding_company_id)
         : null;
-      
+
       const matchesConsultant = 
         filterConsultant === "all" || 
         project.consultant_id === filterConsultant ||
         companyConsultantId === filterConsultant ||
         (responsibleProjectIds?.has(project.id) ?? false);
-      
+
       const matchesService = 
         filterService === "all" || 
         project.product_id === filterService;
-      
-      // Check if project belongs to a company that matches status filter
-      const matchesStatus = statusFilteredCompanyIds === null || 
-        (project.onboarding_company_id && statusFilteredCompanyIds.has(project.onboarding_company_id));
-      
+
+      // Status filter is project status
+      const matchesStatus = filterStatus === "all" || project.status === filterStatus;
+
       return matchesConsultant && matchesService && matchesStatus;
     });
   }, [allProjects, allTasks, filterConsultant, filterService, filterStatus, companies]);
