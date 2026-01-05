@@ -725,186 +725,236 @@ const OnboardingTasksPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">Dashboard de Acompanhamento</h1>
-              <p className="text-muted-foreground">
-                Gerencie tarefas e acompanhamento de clientes
-              </p>
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+        {/* Mobile Header */}
+        <div className="flex flex-col gap-3 mb-4 sm:mb-8">
+          {/* Top Row - Title & Actions */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => navigate("/onboarding")}>
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+              <div>
+                <h1 className="text-lg sm:text-3xl font-bold leading-tight">Dashboard</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+                  Gerencie tarefas e acompanhamento de clientes
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {isAdmin && (
-              <>
-                <Button variant="outline" onClick={() => navigate("/onboarding-tasks/import")}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Importar
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/onboarding-tasks/services")}>
-                  <Package className="h-4 w-4 mr-2" />
-                  Serviços
-                </Button>
-              </>
-            )}
-            <Button variant="outline" onClick={() => navigate("/onboarding-tasks/staff")}>
-              <Users className="h-4 w-4 mr-2" />
-              Equipe
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  <Building2 className="h-4 w-4 mr-2" />
-                  Empresas
-                  <ChevronDown className="h-4 w-4 ml-2" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
-                {canCreateCompany && (
-                  <>
+            
+            {/* Mobile Actions - Compact */}
+            <div className="flex items-center gap-1 sm:gap-2">
+              {/* Mobile Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {canCreateCompany && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies/new")}>
-                      <Plus className="h-4 w-4 mr-2" />
+                      <Building2 className="h-4 w-4 mr-2" />
                       Nova Empresa
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
+                  )}
+                  <DropdownMenuItem onClick={() => setShowCreateDialog(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Projeto
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/staff")}>
+                    <Users className="h-4 w-4 mr-2" />
+                    Equipe
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/services")}>
+                        <Package className="h-4 w-4 mr-2" />
+                        Serviços
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/import")}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Importar
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Desktop Actions */}
+              <div className="hidden sm:flex items-center gap-2">
+                {isAdmin && (
+                  <>
+                    <Button variant="outline" onClick={() => navigate("/onboarding-tasks/import")}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Importar
+                    </Button>
+                    <Button variant="outline" onClick={() => navigate("/onboarding-tasks/services")}>
+                      <Package className="h-4 w-4 mr-2" />
+                      Serviços
+                    </Button>
                   </>
                 )}
-                <div className="px-2 py-2">
-                  <Input
-                    placeholder="Buscar empresa..."
-                    value={companySearchTerm}
-                    onChange={(e) => setCompanySearchTerm(e.target.value)}
-                    className="h-8"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-                <DropdownMenuSeparator />
-                {companies.length > 0 ? (
-                  <ScrollArea className="max-h-64">
-                    {companies
-                      .filter((c) => c.name.toLowerCase().includes(companySearchTerm.toLowerCase()))
-                      .slice(0, 20)
-                      .map((company) => (
-                        <DropdownMenuItem
-                          key={company.id}
-                          onClick={() => navigate(`/onboarding-tasks/companies/${company.id}`)}
-                          className="flex items-center justify-between"
-                        >
-                          <span className="truncate">{company.name}</span>
-                          <Badge variant={company.status === "active" ? "default" : "secondary"} className="ml-2 text-xs">
-                            {company.status === "active" ? "Ativa" : company.status}
-                          </Badge>
+                <Button variant="outline" onClick={() => navigate("/onboarding-tasks/staff")}>
+                  <Users className="h-4 w-4 mr-2" />
+                  Equipe
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <Building2 className="h-4 w-4 mr-2" />
+                      Empresas
+                      <ChevronDown className="h-4 w-4 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-72">
+                    {canCreateCompany && (
+                      <>
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies/new")}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Nova Empresa
                         </DropdownMenuItem>
-                      ))}
-                    {companies.filter((c) => c.name.toLowerCase().includes(companySearchTerm.toLowerCase())).length === 0 && (
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    <div className="px-2 py-2">
+                      <Input
+                        placeholder="Buscar empresa..."
+                        value={companySearchTerm}
+                        onChange={(e) => setCompanySearchTerm(e.target.value)}
+                        className="h-8"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <DropdownMenuSeparator />
+                    {companies.length > 0 ? (
+                      <ScrollArea className="max-h-64">
+                        {companies
+                          .filter((c) => c.name.toLowerCase().includes(companySearchTerm.toLowerCase()))
+                          .slice(0, 20)
+                          .map((company) => (
+                            <DropdownMenuItem
+                              key={company.id}
+                              onClick={() => navigate(`/onboarding-tasks/companies/${company.id}`)}
+                              className="flex items-center justify-between"
+                            >
+                              <span className="truncate">{company.name}</span>
+                              <Badge variant={company.status === "active" ? "default" : "secondary"} className="ml-2 text-xs">
+                                {company.status === "active" ? "Ativa" : company.status}
+                              </Badge>
+                            </DropdownMenuItem>
+                          ))}
+                        {companies.filter((c) => c.name.toLowerCase().includes(companySearchTerm.toLowerCase())).length === 0 && (
+                          <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                            Nenhuma empresa encontrada
+                          </div>
+                        )}
+                      </ScrollArea>
+                    ) : (
                       <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                        Nenhuma empresa encontrada
+                        Nenhuma empresa cadastrada
                       </div>
                     )}
-                  </ScrollArea>
-                ) : (
-                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                    Nenhuma empresa cadastrada
-                  </div>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button onClick={() => setShowCreateDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Projeto
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={async () => {
-                await supabase.auth.signOut();
-                navigate("/onboarding-tasks/login");
-              }}
-              title="Sair"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button onClick={() => setShowCreateDialog(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Projeto
+                </Button>
+              </div>
 
-        {/* Search and Filters */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          {/* Date Period Selector */}
-          <MonthYearPicker 
-            value={dateRange.start} 
-            onChange={setDateRange} 
-          />
-
-          <div className="relative flex-1 min-w-[180px] max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome ou segmento..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-10"
-            />
-          </div>
-          
-          {/* Only show consultant filter for admins and CS */}
-          {currentUserRole !== "consultant" && (
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground font-medium">Consultores</span>
-              <Select value={filterConsultant} onValueChange={setFilterConsultant}>
-                <SelectTrigger className="w-[150px] h-10">
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {consultants.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-8 w-8 sm:h-10 sm:w-10"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  navigate("/onboarding-tasks/login");
+                }}
+                title="Sair"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
-          )}
-
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground font-medium">Serviços</span>
-            <Select value={filterService} onValueChange={setFilterService}>
-              <SelectTrigger className="w-[150px] h-10">
-                <SelectValue placeholder="Selecione..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {services.map((s) => (
-                  <SelectItem key={s.id} value={s.slug}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground font-medium">Status</span>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[150px] h-10">
-                <SelectValue placeholder="Selecione..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="active">Ativo</SelectItem>
-                <SelectItem value="cancellation_signaled">Sinalizou Cancelamento</SelectItem>
-                <SelectItem value="notice_period">Cumprindo Aviso</SelectItem>
-                <SelectItem value="closed">Encerrado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Search and Filters - Responsive */}
+          <div className="flex flex-col gap-2">
+            {/* Search Row */}
+            <div className="flex items-center gap-2">
+              <MonthYearPicker 
+                value={dateRange.start} 
+                onChange={setDateRange} 
+              />
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 h-9 sm:h-10 text-sm"
+                />
+              </div>
+            </div>
 
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-10">
-              <X className="h-4 w-4 mr-1" />
-              Limpar filtros
-            </Button>
-          )}
+            {/* Filters Row - Horizontal Scroll on Mobile */}
+            <div className="flex items-end gap-2 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0 sm:overflow-visible">
+              {currentUserRole !== "consultant" && (
+                <div className="flex flex-col gap-0.5 min-w-[120px] sm:min-w-[150px]">
+                  <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">Consultores</span>
+                  <Select value={filterConsultant} onValueChange={setFilterConsultant}>
+                    <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {consultants.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-0.5 min-w-[120px] sm:min-w-[150px]">
+                <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">Serviços</span>
+                <Select value={filterService} onValueChange={setFilterService}>
+                  <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {services.map((s) => (
+                      <SelectItem key={s.id} value={s.slug}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-0.5 min-w-[120px] sm:min-w-[150px]">
+                <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">Status</span>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="active">Ativo</SelectItem>
+                    <SelectItem value="cancellation_signaled">Sinalizou</SelectItem>
+                    <SelectItem value="notice_period">Aviso</SelectItem>
+                    <SelectItem value="closed">Encerrado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 sm:h-10 px-2 shrink-0">
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Dashboard Metrics */}
@@ -937,59 +987,65 @@ const OnboardingTasksPage = () => {
             )}
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2 sm:space-y-4">
             {/* Companies count and pagination info */}
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
               <span>
-                Mostrando {((currentPage - 1) * companiesPerPage) + 1}-{Math.min(currentPage * companiesPerPage, filteredCompanies.length)} de {filteredCompanies.length} empresas
+                {((currentPage - 1) * companiesPerPage) + 1}-{Math.min(currentPage * companiesPerPage, filteredCompanies.length)} de {filteredCompanies.length}
               </span>
               {totalPages > 1 && (
-                <span>Página {currentPage} de {totalPages}</span>
+                <span>Pág. {currentPage}/{totalPages}</span>
               )}
             </div>
 
             {paginatedCompanies.map((company) => (
               <div key={company.id}>
-                {/* Company Card */}
+                {/* Company Card - Mobile Optimized */}
                 <Card
                   className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-[#0A2240] bg-gradient-to-r from-[#0A2240]/5 to-transparent"
                   onClick={() => handleCompanyClick(company.id)}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-lg bg-[#0A2240] flex items-center justify-center shadow-md">
-                          <Building2 className="h-6 w-6 text-white" />
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-start sm:items-center justify-between gap-2">
+                      <div className="flex items-start sm:items-center gap-2 sm:gap-4 flex-1 min-w-0">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-[#0A2240] flex items-center justify-center shadow-md shrink-0">
+                          <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-bold text-[#0A2240] uppercase tracking-wide">{company.name}</h3>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                            <h3 className="text-sm sm:text-lg font-bold text-[#0A2240] uppercase tracking-wide truncate">{company.name}</h3>
                             {getStatusBadge(company.status)}
                           </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            {company.segment && <span>{company.segment}</span>}
-                            <span>•</span>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-muted-foreground mt-0.5">
+                            {company.segment && <span className="truncate max-w-[100px] sm:max-w-none">{company.segment}</span>}
+                            <span className="hidden sm:inline">•</span>
                             <span>{company.projects?.length || 0} projetos</span>
                             {company.total_tasks ? (
                               <>
-                                <span>•</span>
-                                <span>
+                                <span className="hidden sm:inline">•</span>
+                                <span className="hidden sm:inline">
                                   {company.completed_tasks}/{company.total_tasks} tarefas
                                 </span>
                               </>
                             ) : null}
                           </div>
+                          {/* Mobile: Show CS/Consultant inline */}
+                          <div className="flex sm:hidden flex-wrap gap-x-2 text-[10px] text-muted-foreground mt-1">
+                            <span>CS: {company.cs?.name || "—"}</span>
+                            <span>Cons: {company.consultant?.name || "—"}</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right text-sm">
+                      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                        {/* Desktop: Show CS/Consultant */}
+                        <div className="hidden sm:block text-right text-sm">
                           <div className="text-muted-foreground">CS: {company.cs?.name || "—"}</div>
                           <div className="text-muted-foreground">
                             Consultor: {company.consultant?.name || "—"}
                           </div>
                         </div>
                         <ChevronDown
-                          className={`h-5 w-5 text-[#0A2240] transition-transform ${
+                          className={`h-4 w-4 sm:h-5 sm:w-5 text-[#0A2240] transition-transform ${
                             expandedCompanyId === company.id ? "rotate-180" : ""
                           }`}
                         />
@@ -998,9 +1054,9 @@ const OnboardingTasksPage = () => {
 
                     {/* Progress bar */}
                     {company.total_tasks ? (
-                      <div className="mt-3 w-full bg-muted rounded-full h-2">
+                      <div className="mt-2 sm:mt-3 w-full bg-muted rounded-full h-1.5 sm:h-2">
                         <div
-                          className="bg-[#C41E3A] h-2 rounded-full transition-all"
+                          className="bg-[#C41E3A] h-1.5 sm:h-2 rounded-full transition-all"
                           style={{
                             width: `${(company.completed_tasks! / company.total_tasks) * 100}%`,
                           }}
@@ -1012,7 +1068,7 @@ const OnboardingTasksPage = () => {
 
                 {/* Expanded Projects */}
                 {expandedCompanyId === company.id && (
-                  <div className="mt-1 ml-6 pl-6 border-l-2 border-dashed border-muted-foreground/30 space-y-2 py-2">
+                  <div className="mt-1 ml-3 sm:ml-6 pl-3 sm:pl-6 border-l-2 border-dashed border-muted-foreground/30 space-y-2 py-2">
                     {company.projects && company.projects.length > 0 ? (
                       company.projects.map((project) => (
                         <Card
@@ -1023,25 +1079,24 @@ const OnboardingTasksPage = () => {
                             navigate(`/onboarding-tasks/${project.id}`);
                           }}
                         >
-                          <CardContent className="p-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 rounded-md bg-primary/10 flex items-center justify-center">
+                          <CardContent className="p-2 sm:p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                                   <Package className="h-4 w-4 text-primary" />
                                 </div>
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Serviço</span>
-                                    <h4 className="font-semibold text-foreground">{project.product_name}</h4>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
+                                    <span className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">Serviço</span>
+                                    <h4 className="font-semibold text-foreground text-sm sm:text-base truncate">{project.product_name}</h4>
                                   </div>
-                                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                                    <Calendar className="h-3 w-3" />
-                                    <span>
+                                  <div className="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+                                    <Calendar className="h-3 w-3 hidden sm:inline" />
+                                    <span className="hidden sm:inline">
                                       {format(new Date(project.created_at), "dd MMM yyyy", {
                                         locale: ptBR,
                                       })}
                                     </span>
-                                    <span>•</span>
                                     <CheckCircle2 className="h-3 w-3" />
                                     <span>
                                       {project.completed_count}/{project.tasks_count} tarefas
@@ -1049,7 +1104,7 @@ const OnboardingTasksPage = () => {
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                                 {getStatusBadge(project.status)}
                                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
                               </div>
@@ -1057,9 +1112,9 @@ const OnboardingTasksPage = () => {
 
                             {/* Project progress */}
                             {project.tasks_count ? (
-                              <div className="mt-2 w-full bg-muted rounded-full h-1.5">
+                              <div className="mt-2 w-full bg-muted rounded-full h-1 sm:h-1.5">
                                 <div
-                                  className="bg-primary h-1.5 rounded-full transition-all"
+                                  className="bg-primary h-1 sm:h-1.5 rounded-full transition-all"
                                   style={{
                                     width: `${
                                       (project.completed_count! / project.tasks_count) * 100
@@ -1073,12 +1128,12 @@ const OnboardingTasksPage = () => {
                       ))
                     ) : (
                       <Card className="border-dashed bg-muted/30">
-                        <CardContent className="p-4 text-center text-muted-foreground">
-                          <p className="text-sm">Nenhum projeto nesta empresa</p>
+                        <CardContent className="p-3 sm:p-4 text-center text-muted-foreground">
+                          <p className="text-xs sm:text-sm">Nenhum projeto nesta empresa</p>
                           <Button
                             variant="link"
                             size="sm"
-                            className="mt-1"
+                            className="mt-1 text-xs"
                             onClick={(e) => {
                               e.stopPropagation();
                               setShowCreateDialog(true);
