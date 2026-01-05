@@ -36,12 +36,14 @@ import {
   Link as LinkIcon,
   PhoneOff,
   Calendar,
-  History
+  History,
+  Lock
 } from "lucide-react";
 import { format } from "date-fns";
 import ChatHistoryTab from "@/components/virtual-office/ChatHistoryTab";
 import { ptBR } from "date-fns/locale";
 import GoogleCalendarTab from "@/components/virtual-office/GoogleCalendarTab";
+import { RoomAccessManager } from "@/components/virtual-office/RoomAccessManager";
 
 
 interface Room {
@@ -52,7 +54,13 @@ interface Room {
   meet_link: string | null;
   team_type: string | null;
   is_active: boolean;
+  is_restricted: boolean;
   created_at: string;
+}
+
+interface RoomAccess {
+  room_id: string;
+  staff_id: string;
 }
 
 interface StaffMember {
@@ -107,10 +115,11 @@ const VirtualOfficePage = () => {
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [showEditRoom, setShowEditRoom] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
-  const [newRoom, setNewRoom] = useState({ name: "", description: "", meet_link: "", team_type: "all" });
+  const [newRoom, setNewRoom] = useState({ name: "", description: "", meet_link: "", team_type: "all", is_restricted: false });
   const [isInVideoCall, setIsInVideoCall] = useState(false);
   const [activeTab, setActiveTab] = useState("office");
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [roomAccessList, setRoomAccessList] = useState<RoomAccess[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -180,15 +189,30 @@ const VirtualOfficePage = () => {
       setIsAdmin(staffData.role === "admin");
 
       // Fetch all data in parallel
-      const [roomsRes, staffRes, presenceRes] = await Promise.all([
+      const [roomsRes, staffRes, presenceRes, accessRes] = await Promise.all([
         supabase.from("virtual_office_rooms").select("*").eq("is_active", true).order("created_at"),
         supabase.from("onboarding_staff").select("id, name, email, role").eq("is_active", true),
         supabase.from("virtual_office_presence").select("*"),
+        supabase.from("virtual_office_room_access").select("room_id, staff_id"),
       ]);
 
-      setRooms(roomsRes.data || []);
+      const allRooms = (roomsRes.data || []) as Room[];
+      const allAccess = (accessRes.data || []) as RoomAccess[];
+      setRoomAccessList(allAccess);
       setStaffMembers(staffRes.data || []);
       setPresences(presenceRes.data || []);
+
+      // Filter rooms based on access permissions
+      const visibleRooms = allRooms.filter((room) => {
+        // Non-restricted rooms are visible to everyone
+        if (!room.is_restricted) return true;
+        // Admins can see all rooms
+        if (staffData.role === "admin") return true;
+        // Check if staff has access
+        return allAccess.some((a) => a.room_id === room.id && a.staff_id === staffData.id);
+      });
+
+      setRooms(visibleRooms);
 
       // Set initial room
       if (roomsRes.data && roomsRes.data.length > 0) {
@@ -305,7 +329,7 @@ const VirtualOfficePage = () => {
     if (!newRoom.name.trim()) return;
 
     try {
-      const { error } = await supabase
+      const { data: createdRoom, error } = await supabase
         .from("virtual_office_rooms")
         .insert({
           name: newRoom.name.trim(),
@@ -314,13 +338,25 @@ const VirtualOfficePage = () => {
           team_type: newRoom.team_type,
           room_type: "temporary",
           created_by: currentStaff?.id,
-        });
+          is_restricted: newRoom.is_restricted,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
+      // If room is restricted, add creator to access list
+      if (newRoom.is_restricted && createdRoom && currentStaff) {
+        await supabase.from("virtual_office_room_access").insert({
+          room_id: createdRoom.id,
+          staff_id: currentStaff.id,
+          granted_by: currentStaff.id,
+        });
+      }
+
       toast.success("Sala criada com sucesso");
       setShowCreateRoom(false);
-      setNewRoom({ name: "", description: "", meet_link: "", team_type: "all" });
+      setNewRoom({ name: "", description: "", meet_link: "", team_type: "all", is_restricted: false });
       
       // Refresh rooms
       const { data } = await supabase.from("virtual_office_rooms").select("*").eq("is_active", true).order("created_at");
@@ -341,6 +377,7 @@ const VirtualOfficePage = () => {
           name: editingRoom.name,
           description: editingRoom.description,
           meet_link: editingRoom.meet_link,
+          is_restricted: editingRoom.is_restricted,
         })
         .eq("id", editingRoom.id);
 
@@ -350,8 +387,24 @@ const VirtualOfficePage = () => {
       setShowEditRoom(false);
       setEditingRoom(null);
       
-      const { data } = await supabase.from("virtual_office_rooms").select("*").eq("is_active", true).order("created_at");
-      setRooms(data || []);
+      // Refresh rooms and access list
+      const [roomsData, accessData] = await Promise.all([
+        supabase.from("virtual_office_rooms").select("*").eq("is_active", true).order("created_at"),
+        supabase.from("virtual_office_room_access").select("room_id, staff_id"),
+      ]);
+      
+      const allRooms = (roomsData.data || []) as Room[];
+      const allAccess = (accessData.data || []) as RoomAccess[];
+      setRoomAccessList(allAccess);
+      
+      // Filter rooms based on access permissions
+      const visibleRooms = allRooms.filter((room) => {
+        if (!room.is_restricted) return true;
+        if (isAdmin) return true;
+        return allAccess.some((a) => a.room_id === room.id && a.staff_id === currentStaff?.id);
+      });
+      
+      setRooms(visibleRooms);
     } catch (error) {
       console.error("Error updating room:", error);
       toast.error("Erro ao atualizar sala");
@@ -639,6 +692,7 @@ const VirtualOfficePage = () => {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
+                      {room.is_restricted && <Lock className="h-3 w-3 text-amber-500" />}
                       {room.meet_link && <Video className="h-3 w-3 text-green-500" />}
                       <span className="text-[10px] text-muted-foreground">{roomPresences.length} presente{roomPresences.length !== 1 && "s"}</span>
                     </div>
@@ -765,18 +819,28 @@ const VirtualOfficePage = () => {
 
       {/* Edit Room Dialog */}
       <Dialog open={showEditRoom} onOpenChange={setShowEditRoom}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Sala</DialogTitle>
           </DialogHeader>
           {editingRoom && (
             <div className="space-y-4 py-4">
-              <div>
-                <Label>Nome da Sala</Label>
-                <Input
-                  value={editingRoom.name}
-                  onChange={(e) => setEditingRoom({ ...editingRoom, name: e.target.value })}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Nome da Sala</Label>
+                  <Input
+                    value={editingRoom.name}
+                    onChange={(e) => setEditingRoom({ ...editingRoom, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Link do Google Meet</Label>
+                  <Input
+                    value={editingRoom.meet_link || ""}
+                    onChange={(e) => setEditingRoom({ ...editingRoom, meet_link: e.target.value })}
+                    placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                  />
+                </div>
               </div>
               <div>
                 <Label>Descrição</Label>
@@ -785,14 +849,16 @@ const VirtualOfficePage = () => {
                   onChange={(e) => setEditingRoom({ ...editingRoom, description: e.target.value })}
                 />
               </div>
-              <div>
-                <Label>Link do Google Meet</Label>
-                <Input
-                  value={editingRoom.meet_link || ""}
-                  onChange={(e) => setEditingRoom({ ...editingRoom, meet_link: e.target.value })}
-                  placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                />
-              </div>
+              
+              <Separator />
+              
+              <RoomAccessManager
+                roomId={editingRoom.id}
+                isRestricted={editingRoom.is_restricted}
+                onRestrictedChange={(restricted) => setEditingRoom({ ...editingRoom, is_restricted: restricted })}
+                staffMembers={staffMembers}
+                currentStaffId={currentStaff?.id || ""}
+              />
             </div>
           )}
           <DialogFooter className="flex justify-between">

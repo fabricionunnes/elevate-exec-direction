@@ -2261,6 +2261,52 @@ export type Database = {
           },
         ]
       }
+      virtual_office_room_access: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          id: string
+          room_id: string
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          room_id: string
+          staff_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          room_id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_office_room_access_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_office_room_access_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_office_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_office_room_access_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       virtual_office_rooms: {
         Row: {
           created_at: string
@@ -2268,6 +2314,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          is_restricted: boolean | null
           max_participants: number | null
           meet_link: string | null
           name: string
@@ -2281,6 +2328,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_restricted?: boolean | null
           max_participants?: number | null
           meet_link?: string | null
           name: string
@@ -2294,6 +2342,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_restricted?: boolean | null
           max_participants?: number | null
           meet_link?: string | null
           name?: string
