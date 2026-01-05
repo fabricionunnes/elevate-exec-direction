@@ -13,9 +13,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Check, Loader2, ListChecks, Sparkles, Plus, X } from "lucide-react";
+import { Check, Loader2, ListChecks, Sparkles, Plus } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 
 type TemplateTask = {
@@ -64,6 +65,7 @@ export const GenerateTasksDialog = ({
   const [aiTasks, setAiTasks] = useState<AISuggestedTask[]>([]);
   const [selectedAiTasks, setSelectedAiTasks] = useState<Set<number>>(new Set());
   const [aiContext, setAiContext] = useState<{ completedCount: number; pendingCount: number; companyName: string } | null>(null);
+  const [userSuggestion, setUserSuggestion] = useState("");
 
   const templatesCount = templates.length;
   const titlePreview = useMemo(() => templates.slice(0, 5).map((t) => t.title), [templates]);
@@ -74,6 +76,7 @@ export const GenerateTasksDialog = ({
       setAiTasks([]);
       setSelectedAiTasks(new Set());
       setAiContext(null);
+      setUserSuggestion("");
       return;
     }
 
@@ -114,7 +117,7 @@ export const GenerateTasksDialog = ({
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-ai-tasks", {
-        body: { projectId },
+        body: { projectId, userSuggestion: userSuggestion.trim() || undefined },
       });
 
       if (error) throw error;
@@ -297,13 +300,33 @@ export const GenerateTasksDialog = ({
 
           <TabsContent value="ai" className="flex-1 overflow-hidden flex flex-col space-y-4 mt-4">
             {aiTasks.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border rounded-lg border-dashed">
-                <Sparkles className="h-12 w-12 text-primary/50 mb-4" />
-                <h3 className="font-semibold mb-2">Gerar tarefas inteligentes</h3>
-                <p className="text-sm text-muted-foreground mb-4 max-w-md">
-                  A IA analisará as tarefas já realizadas, os resultados obtidos e o contexto do cliente para sugerir novas tarefas relevantes e personalizadas.
-                </p>
-                <Button onClick={handleGenerateAI} disabled={aiLoading}>
+              <div className="flex-1 flex flex-col p-4 border rounded-lg border-dashed space-y-4">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-8 w-8 text-primary/70" />
+                  <div>
+                    <h3 className="font-semibold">Gerar tarefas inteligentes</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Descreva o que você gostaria de focar ou deixe em branco para sugestões gerais.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="user-suggestion">O que você gostaria de trabalhar? (opcional)</Label>
+                  <Textarea
+                    id="user-suggestion"
+                    placeholder="Ex: Quero focar em prospecção ativa, melhorar o processo de follow-up, treinar a equipe para lidar com objeções..."
+                    value={userSuggestion}
+                    onChange={(e) => setUserSuggestion(e.target.value)}
+                    className="min-h-[100px] resize-none"
+                    disabled={aiLoading}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    A IA também considerará o contexto do cliente e tarefas já realizadas.
+                  </p>
+                </div>
+
+                <Button onClick={handleGenerateAI} disabled={aiLoading} className="w-full">
                   {aiLoading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />

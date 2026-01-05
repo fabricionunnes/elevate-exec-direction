@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { projectId } = await req.json();
+    const { projectId, userSuggestion } = await req.json();
 
     if (!projectId) {
       throw new Error("projectId is required");
@@ -99,12 +99,17 @@ Público-alvo: ${company.target_audience || "Não informado"}
       ? templates.slice(0, 40).map(t => `- [${t.phase || "Geral"}] ${t.title}`).join("\n")
       : "Sem templates de referência";
 
+    const userSuggestionContext = userSuggestion 
+      ? `\nSOLICITAÇÃO DO CONSULTOR:\n"${userSuggestion}"\n\nIMPORTANTE: Priorize a solicitação acima na geração das tarefas. Crie tarefas específicas para atender o que foi pedido.`
+      : "";
+
     const prompt = `Você é um consultor especialista em vendas e gestão comercial da UNV (Universidade Nacional de Vendas).
 
 CONTEXTO DO CLIENTE:
 ${companyContext}
 
 SERVIÇO CONTRATADO: ${project.product_name}
+${userSuggestionContext}
 
 TAREFAS JÁ REALIZADAS (NÃO SUGERIR ESTAS NOVAMENTE DA MESMA FORMA):
 ${completedTasksContext}
@@ -116,7 +121,7 @@ TEMPLATES DE REFERÊNCIA DO SERVIÇO:
 ${templatesContext}
 
 INSTRUÇÕES:
-1. Analise o contexto do cliente, tarefas já realizadas e resultados obtidos
+1. ${userSuggestion ? "Foque principalmente na solicitação do consultor acima" : "Analise o contexto do cliente, tarefas já realizadas e resultados obtidos"}
 2. Sugira de 3 a 5 NOVAS tarefas que façam sentido para o momento atual do cliente
 3. NÃO repita tarefas já realizadas da mesma forma - pode evoluir ou criar variações mais avançadas
 4. Considere os desafios e metas do cliente para personalizar as sugestões
