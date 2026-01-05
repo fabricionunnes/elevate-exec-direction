@@ -30,6 +30,7 @@ interface OnboardingTask {
   tags: string[] | null;
   recurrence: string | null;
   template_id: string | null;
+  is_internal?: boolean;
   assignee?: { id: string; name: string; role: string };
   responsible_staff?: { id: string; name: string } | null;
 }

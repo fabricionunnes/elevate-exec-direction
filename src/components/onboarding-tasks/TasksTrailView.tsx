@@ -15,6 +15,7 @@ import {
   Rocket,
   Target,
   Flag,
+  EyeOff,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -34,6 +35,7 @@ interface OnboardingTask {
   tags: string[] | null;
   recurrence: string | null;
   template_id: string | null;
+  is_internal?: boolean;
   assignee?: { id: string; name: string; role: string };
   responsible_staff?: { id: string; name: string } | null;
 }
@@ -226,6 +228,12 @@ export const TasksTrailView = ({ phases, onTaskClick, onStatusChange }: TasksTra
                               </div>
 
                               <div className="flex items-center gap-2 flex-shrink-0">
+                                {task.is_internal && (
+                                  <Badge variant="secondary" className="text-xs gap-1">
+                                    <EyeOff className="h-3 w-3" />
+                                    Interna
+                                  </Badge>
+                                )}
                                 {task.recurrence && (
                                   <Badge variant="outline" className="text-xs gap-1">
                                     <RefreshCw className="h-3 w-3" />
