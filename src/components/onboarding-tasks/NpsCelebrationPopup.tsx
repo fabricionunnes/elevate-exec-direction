@@ -147,30 +147,35 @@ export const NpsCelebrationPopup = () => {
 
   return (
     <AlertDialog open={!!celebration} onOpenChange={() => handleClose()}>
-      <AlertDialogContent className="max-w-lg">
+      <AlertDialogContent className="max-w-lg border-2 border-yellow-400/50">
         <AlertDialogHeader className="text-center">
-          <div className="flex justify-center gap-2 mb-4">
-            <div className="h-16 w-16 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
-              <Trophy className="h-10 w-10 text-yellow-500" />
+          <div className="flex justify-center gap-2 mb-2">
+            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shadow-yellow-400/30 animate-pulse">
+              <Trophy className="h-12 w-12 text-white" />
             </div>
           </div>
           
-          <AlertDialogTitle className="text-2xl flex items-center justify-center gap-2">
-            <PartyPopper className="h-6 w-6 text-primary" />
-            <span>NPS 10!</span>
-            <PartyPopper className="h-6 w-6 text-primary" />
+          <AlertDialogTitle className="text-3xl flex items-center justify-center gap-2 text-yellow-500">
+            <PartyPopper className="h-7 w-7" />
+            <span>NPS NOTA 10!</span>
+            <PartyPopper className="h-7 w-7" />
           </AlertDialogTitle>
           
           <AlertDialogDescription asChild>
             <div className="space-y-4 text-center">
-              <p className="text-lg">
-                <span className="font-bold text-primary">{celebration.consultantName}</span> acabou de receber uma nota 10!
-              </p>
+              {/* Destaque do consultor */}
+              <div className="py-4 px-6 bg-gradient-to-r from-primary/10 via-primary/20 to-primary/10 rounded-xl border border-primary/30">
+                <p className="text-sm text-muted-foreground mb-1">Parabéns ao consultor</p>
+                <p className="text-2xl font-bold text-primary">
+                  🏆 {celebration.consultantName} 🏆
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">pela excelência no atendimento!</p>
+              </div>
               
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
+              <div className="bg-muted/50 border border-border rounded-lg p-4 space-y-3">
                 <div className="flex justify-center gap-1">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                    <Star key={i} className="h-6 w-6 fill-yellow-400 text-yellow-400" />
                   ))}
                 </div>
                 
@@ -179,17 +184,17 @@ export const NpsCelebrationPopup = () => {
                 </p>
                 
                 {celebration.wouldRecommendWhy && (
-                  <div className="pt-2 border-t border-border/50">
-                    <p className="text-sm font-medium text-foreground mb-1">Motivo da nota:</p>
+                  <div className="pt-3 border-t border-border/50">
+                    <p className="text-xs font-medium text-foreground mb-1 uppercase tracking-wide">Motivo da nota:</p>
                     <p className="text-sm text-muted-foreground italic">
                       "{celebration.wouldRecommendWhy}"
                     </p>
                   </div>
                 )}
                 
-                {celebration.feedback && (
-                  <div className="pt-2 border-t border-border/50">
-                    <p className="text-sm font-medium text-foreground mb-1">Comentário adicional:</p>
+                {celebration.feedback && celebration.feedback !== celebration.wouldRecommendWhy && (
+                  <div className="pt-3 border-t border-border/50">
+                    <p className="text-xs font-medium text-foreground mb-1 uppercase tracking-wide">Comentário adicional:</p>
                     <p className="text-sm text-muted-foreground italic">
                       "{celebration.feedback}"
                     </p>
@@ -197,15 +202,15 @@ export const NpsCelebrationPopup = () => {
                 )}
               </div>
               
-              <p className="text-sm text-muted-foreground">
-                🎉 Parabéns pelo excelente trabalho!
+              <p className="text-base font-medium">
+                🎉 Esse é o resultado de um trabalho incrível! 🎉
               </p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         
         <AlertDialogFooter className="justify-center sm:justify-center">
-          <AlertDialogAction onClick={handleClose} className="px-8">
+          <AlertDialogAction onClick={handleClose} className="px-8 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white font-semibold">
             Celebrar! 🎊
           </AlertDialogAction>
         </AlertDialogFooter>
