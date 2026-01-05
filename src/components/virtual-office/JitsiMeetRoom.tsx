@@ -57,7 +57,10 @@ const JitsiMeetRoom = ({ roomName, displayName, onLeave }: JitsiMeetRoomProps) =
     try {
       // Create a sanitized room name (alphanumeric only)
       const sanitizedRoomName = roomName.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-      const fullRoomName = `unvoffice${sanitizedRoomName}`;
+
+      // NOTE: meet.jit.si may keep per-room moderation/lobby state.
+      // Bumping the room namespace avoids getting stuck waiting for a moderator in older rooms.
+      const fullRoomName = `unvofficev2${sanitizedRoomName}`;
 
       const options = {
         roomName: fullRoomName,
@@ -75,7 +78,12 @@ const JitsiMeetRoom = ({ roomName, displayName, onLeave }: JitsiMeetRoomProps) =
           enableClosePage: false,
           disableInviteFunctions: true,
           enableWelcomePage: false,
+
+          // Try to prevent "waiting for moderator" behavior (lobby)
+          lobby: { enabled: false },
           enableLobbyChat: false,
+          disableModeratorIndicator: true,
+
           hideConferenceSubject: true,
           hideConferenceTimer: false,
           disableThirdPartyRequests: true,
