@@ -89,6 +89,7 @@ const DashboardMetrics = ({
 }: DashboardMetricsProps) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
+  const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Tasks dialog state
@@ -102,16 +103,19 @@ const DashboardMetrics = ({
 
   const fetchData = async () => {
     try {
-      const [tasksResult, npsResult] = await Promise.all([
+      const [tasksResult, npsResult, goalsResult] = await Promise.all([
         supabase.from("onboarding_tasks").select("id, status, due_date, project_id"),
-        supabase.from("onboarding_nps_responses").select("project_id, score")
+        supabase.from("onboarding_nps_responses").select("project_id, score"),
+        supabase.from("onboarding_monthly_goals").select("project_id, month, year, sales_target, sales_result")
       ]);
 
       if (tasksResult.error) throw tasksResult.error;
       if (npsResult.error) throw npsResult.error;
+      if (goalsResult.error) throw goalsResult.error;
       
       setAllTasks(tasksResult.data || []);
       setNpsResponses(npsResult.data || []);
+      setMonthlyGoals(goalsResult.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -299,6 +303,49 @@ const DashboardMetrics = ({
       totalProjects: totalFilteredProjects
     };
   }, [projects, npsResponses]);
+
+  // Goals metrics - projects meeting their sales goals
+  const goalsMetrics = useMemo(() => {
+    // Get month and year from dateRange start (to filter goals by period)
+    const periodMonth = dateRange.start.getMonth() + 1; // 1-indexed
+    const periodYear = dateRange.start.getFullYear();
+    
+    // Get project IDs from filtered projects (respects consultant and service filters)
+    const filteredProjectIds = new Set(projects.map(p => p.id));
+    
+    // Filter goals to only include those from filtered projects and in the selected period
+    const filteredGoals = monthlyGoals.filter(g => 
+      filteredProjectIds.has(g.project_id) &&
+      g.month === periodMonth &&
+      g.year === periodYear
+    );
+    
+    // Count projects with goals set (has target)
+    const projectsWithGoals = filteredGoals.filter(g => g.sales_target && g.sales_target > 0);
+    
+    // Count projects that met their goal (result >= target)
+    const projectsMeetingGoal = projectsWithGoals.filter(g => 
+      g.sales_result !== null && 
+      g.sales_target !== null && 
+      g.sales_result >= g.sales_target
+    );
+    
+    const totalWithGoals = projectsWithGoals.length;
+    const meetingGoal = projectsMeetingGoal.length;
+    const notMeetingGoal = totalWithGoals - meetingGoal;
+    const goalRate = totalWithGoals > 0 
+      ? Math.round((meetingGoal / totalWithGoals) * 100) 
+      : 0;
+    
+    return {
+      totalWithGoals,
+      meetingGoal,
+      notMeetingGoal,
+      goalRate,
+      periodMonth,
+      periodYear
+    };
+  }, [projects, monthlyGoals, dateRange]);
 
   const completionRate = taskMetrics.totalTasks > 0 
     ? Math.round((taskMetrics.totalCompleted / taskMetrics.totalTasks) * 100) 
@@ -654,6 +701,37 @@ const DashboardMetrics = ({
                 </div>
                 <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center">
                   <TrendingDown className="h-5 w-5 text-red-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Goals Meeting Rate Card */}
+          <Card 
+            className={cn(
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
+              isCardActive("goals", "meeting") && "ring-2 ring-teal-500"
+            )}
+            onClick={() => handleCardClick("goals", "meeting")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-teal-500" />
+            <CardContent className="pt-4 pl-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Batendo Meta</p>
+                  <p className={cn(
+                    "text-2xl font-bold mt-1",
+                    goalsMetrics.goalRate >= 70 ? "text-teal-500" : 
+                    goalsMetrics.goalRate >= 40 ? "text-amber-500" : "text-red-500"
+                  )}>
+                    {goalsMetrics.goalRate}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {goalsMetrics.meetingGoal}/{goalsMetrics.totalWithGoals} projetos
+                  </p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-teal-500/10 flex items-center justify-center">
+                  <Target className="h-5 w-5 text-teal-500" />
                 </div>
               </div>
             </CardContent>
