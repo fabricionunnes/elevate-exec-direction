@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -26,7 +26,7 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
 
   useEffect(() => {
     fetchDocuments();
@@ -52,65 +52,73 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const triggerFileInput = () => {
+    // Create a new input element each time to avoid issues with dialog context
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.style.display = 'none';
+    input.onchange = async (e) => {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
+      if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Arquivo muito grande (máx. 10MB)");
-      return;
-    }
-
-    setUploading(true);
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
-
-      // Get onboarding user id
-      const { data: onboardingUser } = await supabase
-        .from("onboarding_users")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("project_id", projectId)
-        .single();
-
-      const filePath = `${companyId}/tasks/${taskId}/${Date.now()}_${file.name}`;
-
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from("onboarding-documents")
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      // Create document record
-      const { error: docError } = await supabase
-        .from("onboarding_documents")
-        .insert({
-          company_id: companyId,
-          project_id: projectId,
-          task_id: taskId,
-          file_name: file.name,
-          file_path: filePath,
-          file_size: file.size,
-          file_type: file.type,
-          uploaded_by: onboardingUser?.id || null,
-        });
-
-      if (docError) throw docError;
-
-      toast.success("Anexo adicionado");
-      fetchDocuments();
-    } catch (error: any) {
-      console.error("Error uploading file:", error);
-      toast.error("Erro ao fazer upload");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("Arquivo muito grande (máx. 10MB)");
+        return;
       }
-    }
+
+      setUploading(true);
+      try {
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Usuário não autenticado");
+
+        // Get onboarding user id
+        const { data: onboardingUser } = await supabase
+          .from("onboarding_users")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("project_id", projectId)
+          .single();
+
+        const filePath = `${companyId}/tasks/${taskId}/${Date.now()}_${file.name}`;
+
+        // Upload to storage
+        const { error: uploadError } = await supabase.storage
+          .from("onboarding-documents")
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        // Create document record
+        const { error: docError } = await supabase
+          .from("onboarding_documents")
+          .insert({
+            company_id: companyId,
+            project_id: projectId,
+            task_id: taskId,
+            file_name: file.name,
+            file_path: filePath,
+            file_size: file.size,
+            file_type: file.type,
+            uploaded_by: onboardingUser?.id || null,
+          });
+
+        if (docError) throw docError;
+
+        toast.success("Anexo adicionado");
+        fetchDocuments();
+      } catch (error: any) {
+        console.error("Error uploading file:", error);
+        toast.error("Erro ao fazer upload: " + (error.message || "Erro desconhecido"));
+      } finally {
+        setUploading(false);
+      }
+      // Clean up
+      document.body.removeChild(input);
+    };
+    document.body.appendChild(input);
+    input.click();
   };
 
   const handleDownload = async (doc: Document) => {
@@ -192,29 +200,21 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
           <Paperclip className="h-4 w-4" />
           Anexos ({documents.length})
         </div>
-        <div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={handleFileSelect}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-          >
-            {uploading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <Upload className="h-4 w-4 mr-1" />
-                Anexar
-              </>
-            )}
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={triggerFileInput}
+          disabled={uploading}
+        >
+          {uploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <>
+              <Upload className="h-4 w-4 mr-1" />
+              Anexar
+            </>
+          )}
+        </Button>
       </div>
 
       {documents.length === 0 ? (
