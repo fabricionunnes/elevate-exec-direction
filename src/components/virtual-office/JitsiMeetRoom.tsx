@@ -22,112 +22,137 @@ const JitsiMeetRoom = ({ roomName, displayName, onLeave }: JitsiMeetRoomProps) =
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load Jitsi Meet External API script
+    // Load Jitsi Meet External API script from public Jitsi server
     const script = document.createElement("script");
-    script.src = "https://8x8.vc/vpaas-magic-cookie-ef5ce88c523d41a599c8b1dc5b3ab765/external_api.js";
+    script.src = "https://meet.jit.si/external_api.js";
     script.async = true;
     script.onload = initJitsi;
+    script.onerror = () => {
+      setError("Erro ao carregar a API de videoconferência");
+      setIsLoading(false);
+    };
     document.body.appendChild(script);
 
     return () => {
       if (apiRef.current) {
         apiRef.current.dispose();
       }
-      document.body.removeChild(script);
+      // Only remove if script still exists
+      if (script.parentNode) {
+        document.body.removeChild(script);
+      }
     };
   }, []);
 
   const initJitsi = () => {
-    if (!containerRef.current || !window.JitsiMeetExternalAPI) return;
-
-    // Create a sanitized room name (alphanumeric only)
-    const sanitizedRoomName = roomName.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-    const fullRoomName = `unv-office-${sanitizedRoomName}`;
-
-    const options = {
-      roomName: `vpaas-magic-cookie-ef5ce88c523d41a599c8b1dc5b3ab765/${fullRoomName}`,
-      parentNode: containerRef.current,
-      width: "100%",
-      height: "100%",
-      userInfo: {
-        displayName: displayName,
-      },
-      configOverwrite: {
-        startWithAudioMuted: false,
-        startWithVideoMuted: false,
-        prejoinPageEnabled: false,
-        disableDeepLinking: true,
-        enableClosePage: false,
-        disableInviteFunctions: true,
-        enableWelcomePage: false,
-        enableLobbyChat: false,
-        hiddenPremeetingButtons: ["invite"],
-        toolbarButtons: [
-          "camera",
-          "chat",
-          "desktop",
-          "filmstrip",
-          "fullscreen",
-          "hangup",
-          "microphone",
-          "participants-pane",
-          "raisehand",
-          "select-background",
-          "settings",
-          "tileview",
-        ],
-      },
-      interfaceConfigOverwrite: {
-        SHOW_JITSI_WATERMARK: false,
-        SHOW_WATERMARK_FOR_GUESTS: false,
-        SHOW_BRAND_WATERMARK: false,
-        SHOW_POWERED_BY: false,
-        TOOLBAR_BUTTONS: [
-          "camera",
-          "chat",
-          "desktop",
-          "filmstrip",
-          "fullscreen",
-          "hangup",
-          "microphone",
-          "participants-pane",
-          "raisehand",
-          "settings",
-          "tileview",
-        ],
-        SETTINGS_SECTIONS: ["devices", "language"],
-        VIDEO_LAYOUT_FIT: "both",
-        DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
-        MOBILE_APP_PROMO: false,
-        HIDE_INVITE_MORE_HEADER: true,
-      },
-    };
-
-    apiRef.current = new window.JitsiMeetExternalAPI("8x8.vc", options);
-
-    apiRef.current.addListener("videoConferenceJoined", () => {
+    if (!containerRef.current || !window.JitsiMeetExternalAPI) {
+      setError("Erro ao inicializar videoconferência");
       setIsLoading(false);
-      console.log("Joined video conference");
-    });
+      return;
+    }
 
-    apiRef.current.addListener("videoConferenceLeft", () => {
-      console.log("Left video conference");
-      onLeave();
-    });
+    try {
+      // Create a sanitized room name (alphanumeric only)
+      const sanitizedRoomName = roomName.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+      const fullRoomName = `unvoffice${sanitizedRoomName}`;
 
-    apiRef.current.addListener("audioMuteStatusChanged", (event: any) => {
-      setIsAudioMuted(event.muted);
-    });
+      const options = {
+        roomName: fullRoomName,
+        parentNode: containerRef.current,
+        width: "100%",
+        height: "100%",
+        userInfo: {
+          displayName: displayName,
+        },
+        configOverwrite: {
+          startWithAudioMuted: false,
+          startWithVideoMuted: false,
+          prejoinPageEnabled: false,
+          disableDeepLinking: true,
+          enableClosePage: false,
+          disableInviteFunctions: true,
+          enableWelcomePage: false,
+          enableLobbyChat: false,
+          hideConferenceSubject: true,
+          hideConferenceTimer: false,
+          disableThirdPartyRequests: true,
+          enableNoisyMicDetection: false,
+          enableNoAudioDetection: false,
+          toolbarButtons: [
+            "camera",
+            "chat",
+            "desktop",
+            "filmstrip",
+            "fullscreen",
+            "hangup",
+            "microphone",
+            "participants-pane",
+            "raisehand",
+            "select-background",
+            "settings",
+            "tileview",
+          ],
+        },
+        interfaceConfigOverwrite: {
+          SHOW_JITSI_WATERMARK: false,
+          SHOW_WATERMARK_FOR_GUESTS: false,
+          SHOW_BRAND_WATERMARK: false,
+          SHOW_POWERED_BY: false,
+          DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
+          MOBILE_APP_PROMO: false,
+          HIDE_INVITE_MORE_HEADER: true,
+          DISABLE_PRESENCE_STATUS: false,
+          GENERATE_ROOMNAMES_ON_WELCOME_PAGE: false,
+          DISPLAY_WELCOME_FOOTER: false,
+          DISPLAY_WELCOME_PAGE_ADDITIONAL_CARD: false,
+          DISPLAY_WELCOME_PAGE_CONTENT: false,
+          DISPLAY_WELCOME_PAGE_TOOLBAR_ADDITIONAL_CONTENT: false,
+          RECENT_LIST_ENABLED: false,
+          VIDEO_LAYOUT_FIT: "both",
+          filmStripOnly: false,
+          VERTICAL_FILMSTRIP: true,
+        },
+      };
 
-    apiRef.current.addListener("videoMuteStatusChanged", (event: any) => {
-      setIsVideoMuted(event.muted);
-    });
+      console.log("Initializing Jitsi with room:", fullRoomName);
+      apiRef.current = new window.JitsiMeetExternalAPI("meet.jit.si", options);
 
-    apiRef.current.addListener("readyToClose", () => {
-      onLeave();
-    });
+      apiRef.current.addListener("videoConferenceJoined", () => {
+        setIsLoading(false);
+        setError(null);
+        console.log("Successfully joined video conference");
+      });
+
+      apiRef.current.addListener("videoConferenceLeft", () => {
+        console.log("Left video conference");
+        onLeave();
+      });
+
+      apiRef.current.addListener("audioMuteStatusChanged", (event: any) => {
+        setIsAudioMuted(event.muted);
+      });
+
+      apiRef.current.addListener("videoMuteStatusChanged", (event: any) => {
+        setIsVideoMuted(event.muted);
+      });
+
+      apiRef.current.addListener("readyToClose", () => {
+        onLeave();
+      });
+
+      // Set loading to false after a timeout as fallback
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 5000);
+
+    } catch (err) {
+      console.error("Error initializing Jitsi:", err);
+      setError("Erro ao iniciar videoconferência");
+      setIsLoading(false);
+    }
   };
 
   const toggleAudio = () => {
@@ -159,21 +184,35 @@ const JitsiMeetRoom = ({ roomName, displayName, onLeave }: JitsiMeetRoomProps) =
     }
   };
 
+  if (error) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-muted">
+        <div className="text-center p-4">
+          <p className="text-destructive mb-4">{error}</p>
+          <Button onClick={onLeave} variant="outline">
+            Voltar ao Chat
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative w-full h-full flex flex-col">
+    <div className="relative w-full h-full flex flex-col min-h-[400px]">
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
             <p className="text-sm text-muted-foreground">Conectando à sala de vídeo...</p>
+            <p className="text-xs text-muted-foreground mt-2">Permita o acesso à câmera e microfone se solicitado</p>
           </div>
         </div>
       )}
       
-      <div ref={containerRef} className="flex-1 bg-black rounded-lg overflow-hidden" />
+      <div ref={containerRef} className="flex-1 bg-black rounded-lg overflow-hidden" style={{ minHeight: "400px" }} />
       
       {/* Custom Controls Bar */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-background/90 backdrop-blur rounded-full px-4 py-2 shadow-lg">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-background/90 backdrop-blur rounded-full px-4 py-2 shadow-lg z-20">
         <Button
           variant="ghost"
           size="icon"
