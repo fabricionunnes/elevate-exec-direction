@@ -18,6 +18,7 @@ import {
   Crown,
   Medal,
   Gift,
+  EyeOff,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -37,6 +38,7 @@ interface OnboardingTask {
   tags: string[] | null;
   recurrence: string | null;
   template_id: string | null;
+  is_internal?: boolean;
   assignee?: { id: string; name: string; role: string };
   responsible_staff?: { id: string; name: string } | null;
 }
@@ -337,6 +339,11 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
 
                             {/* Task Meta */}
                             <div className="flex items-center gap-2 flex-shrink-0">
+                              {task.is_internal && (
+                                <Badge variant="secondary" className="text-xs gap-1">
+                                  <EyeOff className="h-3 w-3" />
+                                </Badge>
+                              )}
                               {task.recurrence && (
                                 <Badge variant="outline" className="text-xs gap-1">
                                   <RefreshCw className="h-3 w-3" />

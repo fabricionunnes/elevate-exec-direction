@@ -20,8 +20,9 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { CalendarIcon, Loader2, Trash2 } from "lucide-react";
+import { CalendarIcon, Loader2, Trash2, EyeOff } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,7 @@ interface OnboardingTask {
   project_id?: string;
   template_id?: string | null;
   responsible_staff?: { id: string; name: string } | null;
+  is_internal?: boolean;
 }
 
 interface OnboardingUser {
@@ -101,6 +103,7 @@ export const TaskDetailsDialog = ({
         status: task.status,
         assignee_id: task.assignee_id,
         observations: task.observations,
+        is_internal: task.is_internal ?? false,
       });
     }
   }, [task]);
@@ -224,6 +227,14 @@ export const TaskDetailsDialog = ({
         }
         updates.due_date = editedTask.due_date;
         updates.assignee_id = editedTask.assignee_id || null;
+      }
+
+      // Admin/CS can toggle internal visibility
+      if (isAdmin || currentUserRole === "cs") {
+        if (editedTask.is_internal !== (task.is_internal ?? false)) {
+          historyPromises.push(logHistory("edit", "visibilidade", task.is_internal ? "Interna" : "Pública", editedTask.is_internal ? "Interna" : "Pública"));
+        }
+        updates.is_internal = editedTask.is_internal ?? false;
       }
 
       // Log all history entries
@@ -425,6 +436,25 @@ export const TaskDetailsDialog = ({
                 disabled={!canEditStatusAndObservations}
               />
             </div>
+
+            {/* Internal task toggle - only for admin/CS */}
+            {(isAdmin || currentUserRole === "cs") && (
+              <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <EyeOff className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <Label className="text-sm font-medium">Tarefa Interna</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Tarefas internas não são visíveis para clientes
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={editedTask.is_internal ?? false}
+                  onCheckedChange={(checked) => setEditedTask({ ...editedTask, is_internal: checked })}
+                />
+              </div>
+            )}
 
             {/* Attachments section */}
             {companyId && taskProjectId && (

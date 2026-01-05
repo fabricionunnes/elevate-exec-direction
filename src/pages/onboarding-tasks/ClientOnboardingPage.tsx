@@ -35,6 +35,7 @@ interface OnboardingTask {
   tags: string[] | null;
   recurrence: string | null;
   template_id: string | null;
+  is_internal: boolean;
   assignee?: { id: string; name: string; role: string };
   responsible_staff?: { id: string; name: string } | null;
 }
@@ -80,6 +81,7 @@ const ClientOnboardingPage = () => {
         responsible_staff:onboarding_staff!onboarding_tasks_responsible_staff_id_fkey(id, name)
       `)
       .eq("project_id", projectId)
+      .eq("is_internal", false) // Filter out internal tasks for clients
       .order("sort_order");
 
     setTasks(tasksData || []);

@@ -1199,6 +1199,7 @@ export type Database = {
           due_date: string | null
           estimated_hours: number | null
           id: string
+          is_internal: boolean
           observations: string | null
           priority: string | null
           project_id: string
@@ -1221,6 +1222,7 @@ export type Database = {
           due_date?: string | null
           estimated_hours?: number | null
           id?: string
+          is_internal?: boolean
           observations?: string | null
           priority?: string | null
           project_id: string
@@ -1243,6 +1245,7 @@ export type Database = {
           due_date?: string | null
           estimated_hours?: number | null
           id?: string
+          is_internal?: boolean
           observations?: string | null
           priority?: string | null
           project_id?: string
