@@ -116,7 +116,7 @@ export default function OnboardingServiceTemplatesPage() {
       if (serviceError) throw serviceError;
       setService(serviceData);
 
-      fetchTemplates();
+      fetchTemplates(serviceData.id);
     } catch (error) {
       console.error('Error fetching service:', error);
       toast.error('Serviço não encontrado');
@@ -124,13 +124,13 @@ export default function OnboardingServiceTemplatesPage() {
     }
   };
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = async (serviceId: string) => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('onboarding_task_templates')
         .select('*')
-        .eq('product_id', serviceSlug)
+        .eq('product_id', serviceId)
         .order('phase_order', { ascending: true, nullsFirst: false })
         .order('sort_order', { ascending: true });
 
@@ -200,7 +200,7 @@ export default function OnboardingServiceTemplatesPage() {
       const existingPhaseOrder = templates.find(t => t.phase === formData.phase)?.phase_order || formData.phase_order;
       
       const templateData = {
-        product_id: serviceSlug!,
+        product_id: service!.id,
         title: formData.title,
         description: formData.description || null,
         phase: formData.phase || null,
@@ -231,7 +231,7 @@ export default function OnboardingServiceTemplatesPage() {
       }
 
       setDialogOpen(false);
-      fetchTemplates();
+      fetchTemplates(service!.id);
     } catch (error) {
       console.error('Error saving template:', error);
       toast.error('Erro ao salvar tarefa');
@@ -259,7 +259,7 @@ export default function OnboardingServiceTemplatesPage() {
 
       if (error) throw error;
       toast.success('Tarefa duplicada');
-      fetchTemplates();
+      fetchTemplates(service!.id);
     } catch (error) {
       console.error('Error duplicating template:', error);
       toast.error('Erro ao duplicar tarefa');
@@ -279,7 +279,7 @@ export default function OnboardingServiceTemplatesPage() {
 
       if (error) throw error;
       toast.success('Tarefa excluída');
-      fetchTemplates();
+      fetchTemplates(service!.id);
     } catch (error) {
       console.error('Error deleting template:', error);
       toast.error('Erro ao excluir tarefa');
