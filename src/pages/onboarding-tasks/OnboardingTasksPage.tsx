@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, ChevronLeft } from "lucide-react";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
@@ -487,21 +487,43 @@ const OnboardingTasksPage = () => {
         />
 
         {/* Search and Filters */}
-        <div className="flex flex-wrap gap-4 mb-6">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          {/* Date Period Selector */}
+          <div className="flex items-center gap-1 bg-muted/50 rounded-lg px-2 py-1 h-10">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+              const newStart = new Date(dateRange.start);
+              newStart.setMonth(newStart.getMonth() - 1);
+              setDateRange({ start: startOfMonth(newStart), end: endOfMonth(newStart) });
+            }}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium min-w-[100px] text-center">
+              {format(dateRange.start, "MMM yyyy", { locale: ptBR })}
+            </span>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+              const newStart = new Date(dateRange.start);
+              newStart.setMonth(newStart.getMonth() + 1);
+              setDateRange({ start: startOfMonth(newStart), end: endOfMonth(newStart) });
+            }}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="relative flex-1 min-w-[180px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por nome ou segmento..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 h-10"
             />
           </div>
           
           {/* Only show consultant filter for admins and CS */}
           {currentUserRole !== "consultant" && (
             <Select value={filterConsultant} onValueChange={setFilterConsultant}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[150px] h-10">
                 <SelectValue placeholder="Consultor" />
               </SelectTrigger>
               <SelectContent>
@@ -514,7 +536,7 @@ const OnboardingTasksPage = () => {
           )}
 
           <Select value={filterService} onValueChange={setFilterService}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[150px] h-10">
               <SelectValue placeholder="Serviço" />
             </SelectTrigger>
             <SelectContent>
@@ -526,7 +548,7 @@ const OnboardingTasksPage = () => {
           </Select>
 
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[150px] h-10">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -542,6 +564,13 @@ const OnboardingTasksPage = () => {
             <Button variant="ghost" size="sm" onClick={clearFilters} className="h-10">
               <X className="h-4 w-4 mr-1" />
               Limpar
+            </Button>
+          )}
+
+          {activeMetricFilter && (
+            <Button variant="outline" size="sm" onClick={() => handleMetricFilterChange(null)} className="h-10">
+              <X className="h-4 w-4 mr-1" />
+              Limpar card
             </Button>
           )}
         </div>
