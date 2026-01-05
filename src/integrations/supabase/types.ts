@@ -2131,6 +2131,156 @@ export type Database = {
         }
         Relationships: []
       }
+      virtual_office_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_deleted: boolean | null
+          message_type: string
+          reply_to_id: string | null
+          room_id: string
+          staff_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_deleted?: boolean | null
+          message_type?: string
+          reply_to_id?: string | null
+          room_id: string
+          staff_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_deleted?: boolean | null
+          message_type?: string
+          reply_to_id?: string | null
+          room_id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_office_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_office_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_office_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_office_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_office_messages_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      virtual_office_presence: {
+        Row: {
+          created_at: string
+          current_activity: string | null
+          id: string
+          last_seen_at: string
+          room_id: string | null
+          staff_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          current_activity?: string | null
+          id?: string
+          last_seen_at?: string
+          room_id?: string | null
+          staff_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          current_activity?: string | null
+          id?: string
+          last_seen_at?: string
+          room_id?: string | null
+          staff_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_office_presence_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_office_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_office_presence_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      virtual_office_rooms: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          max_participants: number | null
+          meet_link: string | null
+          name: string
+          room_type: string
+          team_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_participants?: number | null
+          meet_link?: string | null
+          name: string
+          room_type?: string
+          team_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_participants?: number | null
+          meet_link?: string | null
+          name?: string
+          room_type?: string
+          team_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_office_rooms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
