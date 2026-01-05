@@ -36,6 +36,7 @@ import {
   Tooltip,
   Legend
 } from "recharts";
+import { TasksListDialog } from "./TasksListDialog";
 
 interface Task {
   id: string;
@@ -89,6 +90,11 @@ const DashboardMetrics = ({
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Tasks dialog state
+  const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
+  const [tasksDialogType, setTasksDialogType] = useState<"overdue" | "today">("overdue");
+  const [tasksDialogIds, setTasksDialogIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -362,10 +368,13 @@ const DashboardMetrics = ({
           {/* Today's Tasks */}
           <Card 
             className={cn(
-              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
-              isCardActive("tasks", "today") && "ring-2 ring-blue-500"
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5"
             )}
-            onClick={() => handleCardClick("tasks", "today")}
+            onClick={() => {
+              setTasksDialogType("today");
+              setTasksDialogIds(todayTasks.map(t => t.id));
+              setTasksDialogOpen(true);
+            }}
           >
             <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
             <CardContent className="pt-4 pl-4">
@@ -385,10 +394,13 @@ const DashboardMetrics = ({
           {/* Overdue Tasks */}
           <Card 
             className={cn(
-              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5",
-              isCardActive("tasks", "overdue") && "ring-2 ring-red-500"
+              "relative overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5"
             )}
-            onClick={() => handleCardClick("tasks", "overdue")}
+            onClick={() => {
+              setTasksDialogType("overdue");
+              setTasksDialogIds(overdueTasks.map(t => t.id));
+              setTasksDialogOpen(true);
+            }}
           >
             <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
             <CardContent className="pt-4 pl-4">
@@ -892,6 +904,14 @@ const DashboardMetrics = ({
           </Card>
         </div>
       </div>
+
+      {/* Tasks List Dialog */}
+      <TasksListDialog
+        open={tasksDialogOpen}
+        onOpenChange={setTasksDialogOpen}
+        type={tasksDialogType}
+        taskIds={tasksDialogIds}
+      />
     </div>
   );
 };
