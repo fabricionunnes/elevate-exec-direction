@@ -291,9 +291,10 @@ const OnboardingTasksPage = () => {
         filterService === "all" || 
         company.projects?.some(p => p.product_id === filterService);
       
-      // Status filter
+      // Status filter - filter by project (service) status, not company status
       const matchesStatus = 
-        filterStatus === "all" || company.status === filterStatus;
+        filterStatus === "all" || 
+        company.projects?.some(p => p.status === filterStatus);
       
       // Metric card filters
       let matchesMetricFilter = true;
