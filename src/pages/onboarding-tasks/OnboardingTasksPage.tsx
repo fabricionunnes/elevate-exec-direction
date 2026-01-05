@@ -748,14 +748,7 @@ const OnboardingTasksPage = () => {
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="h-10">
               <X className="h-4 w-4 mr-1" />
-              Limpar
-            </Button>
-          )}
-
-          {activeMetricFilter && (
-            <Button variant="outline" size="sm" onClick={() => handleMetricFilterChange(null)} className="h-10">
-              <X className="h-4 w-4 mr-1" />
-              Limpar card
+              Limpar filtros
             </Button>
           )}
         </div>
