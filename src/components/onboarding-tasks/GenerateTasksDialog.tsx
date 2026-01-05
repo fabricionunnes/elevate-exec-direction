@@ -325,49 +325,51 @@ export const GenerateTasksDialog = ({
                     <span>📋 {aiContext.pendingCount} pendentes</span>
                   </div>
                 )}
-                <ScrollArea className="flex-1 max-h-[400px] -mx-6 px-6">
-                  <div className="space-y-3 pr-4 pb-2">
-                    {aiTasks.map((task, index) => (
-                      <Card 
-                        key={index} 
-                        className={`cursor-pointer transition-all ${
-                          selectedAiTasks.has(index) 
-                            ? "ring-2 ring-primary bg-primary/5" 
-                            : "hover:bg-muted/50"
-                        }`}
-                        onClick={() => toggleAiTask(index)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3">
-                            <Checkbox 
-                              checked={selectedAiTasks.has(index)} 
-                              onCheckedChange={() => toggleAiTask(index)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="mt-1"
-                            />
-                            <div className="flex-1 space-y-2">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium">{task.title}</span>
-                                {getPriorityBadge(task.priority)}
-                                {task.phase && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {task.phase}
-                                  </Badge>
-                                )}
+                <div className="flex-1 overflow-hidden min-h-0">
+                  <ScrollArea className="h-[300px]">
+                    <div className="space-y-3 pr-4 pb-2">
+                      {aiTasks.map((task, index) => (
+                        <Card 
+                          key={index} 
+                          className={`cursor-pointer transition-all ${
+                            selectedAiTasks.has(index) 
+                              ? "ring-2 ring-primary bg-primary/5" 
+                              : "hover:bg-muted/50"
+                          }`}
+                          onClick={() => toggleAiTask(index)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <Checkbox 
+                                checked={selectedAiTasks.has(index)} 
+                                onCheckedChange={() => toggleAiTask(index)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="mt-1"
+                              />
+                              <div className="flex-1 space-y-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium">{task.title}</span>
+                                  {getPriorityBadge(task.priority)}
+                                  {task.phase && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {task.phase}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {task.description}
+                                </p>
+                                <p className="text-xs text-primary/80 italic">
+                                  💡 {task.reasoning}
+                                </p>
                               </div>
-                              <p className="text-sm text-muted-foreground">
-                                {task.description}
-                              </p>
-                              <p className="text-xs text-primary/80 italic">
-                                💡 {task.reasoning}
-                              </p>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </ScrollArea>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
                 <div className="flex items-center justify-between pt-2 border-t">
                   <Button variant="ghost" size="sm" onClick={handleGenerateAI} disabled={aiLoading}>
                     <Sparkles className="h-4 w-4 mr-2" />
