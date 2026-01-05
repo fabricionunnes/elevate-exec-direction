@@ -116,7 +116,7 @@ export default function OnboardingServiceTemplatesPage() {
       if (serviceError) throw serviceError;
       setService(serviceData);
 
-      fetchTemplates(serviceData.id);
+      fetchTemplates(serviceData.id, serviceData.slug);
     } catch (error) {
       console.error('Error fetching service:', error);
       toast.error('Serviço não encontrado');
@@ -124,13 +124,14 @@ export default function OnboardingServiceTemplatesPage() {
     }
   };
 
-  const fetchTemplates = async (serviceId: string) => {
+  const fetchTemplates = async (serviceId: string, serviceSlug: string) => {
     setLoading(true);
     try {
+      // Fetch templates by both ID and slug (legacy data uses slug)
       const { data, error } = await supabase
         .from('onboarding_task_templates')
         .select('*')
-        .eq('product_id', serviceId)
+        .or(`product_id.eq.${serviceId},product_id.eq.${serviceSlug}`)
         .order('phase_order', { ascending: true, nullsFirst: false })
         .order('sort_order', { ascending: true });
 
@@ -231,7 +232,7 @@ export default function OnboardingServiceTemplatesPage() {
       }
 
       setDialogOpen(false);
-      fetchTemplates(service!.id);
+      fetchTemplates(service!.id, service!.slug);
     } catch (error) {
       console.error('Error saving template:', error);
       toast.error('Erro ao salvar tarefa');
@@ -259,7 +260,7 @@ export default function OnboardingServiceTemplatesPage() {
 
       if (error) throw error;
       toast.success('Tarefa duplicada');
-      fetchTemplates(service!.id);
+      fetchTemplates(service!.id, service!.slug);
     } catch (error) {
       console.error('Error duplicating template:', error);
       toast.error('Erro ao duplicar tarefa');
@@ -279,7 +280,7 @@ export default function OnboardingServiceTemplatesPage() {
 
       if (error) throw error;
       toast.success('Tarefa excluída');
-      fetchTemplates(service!.id);
+      fetchTemplates(service!.id, service!.slug);
     } catch (error) {
       console.error('Error deleting template:', error);
       toast.error('Erro ao excluir tarefa');
