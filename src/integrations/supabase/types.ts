@@ -441,6 +441,56 @@ export type Database = {
           },
         ]
       }
+      onboarding_cac_forms: {
+        Row: {
+          company_name: string
+          created_at: string
+          facebook_ads_investment: number | null
+          form_title: string | null
+          google_ads_investment: number | null
+          id: string
+          linkedin_ads_investment: number | null
+          project_id: string
+          sales_quantity_3_months: number | null
+          sales_value_3_months: number | null
+          submitted_at: string
+        }
+        Insert: {
+          company_name: string
+          created_at?: string
+          facebook_ads_investment?: number | null
+          form_title?: string | null
+          google_ads_investment?: number | null
+          id?: string
+          linkedin_ads_investment?: number | null
+          project_id: string
+          sales_quantity_3_months?: number | null
+          sales_value_3_months?: number | null
+          submitted_at?: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          facebook_ads_investment?: number | null
+          form_title?: string | null
+          google_ads_investment?: number | null
+          id?: string
+          linkedin_ads_investment?: number | null
+          project_id?: string
+          sales_quantity_3_months?: number | null
+          sales_value_3_months?: number | null
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_cac_forms_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_companies: {
         Row: {
           address: string | null

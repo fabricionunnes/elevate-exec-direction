@@ -1032,6 +1032,7 @@ const OnboardingProjectPage = () => {
           <TabsContent value="briefing">
             <CompanyBriefingPanel 
               companyId={project.onboarding_company_id || ""} 
+              projectId={projectId}
               userRole={currentUserRole}
               isStaffAdmin={isStaffAdmin}
             />
