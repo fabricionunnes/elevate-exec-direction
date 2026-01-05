@@ -62,7 +62,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "UNV AI Advisor nível básico",
       "Cobrança básica de execução"
     ],
-    bestFor: "Empresas com faturamento até R$ 150k/mês que estão começando a organizar vendas",
+    bestFor: "Empresas com faturamento a partir de R$ 20k/mês que estão começando a organizar vendas",
     whyRecommended: "Você está no momento de estruturar a base. O Core vai te dar a fundação necessária para crescer com método.",
     problemsSolved: [
       {
@@ -94,7 +94,7 @@ export const productDetails: Record<string, ProductDetail> = {
     ],
     timeToResults: "30-60 dias para ver os primeiros resultados",
     idealProfile: [
-      "Faturamento até R$ 150k/mês",
+      "Faturamento a partir de R$ 20k/mês",
       "Vende sozinho ou com 1-2 pessoas",
       "Nunca estruturou vendas antes",
       "Quer começar certo"
@@ -122,7 +122,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "Acesso à comunidade UNV",
       "UNV AI Advisor nível execução"
     ],
-    bestFor: "Empresas de R$ 100k a R$ 400k/mês que já vendem mas perdem ritmo sem cobrança externa",
+    bestFor: "Empresas a partir de R$ 50k/mês que já vendem mas perdem ritmo sem cobrança externa",
     whyRecommended: "Você já tem vendas acontecendo, mas precisa de constância. O Control mantém a disciplina mês a mês.",
     problemsSolved: [
       {
@@ -154,7 +154,7 @@ export const productDetails: Record<string, ProductDetail> = {
     ],
     timeToResults: "Resultados visíveis a partir do 2º mês",
     idealProfile: [
-      "Faturamento R$ 100k-400k/mês",
+      "Faturamento a partir de R$ 50k/mês",
       "Já tem alguma estrutura comercial",
       "Precisa de cobrança externa",
       "Quer manter momentum"

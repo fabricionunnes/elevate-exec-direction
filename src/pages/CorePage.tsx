@@ -138,7 +138,7 @@ const structuralGains = [
 ];
 
 const icp = [
-  { label: "Faturamento", value: "R$ 50k–150k/mês", icon: BarChart3 },
+  { label: "Faturamento", value: "a partir de R$ 20k/mês", icon: BarChart3 },
   { label: "Time", value: "1–5 vendedores", icon: Users },
 ];
 
@@ -236,7 +236,7 @@ export default function CorePage() {
         ]}
         arrow="É a base. Não acelera vendas, prepara o terreno."
         targetAudience={{
-          revenue: "R$ 50k a R$ 150k/mês",
+          revenue: "a partir de R$ 20k/mês",
           team: "Times pequenos (1–5 vendedores)"
         }}
         schedule={[
