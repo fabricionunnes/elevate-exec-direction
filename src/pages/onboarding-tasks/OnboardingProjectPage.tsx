@@ -346,8 +346,8 @@ const OnboardingProjectPage = () => {
     try {
       const task = tasks.find((t) => t.id === taskId);
       
-      // Validate: cannot set in_progress or completed without a responsible
-      if ((newStatus === "in_progress" || newStatus === "completed") && !task?.responsible_staff) {
+      // Validate: cannot set in_progress or completed without a responsible (assignee)
+      if ((newStatus === "in_progress" || newStatus === "completed") && !task?.assignee_id) {
         toast.error("Atribua um responsável antes de alterar o status da tarefa");
         return;
       }
