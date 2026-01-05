@@ -48,6 +48,7 @@ import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBrief
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
 import { Settings, Sparkles, Building2, Wand2, Target, UserCircle, Route, LayoutList, CalendarDays, LogOut } from "lucide-react";
 import { ChurnReasonDialog } from "@/components/onboarding-tasks/ChurnReasonDialog";
+import { NoticePeriodDialog } from "@/components/onboarding-tasks/NoticePeriodDialog";
 import { MonthlyGoalsCard } from "@/components/onboarding-tasks/MonthlyGoalsCard";
 import { RealtimeNotifications } from "@/components/onboarding-tasks/RealtimeNotifications";
 import { TasksGameTrailView } from "@/components/onboarding-tasks/TasksGameTrailView";
@@ -148,6 +149,8 @@ const OnboardingProjectPage = () => {
   const [staffList, setStaffList] = useState<{ id: string; name: string; role: string }[]>([]);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
   const [showChurnDialog, setShowChurnDialog] = useState(false);
+  const [showNoticePeriodDialog, setShowNoticePeriodDialog] = useState(false);
+  const [noticePeriodLoading, setNoticePeriodLoading] = useState(false);
   const [churnLoading, setChurnLoading] = useState(false);
 
   // Check for attention/risk alerts when opening project
@@ -530,8 +533,37 @@ const OnboardingProjectPage = () => {
   const handleProjectStatusChange = (value: string) => {
     if (value === "closed") {
       setShowChurnDialog(true);
+    } else if (value === "notice_period") {
+      setShowNoticePeriodDialog(true);
     } else {
       handleProjectUpdate("status", value);
+    }
+  };
+
+  const handleNoticePeriodConfirm = async (endDate: Date) => {
+    if (!projectId) return;
+    setNoticePeriodLoading(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_projects")
+        .update({
+          status: "notice_period",
+          notice_end_date: endDate.toISOString().split('T')[0],
+        })
+        .eq("id", projectId);
+
+      if (error) throw error;
+      setProject(prev => prev ? { 
+        ...prev, 
+        status: "notice_period",
+      } : null);
+      setShowNoticePeriodDialog(false);
+      toast.success("Projeto alterado para Cumprindo Aviso");
+    } catch (error) {
+      console.error("Error updating project to notice period:", error);
+      toast.error("Erro ao atualizar projeto");
+    } finally {
+      setNoticePeriodLoading(false);
     }
   };
 
@@ -1079,6 +1111,13 @@ const OnboardingProjectPage = () => {
         onOpenChange={setShowChurnDialog}
         onConfirm={handleChurnConfirm}
         isLoading={churnLoading}
+      />
+
+      <NoticePeriodDialog
+        open={showNoticePeriodDialog}
+        onOpenChange={setShowNoticePeriodDialog}
+        onConfirm={handleNoticePeriodConfirm}
+        isLoading={noticePeriodLoading}
       />
     </div>
   );
