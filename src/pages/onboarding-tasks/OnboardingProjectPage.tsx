@@ -47,6 +47,7 @@ import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
 import { Settings, Sparkles, Building2, Wand2, Target, UserCircle, Route, LayoutList, CalendarDays, LogOut } from "lucide-react";
+import { ChurnReasonDialog } from "@/components/onboarding-tasks/ChurnReasonDialog";
 import { MonthlyGoalsCard } from "@/components/onboarding-tasks/MonthlyGoalsCard";
 import { RealtimeNotifications } from "@/components/onboarding-tasks/RealtimeNotifications";
 import { TasksGameTrailView } from "@/components/onboarding-tasks/TasksGameTrailView";
@@ -145,6 +146,8 @@ const OnboardingProjectPage = () => {
   const [tasksViewMode, setTasksViewMode] = useState<"trail" | "list" | "schedule">("trail");
   const [staffList, setStaffList] = useState<{ id: string; name: string; role: string }[]>([]);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
+  const [showChurnDialog, setShowChurnDialog] = useState(false);
+  const [churnLoading, setChurnLoading] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -441,6 +444,43 @@ const OnboardingProjectPage = () => {
     }
   };
 
+  const handleProjectStatusChange = (value: string) => {
+    if (value === "closed") {
+      setShowChurnDialog(true);
+    } else {
+      handleProjectUpdate("status", value);
+    }
+  };
+
+  const handleChurnConfirm = async (reason: string, notes: string) => {
+    if (!projectId) return;
+    setChurnLoading(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_projects")
+        .update({
+          status: "closed",
+          churn_reason: reason,
+          churn_notes: notes,
+          churn_date: new Date().toISOString(),
+        })
+        .eq("id", projectId);
+
+      if (error) throw error;
+      setProject(prev => prev ? { 
+        ...prev, 
+        status: "closed",
+      } : null);
+      setShowChurnDialog(false);
+      toast.success("Projeto encerrado");
+    } catch (error) {
+      console.error("Error closing project:", error);
+      toast.error("Erro ao encerrar projeto");
+    } finally {
+      setChurnLoading(false);
+    }
+  };
+
   const handleProjectUpdate = async (field: string, value: string | null) => {
     if (!projectId) return;
     try {
@@ -669,7 +709,7 @@ const OnboardingProjectPage = () => {
                 <span className="text-sm text-muted-foreground">Status:</span>
                 <Select 
                   value={project.status} 
-                  onValueChange={(value) => handleProjectUpdate("status", value)}
+                  onValueChange={handleProjectStatusChange}
                 >
                   <SelectTrigger className="w-[180px]">
                     <SelectValue />
@@ -945,6 +985,13 @@ const OnboardingProjectPage = () => {
         projectId={projectId!}
         productId={project.product_id}
         onTasksGenerated={fetchProjectData}
+      />
+
+      <ChurnReasonDialog
+        open={showChurnDialog}
+        onOpenChange={setShowChurnDialog}
+        onConfirm={handleChurnConfirm}
+        isLoading={churnLoading}
       />
     </div>
   );
