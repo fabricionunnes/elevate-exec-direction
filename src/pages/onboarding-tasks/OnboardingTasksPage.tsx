@@ -323,6 +323,13 @@ const OnboardingTasksPage = () => {
     const periodMonth = dateRange.start.getMonth() + 1;
     const periodYear = dateRange.start.getFullYear();
     
+    // Calculate time elapsed percentage in the month
+    const today = new Date();
+    const isCurrentMonth = today.getMonth() + 1 === periodMonth && today.getFullYear() === periodYear;
+    const daysInMonth = new Date(periodYear, periodMonth, 0).getDate();
+    const currentDay = isCurrentMonth ? today.getDate() : daysInMonth;
+    const timeElapsedPercent = currentDay / daysInMonth;
+    
     const meetingGoalIds = new Set<string>(); // >=100%
     const above70Ids = new Set<string>(); // 70-99%
     const between50And70Ids = new Set<string>(); // 50-69%
@@ -335,7 +342,11 @@ const OnboardingTasksPage = () => {
         g.sales_target && g.sales_target > 0
       ) {
         const result = g.sales_result || 0;
-        const projectionPercent = Math.round((result / g.sales_target) * 100);
+        const achievementPercent = result / g.sales_target;
+        // Project to end of month based on time elapsed
+        const projectionPercent = timeElapsedPercent > 0 
+          ? Math.round((achievementPercent / timeElapsedPercent) * 100)
+          : 0;
         
         if (projectionPercent >= 100) {
           meetingGoalIds.add(g.project_id);

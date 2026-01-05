@@ -310,6 +310,13 @@ const DashboardMetrics = ({
     const periodMonth = dateRange.start.getMonth() + 1; // 1-indexed
     const periodYear = dateRange.start.getFullYear();
     
+    // Calculate time elapsed percentage in the month
+    const today = new Date();
+    const isCurrentMonth = today.getMonth() + 1 === periodMonth && today.getFullYear() === periodYear;
+    const daysInMonth = new Date(periodYear, periodMonth, 0).getDate();
+    const currentDay = isCurrentMonth ? today.getDate() : daysInMonth;
+    const timeElapsedPercent = currentDay / daysInMonth;
+    
     // Get project IDs from filtered projects (respects consultant and service filters)
     const filteredProjectIds = new Set(projects.map(p => p.id));
     
@@ -323,11 +330,16 @@ const DashboardMetrics = ({
     // Count projects with goals set (has target)
     const projectsWithGoals = filteredGoals.filter(g => g.sales_target && g.sales_target > 0);
     
-    // Calculate projection percentage for each project
+    // Calculate projection percentage for each project based on time elapsed
+    // Formula: (current_result / target) / time_elapsed_percent * 100
     const projectsWithProjection = projectsWithGoals.map(g => {
       const result = g.sales_result || 0;
       const target = g.sales_target || 1;
-      const projectionPercent = Math.round((result / target) * 100);
+      const achievementPercent = result / target;
+      // Project to end of month: if at 50% of month with 50% result, projecting 100%
+      const projectionPercent = timeElapsedPercent > 0 
+        ? Math.round((achievementPercent / timeElapsedPercent) * 100)
+        : 0;
       return { ...g, projectionPercent };
     });
     
