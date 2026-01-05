@@ -9,8 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Trash2, LogOut, Layers, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, LogOut, Layers, Save, AlertTriangle } from 'lucide-react';
 
 interface Service {
   id: string;
@@ -29,6 +30,12 @@ interface TaskToCreate {
   responsible_role: string;
   recurrence: string;
   sort_order: number;
+}
+
+interface PhaseInfo {
+  phase: string;
+  services: string[];
+  taskCount: number;
 }
 
 const PRIORITIES = [
@@ -58,11 +65,19 @@ export default function OnboardingBulkTemplatesPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
+  
+  // Create tab state
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [phaseName, setPhaseName] = useState('');
   const [phaseOrder, setPhaseOrder] = useState(1);
   const [tasks, setTasks] = useState<TaskToCreate[]>([]);
+  
+  // Delete tab state
+  const [phases, setPhases] = useState<PhaseInfo[]>([]);
+  const [selectedPhases, setSelectedPhases] = useState<string[]>([]);
+  const [deleteServices, setDeleteServices] = useState<string[]>([]);
 
   useEffect(() => {
     checkAdmin();
@@ -108,11 +123,45 @@ export default function OnboardingBulkTemplatesPage() {
     setServices(data || []);
   };
 
+  const fetchPhases = async () => {
+    const { data, error } = await supabase
+      .from('onboarding_task_templates')
+      .select('phase, product_id');
+
+    if (error) {
+      toast.error('Erro ao carregar fases');
+      return;
+    }
+
+    // Group by phase and count
+    const phaseMap = new Map<string, { services: Set<string>; count: number }>();
+    
+    data?.forEach(template => {
+      if (template.phase) {
+        if (!phaseMap.has(template.phase)) {
+          phaseMap.set(template.phase, { services: new Set(), count: 0 });
+        }
+        const info = phaseMap.get(template.phase)!;
+        info.services.add(template.product_id);
+        info.count++;
+      }
+    });
+
+    const phasesArray: PhaseInfo[] = Array.from(phaseMap.entries()).map(([phase, info]) => ({
+      phase,
+      services: Array.from(info.services),
+      taskCount: info.count
+    })).sort((a, b) => a.phase.localeCompare(b.phase));
+
+    setPhases(phasesArray);
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/onboarding-tasks/login');
   };
 
+  // Create tab functions
   const toggleService = (slug: string) => {
     setSelectedServices(prev =>
       prev.includes(slug)
@@ -179,7 +228,6 @@ export default function OnboardingBulkTemplatesPage() {
     setSaving(true);
 
     try {
-      // Create templates for each selected service
       const templatesToInsert = selectedServices.flatMap(serviceSlug =>
         tasks.map(task => ({
           product_id: serviceSlug,
@@ -204,7 +252,6 @@ export default function OnboardingBulkTemplatesPage() {
 
       toast.success(`${tasks.length} tarefa(s) adicionada(s) a ${selectedServices.length} serviço(s)`);
       
-      // Reset form
       setPhaseName('');
       setPhaseOrder(1);
       setTasks([]);
@@ -213,6 +260,70 @@ export default function OnboardingBulkTemplatesPage() {
       toast.error('Erro ao salvar: ' + error.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Delete tab functions
+  const toggleDeleteService = (slug: string) => {
+    setDeleteServices(prev =>
+      prev.includes(slug)
+        ? prev.filter(s => s !== slug)
+        : [...prev, slug]
+    );
+  };
+
+  const selectAllDeleteServices = () => {
+    if (deleteServices.length === services.length) {
+      setDeleteServices([]);
+    } else {
+      setDeleteServices(services.map(s => s.slug));
+    }
+  };
+
+  const togglePhase = (phase: string) => {
+    setSelectedPhases(prev =>
+      prev.includes(phase)
+        ? prev.filter(p => p !== phase)
+        : [...prev, phase]
+    );
+  };
+
+  const handleDelete = async () => {
+    if (selectedPhases.length === 0) {
+      toast.error('Selecione pelo menos uma fase');
+      return;
+    }
+
+    if (deleteServices.length === 0) {
+      toast.error('Selecione pelo menos um serviço');
+      return;
+    }
+
+    const confirmMessage = `Tem certeza que deseja excluir ${selectedPhases.length} fase(s) de ${deleteServices.length} serviço(s)? Esta ação não pode ser desfeita.`;
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setDeleting(true);
+
+    try {
+      const { error } = await supabase
+        .from('onboarding_task_templates')
+        .delete()
+        .in('phase', selectedPhases)
+        .in('product_id', deleteServices);
+
+      if (error) throw error;
+
+      toast.success(`Fases excluídas com sucesso`);
+      
+      setSelectedPhases([]);
+      setDeleteServices([]);
+      fetchPhases();
+    } catch (error: any) {
+      toast.error('Erro ao excluir: ' + error.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -236,7 +347,7 @@ export default function OnboardingBulkTemplatesPage() {
             </Button>
             <div className="flex items-center gap-2">
               <Layers className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-bold">Adicionar em Lote</h1>
+              <h1 className="text-xl font-bold">Operações em Lote</h1>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={handleLogout}>
@@ -247,240 +358,386 @@ export default function OnboardingBulkTemplatesPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-5xl">
-        <div className="space-y-6">
-          {/* Services Selection */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">1. Selecione os Serviços</CardTitle>
-              <CardDescription>
-                Escolha em quais serviços as tarefas serão adicionadas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="select-all"
-                    checked={selectedServices.length === services.length && services.length > 0}
-                    onCheckedChange={selectAllServices}
-                  />
-                  <Label htmlFor="select-all" className="font-medium cursor-pointer">
-                    Selecionar todos ({services.length})
-                  </Label>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {services.map(service => (
-                    <div
-                      key={service.id}
-                      className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedServices.includes(service.slug)
-                          ? 'bg-primary/10 border-primary'
-                          : 'bg-card hover:bg-muted/50'
-                      }`}
-                      onClick={() => toggleService(service.slug)}
-                    >
-                      <Checkbox
-                        checked={selectedServices.includes(service.slug)}
-                        onCheckedChange={() => toggleService(service.slug)}
-                      />
-                      <span className="text-sm font-medium truncate">{service.name}</span>
-                    </div>
-                  ))}
-                </div>
-                {selectedServices.length > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    {selectedServices.length} serviço(s) selecionado(s)
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="create" onValueChange={(v) => v === 'delete' && fetchPhases()}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="create" className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Criar em Lote
+            </TabsTrigger>
+            <TabsTrigger value="delete" className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4" />
+              Excluir em Lote
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Phase Configuration */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">2. Configure a Fase</CardTitle>
-              <CardDescription>
-                Defina o nome e a ordem da fase
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phase-name">Nome da Fase *</Label>
-                  <Input
-                    id="phase-name"
-                    value={phaseName}
-                    onChange={e => setPhaseName(e.target.value)}
-                    placeholder="Ex: Diagnóstico, Implementação..."
-                  />
+          {/* CREATE TAB */}
+          <TabsContent value="create" className="space-y-6">
+            {/* Step 1: Phase */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">1. Configure a Fase</CardTitle>
+                <CardDescription>
+                  Defina o nome e a ordem da fase que conterá as tarefas
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phase-name">Nome da Fase *</Label>
+                    <Input
+                      id="phase-name"
+                      value={phaseName}
+                      onChange={e => setPhaseName(e.target.value)}
+                      placeholder="Ex: Diagnóstico, Implementação..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phase-order">Ordem da Fase</Label>
+                    <Input
+                      id="phase-order"
+                      type="number"
+                      min={1}
+                      value={phaseOrder}
+                      onChange={e => setPhaseOrder(parseInt(e.target.value) || 1)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Define a posição da fase na trilha (1 = primeira)
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phase-order">Ordem da Fase</Label>
-                  <Input
-                    id="phase-order"
-                    type="number"
-                    min={1}
-                    value={phaseOrder}
-                    onChange={e => setPhaseOrder(parseInt(e.target.value) || 1)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Define a posição da fase na trilha (1 = primeira)
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Tasks */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">3. Adicione as Tarefas</CardTitle>
-                  <CardDescription>
-                    Crie as tarefas que serão adicionadas a todos os serviços selecionados
-                  </CardDescription>
-                </div>
-                <Button onClick={addTask} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova Tarefa
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {tasks.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Nenhuma tarefa adicionada</p>
-                  <Button variant="outline" className="mt-4" onClick={addTask}>
+            {/* Step 2: Tasks */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">2. Crie as Tarefas</CardTitle>
+                    <CardDescription>
+                      Adicione todas as tarefas desta fase antes de selecionar os serviços
+                    </CardDescription>
+                  </div>
+                  <Button onClick={addTask} size="sm">
                     <Plus className="h-4 w-4 mr-2" />
-                    Adicionar primeira tarefa
+                    Nova Tarefa
                   </Button>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {tasks.map((task, index) => (
-                    <div key={task.id} className="border rounded-lg p-4 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <Badge variant="outline">Tarefa {index + 1}</Badge>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => removeTask(task.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Título *</Label>
-                        <Input
-                          value={task.title}
-                          onChange={e => updateTask(task.id, 'title', e.target.value)}
-                          placeholder="Nome da tarefa..."
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Descrição</Label>
-                        <Textarea
-                          value={task.description}
-                          onChange={e => updateTask(task.id, 'description', e.target.value)}
-                          placeholder="Descrição opcional..."
-                          rows={2}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="space-y-2">
-                          <Label>Prioridade</Label>
-                          <Select
-                            value={task.priority}
-                            onValueChange={v => updateTask(task.id, 'priority', v)}
+              </CardHeader>
+              <CardContent>
+                {tasks.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Nenhuma tarefa adicionada</p>
+                    <Button variant="outline" className="mt-4" onClick={addTask}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Adicionar primeira tarefa
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {tasks.map((task, index) => (
+                      <div key={task.id} className="border rounded-lg p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline">Tarefa {index + 1}</Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => removeTask(task.id)}
                           >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {PRIORITIES.map(p => (
-                                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Responsável</Label>
-                          <Select
-                            value={task.responsible_role}
-                            onValueChange={v => updateTask(task.id, 'responsible_role', v)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ROLES.map(r => (
-                                <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Dias após início</Label>
+                          <Label>Título *</Label>
                           <Input
-                            type="number"
-                            min={0}
-                            value={task.default_days_offset}
-                            onChange={e => updateTask(task.id, 'default_days_offset', parseInt(e.target.value) || 0)}
+                            value={task.title}
+                            onChange={e => updateTask(task.id, 'title', e.target.value)}
+                            placeholder="Nome da tarefa..."
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Recorrência</Label>
-                          <Select
-                            value={task.recurrence}
-                            onValueChange={v => updateTask(task.id, 'recurrence', v)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {RECURRENCE_OPTIONS.map(r => (
-                                <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Label>Descrição</Label>
+                          <Textarea
+                            value={task.description}
+                            onChange={e => updateTask(task.id, 'description', e.target.value)}
+                            placeholder="Descrição opcional..."
+                            rows={2}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="space-y-2">
+                            <Label>Prioridade</Label>
+                            <Select
+                              value={task.priority}
+                              onValueChange={v => updateTask(task.id, 'priority', v)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {PRIORITIES.map(p => (
+                                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Responsável</Label>
+                            <Select
+                              value={task.responsible_role}
+                              onValueChange={v => updateTask(task.id, 'responsible_role', v)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {ROLES.map(r => (
+                                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Dias após início</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={task.default_days_offset}
+                              onChange={e => updateTask(task.id, 'default_days_offset', parseInt(e.target.value) || 0)}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Recorrência</Label>
+                            <Select
+                              value={task.recurrence}
+                              onValueChange={v => updateTask(task.id, 'recurrence', v)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {RECURRENCE_OPTIONS.map(r => (
+                                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Save Button */}
-          <div className="flex justify-end gap-4">
-            <Button variant="outline" onClick={() => navigate('/onboarding-tasks/services')}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={saving || !phaseName || selectedServices.length === 0 || tasks.length === 0}
-            >
-              {saving ? (
-                'Salvando...'
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Salvar em {selectedServices.length} serviço(s)
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
+            {/* Step 3: Services */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">3. Selecione os Serviços</CardTitle>
+                <CardDescription>
+                  Escolha em quais serviços as tarefas serão adicionadas
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="select-all"
+                      checked={selectedServices.length === services.length && services.length > 0}
+                      onCheckedChange={selectAllServices}
+                    />
+                    <Label htmlFor="select-all" className="font-medium cursor-pointer">
+                      Selecionar todos ({services.length})
+                    </Label>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {services.map(service => (
+                      <div
+                        key={service.id}
+                        className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedServices.includes(service.slug)
+                            ? 'bg-primary/10 border-primary'
+                            : 'bg-card hover:bg-muted/50'
+                        }`}
+                        onClick={() => toggleService(service.slug)}
+                      >
+                        <Checkbox
+                          checked={selectedServices.includes(service.slug)}
+                          onCheckedChange={() => toggleService(service.slug)}
+                        />
+                        <span className="text-sm font-medium truncate">{service.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {selectedServices.length > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      {selectedServices.length} serviço(s) selecionado(s)
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Save Button */}
+            <div className="flex justify-end gap-4">
+              <Button variant="outline" onClick={() => navigate('/onboarding-tasks/services')}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={saving || !phaseName || selectedServices.length === 0 || tasks.length === 0}
+              >
+                {saving ? (
+                  'Salvando...'
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Salvar {tasks.length} tarefa(s) em {selectedServices.length || 0} serviço(s)
+                  </>
+                )}
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* DELETE TAB */}
+          <TabsContent value="delete" className="space-y-6">
+            {/* Step 1: Select Phases */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">1. Selecione as Fases</CardTitle>
+                <CardDescription>
+                  Escolha quais fases deseja excluir
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {phases.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Nenhuma fase encontrada</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {phases.map(phase => (
+                      <div
+                        key={phase.phase}
+                        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedPhases.includes(phase.phase)
+                            ? 'bg-destructive/10 border-destructive'
+                            : 'bg-card hover:bg-muted/50'
+                        }`}
+                        onClick={() => togglePhase(phase.phase)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={selectedPhases.includes(phase.phase)}
+                            onCheckedChange={() => togglePhase(phase.phase)}
+                          />
+                          <span className="font-medium">{phase.phase}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{phase.taskCount} tarefas</Badge>
+                          <Badge variant="secondary">{phase.services.length} serviços</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Step 2: Select Services */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">2. Selecione os Serviços</CardTitle>
+                <CardDescription>
+                  Escolha de quais serviços as fases serão excluídas
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="select-all-delete"
+                      checked={deleteServices.length === services.length && services.length > 0}
+                      onCheckedChange={selectAllDeleteServices}
+                    />
+                    <Label htmlFor="select-all-delete" className="font-medium cursor-pointer">
+                      Selecionar todos ({services.length})
+                    </Label>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {services.map(service => (
+                      <div
+                        key={service.id}
+                        className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          deleteServices.includes(service.slug)
+                            ? 'bg-destructive/10 border-destructive'
+                            : 'bg-card hover:bg-muted/50'
+                        }`}
+                        onClick={() => toggleDeleteService(service.slug)}
+                      >
+                        <Checkbox
+                          checked={deleteServices.includes(service.slug)}
+                          onCheckedChange={() => toggleDeleteService(service.slug)}
+                        />
+                        <span className="text-sm font-medium truncate">{service.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {deleteServices.length > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      {deleteServices.length} serviço(s) selecionado(s)
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Warning and Delete Button */}
+            {selectedPhases.length > 0 && deleteServices.length > 0 && (
+              <Card className="border-destructive/50 bg-destructive/5">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-medium text-destructive">Atenção: Esta ação é irreversível</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Você está prestes a excluir {selectedPhases.length} fase(s) de {deleteServices.length} serviço(s).
+                        Tarefas já concluídas nos projetos ativos serão mantidas.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="flex justify-end gap-4">
+              <Button variant="outline" onClick={() => navigate('/onboarding-tasks/services')}>
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={deleting || selectedPhases.length === 0 || deleteServices.length === 0}
+              >
+                {deleting ? (
+                  'Excluindo...'
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir {selectedPhases.length} fase(s) de {deleteServices.length} serviço(s)
+                  </>
+                )}
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
