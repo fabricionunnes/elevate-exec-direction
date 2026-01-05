@@ -292,9 +292,17 @@ const OnboardingTasksPage = () => {
   };
 
   // Calculate overdue and today tasks for dashboard (respects consultant/service/status filters)
+  // IMPORTANT: Only consider ACTIVE projects for dashboard metrics
+  const activeProjects = useMemo(() => {
+    return allProjects.filter(p => p.status === "active");
+  }, [allProjects]);
+
   const filteredProjectIds = useMemo(() => {
+    // Start with active projects only
+    const baseProjects = activeProjects;
+    
     if (filterConsultant === "all" && filterService === "all" && filterStatus === "all") {
-      return new Set(allProjects.map((p) => p.id));
+      return new Set(baseProjects.map((p) => p.id));
     }
 
     // If tasks are directly linked to a consultant, include their projects too
@@ -321,7 +329,7 @@ const OnboardingTasksPage = () => {
     const projectPortfolioProjectIds =
       filterConsultant === "all"
         ? new Set<string>()
-        : new Set(allProjects.filter((p) => p.consultant_id === filterConsultant).map((p) => p.id));
+        : new Set(baseProjects.filter((p) => p.consultant_id === filterConsultant).map((p) => p.id));
 
     const consultantProjectIds =
       filterConsultant === "all"
@@ -333,21 +341,21 @@ const OnboardingTasksPage = () => {
           ]);
 
     return new Set(
-      allProjects
+      baseProjects
         .filter((project) => {
           const matchesConsultant =
             filterConsultant === "all" || (consultantProjectIds?.has(project.id) ?? false);
 
           const matchesService = filterService === "all" || project.product_id === filterService;
 
-          // Status filter is project status
+          // Status filter now filters by project status within active projects
           const matchesStatus = filterStatus === "all" || project.status === filterStatus;
 
           return matchesConsultant && matchesService && matchesStatus;
         })
         .map((p) => p.id)
     );
-  }, [allProjects, allTasks, companies, filterConsultant, filterService, filterStatus]);
+  }, [activeProjects, allTasks, companies, filterConsultant, filterService, filterStatus]);
 
   const normalizeDueDate = (due: string) => {
     // Ensure date-only strings are parsed as local midnight for consistent "today/overdue" checks
@@ -381,6 +389,7 @@ const OnboardingTasksPage = () => {
       return dueDate.getTime() === today.getTime();
     });
   }, [allTasks, filteredProjectIds]);
+
 
 
   // Handle metric card filter
