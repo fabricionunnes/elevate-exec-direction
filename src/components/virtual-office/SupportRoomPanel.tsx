@@ -214,7 +214,11 @@ export const SupportRoomPanel = ({ currentStaff, onSessionUpdate }: SupportRoomP
 
   const confirmCompleteSession = async () => {
     if (!selectedSession) return;
-
+    
+    if (!sessionNotes.trim()) {
+      toast.error("Por favor, adicione uma observação antes de finalizar");
+      return;
+    }
     setSubmitting(true);
     try {
       const { error } = await supabase
