@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock } from "lucide-react";
+import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -758,9 +759,7 @@ const OnboardingTasksPage = () => {
               </Button>
               <div>
                 <h1 className="text-lg sm:text-3xl font-bold leading-tight">Dashboard</h1>
-                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-                  Gerencie tarefas e acompanhamento de clientes
-                </p>
+                <WelcomeHeader className="text-xs sm:text-sm text-muted-foreground" />
               </div>
             </div>
             
