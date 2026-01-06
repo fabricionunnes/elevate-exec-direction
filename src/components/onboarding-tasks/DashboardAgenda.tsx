@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isPast, addMonths, subMonths, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, Building2, Package, Plus, ExternalLink, Circle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, Building2, Package, Plus, ExternalLink, Circle, CalendarX } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +77,15 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
     });
     
     return map;
+  }, [tasks, filteredProjectIds]);
+
+  // Get tasks without due date
+  const tasksWithoutDate = useMemo(() => {
+    return tasks.filter(task => 
+      !task.due_date && 
+      filteredProjectIds.has(task.project_id) &&
+      task.status !== "completed"
+    );
   }, [tasks, filteredProjectIds]);
 
   // Generate calendar days
@@ -316,6 +325,64 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
           </div>
         </CardContent>
       </Card>
+
+      {/* Tasks Without Due Date */}
+      {tasksWithoutDate.length > 0 && (
+        <Card className="col-span-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center justify-between text-base sm:text-lg">
+              <span className="flex items-center gap-2">
+                <CalendarX className="h-5 w-5 text-muted-foreground" />
+                Tarefas sem Data
+              </span>
+              <Badge variant="secondary" className="ml-2">
+                {tasksWithoutDate.length}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <ScrollArea className="max-h-[300px]">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {tasksWithoutDate.map(task => {
+                  const { project, company } = getTaskInfo(task);
+                  
+                  return (
+                    <motion.div
+                      key={task.id}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={() => handleTaskClick(task)}
+                      className="p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md hover:border-primary/50 bg-card"
+                    >
+                      <div className="flex items-start gap-2">
+                        <CalendarX className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm line-clamp-2">{task.title}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            {company && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Building2 className="h-3 w-3" />
+                                <span className="truncate max-w-[100px]">{company.name}</span>
+                              </div>
+                            )}
+                            {project && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Package className="h-3 w-3" />
+                                <span className="truncate max-w-[80px]">{project.product_name}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Day Tasks Dialog */}
       <Dialog open={showDayDialog} onOpenChange={setShowDayDialog}>
