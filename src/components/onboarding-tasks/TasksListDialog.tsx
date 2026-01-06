@@ -58,6 +58,11 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
       return;
     }
 
+    if (type === "overdue" || type === "today") {
+      fetchTasksByDateFilter();
+      return;
+    }
+
     if (taskIds.length > 0) {
       fetchTasksDetails();
     } else {
@@ -66,11 +71,19 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
     }
   }, [open, type, status, taskIds, projectIds]);
 
-  const fetchTasksDetails = async () => {
+  const fetchTasksByDateFilter = async () => {
     setLoading(true);
     try {
-      // Fetch tasks with project info
-      const { data: tasksData, error } = await supabase
+      const baseProjectIds = projectIds ?? [];
+      if (baseProjectIds.length === 0) {
+        setTasks([]);
+        setLoading(false);
+        return;
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      
+      let query = supabase
         .from("onboarding_tasks")
         .select(
           `
@@ -91,8 +104,18 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
           )
         `
         )
-        .in("id", taskIds)
-        .order("due_date", { ascending: true });
+        .in("project_id", baseProjectIds)
+        .neq("status", "completed");
+
+      if (type === "overdue") {
+        query = query.lt("due_date", today);
+      } else if (type === "today") {
+        query = query.eq("due_date", today);
+      }
+
+      const { data: tasksData, error } = await query
+        .order("due_date", { ascending: true })
+        .limit(500);
 
       if (error) throw error;
 
@@ -109,6 +132,74 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
       }));
 
       setTasks(formattedTasks);
+    } catch (error) {
+      console.error("Error fetching tasks by date filter:", error);
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTasksDetails = async () => {
+    setLoading(true);
+    try {
+      // Fetch tasks with project info in batches if needed
+      const batchSize = 100;
+      let allFormattedTasks: TaskWithDetails[] = [];
+
+      for (let i = 0; i < taskIds.length; i += batchSize) {
+        const batch = taskIds.slice(i, i + batchSize);
+        
+        const { data: tasksData, error } = await supabase
+          .from("onboarding_tasks")
+          .select(
+            `
+            id,
+            title,
+            status,
+            priority,
+            due_date,
+            project_id,
+            onboarding_projects!inner (
+              id,
+              product_name,
+              onboarding_company_id,
+              onboarding_companies (
+                id,
+                name
+              )
+            )
+          `
+          )
+          .in("id", batch)
+          .order("due_date", { ascending: true });
+
+        if (error) throw error;
+
+        const formattedTasks: TaskWithDetails[] = (tasksData || []).map((task: any) => ({
+          id: task.id,
+          title: task.title,
+          status: task.status,
+          priority: task.priority,
+          due_date: task.due_date,
+          project_id: task.project_id,
+          project_name: task.onboarding_projects?.product_name || "Projeto",
+          company_id: task.onboarding_projects?.onboarding_company_id || null,
+          company_name: task.onboarding_projects?.onboarding_companies?.name || null,
+        }));
+
+        allFormattedTasks = allFormattedTasks.concat(formattedTasks);
+      }
+
+      // Sort all tasks by due_date
+      allFormattedTasks.sort((a, b) => {
+        if (!a.due_date && !b.due_date) return 0;
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      });
+
+      setTasks(allFormattedTasks);
     } catch (error) {
       console.error("Error fetching tasks details:", error);
       setTasks([]);
