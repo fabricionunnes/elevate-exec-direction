@@ -134,6 +134,37 @@ const VirtualOfficePage = () => {
     initializeData();
   }, []);
 
+  // Keep presence alive with periodic updates and mark as offline on page unload
+  useEffect(() => {
+    if (!currentStaff) return;
+
+    // Update presence every 2 minutes to keep alive
+    const presenceInterval = setInterval(() => {
+      updatePresence(currentStaff.id, myStatus);
+    }, 2 * 60 * 1000);
+
+    // Mark as offline when leaving the page
+    const handleBeforeUnload = () => {
+      // Use sendBeacon for reliable delivery on page unload
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/virtual_office_presence?staff_id=eq.${currentStaff.id}`;
+      const data = JSON.stringify({ 
+        status: "offline", 
+        last_seen_at: new Date().toISOString() 
+      });
+      
+      navigator.sendBeacon(url, new Blob([data], { type: "application/json" }));
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      clearInterval(presenceInterval);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      // Also update to offline when component unmounts (navigation within app)
+      updatePresence(currentStaff.id, "offline");
+    };
+  }, [currentStaff, myStatus]);
+
   useEffect(() => {
     if (selectedRoom) {
       fetchMessages(selectedRoom.id);
