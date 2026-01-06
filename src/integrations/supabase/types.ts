@@ -980,6 +980,9 @@ export type Database = {
       }
       onboarding_projects: {
         Row: {
+          cancellation_signal_date: string | null
+          cancellation_signal_notes: string | null
+          cancellation_signal_reason: string | null
           churn_date: string | null
           churn_notes: string | null
           churn_reason: string | null
@@ -1007,6 +1010,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancellation_signal_date?: string | null
+          cancellation_signal_notes?: string | null
+          cancellation_signal_reason?: string | null
           churn_date?: string | null
           churn_notes?: string | null
           churn_reason?: string | null
@@ -1034,6 +1040,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancellation_signal_date?: string | null
+          cancellation_signal_notes?: string | null
+          cancellation_signal_reason?: string | null
           churn_date?: string | null
           churn_notes?: string | null
           churn_reason?: string | null
