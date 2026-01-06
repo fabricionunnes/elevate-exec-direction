@@ -210,31 +210,68 @@ export const OfficeFloorMap = ({
       )}
 
       {/* Floor Plan Container */}
-      <div className="flex-1 p-4 overflow-auto bg-muted/20">
-        <div className="max-w-3xl mx-auto">
-          {/* Building frame */}
-          <div className="relative rounded-xl border-2 border-border bg-card/30 p-4">
-            {/* Floor grid pattern */}
-            <div 
-              className="absolute inset-0 opacity-20 rounded-xl pointer-events-none"
-              style={{
-                backgroundImage: `
-                  linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px),
-                  linear-gradient(hsl(var(--border)) 1px, transparent 1px)
-                `,
-                backgroundSize: "30px 30px",
-              }}
-            />
+      <div className="flex-1 p-4 overflow-auto relative">
+        {/* Colorful background gradient */}
+        <div 
+          className="absolute inset-0 opacity-30"
+          style={{
+            background: `
+              radial-gradient(ellipse at 0% 0%, rgba(59, 130, 246, 0.3) 0%, transparent 50%),
+              radial-gradient(ellipse at 100% 0%, rgba(168, 85, 247, 0.3) 0%, transparent 50%),
+              radial-gradient(ellipse at 100% 100%, rgba(236, 72, 153, 0.3) 0%, transparent 50%),
+              radial-gradient(ellipse at 0% 100%, rgba(34, 197, 94, 0.25) 0%, transparent 50%),
+              radial-gradient(ellipse at 50% 50%, rgba(14, 165, 233, 0.15) 0%, transparent 70%)
+            `,
+          }}
+        />
+        
+        <div className="max-w-3xl mx-auto relative">
+          {/* Building frame with gradient border */}
+          <div 
+            className="relative rounded-2xl p-[2px] overflow-hidden"
+            style={{
+              background: `linear-gradient(135deg, 
+                rgba(59, 130, 246, 0.5) 0%, 
+                rgba(168, 85, 247, 0.5) 25%, 
+                rgba(236, 72, 153, 0.5) 50%, 
+                rgba(251, 146, 60, 0.5) 75%, 
+                rgba(34, 197, 94, 0.5) 100%
+              )`,
+            }}
+          >
+            <div className="rounded-2xl bg-background/95 backdrop-blur-sm p-4">
+              {/* Decorative corner accents */}
+              <div className="absolute top-2 left-2 w-8 h-8 border-l-2 border-t-2 border-sky-500/50 rounded-tl-lg" />
+              <div className="absolute top-2 right-2 w-8 h-8 border-r-2 border-t-2 border-violet-500/50 rounded-tr-lg" />
+              <div className="absolute bottom-2 left-2 w-8 h-8 border-l-2 border-b-2 border-emerald-500/50 rounded-bl-lg" />
+              <div className="absolute bottom-2 right-2 w-8 h-8 border-r-2 border-b-2 border-pink-500/50 rounded-br-lg" />
 
-            {/* Label */}
-            <div className="text-center mb-4">
-              <span className="inline-block px-3 py-1 bg-muted rounded-full text-[10px] text-muted-foreground font-medium tracking-wider">
-                ANDAR 1
-              </span>
-            </div>
+              {/* Floor grid pattern with color tint */}
+              <div 
+                className="absolute inset-0 opacity-10 rounded-2xl pointer-events-none"
+                style={{
+                  backgroundImage: `
+                    linear-gradient(90deg, rgba(99, 102, 241, 0.5) 1px, transparent 1px),
+                    linear-gradient(rgba(99, 102, 241, 0.5) 1px, transparent 1px)
+                  `,
+                  backgroundSize: "24px 24px",
+                }}
+              />
 
-            {/* Rooms Grid - Simple responsive grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {/* Label with gradient */}
+              <div className="text-center mb-4 relative z-10">
+                <span 
+                  className="inline-block px-4 py-1.5 rounded-full text-[10px] font-semibold tracking-widest text-white shadow-lg"
+                  style={{
+                    background: `linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(168, 85, 247, 0.9))`,
+                  }}
+                >
+                  🏢 ESCRITÓRIO VIRTUAL
+                </span>
+              </div>
+
+              {/* Rooms Grid - Simple responsive grid */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 relative z-10">
               {rooms.map((room, index) => {
                 const RoomIcon = getRoomIcon(room);
                 const roomPresences = getRoomPresences(room.id);
@@ -381,19 +418,19 @@ export const OfficeFloorMap = ({
                   </motion.div>
                 );
               })}
-            </div>
-
-            {/* Empty state */}
-            {rooms.length === 0 && (
-              <div className="flex items-center justify-center h-48">
-                <div className="text-center">
-                  <Briefcase className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
-                  <p className="text-muted-foreground text-sm">Nenhuma sala configurada</p>
-                </div>
               </div>
-            )}
-          </div>
 
+              {/* Empty state */}
+              {rooms.length === 0 && (
+                <div className="flex items-center justify-center h-48 relative z-10">
+                  <div className="text-center">
+                    <Briefcase className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+                    <p className="text-muted-foreground text-sm">Nenhuma sala configurada</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
