@@ -29,6 +29,7 @@ Deno.serve(async (req) => {
       project_id, 
       role,
       is_signup,
+      is_password_reset,
       company_name,
       selected_products,
       selected_companies
@@ -55,6 +56,46 @@ Deno.serve(async (req) => {
     const existingUser = existingUsers?.users?.find(u => u.email === email);
 
     let userId: string;
+
+    // Handle password reset by admin
+    if (is_password_reset) {
+      if (!existingUser) {
+        return new Response(
+          JSON.stringify({ error: "Usuário não encontrado" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Update password for existing user
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUser.id, { 
+        password 
+      });
+
+      if (updateError) {
+        console.error("Error updating password:", updateError);
+        return new Response(
+          JSON.stringify({ error: updateError.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Update temp_password in onboarding_users and mark as not changed
+      await supabaseAdmin
+        .from("onboarding_users")
+        .update({ 
+          temp_password: password,
+          password_changed: false 
+        })
+        .eq("email", email)
+        .eq("project_id", project_id);
+
+      console.log(`Password reset by admin for: ${email}`);
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Senha alterada com sucesso" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (existingUser) {
       // For signup, check if user already has account
