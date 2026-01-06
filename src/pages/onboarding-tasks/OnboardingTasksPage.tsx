@@ -753,9 +753,9 @@ const OnboardingTasksPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-        {/* Mobile Header */}
-        <div className="flex flex-col gap-3 mb-4 sm:mb-8">
-          {/* Top Row - Title & Actions */}
+        {/* Header */}
+        <div className="flex flex-col gap-3 mb-4 sm:mb-6">
+          {/* Top Row - Title & Logout */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-4">
               <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => navigate("/onboarding")}>
@@ -768,11 +768,10 @@ const OnboardingTasksPage = () => {
             </div>
             
             {/* Mobile Actions - Compact */}
-            <div className="flex items-center gap-1 sm:gap-2">
-              {/* Mobile Menu */}
+            <div className="flex items-center gap-1 sm:hidden">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden">
+                  <Button variant="outline" size="icon" className="h-8 w-8">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -819,114 +818,113 @@ const OnboardingTasksPage = () => {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+            </div>
+          </div>
 
-              {/* Desktop Actions */}
-              <div className="hidden sm:flex items-center gap-2">
-                {isAdmin && (
+          {/* Desktop Actions - Second Row */}
+          <div className="hidden sm:flex items-center gap-2 flex-wrap">
+            {isAdmin && (
+              <Button variant="default" size="sm" onClick={() => setShowAnnouncementDialog(true)}>
+                <Megaphone className="h-4 w-4 mr-2" />
+                Comunicado
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/import")}>
+              <Upload className="h-4 w-4 mr-2" />
+              Importar
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/services")}>
+              <Package className="h-4 w-4 mr-2" />
+              Serviços
+            </Button>
+            {isAdmin && (
+              <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/reschedule")}>
+                <CalendarClock className="h-4 w-4 mr-2" />
+                Reagendar
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/staff")}>
+              <Users className="h-4 w-4 mr-2" />
+              Equipe
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/office")}>
+              <Video className="h-4 w-4 mr-2" />
+              Escritório
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Building2 className="h-4 w-4 mr-2" />
+                  Empresas
+                  <ChevronDown className="h-4 w-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-72">
+                {canCreateCompany && (
                   <>
-                    <Button variant="default" onClick={() => setShowAnnouncementDialog(true)}>
-                      <Megaphone className="h-4 w-4 mr-2" />
-                      Comunicado
-                    </Button>
-                    <Button variant="outline" onClick={() => navigate("/onboarding-tasks/import")}>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Importar
-                    </Button>
-                    <Button variant="outline" onClick={() => navigate("/onboarding-tasks/services")}>
-                      <Package className="h-4 w-4 mr-2" />
-                      Serviços
-                    </Button>
-                    <Button variant="outline" onClick={() => navigate("/onboarding-tasks/reschedule")}>
-                      <CalendarClock className="h-4 w-4 mr-2" />
-                      Reagendar
-                    </Button>
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies/new")}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Nova Empresa
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                   </>
                 )}
-                <Button variant="outline" onClick={() => navigate("/onboarding-tasks/staff")}>
-                  <Users className="h-4 w-4 mr-2" />
-                  Equipe
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/onboarding-tasks/office")}>
-                  <Video className="h-4 w-4 mr-2" />
-                  Escritório
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      <Building2 className="h-4 w-4 mr-2" />
-                      Empresas
-                      <ChevronDown className="h-4 w-4 ml-2" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-72">
-                    {canCreateCompany && (
-                      <>
-                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies/new")}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Nova Empresa
+                <div className="px-2 py-2">
+                  <Input
+                    placeholder="Buscar empresa..."
+                    value={companySearchTerm}
+                    onChange={(e) => setCompanySearchTerm(e.target.value)}
+                    className="h-8"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+                <DropdownMenuSeparator />
+                {companies.length > 0 ? (
+                  <ScrollArea className="max-h-64">
+                    {companies
+                      .filter((c) => c.name.toLowerCase().includes(companySearchTerm.toLowerCase()))
+                      .slice(0, 20)
+                      .map((company) => (
+                        <DropdownMenuItem
+                          key={company.id}
+                          onClick={() => navigate(`/onboarding-tasks/companies/${company.id}`)}
+                          className="flex items-center justify-between"
+                        >
+                          <span className="truncate">{company.name}</span>
+                          <Badge variant={company.status === "active" ? "default" : "secondary"} className="ml-2 text-xs">
+                            {company.status === "active" ? "Ativa" : company.status}
+                          </Badge>
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                      </>
-                    )}
-                    <div className="px-2 py-2">
-                      <Input
-                        placeholder="Buscar empresa..."
-                        value={companySearchTerm}
-                        onChange={(e) => setCompanySearchTerm(e.target.value)}
-                        className="h-8"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                    <DropdownMenuSeparator />
-                    {companies.length > 0 ? (
-                      <ScrollArea className="max-h-64">
-                        {companies
-                          .filter((c) => c.name.toLowerCase().includes(companySearchTerm.toLowerCase()))
-                          .slice(0, 20)
-                          .map((company) => (
-                            <DropdownMenuItem
-                              key={company.id}
-                              onClick={() => navigate(`/onboarding-tasks/companies/${company.id}`)}
-                              className="flex items-center justify-between"
-                            >
-                              <span className="truncate">{company.name}</span>
-                              <Badge variant={company.status === "active" ? "default" : "secondary"} className="ml-2 text-xs">
-                                {company.status === "active" ? "Ativa" : company.status}
-                              </Badge>
-                            </DropdownMenuItem>
-                          ))}
-                        {companies.filter((c) => c.name.toLowerCase().includes(companySearchTerm.toLowerCase())).length === 0 && (
-                          <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                            Nenhuma empresa encontrada
-                          </div>
-                        )}
-                      </ScrollArea>
-                    ) : (
+                      ))}
+                    {companies.filter((c) => c.name.toLowerCase().includes(companySearchTerm.toLowerCase())).length === 0 && (
                       <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                        Nenhuma empresa cadastrada
+                        Nenhuma empresa encontrada
                       </div>
                     )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button onClick={() => setShowCreateDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Projeto
-                </Button>
-              </div>
-
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="h-8 w-8 sm:h-10 sm:w-10"
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  navigate("/onboarding-tasks/login");
-                }}
-                title="Sair"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                    Nenhuma empresa cadastrada
+                  </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Projeto
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-8 w-8"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate("/onboarding-tasks/login");
+              }}
+              title="Sair"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
 
           {/* Search and Filters - Responsive */}
