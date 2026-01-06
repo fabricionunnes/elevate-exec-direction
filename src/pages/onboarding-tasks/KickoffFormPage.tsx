@@ -811,9 +811,11 @@ const KickoffFormPage = () => {
               Etapa {currentStep} de {STEPS.length}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <ScrollArea className="max-h-[60vh]">
-              {renderStepContent()}
+          <CardContent className="p-0">
+            <ScrollArea className="h-[60vh] px-6 pb-6">
+              <div className="pr-4">
+                {renderStepContent()}
+              </div>
             </ScrollArea>
           </CardContent>
         </Card>
