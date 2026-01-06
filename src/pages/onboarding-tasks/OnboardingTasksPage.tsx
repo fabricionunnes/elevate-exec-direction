@@ -121,41 +121,28 @@ const OnboardingTasksPage = () => {
 
   const fetchAllTasks = async () => {
     try {
-      const today = format(startOfDay(new Date()), "yyyy-MM-dd");
-      
-      // Only fetch tasks that are relevant for dashboard metrics:
-      // 1. Overdue tasks (due_date < today, not completed)
-      // 2. Today's tasks (due_date = today, not completed)
-      // 3. Tasks completed today (for "completed today" metric)
-      const [overdueResult, todayResult, completedTodayResult] = await Promise.all([
-        supabase
+      // IMPORTANT: PostgREST has a default max of 1000 rows per request.
+      // Use pagination to guarantee we load the full dataset used by dashboard metrics.
+      const pageSize = 1000;
+      let from = 0;
+      let all: { id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null; completed_at: string | null }[] = [];
+
+      while (true) {
+        const { data, error } = await supabase
           .from("onboarding_tasks")
           .select("id, status, due_date, project_id, responsible_staff_id, completed_at")
-          .lt("due_date", today)
-          .neq("status", "completed"),
-        supabase
-          .from("onboarding_tasks")
-          .select("id, status, due_date, project_id, responsible_staff_id, completed_at")
-          .eq("due_date", today)
-          .neq("status", "completed"),
-        supabase
-          .from("onboarding_tasks")
-          .select("id, status, due_date, project_id, responsible_staff_id, completed_at")
-          .gte("completed_at", `${today}T00:00:00`)
-          .lt("completed_at", `${today}T23:59:59.999`)
-      ]);
+          .range(from, from + pageSize - 1);
 
-      if (overdueResult.error) throw overdueResult.error;
-      if (todayResult.error) throw todayResult.error;
-      if (completedTodayResult.error) throw completedTodayResult.error;
+        if (error) throw error;
 
-      // Combine all relevant tasks (deduplicate by id)
-      const taskMap = new Map<string, typeof allTasks[0]>();
-      [...(overdueResult.data || []), ...(todayResult.data || []), ...(completedTodayResult.data || [])].forEach(t => {
-        taskMap.set(t.id, t);
-      });
+        const batch = data || [];
+        all = all.concat(batch);
 
-      setAllTasks(Array.from(taskMap.values()));
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+
+      setAllTasks(all);
     } catch (error) {
       console.error("Error fetching tasks:", error);
     }
@@ -259,34 +246,27 @@ const OnboardingTasksPage = () => {
 
       if (projectsError) throw projectsError;
 
-      // Fetch aggregated task counts in a single query using RPC or aggregate
-      // Get all task counts grouped by project_id in one query
-      const projectIds = (projectsData || []).map(p => p.id);
-      
-      const { data: taskCounts, error: countError } = await supabase
-        .from("onboarding_tasks")
-        .select("project_id, status")
-        .in("project_id", projectIds);
+      // Fetch task counts for each project
+      const projectsWithCounts = await Promise.all(
+        (projectsData || []).map(async (project) => {
+          const { count: tasksCount } = await supabase
+            .from("onboarding_tasks")
+            .select("*", { count: "exact", head: true })
+            .eq("project_id", project.id);
 
-      if (countError) throw countError;
+          const { count: completedCount } = await supabase
+            .from("onboarding_tasks")
+            .select("*", { count: "exact", head: true })
+            .eq("project_id", project.id)
+            .eq("status", "completed");
 
-      // Aggregate counts locally
-      const countsByProject = (taskCounts || []).reduce((acc, task) => {
-        if (!acc[task.project_id]) {
-          acc[task.project_id] = { total: 0, completed: 0 };
-        }
-        acc[task.project_id].total++;
-        if (task.status === "completed") {
-          acc[task.project_id].completed++;
-        }
-        return acc;
-      }, {} as Record<string, { total: number; completed: number }>);
-
-      const projectsWithCounts = (projectsData || []).map(project => ({
-        ...project,
-        tasks_count: countsByProject[project.id]?.total || 0,
-        completed_count: countsByProject[project.id]?.completed || 0,
-      }));
+          return {
+            ...project,
+            tasks_count: tasksCount || 0,
+            completed_count: completedCount || 0,
+          };
+        })
+      );
 
       // Group projects by company
       const companiesWithProjects = (companiesData || []).map((company) => {
