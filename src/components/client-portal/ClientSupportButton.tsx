@@ -166,21 +166,23 @@ export const ClientSupportButton = ({
 
   return (
     <>
-      {/* Floating Support Button */}
+      {/* Floating Support Button - Positioned above bottom nav */}
       <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        className="fixed bottom-20 right-4 z-50"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+        className="fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] right-4 z-40"
       >
         <Button
           size="lg"
           className={`
-            rounded-full shadow-lg h-14 px-5 gap-2
+            rounded-full shadow-xl h-14 min-w-14 px-4 gap-2 touch-manipulation
+            transition-all active:scale-95
             ${activeSession 
               ? activeSession.status === "in_progress"
-                ? "bg-green-600 hover:bg-green-700"
-                : "bg-amber-500 hover:bg-amber-600 animate-pulse"
-              : "bg-primary hover:bg-primary/90"
+                ? "bg-green-600 hover:bg-green-700 shadow-green-500/30"
+                : "bg-amber-500 hover:bg-amber-600 animate-pulse shadow-amber-500/30"
+              : "bg-primary hover:bg-primary/90 shadow-primary/30"
             }
           `}
           onClick={() => setShowDialog(true)}
@@ -189,18 +191,18 @@ export const ClientSupportButton = ({
             activeSession.status === "in_progress" ? (
               <>
                 <Video className="h-5 w-5" />
-                <span className="hidden sm:inline">Entrar na Chamada</span>
+                <span className="hidden sm:inline text-sm">Entrar</span>
               </>
             ) : (
               <>
                 <Headphones className="h-5 w-5" />
-                <span className="hidden sm:inline">Aguardando...</span>
+                <span className="hidden sm:inline text-sm">Aguardando</span>
               </>
             )
           ) : (
             <>
               <Headphones className="h-5 w-5" />
-              <span className="hidden sm:inline">Suporte ao Vivo</span>
+              <span className="hidden sm:inline text-sm">Suporte</span>
             </>
           )}
         </Button>
