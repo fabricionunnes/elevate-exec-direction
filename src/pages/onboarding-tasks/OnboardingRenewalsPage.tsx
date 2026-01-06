@@ -32,8 +32,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { format, differenceInDays, addMonths, parseISO } from "date-fns";
+import { format, differenceInDays, addMonths, parseISO, startOfMonth, endOfMonth, isBefore, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import {
   ArrowLeft,
   RefreshCw,
@@ -83,6 +84,8 @@ export default function OnboardingRenewalsPage() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [selectedMonth, setSelectedMonth] = useState(() => startOfMonth(new Date()));
+  const [includePending, setIncludePending] = useState(true);
   
   const [renewDialogOpen, setRenewDialogOpen] = useState(false);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -295,6 +298,28 @@ export default function OnboardingRenewalsPage() {
   const filteredCompanies = companies.filter(company => {
     const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase());
     
+    // Month filter logic
+    let matchesMonth = true;
+    if (company.contract_end_date) {
+      const endDate = parseISO(company.contract_end_date);
+      const monthStart = startOfMonth(selectedMonth);
+      const monthEnd = endOfMonth(selectedMonth);
+      
+      // Check if contract ends in selected month
+      const endsInSelectedMonth = isWithinInterval(endDate, { start: monthStart, end: monthEnd });
+      
+      // Check if it's a pending renewal from previous months (expired before selected month)
+      const isPendingFromPast = includePending && isBefore(endDate, monthStart);
+      
+      matchesMonth = endsInSelectedMonth || isPendingFromPast;
+    } else {
+      // Companies without end date - show only if includePending is true
+      matchesMonth = includePending;
+    }
+    
+    if (!matchesMonth) return false;
+    
+    // Status filter
     if (filterStatus === "all") return matchesSearch;
     
     const status = getContractStatus(company.contract_end_date);
@@ -310,13 +335,21 @@ export default function OnboardingRenewalsPage() {
     return statusA.priority - statusB.priority;
   });
 
-  // Stats
+  // Count pending from previous months
+  const pendingFromPastCount = companies.filter(c => {
+    if (!c.contract_end_date) return false;
+    const endDate = parseISO(c.contract_end_date);
+    return isBefore(endDate, startOfMonth(selectedMonth));
+  }).length;
+
+  // Stats based on filtered companies
   const stats = {
-    total: companies.length,
-    expired: companies.filter(c => getContractStatus(c.contract_end_date).label === "Vencido").length,
-    soon: companies.filter(c => ["Vence em breve", "Atenção"].includes(getContractStatus(c.contract_end_date).label)).length,
-    active: companies.filter(c => getContractStatus(c.contract_end_date).label === "Ativo").length,
-    totalValue: companies.reduce((sum, c) => sum + (c.contract_value || 0), 0),
+    total: filteredCompanies.length,
+    expired: filteredCompanies.filter(c => getContractStatus(c.contract_end_date).label === "Vencido").length,
+    soon: filteredCompanies.filter(c => ["Vence em breve", "Atenção"].includes(getContractStatus(c.contract_end_date).label)).length,
+    active: filteredCompanies.filter(c => getContractStatus(c.contract_end_date).label === "Ativo").length,
+    totalValue: filteredCompanies.reduce((sum, c) => sum + (c.contract_value || 0), 0),
+    pendingFromPast: pendingFromPastCount,
   };
 
   if (loading) {
@@ -412,30 +445,60 @@ export default function OnboardingRenewalsPage() {
         {/* Filters */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar empresa..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                {/* Month Picker */}
+                <MonthYearPicker 
+                  value={selectedMonth} 
+                  onChange={(range) => setSelectedMonth(range.start)} 
                 />
+                
+                {/* Search */}
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar empresa..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                {/* Status Filter */}
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filtrar por status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="expired">Vencidos</SelectItem>
+                      <SelectItem value="soon">Vencendo em breve</SelectItem>
+                      <SelectItem value="active">Ativos</SelectItem>
+                      <SelectItem value="no_date">Sem data</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+              
+              {/* Include pending toggle */}
               <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filtrar por status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="expired">Vencidos</SelectItem>
-                    <SelectItem value="soon">Vencendo em breve</SelectItem>
-                    <SelectItem value="active">Ativos</SelectItem>
-                    <SelectItem value="no_date">Sem data</SelectItem>
-                  </SelectContent>
-                </Select>
+                <input
+                  type="checkbox"
+                  id="includePending"
+                  checked={includePending}
+                  onChange={(e) => setIncludePending(e.target.checked)}
+                  className="h-4 w-4 rounded border-input"
+                />
+                <label htmlFor="includePending" className="text-sm text-muted-foreground cursor-pointer">
+                  Incluir pendências de meses anteriores
+                  {stats.pendingFromPast > 0 && (
+                    <Badge variant="destructive" className="ml-2">
+                      {stats.pendingFromPast} pendentes
+                    </Badge>
+                  )}
+                </label>
               </div>
             </div>
           </CardContent>
