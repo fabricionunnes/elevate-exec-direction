@@ -23,7 +23,7 @@ import {
   DollarSign,
   Calendar
 } from "lucide-react";
-import { format, isBefore, startOfDay, isWithinInterval, eachDayOfInterval, parseISO, eachMonthOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, differenceInMonths } from "date-fns";
+import { format, isBefore, startOfDay, isWithinInterval, parseISO, eachMonthOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { 
@@ -31,9 +31,6 @@ import {
   Pie, 
   Cell, 
   ResponsiveContainer, 
-  AreaChart,
-  Area,
-  CartesianGrid,
   LineChart,
   Line,
   XAxis,
@@ -100,6 +97,13 @@ const DashboardMetrics = ({
   onDataRefresh
 }: DashboardMetricsProps) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
+  const [taskCounts, setTaskCounts] = useState<{
+    completed: number;
+    pending: number;
+    inProgress: number;
+    todayCompleted: number;
+    todayCompletedIds: string[];
+  }>({ completed: 0, pending: 0, inProgress: 0, todayCompleted: 0, todayCompletedIds: [] });
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,32 +118,62 @@ const DashboardMetrics = ({
 
   const fetchData = async () => {
     try {
-      const pageSize = 1000;
-      let from = 0;
-      let allTasksData: Task[] = [];
-
-      while (true) {
-        const { data, error } = await supabase
+      const projectIds = projects.map(p => p.id);
+      const today = format(new Date(), "yyyy-MM-dd");
+      
+      // Fetch only aggregated counts instead of all tasks
+      // We'll use the overdueTasks and todayTasks props for those metrics
+      // Only need to fetch counts for status-based metrics
+      
+      const [
+        completedCountResult,
+        pendingCountResult,
+        inProgressCountResult,
+        todayCompletedResult,
+        npsResult, 
+        goalsResult
+      ] = await Promise.all([
+        supabase
           .from("onboarding_tasks")
-          .select("id, title, status, due_date, project_id, completed_at, responsible_staff_id")
-          .range(from, from + pageSize - 1);
-
-        if (error) throw error;
-        const batch = data || [];
-        allTasksData = allTasksData.concat(batch);
-        if (batch.length < pageSize) break;
-        from += pageSize;
-      }
-
-      const [npsResult, goalsResult] = await Promise.all([
+          .select("id", { count: "exact", head: true })
+          .in("project_id", projectIds.length > 0 ? projectIds : ['_none_'])
+          .eq("status", "completed"),
+        supabase
+          .from("onboarding_tasks")
+          .select("id", { count: "exact", head: true })
+          .in("project_id", projectIds.length > 0 ? projectIds : ['_none_'])
+          .eq("status", "pending"),
+        supabase
+          .from("onboarding_tasks")
+          .select("id", { count: "exact", head: true })
+          .in("project_id", projectIds.length > 0 ? projectIds : ['_none_'])
+          .eq("status", "in_progress"),
+        supabase
+          .from("onboarding_tasks")
+          .select("id, project_id, completed_at")
+          .in("project_id", projectIds.length > 0 ? projectIds : ['_none_'])
+          .eq("status", "completed")
+          .gte("completed_at", `${today}T00:00:00`)
+          .lt("completed_at", `${today}T23:59:59.999`),
         supabase.from("onboarding_nps_responses").select("project_id, score"),
         supabase.from("onboarding_monthly_goals").select("project_id, month, year, sales_target, sales_result"),
       ]);
 
-      if (npsResult.error) throw npsResult.error;
-      if (goalsResult.error) throw goalsResult.error;
+      // Store counts in a minimal structure
+      setAllTasks([
+        // We create synthetic task entries just to hold the counts for compatibility
+        // The actual IDs are not needed for most dashboard displays
+      ]);
+      
+      // Store aggregated data in state for metrics calculation
+      setTaskCounts({
+        completed: completedCountResult.count || 0,
+        pending: pendingCountResult.count || 0,
+        inProgress: inProgressCountResult.count || 0,
+        todayCompleted: todayCompletedResult.data?.length || 0,
+        todayCompletedIds: (todayCompletedResult.data || []).map(t => t.id),
+      });
 
-      setAllTasks(allTasksData);
       setNpsResponses(npsResult.data || []);
       setMonthlyGoals(goalsResult.data || []);
     } catch (error) {
@@ -152,48 +186,26 @@ const DashboardMetrics = ({
   // Project IDs for filtering
   const filteredProjectIds = useMemo(() => new Set(projects.map(p => p.id)), [projects]);
 
-  const filteredTasks = useMemo(() => {
-    return allTasks.filter(t => filteredProjectIds.has(t.project_id));
-  }, [allTasks, filteredProjectIds]);
-
   const taskMetrics = useMemo(() => {
-    const today = format(new Date(), "yyyy-MM-dd");
     const todayTasksCount = todayTasks.length;
     const overdueTasksCount = overdueTasks.length;
-    const todayCompletedTasks = filteredTasks.filter(t => {
-      if (t.status !== "completed" || !t.completed_at) return false;
-      return format(parseISO(t.completed_at), "yyyy-MM-dd") === today;
-    });
-    const completedTasks = filteredTasks.filter(t => t.status === "completed");
-    const pendingTasks = filteredTasks.filter(t => t.status === "pending");
-    const inProgressTasks = filteredTasks.filter(t => t.status === "in_progress");
     
     return { 
       todayTasks: todayTasksCount, 
-      todayCompleted: todayCompletedTasks.length, 
-      todayCompletedIds: todayCompletedTasks.map(t => t.id),
+      todayCompleted: taskCounts.todayCompleted, 
+      todayCompletedIds: taskCounts.todayCompletedIds,
       overdueTasks: overdueTasksCount, 
-      totalPending: pendingTasks.length, 
-      pendingIds: pendingTasks.map(t => t.id),
-      totalInProgress: inProgressTasks.length, 
-      inProgressIds: inProgressTasks.map(t => t.id),
-      totalCompleted: completedTasks.length, 
-      completedIds: completedTasks.map(t => t.id),
-      totalTasks: filteredTasks.length 
+      totalPending: taskCounts.pending, 
+      pendingIds: [] as string[], // IDs fetched on-demand when dialog opens
+      totalInProgress: taskCounts.inProgress, 
+      inProgressIds: [] as string[],
+      totalCompleted: taskCounts.completed, 
+      completedIds: [] as string[],
+      totalTasks: taskCounts.completed + taskCounts.pending + taskCounts.inProgress
     };
-  }, [filteredTasks, overdueTasks, todayTasks]);
+  }, [taskCounts, overdueTasks, todayTasks]);
 
-  const completedByDayData = useMemo(() => {
-    const days = eachDayOfInterval({ start: dateRange.start, end: dateRange.end });
-    return days.map(day => {
-      const dayStr = format(day, "yyyy-MM-dd");
-      const completedCount = filteredTasks.filter(t => {
-        if (!t.completed_at) return false;
-        return format(parseISO(t.completed_at), "yyyy-MM-dd") === dayStr;
-      }).length;
-      return { date: format(day, "dd/MM", { locale: ptBR }), fullDate: format(day, "dd 'de' MMM", { locale: ptBR }), concluídas: completedCount };
-    });
-  }, [filteredTasks, dateRange]);
+  // Removed completedByDayData chart - too expensive to calculate without all tasks
 
   const projectMetrics = useMemo(() => {
     const activeProjects = projects.filter(p => p.status === "active").length;
@@ -502,23 +514,8 @@ const DashboardMetrics = ({
             <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("status"); setTasksDialogStatus("pending"); setTasksDialogIds([]); setTasksDialogOpen(true); }}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-amber-500">{taskMetrics.totalPending}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Pendentes</p></CardContent></Card>
             <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("status"); setTasksDialogStatus("in_progress"); setTasksDialogIds([]); setTasksDialogOpen(true); }}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-blue-500">{taskMetrics.totalInProgress}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Em Progresso</p></CardContent></Card>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:gap-3">
             <Card>
-              <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium flex items-center gap-1 sm:gap-1.5"><CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-500" />Concluídas/Dia</CardTitle></CardHeader>
-              <CardContent className="px-2 sm:px-4 pb-2 sm:pb-3">
-                <div className="h-[70px] sm:h-[100px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={completedByDayData}>
-                      <defs><linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/><stop offset="95%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs>
-                      <XAxis dataKey="date" tick={{ fontSize: 8 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                      <YAxis tick={{ fontSize: 8 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} allowDecimals={false} width={16} />
-                      <Area type="monotone" dataKey="concluídas" stroke="#22c55e" strokeWidth={1.5} fillOpacity={1} fill="url(#colorCompleted)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="hidden md:block">
               <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium">Distribuição</CardTitle></CardHeader>
               <CardContent className="px-3 sm:px-4 pb-2 sm:pb-3">
                 <div className="h-[70px] sm:h-[100px] flex items-center justify-center">
