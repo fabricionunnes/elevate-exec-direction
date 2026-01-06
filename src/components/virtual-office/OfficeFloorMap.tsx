@@ -494,12 +494,6 @@ export const OfficeFloorMap = ({
                 </div>
               )}
 
-              {/* Hallway label */}
-              <div className="mt-4 text-center">
-                <span className="text-[10px] text-stone-600 dark:text-stone-400 tracking-widest uppercase font-medium">
-                  Corredor Principal
-                </span>
-              </div>
             </div>
           </div>
         </div>
