@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2,
   Circle,
   Clock,
   Calendar,
-  ChevronDown,
-  ChevronUp,
+  ChevronRight,
   RefreshCw,
   Trophy,
   Rocket,
@@ -20,8 +18,9 @@ import {
   Settings,
   TrendingUp,
   Play,
+  AlertCircle,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, isBefore, startOfDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface OnboardingTask {
@@ -74,49 +73,29 @@ const PHASE_ICONS: Record<string, React.ElementType> = {
   "Implementação": Zap,
 };
 
-const PHASE_COLORS = [
-  { bg: "bg-blue-500", light: "bg-blue-500/10", border: "border-blue-500/30", text: "text-blue-600" },
-  { bg: "bg-violet-500", light: "bg-violet-500/10", border: "border-violet-500/30", text: "text-violet-600" },
-  { bg: "bg-emerald-500", light: "bg-emerald-500/10", border: "border-emerald-500/30", text: "text-emerald-600" },
-  { bg: "bg-amber-500", light: "bg-amber-500/10", border: "border-amber-500/30", text: "text-amber-600" },
-  { bg: "bg-rose-500", light: "bg-rose-500/10", border: "border-rose-500/30", text: "text-rose-600" },
-  { bg: "bg-cyan-500", light: "bg-cyan-500/10", border: "border-cyan-500/30", text: "text-cyan-600" },
-  { bg: "bg-orange-500", light: "bg-orange-500/10", border: "border-orange-500/30", text: "text-orange-600" },
-  { bg: "bg-indigo-500", light: "bg-indigo-500/10", border: "border-indigo-500/30", text: "text-indigo-600" },
+const PHASE_GRADIENTS = [
+  { from: "from-blue-500", to: "to-blue-600", bg: "bg-blue-500", ring: "ring-blue-500/30", text: "text-blue-600" },
+  { from: "from-violet-500", to: "to-violet-600", bg: "bg-violet-500", ring: "ring-violet-500/30", text: "text-violet-600" },
+  { from: "from-emerald-500", to: "to-emerald-600", bg: "bg-emerald-500", ring: "ring-emerald-500/30", text: "text-emerald-600" },
+  { from: "from-amber-500", to: "to-amber-600", bg: "bg-amber-500", ring: "ring-amber-500/30", text: "text-amber-600" },
+  { from: "from-rose-500", to: "to-rose-600", bg: "bg-rose-500", ring: "ring-rose-500/30", text: "text-rose-600" },
+  { from: "from-cyan-500", to: "to-cyan-600", bg: "bg-cyan-500", ring: "ring-cyan-500/30", text: "text-cyan-600" },
+  { from: "from-orange-500", to: "to-orange-600", bg: "bg-orange-500", ring: "ring-orange-500/30", text: "text-orange-600" },
+  { from: "from-indigo-500", to: "to-indigo-600", bg: "bg-indigo-500", ring: "ring-indigo-500/30", text: "text-indigo-600" },
 ];
 
 export const TasksTrailView = ({ phases, onTaskClick, onStatusChange }: TasksTrailViewProps) => {
-  const [expandedPhases, setExpandedPhases] = useState<Set<string>>(() => {
-    // Auto-expand phases that are in progress
-    const inProgress = new Set<string>();
-    phases.forEach(phase => {
-      if (phase.completedCount > 0 && phase.completedCount < phase.tasks.length) {
-        inProgress.add(phase.name);
-      }
-    });
-    // If none in progress, expand first incomplete phase
-    if (inProgress.size === 0) {
-      const firstIncomplete = phases.find(p => p.completedCount < p.tasks.length);
-      if (firstIncomplete) inProgress.add(firstIncomplete.name);
-    }
-    return inProgress;
+  const [expandedPhase, setExpandedPhase] = useState<string | null>(() => {
+    // Auto-expand first in-progress phase
+    const inProgress = phases.find(p => p.completedCount > 0 && p.completedCount < p.tasks.length);
+    if (inProgress) return inProgress.name;
+    const firstIncomplete = phases.find(p => p.completedCount < p.tasks.length);
+    return firstIncomplete?.name || null;
   });
 
   const totalTasks = phases.reduce((sum, p) => sum + p.tasks.length, 0);
   const completedTasks = phases.reduce((sum, p) => sum + p.completedCount, 0);
   const overallProgress = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-  const togglePhase = (phaseName: string) => {
-    setExpandedPhases(prev => {
-      const next = new Set(prev);
-      if (next.has(phaseName)) {
-        next.delete(phaseName);
-      } else {
-        next.add(phaseName);
-      }
-      return next;
-    });
-  };
 
   const getPhaseStatus = (phase: TaskPhase) => {
     if (phase.completedCount === phase.tasks.length) return "completed";
@@ -124,215 +103,328 @@ export const TasksTrailView = ({ phases, onTaskClick, onStatusChange }: TasksTra
     return "pending";
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case "in_progress":
-        return <Clock className="h-4 w-4 text-amber-500" />;
-      default:
-        return <Circle className="h-4 w-4 text-muted-foreground/40" />;
-    }
+  const isTaskOverdue = (task: OnboardingTask) => {
+    if (!task.due_date || task.status === "completed") return false;
+    return isBefore(startOfDay(new Date(task.due_date)), startOfDay(new Date()));
+  };
+
+  const isTaskDueToday = (task: OnboardingTask) => {
+    if (!task.due_date || task.status === "completed") return false;
+    return isToday(new Date(task.due_date));
   };
 
   return (
-    <div className="space-y-6">
-      {/* Progress Overview - Compact */}
-      <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border">
-        <div className="p-2.5 rounded-full bg-primary/20">
-          <Rocket className="h-5 w-5 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="font-semibold">Progresso Geral</span>
-            <span className="text-2xl font-bold text-primary">{overallProgress}%</span>
+    <div className="space-y-8">
+      {/* Hero Progress Card */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border p-6">
+        <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/5 rounded-full blur-2xl" />
+        <div className="absolute -left-4 -bottom-4 w-24 h-24 bg-primary/10 rounded-full blur-xl" />
+        
+        <div className="relative flex items-center gap-6">
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
+              <span className="text-2xl font-bold text-primary-foreground">{overallProgress}%</span>
+            </div>
+            <svg className="absolute inset-0 w-20 h-20 -rotate-90">
+              <circle
+                cx="40"
+                cy="40"
+                r="36"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="4"
+                className="text-primary/20"
+              />
+              <circle
+                cx="40"
+                cy="40"
+                r="36"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="4"
+                strokeDasharray={226}
+                strokeDashoffset={226 - (226 * overallProgress) / 100}
+                className="text-primary-foreground"
+                strokeLinecap="round"
+              />
+            </svg>
           </div>
-          <Progress value={overallProgress} className="h-2" />
-          <p className="text-xs text-muted-foreground mt-1">
-            {completedTasks} de {totalTasks} tarefas concluídas
-          </p>
+          
+          <div className="flex-1">
+            <h3 className="text-xl font-bold mb-1">Progresso do Onboarding</h3>
+            <p className="text-muted-foreground text-sm mb-3">
+              {completedTasks} de {totalTasks} tarefas concluídas
+            </p>
+            <div className="flex gap-4 text-sm">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-muted-foreground">{phases.filter(p => getPhaseStatus(p) === "completed").length} completas</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                <span className="text-muted-foreground">{phases.filter(p => getPhaseStatus(p) === "in_progress").length} em progresso</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Phases Grid */}
-      <div className="space-y-3">
-        {phases.map((phase, phaseIndex) => {
-          const phaseStatus = getPhaseStatus(phase);
-          const isExpanded = expandedPhases.has(phase.name);
-          const phaseProgress = phase.tasks.length 
-            ? Math.round((phase.completedCount / phase.tasks.length) * 100) 
-            : 0;
-          const colors = PHASE_COLORS[phaseIndex % PHASE_COLORS.length];
-          const PhaseIcon = PHASE_ICONS[phase.name] || Flag;
+      {/* Timeline View */}
+      <div className="relative">
+        {/* Vertical Line */}
+        <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary/30 via-muted to-muted hidden md:block" />
 
-          return (
-            <div 
-              key={phase.name} 
-              className={`
-                rounded-xl border overflow-hidden transition-all duration-200
-                ${phaseStatus === "completed" ? "bg-green-500/5 border-green-500/20" : "bg-card"}
-              `}
-            >
-              {/* Phase Header */}
-              <button
-                onClick={() => togglePhase(phase.name)}
-                className="w-full p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors"
-              >
-                {/* Phase Number/Icon */}
+        <div className="space-y-4">
+          {phases.map((phase, phaseIndex) => {
+            const phaseStatus = getPhaseStatus(phase);
+            const isExpanded = expandedPhase === phase.name;
+            const phaseProgress = phase.tasks.length 
+              ? Math.round((phase.completedCount / phase.tasks.length) * 100) 
+              : 0;
+            const colors = PHASE_GRADIENTS[phaseIndex % PHASE_GRADIENTS.length];
+            const PhaseIcon = PHASE_ICONS[phase.name] || Flag;
+            const isCompleted = phaseStatus === "completed";
+            const isInProgress = phaseStatus === "in_progress";
+
+            return (
+              <div key={phase.name} className="relative">
+                {/* Phase Card */}
                 <div 
                   className={`
-                    flex items-center justify-center w-10 h-10 rounded-full shrink-0
-                    ${phaseStatus === "completed" 
-                      ? "bg-green-500 text-white" 
-                      : phaseStatus === "in_progress"
-                      ? `${colors.bg} text-white`
-                      : "bg-muted text-muted-foreground"
-                    }
+                    relative ml-0 md:ml-12 rounded-xl border transition-all duration-300 overflow-hidden
+                    ${isCompleted ? "bg-green-500/5 border-green-500/30" : "bg-card hover:shadow-md"}
+                    ${isExpanded ? "ring-2 ring-offset-2 " + colors.ring : ""}
                   `}
                 >
-                  {phaseStatus === "completed" ? (
-                    <CheckCircle2 className="h-5 w-5" />
-                  ) : (
-                    <PhaseIcon className="h-5 w-5" />
-                  )}
-                </div>
-
-                {/* Phase Info */}
-                <div className="flex-1 min-w-0 text-left">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold truncate">{phase.name}</h4>
-                    <Badge 
-                      variant="secondary" 
-                      className={`
-                        text-xs shrink-0
-                        ${phaseStatus === "completed" 
-                          ? "bg-green-500/10 text-green-600" 
-                          : phaseStatus === "in_progress"
-                          ? `${colors.light} ${colors.text}`
-                          : ""
-                        }
-                      `}
-                    >
-                      {phase.completedCount}/{phase.tasks.length}
-                    </Badge>
+                  {/* Timeline Dot - Desktop */}
+                  <div className={`
+                    hidden md:flex absolute -left-12 top-4 w-10 h-10 rounded-full items-center justify-center
+                    transition-all duration-300 z-10
+                    ${isCompleted 
+                      ? "bg-green-500 text-white shadow-lg shadow-green-500/30" 
+                      : isInProgress
+                      ? `bg-gradient-to-br ${colors.from} ${colors.to} text-white shadow-lg shadow-${colors.bg}/30`
+                      : "bg-muted text-muted-foreground border-2 border-border"
+                    }
+                  `}>
+                    {isCompleted ? (
+                      <CheckCircle2 className="h-5 w-5" />
+                    ) : (
+                      <span className="font-bold text-sm">{phaseIndex + 1}</span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Progress 
-                      value={phaseProgress} 
-                      className="h-1.5 flex-1 max-w-32"
-                    />
-                    <span className="text-xs text-muted-foreground">{phaseProgress}%</span>
-                  </div>
-                </div>
 
-                {/* Expand Button */}
-                <div className="shrink-0">
-                  {isExpanded ? (
-                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
-              </button>
+                  {/* Phase Header */}
+                  <button
+                    onClick={() => setExpandedPhase(isExpanded ? null : phase.name)}
+                    className="w-full p-4 flex items-center gap-4 text-left"
+                  >
+                    {/* Mobile Phase Number */}
+                    <div className={`
+                      md:hidden flex items-center justify-center w-10 h-10 rounded-full shrink-0
+                      ${isCompleted 
+                        ? "bg-green-500 text-white" 
+                        : isInProgress
+                        ? `bg-gradient-to-br ${colors.from} ${colors.to} text-white`
+                        : "bg-muted text-muted-foreground"
+                      }
+                    `}>
+                      {isCompleted ? (
+                        <CheckCircle2 className="h-5 w-5" />
+                      ) : (
+                        <span className="font-bold text-sm">{phaseIndex + 1}</span>
+                      )}
+                    </div>
 
-              {/* Tasks List */}
-              {isExpanded && (
-                <div className="border-t bg-muted/20">
-                  <div className="divide-y divide-border/50">
-                    {phase.tasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className={`
-                          flex items-center gap-3 px-4 py-3 cursor-pointer
-                          transition-colors hover:bg-muted/50
-                          ${task.status === "completed" ? "opacity-60" : ""}
-                        `}
-                        onClick={() => onTaskClick(task)}
-                      >
-                        {/* Status Toggle */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const nextStatus =
-                              task.status === "pending"
-                                ? "in_progress"
-                                : task.status === "in_progress"
-                                ? "completed"
-                                : "pending";
-                            onStatusChange(task.id, nextStatus);
-                          }}
-                          className="shrink-0 hover:scale-110 transition-transform"
-                        >
-                          {getStatusIcon(task.status)}
-                        </button>
+                    {/* Phase Icon */}
+                    <div className={`
+                      hidden md:flex items-center justify-center w-10 h-10 rounded-lg shrink-0
+                      ${isCompleted 
+                        ? "bg-green-500/10 text-green-600" 
+                        : isInProgress
+                        ? `bg-gradient-to-br ${colors.from}/10 ${colors.to}/10 ${colors.text}`
+                        : "bg-muted/50 text-muted-foreground"
+                      }
+                    `}>
+                      <PhaseIcon className="h-5 w-5" />
+                    </div>
 
-                        {/* Task Title */}
-                        <span 
-                          className={`
-                            flex-1 text-sm truncate
-                            ${task.status === "completed" ? "line-through text-muted-foreground" : ""}
-                          `}
-                        >
-                          {task.title}
-                        </span>
-
-                        {/* Task Badges */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {task.is_internal && (
-                            <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
-                          )}
-                          {task.recurrence && (
-                            <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
-                          )}
-                          {task.priority === "high" && (
-                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                              !
-                            </Badge>
-                          )}
-                          {task.due_date && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {format(new Date(task.due_date), "dd/MM")}
-                            </span>
-                          )}
-                        </div>
+                    {/* Phase Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        <h4 className="font-semibold truncate">{phase.name}</h4>
+                        {isCompleted && (
+                          <Badge className="bg-green-500/10 text-green-600 border-green-500/20 shrink-0">
+                            Completo
+                          </Badge>
+                        )}
+                        {isInProgress && (
+                          <Badge className={`${colors.text} bg-current/10 border-current/20 shrink-0`}>
+                            Em andamento
+                          </Badge>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                      <div className="flex items-center gap-3">
+                        <Progress 
+                          value={phaseProgress} 
+                          className={`h-1.5 flex-1 max-w-48 ${isCompleted ? "[&>div]:bg-green-500" : ""}`}
+                        />
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {phase.completedCount} de {phase.tasks.length}
+                        </span>
+                      </div>
+                    </div>
 
-        {/* Finish Line */}
-        <div 
-          className={`
-            flex items-center gap-3 p-4 rounded-xl border-2 border-dashed
-            ${overallProgress === 100 
-              ? "border-amber-400 bg-gradient-to-r from-amber-500/10 to-yellow-500/10" 
-              : "border-muted-foreground/20"
-            }
-          `}
-        >
-          <div className={`
-            flex items-center justify-center w-10 h-10 rounded-full
-            ${overallProgress === 100 
-              ? "bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-lg shadow-amber-500/30" 
-              : "bg-muted text-muted-foreground"
-            }
-          `}>
-            <Trophy className="h-5 w-5" />
-          </div>
-          <div>
-            <p className={`font-semibold ${overallProgress === 100 ? "text-amber-600" : "text-muted-foreground"}`}>
-              {overallProgress === 100 ? "🎉 Onboarding Concluído!" : "Concluir Onboarding"}
-            </p>
-            {overallProgress < 100 && (
-              <p className="text-xs text-muted-foreground">
-                Faltam {totalTasks - completedTasks} tarefas
-              </p>
-            )}
+                    {/* Expand Indicator */}
+                    <ChevronRight className={`
+                      h-5 w-5 text-muted-foreground transition-transform duration-200 shrink-0
+                      ${isExpanded ? "rotate-90" : ""}
+                    `} />
+                  </button>
+
+                  {/* Tasks Panel */}
+                  {isExpanded && (
+                    <div className="border-t">
+                      <div className="p-2">
+                        {phase.tasks.map((task, taskIndex) => {
+                          const overdue = isTaskOverdue(task);
+                          const dueToday = isTaskDueToday(task);
+                          
+                          return (
+                            <div
+                              key={task.id}
+                              onClick={() => onTaskClick(task)}
+                              className={`
+                                group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer
+                                transition-all duration-150
+                                ${task.status === "completed" 
+                                  ? "bg-muted/30 hover:bg-muted/50" 
+                                  : overdue 
+                                  ? "hover:bg-destructive/10 border-l-2 border-destructive"
+                                  : dueToday
+                                  ? "hover:bg-amber-500/10 border-l-2 border-amber-500"
+                                  : "hover:bg-muted/50"
+                                }
+                              `}
+                            >
+                              {/* Status Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const nextStatus =
+                                    task.status === "pending"
+                                      ? "in_progress"
+                                      : task.status === "in_progress"
+                                      ? "completed"
+                                      : "pending";
+                                  onStatusChange(task.id, nextStatus);
+                                }}
+                                className="shrink-0 transition-transform hover:scale-110"
+                              >
+                                {task.status === "completed" ? (
+                                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                ) : task.status === "in_progress" ? (
+                                  <Clock className="h-5 w-5 text-amber-500" />
+                                ) : (
+                                  <Circle className="h-5 w-5 text-muted-foreground/40 group-hover:text-muted-foreground" />
+                                )}
+                              </button>
+
+                              {/* Task Content */}
+                              <div className="flex-1 min-w-0">
+                                <p className={`
+                                  text-sm truncate
+                                  ${task.status === "completed" ? "line-through text-muted-foreground" : ""}
+                                  ${overdue ? "text-destructive font-medium" : ""}
+                                `}>
+                                  {task.title}
+                                </p>
+                                {task.responsible_staff?.name && (
+                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                    {task.responsible_staff.name}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Task Meta */}
+                              <div className="flex items-center gap-2 shrink-0">
+                                {task.is_internal && (
+                                  <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                                )}
+                                {task.recurrence && (
+                                  <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+                                )}
+                                {task.priority === "high" && (
+                                  <AlertCircle className="h-4 w-4 text-destructive" />
+                                )}
+                                {task.due_date && (
+                                  <span className={`
+                                    text-xs flex items-center gap-1 px-2 py-0.5 rounded-full
+                                    ${overdue 
+                                      ? "bg-destructive/10 text-destructive" 
+                                      : dueToday
+                                      ? "bg-amber-500/10 text-amber-600"
+                                      : "text-muted-foreground"
+                                    }
+                                  `}>
+                                    <Calendar className="h-3 w-3" />
+                                    {format(new Date(task.due_date), "dd/MM")}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Finish Line */}
+          <div className="relative ml-0 md:ml-12">
+            {/* Trophy Dot */}
+            <div className={`
+              hidden md:flex absolute -left-12 top-3 w-10 h-10 rounded-full items-center justify-center
+              ${overallProgress === 100 
+                ? "bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-lg shadow-amber-500/40" 
+                : "bg-muted border-2 border-dashed border-muted-foreground/30 text-muted-foreground"
+              }
+            `}>
+              <Trophy className="h-5 w-5" />
+            </div>
+
+            <div 
+              className={`
+                flex items-center gap-4 p-4 rounded-xl border-2 border-dashed transition-all
+                ${overallProgress === 100 
+                  ? "border-amber-400 bg-gradient-to-r from-amber-500/10 to-yellow-500/5" 
+                  : "border-muted-foreground/20 bg-muted/20"
+                }
+              `}
+            >
+              <div className={`
+                md:hidden flex items-center justify-center w-10 h-10 rounded-full
+                ${overallProgress === 100 
+                  ? "bg-gradient-to-br from-yellow-400 to-amber-500 text-white" 
+                  : "bg-muted text-muted-foreground"
+                }
+              `}>
+                <Trophy className="h-5 w-5" />
+              </div>
+              <div>
+                <p className={`font-semibold ${overallProgress === 100 ? "text-amber-600" : "text-muted-foreground"}`}>
+                  {overallProgress === 100 ? "🎉 Onboarding Concluído!" : "Linha de Chegada"}
+                </p>
+                {overallProgress < 100 && (
+                  <p className="text-xs text-muted-foreground">
+                    {totalTasks - completedTasks} tarefas restantes para concluir
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
