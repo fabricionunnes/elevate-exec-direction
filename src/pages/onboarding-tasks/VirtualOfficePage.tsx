@@ -604,7 +604,7 @@ const VirtualOfficePage = () => {
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Floor Map or Sidebar */}
         {officeViewMode === "map" ? (
-          <div className="w-full md:w-1/2 lg:w-2/5 border-r flex flex-col bg-card/50">
+          <div className="w-full md:w-3/5 lg:w-2/3 xl:w-[70%] border-r flex flex-col bg-card/50">
             <OfficeFloorMap
               rooms={rooms}
               presences={presences}
@@ -619,26 +619,26 @@ const VirtualOfficePage = () => {
               }}
             />
             {/* View Toggle */}
-            <div className="p-3 border-t flex items-center justify-between bg-card">
-              <span className="text-xs text-muted-foreground">Modo de visualização</span>
-              <div className="flex items-center border rounded-lg p-0.5 bg-muted/50">
+            <div className="p-2 border-t flex items-center justify-between bg-card">
+              <span className="text-[10px] text-muted-foreground">Visualização</span>
+              <div className="flex items-center border rounded-md p-0.5 bg-muted/50">
                 <Button
                   variant={officeViewMode === "map" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setOfficeViewMode("map")}
-                  className="h-7 px-2 gap-1"
+                  className="h-6 px-2 gap-1 text-[10px]"
                 >
-                  <Map className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline text-xs">Mapa</span>
+                  <Map className="h-3 w-3" />
+                  Mapa
                 </Button>
                 <Button
                   variant={officeViewMode !== "map" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setOfficeViewMode("list")}
-                  className="h-7 px-2 gap-1"
+                  className="h-6 px-2 gap-1 text-[10px]"
                 >
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline text-xs">Lista</span>
+                  <LayoutGrid className="h-3 w-3" />
+                  Lista
                 </Button>
               </div>
             </div>
