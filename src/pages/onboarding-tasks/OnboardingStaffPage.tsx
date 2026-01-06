@@ -40,7 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2, LogOut } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2, LogOut, Key, Eye, EyeOff, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -74,6 +74,13 @@ const OnboardingStaffPage = () => {
     phone: "",
     password: "",
   });
+
+  // Estados para troca de senha do próprio usuário
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     fetchStaff();
@@ -214,6 +221,43 @@ const OnboardingStaffPage = () => {
     setShowDialog(true);
   };
 
+  const handleChangeOwnPassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("As senhas não coincidem");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      toast.success("Senha alterada com sucesso!");
+      setShowPasswordDialog(false);
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      console.error("Password change error:", error);
+      toast.error(error.message || "Erro ao alterar senha");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const filteredStaff = staff.filter(
     (s) =>
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -271,6 +315,14 @@ const OnboardingStaffPage = () => {
             <Button onClick={openNewDialog}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Membro
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setShowPasswordDialog(true)}
+              title="Alterar minha senha"
+            >
+              <Key className="h-4 w-4" />
             </Button>
             <Button 
               variant="ghost" 
@@ -513,6 +565,68 @@ const OnboardingStaffPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog para alterar própria senha */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar Minha Senha</DialogTitle>
+            <DialogDescription>
+              Digite sua nova senha abaixo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nova Senha</Label>
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? "text" : "password"}
+                  placeholder="Mínimo 6 caracteres"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Confirmar Nova Senha</Label>
+              <Input
+                type="password"
+                placeholder="Repita a nova senha"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleChangeOwnPassword}
+                disabled={changingPassword || !newPassword || !confirmPassword}
+              >
+                {changingPassword ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Alterando...
+                  </>
+                ) : (
+                  "Alterar Senha"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
