@@ -242,15 +242,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === "create-event") {
-      if (!tokenData) {
-        return new Response(
-          JSON.stringify({ error: "Not connected to Google Calendar", needsAuth: true }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
       const body = await req.json();
-      const { title, description, startDateTime, endDateTime, attendees } = body;
+      const { title, description, startDateTime, endDateTime, attendees, target_user_id } = body;
 
       if (!title || !startDateTime || !endDateTime) {
         return new Response(
@@ -259,12 +252,29 @@ Deno.serve(async (req) => {
         );
       }
 
-      const accessToken = tokenData.access_token;
+      // Determine which user's calendar to use
+      const calendarUserId = target_user_id || user.id;
+
+      // Get token for the target calendar user
+      const { data: calendarTokenData, error: calendarTokenError } = await supabase
+        .from("user_google_tokens")
+        .select("*")
+        .eq("user_id", calendarUserId)
+        .single();
+
+      if (!calendarTokenData || calendarTokenError) {
+        return new Response(
+          JSON.stringify({ error: "Target user not connected to Google Calendar", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const accessToken = calendarTokenData.access_token;
 
       // Check if token is expired
-      if (tokenData.token_expires_at && new Date(tokenData.token_expires_at) < new Date()) {
+      if (calendarTokenData.token_expires_at && new Date(calendarTokenData.token_expires_at) < new Date()) {
         return new Response(
-          JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+          JSON.stringify({ error: "Token expired, target user needs to reconnect", needsAuth: true }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
