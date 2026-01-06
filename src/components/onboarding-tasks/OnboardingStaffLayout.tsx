@@ -8,6 +8,7 @@ const RealtimeNotifications = lazy(() => import("./RealtimeNotifications").then(
 const NpsCelebrationPopup = lazy(() => import("./NpsCelebrationPopup").then(m => ({ default: m.NpsCelebrationPopup })));
 const GlobalChatWidget = lazy(() => import("@/components/virtual-office/GlobalChatWidget"));
 const ChatNotifications = lazy(() => import("@/components/virtual-office/ChatNotifications").then(m => ({ default: m.ChatNotifications })));
+const AnnouncementPopup = lazy(() => import("./AnnouncementPopup").then(m => ({ default: m.AnnouncementPopup })));
 
 // Simple fallback that doesn't break layout
 const LoadingFallback = () => null;
@@ -15,6 +16,7 @@ const LoadingFallback = () => null;
 export const OnboardingStaffLayout = () => {
   const [isStaff, setIsStaff] = useState<boolean | null>(null);
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [staffRole, setStaffRole] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,13 +40,14 @@ export const OnboardingStaffLayout = () => {
           }
           setIsStaff(false);
           setStaffId(null);
+          setStaffRole(null);
           setAuthChecked(true);
           return;
         }
 
         const { data: staff, error: staffError } = await supabase
           .from("onboarding_staff")
-          .select("id, is_active")
+          .select("id, is_active, role")
           .eq("user_id", user.id)
           .eq("is_active", true)
           .maybeSingle();
@@ -57,12 +60,14 @@ export const OnboardingStaffLayout = () => {
 
         setIsStaff(!!staff);
         setStaffId(staff?.id || null);
+        setStaffRole(staff?.role || null);
         setAuthChecked(true);
       } catch (error) {
         console.error("Error in checkStaffStatus:", error);
         if (isMounted) {
           setIsStaff(false);
           setStaffId(null);
+          setStaffRole(null);
           setAuthChecked(true);
         }
       }
@@ -107,6 +112,12 @@ export const OnboardingStaffLayout = () => {
       {isStaff && (
         <Suspense fallback={<LoadingFallback />}>
           <NpsCelebrationPopup />
+        </Suspense>
+      )}
+      {/* Popup de comunicados - aparece até o usuário marcar como ciente */}
+      {isStaff && staffId && staffRole && (
+        <Suspense fallback={<LoadingFallback />}>
+          <AnnouncementPopup staffId={staffId} staffRole={staffRole} />
         </Suspense>
       )}
       {/* Chat global para staff */}
