@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { playNotificationSound } from "@/lib/notificationSound";
+
 import { 
   MessageCircle, 
   X, 
@@ -300,7 +300,7 @@ const GlobalChatWidget = () => {
           });
 
           if (!isConversationOpen) {
-            playNotificationSound();
+            // Only update badge count, no sound or toast
             updateUnreadCount(newMsg, staffId);
           }
         }
