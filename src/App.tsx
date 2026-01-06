@@ -71,6 +71,7 @@ import OnboardingImportPage from "./pages/onboarding-tasks/OnboardingImportPage"
 import VirtualOfficePage from "./pages/onboarding-tasks/VirtualOfficePage";
 import CACFormPage from "./pages/onboarding-tasks/CACFormPage";
 import RescheduleTasks from "./pages/onboarding-tasks/RescheduleTasks";
+import KickoffFormPage from "./pages/onboarding-tasks/KickoffFormPage";
 import NPSSurveyPage from "./pages/NPSSurveyPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
@@ -141,6 +142,7 @@ const App = () => (
           
           <Route path="/onboarding-client/:projectId" element={<ClientOnboardingPage />} />
           <Route path="/cac-form/:projectId" element={<CACFormPage />} />
+          <Route path="/kickoff/:companyId" element={<KickoffFormPage />} />
           <Route path="/nps" element={<NPSSurveyPage />} />
           
           {/* Portal do Planejamento 2026 */}
