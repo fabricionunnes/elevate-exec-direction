@@ -521,7 +521,7 @@ const VirtualOfficePage = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-lg font-semibold">Escritório Virtual</h1>
+            <h1 className="text-lg font-semibold">Escritório UNV</h1>
             <p className="text-xs text-muted-foreground">{onlineStaff.length} online</p>
           </div>
         </div>

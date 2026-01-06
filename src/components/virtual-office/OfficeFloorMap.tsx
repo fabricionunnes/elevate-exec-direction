@@ -266,7 +266,7 @@ export const OfficeFloorMap = ({
                     background: `linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(168, 85, 247, 0.9))`,
                   }}
                 >
-                  🏢 ESCRITÓRIO VIRTUAL
+                  🏢 ESCRITÓRIO UNV
                 </span>
               </div>
 

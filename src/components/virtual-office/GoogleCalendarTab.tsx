@@ -572,7 +572,7 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground text-sm">
-              Visualize suas reuniões, crie eventos e entre nas chamadas diretamente do escritório virtual.
+              Visualize suas reuniões, crie eventos e entre nas chamadas diretamente do Escritório UNV.
             </p>
             <Button onClick={handleGoogleLogin} className="w-full gap-2">
               <svg className="h-5 w-5" viewBox="0 0 24 24">
