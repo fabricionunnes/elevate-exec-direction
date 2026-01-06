@@ -147,25 +147,37 @@ const GlobalChatWidget = () => {
     };
   }, []);
 
-  // Scroll to bottom when messages change or when opening a conversation
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
+  // Scroll to bottom - force immediate scroll when opening conversation
+  const scrollToBottom = (immediate = false) => {
+    const doScroll = () => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: immediate ? "auto" : "smooth" });
+      }
+    };
+    
+    // Multiple attempts to ensure scroll happens after DOM update
+    doScroll();
+    setTimeout(doScroll, 50);
+    setTimeout(doScroll, 150);
+    setTimeout(doScroll, 300);
   };
 
+  // Scroll when messages are loaded (initial load uses immediate scroll)
+  const previousMessagesLength = useRef(0);
+  
   useEffect(() => {
     if (messages.length > 0) {
-      scrollToBottom();
+      // If going from 0 to many messages (initial load), scroll immediately
+      const isInitialLoad = previousMessagesLength.current === 0;
+      scrollToBottom(isInitialLoad);
+      previousMessagesLength.current = messages.length;
     }
   }, [messages]);
 
-  // Also scroll when opening the chat panel or switching conversations
+  // Reset message count when conversation changes
   useEffect(() => {
-    if (isOpen && activeConversation && messages.length > 0) {
-      scrollToBottom();
-    }
-  }, [isOpen, activeConversation?.id]);
+    previousMessagesLength.current = 0;
+  }, [activeConversation?.id]);
 
   useEffect(() => {
     let unsubscribeMessages: (() => void) | undefined;
