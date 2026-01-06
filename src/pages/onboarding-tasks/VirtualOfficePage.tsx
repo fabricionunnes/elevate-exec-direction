@@ -532,7 +532,7 @@ const VirtualOfficePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
       <header className="border-b bg-card px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -842,7 +842,7 @@ const VirtualOfficePage = () => {
         )}
 
         {/* Main Area */}
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col min-h-0">
           {selectedRoom ? (
             <>
               {/* Room Header */}
@@ -893,47 +893,49 @@ const VirtualOfficePage = () => {
               </div>
 
               {/* Messages */}
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
-                  {messages.length === 0 ? (
-                    <div className="text-center text-muted-foreground py-8">
-                      <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">Nenhuma mensagem ainda</p>
-                      <p className="text-xs">Seja o primeiro a enviar uma mensagem!</p>
-                    </div>
-                  ) : (
-                    messages.map((msg) => {
-                      const isOwn = msg.staff_id === currentStaff?.id;
-                      const staffName = getStaffName(msg.staff_id);
-                      
-                      return (
-                        <div key={msg.id} className={cn("flex gap-3", isOwn && "flex-row-reverse")}>
-                          <Avatar className="h-8 w-8 shrink-0">
-                            <AvatarFallback className={cn("text-xs", isOwn ? "bg-primary text-primary-foreground" : "bg-muted")}>
-                              {getStaffInitials(staffName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className={cn("max-w-[70%]", isOwn && "text-right")}>
-                            <div className="flex items-center gap-2 mb-1">
-                              {!isOwn && <span className="text-xs font-medium">{staffName}</span>}
-                              <span className="text-[10px] text-muted-foreground">
-                                {format(new Date(msg.created_at), "HH:mm", { locale: ptBR })}
-                              </span>
-                            </div>
-                            <div className={cn(
-                              "p-3 rounded-lg",
-                              isOwn ? "bg-primary text-primary-foreground" : "bg-muted"
-                            )}>
-                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <ScrollArea className="h-full">
+                  <div className="p-4 space-y-4">
+                    {messages.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-8">
+                        <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">Nenhuma mensagem ainda</p>
+                        <p className="text-xs">Seja o primeiro a enviar uma mensagem!</p>
+                      </div>
+                    ) : (
+                      messages.map((msg) => {
+                        const isOwn = msg.staff_id === currentStaff?.id;
+                        const staffName = getStaffName(msg.staff_id);
+                        
+                        return (
+                          <div key={msg.id} className={cn("flex gap-3", isOwn && "flex-row-reverse")}>
+                            <Avatar className="h-8 w-8 shrink-0">
+                              <AvatarFallback className={cn("text-xs", isOwn ? "bg-primary text-primary-foreground" : "bg-muted")}>
+                                {getStaffInitials(staffName)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className={cn("max-w-[70%]", isOwn && "text-right")}>
+                              <div className="flex items-center gap-2 mb-1">
+                                {!isOwn && <span className="text-xs font-medium">{staffName}</span>}
+                                <span className="text-[10px] text-muted-foreground">
+                                  {format(new Date(msg.created_at), "HH:mm", { locale: ptBR })}
+                                </span>
+                              </div>
+                              <div className={cn(
+                                "p-3 rounded-lg",
+                                isOwn ? "bg-primary text-primary-foreground" : "bg-muted"
+                              )}>
+                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-              </ScrollArea>
+                        );
+                      })
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+              </div>
 
                   {/* Message Input */}
                   <div className="border-t p-3 bg-card">
