@@ -610,6 +610,7 @@ const OnboardingProjectPage = () => {
     if (!projectId) return;
     setChurnLoading(true);
     try {
+      // Update project status to closed
       const { error } = await supabase
         .from("onboarding_projects")
         .update({
@@ -621,6 +622,37 @@ const OnboardingProjectPage = () => {
         .eq("id", projectId);
 
       if (error) throw error;
+
+      // Check if company has any other active projects
+      if (project?.onboarding_company_id) {
+        const { data: otherProjects, error: projectsError } = await supabase
+          .from("onboarding_projects")
+          .select("id, status")
+          .eq("onboarding_company_id", project.onboarding_company_id)
+          .neq("id", projectId);
+
+        if (!projectsError && otherProjects) {
+          // Check if all other projects are also closed/completed
+          const hasActiveProjects = otherProjects.some(p => 
+            p.status !== "closed" && p.status !== "completed"
+          );
+
+          // If no active projects remain, set company to inactive
+          if (!hasActiveProjects) {
+            const { error: companyError } = await supabase
+              .from("onboarding_companies")
+              .update({ status: "inactive" })
+              .eq("id", project.onboarding_company_id);
+
+            if (companyError) {
+              console.error("Error updating company status:", companyError);
+            } else {
+              toast.info("Empresa marcada como inativa (sem projetos ativos)");
+            }
+          }
+        }
+      }
+
       setProject(prev => prev ? { 
         ...prev, 
         status: "closed",
@@ -654,6 +686,38 @@ const OnboardingProjectPage = () => {
         .eq("id", projectId);
       
       if (error) throw error;
+      
+      // If status changed to completed, check if company should be inactivated
+      if (field === "status" && value === "completed" && project?.onboarding_company_id) {
+        const { data: otherProjects } = await supabase
+          .from("onboarding_projects")
+          .select("id, status")
+          .eq("onboarding_company_id", project.onboarding_company_id)
+          .neq("id", projectId);
+
+        if (otherProjects) {
+          const hasActiveProjects = otherProjects.some(p => 
+            p.status !== "closed" && p.status !== "completed"
+          );
+
+          if (!hasActiveProjects) {
+            await supabase
+              .from("onboarding_companies")
+              .update({ status: "inactive" })
+              .eq("id", project.onboarding_company_id);
+            toast.info("Empresa marcada como inativa (sem projetos ativos)");
+          }
+        }
+      }
+      
+      // If status changed to active, ensure company is also active
+      if (field === "status" && value === "active" && project?.onboarding_company_id) {
+        await supabase
+          .from("onboarding_companies")
+          .update({ status: "active" })
+          .eq("id", project.onboarding_company_id);
+      }
+      
       setProject(prev => prev ? { ...prev, ...updateData } : null);
       toast.success("Projeto atualizado");
     } catch (error) {
