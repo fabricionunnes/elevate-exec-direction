@@ -48,6 +48,7 @@ import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBrief
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
 import { GeneratePDFTasksDialog } from "@/components/onboarding-tasks/GeneratePDFTasksDialog";
 import { Settings, Sparkles, Building2, Wand2, Target, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp } from "lucide-react";
+import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { ChurnReasonDialog } from "@/components/onboarding-tasks/ChurnReasonDialog";
 import { NoticePeriodDialog } from "@/components/onboarding-tasks/NoticePeriodDialog";
 import { MonthlyGoalsCard } from "@/components/onboarding-tasks/MonthlyGoalsCard";
@@ -810,6 +811,7 @@ const OnboardingProjectPage = () => {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
+                <WelcomeHeader className="text-xs text-muted-foreground" />
                 <h1 className="text-2xl font-bold">{project.product_name}</h1>
                 {project.onboarding_company?.name && (
                   <div className="flex items-center gap-2">

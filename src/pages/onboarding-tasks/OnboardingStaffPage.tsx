@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2, LogOut, Key, Eye, EyeOff, Loader2 } from "lucide-react";
+import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -358,9 +359,7 @@ const OnboardingStaffPage = () => {
             </Button>
             <div>
               <h1 className="text-3xl font-bold">Equipe UNV</h1>
-              <p className="text-muted-foreground">
-                Gerencie CS e Consultores
-              </p>
+              <WelcomeHeader className="text-sm text-muted-foreground" />
             </div>
           </div>
           <div className="flex items-center gap-2">

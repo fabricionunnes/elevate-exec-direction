@@ -47,6 +47,7 @@ import { ptBR } from "date-fns/locale";
 import GoogleCalendarTab from "@/components/virtual-office/GoogleCalendarTab";
 import { RoomAccessManager } from "@/components/virtual-office/RoomAccessManager";
 import { OfficeFloorMap } from "@/components/virtual-office/OfficeFloorMap";
+import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 
 
 interface Room {
@@ -553,7 +554,11 @@ const VirtualOfficePage = () => {
           </Button>
           <div>
             <h1 className="text-lg font-semibold">Escritório UNV</h1>
-            <p className="text-xs text-muted-foreground">{onlineStaff.length} online</p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <WelcomeHeader className="text-xs text-muted-foreground" />
+              <span>•</span>
+              <span>{onlineStaff.length} online</span>
+            </div>
           </div>
         </div>
 

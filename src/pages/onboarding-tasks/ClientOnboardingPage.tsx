@@ -13,6 +13,7 @@ import {
   Settings,
   BarChart3,
 } from "lucide-react";
+import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
 import { ClientJourneyTrail } from "@/components/client-portal/ClientJourneyTrail";
 import { ClientCalendarView } from "@/components/client-portal/ClientCalendarView";
@@ -285,12 +286,10 @@ const ClientOnboardingPage = () => {
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
+              <WelcomeHeader className="text-xs text-muted-foreground" />
               <h1 className="text-lg font-bold truncate">
                 {company?.name || project.product_name}
               </h1>
-              <p className="text-xs text-muted-foreground truncate">
-                {project.product_name}
-              </p>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
               <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowSettings(true)}>
