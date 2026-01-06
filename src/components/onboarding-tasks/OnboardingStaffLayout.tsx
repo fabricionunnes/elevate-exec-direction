@@ -1,15 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense, lazy } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { RealtimeNotifications } from "./RealtimeNotifications";
-import { NpsCelebrationPopup } from "./NpsCelebrationPopup";
-import GlobalChatWidget from "@/components/virtual-office/GlobalChatWidget";
-import { ChatNotifications } from "@/components/virtual-office/ChatNotifications";
 import { useGlobalPresence } from "@/hooks/useGlobalPresence";
+
+// Lazy load heavy components to prevent white screen issues
+const RealtimeNotifications = lazy(() => import("./RealtimeNotifications").then(m => ({ default: m.RealtimeNotifications })));
+const NpsCelebrationPopup = lazy(() => import("./NpsCelebrationPopup").then(m => ({ default: m.NpsCelebrationPopup })));
+const GlobalChatWidget = lazy(() => import("@/components/virtual-office/GlobalChatWidget"));
+const ChatNotifications = lazy(() => import("@/components/virtual-office/ChatNotifications").then(m => ({ default: m.ChatNotifications })));
+
+// Simple fallback that doesn't break layout
+const LoadingFallback = () => null;
 
 export const OnboardingStaffLayout = () => {
   const [isStaff, setIsStaff] = useState<boolean | null>(null);
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -17,31 +23,56 @@ export const OnboardingStaffLayout = () => {
   useGlobalPresence(staffId);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const checkStaffStatus = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        // Não logado, redireciona para login
-        if (!location.pathname.includes('/login')) {
-          navigate("/onboarding-tasks/login");
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (!isMounted) return;
+        
+        if (authError || !user) {
+          // Não logado, redireciona para login
+          if (!location.pathname.includes('/login')) {
+            navigate("/onboarding-tasks/login");
+          }
+          setIsStaff(false);
+          setStaffId(null);
+          setAuthChecked(true);
+          return;
         }
-        setIsStaff(false);
-        setStaffId(null);
-        return;
+
+        const { data: staff, error: staffError } = await supabase
+          .from("onboarding_staff")
+          .select("id, is_active")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (!isMounted) return;
+
+        if (staffError) {
+          console.warn("Error checking staff status:", staffError);
+        }
+
+        setIsStaff(!!staff);
+        setStaffId(staff?.id || null);
+        setAuthChecked(true);
+      } catch (error) {
+        console.error("Error in checkStaffStatus:", error);
+        if (isMounted) {
+          setIsStaff(false);
+          setStaffId(null);
+          setAuthChecked(true);
+        }
       }
-
-      const { data: staff } = await supabase
-        .from("onboarding_staff")
-        .select("id, is_active")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      setIsStaff(!!staff);
-      setStaffId(staff?.id || null);
     };
 
     checkStaffStatus();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [location.pathname, navigate]);
 
   // Se está na página de login, não mostra notificações
@@ -49,8 +80,8 @@ export const OnboardingStaffLayout = () => {
     return <Outlet />;
   }
 
-  // Enquanto verifica, não renderiza nada (ou pode mostrar loading)
-  if (isStaff === null) {
+  // Enquanto verifica auth, mostra loading spinner
+  if (!authChecked || isStaff === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
@@ -60,14 +91,30 @@ export const OnboardingStaffLayout = () => {
 
   return (
     <>
-      {/* Notificações globais para staff */}
-      {isStaff && <RealtimeNotifications />}
+      {/* Notificações globais para staff - wrapped in Suspense */}
+      {isStaff && (
+        <Suspense fallback={<LoadingFallback />}>
+          <RealtimeNotifications />
+        </Suspense>
+      )}
       {/* Notificações de chat em tempo real */}
-      {isStaff && <ChatNotifications />}
+      {isStaff && (
+        <Suspense fallback={<LoadingFallback />}>
+          <ChatNotifications />
+        </Suspense>
+      )}
       {/* Celebração NPS 10 para staff */}
-      {isStaff && <NpsCelebrationPopup />}
+      {isStaff && (
+        <Suspense fallback={<LoadingFallback />}>
+          <NpsCelebrationPopup />
+        </Suspense>
+      )}
       {/* Chat global para staff */}
-      {isStaff && <GlobalChatWidget />}
+      {isStaff && (
+        <Suspense fallback={<LoadingFallback />}>
+          <GlobalChatWidget />
+        </Suspense>
+      )}
       <Outlet />
     </>
   );

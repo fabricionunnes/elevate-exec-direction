@@ -48,43 +48,58 @@ export const ChatNotifications = () => {
 
   // Get current staff id and related data
   useEffect(() => {
+    let isMounted = true;
+    
     const initializeData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user || !isMounted) return;
 
-      const { data: staff } = await supabase
-        .from("onboarding_staff")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
+        const { data: staff, error: staffError } = await supabase
+          .from("onboarding_staff")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
 
-      if (staff) {
-        setStaffId(staff.id);
-      }
+        if (staffError) {
+          console.warn("Error fetching staff for chat notifications:", staffError);
+          return;
+        }
 
-      // Fetch staff members for names
-      const { data: staffData } = await supabase
-        .from("onboarding_staff")
-        .select("id, name")
-        .eq("is_active", true);
-      
-      if (staffData) {
-        setStaffMembers(staffData);
-      }
+        if (staff && isMounted) {
+          setStaffId(staff.id);
+        }
 
-      // Fetch rooms for names
-      const { data: roomsData } = await supabase
-        .from("virtual_office_rooms")
-        .select("id, name")
-        .eq("is_active", true);
-      
-      if (roomsData) {
-        setRooms(roomsData);
+        // Fetch staff members for names
+        const { data: staffData } = await supabase
+          .from("onboarding_staff")
+          .select("id, name")
+          .eq("is_active", true);
+        
+        if (staffData && isMounted) {
+          setStaffMembers(staffData);
+        }
+
+        // Fetch rooms for names
+        const { data: roomsData } = await supabase
+          .from("virtual_office_rooms")
+          .select("id, name")
+          .eq("is_active", true);
+        
+        if (roomsData && isMounted) {
+          setRooms(roomsData);
+        }
+      } catch (error) {
+        console.warn("Error initializing chat notifications:", error);
       }
     };
 
     initializeData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const getStaffName = useCallback((id: string) => {
