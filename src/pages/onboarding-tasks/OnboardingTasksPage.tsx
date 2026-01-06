@@ -791,7 +791,7 @@ const OnboardingTasksPage = () => {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/office")}>
                     <Video className="h-4 w-4 mr-2" />
-                    Escritório Virtual
+                    Escritório UNV
                   </DropdownMenuItem>
                   {isAdmin && (
                     <>
