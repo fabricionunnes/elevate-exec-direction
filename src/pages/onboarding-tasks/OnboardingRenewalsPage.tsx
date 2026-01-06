@@ -47,7 +47,15 @@ import {
   History,
   Search,
   Filter,
+  MessageSquare,
+  XCircle,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface Company {
   id: string;
@@ -57,7 +65,25 @@ interface Company {
   contract_end_date: string | null;
   status: string;
   segment: string | null;
+  renewal_plan_type: string | null;
+  renewal_status: string | null;
+  renewal_notes: string | null;
 }
+
+const RENEWAL_STATUS_OPTIONS = [
+  { value: "renovado", label: "Renovado", color: "bg-green-500" },
+  { value: "encerrado", label: "Encerrado", color: "bg-red-500" },
+  { value: "em_negociacao", label: "Em negociação", color: "bg-yellow-500" },
+  { value: "vai_renovar", label: "Vai renovar", color: "bg-blue-500" },
+  { value: "falta_pagar", label: "Falta pagar", color: "bg-orange-500" },
+];
+
+const PLAN_TYPE_OPTIONS = [
+  { value: "monthly", label: "Mensal", months: null },
+  { value: "quarterly", label: "Trimestral", months: 3 },
+  { value: "semiannual", label: "Semestral", months: 6 },
+  { value: "annual", label: "Anual", months: 12 },
+];
 
 interface Renewal {
   id: string;
@@ -221,7 +247,7 @@ export default function OnboardingRenewalsPage() {
     // Fetch companies with contract info
     const { data: companiesData, error: companiesError } = await supabase
       .from("onboarding_companies")
-      .select("id, name, contract_value, contract_start_date, contract_end_date, status, segment")
+      .select("id, name, contract_value, contract_start_date, contract_end_date, status, segment, renewal_plan_type, renewal_status, renewal_notes")
       .order("contract_end_date", { ascending: true, nullsFirst: false });
 
     if (companiesError) {
@@ -373,6 +399,165 @@ export default function OnboardingRenewalsPage() {
     } catch (error) {
       console.error("Error updating contract:", error);
       toast.error("Erro ao atualizar contrato");
+    }
+  };
+
+  const handlePlanTypeChange = async (companyId: string, planType: string) => {
+    if (!isAdmin) return;
+    
+    const company = companies.find(c => c.id === companyId);
+    if (!company) return;
+
+    try {
+      const plan = PLAN_TYPE_OPTIONS.find(p => p.value === planType);
+      let newEndDate: string | null = null;
+
+      // Calculate end date based on plan type (monthly = no end date)
+      if (plan && plan.months) {
+        const startDate = company.contract_start_date 
+          ? parseISO(company.contract_start_date) 
+          : new Date();
+        newEndDate = format(addMonths(startDate, plan.months), "yyyy-MM-dd");
+      }
+
+      const { error } = await supabase
+        .from("onboarding_companies")
+        .update({ 
+          renewal_plan_type: planType,
+          contract_end_date: newEndDate 
+        })
+        .eq("id", companyId);
+
+      if (error) throw error;
+      
+      setCompanies(prev => prev.map(c => 
+        c.id === companyId ? { ...c, renewal_plan_type: planType, contract_end_date: newEndDate } : c
+      ));
+      toast.success("Plano atualizado");
+    } catch (error) {
+      console.error("Error updating plan type:", error);
+      toast.error("Erro ao atualizar plano");
+    }
+  };
+
+  const handleRenewalStatusChange = async (companyId: string, status: string) => {
+    if (!isAdmin) return;
+    
+    const company = companies.find(c => c.id === companyId);
+    if (!company) return;
+
+    try {
+      // If status is "renovado" and there's a value and plan, auto-update
+      if (status === "renovado" && company.contract_value) {
+        const plan = PLAN_TYPE_OPTIONS.find(p => p.value === (company.renewal_plan_type || "monthly"));
+        if (plan && plan.months) {
+          const startDate = new Date();
+          const newEndDate = format(addMonths(startDate, plan.months), "yyyy-MM-dd");
+          
+          // Insert renewal record
+          await supabase.from("onboarding_contract_renewals").insert({
+            company_id: companyId,
+            previous_end_date: company.contract_end_date,
+            new_end_date: newEndDate,
+            previous_value: company.contract_value,
+            new_value: company.contract_value,
+            new_term_months: plan.months,
+            notes: "Renovação automática via status",
+            created_by: staffId,
+          });
+
+          await supabase
+            .from("onboarding_companies")
+            .update({ 
+              renewal_status: status,
+              contract_start_date: format(startDate, "yyyy-MM-dd"),
+              contract_end_date: newEndDate 
+            })
+            .eq("id", companyId);
+
+          setCompanies(prev => prev.map(c => 
+            c.id === companyId ? { 
+              ...c, 
+              renewal_status: status, 
+              contract_start_date: format(startDate, "yyyy-MM-dd"),
+              contract_end_date: newEndDate 
+            } : c
+          ));
+        } else {
+          // Monthly plan - no end date
+          await supabase
+            .from("onboarding_companies")
+            .update({ renewal_status: status, contract_end_date: null })
+            .eq("id", companyId);
+
+          setCompanies(prev => prev.map(c => 
+            c.id === companyId ? { ...c, renewal_status: status, contract_end_date: null } : c
+          ));
+        }
+        toast.success("Contrato renovado!");
+        fetchData();
+        return;
+      }
+
+      // If status is "encerrado", close project and inactivate company
+      if (status === "encerrado") {
+        // Update company status to inactive
+        await supabase
+          .from("onboarding_companies")
+          .update({ status: "inactive", renewal_status: status })
+          .eq("id", companyId);
+
+        // Close all active projects for this company
+        await supabase
+          .from("onboarding_projects")
+          .update({ status: "closed", churn_date: format(new Date(), "yyyy-MM-dd") })
+          .eq("onboarding_company_id", companyId)
+          .eq("status", "active");
+
+        setCompanies(prev => prev.map(c => 
+          c.id === companyId ? { ...c, renewal_status: status, status: "inactive" } : c
+        ));
+        toast.success("Empresa encerrada e projetos fechados");
+        fetchData();
+        return;
+      }
+
+      // Normal status update
+      const { error } = await supabase
+        .from("onboarding_companies")
+        .update({ renewal_status: status })
+        .eq("id", companyId);
+
+      if (error) throw error;
+      
+      setCompanies(prev => prev.map(c => 
+        c.id === companyId ? { ...c, renewal_status: status } : c
+      ));
+      toast.success("Status atualizado");
+    } catch (error) {
+      console.error("Error updating renewal status:", error);
+      toast.error("Erro ao atualizar status");
+    }
+  };
+
+  const handleRenewalNotesChange = async (companyId: string, notes: string) => {
+    if (!isAdmin) return;
+
+    try {
+      const { error } = await supabase
+        .from("onboarding_companies")
+        .update({ renewal_notes: notes })
+        .eq("id", companyId);
+
+      if (error) throw error;
+      
+      setCompanies(prev => prev.map(c => 
+        c.id === companyId ? { ...c, renewal_notes: notes } : c
+      ));
+      toast.success("Observações salvas");
+    } catch (error) {
+      console.error("Error updating notes:", error);
+      toast.error("Erro ao salvar observações");
     }
   };
 
@@ -619,21 +804,26 @@ export default function OnboardingRenewalsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Empresa</TableHead>
-                    <TableHead>Segmento</TableHead>
-                    <TableHead>Valor do Contrato</TableHead>
-                    <TableHead>Início</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Plano</TableHead>
                     <TableHead>Término</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Status Contrato</TableHead>
+                    <TableHead>Status Renovação</TableHead>
+                    <TableHead>Obs</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCompanies.map((company) => {
                     const status = getContractStatus(company.contract_end_date);
+                    const renewalStatusOption = RENEWAL_STATUS_OPTIONS.find(s => s.value === company.renewal_status);
+                    const planOption = PLAN_TYPE_OPTIONS.find(p => p.value === company.renewal_plan_type);
+                    
                     return (
                       <TableRow key={company.id}>
-                        <TableCell className="font-medium">{company.name}</TableCell>
-                        <TableCell>{company.segment || "-"}</TableCell>
+                        <TableCell className="font-medium max-w-[150px] truncate" title={company.name}>
+                          {company.name}
+                        </TableCell>
                         <TableCell>
                           {isAdmin ? (
                             <Input
@@ -644,7 +834,7 @@ export default function OnboardingRenewalsPage() {
                                 "contract_value",
                                 e.target.value ? parseFloat(e.target.value) : null
                               )}
-                              className="w-32 h-8"
+                              className="w-28 h-8"
                               placeholder="Valor"
                             />
                           ) : (
@@ -653,49 +843,100 @@ export default function OnboardingRenewalsPage() {
                         </TableCell>
                         <TableCell>
                           {isAdmin ? (
-                            <Input
-                              type="date"
-                              value={company.contract_start_date || ""}
-                              onChange={(e) => handleUpdateContract(
-                                company.id,
-                                "contract_start_date",
-                                e.target.value || null
-                              )}
-                              className="w-36 h-8"
-                            />
+                            <Select
+                              value={company.renewal_plan_type || "monthly"}
+                              onValueChange={(v) => handlePlanTypeChange(company.id, v)}
+                            >
+                              <SelectTrigger className="w-28 h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {PLAN_TYPE_OPTIONS.map(opt => (
+                                  <SelectItem key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           ) : (
-                            company.contract_start_date
-                              ? format(parseISO(company.contract_start_date), "dd/MM/yyyy")
-                              : "-"
+                            planOption?.label || "Mensal"
                           )}
                         </TableCell>
                         <TableCell>
-                          {isAdmin ? (
-                            <Input
-                              type="date"
-                              value={company.contract_end_date || ""}
-                              onChange={(e) => handleUpdateContract(
-                                company.id,
-                                "contract_end_date",
-                                e.target.value || null
-                              )}
-                              className="w-36 h-8"
-                            />
+                          {company.renewal_plan_type === "monthly" ? (
+                            <span className="text-muted-foreground text-sm">Recorrente</span>
+                          ) : company.contract_end_date ? (
+                            format(parseISO(company.contract_end_date), "dd/MM/yyyy")
                           ) : (
-                            company.contract_end_date
-                              ? format(parseISO(company.contract_end_date), "dd/MM/yyyy")
-                              : "-"
+                            "-"
                           )}
                         </TableCell>
                         <TableCell>
                           <Badge variant={status.color}>{status.label}</Badge>
                         </TableCell>
+                        <TableCell>
+                          {isAdmin ? (
+                            <Select
+                              value={company.renewal_status || "em_negociacao"}
+                              onValueChange={(v) => handleRenewalStatusChange(company.id, v)}
+                            >
+                              <SelectTrigger className="w-32 h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {RENEWAL_STATUS_OPTIONS.map(opt => (
+                                  <SelectItem key={opt.value} value={opt.value}>
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-2 h-2 rounded-full ${opt.color}`} />
+                                      {opt.label}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${renewalStatusOption?.color || "bg-gray-400"}`} />
+                              {renewalStatusOption?.label || "Em negociação"}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className={company.renewal_notes ? "text-primary" : "text-muted-foreground"}
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80">
+                              <div className="space-y-2">
+                                <Label>Observações da negociação</Label>
+                                <Textarea
+                                  value={company.renewal_notes || ""}
+                                  onChange={(e) => {
+                                    setCompanies(prev => prev.map(c => 
+                                      c.id === company.id ? { ...c, renewal_notes: e.target.value } : c
+                                    ));
+                                  }}
+                                  onBlur={(e) => handleRenewalNotesChange(company.id, e.target.value)}
+                                  placeholder="Adicione observações sobre a negociação..."
+                                  rows={4}
+                                />
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => openHistoryDialog(company)}
+                              title="Histórico"
                             >
                               <History className="h-4 w-4" />
                             </Button>
@@ -716,7 +957,7 @@ export default function OnboardingRenewalsPage() {
                   })}
                   {filteredCompanies.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         Nenhuma empresa encontrada
                       </TableCell>
                     </TableRow>
