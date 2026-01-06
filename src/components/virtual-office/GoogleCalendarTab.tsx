@@ -38,6 +38,34 @@ const GoogleCalendarTab = () => {
 
   useEffect(() => {
     checkConnection();
+    
+    // Listen for auth state changes to capture OAuth tokens
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        // Check if we have Google provider token
+        const providerToken = session.provider_token;
+        const providerRefreshToken = session.provider_refresh_token;
+        
+        if (providerToken) {
+          console.log("Google OAuth token captured, saving...");
+          try {
+            await supabase.functions.invoke("google-calendar?action=save-token", {
+              body: {
+                access_token: providerToken,
+                refresh_token: providerRefreshToken,
+                expires_in: 3600, // Default 1 hour
+              },
+            });
+            setConnected(true);
+            await fetchEvents();
+          } catch (error) {
+            console.error("Error saving Google token:", error);
+          }
+        }
+      }
+    });
+    
+    return () => subscription.unsubscribe();
   }, []);
 
   const checkConnection = async () => {
@@ -46,6 +74,26 @@ const GoogleCalendarTab = () => {
       if (!session) {
         setLoading(false);
         return;
+      }
+
+      // Also check if current session has provider_token (just logged in via OAuth)
+      if (session.provider_token) {
+        console.log("Found provider token in current session, saving...");
+        try {
+          await supabase.functions.invoke("google-calendar?action=save-token", {
+            body: {
+              access_token: session.provider_token,
+              refresh_token: session.provider_refresh_token,
+              expires_in: 3600,
+            },
+          });
+          setConnected(true);
+          await fetchEvents();
+          setLoading(false);
+          return;
+        } catch (error) {
+          console.error("Error saving Google token:", error);
+        }
       }
 
       const { data, error } = await supabase.functions.invoke("google-calendar?action=check-connection", {
