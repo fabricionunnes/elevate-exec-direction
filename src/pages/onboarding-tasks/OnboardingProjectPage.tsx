@@ -152,9 +152,11 @@ const OnboardingProjectPage = () => {
   const [staffList, setStaffList] = useState<{ id: string; name: string; role: string }[]>([]);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
   const [showChurnDialog, setShowChurnDialog] = useState(false);
+  const [showCancellationSignalDialog, setShowCancellationSignalDialog] = useState(false);
   const [showNoticePeriodDialog, setShowNoticePeriodDialog] = useState(false);
   const [noticePeriodLoading, setNoticePeriodLoading] = useState(false);
   const [churnLoading, setChurnLoading] = useState(false);
+  const [cancellationSignalLoading, setCancellationSignalLoading] = useState(false);
 
   // Check for attention/risk alerts when opening project
   const checkProjectAlerts = async () => {
@@ -536,10 +538,41 @@ const OnboardingProjectPage = () => {
   const handleProjectStatusChange = (value: string) => {
     if (value === "closed") {
       setShowChurnDialog(true);
+    } else if (value === "cancellation_signaled") {
+      setShowCancellationSignalDialog(true);
     } else if (value === "notice_period") {
       setShowNoticePeriodDialog(true);
     } else {
       handleProjectUpdate("status", value);
+    }
+  };
+
+  const handleCancellationSignalConfirm = async (reason: string, notes: string) => {
+    if (!projectId) return;
+    setCancellationSignalLoading(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_projects")
+        .update({
+          status: "cancellation_signaled",
+          cancellation_signal_reason: reason,
+          cancellation_signal_notes: notes,
+          cancellation_signal_date: new Date().toISOString(),
+        })
+        .eq("id", projectId);
+
+      if (error) throw error;
+      setProject(prev => prev ? { 
+        ...prev, 
+        status: "cancellation_signaled",
+      } : null);
+      setShowCancellationSignalDialog(false);
+      toast.success("Projeto alterado para Sinalizou Cancelamento");
+    } catch (error) {
+      console.error("Error updating project to cancellation signaled:", error);
+      toast.error("Erro ao atualizar projeto");
+    } finally {
+      setCancellationSignalLoading(false);
     }
   };
 
@@ -1139,6 +1172,15 @@ const OnboardingProjectPage = () => {
         onOpenChange={setShowChurnDialog}
         onConfirm={handleChurnConfirm}
         isLoading={churnLoading}
+        mode="churn"
+      />
+
+      <ChurnReasonDialog
+        open={showCancellationSignalDialog}
+        onOpenChange={setShowCancellationSignalDialog}
+        onConfirm={handleCancellationSignalConfirm}
+        isLoading={cancellationSignalLoading}
+        mode="cancellation_signal"
       />
 
       <NoticePeriodDialog

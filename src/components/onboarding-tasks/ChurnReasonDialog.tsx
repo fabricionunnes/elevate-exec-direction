@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -30,28 +30,52 @@ const CHURN_REASONS = [
   "Sem informação",
 ] as const;
 
+type DialogMode = "churn" | "cancellation_signal";
+
 interface ChurnReasonDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (reason: string, notes: string) => void;
   isLoading?: boolean;
+  mode?: DialogMode;
 }
+
+const DIALOG_CONFIG: Record<DialogMode, { title: string; description: string; confirmLabel: string }> = {
+  churn: {
+    title: "Motivo do Encerramento",
+    description: "Informe o motivo do encerramento do projeto. Ambos os campos são obrigatórios.",
+    confirmLabel: "Confirmar Encerramento",
+  },
+  cancellation_signal: {
+    title: "Motivo da Sinalização de Cancelamento",
+    description: "Informe o motivo pelo qual o cliente sinalizou cancelamento. Ambos os campos são obrigatórios.",
+    confirmLabel: "Confirmar Sinalização",
+  },
+};
 
 export function ChurnReasonDialog({
   open,
   onOpenChange,
   onConfirm,
   isLoading = false,
+  mode = "churn",
 }: ChurnReasonDialogProps) {
   const [reason, setReason] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
 
+  const config = DIALOG_CONFIG[mode];
+
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (open) {
+      setReason("");
+      setNotes("");
+    }
+  }, [open]);
+
   const handleConfirm = () => {
     if (!reason || !notes.trim()) return;
     onConfirm(reason, notes.trim());
-    // Reset form after confirm
-    setReason("");
-    setNotes("");
   };
 
   const handleCancel = () => {
@@ -66,9 +90,9 @@ export function ChurnReasonDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Motivo do Encerramento</DialogTitle>
+          <DialogTitle>{config.title}</DialogTitle>
           <DialogDescription>
-            Informe o motivo do encerramento do projeto. Ambos os campos são obrigatórios.
+            {config.description}
           </DialogDescription>
         </DialogHeader>
 
@@ -93,7 +117,9 @@ export function ChurnReasonDialog({
             <Label htmlFor="churn-notes">Observação detalhada *</Label>
             <Textarea
               id="churn-notes"
-              placeholder="Descreva com detalhes o motivo do encerramento..."
+              placeholder={mode === "cancellation_signal" 
+                ? "Descreva com detalhes o que o cliente relatou..."
+                : "Descreva com detalhes o motivo do encerramento..."}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
@@ -107,7 +133,7 @@ export function ChurnReasonDialog({
             Cancelar
           </Button>
           <Button onClick={handleConfirm} disabled={!isValid || isLoading}>
-            {isLoading ? "Salvando..." : "Confirmar Encerramento"}
+            {isLoading ? "Salvando..." : config.confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
