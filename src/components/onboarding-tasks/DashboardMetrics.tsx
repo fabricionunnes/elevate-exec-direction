@@ -246,8 +246,11 @@ const DashboardMetrics = ({
 
   const ltvMetrics = useMemo(() => {
     const today = new Date();
-    const companiesWithLifetime = filteredCompanies.map(company => {
-      const startDate = company.contract_start_date ? new Date(company.contract_start_date) : new Date(company.created_at);
+    
+    // Tempo médio: somente empresas com data de início de contrato
+    const companiesWithContractStart = filteredCompanies.filter(c => c.contract_start_date);
+    const companiesWithLifetime = companiesWithContractStart.map(company => {
+      const startDate = new Date(company.contract_start_date!);
       let endDate: Date;
       if (company.status === "closed" || company.status === "inactive") {
         endDate = company.contract_end_date ? new Date(company.contract_end_date) : company.status_changed_at ? new Date(company.status_changed_at) : today;
@@ -255,14 +258,22 @@ const DashboardMetrics = ({
         endDate = today;
       }
       const lifetimeMonths = Math.max(0, differenceInMonths(endDate, startDate));
-      const ltv = (company.contract_value || 0) * lifetimeMonths;
-      return { lifetimeMonths, ltv };
+      return { lifetimeMonths, contractValue: company.contract_value };
     });
-    const totalCompanies = companiesWithLifetime.length;
-    if (totalCompanies === 0) return { averageLifetimeMonths: 0, averageLTV: 0 };
-    const averageLifetimeMonths = Math.round((companiesWithLifetime.reduce((sum, c) => sum + c.lifetimeMonths, 0) / totalCompanies) * 10) / 10;
-    const companiesWithValue = companiesWithLifetime.filter(c => c.ltv > 0);
-    const averageLTV = companiesWithValue.length > 0 ? Math.round(companiesWithValue.reduce((sum, c) => sum + c.ltv, 0) / companiesWithValue.length) : 0;
+    
+    const totalCompaniesWithStart = companiesWithLifetime.length;
+    const averageLifetimeMonths = totalCompaniesWithStart > 0 
+      ? Math.round((companiesWithLifetime.reduce((sum, c) => sum + c.lifetimeMonths, 0) / totalCompaniesWithStart) * 10) / 10 
+      : 0;
+    
+    // LTV médio: somente empresas com valor de contrato e data de início
+    // Soma todos os valores de contrato e divide pelo tempo médio
+    const companiesWithValue = companiesWithLifetime.filter(c => c.contractValue && c.contractValue > 0);
+    const totalContractValue = companiesWithValue.reduce((sum, c) => sum + (c.contractValue || 0), 0);
+    const averageLTV = averageLifetimeMonths > 0 && companiesWithValue.length > 0
+      ? Math.round(totalContractValue / companiesWithValue.length * averageLifetimeMonths)
+      : 0;
+    
     return { averageLifetimeMonths, averageLTV };
   }, [filteredCompanies]);
 
