@@ -120,38 +120,41 @@ export const SupportRoomPanel = ({ currentStaff, onSessionUpdate }: SupportRoomP
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData?.session?.access_token) {
         toast.error("Você precisa estar logado para usar esta funcionalidade");
+        setCreatingMeet(false);
         return;
       }
 
       const eventTitle = `Suporte (${selectedSession.company_name || selectedSession.client_name})`;
       const now = new Date();
-      const end = new Date(now.getTime() + 30 * 60000); // 30 min duration
+      const end = new Date(now.getTime() + 15 * 60000); // 15 min duration
 
-      const response = await supabase.functions.invoke("google-calendar?action=create-event", {
-        body: {
-          title: eventTitle,
-          description: `Sessão de suporte ao cliente ${selectedSession.client_name}`,
-          startDateTime: now.toISOString(),
-          endDateTime: end.toISOString(),
-        },
-        headers: {
-          Authorization: `Bearer ${sessionData.session.access_token}`,
-        },
-      });
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/google-calendar?action=create-event`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionData.session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            title: eventTitle,
+            description: `Sessão de suporte ao cliente ${selectedSession.client_name}`,
+            startDateTime: now.toISOString(),
+            endDateTime: end.toISOString(),
+          }),
+        }
+      );
 
-      if (response.error) {
-        throw new Error(response.error.message || "Erro ao criar evento");
-      }
+      const data = await response.json();
 
-      const data = response.data as { success?: boolean; event?: { meetingLink?: string }; needsAuth?: boolean; error?: string };
-
-      if (data?.needsAuth) {
-        toast.error("Você precisa conectar sua conta Google na aba 'Minha Agenda'");
-        return;
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
+      if (!response.ok) {
+        if (data?.needsAuth) {
+          toast.error("Você precisa conectar sua conta Google na aba 'Minha Agenda'");
+          return;
+        }
+        throw new Error(data?.error || "Erro ao criar evento");
       }
 
       if (data?.success && data?.event?.meetingLink) {
