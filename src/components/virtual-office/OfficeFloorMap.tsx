@@ -115,7 +115,28 @@ export const OfficeFloorMap = ({
     return staffMembers.find((s) => s.id === staffId);
   };
 
-  const onlineCount = presences.filter(p => p.status !== "offline").length;
+  const onlinePresences = presences.filter(p => p.status !== "offline");
+  const onlineCount = onlinePresences.length;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "available": return "bg-green-500";
+      case "busy": return "bg-red-500";
+      case "away": return "bg-amber-500";
+      case "meeting": return "bg-violet-500";
+      default: return "bg-gray-400";
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "available": return "Disponível";
+      case "busy": return "Ocupado";
+      case "away": return "Ausente";
+      case "meeting": return "Em reunião";
+      default: return status;
+    }
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -134,6 +155,59 @@ export const OfficeFloorMap = ({
           </div>
         </div>
       </div>
+
+      {/* Online Users Panel */}
+      {onlinePresences.length > 0 && (
+        <div className="px-4 py-3 border-b border-border/50 bg-muted/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground">Equipe Online</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {onlinePresences.map((presence) => {
+              const staff = getStaffById(presence.staff_id);
+              if (!staff) return null;
+              
+              const currentRoom = rooms.find(r => r.id === presence.room_id);
+              
+              return (
+                <Tooltip key={presence.id}>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-background border border-border/50 hover:border-primary/30 transition-colors cursor-default">
+                      <div className="relative">
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-medium">
+                            {getStaffInitials(staff.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className={cn(
+                          "absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background",
+                          getStatusColor(presence.status)
+                        )} />
+                      </div>
+                      <span className="text-xs font-medium truncate max-w-[80px]">
+                        {staff.name.split(" ")[0]}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    <div className="font-medium">{staff.name}</div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <span className={cn("w-1.5 h-1.5 rounded-full", getStatusColor(presence.status))} />
+                      {getStatusLabel(presence.status)}
+                    </div>
+                    {currentRoom && (
+                      <div className="text-muted-foreground mt-0.5">
+                        📍 {currentRoom.name}
+                      </div>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Floor Plan Container */}
       <div className="flex-1 p-4 overflow-auto bg-muted/20">
