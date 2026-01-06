@@ -4,12 +4,108 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, CheckCircle2, AlertTriangle, Play, RefreshCw, CalendarX, CalendarPlus } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, AlertTriangle, Play, RefreshCw, CalendarX, CalendarPlus, Umbrella } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { format, addDays, differenceInDays, parseISO } from "date-fns";
+import { format, addDays, differenceInDays, parseISO, isSaturday, isSunday, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// Brazilian national holidays (fixed dates)
+const FIXED_HOLIDAYS = [
+  { month: 1, day: 1 },   // Ano Novo
+  { month: 4, day: 21 },  // Tiradentes
+  { month: 5, day: 1 },   // Dia do Trabalho
+  { month: 9, day: 7 },   // Independência
+  { month: 10, day: 12 }, // Nossa Senhora Aparecida
+  { month: 11, day: 2 },  // Finados
+  { month: 11, day: 15 }, // Proclamação da República
+  { month: 12, day: 25 }, // Natal
+];
+
+// Calculate Easter and variable holidays for a given year
+const getEasterDate = (year: number): Date => {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+};
+
+const getVariableHolidays = (year: number): Date[] => {
+  const easter = getEasterDate(year);
+  return [
+    addDays(easter, -47), // Carnaval segunda
+    addDays(easter, -46), // Carnaval terça
+    addDays(easter, -2),  // Sexta-feira Santa
+    addDays(easter, 60),  // Corpus Christi
+  ];
+};
+
+const isHoliday = (date: Date): boolean => {
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const year = date.getFullYear();
+  
+  // Check fixed holidays
+  for (const holiday of FIXED_HOLIDAYS) {
+    if (holiday.month === month && holiday.day === day) {
+      return true;
+    }
+  }
+  
+  // Check variable holidays
+  const variableHolidays = getVariableHolidays(year);
+  for (const holiday of variableHolidays) {
+    if (
+      holiday.getFullYear() === year &&
+      holiday.getMonth() === date.getMonth() &&
+      holiday.getDate() === day
+    ) {
+      return true;
+    }
+  }
+  
+  return false;
+};
+
+const isWeekendOrHoliday = (date: Date): boolean => {
+  return isSaturday(date) || isSunday(date) || isHoliday(date);
+};
+
+const getNextBusinessDay = (date: Date): Date => {
+  let nextDay = date;
+  
+  // If Saturday, move to Monday (+2 days)
+  if (isSaturday(date)) {
+    nextDay = addDays(date, 2);
+  }
+  // If Sunday, move to Tuesday (+2 days, because Monday might have tasks from Saturday)
+  else if (isSunday(date)) {
+    nextDay = addDays(date, 2);
+  }
+  // If holiday, move to next day
+  else if (isHoliday(date)) {
+    nextDay = addDays(date, 1);
+  }
+  
+  // Keep moving if the new day is also a weekend or holiday
+  while (isWeekendOrHoliday(nextDay)) {
+    nextDay = addDays(nextDay, 1);
+  }
+  
+  return nextDay;
+};
 
 interface ProjectSummary {
   project_id: string;
@@ -28,6 +124,14 @@ interface NoDateProjectSummary {
   task_count: number;
 }
 
+interface WeekendHolidayTask {
+  id: string;
+  due_date: string;
+  project_id: string;
+  project_name: string;
+  company_name: string;
+}
+
 export default function RescheduleTasks() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -36,10 +140,13 @@ export default function RescheduleTasks() {
   const [currentProject, setCurrentProject] = useState("");
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [noDateProjects, setNoDateProjects] = useState<NoDateProjectSummary[]>([]);
+  const [weekendHolidayTasks, setWeekendHolidayTasks] = useState<WeekendHolidayTask[]>([]);
   const [totalTasks, setTotalTasks] = useState(0);
   const [totalNoDateTasks, setTotalNoDateTasks] = useState(0);
+  const [totalWeekendHolidayTasks, setTotalWeekendHolidayTasks] = useState(0);
   const [completed, setCompleted] = useState(false);
   const [completedNoDate, setCompletedNoDate] = useState(false);
+  const [completedWeekendHoliday, setCompletedWeekendHoliday] = useState(false);
   const [updatedCount, setUpdatedCount] = useState(0);
   const [activeTab, setActiveTab] = useState("reschedule");
 
@@ -170,6 +277,40 @@ export default function RescheduleTasks() {
       noDateSummaries.sort((a, b) => b.task_count - a.task_count);
       setNoDateProjects(noDateSummaries);
       setTotalNoDateTasks(totalNoDate);
+
+      // Fetch tasks on weekends or holidays
+      const { data: allDatedTasks, error: weekendError } = await supabase
+        .from('onboarding_tasks')
+        .select(`
+          id,
+          due_date,
+          project_id,
+          onboarding_projects!inner(
+            product_name,
+            onboarding_companies(name)
+          )
+        `)
+        .not('due_date', 'is', null)
+        .neq('status', 'completed');
+
+      if (weekendError) throw weekendError;
+
+      const weekendHolidayList: WeekendHolidayTask[] = [];
+      allDatedTasks?.forEach((task: any) => {
+        const taskDate = parseISO(task.due_date);
+        if (isWeekendOrHoliday(taskDate)) {
+          weekendHolidayList.push({
+            id: task.id,
+            due_date: task.due_date,
+            project_id: task.project_id,
+            project_name: task.onboarding_projects?.product_name || 'Projeto',
+            company_name: task.onboarding_projects?.onboarding_companies?.name || 'Empresa'
+          });
+        }
+      });
+
+      setWeekendHolidayTasks(weekendHolidayList);
+      setTotalWeekendHolidayTasks(weekendHolidayList.length);
 
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -327,6 +468,56 @@ export default function RescheduleTasks() {
     }
   };
 
+  const moveWeekendHolidayTasks = async () => {
+    if (!confirm(`Tem certeza que deseja mover ${totalWeekendHolidayTasks} tarefas de finais de semana e feriados para dias úteis?\n\nEsta ação não pode ser desfeita!`)) {
+      return;
+    }
+
+    setProcessing(true);
+    setProgress(0);
+    setUpdatedCount(0);
+
+    let processed = 0;
+    let updated = 0;
+
+    try {
+      setCurrentProject("Processando tarefas...");
+      
+      for (const task of weekendHolidayTasks) {
+        const currentDate = parseISO(task.due_date);
+        const newDate = getNextBusinessDay(currentDate);
+        const newDateStr = format(newDate, 'yyyy-MM-dd');
+
+        const { error: updateError } = await supabase
+          .from('onboarding_tasks')
+          .update({ due_date: newDateStr, updated_at: new Date().toISOString() })
+          .eq('id', task.id);
+
+        if (updateError) {
+          console.error(`Error updating task ${task.id}:`, updateError);
+        } else {
+          updated++;
+        }
+
+        processed++;
+        setProgress((processed / totalWeekendHolidayTasks) * 100);
+        setUpdatedCount(updated);
+      }
+
+      setCompletedWeekendHoliday(true);
+      toast.success(`${updated} tarefas movidas para dias úteis!`);
+      
+      // Refresh to update counts
+      await fetchProjectsSummary();
+    } catch (error) {
+      console.error('Error moving weekend/holiday tasks:', error);
+      toast.error('Erro ao mover tarefas');
+    } finally {
+      setProcessing(false);
+      setCurrentProject("");
+    }
+  };
+
   const tomorrow = format(addDays(new Date(), 1), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
   return (
@@ -346,14 +537,18 @@ export default function RescheduleTasks() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="reschedule" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="reschedule" className="flex items-center gap-2 text-xs sm:text-sm">
               <Calendar className="h-4 w-4" />
-              Reagendar ({totalTasks})
+              <span className="hidden sm:inline">Reagendar</span> ({totalTasks})
             </TabsTrigger>
-            <TabsTrigger value="assign-dates" className="flex items-center gap-2">
+            <TabsTrigger value="assign-dates" className="flex items-center gap-2 text-xs sm:text-sm">
               <CalendarPlus className="h-4 w-4" />
-              Sem Data ({totalNoDateTasks})
+              <span className="hidden sm:inline">Sem Data</span> ({totalNoDateTasks})
+            </TabsTrigger>
+            <TabsTrigger value="weekends" className="flex items-center gap-2 text-xs sm:text-sm">
+              <Umbrella className="h-4 w-4" />
+              <span className="hidden sm:inline">Fds/Feriados</span> ({totalWeekendHolidayTasks})
             </TabsTrigger>
           </TabsList>
 
@@ -604,6 +799,146 @@ export default function RescheduleTasks() {
                         </div>
                       );
                     })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Weekends & Holidays Tab */}
+          <TabsContent value="weekends" className="space-y-4">
+            <Alert>
+              <Umbrella className="h-4 w-4" />
+              <AlertTitle>Finais de Semana e Feriados</AlertTitle>
+              <AlertDescription>
+                Move tarefas de sábados para segunda-feira e domingos para terça-feira.
+                Tarefas em feriados nacionais são movidas para o próximo dia útil.
+              </AlertDescription>
+            </Alert>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Umbrella className="h-5 w-5" />
+                  Mover para Dias Úteis
+                </CardTitle>
+                <CardDescription>
+                  Feriados nacionais considerados: Ano Novo, Tiradentes, Dia do Trabalho, 
+                  Independência, Aparecida, Finados, Proclamação da República, Natal, 
+                  Carnaval, Sexta-feira Santa e Corpus Christi.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 bg-muted rounded-lg text-center">
+                        <div className="text-3xl font-bold">{totalWeekendHolidayTasks}</div>
+                        <div className="text-sm text-muted-foreground">Tarefas a mover</div>
+                      </div>
+                      <div className="p-4 bg-muted rounded-lg text-center">
+                        <div className="text-3xl font-bold">
+                          {new Set(weekendHolidayTasks.map(t => t.project_id)).size}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Projetos afetados</div>
+                      </div>
+                    </div>
+
+                    {!completedWeekendHoliday && (
+                      <Button 
+                        onClick={moveWeekendHolidayTasks} 
+                        disabled={processing || totalWeekendHolidayTasks === 0}
+                        className="w-full"
+                        size="lg"
+                      >
+                        {processing && activeTab === "weekends" ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Processando...
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4 mr-2" />
+                            Mover Tarefas para Dias Úteis
+                          </>
+                        )}
+                      </Button>
+                    )}
+
+                    {processing && activeTab === "weekends" && (
+                      <div className="space-y-2">
+                        <Progress value={progress} className="h-3" />
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>{currentProject}</span>
+                          <span>{Math.round(progress)}%</span>
+                        </div>
+                        <div className="text-center text-sm">
+                          {updatedCount} tarefas atualizadas
+                        </div>
+                      </div>
+                    )}
+
+                    {completedWeekendHoliday && (
+                      <Alert className="border-green-500 bg-green-50">
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        <AlertTitle className="text-green-700">Concluído!</AlertTitle>
+                        <AlertDescription className="text-green-600">
+                          {updatedCount} tarefas movidas para dias úteis.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {!loading && weekendHolidayTasks.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Tarefas em Finais de Semana/Feriados</CardTitle>
+                  <CardDescription>
+                    Lista de tarefas que serão movidas para dias úteis
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="max-h-96 overflow-y-auto space-y-2">
+                    {weekendHolidayTasks.slice(0, 50).map((task) => {
+                      const taskDate = parseISO(task.due_date);
+                      const newDate = getNextBusinessDay(taskDate);
+                      const dayName = format(taskDate, 'EEEE', { locale: ptBR });
+                      return (
+                        <div 
+                          key={task.id} 
+                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{task.company_name}</div>
+                            <div className="text-sm text-muted-foreground truncate">
+                              {task.project_name}
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            <div className="text-sm">
+                              <span className="text-orange-500 capitalize">{dayName}</span>
+                              {" "}
+                              {format(taskDate, "dd/MM")}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              → <span className="text-green-600">{format(newDate, "EEEE dd/MM", { locale: ptBR })}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {weekendHolidayTasks.length > 50 && (
+                      <div className="text-center text-sm text-muted-foreground py-2">
+                        ... e mais {weekendHolidayTasks.length - 50} tarefas
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
