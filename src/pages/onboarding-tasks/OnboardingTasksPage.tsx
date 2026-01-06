@@ -550,7 +550,7 @@ const OnboardingTasksPage = () => {
   }, [monthlyGoals, dateRange, allProjects, filterConsultant, filterService, filterStatus, companies]);
 
   const filteredCompanies = useMemo(() => {
-    return companies.filter((company) => {
+    const filtered = companies.filter((company) => {
       // Text search filter
       const matchesSearch =
         company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -643,6 +643,13 @@ const OnboardingTasksPage = () => {
       }
       
       return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
+    });
+    
+    // Sort: inactive companies appear last
+    return filtered.sort((a, b) => {
+      if (a.status === "inactive" && b.status !== "inactive") return 1;
+      if (a.status !== "inactive" && b.status === "inactive") return -1;
+      return a.name.localeCompare(b.name);
     });
   }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, projectsGoalRanges]);
 
