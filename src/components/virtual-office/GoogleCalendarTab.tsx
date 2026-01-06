@@ -868,15 +868,35 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                       viewMode === "week" && "min-h-[200px]",
                       !isCurrentMonth && viewMode === "month" && "bg-muted/30 opacity-50",
                       isCurrentDay && "border-primary bg-primary/5",
-                      isViewingOwnCalendar && "cursor-pointer hover:bg-muted/30"
+                      isViewingOwnCalendar && dayEvents.length === 0 && "cursor-pointer hover:bg-muted/30"
                     )}
-                    onClick={() => isViewingOwnCalendar && openCreateDialog(day)}
+                    onClick={(e) => {
+                      // Only open create dialog if clicking on empty space (not on an event)
+                      if (isViewingOwnCalendar && dayEvents.length === 0) {
+                        openCreateDialog(day);
+                      }
+                    }}
                   >
-                    <div className={cn(
-                      "text-xs font-medium mb-1 text-center",
-                      isCurrentDay && "text-primary"
-                    )}>
-                      {format(day, "d")}
+                    <div className="flex items-center justify-between mb-1 px-0.5">
+                      <span className={cn(
+                        "text-xs font-medium",
+                        isCurrentDay && "text-primary"
+                      )}>
+                        {format(day, "d")}
+                      </span>
+                      {isViewingOwnCalendar && dayEvents.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-4 w-4 opacity-50 hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openCreateDialog(day);
+                          }}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
                     <ScrollArea className={cn(
                       "h-[60px] sm:h-[80px]",
