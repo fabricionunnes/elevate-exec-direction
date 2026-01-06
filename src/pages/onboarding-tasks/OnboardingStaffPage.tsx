@@ -82,6 +82,12 @@ const OnboardingStaffPage = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
+  // Estados para troca de senha de outro membro
+  const [changingPasswordMember, setChangingPasswordMember] = useState<Staff | null>(null);
+  const [memberNewPassword, setMemberNewPassword] = useState("");
+  const [showMemberPassword, setShowMemberPassword] = useState(false);
+  const [savingMemberPassword, setSavingMemberPassword] = useState(false);
+
   useEffect(() => {
     fetchStaff();
   }, []);
@@ -185,14 +191,16 @@ const OnboardingStaffPage = () => {
     
     try {
       const { data, error } = await supabase.functions.invoke("create-staff-user", {
-        method: "DELETE",
         body: {
+          action: "delete",
           staff_id: deletingMember.id,
           delete_auth_user: true,
         },
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
       toast.success("Membro excluído com sucesso");
       setShowDeleteDialog(false);
       setDeletingMember(null);
@@ -200,6 +208,50 @@ const OnboardingStaffPage = () => {
     } catch (error: any) {
       console.error("Error deleting staff:", error);
       toast.error(error.message || "Erro ao excluir membro");
+    }
+  };
+
+  const openChangePasswordDialog = (member: Staff) => {
+    setChangingPasswordMember(member);
+    setMemberNewPassword("");
+    setShowMemberPassword(false);
+  };
+
+  const handleChangeMemberPassword = async () => {
+    if (!changingPasswordMember) return;
+
+    if (!memberNewPassword) {
+      toast.error("Preencha a nova senha");
+      return;
+    }
+
+    if (memberNewPassword.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+
+    setSavingMemberPassword(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("create-staff-user", {
+        body: {
+          action: "reset_password",
+          staff_id: changingPasswordMember.id,
+          new_password: memberNewPassword,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(`Senha de ${changingPasswordMember.name} alterada com sucesso!`);
+      setChangingPasswordMember(null);
+      setMemberNewPassword("");
+    } catch (error: any) {
+      console.error("Error changing password:", error);
+      toast.error(error.message || "Erro ao alterar senha");
+    } finally {
+      setSavingMemberPassword(false);
     }
   };
 
@@ -411,14 +463,25 @@ const OnboardingStaffPage = () => {
                     {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => openEditDialog(member)}
+                        title="Editar"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
+                      {member.user_id && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openChangePasswordDialog(member)}
+                          title="Alterar senha"
+                        >
+                          <Key className="h-4 w-4 text-amber-500" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -615,6 +678,58 @@ const OnboardingStaffPage = () => {
                 disabled={changingPassword || !newPassword || !confirmPassword}
               >
                 {changingPassword ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Alterando...
+                  </>
+                ) : (
+                  "Alterar Senha"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para alterar senha de outro membro */}
+      <Dialog open={!!changingPasswordMember} onOpenChange={(open) => !open && setChangingPasswordMember(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar Senha</DialogTitle>
+            <DialogDescription>
+              Definir nova senha para {changingPasswordMember?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nova Senha</Label>
+              <div className="relative">
+                <Input
+                  type={showMemberPassword ? "text" : "password"}
+                  placeholder="Mínimo 6 caracteres"
+                  value={memberNewPassword}
+                  onChange={(e) => setMemberNewPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowMemberPassword(!showMemberPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                >
+                  {showMemberPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setChangingPasswordMember(null)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleChangeMemberPassword}
+                disabled={savingMemberPassword || !memberNewPassword}
+              >
+                {savingMemberPassword ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Alterando...
