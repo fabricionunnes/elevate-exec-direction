@@ -751,6 +751,66 @@ export type Database = {
           },
         ]
       }
+      onboarding_contract_renewals: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          new_end_date: string
+          new_term_months: number | null
+          new_value: number
+          notes: string | null
+          previous_end_date: string | null
+          previous_term_months: number | null
+          previous_value: number | null
+          renewal_date: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          new_end_date: string
+          new_term_months?: number | null
+          new_value: number
+          notes?: string | null
+          previous_end_date?: string | null
+          previous_term_months?: number | null
+          previous_value?: number | null
+          renewal_date?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          new_end_date?: string
+          new_term_months?: number | null
+          new_value?: number
+          notes?: string | null
+          previous_end_date?: string | null
+          previous_term_months?: number | null
+          previous_value?: number | null
+          renewal_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_contract_renewals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_contract_renewals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_documents: {
         Row: {
           category: string | null
