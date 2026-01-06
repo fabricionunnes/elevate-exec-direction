@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 import { 
@@ -483,6 +484,15 @@ const GlobalChatWidget = () => {
     return messageReads.some(
       read => read.message_id === messageId && read.staff_id !== senderId
     );
+  };
+
+  const getMessageReaders = (messageId: string, senderId: string): { name: string; readAt: string }[] => {
+    return messageReads
+      .filter(read => read.message_id === messageId && read.staff_id !== senderId)
+      .map(read => ({
+        name: getStaffName(read.staff_id),
+        readAt: format(parseISO(read.read_at), "dd/MM HH:mm", { locale: ptBR })
+      }));
   };
 
   const subscribeToMessages = () => {
@@ -987,6 +997,9 @@ const GlobalChatWidget = () => {
                           const isOwn = msg.staff_id === currentStaff.id;
                           const senderName = getStaffName(msg.staff_id);
                           const wasRead = isOwn && isMessageRead(msg.id, msg.staff_id);
+                          const readers = isOwn && activeConversation.type === "room" 
+                            ? getMessageReaders(msg.id, msg.staff_id) 
+                            : [];
 
                           return (
                             <div
@@ -1014,7 +1027,46 @@ const GlobalChatWidget = () => {
                                     {format(parseISO(msg.created_at), "HH:mm", { locale: ptBR })}
                                   </span>
                                   {isOwn && (
-                                    wasRead ? (
+                                    activeConversation.type === "room" && wasRead ? (
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <button className="flex items-center hover:opacity-70 transition-opacity">
+                                            <CheckCheck className="h-3.5 w-3.5 text-[#53BDEB]" />
+                                          </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent 
+                                          className="w-56 p-0" 
+                                          align="end"
+                                          side="top"
+                                        >
+                                          <div className="p-3 border-b">
+                                            <p className="text-xs font-medium text-muted-foreground">
+                                              Visualizado por {readers.length}
+                                            </p>
+                                          </div>
+                                          <ScrollArea className="max-h-40">
+                                            <div className="p-2 space-y-1">
+                                              {readers.map((reader, idx) => (
+                                                <div 
+                                                  key={idx} 
+                                                  className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50"
+                                                >
+                                                  <span className="text-sm font-medium truncate">{reader.name}</span>
+                                                  <span className="text-[10px] text-muted-foreground ml-2 whitespace-nowrap">
+                                                    {reader.readAt}
+                                                  </span>
+                                                </div>
+                                              ))}
+                                              {readers.length === 0 && (
+                                                <p className="text-xs text-muted-foreground text-center py-2">
+                                                  Ninguém visualizou ainda
+                                                </p>
+                                              )}
+                                            </div>
+                                          </ScrollArea>
+                                        </PopoverContent>
+                                      </Popover>
+                                    ) : wasRead ? (
                                       <CheckCheck className="h-3.5 w-3.5 text-[#53BDEB]" />
                                     ) : (
                                       <Check className="h-3.5 w-3.5 text-muted-foreground" />
