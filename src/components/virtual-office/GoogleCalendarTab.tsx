@@ -340,6 +340,11 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
         body.eventId = editingEvent.id;
       }
 
+      // If CS/Admin is creating event for another user, pass target_user_id
+      if (selectedStaffUserId && selectedStaffUserId !== currentStaff?.user_id) {
+        body.target_user_id = selectedStaffUserId;
+      }
+
       const { data, error } = await supabase.functions.invoke(`google-calendar?action=${action}`, {
         body,
       });
@@ -628,8 +633,8 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
         </div>
         
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Create Event Button - only for own calendar */}
-          {isViewingOwnCalendar && (
+          {/* Create Event Button - CS/Admin can create for any user, others only for own calendar */}
+          {(isViewingOwnCalendar || isCSOrAdmin) && (
             <Button
               size="sm"
               onClick={() => openCreateDialog()}
