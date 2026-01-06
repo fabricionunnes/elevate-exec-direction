@@ -28,28 +28,39 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get user from authorization header
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
+    // Get user from authorization header (validated via signing-keys)
+    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+    if (!authHeader || !authHeader.toLowerCase().startsWith("bearer ")) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
-    if (userError || !user) {
-      console.error("User auth error:", userError);
+    const token = authHeader.replace(/bearer\s+/i, "").trim();
+
+    // Validate JWT using getClaims (required when verify_jwt=false)
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.error("JWT validation error:", claimsError);
       return new Response(
         JSON.stringify({ error: "Invalid token" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const user = { id: claimsData.claims.sub };
+
+    // Use admin client for DB operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
