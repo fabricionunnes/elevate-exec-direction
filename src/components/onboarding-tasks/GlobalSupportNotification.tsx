@@ -17,9 +17,41 @@ interface SupportSession {
 export const GlobalSupportNotification = () => {
   const navigate = useNavigate();
   const [shownNotifications, setShownNotifications] = useState<Set<string>>(new Set());
+  const [hasCheckedInitial, setHasCheckedInitial] = useState(false);
 
+  // Check for existing waiting sessions on mount
   useEffect(() => {
-    // Subscribe to new support sessions
+    const checkExistingSessions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("support_room_sessions")
+          .select("*")
+          .eq("status", "waiting")
+          .order("started_at", { ascending: false });
+
+        if (error) throw error;
+
+        // Show notification for each waiting session
+        if (data && data.length > 0) {
+          data.forEach((session) => {
+            if (!shownNotifications.has(session.id)) {
+              showSupportNotification(session as SupportSession);
+              setShownNotifications(prev => new Set([...prev, session.id]));
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Error checking existing support sessions:", error);
+      } finally {
+        setHasCheckedInitial(true);
+      }
+    };
+
+    checkExistingSessions();
+  }, []);
+
+  // Subscribe to new support sessions
+  useEffect(() => {
     const channel = supabase
       .channel("global-support-notifications")
       .on(
