@@ -153,7 +153,7 @@ export const OfficeFloorMap = ({
               <Briefcase className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h2 className="font-semibold text-base">Mapa do Escritório</h2>
+              <h2 className="font-semibold text-base">Escritório</h2>
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
                 {onlineCount} online
