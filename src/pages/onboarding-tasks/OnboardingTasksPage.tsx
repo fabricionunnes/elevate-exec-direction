@@ -89,6 +89,7 @@ const OnboardingTasksPage = () => {
   const [expandedCompanyId, setExpandedCompanyId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   // Filter states
   const [filterConsultant, setFilterConsultant] = useState<string>("all");
@@ -183,6 +184,7 @@ const OnboardingTasksPage = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        setCurrentUserId(user.id);
         const { data: staffMember } = await supabase
           .from("onboarding_staff")
           .select("id, role")
@@ -1020,6 +1022,7 @@ const OnboardingTasksPage = () => {
             fetchAllTasks();
             fetchCompanies();
           }}
+          currentStaffUserId={currentUserId}
         />
 
         {/* Companies List */}

@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isPast, addMonths, subMonths, startOfWeek, endOfWeek, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isPast, addMonths, subMonths, startOfWeek, endOfWeek, parseISO, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, Building2, Package, Plus, ExternalLink, Circle, CalendarX, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, Building2, Package, Plus, ExternalLink, Circle, CalendarX, Search, Video, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  start: string;
+  end: string;
+  meetingLink?: string;
+  calendarLink: string;
+}
 
 interface Task {
   id: string;
@@ -41,9 +51,10 @@ interface DashboardAgendaProps {
   companies: Company[];
   filteredProjectIds: Set<string>;
   onTaskAdded?: () => void;
+  currentStaffUserId?: string | null;
 }
 
-export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds, onTaskAdded }: DashboardAgendaProps) => {
+export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds, onTaskAdded, currentStaffUserId }: DashboardAgendaProps) => {
   const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -53,6 +64,57 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
   const [newTaskProjectId, setNewTaskProjectId] = useState("");
   const [addingTask, setAddingTask] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
+  
+  // Google Calendar events
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [calendarConnected, setCalendarConnected] = useState(false);
+
+  // Fetch Google Calendar events
+  useEffect(() => {
+    if (currentStaffUserId) {
+      checkCalendarConnection();
+    }
+  }, [currentStaffUserId]);
+
+  useEffect(() => {
+    if (calendarConnected && currentStaffUserId) {
+      fetchCalendarEvents();
+    }
+  }, [calendarConnected, currentMonth, currentStaffUserId]);
+
+  const checkCalendarConnection = async () => {
+    try {
+      const { data } = await supabase.functions.invoke("google-calendar?action=check-connection", {
+        body: {},
+      });
+      setCalendarConnected(data?.connected || false);
+    } catch (error) {
+      console.error("Error checking calendar connection:", error);
+      setCalendarConnected(false);
+    }
+  };
+
+  const fetchCalendarEvents = async () => {
+    if (!calendarConnected) return;
+    
+    setLoadingEvents(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-calendar?action=events", {
+        body: {},
+      });
+
+      if (error) throw error;
+
+      if (data?.events) {
+        setCalendarEvents(data.events);
+      }
+    } catch (error) {
+      console.error("Error fetching calendar events:", error);
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
 
   // Create maps for quick lookup
   const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
@@ -115,12 +177,35 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentMonth]);
 
+  // Get events by date
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    
+    calendarEvents.forEach(event => {
+      if (!event.start) return;
+      const dateKey = format(parseISO(event.start), "yyyy-MM-dd");
+      if (!map.has(dateKey)) {
+        map.set(dateKey, []);
+      }
+      map.get(dateKey)!.push(event);
+    });
+    
+    return map;
+  }, [calendarEvents]);
+
   // Get tasks for selected day
   const selectedDayTasks = useMemo(() => {
     if (!selectedDate) return [];
     const dateKey = format(selectedDate, "yyyy-MM-dd");
     return tasksByDate.get(dateKey) || [];
   }, [selectedDate, tasksByDate]);
+
+  // Get events for selected day
+  const selectedDayEvents = useMemo(() => {
+    if (!selectedDate) return [];
+    const dateKey = format(selectedDate, "yyyy-MM-dd");
+    return eventsByDate.get(dateKey) || [];
+  }, [selectedDate, eventsByDate]);
 
   const handleDayClick = (date: Date) => {
     setSelectedDate(date);
@@ -170,6 +255,11 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
     return tasksByDate.get(dateKey)?.length || 0;
   };
 
+  const getEventsCountForDay = (date: Date) => {
+    const dateKey = format(date, "yyyy-MM-dd");
+    return eventsByDate.get(dateKey)?.length || 0;
+  };
+
   const getStatusForDay = (date: Date) => {
     const dateKey = format(date, "yyyy-MM-dd");
     const dayTasks = tasksByDate.get(dateKey) || [];
@@ -207,12 +297,29 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
     <>
       <Card className="col-span-full">
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <CalendarIcon className="h-5 w-5 text-primary" />
-              Agenda de Tarefas
+              Agenda
+              {calendarConnected && (
+                <Badge variant="outline" className="text-xs gap-1">
+                  <Video className="h-3 w-3" />
+                  Google
+                </Badge>
+              )}
             </CardTitle>
             <div className="flex items-center gap-1">
+              {calendarConnected && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={fetchCalendarEvents}
+                  disabled={loadingEvents}
+                >
+                  <RefreshCw className={`h-4 w-4 ${loadingEvents ? 'animate-spin' : ''}`} />
+                </Button>
+              )}
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -250,6 +357,7 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
             {calendarDays.map((day, index) => {
               const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
               const taskCount = getTasksCountForDay(day);
+              const eventCount = getEventsCountForDay(day);
               const dayStatus = getStatusForDay(day);
               const isTodayDate = isToday(day);
               
@@ -281,8 +389,8 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
                     {format(day, "d")}
                   </span>
                   
-                  {taskCount > 0 && (
-                    <div className="mt-0.5">
+                  <div className="flex items-center gap-0.5 mt-0.5">
+                    {taskCount > 0 && (
                       <Badge 
                         variant="secondary" 
                         className={`
@@ -296,11 +404,20 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
                       >
                         {taskCount}
                       </Badge>
-                    </div>
-                  )}
+                    )}
+                    {eventCount > 0 && (
+                      <Badge 
+                        variant="outline" 
+                        className="text-[9px] sm:text-[10px] px-1 py-0 h-4 bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700"
+                      >
+                        <Video className="h-2.5 w-2.5 mr-0.5" />
+                        {eventCount}
+                      </Badge>
+                    )}
+                  </div>
 
                   {/* Add button on hover */}
-                  {isCurrentMonth && taskCount === 0 && (
+                  {isCurrentMonth && taskCount === 0 && eventCount === 0 && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -340,6 +457,12 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
               <div className="w-3 h-3 rounded bg-blue-500" />
               <span className="text-muted-foreground">Pendente</span>
             </div>
+            {calendarConnected && (
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-purple-500" />
+                <span className="text-muted-foreground">Reunião</span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -426,11 +549,141 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
           </DialogHeader>
           
           <ScrollArea className="max-h-[60vh] pr-4">
-            <div className="space-y-2">
-              {selectedDayTasks.length === 0 ? (
+            <div className="space-y-3">
+              {/* Calendar Events Section */}
+              {selectedDayEvents.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium text-purple-700 dark:text-purple-300">
+                    <Video className="h-4 w-4" />
+                    Reuniões ({selectedDayEvents.length})
+                  </div>
+                  {selectedDayEvents.map(event => (
+                    <motion.div
+                      key={event.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3 rounded-lg border bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900/50"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5">
+                          <Video className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{event.title}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              <span>
+                                {format(parseISO(event.start), "HH:mm")} - {format(parseISO(event.end), "HH:mm")}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        {event.meetingLink && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0 text-purple-600 border-purple-300 hover:bg-purple-100"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const link = event.meetingLink?.startsWith("http") 
+                                ? event.meetingLink 
+                                : `https://${event.meetingLink}`;
+                              window.open(link, "_blank");
+                            }}
+                          >
+                            <Video className="h-3 w-3 mr-1" />
+                            Entrar
+                          </Button>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {/* Tasks Section */}
+              {selectedDayTasks.length > 0 && (
+                <div className="space-y-2">
+                  {selectedDayEvents.length > 0 && (
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Tarefas ({selectedDayTasks.length})
+                    </div>
+                  )}
+                  {selectedDayTasks.map(task => {
+                    const { project, company } = getTaskInfo(task);
+                    const isOverdue = task.status !== "completed" && selectedDate && isPast(selectedDate) && !isToday(selectedDate);
+                    
+                    return (
+                      <motion.div
+                        key={task.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        onClick={() => handleTaskClick(task)}
+                        className={`
+                          p-3 rounded-lg border cursor-pointer transition-all
+                          hover:shadow-md hover:border-primary/50
+                          ${task.status === "completed" 
+                            ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50' 
+                            : task.status === "in_progress"
+                              ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50'
+                              : isOverdue
+                                ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50'
+                                : 'bg-card'
+                          }
+                        `}
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Status Icon */}
+                          <div className="mt-0.5">
+                            {task.status === "completed" ? (
+                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            ) : task.status === "in_progress" ? (
+                              <Clock className="h-5 w-5 text-amber-600" />
+                            ) : isOverdue ? (
+                              <AlertCircle className="h-5 w-5 text-red-500" />
+                            ) : (
+                              <Circle className="h-5 w-5 text-blue-500" />
+                            )}
+                          </div>
+                          
+                          {/* Task Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium text-sm ${task.status === "completed" ? 'line-through text-muted-foreground' : ''}`}>
+                              {task.title}
+                            </p>
+                            
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              {company && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Building2 className="h-3 w-3" />
+                                  <span className="truncate max-w-[120px]">{company.name}</span>
+                                </div>
+                              )}
+                              {project && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Package className="h-3 w-3" />
+                                  <span className="truncate max-w-[100px]">{project.product_name}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Navigate icon */}
+                          <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Empty state */}
+              {selectedDayTasks.length === 0 && selectedDayEvents.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Nenhuma tarefa para este dia</p>
+                  <p>Nenhuma tarefa ou reunião para este dia</p>
                   <Button
                     variant="outline"
                     size="sm"
@@ -444,79 +697,13 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
                     Adicionar tarefa
                   </Button>
                 </div>
-              ) : (
-                selectedDayTasks.map(task => {
-                  const { project, company } = getTaskInfo(task);
-                  const isOverdue = task.status !== "completed" && selectedDate && isPast(selectedDate) && !isToday(selectedDate);
-                  
-                  return (
-                    <motion.div
-                      key={task.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      onClick={() => handleTaskClick(task)}
-                      className={`
-                        p-3 rounded-lg border cursor-pointer transition-all
-                        hover:shadow-md hover:border-primary/50
-                        ${task.status === "completed" 
-                          ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50' 
-                          : task.status === "in_progress"
-                            ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50'
-                            : isOverdue
-                              ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50'
-                              : 'bg-card'
-                        }
-                      `}
-                    >
-                      <div className="flex items-start gap-3">
-                        {/* Status Icon */}
-                        <div className="mt-0.5">
-                          {task.status === "completed" ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
-                          ) : task.status === "in_progress" ? (
-                            <Clock className="h-5 w-5 text-amber-600" />
-                          ) : isOverdue ? (
-                            <AlertCircle className="h-5 w-5 text-red-500" />
-                          ) : (
-                            <Circle className="h-5 w-5 text-blue-500" />
-                          )}
-                        </div>
-                        
-                        {/* Task Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className={`font-medium text-sm ${task.status === "completed" ? 'line-through text-muted-foreground' : ''}`}>
-                            {task.title}
-                          </p>
-                          
-                          <div className="flex flex-wrap items-center gap-2 mt-1">
-                            {company && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Building2 className="h-3 w-3" />
-                                <span className="truncate max-w-[120px]">{company.name}</span>
-                              </div>
-                            )}
-                            {project && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Package className="h-3 w-3" />
-                                <span className="truncate max-w-[100px]">{project.product_name}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Navigate icon */}
-                        <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
-                      </div>
-                    </motion.div>
-                  );
-                })
               )}
             </div>
           </ScrollArea>
 
-          {selectedDayTasks.length > 0 && (
+          {(selectedDayTasks.length > 0 || selectedDayEvents.length > 0) && (
             <div className="text-center text-xs text-muted-foreground pt-2 border-t">
-              Clique em uma tarefa para abrir no projeto
+              {selectedDayTasks.length > 0 && "Clique em uma tarefa para abrir no projeto"}
             </div>
           )}
         </DialogContent>
