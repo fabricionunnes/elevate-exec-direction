@@ -617,6 +617,10 @@ const GlobalChatWidget = () => {
   };
 
   const startDMConversation = (staff: StaffMember) => {
+    // Reset messages and scroll tracker before opening
+    setMessages([]);
+    previousMessagesLength.current = 0;
+    
     const existing = conversations.find(
       (c) => c.type === "dm" && c.recipientId === staff.id
     );
@@ -638,6 +642,10 @@ const GlobalChatWidget = () => {
   };
 
   const openGroupConversation = (room: Room) => {
+    // Reset messages and scroll tracker before opening
+    setMessages([]);
+    previousMessagesLength.current = 0;
+    
     const existing = conversations.find(
       (c) => c.type === "room" && c.id === room.id
     );
