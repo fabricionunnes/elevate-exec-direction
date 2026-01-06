@@ -20,7 +20,8 @@ import {
   User,
   Building2,
   ExternalLink,
-  MessageSquare
+  MessageSquare,
+  Calendar
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -362,7 +363,25 @@ export const SupportRoomPanel = ({ currentStaff, onSessionUpdate }: SupportRoomP
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="meet-link">Link do Google Meet</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="meet-link">Link do Google Meet</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const eventTitle = encodeURIComponent(`Suporte (${selectedSession.company_name || selectedSession.client_name})`);
+                      const now = new Date();
+                      const end = new Date(now.getTime() + 30 * 60000); // 30 min duration
+                      const formatDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+                      const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${formatDate(now)}/${formatDate(end)}&details=${encodeURIComponent('Sessão de suporte ao cliente')}&add=meet`;
+                      window.open(calendarUrl, '_blank');
+                    }}
+                  >
+                    <Calendar className="h-4 w-4 mr-1" />
+                    Criar no Google Agenda
+                  </Button>
+                </div>
                 <Input
                   id="meet-link"
                   placeholder="meet.google.com/xxx-xxxx-xxx"
