@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { RealtimeNotifications } from "./RealtimeNotifications";
 import { NpsCelebrationPopup } from "./NpsCelebrationPopup";
 import GlobalChatWidget from "@/components/virtual-office/GlobalChatWidget";
+import { ChatNotifications } from "@/components/virtual-office/ChatNotifications";
 
 export const OnboardingStaffLayout = () => {
   const [isStaff, setIsStaff] = useState<boolean | null>(null);
@@ -54,6 +55,8 @@ export const OnboardingStaffLayout = () => {
     <>
       {/* Notificações globais para staff */}
       {isStaff && <RealtimeNotifications />}
+      {/* Notificações de chat em tempo real */}
+      {isStaff && <ChatNotifications />}
       {/* Celebração NPS 10 para staff */}
       {isStaff && <NpsCelebrationPopup />}
       {/* Chat global para staff */}
