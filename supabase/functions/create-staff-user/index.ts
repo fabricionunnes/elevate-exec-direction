@@ -14,8 +14,15 @@ type CreateStaffUserBody = {
 };
 
 type DeleteStaffUserBody = {
+  action: "delete";
   staff_id: string;
   delete_auth_user?: boolean;
+};
+
+type ResetPasswordBody = {
+  action: "reset_password";
+  staff_id: string;
+  new_password: string;
 };
 
 Deno.serve(async (req) => {
@@ -69,10 +76,12 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Handle DELETE request
-  if (req.method === "DELETE") {
+  // Parse body for all methods
+  const body = await req.json();
+
+  // Handle DELETE action
+  if (body.action === "delete") {
     try {
-      const body = (await req.json()) as Partial<DeleteStaffUserBody>;
       const staffId = body.staff_id;
       const deleteAuthUser = body.delete_auth_user ?? true;
 
@@ -115,11 +124,78 @@ Deno.serve(async (req) => {
         const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(staffRecord.user_id);
         if (deleteAuthError) {
           console.error("Failed to delete auth user:", deleteAuthError);
-          // Continue anyway, staff record is already deleted
         }
       }
 
       return new Response(JSON.stringify({ success: true, deleted_staff_id: staffId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return new Response(JSON.stringify({ error: message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
+  // Handle password reset action
+  if (body.action === "reset_password") {
+    try {
+      const staffId = body.staff_id;
+      const newPassword = body.new_password;
+
+      if (!staffId || !newPassword) {
+        return new Response(JSON.stringify({ error: "Missing staff_id or new_password" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (newPassword.length < 6) {
+        return new Response(JSON.stringify({ error: "Password must be at least 6 characters" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Get staff record
+      const { data: staffRecord, error: staffFetchError } = await supabaseAdmin
+        .from("onboarding_staff")
+        .select("id, user_id, email")
+        .eq("id", staffId)
+        .single();
+
+      if (staffFetchError || !staffRecord) {
+        return new Response(JSON.stringify({ error: "Staff not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!staffRecord.user_id) {
+        return new Response(JSON.stringify({ error: "Staff has no linked auth user" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Update password
+      const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
+        staffRecord.user_id,
+        { password: newPassword }
+      );
+
+      if (updateAuthError) {
+        return new Response(JSON.stringify({ error: updateAuthError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      console.log(`Password reset for staff ${staffId} (${staffRecord.email})`);
+
+      return new Response(JSON.stringify({ success: true, staff_id: staffId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } catch (error: unknown) {
