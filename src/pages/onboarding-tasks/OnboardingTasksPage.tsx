@@ -757,14 +757,9 @@ const OnboardingTasksPage = () => {
         <div className="flex flex-col gap-3 mb-4 sm:mb-6">
           {/* Top Row - Title & Logout */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => navigate("/onboarding")}>
-                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-              <div>
-                <h1 className="text-lg sm:text-3xl font-bold leading-tight">Dashboard</h1>
-                <WelcomeHeader className="text-xs sm:text-sm text-muted-foreground" />
-              </div>
+            <div>
+              <h1 className="text-lg sm:text-3xl font-bold leading-tight">Dashboard</h1>
+              <WelcomeHeader className="text-xs sm:text-sm text-muted-foreground" />
             </div>
             
             {/* Mobile Actions - Compact */}
