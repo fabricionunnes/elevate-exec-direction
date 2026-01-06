@@ -270,7 +270,10 @@ export const TasksTrailView = ({ phases, onTaskClick, onStatusChange }: TasksTra
                           return (
                             <div
                               key={task.id}
-                              onClick={() => onTaskClick(task)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onTaskClick(task);
+                              }}
                               className={`
                                 group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all
                                 ${isCompleted 
