@@ -328,3 +328,47 @@
   background: hsl(355 85% 50% / 0.25);
   color: hsl(214 65% 15%);
 }
+
+/* Mobile App Safe Areas */
+.safe-area-inset {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Touch Optimizations */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent overscroll bounce on iOS */
+@supports (-webkit-touch-callout: none) {
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
+/* Hide scrollbar for mobile navigation */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile input styles */
+@media (max-width: 640px) {
+  input, textarea, select, button {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+  }
+}

@@ -295,8 +295,8 @@ const ClientOnboardingPage = () => {
     { id: "supports" as ViewType, icon: Headphones, label: "Suportes" },
   ];
 
-  return (
-    <div className="min-h-screen bg-background pb-20">
+return (
+    <div className="min-h-screen bg-background pb-24 safe-area-inset">
       {/* Goal Projection Alert Dialog for clients */}
       {projectId && project && (
         <GoalProjectionAlertDialog
@@ -307,37 +307,47 @@ const ClientOnboardingPage = () => {
         />
       )}
       
-      {/* Header - Mobile optimized */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b">
+      {/* Header - Mobile App Style */}
+      <header className="sticky top-0 z-50 bg-background/98 backdrop-blur-md border-b safe-area-top">
         <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <WelcomeHeader className="text-xs text-muted-foreground" />
-              <h1 className="text-lg font-bold truncate">
+              <WelcomeHeader className="text-[10px] text-muted-foreground uppercase tracking-wider" />
+              <h1 className="text-base sm:text-lg font-bold truncate leading-tight">
                 {company?.name || project.product_name}
               </h1>
             </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowSettings(true)}>
-                <Settings className="h-4 w-4" />
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-10 w-10 rounded-full touch-manipulation" 
+                onClick={() => setShowSettings(true)}
+              >
+                <Settings className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleLogout}>
-                <LogOut className="h-4 w-4" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-10 w-10 rounded-full touch-manipulation" 
+                onClick={handleLogout}
+              >
+                <LogOut className="h-5 w-5" />
               </Button>
             </div>
           </div>
 
           {/* Quick progress bar */}
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-2 flex items-center gap-3">
             <Progress value={progressPercent} className="h-2 flex-1" />
-            <span className="text-sm font-semibold text-primary">{progressPercent}%</span>
+            <span className="text-xs font-bold text-primary tabular-nums">{progressPercent}%</span>
           </div>
         </div>
       </header>
 
-      {/* View selector tabs */}
-      <div className="sticky top-[88px] z-40 bg-background border-b">
-        <div className="flex overflow-x-auto scrollbar-hide">
+      {/* Bottom Navigation - App Style */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/98 backdrop-blur-md border-t safe-area-bottom">
+        <div className="flex items-stretch">
           {viewTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeView === tab.id;
@@ -346,24 +356,29 @@ const ClientOnboardingPage = () => {
                 key={tab.id}
                 onClick={() => setActiveView(tab.id)}
                 className={`
-                  flex-1 min-w-0 flex items-center justify-center gap-2 px-4 py-3
-                  text-sm font-medium transition-all border-b-2
+                  flex-1 flex flex-col items-center justify-center py-2 px-1 gap-0.5
+                  transition-colors touch-manipulation min-h-[56px]
                   ${isActive
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
+                    ? "text-primary"
+                    : "text-muted-foreground active:text-foreground"
                   }
                 `}
               >
-                <Icon className="h-4 w-4 flex-shrink-0" />
-                <span className="truncate">{tab.label}</span>
+                <div className={`
+                  p-1.5 rounded-xl transition-colors
+                  ${isActive ? "bg-primary/10" : ""}
+                `}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <span className="text-[10px] font-medium leading-tight">{tab.label}</span>
               </button>
             );
           })}
         </div>
-      </div>
+      </nav>
 
       {/* Main content */}
-      <main className="p-4">
+      <main className="p-4 pb-0">
         <AnimatePresence mode="wait">
           {activeView === "trail" && (
             <motion.div
@@ -469,7 +484,7 @@ const ClientOnboardingPage = () => {
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-4 left-4 right-4 z-50"
+          className="fixed bottom-20 left-4 right-4 z-40"
         >
           <div className="bg-primary text-primary-foreground p-4 rounded-2xl shadow-lg">
             <div className="flex items-start gap-3">
@@ -477,8 +492,8 @@ const ClientOnboardingPage = () => {
                 <Map className="h-5 w-5" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold">Bem-vindo à sua jornada!</h3>
-                <p className="text-sm opacity-90 mt-1">
+                <h3 className="font-semibold text-sm">Bem-vindo à sua jornada!</h3>
+                <p className="text-xs opacity-90 mt-1">
                   Toque nas fases para ver as etapas do seu projeto.
                 </p>
               </div>
