@@ -68,6 +68,7 @@ interface StaffMember {
   name: string;
   email: string;
   role: string;
+  user_id?: string;
 }
 
 interface Presence {
@@ -180,7 +181,7 @@ const VirtualOfficePage = () => {
       // Get current staff member
       const { data: staffData } = await supabase
         .from("onboarding_staff")
-        .select("id, name, email, role")
+        .select("id, name, email, role, user_id")
         .eq("user_id", user.id)
         .single();
 
@@ -196,7 +197,7 @@ const VirtualOfficePage = () => {
       // Fetch all data in parallel
       const [roomsRes, staffRes, presenceRes, accessRes] = await Promise.all([
         supabase.from("virtual_office_rooms").select("*").eq("is_active", true).order("created_at"),
-        supabase.from("onboarding_staff").select("id, name, email, role").eq("is_active", true),
+        supabase.from("onboarding_staff").select("id, name, email, role, user_id").eq("is_active", true),
         supabase.from("virtual_office_presence").select("*"),
         supabase.from("virtual_office_room_access").select("room_id, staff_id"),
       ]);
@@ -592,7 +593,7 @@ const VirtualOfficePage = () => {
       {activeTab === "history" && isAdmin ? (
         <ChatHistoryTab staffMembers={staffMembers} rooms={rooms} />
       ) : activeTab === "calendar" ? (
-        <GoogleCalendarTab />
+        <GoogleCalendarTab currentStaff={currentStaff ? { id: currentStaff.id, role: currentStaff.role, user_id: currentStaff.user_id } : undefined} />
       ) : (
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Rooms */}

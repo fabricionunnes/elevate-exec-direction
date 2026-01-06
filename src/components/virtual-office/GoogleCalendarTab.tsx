@@ -15,6 +15,23 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { 
   Calendar, 
@@ -30,7 +47,10 @@ import {
   LayoutGrid,
   Plus,
   Copy,
-  Check
+  Check,
+  Users,
+  Pencil,
+  Trash2
 } from "lucide-react";
 import { 
   format, 
@@ -48,9 +68,6 @@ import {
   subMonths,
   addWeeks,
   subWeeks,
-  addHours,
-  setHours,
-  setMinutes
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -65,9 +82,24 @@ interface CalendarEvent {
   calendarLink: string;
 }
 
+interface StaffMember {
+  id: string;
+  name: string;
+  role: string;
+  user_id: string;
+}
+
 type ViewMode = "month" | "week" | "list";
 
-const GoogleCalendarTab = () => {
+interface GoogleCalendarTabProps {
+  currentStaff?: {
+    id: string;
+    role: string;
+    user_id?: string;
+  };
+}
+
+const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -75,10 +107,16 @@ const GoogleCalendarTab = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   
-  // Create event state
+  // Staff selection for CS/Admin
+  const [connectedStaff, setConnectedStaff] = useState<StaffMember[]>([]);
+  const [selectedStaffUserId, setSelectedStaffUserId] = useState<string | null>(null);
+  const isCSOrAdmin = currentStaff?.role === "cs" || currentStaff?.role === "admin";
+  
+  // Create/Edit event state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -89,9 +127,17 @@ const GoogleCalendarTab = () => {
   });
   const [createdMeetLink, setCreatedMeetLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  
+  // Delete confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     checkConnection();
+    if (isCSOrAdmin) {
+      loadConnectedStaff();
+    }
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session) {
@@ -110,6 +156,9 @@ const GoogleCalendarTab = () => {
             });
             setConnected(true);
             await fetchEvents();
+            if (isCSOrAdmin) {
+              await loadConnectedStaff();
+            }
           } catch (error) {
             console.error("Error saving Google token:", error);
           }
@@ -119,6 +168,28 @@ const GoogleCalendarTab = () => {
     
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (connected) {
+      fetchEvents();
+    }
+  }, [selectedStaffUserId]);
+
+  const loadConnectedStaff = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-calendar?action=list-connected-staff", {
+        body: {},
+      });
+
+      if (error) throw error;
+
+      if (data?.staff) {
+        setConnectedStaff(data.staff);
+      }
+    } catch (error) {
+      console.error("Error loading connected staff:", error);
+    }
+  };
 
   const checkConnection = async () => {
     try {
@@ -207,14 +278,17 @@ const GoogleCalendarTab = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data, error } = await supabase.functions.invoke("google-calendar?action=events", {
+      const targetParam = selectedStaffUserId ? `&target_user_id=${selectedStaffUserId}` : "";
+      const { data, error } = await supabase.functions.invoke(`google-calendar?action=events${targetParam}`, {
         body: {},
       });
 
       if (error) throw error;
 
       if (data?.needsAuth) {
-        setConnected(false);
+        if (!selectedStaffUserId) {
+          setConnected(false);
+        }
         return;
       }
 
@@ -245,14 +319,21 @@ const GoogleCalendarTab = () => {
         .map((e) => e.trim())
         .filter((e) => e.includes("@"));
 
-      const { data, error } = await supabase.functions.invoke("google-calendar?action=create-event", {
-        body: {
-          title: newEvent.title,
-          description: newEvent.description,
-          startDateTime,
-          endDateTime,
-          attendees: attendees.length > 0 ? attendees : undefined,
-        },
+      const action = editingEvent ? "update-event" : "create-event";
+      const body: Record<string, unknown> = {
+        title: newEvent.title,
+        description: newEvent.description,
+        startDateTime,
+        endDateTime,
+        attendees: attendees.length > 0 ? attendees : undefined,
+      };
+
+      if (editingEvent) {
+        body.eventId = editingEvent.id;
+      }
+
+      const { data, error } = await supabase.functions.invoke(`google-calendar?action=${action}`, {
+        body,
       });
 
       if (error) throw error;
@@ -264,30 +345,58 @@ const GoogleCalendarTab = () => {
       }
 
       if (data?.success) {
-        toast.success("Evento criado com sucesso!");
-        setCreatedMeetLink(data.event.meetingLink || null);
-        await fetchEvents();
+        toast.success(editingEvent ? "Evento atualizado com sucesso!" : "Evento criado com sucesso!");
         
-        if (!data.event.meetingLink) {
+        if (!editingEvent && data.event.meetingLink) {
+          setCreatedMeetLink(data.event.meetingLink);
+        } else {
           resetCreateForm();
         }
+        
+        await fetchEvents();
       }
     } catch (error: unknown) {
-      console.error("Create event error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Erro ao criar evento";
+      console.error("Create/Update event error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Erro ao salvar evento";
       if (errorMessage.includes("403") || errorMessage.includes("Permissão")) {
         toast.error("Permissão negada. Reconecte com permissões de escrita.");
       } else {
-        toast.error("Erro ao criar evento");
+        toast.error(editingEvent ? "Erro ao atualizar evento" : "Erro ao criar evento");
       }
     } finally {
       setCreating(false);
     }
   };
 
+  const handleDeleteEvent = async () => {
+    if (!eventToDelete) return;
+
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-calendar?action=delete-event", {
+        body: { eventId: eventToDelete.id },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success("Evento excluído com sucesso!");
+        await fetchEvents();
+      }
+    } catch (error) {
+      console.error("Delete event error:", error);
+      toast.error("Erro ao excluir evento");
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+      setEventToDelete(null);
+    }
+  };
+
   const resetCreateForm = () => {
     setShowCreateDialog(false);
     setSelectedDate(null);
+    setEditingEvent(null);
     setNewEvent({
       title: "",
       description: "",
@@ -303,13 +412,41 @@ const GoogleCalendarTab = () => {
   const openCreateDialog = (date?: Date) => {
     const targetDate = date || new Date();
     setSelectedDate(targetDate);
-    setNewEvent((prev) => ({
-      ...prev,
+    setEditingEvent(null);
+    setNewEvent({
+      title: "",
+      description: "",
       date: format(targetDate, "yyyy-MM-dd"),
-    }));
+      startTime: "09:00",
+      endTime: "10:00",
+      attendees: "",
+    });
     setShowCreateDialog(true);
     setCreatedMeetLink(null);
     setCopied(false);
+  };
+
+  const openEditDialog = (event: CalendarEvent) => {
+    const startDate = parseISO(event.start);
+    const endDate = parseISO(event.end);
+    
+    setEditingEvent(event);
+    setNewEvent({
+      title: event.title,
+      description: event.description || "",
+      date: format(startDate, "yyyy-MM-dd"),
+      startTime: format(startDate, "HH:mm"),
+      endTime: format(endDate, "HH:mm"),
+      attendees: "",
+    });
+    setShowCreateDialog(true);
+    setCreatedMeetLink(null);
+    setCopied(false);
+  };
+
+  const confirmDelete = (event: CalendarEvent) => {
+    setEventToDelete(event);
+    setShowDeleteConfirm(true);
   };
 
   const copyMeetLink = () => {
@@ -389,6 +526,17 @@ const GoogleCalendarTab = () => {
     return grouped;
   };
 
+  const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (event.meetingLink) {
+      window.open(event.meetingLink, "_blank");
+    } else {
+      window.open(event.calendarLink, "_blank");
+    }
+  };
+
+  const isViewingOwnCalendar = !selectedStaffUserId || selectedStaffUserId === currentStaff?.user_id;
+
   if (loading) {
     return (
       <div className="p-4 space-y-4">
@@ -431,25 +579,58 @@ const GoogleCalendarTab = () => {
   const groupedEvents = groupEventsByDay(events);
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
+  const selectedStaffName = selectedStaffUserId 
+    ? connectedStaff.find(s => s.user_id === selectedStaffUserId)?.name 
+    : null;
+
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
       <div className="border-b p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-card">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-primary" />
-          <h2 className="font-semibold">Minha Agenda</h2>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            <h2 className="font-semibold">
+              {selectedStaffName ? `Agenda de ${selectedStaffName}` : "Minha Agenda"}
+            </h2>
+          </div>
+          
+          {/* Staff Selector for CS/Admin */}
+          {isCSOrAdmin && connectedStaff.length > 0 && (
+            <Select
+              value={selectedStaffUserId || "mine"}
+              onValueChange={(value) => setSelectedStaffUserId(value === "mine" ? null : value)}
+            >
+              <SelectTrigger className="w-[200px] h-8">
+                <Users className="h-3.5 w-3.5 mr-2" />
+                <SelectValue placeholder="Selecionar consultor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mine">Minha Agenda</SelectItem>
+                {connectedStaff
+                  .filter(s => s.user_id !== currentStaff?.user_id)
+                  .map((staff) => (
+                    <SelectItem key={staff.id} value={staff.user_id}>
+                      {staff.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Create Event Button */}
-          <Button
-            size="sm"
-            onClick={() => openCreateDialog()}
-            className="gap-1 h-7"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Novo Evento</span>
-          </Button>
+          {/* Create Event Button - only for own calendar */}
+          {isViewingOwnCalendar && (
+            <Button
+              size="sm"
+              onClick={() => openCreateDialog()}
+              className="gap-1 h-7"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Novo Evento</span>
+            </Button>
+          )}
 
           {/* View Mode Toggle */}
           <div className="flex items-center border rounded-lg p-0.5 bg-muted/50">
@@ -511,10 +692,12 @@ const GoogleCalendarTab = () => {
             <div className="text-center py-12">
               <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
               <p className="text-muted-foreground mb-4">Nenhum evento nos próximos dias</p>
-              <Button onClick={() => openCreateDialog()} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Criar primeiro evento
-              </Button>
+              {isViewingOwnCalendar && (
+                <Button onClick={() => openCreateDialog()} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Criar primeiro evento
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-6">
@@ -529,12 +712,22 @@ const GoogleCalendarTab = () => {
                       const isNow = timeUntil === "Em andamento";
                       
                       return (
-                        <Card key={event.id} className={cn("transition-colors", isNow && "border-primary bg-primary/5")}>
+                        <Card 
+                          key={event.id} 
+                          className={cn(
+                            "transition-colors cursor-pointer hover:bg-muted/50", 
+                            isNow && "border-primary bg-primary/5"
+                          )}
+                          onClick={(e) => handleEventClick(event, e)}
+                        >
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                   <h4 className="font-medium truncate">{event.title}</h4>
+                                  {event.meetingLink && (
+                                    <Video className="h-4 w-4 text-blue-500 shrink-0" />
+                                  )}
                                   {timeUntil && (
                                     <Badge variant={isNow ? "default" : "secondary"} className="text-xs shrink-0">
                                       {timeUntil}
@@ -553,12 +746,41 @@ const GoogleCalendarTab = () => {
                                   </p>
                                 )}
                               </div>
-                              <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-1">
+                                {isViewingOwnCalendar && (
+                                  <>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openEditDialog(event);
+                                      }}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 text-destructive hover:text-destructive"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        confirmDelete(event);
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
                                 {event.meetingLink ? (
                                   <Button
                                     size="sm"
                                     className="gap-2"
-                                    onClick={() => window.open(event.meetingLink, "_blank")}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(event.meetingLink, "_blank");
+                                    }}
                                   >
                                     <Video className="h-4 w-4" />
                                     Entrar
@@ -568,7 +790,10 @@ const GoogleCalendarTab = () => {
                                     size="sm"
                                     variant="outline"
                                     className="gap-2"
-                                    onClick={() => window.open(event.calendarLink, "_blank")}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(event.calendarLink, "_blank");
+                                    }}
                                   >
                                     <ExternalLink className="h-4 w-4" />
                                     Ver
@@ -627,12 +852,13 @@ const GoogleCalendarTab = () => {
                   <div
                     key={dateKey}
                     className={cn(
-                      "border rounded-lg p-1 min-h-[80px] sm:min-h-[100px] transition-colors cursor-pointer hover:bg-muted/30",
+                      "border rounded-lg p-1 min-h-[80px] sm:min-h-[100px] transition-colors",
                       viewMode === "week" && "min-h-[200px]",
                       !isCurrentMonth && viewMode === "month" && "bg-muted/30 opacity-50",
-                      isCurrentDay && "border-primary bg-primary/5"
+                      isCurrentDay && "border-primary bg-primary/5",
+                      isViewingOwnCalendar && "cursor-pointer hover:bg-muted/30"
                     )}
-                    onClick={() => openCreateDialog(day)}
+                    onClick={() => isViewingOwnCalendar && openCreateDialog(day)}
                   >
                     <div className={cn(
                       "text-xs font-medium mb-1 text-center",
@@ -649,20 +875,13 @@ const GoogleCalendarTab = () => {
                           <div
                             key={event.id}
                             className={cn(
-                              "text-[10px] sm:text-xs p-1 rounded truncate cursor-pointer transition-colors",
+                              "text-[10px] sm:text-xs p-1 rounded truncate cursor-pointer transition-colors group relative",
                               event.meetingLink 
                                 ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50" 
                                 : "bg-muted hover:bg-muted/80"
                             )}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (event.meetingLink) {
-                                window.open(event.meetingLink, "_blank");
-                              } else {
-                                window.open(event.calendarLink, "_blank");
-                              }
-                            }}
-                            title={`${event.title} - ${format(parseISO(event.start), "HH:mm")}`}
+                            onClick={(e) => handleEventClick(event, e)}
+                            title={`${event.title} - ${format(parseISO(event.start), "HH:mm")}${event.meetingLink ? " (clique para entrar)" : ""}`}
                           >
                             <div className="flex items-center gap-1">
                               {event.meetingLink && <Video className="h-2.5 w-2.5 shrink-0" />}
@@ -685,13 +904,13 @@ const GoogleCalendarTab = () => {
         </div>
       )}
 
-      {/* Create Event Dialog */}
+      {/* Create/Edit Event Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={(open) => !open && resetCreateForm()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Video className="h-5 w-5 text-primary" />
-              {createdMeetLink ? "Evento Criado!" : "Novo Evento com Google Meet"}
+              {createdMeetLink ? "Evento Criado!" : editingEvent ? "Editar Evento" : "Novo Evento com Google Meet"}
             </DialogTitle>
           </DialogHeader>
 
@@ -784,18 +1003,20 @@ const GoogleCalendarTab = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="attendees">Convidados (opcional)</Label>
-                  <Input
-                    id="attendees"
-                    placeholder="email1@exemplo.com, email2@exemplo.com"
-                    value={newEvent.attendees}
-                    onChange={(e) => setNewEvent((prev) => ({ ...prev, attendees: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Separe os e-mails por vírgula. Eles receberão um convite automático.
-                  </p>
-                </div>
+                {!editingEvent && (
+                  <div className="space-y-2">
+                    <Label htmlFor="attendees">Convidados (opcional)</Label>
+                    <Input
+                      id="attendees"
+                      placeholder="email1@exemplo.com, email2@exemplo.com"
+                      value={newEvent.attendees}
+                      onChange={(e) => setNewEvent((prev) => ({ ...prev, attendees: e.target.value }))}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Separe os e-mails por vírgula. Eles receberão um convite automático.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <DialogFooter className="gap-2">
@@ -806,7 +1027,12 @@ const GoogleCalendarTab = () => {
                   {creating ? (
                     <>
                       <RefreshCw className="h-4 w-4 animate-spin" />
-                      Criando...
+                      {editingEvent ? "Salvando..." : "Criando..."}
+                    </>
+                  ) : editingEvent ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Salvar Alterações
                     </>
                   ) : (
                     <>
@@ -820,6 +1046,36 @@ const GoogleCalendarTab = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Evento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o evento "{eventToDelete?.title}"? 
+              Esta ação não pode ser desfeita e os convidados serão notificados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteEvent}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
