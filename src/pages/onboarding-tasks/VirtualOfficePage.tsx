@@ -271,9 +271,37 @@ const VirtualOfficePage = () => {
         { event: "*", schema: "public", table: "virtual_office_presence" },
         (payload) => {
           if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+            const newPresence = payload.new as Presence;
+            const oldPresence = payload.old as Presence | undefined;
+            
+            // Check if someone just came online (was offline or new entry)
+            const wasOffline = !oldPresence || oldPresence.status === "offline";
+            const isNowOnline = newPresence.status !== "offline";
+            
+            if (wasOffline && isNowOnline && newPresence.staff_id !== currentStaff?.id) {
+              const staffName = staffMembers.find(s => s.id === newPresence.staff_id)?.name;
+              if (staffName) {
+                toast.success(`${staffName} entrou no escritório`, {
+                  icon: "🟢",
+                  duration: 4000,
+                });
+              }
+            }
+            
+            // Check if someone went offline
+            if (oldPresence?.status !== "offline" && newPresence.status === "offline" && newPresence.staff_id !== currentStaff?.id) {
+              const staffName = staffMembers.find(s => s.id === newPresence.staff_id)?.name;
+              if (staffName) {
+                toast.info(`${staffName} saiu do escritório`, {
+                  icon: "🔴",
+                  duration: 3000,
+                });
+              }
+            }
+            
             setPresences((prev) => {
-              const filtered = prev.filter((p) => p.staff_id !== (payload.new as Presence).staff_id);
-              return [...filtered, payload.new as Presence];
+              const filtered = prev.filter((p) => p.staff_id !== newPresence.staff_id);
+              return [...filtered, newPresence];
             });
           } else if (payload.eventType === "DELETE") {
             setPresences((prev) => prev.filter((p) => p.id !== (payload.old as Presence).id));
