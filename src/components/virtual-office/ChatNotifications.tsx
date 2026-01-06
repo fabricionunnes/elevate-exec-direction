@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { MessageCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +11,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { playNotificationSound } from "@/lib/notificationSound";
 
 interface ChatNotification {
   id: string;
@@ -198,26 +196,8 @@ export const ChatNotifications = () => {
             room_name: newNotification.room_id ? getRoomName(newNotification.room_id) : undefined,
           };
 
-          // Add to list
+          // Add to list only (no popup, toast, or sound)
           setNotifications(prev => [enrichedNotification, ...prev]);
-          
-          // Show popup immediately
-          setCurrentNotification(enrichedNotification);
-          setShowPopup(true);
-
-          // Also show toast
-          const senderName = enrichedNotification.sender_name || "Alguém";
-          const toastTitle = enrichedNotification.is_dm 
-            ? `💬 Mensagem de ${senderName}`
-            : `💬 ${senderName} em ${enrichedNotification.room_name || "uma sala"}`;
-          
-          toast.info(toastTitle, {
-            description: enrichedNotification.message_content?.substring(0, 100) || "Nova mensagem",
-            duration: 8000,
-          });
-
-          // Play notification sound
-          playNotificationSound();
         }
       )
       .subscribe();
