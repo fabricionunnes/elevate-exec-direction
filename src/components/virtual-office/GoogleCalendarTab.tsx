@@ -781,32 +781,31 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                                     </Button>
                                   </>
                                 )}
-                                {event.meetingLink ? (
-                                  <Button
-                                    size="sm"
-                                    className="gap-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
+                                <Button
+                                  size="sm"
+                                  variant={event.meetingLink ? "default" : "outline"}
+                                  className="gap-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (event.meetingLink) {
                                       window.open(event.meetingLink, "_blank");
-                                    }}
-                                  >
-                                    <Video className="h-4 w-4" />
-                                    Entrar
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="gap-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
+                                    } else {
                                       window.open(event.calendarLink, "_blank");
-                                    }}
-                                  >
-                                    <ExternalLink className="h-4 w-4" />
-                                    Ver
-                                  </Button>
-                                )}
+                                    }
+                                  }}
+                                >
+                                  {event.meetingLink ? (
+                                    <>
+                                      <Video className="h-4 w-4" />
+                                      Entrar
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ExternalLink className="h-4 w-4" />
+                                      Ver no Calendar
+                                    </>
+                                  )}
+                                </Button>
                               </div>
                             </div>
                           </CardContent>
@@ -903,21 +902,32 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                                 </div>
                               </div>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-48">
+                            <DropdownMenuContent align="start" className="w-56">
                               <div className="px-2 py-1.5 text-sm font-medium truncate">{event.title}</div>
                               <div className="px-2 pb-1.5 text-xs text-muted-foreground">
                                 {format(parseISO(event.start), "HH:mm")} - {format(parseISO(event.end), "HH:mm")}
                               </div>
                               <DropdownMenuSeparator />
-                              {event.meetingLink && (
-                                <DropdownMenuItem onClick={() => window.open(event.meetingLink, "_blank")}>
-                                  <Video className="h-4 w-4 mr-2 text-blue-500" />
+                              {event.meetingLink ? (
+                                <DropdownMenuItem 
+                                  onClick={() => window.open(event.meetingLink, "_blank")}
+                                  className="text-blue-600 focus:text-blue-600 font-medium"
+                                >
+                                  <Video className="h-4 w-4 mr-2" />
                                   Entrar na reunião
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem 
+                                  onClick={() => window.open(event.calendarLink, "_blank")}
+                                  className="text-muted-foreground"
+                                >
+                                  <Video className="h-4 w-4 mr-2" />
+                                  Sem link de reunião
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem onClick={() => window.open(event.calendarLink, "_blank")}>
                                 <ExternalLink className="h-4 w-4 mr-2" />
-                                Abrir no Google
+                                Abrir no Google Calendar
                               </DropdownMenuItem>
                               {isViewingOwnCalendar && (
                                 <>
