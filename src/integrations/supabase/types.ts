@@ -620,6 +620,9 @@ export type Database = {
           objectives_with_unv: string | null
           phone: string | null
           quarterly_goals: Json | null
+          renewal_notes: string | null
+          renewal_plan_type: string | null
+          renewal_status: string | null
           sales_team_size: string | null
           segment: string | null
           stakeholders: Json | null
@@ -670,6 +673,9 @@ export type Database = {
           objectives_with_unv?: string | null
           phone?: string | null
           quarterly_goals?: Json | null
+          renewal_notes?: string | null
+          renewal_plan_type?: string | null
+          renewal_status?: string | null
           sales_team_size?: string | null
           segment?: string | null
           stakeholders?: Json | null
@@ -720,6 +726,9 @@ export type Database = {
           objectives_with_unv?: string | null
           phone?: string | null
           quarterly_goals?: Json | null
+          renewal_notes?: string | null
+          renewal_plan_type?: string | null
+          renewal_status?: string | null
           sales_team_size?: string | null
           segment?: string | null
           stakeholders?: Json | null
