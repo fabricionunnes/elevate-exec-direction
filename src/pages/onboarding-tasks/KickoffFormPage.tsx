@@ -10,15 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
-  Users,
   Target,
   ChevronLeft,
   ChevronRight,
   Check,
-  Plus,
-  Trash2,
   Send,
-  Briefcase,
   Loader2,
   CheckCircle2,
   TrendingUp,
@@ -26,14 +22,6 @@ import {
   Compass,
   Flag,
 } from "lucide-react";
-
-interface Stakeholder {
-  name: string;
-  role: string;
-  email: string;
-  phone: string;
-  isDecisionMaker: boolean;
-}
 
 interface QuarterlyGoals {
   q1: { pessimista: string; realista: string; otimista: string };
@@ -78,9 +66,6 @@ interface KickoffFormData {
   growth_expectation_6m: string;
   growth_expectation_12m: string;
   
-  // Stakeholders
-  stakeholders: Stakeholder[];
-  
   // Notas
   notes: string;
 }
@@ -91,7 +76,6 @@ const STEPS = [
   { id: 3, title: "Checklist & OKRs", icon: Target },
   { id: 4, title: "Metas Trimestrais", icon: TrendingUp },
   { id: 5, title: "Expectativas", icon: Flag },
-  { id: 6, title: "Stakeholders", icon: Users },
 ];
 
 const initialFormData: KickoffFormData = {
@@ -123,7 +107,6 @@ const initialFormData: KickoffFormData = {
   growth_expectation_3m: "",
   growth_expectation_6m: "",
   growth_expectation_12m: "",
-  stakeholders: [],
   notes: "",
 };
 
@@ -157,16 +140,7 @@ const KickoffFormPage = () => {
 
       if (data) {
         setCompanyName(data.name);
-        const stakeholders = Array.isArray(data.stakeholders)
-          ? (data.stakeholders as any[]).map((s) => ({
-              name: s.name || "",
-              role: s.role || "",
-              email: s.email || "",
-              phone: s.phone || "",
-              isDecisionMaker: s.isDecisionMaker || false,
-            }))
-          : [];
-
+        
         const rawQuarterlyGoals = data.quarterly_goals as unknown;
         const quarterlyGoals = rawQuarterlyGoals && typeof rawQuarterlyGoals === 'object' && 'q1' in rawQuarterlyGoals
           ? rawQuarterlyGoals as QuarterlyGoals
@@ -196,7 +170,6 @@ const KickoffFormPage = () => {
           growth_expectation_3m: (data as any).growth_expectation_3m || "",
           growth_expectation_6m: (data as any).growth_expectation_6m || "",
           growth_expectation_12m: (data as any).growth_expectation_12m || "",
-          stakeholders,
           notes: data.notes || "",
         });
       }
@@ -222,32 +195,6 @@ const KickoffFormPage = () => {
           [type]: value,
         },
       },
-    }));
-  };
-
-  const addStakeholder = () => {
-    setFormData((prev) => ({
-      ...prev,
-      stakeholders: [
-        ...prev.stakeholders,
-        { name: "", role: "", email: "", phone: "", isDecisionMaker: false },
-      ],
-    }));
-  };
-
-  const removeStakeholder = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      stakeholders: prev.stakeholders.filter((_, i) => i !== index),
-    }));
-  };
-
-  const updateStakeholder = (index: number, field: keyof Stakeholder, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      stakeholders: prev.stakeholders.map((s, i) =>
-        i === index ? { ...s, [field]: value } : s
-      ),
     }));
   };
 
@@ -282,7 +229,6 @@ const KickoffFormPage = () => {
           growth_expectation_3m: formData.growth_expectation_3m || null,
           growth_expectation_6m: formData.growth_expectation_6m || null,
           growth_expectation_12m: formData.growth_expectation_12m || null,
-          stakeholders: JSON.parse(JSON.stringify(formData.stakeholders)),
           notes: formData.notes || null,
         } as any)
         .eq("id", companyId);
@@ -791,101 +737,6 @@ const KickoffFormPage = () => {
                 />
               </div>
             </div>
-          </div>
-        );
-
-      case 6:
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium">Stakeholders do Projeto</h3>
-                <p className="text-sm text-muted-foreground">
-                  Adicione as pessoas-chave envolvidas no projeto
-                </p>
-              </div>
-              <Button onClick={addStakeholder} variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar
-              </Button>
-            </div>
-
-            {formData.stakeholders.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                  <p>Nenhum stakeholder adicionado</p>
-                  <p className="text-sm">Clique em "Adicionar" para incluir um stakeholder</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {formData.stakeholders.map((stakeholder, index) => (
-                  <Card key={index}>
-                    <CardContent className="pt-4">
-                      <div className="flex justify-between items-start mb-4">
-                        <Badge variant="outline">Stakeholder #{index + 1}</Badge>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeStakeholder(index)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Nome</Label>
-                          <Input
-                            value={stakeholder.name}
-                            onChange={(e) => updateStakeholder(index, "name", e.target.value)}
-                            placeholder="Nome completo"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Cargo</Label>
-                          <Input
-                            value={stakeholder.role}
-                            onChange={(e) => updateStakeholder(index, "role", e.target.value)}
-                            placeholder="Ex: CEO, Diretor Comercial"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Email</Label>
-                          <Input
-                            type="email"
-                            value={stakeholder.email}
-                            onChange={(e) => updateStakeholder(index, "email", e.target.value)}
-                            placeholder="email@empresa.com"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Telefone</Label>
-                          <Input
-                            value={stakeholder.phone}
-                            onChange={(e) => updateStakeholder(index, "phone", e.target.value)}
-                            placeholder="(00) 00000-0000"
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-4 flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id={`decision-maker-${index}`}
-                          checked={stakeholder.isDecisionMaker}
-                          onChange={(e) => updateStakeholder(index, "isDecisionMaker", e.target.checked)}
-                          className="h-4 w-4 rounded border-gray-300"
-                        />
-                        <Label htmlFor={`decision-maker-${index}`} className="text-sm font-normal">
-                          Decisor Principal
-                        </Label>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
           </div>
         );
 
