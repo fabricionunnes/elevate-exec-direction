@@ -777,15 +777,19 @@ const OnboardingTasksPage = () => {
                       Nova Empresa
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => setShowCreateDialog(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Projeto
-                  </DropdownMenuItem>
+                  {canCreateCompany && (
+                    <DropdownMenuItem onClick={() => setShowCreateDialog(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Novo Projeto
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/staff")}>
-                    <Users className="h-4 w-4 mr-2" />
-                    Equipe
-                  </DropdownMenuItem>
+                  {canCreateCompany && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/staff")}>
+                      <Users className="h-4 w-4 mr-2" />
+                      Equipe
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/office")}>
                     <Video className="h-4 w-4 mr-2" />
                     Escritório UNV
@@ -838,10 +842,12 @@ const OnboardingTasksPage = () => {
                 Reagendar
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/staff")}>
-              <Users className="h-4 w-4 mr-2" />
-              Equipe
-            </Button>
+            {canCreateCompany && (
+              <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/staff")}>
+                <Users className="h-4 w-4 mr-2" />
+                Equipe
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/office")}>
               <Video className="h-4 w-4 mr-2" />
               Escritório
