@@ -209,8 +209,7 @@ Deno.serve(async (req) => {
 
   // Handle POST request (create/update)
   try {
-    const body = (await req.json()) as Partial<CreateStaffUserBody>;
-    const email = body.email?.trim().toLowerCase();
+    const email = (body as Partial<CreateStaffUserBody>).email?.trim().toLowerCase();
     const password = body.password;
     const name = body.name?.trim();
     const role = body.role;
