@@ -266,15 +266,14 @@ const DashboardMetrics = ({
       ? Math.round((companiesWithLifetime.reduce((sum, c) => sum + c.lifetimeMonths, 0) / totalCompaniesWithStart) * 10) / 10 
       : 0;
     
-    // LTV médio: somente empresas com valor de contrato e data de início
-    // Soma todos os valores de contrato e divide pelo tempo médio
+    // Ticket médio: somente empresas com valor de contrato
     const companiesWithValue = companiesWithLifetime.filter(c => c.contractValue && c.contractValue > 0);
     const totalContractValue = companiesWithValue.reduce((sum, c) => sum + (c.contractValue || 0), 0);
-    const averageLTV = averageLifetimeMonths > 0 && companiesWithValue.length > 0
-      ? Math.round(totalContractValue / companiesWithValue.length * averageLifetimeMonths)
+    const averageTicket = companiesWithValue.length > 0
+      ? Math.round(totalContractValue / companiesWithValue.length)
       : 0;
     
-    return { averageLifetimeMonths, averageLTV };
+    return { averageLifetimeMonths, averageTicket };
   }, [filteredCompanies]);
 
   const npsMetrics = useMemo(() => {
@@ -468,11 +467,11 @@ const DashboardMetrics = ({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
             <Card>
-              <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium flex items-center gap-1 sm:gap-1.5"><DollarSign className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-teal-500" />LTV & Permanência</CardTitle></CardHeader>
+              <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium flex items-center gap-1 sm:gap-1.5"><DollarSign className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-teal-500" />Ticket Médio & Permanência</CardTitle></CardHeader>
               <CardContent className="px-3 sm:px-4 pb-2 sm:pb-3">
                 <div className="grid grid-cols-2 gap-2 sm:gap-4 text-center">
                   <div><p className="text-xl sm:text-2xl font-bold text-indigo-500">{ltvMetrics.averageLifetimeMonths}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">meses</p></div>
-                  <div><p className="text-xl sm:text-2xl font-bold text-teal-500">{ltvMetrics.averageLTV > 0 ? `R$ ${(ltvMetrics.averageLTV / 1000).toFixed(0)}k` : "—"}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">LTV</p></div>
+                  <div><p className="text-xl sm:text-2xl font-bold text-teal-500">{ltvMetrics.averageTicket > 0 ? `R$ ${(ltvMetrics.averageTicket / 1000).toFixed(1)}k` : "—"}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Ticket Médio</p></div>
                 </div>
               </CardContent>
             </Card>
