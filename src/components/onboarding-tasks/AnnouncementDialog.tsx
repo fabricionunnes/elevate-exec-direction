@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -27,11 +27,11 @@ interface AnnouncementDialogProps {
   staffId: string;
 }
 
-export const AnnouncementDialog = ({
+export const AnnouncementDialog = forwardRef<HTMLDivElement, AnnouncementDialogProps>(({
   open,
   onOpenChange,
   staffId,
-}: AnnouncementDialogProps) => {
+}, ref) => {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [targetRole, setTargetRole] = useState<"cs" | "consultant" | "all">("all");
@@ -140,4 +140,6 @@ export const AnnouncementDialog = ({
       </DialogContent>
     </Dialog>
   );
-};
+});
+
+AnnouncementDialog.displayName = "AnnouncementDialog";

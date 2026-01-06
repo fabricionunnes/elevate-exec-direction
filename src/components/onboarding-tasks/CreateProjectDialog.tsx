@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -33,13 +33,13 @@ interface Company {
   name: string;
 }
 
-export const CreateProjectDialog = ({
+export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialogProps>(({
   open,
   onOpenChange,
   onProjectCreated,
   preselectedCompanyId,
   onSuccess,
-}: CreateProjectDialogProps) => {
+}, ref) => {
   const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedProduct, setSelectedProduct] = useState("");
@@ -270,4 +270,6 @@ export const CreateProjectDialog = ({
       </DialogContent>
     </Dialog>
   );
-};
+});
+
+CreateProjectDialog.displayName = "CreateProjectDialog";
