@@ -44,11 +44,13 @@ import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2, LogOut } fro
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+type StaffRole = "cs" | "consultant" | "admin" | "closer" | "sdr" | "rh" | "marketing" | "financeiro";
+
 interface Staff {
   id: string;
   name: string;
   email: string;
-  role: "cs" | "consultant" | "admin";
+  role: StaffRole;
   phone: string | null;
   is_active: boolean;
   created_at: string;
@@ -68,7 +70,7 @@ const OnboardingStaffPage = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    role: "cs" as "cs" | "consultant" | "admin",
+    role: "cs" as StaffRole,
     phone: "",
     password: "",
   });
@@ -226,6 +228,16 @@ const OnboardingStaffPage = () => {
         return <Badge className="bg-blue-500">CS</Badge>;
       case "consultant":
         return <Badge className="bg-purple-500">Consultor</Badge>;
+      case "closer":
+        return <Badge className="bg-green-500">Closer</Badge>;
+      case "sdr":
+        return <Badge className="bg-cyan-500">SDR/SS</Badge>;
+      case "rh":
+        return <Badge className="bg-pink-500">RH</Badge>;
+      case "marketing":
+        return <Badge className="bg-orange-500">Marketing</Badge>;
+      case "financeiro":
+        return <Badge className="bg-teal-500">Financeiro</Badge>;
       default:
         return <Badge variant="outline">{role}</Badge>;
     }
@@ -423,7 +435,7 @@ const OnboardingStaffPage = () => {
               <Label htmlFor="role">Função *</Label>
               <Select
                 value={formData.role}
-                onValueChange={(v) => setFormData({ ...formData, role: v as "cs" | "consultant" | "admin" })}
+                onValueChange={(v) => setFormData({ ...formData, role: v as StaffRole })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -432,6 +444,11 @@ const OnboardingStaffPage = () => {
                   <SelectItem value="admin">Administrador</SelectItem>
                   <SelectItem value="cs">CS (Customer Success)</SelectItem>
                   <SelectItem value="consultant">Consultor</SelectItem>
+                  <SelectItem value="closer">Closer</SelectItem>
+                  <SelectItem value="sdr">SDR/SS</SelectItem>
+                  <SelectItem value="rh">RH</SelectItem>
+                  <SelectItem value="marketing">Marketing</SelectItem>
+                  <SelectItem value="financeiro">Financeiro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
