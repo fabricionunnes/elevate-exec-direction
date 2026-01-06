@@ -103,6 +103,27 @@ Público-alvo: ${company.target_audience || "Não informado"}
       ? `\nSOLICITAÇÃO DO CONSULTOR:\n"${userSuggestion}"\n\nIMPORTANTE: Priorize a solicitação acima na geração das tarefas. Crie tarefas específicas para atender o que foi pedido.`
       : "";
 
+    // Detect if user specified a quantity in their suggestion
+    let requestedQuantity: number | null = null;
+    if (userSuggestion) {
+      // Match patterns like "10 tarefas", "15 ações", "gere 5", "criar 8 tasks", etc.
+      const quantityMatch = userSuggestion.match(/(\d+)\s*(tarefas?|ações?|tasks?|atividades?|itens?)/i) 
+        || userSuggestion.match(/gere?\s*(\d+)/i)
+        || userSuggestion.match(/criar?\s*(\d+)/i)
+        || userSuggestion.match(/(\d+)\s*(novas?)?/i);
+      
+      if (quantityMatch) {
+        const num = parseInt(quantityMatch[1], 10);
+        if (num >= 1 && num <= 50) {
+          requestedQuantity = num;
+        }
+      }
+    }
+
+    const quantityInstruction = requestedQuantity 
+      ? `Gere EXATAMENTE ${requestedQuantity} tarefas conforme solicitado pelo consultor.`
+      : "Sugira de 3 a 5 NOVAS tarefas que façam sentido para o momento atual do cliente.";
+
     const prompt = `Você é um consultor especialista em vendas e gestão comercial da UNV (Universidade Nacional de Vendas).
 
 CONTEXTO DO CLIENTE:
@@ -122,11 +143,12 @@ ${templatesContext}
 
 INSTRUÇÕES:
 1. ${userSuggestion ? "Foque principalmente na solicitação do consultor acima" : "Analise o contexto do cliente, tarefas já realizadas e resultados obtidos"}
-2. Sugira de 3 a 5 NOVAS tarefas que façam sentido para o momento atual do cliente
+2. ${quantityInstruction}
 3. NÃO repita tarefas já realizadas da mesma forma - pode evoluir ou criar variações mais avançadas
 4. Considere os desafios e metas do cliente para personalizar as sugestões
 5. Se identificar gaps no que já foi feito, sugira tarefas para cobri-los
 6. Priorize tarefas práticas e executáveis
+7. IMPORTANTE: O texto do consultor define exatamente o tema/foco das tarefas. Siga fielmente o que foi pedido.
 
 Responda APENAS com um array JSON válido no seguinte formato (sem markdown, sem explicações):
 [
