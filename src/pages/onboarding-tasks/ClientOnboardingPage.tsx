@@ -11,6 +11,7 @@ import {
   Calendar,
   MessageSquare,
   Settings,
+  Headphones,
   BarChart3,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -24,6 +25,7 @@ import { ClientMetricsView } from "@/components/client-portal/ClientMetricsView"
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
 import { ClientSupportButton } from "@/components/client-portal/ClientSupportButton";
+import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistoryPanel";
 
 interface OnboardingTask {
   id: string;
@@ -59,7 +61,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "trail" | "timeline" | "list" | "metrics" | "tickets";
+type ViewType = "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -290,6 +292,7 @@ const ClientOnboardingPage = () => {
     { id: "list" as ViewType, icon: List, label: "Lista" },
     { id: "metrics" as ViewType, icon: BarChart3, label: "Métricas" },
     { id: "tickets" as ViewType, icon: MessageSquare, label: "Chamados" },
+    { id: "supports" as ViewType, icon: Headphones, label: "Suportes" },
   ];
 
   return (
@@ -423,6 +426,17 @@ const ClientOnboardingPage = () => {
               exit={{ opacity: 0, x: 20 }}
             >
               <TicketsPanel projectId={project.id} users={users} />
+            </motion.div>
+          )}
+
+          {activeView === "supports" && (
+            <motion.div
+              key="supports"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <SupportHistoryPanel projectId={project.id} />
             </motion.div>
           )}
         </AnimatePresence>
