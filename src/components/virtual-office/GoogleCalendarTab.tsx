@@ -5,6 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { 
   Calendar, 
@@ -17,7 +27,10 @@ import {
   ChevronRight,
   CalendarDays,
   List,
-  LayoutGrid
+  LayoutGrid,
+  Plus,
+  Copy,
+  Check
 } from "lucide-react";
 import { 
   format, 
@@ -31,11 +44,13 @@ import {
   endOfWeek,
   eachDayOfInterval,
   isSameMonth,
-  isSameDay,
   addMonths,
   subMonths,
   addWeeks,
-  subWeeks
+  subWeeks,
+  addHours,
+  setHours,
+  setMinutes
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -59,6 +74,21 @@ const GoogleCalendarTab = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // Create event state
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: "",
+    description: "",
+    date: "",
+    startTime: "09:00",
+    endTime: "10:00",
+    attendees: "",
+  });
+  const [createdMeetLink, setCreatedMeetLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     checkConnection();
@@ -117,7 +147,7 @@ const GoogleCalendarTab = () => {
         }
       }
 
-      const { data, error } = await supabase.functions.invoke("google-calendar?action=check-connection", {
+      const { data } = await supabase.functions.invoke("google-calendar?action=check-connection", {
         body: {},
       });
 
@@ -134,11 +164,11 @@ const GoogleCalendarTab = () => {
 
   const handleGoogleLogin = async () => {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/onboarding-tasks/office`,
-          scopes: "https://www.googleapis.com/auth/calendar.readonly",
+          scopes: "https://www.googleapis.com/auth/calendar.events",
           queryParams: {
             access_type: "offline",
             prompt: "consent",
@@ -196,6 +226,98 @@ const GoogleCalendarTab = () => {
       toast.error("Erro ao buscar eventos");
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const handleCreateEvent = async () => {
+    if (!newEvent.title || !newEvent.date || !newEvent.startTime || !newEvent.endTime) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const startDateTime = `${newEvent.date}T${newEvent.startTime}:00`;
+      const endDateTime = `${newEvent.date}T${newEvent.endTime}:00`;
+
+      const attendees = newEvent.attendees
+        .split(",")
+        .map((e) => e.trim())
+        .filter((e) => e.includes("@"));
+
+      const { data, error } = await supabase.functions.invoke("google-calendar?action=create-event", {
+        body: {
+          title: newEvent.title,
+          description: newEvent.description,
+          startDateTime,
+          endDateTime,
+          attendees: attendees.length > 0 ? attendees : undefined,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.needsAuth) {
+        toast.error("Reconecte sua conta Google com permissões de escrita");
+        setConnected(false);
+        return;
+      }
+
+      if (data?.success) {
+        toast.success("Evento criado com sucesso!");
+        setCreatedMeetLink(data.event.meetingLink || null);
+        await fetchEvents();
+        
+        if (!data.event.meetingLink) {
+          resetCreateForm();
+        }
+      }
+    } catch (error: unknown) {
+      console.error("Create event error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Erro ao criar evento";
+      if (errorMessage.includes("403") || errorMessage.includes("Permissão")) {
+        toast.error("Permissão negada. Reconecte com permissões de escrita.");
+      } else {
+        toast.error("Erro ao criar evento");
+      }
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const resetCreateForm = () => {
+    setShowCreateDialog(false);
+    setSelectedDate(null);
+    setNewEvent({
+      title: "",
+      description: "",
+      date: "",
+      startTime: "09:00",
+      endTime: "10:00",
+      attendees: "",
+    });
+    setCreatedMeetLink(null);
+    setCopied(false);
+  };
+
+  const openCreateDialog = (date?: Date) => {
+    const targetDate = date || new Date();
+    setSelectedDate(targetDate);
+    setNewEvent((prev) => ({
+      ...prev,
+      date: format(targetDate, "yyyy-MM-dd"),
+    }));
+    setShowCreateDialog(true);
+    setCreatedMeetLink(null);
+    setCopied(false);
+  };
+
+  const copyMeetLink = () => {
+    if (createdMeetLink) {
+      navigator.clipboard.writeText(createdMeetLink);
+      setCopied(true);
+      toast.success("Link copiado!");
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -257,9 +379,9 @@ const GoogleCalendarTab = () => {
     return null;
   };
 
-  const groupEventsByDay = (events: CalendarEvent[]) => {
+  const groupEventsByDay = (evts: CalendarEvent[]) => {
     const grouped: Record<string, CalendarEvent[]> = {};
-    events.forEach((event) => {
+    evts.forEach((event) => {
       const dateKey = format(parseISO(event.start), "yyyy-MM-dd");
       if (!grouped[dateKey]) grouped[dateKey] = [];
       grouped[dateKey].push(event);
@@ -289,7 +411,7 @@ const GoogleCalendarTab = () => {
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground text-sm">
-              Visualize suas reuniões e entre nas chamadas diretamente do escritório virtual.
+              Visualize suas reuniões, crie eventos e entre nas chamadas diretamente do escritório virtual.
             </p>
             <Button onClick={handleGoogleLogin} className="w-full gap-2">
               <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -319,6 +441,16 @@ const GoogleCalendarTab = () => {
         </div>
         
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Create Event Button */}
+          <Button
+            size="sm"
+            onClick={() => openCreateDialog()}
+            className="gap-1 h-7"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Novo Evento</span>
+          </Button>
+
           {/* View Mode Toggle */}
           <div className="flex items-center border rounded-lg p-0.5 bg-muted/50">
             <Button
@@ -378,7 +510,11 @@ const GoogleCalendarTab = () => {
           {events.length === 0 ? (
             <div className="text-center py-12">
               <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">Nenhum evento nos próximos 7 dias</p>
+              <p className="text-muted-foreground mb-4">Nenhum evento nos próximos dias</p>
+              <Button onClick={() => openCreateDialog()} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Criar primeiro evento
+              </Button>
             </div>
           ) : (
             <div className="space-y-6">
@@ -472,10 +608,7 @@ const GoogleCalendarTab = () => {
 
           {/* Calendar Grid */}
           <div className="flex-1 overflow-auto">
-            <div className={cn(
-              "grid gap-1",
-              viewMode === "month" ? "grid-cols-7" : "grid-cols-7"
-            )}>
+            <div className="grid grid-cols-7 gap-1">
               {/* Week Day Headers */}
               {weekDays.map((day) => (
                 <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
@@ -494,11 +627,12 @@ const GoogleCalendarTab = () => {
                   <div
                     key={dateKey}
                     className={cn(
-                      "border rounded-lg p-1 min-h-[80px] sm:min-h-[100px] transition-colors",
+                      "border rounded-lg p-1 min-h-[80px] sm:min-h-[100px] transition-colors cursor-pointer hover:bg-muted/30",
                       viewMode === "week" && "min-h-[200px]",
                       !isCurrentMonth && viewMode === "month" && "bg-muted/30 opacity-50",
                       isCurrentDay && "border-primary bg-primary/5"
                     )}
+                    onClick={() => openCreateDialog(day)}
                   >
                     <div className={cn(
                       "text-xs font-medium mb-1 text-center",
@@ -520,7 +654,8 @@ const GoogleCalendarTab = () => {
                                 ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50" 
                                 : "bg-muted hover:bg-muted/80"
                             )}
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (event.meetingLink) {
                                 window.open(event.meetingLink, "_blank");
                               } else {
@@ -549,6 +684,142 @@ const GoogleCalendarTab = () => {
           </div>
         </div>
       )}
+
+      {/* Create Event Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={(open) => !open && resetCreateForm()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Video className="h-5 w-5 text-primary" />
+              {createdMeetLink ? "Evento Criado!" : "Novo Evento com Google Meet"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {createdMeetLink ? (
+            <div className="space-y-4">
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                <p className="text-sm text-green-700 dark:text-green-300 mb-3">
+                  Seu evento foi criado com sucesso e já está na sua agenda!
+                </p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={createdMeetLink}
+                    readOnly
+                    className="bg-white dark:bg-background text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={copyMeetLink}
+                    className="shrink-0"
+                  >
+                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 gap-2"
+                  onClick={() => window.open(createdMeetLink, "_blank")}
+                >
+                  <Video className="h-4 w-4" />
+                  Entrar na Reunião
+                </Button>
+                <Button variant="outline" onClick={resetCreateForm}>
+                  Fechar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Título *</Label>
+                  <Input
+                    id="title"
+                    placeholder="Ex: Reunião de alinhamento"
+                    value={newEvent.title}
+                    onChange={(e) => setNewEvent((prev) => ({ ...prev, title: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Detalhes da reunião (opcional)"
+                    value={newEvent.description}
+                    onChange={(e) => setNewEvent((prev) => ({ ...prev, description: e.target.value }))}
+                    rows={2}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Data *</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={newEvent.date}
+                      onChange={(e) => setNewEvent((prev) => ({ ...prev, date: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="startTime">Início *</Label>
+                    <Input
+                      id="startTime"
+                      type="time"
+                      value={newEvent.startTime}
+                      onChange={(e) => setNewEvent((prev) => ({ ...prev, startTime: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endTime">Fim *</Label>
+                    <Input
+                      id="endTime"
+                      type="time"
+                      value={newEvent.endTime}
+                      onChange={(e) => setNewEvent((prev) => ({ ...prev, endTime: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="attendees">Convidados (opcional)</Label>
+                  <Input
+                    id="attendees"
+                    placeholder="email1@exemplo.com, email2@exemplo.com"
+                    value={newEvent.attendees}
+                    onChange={(e) => setNewEvent((prev) => ({ ...prev, attendees: e.target.value }))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Separe os e-mails por vírgula. Eles receberão um convite automático.
+                  </p>
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={resetCreateForm} disabled={creating}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleCreateEvent} disabled={creating} className="gap-2">
+                  {creating ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Criando...
+                    </>
+                  ) : (
+                    <>
+                      <Video className="h-4 w-4" />
+                      Criar com Meet
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

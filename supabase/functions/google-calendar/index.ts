@@ -135,8 +135,6 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Note: Token refresh would need GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
-        // For now, we'll ask user to reconnect
         return new Response(
           JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -146,9 +144,9 @@ Deno.serve(async (req) => {
       // Fetch calendar events
       const now = new Date();
       const timeMin = now.toISOString();
-      const timeMax = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(); // Next 7 days
+      const timeMax = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(); // Next 30 days
 
-      const calendarUrl = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=50`;
+      const calendarUrl = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=100`;
 
       console.log("Fetching calendar events...");
       
@@ -207,6 +205,120 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ events: processedEvents }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "create-event") {
+      if (!tokenData) {
+        return new Response(
+          JSON.stringify({ error: "Not connected to Google Calendar", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const body = await req.json();
+      const { title, description, startDateTime, endDateTime, attendees } = body;
+
+      if (!title || !startDateTime || !endDateTime) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields: title, startDateTime, endDateTime" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const accessToken = tokenData.access_token;
+
+      // Check if token is expired
+      if (tokenData.token_expires_at && new Date(tokenData.token_expires_at) < new Date()) {
+        return new Response(
+          JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Create event with Google Meet link
+      const eventData: Record<string, unknown> = {
+        summary: title,
+        description: description || "",
+        start: {
+          dateTime: startDateTime,
+          timeZone: "America/Sao_Paulo",
+        },
+        end: {
+          dateTime: endDateTime,
+          timeZone: "America/Sao_Paulo",
+        },
+        conferenceData: {
+          createRequest: {
+            requestId: crypto.randomUUID(),
+            conferenceSolutionKey: {
+              type: "hangoutsMeet",
+            },
+          },
+        },
+      };
+
+      // Add attendees if provided
+      if (attendees && Array.isArray(attendees) && attendees.length > 0) {
+        eventData.attendees = attendees.map((email: string) => ({ email }));
+      }
+
+      console.log("Creating calendar event with Meet link...", eventData);
+
+      const createUrl = "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all";
+      
+      const createResponse = await fetch(createUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(eventData),
+      });
+
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        console.error("Create event error:", errorText);
+        
+        if (createResponse.status === 401) {
+          return new Response(
+            JSON.stringify({ error: "Token invalid, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (createResponse.status === 403) {
+          return new Response(
+            JSON.stringify({ error: "Permissão negada. Reconecte sua conta Google com permissões de escrita.", needsAuth: true }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        return new Response(
+          JSON.stringify({ error: "Failed to create event: " + errorText }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const createdEvent = await createResponse.json();
+      console.log("Event created successfully:", createdEvent.id);
+
+      const meetingLink = createdEvent.hangoutLink || 
+        createdEvent.conferenceData?.entryPoints?.find((ep: { entryPointType: string; uri: string }) => ep.entryPointType === "video")?.uri;
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          event: {
+            id: createdEvent.id,
+            title: createdEvent.summary,
+            start: createdEvent.start.dateTime || createdEvent.start.date,
+            end: createdEvent.end.dateTime || createdEvent.end.date,
+            meetingLink,
+            calendarLink: createdEvent.htmlLink,
+          },
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
