@@ -119,8 +119,15 @@ export default function OnboardingRenewalsPage() {
       return;
     }
 
+    // Only admins can access this page
+    if (staff.role !== "admin") {
+      toast.error("Acesso restrito a administradores");
+      navigate("/onboarding-tasks");
+      return;
+    }
+
     setStaffId(staff.id);
-    setIsAdmin(staff.role === "admin");
+    setIsAdmin(true);
     fetchData();
   };
 
