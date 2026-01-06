@@ -23,6 +23,7 @@ import { ClientSettingsSheet } from "@/components/client-portal/ClientSettingsSh
 import { ClientMetricsView } from "@/components/client-portal/ClientMetricsView";
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
+import { ClientSupportButton } from "@/components/client-portal/ClientSupportButton";
 
 interface OnboardingTask {
   id: string;
@@ -441,7 +442,15 @@ const ClientOnboardingPage = () => {
         userEmail={currentUser?.email || ""}
       />
 
-      {/* Welcome card for first visit - shows on trail view */}
+      {/* Support Button */}
+      {currentUser && projectId && (
+        <ClientSupportButton
+          projectId={projectId}
+          userId={currentUser.id}
+          userName={currentUser.name}
+          companyName={company?.name || project?.product_name || ""}
+        />
+      )}
       {activeView === "trail" && progressPercent === 0 && (
         <motion.div
           initial={{ opacity: 0, y: 50 }}

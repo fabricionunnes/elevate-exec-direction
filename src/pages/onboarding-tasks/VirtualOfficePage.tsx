@@ -39,7 +39,8 @@ import {
   History,
   Lock,
   LayoutGrid,
-  Map
+  Map,
+  Headphones
 } from "lucide-react";
 import { format } from "date-fns";
 import ChatHistoryTab from "@/components/virtual-office/ChatHistoryTab";
@@ -48,6 +49,7 @@ import GoogleCalendarTab from "@/components/virtual-office/GoogleCalendarTab";
 import { RoomAccessManager } from "@/components/virtual-office/RoomAccessManager";
 import { OfficeFloorMap } from "@/components/virtual-office/OfficeFloorMap";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
+import { SupportRoomPanel } from "@/components/virtual-office/SupportRoomPanel";
 
 
 interface Room {
@@ -620,6 +622,10 @@ const VirtualOfficePage = () => {
               <MessageSquare className="h-4 w-4" />
               Salas
             </TabsTrigger>
+            <TabsTrigger value="support" className="gap-2">
+              <Headphones className="h-4 w-4" />
+              Suporte
+            </TabsTrigger>
             <TabsTrigger value="calendar" className="gap-2">
               <Calendar className="h-4 w-4" />
               Minha Agenda
@@ -638,6 +644,21 @@ const VirtualOfficePage = () => {
         <ChatHistoryTab staffMembers={staffMembers} rooms={rooms} />
       ) : activeTab === "calendar" ? (
         <GoogleCalendarTab currentStaff={currentStaff ? { id: currentStaff.id, role: currentStaff.role, user_id: currentStaff.user_id } : undefined} />
+      ) : activeTab === "support" ? (
+        <div className="flex-1 overflow-auto p-4">
+          <div className="max-w-2xl mx-auto">
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Headphones className="h-5 w-5" />
+                Sala de Suporte ao Cliente
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Quando um cliente solicitar suporte, você será notificado aqui e poderá atendê-lo via Google Meet.
+              </p>
+            </div>
+            <SupportRoomPanel currentStaff={currentStaff} />
+          </div>
+        </div>
       ) : (
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Floor Map or Sidebar */}

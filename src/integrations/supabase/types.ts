@@ -2369,6 +2369,76 @@ export type Database = {
           },
         ]
       }
+      support_room_sessions: {
+        Row: {
+          attended_at: string | null
+          attended_by: string | null
+          client_name: string
+          company_name: string | null
+          created_at: string
+          ended_at: string | null
+          id: string
+          meet_link: string | null
+          notes: string | null
+          project_id: string
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          attended_at?: string | null
+          attended_by?: string | null
+          client_name: string
+          company_name?: string | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          meet_link?: string | null
+          notes?: string | null
+          project_id: string
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          attended_at?: string | null
+          attended_by?: string | null
+          client_name?: string
+          company_name?: string | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          meet_link?: string | null
+          notes?: string | null
+          project_id?: string
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_room_sessions_attended_by_fkey"
+            columns: ["attended_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_room_sessions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_room_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_google_tokens: {
         Row: {
           access_token: string
