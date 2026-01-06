@@ -837,257 +837,282 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
           )}
         </ScrollArea>
       ) : (
-        <div className="flex-1 flex flex-col p-4 overflow-hidden">
+        <div className="flex-1 flex flex-col p-4 overflow-hidden bg-gradient-to-br from-background via-background to-muted/20">
           {/* Calendar Navigation */}
-          <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={navigatePrevious} className="h-8 w-8">
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" onClick={navigateNext} className="h-8 w-8">
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={goToToday} className="h-8">
-                Hoje
-              </Button>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center bg-card rounded-xl border shadow-sm p-1">
+                <Button variant="ghost" size="icon" onClick={navigatePrevious} className="h-8 w-8 rounded-lg hover:bg-muted">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={goToToday} className="h-8 px-3 rounded-lg font-medium">
+                  Hoje
+                </Button>
+                <Button variant="ghost" size="icon" onClick={navigateNext} className="h-8 w-8 rounded-lg hover:bg-muted">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <h3 className="font-semibold capitalize">
+            <h3 className="text-lg font-semibold capitalize text-foreground">
               {format(currentDate, viewMode === "month" ? "MMMM yyyy" : "'Semana de' d 'de' MMMM", { locale: ptBR })}
             </h3>
           </div>
 
           {/* Calendar Grid with Day Detail Panel */}
-          <div className="flex-1 flex gap-4 overflow-hidden">
+          <div className="flex-1 flex gap-6 overflow-hidden">
             {/* Calendar Grid */}
             <div className="flex-1 overflow-auto">
-              <div className="grid grid-cols-7 gap-1">
-                {/* Week Day Headers */}
-                {weekDays.map((day) => (
-                  <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
-                    {day}
-                  </div>
-                ))}
-
-                {/* Calendar Days */}
-                {calendarDays.map((day) => {
-                  const dateKey = format(day, "yyyy-MM-dd");
-                  const dayEvents = eventsByDate[dateKey] || [];
-                  const isCurrentMonth = isSameMonth(day, currentDate);
-                  const isCurrentDay = isToday(day);
-                  const isSelectedDay = format(day, "yyyy-MM-dd") === format(selectedDayForDetail, "yyyy-MM-dd");
-
-                  return (
-                    <div
-                      key={dateKey}
-                      className={cn(
-                        "border rounded-lg p-1 min-h-[70px] sm:min-h-[80px] transition-colors cursor-pointer",
-                        viewMode === "week" && "min-h-[140px]",
-                        !isCurrentMonth && viewMode === "month" && "bg-muted/30 opacity-50",
-                        isCurrentDay && "border-primary bg-primary/5",
-                        isSelectedDay && "ring-2 ring-primary ring-offset-1",
-                        "hover:bg-muted/30"
-                      )}
-                      onClick={() => handleDayClick(day)}
-                    >
-                      <div className="flex items-center justify-between mb-1 px-0.5">
-                        <span className={cn(
-                          "text-xs font-medium",
-                          isCurrentDay && "bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center"
-                        )}>
-                          {format(day, "d")}
-                        </span>
-                        {dayEvents.length > 0 && (
-                          <Badge variant="secondary" className="h-4 px-1 text-[10px]">
-                            {dayEvents.length}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="space-y-0.5 px-0.5">
-                        {dayEvents.slice(0, viewMode === "week" ? 4 : 2).map((event) => (
-                          <div
-                            key={event.id}
-                            className={cn(
-                              "text-[9px] sm:text-[10px] p-0.5 rounded truncate",
-                              event.meetingLink 
-                                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" 
-                                : "bg-muted"
-                            )}
-                            title={event.title}
-                          >
-                            <div className="flex items-center gap-0.5">
-                              {event.meetingLink && <Video className="h-2 w-2 shrink-0" />}
-                              <span className="truncate">{event.title}</span>
-                            </div>
-                          </div>
-                        ))}
-                        {dayEvents.length > (viewMode === "week" ? 4 : 2) && (
-                          <span className="text-[9px] text-muted-foreground px-0.5">
-                            +{dayEvents.length - (viewMode === "week" ? 4 : 2)} mais
-                          </span>
-                        )}
-                      </div>
+              <div className="bg-card rounded-2xl border shadow-sm p-4">
+                <div className="grid grid-cols-7 gap-2">
+                  {/* Week Day Headers */}
+                  {weekDays.map((day) => (
+                    <div key={day} className="text-center text-xs font-semibold text-muted-foreground py-2 uppercase tracking-wide">
+                      {day}
                     </div>
-                  );
-                })}
+                  ))}
+
+                  {/* Calendar Days */}
+                  {calendarDays.map((day) => {
+                    const dateKey = format(day, "yyyy-MM-dd");
+                    const dayEvents = eventsByDate[dateKey] || [];
+                    const isCurrentMonth = isSameMonth(day, currentDate);
+                    const isCurrentDay = isToday(day);
+                    const isSelectedDay = format(day, "yyyy-MM-dd") === format(selectedDayForDetail, "yyyy-MM-dd");
+                    const hasEvents = dayEvents.length > 0;
+                    const hasMeeting = dayEvents.some(e => e.meetingLink);
+
+                    return (
+                      <div
+                        key={dateKey}
+                        className={cn(
+                          "rounded-xl p-2 min-h-[85px] sm:min-h-[95px] transition-all duration-200 cursor-pointer relative group",
+                          viewMode === "week" && "min-h-[140px]",
+                          !isCurrentMonth && viewMode === "month" && "bg-muted/20 opacity-40",
+                          isCurrentMonth && !isSelectedDay && "bg-muted/5 hover:bg-muted/40 hover:shadow-sm",
+                          isCurrentDay && !isSelectedDay && "bg-primary/10 border-2 border-primary/30",
+                          isSelectedDay && "bg-primary/15 border-2 border-primary shadow-md shadow-primary/10",
+                        )}
+                        onClick={() => handleDayClick(day)}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={cn(
+                            "text-sm font-medium transition-all",
+                            isCurrentDay && "bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center font-bold shadow-sm",
+                            !isCurrentDay && isSelectedDay && "text-primary font-semibold"
+                          )}>
+                            {format(day, "d")}
+                          </span>
+                          {hasEvents && (
+                            <span className={cn(
+                              "flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full",
+                              hasMeeting ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "bg-muted text-muted-foreground"
+                            )}>
+                              {hasMeeting && <Video className="h-2.5 w-2.5" />}
+                              {dayEvents.length}
+                            </span>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          {dayEvents.slice(0, viewMode === "week" ? 4 : 2).map((event) => (
+                            <div
+                              key={event.id}
+                              className={cn(
+                                "text-[10px] px-1.5 py-1 rounded-md truncate font-medium transition-all",
+                                event.meetingLink 
+                                  ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-l-2 border-blue-500" 
+                                  : "bg-muted/80 text-muted-foreground border-l-2 border-muted-foreground/30"
+                              )}
+                              title={event.title}
+                            >
+                              <div className="flex items-center gap-1">
+                                {event.meetingLink && <Video className="h-2.5 w-2.5 shrink-0" />}
+                                <span className="truncate">{event.title}</span>
+                              </div>
+                            </div>
+                          ))}
+                          {dayEvents.length > (viewMode === "week" ? 4 : 2) && (
+                            <span className="text-[10px] text-primary font-medium px-1.5">
+                              +{dayEvents.length - (viewMode === "week" ? 4 : 2)} mais
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
             {/* Day Detail Panel */}
-            <Card className="w-80 shrink-0 hidden lg:flex flex-col">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base capitalize">
-                    {format(selectedDayForDetail, "EEEE, d", { locale: ptBR })}
-                  </CardTitle>
-                  {isViewingOwnCalendar && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => openCreateDialog(selectedDayForDetail)}
-                      className="h-7 gap-1"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      Novo
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground capitalize">
-                  {format(selectedDayForDetail, "MMMM 'de' yyyy", { locale: ptBR })}
-                </p>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-hidden p-0">
-                <ScrollArea className="h-full px-4 pb-4">
-                  {selectedDayEvents.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Calendar className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-50" />
-                      <p className="text-sm text-muted-foreground mb-3">Nenhum evento neste dia</p>
-                      {isViewingOwnCalendar && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => openCreateDialog(selectedDayForDetail)}
-                          className="gap-1"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          Criar evento
-                        </Button>
-                      )}
+            <div className="w-[340px] shrink-0 hidden lg:flex flex-col">
+              <Card className="flex-1 flex flex-col overflow-hidden border-0 shadow-lg bg-gradient-to-b from-card to-card/95">
+                {/* Header com gradiente sutil */}
+                <div className="px-5 py-4 border-b bg-gradient-to-r from-primary/5 to-transparent">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold capitalize text-foreground">
+                        {format(selectedDayForDetail, "EEEE, d", { locale: ptBR })}
+                      </h3>
+                      <p className="text-sm text-muted-foreground capitalize mt-0.5">
+                        {format(selectedDayForDetail, "MMMM 'de' yyyy", { locale: ptBR })}
+                      </p>
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {selectedDayEvents
-                        .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())
-                        .map((event) => {
-                          const timeUntil = getTimeUntilEvent(event.start);
-                          const isNow = timeUntil === "Em andamento";
-                          
-                          return (
-                            <Card 
-                              key={event.id}
-                              className={cn(
-                                "transition-colors",
-                                isNow && "border-primary bg-primary/5"
-                              )}
+                    {isViewingOwnCalendar && (
+                      <Button
+                        size="sm"
+                        onClick={() => openCreateDialog(selectedDayForDetail)}
+                        className="gap-1.5 shadow-sm"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Novo
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                
+                <CardContent className="flex-1 overflow-hidden p-0">
+                  <ScrollArea className="h-full">
+                    <div className="px-4 py-4">
+                      {selectedDayEvents.length === 0 ? (
+                        <div className="text-center py-12">
+                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+                            <Calendar className="h-8 w-8 text-muted-foreground/50" />
+                          </div>
+                          <p className="text-muted-foreground mb-4">Nenhum evento neste dia</p>
+                          {isViewingOwnCalendar && (
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => openCreateDialog(selectedDayForDetail)}
+                              className="gap-1.5"
                             >
-                              <CardContent className="p-3">
-                                <div className="flex items-start justify-between gap-2 mb-2">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-1.5 mb-1">
-                                      <h4 className="font-medium text-sm truncate">{event.title}</h4>
-                                      {event.meetingLink && (
-                                        <Video className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                                      )}
+                              <Plus className="h-4 w-4" />
+                              Criar evento
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {selectedDayEvents
+                            .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())
+                            .map((event) => {
+                              const timeUntil = getTimeUntilEvent(event.start);
+                              const isNow = timeUntil === "Em andamento";
+                              const isSoon = timeUntil && !isNow && parseInt(timeUntil) <= 30;
+                              
+                              return (
+                                <div
+                                  key={event.id}
+                                  className={cn(
+                                    "rounded-xl p-4 transition-all duration-200 border",
+                                    isNow 
+                                      ? "bg-gradient-to-r from-primary/15 to-primary/5 border-primary/30 shadow-sm shadow-primary/10" 
+                                      : isSoon
+                                        ? "bg-gradient-to-r from-amber-500/10 to-transparent border-amber-500/20"
+                                        : "bg-card hover:bg-muted/30 border-border/50"
+                                  )}
+                                >
+                                  {/* Event Header */}
+                                  <div className="flex items-start justify-between gap-3 mb-3">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1.5">
+                                        <h4 className="font-semibold text-sm text-foreground truncate">{event.title}</h4>
+                                        {event.meetingLink && (
+                                          <span className="shrink-0 bg-blue-500/20 text-blue-600 dark:text-blue-400 p-1 rounded-md">
+                                            <Video className="h-3 w-3" />
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center flex-wrap gap-2">
+                                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+                                          <Clock className="h-3 w-3" />
+                                          {format(parseISO(event.start), "HH:mm")} - {format(parseISO(event.end), "HH:mm")}
+                                        </span>
+                                        {timeUntil && (
+                                          <span className={cn(
+                                            "text-xs font-medium px-2 py-1 rounded-md",
+                                            isNow 
+                                              ? "bg-primary text-primary-foreground" 
+                                              : isSoon
+                                                ? "bg-amber-500/20 text-amber-700 dark:text-amber-400"
+                                                : "bg-muted text-muted-foreground"
+                                          )}>
+                                            {timeUntil}
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                      <Clock className="h-3 w-3" />
-                                      <span>
-                                        {format(parseISO(event.start), "HH:mm")} - {format(parseISO(event.end), "HH:mm")}
-                                      </span>
-                                      {timeUntil && (
-                                        <Badge 
-                                          variant={isNow ? "default" : "secondary"} 
-                                          className="text-[10px] px-1.5 py-0"
-                                        >
-                                          {timeUntil}
-                                        </Badge>
-                                      )}
-                                    </div>
+                                    
+                                    {isViewingOwnCalendar && (
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-lg hover:bg-muted">
+                                            <MoreVertical className="h-4 w-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-40">
+                                          <DropdownMenuItem onClick={() => openEditDialog(event)} className="gap-2">
+                                            <Pencil className="h-4 w-4" />
+                                            Editar
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem 
+                                            onClick={() => confirmDelete(event)}
+                                            className="text-destructive focus:text-destructive gap-2"
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                            Excluir
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    )}
                                   </div>
                                   
-                                  {isViewingOwnCalendar && (
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
-                                          <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => openEditDialog(event)}>
-                                          <Pencil className="h-4 w-4 mr-2" />
-                                          Editar
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem 
-                                          onClick={() => confirmDelete(event)}
-                                          className="text-destructive focus:text-destructive"
-                                        >
-                                          <Trash2 className="h-4 w-4 mr-2" />
-                                          Excluir
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
+                                  {event.description && (
+                                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2 leading-relaxed">
+                                      {event.description}
+                                    </p>
                                   )}
+                                  
+                                  {/* Action Buttons */}
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant={event.meetingLink ? "default" : "outline"}
+                                      className={cn(
+                                        "flex-1 h-9 text-xs gap-2 font-medium rounded-lg transition-all",
+                                        event.meetingLink && "shadow-sm hover:shadow-md"
+                                      )}
+                                      onClick={() => {
+                                        if (event.meetingLink) {
+                                          window.open(event.meetingLink, "_blank");
+                                        } else {
+                                          window.open(event.calendarLink, "_blank");
+                                        }
+                                      }}
+                                    >
+                                      {event.meetingLink ? (
+                                        <>
+                                          <Video className="h-3.5 w-3.5" />
+                                          Entrar
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ExternalLink className="h-3.5 w-3.5" />
+                                          Ver
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
                                 </div>
-                                
-                                {event.description && (
-                                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                                    {event.description}
-                                  </p>
-                                )}
-                                
-                                <div className="flex gap-1.5">
-                                  <Button
-                                    size="sm"
-                                    variant={event.meetingLink ? "default" : "outline"}
-                                    className="flex-1 h-7 text-xs gap-1"
-                                    onClick={() => {
-                                      if (event.meetingLink) {
-                                        window.open(event.meetingLink, "_blank");
-                                      } else {
-                                        window.open(event.calendarLink, "_blank");
-                                      }
-                                    }}
-                                  >
-                                    {event.meetingLink ? (
-                                      <>
-                                        <Video className="h-3 w-3" />
-                                        Entrar
-                                      </>
-                                    ) : (
-                                      <>
-                                        <ExternalLink className="h-3 w-3" />
-                                        Ver
-                                      </>
-                                    )}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-7 px-2"
-                                    onClick={() => window.open(event.calendarLink, "_blank")}
-                                    title="Abrir no Google Calendar"
-                                  >
-                                    <ExternalLink className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
+                              );
+                            })}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       )}
