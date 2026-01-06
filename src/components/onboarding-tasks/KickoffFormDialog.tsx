@@ -718,7 +718,7 @@ export const KickoffFormDialog = ({
         </DialogHeader>
 
         {/* Progress Steps */}
-        <div className="flex items-center justify-between px-2 py-4 overflow-x-auto">
+        <div className="flex items-center justify-between px-2 py-4 overflow-x-auto bg-white dark:bg-card">
           {STEPS.map((step, index) => {
             const StepIcon = step.icon;
             const isActive = currentStep === step.id;
@@ -727,22 +727,23 @@ export const KickoffFormDialog = ({
             return (
               <div key={step.id} className="flex items-center">
                 <button
+                  type="button"
                   onClick={() => setCurrentStep(step.id)}
                   className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors ${
                     isActive
-                      ? "text-primary"
+                      ? "text-red-600"
                       : isCompleted
-                      ? "text-primary/70"
-                      : "text-muted-foreground"
+                      ? "text-red-500"
+                      : "text-gray-400"
                   }`}
                 >
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${
                       isActive
-                        ? "border-primary bg-primary text-primary-foreground"
+                        ? "border-red-600 bg-red-600 text-white"
                         : isCompleted
-                        ? "border-primary bg-primary/10"
-                        : "border-muted-foreground/30"
+                        ? "border-red-500 bg-red-50"
+                        : "border-gray-300 bg-white"
                     }`}
                   >
                     {isCompleted ? (
@@ -758,7 +759,7 @@ export const KickoffFormDialog = ({
                 {index < STEPS.length - 1 && (
                   <div
                     className={`w-8 h-0.5 mx-1 ${
-                      isCompleted ? "bg-primary" : "bg-muted-foreground/30"
+                      isCompleted ? "bg-red-500" : "bg-gray-300"
                     }`}
                   />
                 )}
