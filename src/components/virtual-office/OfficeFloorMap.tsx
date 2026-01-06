@@ -109,14 +109,26 @@ export const OfficeFloorMap = ({
   };
 
   const getRoomPresences = (roomId: string) => {
-    return presences.filter((p) => p.room_id === roomId && p.status !== "offline");
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    return presences.filter((p) => 
+      p.room_id === roomId && 
+      p.status !== "offline" &&
+      p.last_seen_at && 
+      p.last_seen_at > fiveMinutesAgo
+    );
   };
 
   const getStaffById = (staffId: string) => {
     return staffMembers.find((s) => s.id === staffId);
   };
 
-  const onlinePresences = presences.filter(p => p.status !== "offline");
+  // Only show users as online if they have been seen in the last 5 minutes
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const onlinePresences = presences.filter(p => 
+    p.status !== "offline" && 
+    p.last_seen_at && 
+    p.last_seen_at > fiveMinutesAgo
+  );
   const onlineCount = onlinePresences.length;
 
   const getStatusColor = (status: string) => {
@@ -127,7 +139,8 @@ export const OfficeFloorMap = ({
       case "away": return "bg-amber-500";
       case "in_meeting":
       case "meeting": return "bg-violet-500";
-      default: return "bg-green-500"; // Default to green for any online status
+      case "offline":
+      default: return "bg-gray-400";
     }
   };
 
