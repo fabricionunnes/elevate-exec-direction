@@ -60,7 +60,8 @@ import { NPSHistoryPanel } from "@/components/onboarding-tasks/NPSHistoryPanel";
 import { ProjectUrgentTasks } from "@/components/onboarding-tasks/ProjectUrgentTasks";
 import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
 import { ProjectSupportBanner } from "@/components/onboarding-tasks/ProjectSupportBanner";
-import { TrendingUp } from "lucide-react";
+import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistoryPanel";
+import { TrendingUp, Headphones } from "lucide-react";
 
 
 interface OnboardingTask {
@@ -986,6 +987,10 @@ const OnboardingProjectPage = () => {
               <TrendingUp className="h-4 w-4" />
               NPS
             </TabsTrigger>
+            <TabsTrigger value="support-history" className="gap-2">
+              <Headphones className="h-4 w-4" />
+              Suportes
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks">
@@ -1131,6 +1136,10 @@ const OnboardingProjectPage = () => {
               currentNps={project.current_nps}
               userRole={isAdmin ? 'admin' : currentUserRole as 'cs' | 'consultant' | undefined}
             />
+          </TabsContent>
+
+          <TabsContent value="support-history">
+            <SupportHistoryPanel projectId={projectId!} />
           </TabsContent>
         </Tabs>
       </div>
