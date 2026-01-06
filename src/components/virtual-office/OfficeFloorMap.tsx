@@ -68,46 +68,26 @@ const getRoomIcon = (room: Room) => {
   return MessageSquare;
 };
 
-const getRoomColor = (room: Room, isSelected: boolean) => {
-  const name = room.name.toLowerCase();
+const roomColorPalette = [
+  { bg: "bg-rose-500", bgLight: "bg-rose-500/15", border: "border-rose-400", accent: "text-rose-400", glow: "shadow-rose-500/30" },
+  { bg: "bg-sky-500", bgLight: "bg-sky-500/15", border: "border-sky-400", accent: "text-sky-400", glow: "shadow-sky-500/30" },
+  { bg: "bg-amber-500", bgLight: "bg-amber-500/15", border: "border-amber-400", accent: "text-amber-400", glow: "shadow-amber-500/30" },
+  { bg: "bg-emerald-500", bgLight: "bg-emerald-500/15", border: "border-emerald-400", accent: "text-emerald-400", glow: "shadow-emerald-500/30" },
+  { bg: "bg-violet-500", bgLight: "bg-violet-500/15", border: "border-violet-400", accent: "text-violet-400", glow: "shadow-violet-500/30" },
+  { bg: "bg-cyan-500", bgLight: "bg-cyan-500/15", border: "border-cyan-400", accent: "text-cyan-400", glow: "shadow-cyan-500/30" },
+  { bg: "bg-pink-500", bgLight: "bg-pink-500/15", border: "border-pink-400", accent: "text-pink-400", glow: "shadow-pink-500/30" },
+  { bg: "bg-orange-500", bgLight: "bg-orange-500/15", border: "border-orange-400", accent: "text-orange-400", glow: "shadow-orange-500/30" },
+];
+
+const getRoomColor = (room: Room, isSelected: boolean, index: number) => {
+  const palette = roomColorPalette[index % roomColorPalette.length];
   
-  if (name.includes("café") || name.includes("cafe") || name.includes("copa")) {
-    return {
-      bg: isSelected ? "bg-amber-500/20" : "bg-amber-500/10",
-      border: isSelected ? "border-amber-400" : "border-amber-500/30",
-      accent: "text-amber-400",
-      glow: "shadow-amber-500/20"
-    };
-  }
-  if (name.includes("reunião") || name.includes("meeting")) {
-    return {
-      bg: isSelected ? "bg-sky-500/20" : "bg-sky-500/10",
-      border: isSelected ? "border-sky-400" : "border-sky-500/30",
-      accent: "text-sky-400",
-      glow: "shadow-sky-500/20"
-    };
-  }
-  if (name.includes("foco") || name.includes("focus")) {
-    return {
-      bg: isSelected ? "bg-emerald-500/20" : "bg-emerald-500/10",
-      border: isSelected ? "border-emerald-400" : "border-emerald-500/30",
-      accent: "text-emerald-400",
-      glow: "shadow-emerald-500/20"
-    };
-  }
-  if (name.includes("diretoria") || name.includes("executive")) {
-    return {
-      bg: isSelected ? "bg-violet-500/20" : "bg-violet-500/10",
-      border: isSelected ? "border-violet-400" : "border-violet-500/30",
-      accent: "text-violet-400",
-      glow: "shadow-violet-500/20"
-    };
-  }
   return {
-    bg: isSelected ? "bg-primary/20" : "bg-primary/10",
-    border: isSelected ? "border-primary" : "border-primary/30",
-    accent: "text-primary",
-    glow: "shadow-primary/20"
+    bg: isSelected ? palette.bgLight.replace("/15", "/25") : palette.bgLight,
+    border: isSelected ? palette.border : palette.border.replace("400", "500/40"),
+    accent: palette.accent,
+    glow: palette.glow,
+    solid: palette.bg
   };
 };
 
@@ -187,7 +167,7 @@ export const OfficeFloorMap = ({
                 const isSelected = selectedRoom?.id === room.id;
                 const isHovered = hoveredRoom === room.id;
                 const unreadCount = unreadCounts[room.id] || 0;
-                const colors = getRoomColor(room, isSelected);
+                const colors = getRoomColor(room, isSelected, index);
 
                 return (
                   <motion.div
@@ -214,10 +194,11 @@ export const OfficeFloorMap = ({
                       {/* Top: Icon + Badges */}
                       <div className="flex items-start justify-between mb-2">
                         <div className={cn(
-                          "p-2 rounded-md",
-                          isSelected ? "bg-background/60" : "bg-background/40"
+                          "p-2.5 rounded-lg",
+                          colors.solid,
+                          "shadow-md"
                         )}>
-                          <RoomIcon className={cn("h-4 w-4", colors.accent)} />
+                          <RoomIcon className="h-4 w-4 text-white" />
                         </div>
                         
                         <div className="flex items-center gap-1">
@@ -339,25 +320,6 @@ export const OfficeFloorMap = ({
             )}
           </div>
 
-          {/* Legend */}
-          <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded bg-sky-500/30 border border-sky-500/50" />
-              <span>Reunião</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded bg-amber-500/30 border border-amber-500/50" />
-              <span>Copa</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded bg-emerald-500/30 border border-emerald-500/50" />
-              <span>Foco</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded bg-violet-500/30 border border-violet-500/50" />
-              <span>Diretoria</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>
