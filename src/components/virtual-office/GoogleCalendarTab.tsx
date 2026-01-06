@@ -33,6 +33,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   Calendar, 
   Video, 
@@ -50,7 +57,8 @@ import {
   Check,
   Users,
   Pencil,
-  Trash2
+  Trash2,
+  MoreVertical
 } from "lucide-react";
 import { 
   format, 
@@ -872,27 +880,63 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                     )}>
                       <div className="space-y-1 px-0.5">
                         {dayEvents.map((event) => (
-                          <div
-                            key={event.id}
-                            className={cn(
-                              "text-[10px] sm:text-xs p-1 rounded truncate cursor-pointer transition-colors group relative",
-                              event.meetingLink 
-                                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50" 
-                                : "bg-muted hover:bg-muted/80"
-                            )}
-                            onClick={(e) => handleEventClick(event, e)}
-                            title={`${event.title} - ${format(parseISO(event.start), "HH:mm")}${event.meetingLink ? " (clique para entrar)" : ""}`}
-                          >
-                            <div className="flex items-center gap-1">
-                              {event.meetingLink && <Video className="h-2.5 w-2.5 shrink-0" />}
-                              <span className="truncate">
-                                {viewMode === "week" && (
-                                  <span className="font-medium">{format(parseISO(event.start), "HH:mm")} </span>
+                          <DropdownMenu key={event.id}>
+                            <DropdownMenuTrigger asChild>
+                              <div
+                                className={cn(
+                                  "text-[10px] sm:text-xs p-1 rounded truncate cursor-pointer transition-colors group relative",
+                                  event.meetingLink 
+                                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50" 
+                                    : "bg-muted hover:bg-muted/80"
                                 )}
-                                {event.title}
-                              </span>
-                            </div>
-                          </div>
+                                onClick={(e) => e.stopPropagation()}
+                                title={`${event.title} - ${format(parseISO(event.start), "HH:mm")}`}
+                              >
+                                <div className="flex items-center gap-1">
+                                  {event.meetingLink && <Video className="h-2.5 w-2.5 shrink-0" />}
+                                  <span className="truncate">
+                                    {viewMode === "week" && (
+                                      <span className="font-medium">{format(parseISO(event.start), "HH:mm")} </span>
+                                    )}
+                                    {event.title}
+                                  </span>
+                                </div>
+                              </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-48">
+                              <div className="px-2 py-1.5 text-sm font-medium truncate">{event.title}</div>
+                              <div className="px-2 pb-1.5 text-xs text-muted-foreground">
+                                {format(parseISO(event.start), "HH:mm")} - {format(parseISO(event.end), "HH:mm")}
+                              </div>
+                              <DropdownMenuSeparator />
+                              {event.meetingLink && (
+                                <DropdownMenuItem onClick={() => window.open(event.meetingLink, "_blank")}>
+                                  <Video className="h-4 w-4 mr-2 text-blue-500" />
+                                  Entrar na reunião
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onClick={() => window.open(event.calendarLink, "_blank")}>
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Abrir no Google
+                              </DropdownMenuItem>
+                              {isViewingOwnCalendar && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => openEditDialog(event)}>
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Editar evento
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => confirmDelete(event)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Excluir evento
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         ))}
                       </div>
                     </ScrollArea>
