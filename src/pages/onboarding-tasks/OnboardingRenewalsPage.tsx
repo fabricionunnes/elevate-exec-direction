@@ -880,14 +880,21 @@ export default function OnboardingRenewalsPage() {
                               value={company.renewal_status || "em_negociacao"}
                               onValueChange={(v) => handleRenewalStatusChange(company.id, v)}
                             >
-                              <SelectTrigger className="w-32 h-8">
-                                <SelectValue />
+                              <SelectTrigger className="w-[155px] h-9">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                                    RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.color || "bg-gray-400"
+                                  }`} />
+                                  <span className="truncate">
+                                    {RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.label || "Em negociação"}
+                                  </span>
+                                </div>
                               </SelectTrigger>
                               <SelectContent>
                                 {RENEWAL_STATUS_OPTIONS.map(opt => (
                                   <SelectItem key={opt.value} value={opt.value}>
                                     <div className="flex items-center gap-2">
-                                      <div className={`w-2 h-2 rounded-full ${opt.color}`} />
+                                      <div className={`w-2.5 h-2.5 rounded-full ${opt.color}`} />
                                       {opt.label}
                                     </div>
                                   </SelectItem>
@@ -896,7 +903,7 @@ export default function OnboardingRenewalsPage() {
                             </Select>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <div className={`w-2 h-2 rounded-full ${renewalStatusOption?.color || "bg-gray-400"}`} />
+                              <div className={`w-2.5 h-2.5 rounded-full ${renewalStatusOption?.color || "bg-gray-400"}`} />
                               {renewalStatusOption?.label || "Em negociação"}
                             </div>
                           )}
