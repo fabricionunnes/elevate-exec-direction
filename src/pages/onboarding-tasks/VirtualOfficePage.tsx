@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,6 +112,7 @@ type OfficeViewMode = "map" | "list";
 
 const VirtualOfficePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
@@ -137,6 +138,16 @@ const VirtualOfficePage = () => {
   useEffect(() => {
     initializeData();
   }, []);
+
+  // Handle openSupport state from navigation
+  useEffect(() => {
+    const state = location.state as { openSupport?: boolean } | null;
+    if (state?.openSupport) {
+      setActiveTab("support");
+      // Clear the state to prevent re-triggering on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]);
 
   // Presença global é gerenciada pelo OnboardingStaffLayout via useGlobalPresence hook
 
