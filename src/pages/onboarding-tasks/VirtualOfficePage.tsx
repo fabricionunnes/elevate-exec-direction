@@ -120,6 +120,7 @@ const VirtualOfficePage = () => {
   const [myStatus, setMyStatus] = useState<PresenceStatus>("online");
   const [newMessage, setNewMessage] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canViewHistory, setCanViewHistory] = useState(false);
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [showEditRoom, setShowEditRoom] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -202,6 +203,8 @@ const VirtualOfficePage = () => {
 
       setCurrentStaff(staffData);
       setIsAdmin(staffData.role === "admin");
+      // Apenas este email pode ver o histórico de conversas
+      setCanViewHistory(staffData.email === "fabricio@universidadevendas.com.br");
 
       // Fetch all data in parallel
       const [roomsRes, staffRes, presenceRes, accessRes] = await Promise.all([
@@ -621,7 +624,7 @@ const VirtualOfficePage = () => {
               <Calendar className="h-4 w-4" />
               Minha Agenda
             </TabsTrigger>
-            {isAdmin && (
+            {canViewHistory && (
               <TabsTrigger value="history" className="gap-2">
                 <History className="h-4 w-4" />
                 Histórico
@@ -631,7 +634,7 @@ const VirtualOfficePage = () => {
         </Tabs>
       </div>
 
-      {activeTab === "history" && isAdmin ? (
+      {activeTab === "history" && canViewHistory ? (
         <ChatHistoryTab staffMembers={staffMembers} rooms={rooms} />
       ) : activeTab === "calendar" ? (
         <GoogleCalendarTab currentStaff={currentStaff ? { id: currentStaff.id, role: currentStaff.role, user_id: currentStaff.user_id } : undefined} />
