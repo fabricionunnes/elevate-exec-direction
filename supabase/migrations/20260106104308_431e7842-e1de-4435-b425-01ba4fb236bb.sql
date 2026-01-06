@@ -1,0 +1,22 @@
+-- Add new fields for enhanced kickoff form
+ALTER TABLE public.onboarding_companies
+ADD COLUMN IF NOT EXISTS sales_team_size TEXT,
+ADD COLUMN IF NOT EXISTS conversion_rate TEXT,
+ADD COLUMN IF NOT EXISTS average_ticket TEXT,
+ADD COLUMN IF NOT EXISTS acquisition_channels TEXT,
+ADD COLUMN IF NOT EXISTS has_structured_process TEXT,
+ADD COLUMN IF NOT EXISTS crm_usage TEXT,
+ADD COLUMN IF NOT EXISTS has_sales_goals TEXT,
+ADD COLUMN IF NOT EXISTS swot_strengths TEXT,
+ADD COLUMN IF NOT EXISTS swot_weaknesses TEXT,
+ADD COLUMN IF NOT EXISTS swot_opportunities TEXT,
+ADD COLUMN IF NOT EXISTS swot_threats TEXT,
+ADD COLUMN IF NOT EXISTS commercial_structure TEXT,
+ADD COLUMN IF NOT EXISTS growth_target TEXT,
+ADD COLUMN IF NOT EXISTS tools_used TEXT,
+ADD COLUMN IF NOT EXISTS objectives_with_unv TEXT,
+ADD COLUMN IF NOT EXISTS key_results TEXT,
+ADD COLUMN IF NOT EXISTS quarterly_goals JSONB,
+ADD COLUMN IF NOT EXISTS growth_expectation_3m TEXT,
+ADD COLUMN IF NOT EXISTS growth_expectation_6m TEXT,
+ADD COLUMN IF NOT EXISTS growth_expectation_12m TEXT;

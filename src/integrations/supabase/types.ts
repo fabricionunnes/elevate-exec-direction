@@ -511,92 +511,152 @@ export type Database = {
       }
       onboarding_companies: {
         Row: {
+          acquisition_channels: string | null
           address: string | null
+          average_ticket: string | null
           billing_day: number | null
           cnpj: string | null
+          commercial_structure: string | null
           company_description: string | null
           competitors: string | null
           consultant_id: string | null
           contract_end_date: string | null
           contract_start_date: string | null
           contract_value: number | null
+          conversion_rate: string | null
           created_at: string
+          crm_usage: string | null
           cs_id: string | null
           email: string | null
           expected_timeline: Json | null
           goals_long_term: string | null
           goals_short_term: string | null
+          growth_expectation_12m: string | null
+          growth_expectation_3m: string | null
+          growth_expectation_6m: string | null
+          growth_target: string | null
+          has_sales_goals: string | null
+          has_structured_process: string | null
           id: string
+          key_results: string | null
           kickoff_date: string | null
           main_challenges: string | null
           name: string
           notes: string | null
+          objectives_with_unv: string | null
           phone: string | null
+          quarterly_goals: Json | null
+          sales_team_size: string | null
           segment: string | null
           stakeholders: Json | null
           status: string
           status_changed_at: string | null
+          swot_opportunities: string | null
+          swot_strengths: string | null
+          swot_threats: string | null
+          swot_weaknesses: string | null
           target_audience: string | null
+          tools_used: string | null
           updated_at: string
           website: string | null
         }
         Insert: {
+          acquisition_channels?: string | null
           address?: string | null
+          average_ticket?: string | null
           billing_day?: number | null
           cnpj?: string | null
+          commercial_structure?: string | null
           company_description?: string | null
           competitors?: string | null
           consultant_id?: string | null
           contract_end_date?: string | null
           contract_start_date?: string | null
           contract_value?: number | null
+          conversion_rate?: string | null
           created_at?: string
+          crm_usage?: string | null
           cs_id?: string | null
           email?: string | null
           expected_timeline?: Json | null
           goals_long_term?: string | null
           goals_short_term?: string | null
+          growth_expectation_12m?: string | null
+          growth_expectation_3m?: string | null
+          growth_expectation_6m?: string | null
+          growth_target?: string | null
+          has_sales_goals?: string | null
+          has_structured_process?: string | null
           id?: string
+          key_results?: string | null
           kickoff_date?: string | null
           main_challenges?: string | null
           name: string
           notes?: string | null
+          objectives_with_unv?: string | null
           phone?: string | null
+          quarterly_goals?: Json | null
+          sales_team_size?: string | null
           segment?: string | null
           stakeholders?: Json | null
           status?: string
           status_changed_at?: string | null
+          swot_opportunities?: string | null
+          swot_strengths?: string | null
+          swot_threats?: string | null
+          swot_weaknesses?: string | null
           target_audience?: string | null
+          tools_used?: string | null
           updated_at?: string
           website?: string | null
         }
         Update: {
+          acquisition_channels?: string | null
           address?: string | null
+          average_ticket?: string | null
           billing_day?: number | null
           cnpj?: string | null
+          commercial_structure?: string | null
           company_description?: string | null
           competitors?: string | null
           consultant_id?: string | null
           contract_end_date?: string | null
           contract_start_date?: string | null
           contract_value?: number | null
+          conversion_rate?: string | null
           created_at?: string
+          crm_usage?: string | null
           cs_id?: string | null
           email?: string | null
           expected_timeline?: Json | null
           goals_long_term?: string | null
           goals_short_term?: string | null
+          growth_expectation_12m?: string | null
+          growth_expectation_3m?: string | null
+          growth_expectation_6m?: string | null
+          growth_target?: string | null
+          has_sales_goals?: string | null
+          has_structured_process?: string | null
           id?: string
+          key_results?: string | null
           kickoff_date?: string | null
           main_challenges?: string | null
           name?: string
           notes?: string | null
+          objectives_with_unv?: string | null
           phone?: string | null
+          quarterly_goals?: Json | null
+          sales_team_size?: string | null
           segment?: string | null
           stakeholders?: Json | null
           status?: string
           status_changed_at?: string | null
+          swot_opportunities?: string | null
+          swot_strengths?: string | null
+          swot_threats?: string | null
+          swot_weaknesses?: string | null
           target_audience?: string | null
+          tools_used?: string | null
           updated_at?: string
           website?: string | null
         }
