@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
@@ -828,42 +828,7 @@ const OnboardingTasksPage = () => {
 
           {/* Desktop Actions - Second Row */}
           <div className="hidden sm:flex items-center gap-2 flex-wrap">
-            {isAdmin && (
-              <Button variant="default" size="sm" onClick={() => setShowAnnouncementDialog(true)}>
-                <Megaphone className="h-4 w-4 mr-2" />
-                Comunicado
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/import")}>
-              <Upload className="h-4 w-4 mr-2" />
-              Importar
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/services")}>
-              <Package className="h-4 w-4 mr-2" />
-              Serviços
-            </Button>
-            {isAdmin && (
-              <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/reschedule")}>
-                <CalendarClock className="h-4 w-4 mr-2" />
-                Reagendar
-              </Button>
-            )}
-            {isAdmin && (
-              <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/renewals")}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Renovações
-              </Button>
-            )}
-            {canCreateCompany && (
-              <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/staff")}>
-                <Users className="h-4 w-4 mr-2" />
-                Equipe
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/office")}>
-              <Video className="h-4 w-4 mr-2" />
-              Escritório
-            </Button>
+            {/* Primary Actions */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -920,12 +885,64 @@ const OnboardingTasksPage = () => {
                     Nenhuma empresa cadastrada
                   </div>
                 )}
-              </DropdownMenuContent>
+            </DropdownMenuContent>
             </DropdownMenu>
+            
             <Button size="sm" onClick={() => setShowCreateDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Projeto
             </Button>
+
+            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/office")}>
+              <Video className="h-4 w-4 mr-2" />
+              Escritório
+            </Button>
+
+            {/* Admin/CS Actions Menu */}
+            {canCreateCompany && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Administrar
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/staff")}>
+                    <Users className="h-4 w-4 mr-2" />
+                    Equipe
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/services")}>
+                    <Package className="h-4 w-4 mr-2" />
+                    Serviços
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/import")}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Importar
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/renewals")}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Renovações
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/reschedule")}>
+                        <CalendarClock className="h-4 w-4 mr-2" />
+                        Reagendar Tarefas
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setShowAnnouncementDialog(true)}>
+                        <Megaphone className="h-4 w-4 mr-2" />
+                        Enviar Comunicado
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             <Button 
               variant="ghost" 
               size="icon"
