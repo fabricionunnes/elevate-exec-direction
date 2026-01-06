@@ -16,6 +16,7 @@ import {
   Settings
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import logoUnv from "@/assets/logo-unv-office.png";
 
 interface Room {
   id: string;
@@ -120,39 +121,46 @@ export const OfficeFloorMap = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "online":
       case "available": return "bg-green-500";
       case "busy": return "bg-red-500";
       case "away": return "bg-amber-500";
+      case "in_meeting":
       case "meeting": return "bg-violet-500";
-      default: return "bg-gray-400";
+      default: return "bg-green-500"; // Default to green for any online status
     }
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
+      case "online":
       case "available": return "Disponível";
       case "busy": return "Ocupado";
       case "away": return "Ausente";
+      case "in_meeting":
       case "meeting": return "Em reunião";
-      default: return status;
+      default: return "Online";
     }
   };
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
+      {/* Header with Logo */}
       <div className="px-4 py-3 border-b border-border/50 bg-card/50">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Briefcase className="h-5 w-5 text-primary" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Briefcase className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-base">Mapa do Escritório</h2>
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                {onlineCount} online
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-semibold text-base">Mapa do Escritório</h2>
-            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-              {onlineCount} online
-            </p>
-          </div>
+          <img src={logoUnv} alt="UNV" className="h-10 w-auto object-contain" />
         </div>
       </div>
 
