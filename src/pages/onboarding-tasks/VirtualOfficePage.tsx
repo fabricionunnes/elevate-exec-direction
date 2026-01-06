@@ -862,7 +862,11 @@ const VirtualOfficePage = () => {
                       className="gap-2"
                       onClick={() => {
                         if (selectedRoom.meet_link) {
-                          window.open(selectedRoom.meet_link, "_blank");
+                          let meetUrl = selectedRoom.meet_link;
+                          if (!meetUrl.startsWith("http://") && !meetUrl.startsWith("https://")) {
+                            meetUrl = "https://" + meetUrl;
+                          }
+                          window.open(meetUrl, "_blank");
                           setIsInVideoCall(true);
                           updatePresence(currentStaff?.id || "", "in_meeting", selectedRoom.id);
                         } else {
