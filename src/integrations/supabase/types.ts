@@ -441,6 +441,80 @@ export type Database = {
           },
         ]
       }
+      onboarding_announcement_acks: {
+        Row: {
+          acknowledged_at: string
+          announcement_id: string
+          id: string
+          staff_id: string
+        }
+        Insert: {
+          acknowledged_at?: string
+          announcement_id: string
+          id?: string
+          staff_id: string
+        }
+        Update: {
+          acknowledged_at?: string
+          announcement_id?: string
+          id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_announcement_acks_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_announcement_acks_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_announcements: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          message: string
+          target_role: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          message: string
+          target_role: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          message?: string
+          target_role?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_cac_forms: {
         Row: {
           company_name: string

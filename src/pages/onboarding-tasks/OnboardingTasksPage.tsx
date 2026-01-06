@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
@@ -14,6 +14,7 @@ import { ptBR } from "date-fns/locale";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
 import { TaskNotificationsDialog } from "@/components/onboarding-tasks/TaskNotificationsDialog";
 import DashboardMetrics from "@/components/onboarding-tasks/DashboardMetrics";
+import { AnnouncementDialog } from "@/components/onboarding-tasks/AnnouncementDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -106,6 +107,9 @@ const OnboardingTasksPage = () => {
   const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null }[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
+  
+  // Announcement dialog state
+  const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -794,6 +798,11 @@ const OnboardingTasksPage = () => {
                   </DropdownMenuItem>
                   {isAdmin && (
                     <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setShowAnnouncementDialog(true)}>
+                        <Megaphone className="h-4 w-4 mr-2" />
+                        Enviar Comunicado
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/services")}>
                         <Package className="h-4 w-4 mr-2" />
                         Serviços
@@ -815,6 +824,10 @@ const OnboardingTasksPage = () => {
               <div className="hidden sm:flex items-center gap-2">
                 {isAdmin && (
                   <>
+                    <Button variant="default" onClick={() => setShowAnnouncementDialog(true)}>
+                      <Megaphone className="h-4 w-4 mr-2" />
+                      Comunicado
+                    </Button>
                     <Button variant="outline" onClick={() => navigate("/onboarding-tasks/import")}>
                       <Upload className="h-4 w-4 mr-2" />
                       Importar
@@ -1267,6 +1280,15 @@ const OnboardingTasksPage = () => {
 
       {/* Task notifications popup */}
       <TaskNotificationsDialog />
+
+      {/* Announcement dialog for admins */}
+      {isAdmin && currentStaffId && (
+        <AnnouncementDialog
+          open={showAnnouncementDialog}
+          onOpenChange={setShowAnnouncementDialog}
+          staffId={currentStaffId}
+        />
+      )}
     </div>
   );
 };
