@@ -59,6 +59,7 @@ import { TasksScheduleView } from "@/components/onboarding-tasks/TasksScheduleVi
 import { NPSHistoryPanel } from "@/components/onboarding-tasks/NPSHistoryPanel";
 import { ProjectUrgentTasks } from "@/components/onboarding-tasks/ProjectUrgentTasks";
 import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
+import { ProjectSupportBanner } from "@/components/onboarding-tasks/ProjectSupportBanner";
 import { TrendingUp } from "lucide-react";
 
 
@@ -803,6 +804,9 @@ const OnboardingProjectPage = () => {
       )}
       
       <div className="container mx-auto px-4 py-8">
+        {/* Support Banner - Shows when client is waiting */}
+        {projectId && <ProjectSupportBanner projectId={projectId} />}
+        
         {/* Header */}
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex items-start justify-between">

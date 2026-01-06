@@ -9,6 +9,7 @@ const NpsCelebrationPopup = lazy(() => import("./NpsCelebrationPopup").then(m =>
 const GlobalChatWidget = lazy(() => import("@/components/virtual-office/GlobalChatWidget"));
 const ChatNotifications = lazy(() => import("@/components/virtual-office/ChatNotifications").then(m => ({ default: m.ChatNotifications })));
 const AnnouncementPopup = lazy(() => import("./AnnouncementPopup").then(m => ({ default: m.AnnouncementPopup })));
+const GlobalSupportNotification = lazy(() => import("./GlobalSupportNotification").then(m => ({ default: m.GlobalSupportNotification })));
 
 // Simple fallback that doesn't break layout
 const LoadingFallback = () => null;
@@ -124,6 +125,12 @@ export const OnboardingStaffLayout = () => {
       {isStaff && (
         <Suspense fallback={<LoadingFallback />}>
           <GlobalChatWidget />
+        </Suspense>
+      )}
+      {/* Notificações globais de suporte ao vivo */}
+      {isStaff && (
+        <Suspense fallback={<LoadingFallback />}>
+          <GlobalSupportNotification />
         </Suspense>
       )}
       <Outlet />
