@@ -5,11 +5,16 @@ import { RealtimeNotifications } from "./RealtimeNotifications";
 import { NpsCelebrationPopup } from "./NpsCelebrationPopup";
 import GlobalChatWidget from "@/components/virtual-office/GlobalChatWidget";
 import { ChatNotifications } from "@/components/virtual-office/ChatNotifications";
+import { useGlobalPresence } from "@/hooks/useGlobalPresence";
 
 export const OnboardingStaffLayout = () => {
   const [isStaff, setIsStaff] = useState<boolean | null>(null);
+  const [staffId, setStaffId] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Hook global de presença - mantém online enquanto logado
+  useGlobalPresence(staffId);
 
   useEffect(() => {
     const checkStaffStatus = async () => {
@@ -21,6 +26,7 @@ export const OnboardingStaffLayout = () => {
           navigate("/onboarding-tasks/login");
         }
         setIsStaff(false);
+        setStaffId(null);
         return;
       }
 
@@ -32,6 +38,7 @@ export const OnboardingStaffLayout = () => {
         .maybeSingle();
 
       setIsStaff(!!staff);
+      setStaffId(staff?.id || null);
     };
 
     checkStaffStatus();
