@@ -120,6 +120,9 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
   const [selectedStaffUserId, setSelectedStaffUserId] = useState<string | null>(null);
   const isCSOrAdmin = currentStaff?.role === "cs" || currentStaff?.role === "admin";
   
+  // Day detail panel
+  const [selectedDayForDetail, setSelectedDayForDetail] = useState<Date>(new Date());
+  
   // Create/Edit event state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -513,6 +516,12 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
     return grouped;
   }, [events]);
 
+  // Events for the selected day detail panel
+  const selectedDayEvents = useMemo(() => {
+    const dateKey = format(selectedDayForDetail, "yyyy-MM-dd");
+    return eventsByDate[dateKey] || [];
+  }, [selectedDayForDetail, eventsByDate]);
+
   const getEventTimeLabel = (start: string) => {
     const date = parseISO(start);
     if (isToday(date)) return "Hoje";
@@ -546,6 +555,10 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
     } else {
       window.open(event.calendarLink, "_blank");
     }
+  };
+
+  const handleDayClick = (day: Date) => {
+    setSelectedDayForDetail(day);
   };
 
   const isViewingOwnCalendar = !selectedStaffUserId || selectedStaffUserId === currentStaff?.user_id;
@@ -827,7 +840,7 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
         <div className="flex-1 flex flex-col p-4 overflow-hidden">
           {/* Calendar Navigation */}
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={navigatePrevious} className="h-8 w-8">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -843,142 +856,238 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
             </h3>
           </div>
 
-          {/* Calendar Grid */}
-          <div className="flex-1 overflow-auto">
-            <div className="grid grid-cols-7 gap-1">
-              {/* Week Day Headers */}
-              {weekDays.map((day) => (
-                <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
-                  {day}
+          {/* Calendar Grid with Day Detail Panel */}
+          <div className="flex-1 flex gap-4 overflow-hidden">
+            {/* Calendar Grid */}
+            <div className="flex-1 overflow-auto">
+              <div className="grid grid-cols-7 gap-1">
+                {/* Week Day Headers */}
+                {weekDays.map((day) => (
+                  <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
+                    {day}
+                  </div>
+                ))}
+
+                {/* Calendar Days */}
+                {calendarDays.map((day) => {
+                  const dateKey = format(day, "yyyy-MM-dd");
+                  const dayEvents = eventsByDate[dateKey] || [];
+                  const isCurrentMonth = isSameMonth(day, currentDate);
+                  const isCurrentDay = isToday(day);
+                  const isSelectedDay = format(day, "yyyy-MM-dd") === format(selectedDayForDetail, "yyyy-MM-dd");
+
+                  return (
+                    <div
+                      key={dateKey}
+                      className={cn(
+                        "border rounded-lg p-1 min-h-[70px] sm:min-h-[80px] transition-colors cursor-pointer",
+                        viewMode === "week" && "min-h-[140px]",
+                        !isCurrentMonth && viewMode === "month" && "bg-muted/30 opacity-50",
+                        isCurrentDay && "border-primary bg-primary/5",
+                        isSelectedDay && "ring-2 ring-primary ring-offset-1",
+                        "hover:bg-muted/30"
+                      )}
+                      onClick={() => handleDayClick(day)}
+                    >
+                      <div className="flex items-center justify-between mb-1 px-0.5">
+                        <span className={cn(
+                          "text-xs font-medium",
+                          isCurrentDay && "bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center"
+                        )}>
+                          {format(day, "d")}
+                        </span>
+                        {dayEvents.length > 0 && (
+                          <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                            {dayEvents.length}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="space-y-0.5 px-0.5">
+                        {dayEvents.slice(0, viewMode === "week" ? 4 : 2).map((event) => (
+                          <div
+                            key={event.id}
+                            className={cn(
+                              "text-[9px] sm:text-[10px] p-0.5 rounded truncate",
+                              event.meetingLink 
+                                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" 
+                                : "bg-muted"
+                            )}
+                            title={event.title}
+                          >
+                            <div className="flex items-center gap-0.5">
+                              {event.meetingLink && <Video className="h-2 w-2 shrink-0" />}
+                              <span className="truncate">{event.title}</span>
+                            </div>
+                          </div>
+                        ))}
+                        {dayEvents.length > (viewMode === "week" ? 4 : 2) && (
+                          <span className="text-[9px] text-muted-foreground px-0.5">
+                            +{dayEvents.length - (viewMode === "week" ? 4 : 2)} mais
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Day Detail Panel */}
+            <Card className="w-80 shrink-0 hidden lg:flex flex-col">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base capitalize">
+                    {format(selectedDayForDetail, "EEEE, d", { locale: ptBR })}
+                  </CardTitle>
+                  {isViewingOwnCalendar && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => openCreateDialog(selectedDayForDetail)}
+                      className="h-7 gap-1"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Novo
+                    </Button>
+                  )}
                 </div>
-              ))}
-
-              {/* Calendar Days */}
-              {calendarDays.map((day) => {
-                const dateKey = format(day, "yyyy-MM-dd");
-                const dayEvents = eventsByDate[dateKey] || [];
-                const isCurrentMonth = isSameMonth(day, currentDate);
-                const isCurrentDay = isToday(day);
-
-                return (
-                  <div
-                    key={dateKey}
-                    className={cn(
-                      "border rounded-lg p-1 min-h-[80px] sm:min-h-[100px] transition-colors",
-                      viewMode === "week" && "min-h-[200px]",
-                      !isCurrentMonth && viewMode === "month" && "bg-muted/30 opacity-50",
-                      isCurrentDay && "border-primary bg-primary/5",
-                      isViewingOwnCalendar && dayEvents.length === 0 && "cursor-pointer hover:bg-muted/30"
-                    )}
-                    onClick={(e) => {
-                      // Only open create dialog if clicking on empty space (not on an event)
-                      if (isViewingOwnCalendar && dayEvents.length === 0) {
-                        openCreateDialog(day);
-                      }
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-1 px-0.5">
-                      <span className={cn(
-                        "text-xs font-medium",
-                        isCurrentDay && "text-primary"
-                      )}>
-                        {format(day, "d")}
-                      </span>
-                      {isViewingOwnCalendar && dayEvents.length > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-4 w-4 opacity-50 hover:opacity-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openCreateDialog(day);
-                          }}
+                <p className="text-xs text-muted-foreground capitalize">
+                  {format(selectedDayForDetail, "MMMM 'de' yyyy", { locale: ptBR })}
+                </p>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-hidden p-0">
+                <ScrollArea className="h-full px-4 pb-4">
+                  {selectedDayEvents.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Calendar className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                      <p className="text-sm text-muted-foreground mb-3">Nenhum evento neste dia</p>
+                      {isViewingOwnCalendar && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => openCreateDialog(selectedDayForDetail)}
+                          className="gap-1"
                         >
-                          <Plus className="h-3 w-3" />
+                          <Plus className="h-3.5 w-3.5" />
+                          Criar evento
                         </Button>
                       )}
                     </div>
-                    <ScrollArea className={cn(
-                      "h-[60px] sm:h-[80px]",
-                      viewMode === "week" && "h-[160px]"
-                    )}>
-                      <div className="space-y-1 px-0.5">
-                        {dayEvents.map((event) => (
-                          <DropdownMenu key={event.id}>
-                            <DropdownMenuTrigger asChild>
-                              <div
-                                className={cn(
-                                  "text-[10px] sm:text-xs p-1 rounded truncate cursor-pointer transition-colors group relative",
-                                  event.meetingLink 
-                                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50" 
-                                    : "bg-muted hover:bg-muted/80"
-                                )}
-                                onClick={(e) => e.stopPropagation()}
-                                title={`${event.title} - ${format(parseISO(event.start), "HH:mm")}`}
-                              >
-                                <div className="flex items-center gap-1">
-                                  {event.meetingLink && <Video className="h-2.5 w-2.5 shrink-0" />}
-                                  <span className="truncate">
-                                    {viewMode === "week" && (
-                                      <span className="font-medium">{format(parseISO(event.start), "HH:mm")} </span>
-                                    )}
-                                    {event.title}
-                                  </span>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedDayEvents
+                        .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())
+                        .map((event) => {
+                          const timeUntil = getTimeUntilEvent(event.start);
+                          const isNow = timeUntil === "Em andamento";
+                          
+                          return (
+                            <Card 
+                              key={event.id}
+                              className={cn(
+                                "transition-colors",
+                                isNow && "border-primary bg-primary/5"
+                              )}
+                            >
+                              <CardContent className="p-3">
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <h4 className="font-medium text-sm truncate">{event.title}</h4>
+                                      {event.meetingLink && (
+                                        <Video className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                      <Clock className="h-3 w-3" />
+                                      <span>
+                                        {format(parseISO(event.start), "HH:mm")} - {format(parseISO(event.end), "HH:mm")}
+                                      </span>
+                                      {timeUntil && (
+                                        <Badge 
+                                          variant={isNow ? "default" : "secondary"} 
+                                          className="text-[10px] px-1.5 py-0"
+                                        >
+                                          {timeUntil}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {isViewingOwnCalendar && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                                          <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => openEditDialog(event)}>
+                                          <Pencil className="h-4 w-4 mr-2" />
+                                          Editar
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                          onClick={() => confirmDelete(event)}
+                                          className="text-destructive focus:text-destructive"
+                                        >
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Excluir
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
                                 </div>
-                              </div>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-56">
-                              <div className="px-2 py-1.5 text-sm font-medium truncate">{event.title}</div>
-                              <div className="px-2 pb-1.5 text-xs text-muted-foreground">
-                                {format(parseISO(event.start), "HH:mm")} - {format(parseISO(event.end), "HH:mm")}
-                              </div>
-                              <DropdownMenuSeparator />
-                              {event.meetingLink ? (
-                                <DropdownMenuItem 
-                                  onClick={() => window.open(event.meetingLink, "_blank")}
-                                  className="text-blue-600 focus:text-blue-600 font-medium"
-                                >
-                                  <Video className="h-4 w-4 mr-2" />
-                                  Entrar na reunião
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem 
-                                  onClick={() => window.open(event.calendarLink, "_blank")}
-                                  className="text-muted-foreground"
-                                >
-                                  <Video className="h-4 w-4 mr-2" />
-                                  Sem link de reunião
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem onClick={() => window.open(event.calendarLink, "_blank")}>
-                                <ExternalLink className="h-4 w-4 mr-2" />
-                                Abrir no Google Calendar
-                              </DropdownMenuItem>
-                              {isViewingOwnCalendar && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => openEditDialog(event)}>
-                                    <Pencil className="h-4 w-4 mr-2" />
-                                    Editar evento
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => confirmDelete(event)}
-                                    className="text-destructive focus:text-destructive"
+                                
+                                {event.description && (
+                                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                                    {event.description}
+                                  </p>
+                                )}
+                                
+                                <div className="flex gap-1.5">
+                                  <Button
+                                    size="sm"
+                                    variant={event.meetingLink ? "default" : "outline"}
+                                    className="flex-1 h-7 text-xs gap-1"
+                                    onClick={() => {
+                                      if (event.meetingLink) {
+                                        window.open(event.meetingLink, "_blank");
+                                      } else {
+                                        window.open(event.calendarLink, "_blank");
+                                      }
+                                    }}
                                   >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Excluir evento
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                );
-              })}
-            </div>
+                                    {event.meetingLink ? (
+                                      <>
+                                        <Video className="h-3 w-3" />
+                                        Entrar
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ExternalLink className="h-3 w-3" />
+                                        Ver
+                                      </>
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-2"
+                                    onClick={() => window.open(event.calendarLink, "_blank")}
+                                    title="Abrir no Google Calendar"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
           </div>
         </div>
       )}
