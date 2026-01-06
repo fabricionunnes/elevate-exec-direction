@@ -18,7 +18,8 @@ import {
   ArrowLeft,
   Circle,
   Check,
-  CheckCheck
+  CheckCheck,
+  UsersRound
 } from "lucide-react";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -77,7 +78,7 @@ const GlobalChatWidget = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageReads, setMessageReads] = useState<MessageRead[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [activeTab, setActiveTab] = useState<"conversations" | "people">("conversations");
+  const [activeTab, setActiveTab] = useState<"groups" | "chats" | "people">("chats");
   const [totalUnread, setTotalUnread] = useState(0);
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -146,9 +147,25 @@ const GlobalChatWidget = () => {
     };
   }, []);
 
+  // Scroll to bottom when messages change or when opening a conversation
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  };
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
   }, [messages]);
+
+  // Also scroll when opening the chat panel or switching conversations
+  useEffect(() => {
+    if (isOpen && activeConversation && messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [isOpen, activeConversation?.id]);
 
   useEffect(() => {
     let unsubscribeMessages: (() => void) | undefined;
@@ -175,8 +192,6 @@ const GlobalChatWidget = () => {
     const total = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
     setTotalUnread(total);
   }, [conversations]);
-
-  // initializeChat moved to useEffect above
 
   const buildConversations = async (staffId: string, roomsList: Room[], staffList: StaffMember[]) => {
     const convs: Conversation[] = [];
@@ -288,16 +303,6 @@ const GlobalChatWidget = () => {
           if (isFromMe) return;
 
           const isConversationOpen = checkIfConversationIsOpen(newMsg, staffId);
-
-          // Debug leve (ajuda a confirmar que o realtime está chegando)
-          console.log("[chat] new message", {
-            isDMToMe,
-            isRoomMessage,
-            isConversationOpen,
-            from: newMsg.staff_id,
-            to: newMsg.recipient_staff_id,
-            room: newMsg.room_id,
-          });
 
           if (!isConversationOpen) {
             // Only update badge count, no sound or toast
@@ -463,7 +468,6 @@ const GlobalChatWidget = () => {
   };
 
   const isMessageRead = (messageId: string, senderId: string): boolean => {
-    // Check if anyone other than sender has read the message
     return messageReads.some(
       read => read.message_id === messageId && read.staff_id !== senderId
     );
@@ -480,7 +484,6 @@ const GlobalChatWidget = () => {
         async (payload) => {
           const newMsg = payload.new as Message;
           
-          // Check if message belongs to current conversation
           let belongs = false;
           if (activeConversation.type === "room") {
             belongs = newMsg.room_id === activeConversation.id && !newMsg.recipient_staff_id;
@@ -494,7 +497,6 @@ const GlobalChatWidget = () => {
           if (belongs) {
             setMessages((prev) => [...prev, newMsg]);
             
-            // Mark as read if from someone else
             if (newMsg.staff_id !== currentStaff.id) {
               await supabase.from("virtual_office_message_reads").insert({
                 message_id: newMsg.id,
@@ -532,7 +534,6 @@ const GlobalChatWidget = () => {
           return;
         }
 
-        // Para DM, ainda precisamos de um room_id por constraint. Usamos a primeira sala ativa como container.
         const fallbackRoomId = rooms[0]?.id;
         if (!fallbackRoomId) {
           console.error("Nenhuma sala disponível para enviar DM (room_id obrigatório).", rooms);
@@ -551,7 +552,6 @@ const GlobalChatWidget = () => {
 
       if (error) throw error;
 
-      // Create notifications for recipients
       if (insertedMessage) {
         await createChatNotifications(
           insertedMessage.id,
@@ -568,7 +568,6 @@ const GlobalChatWidget = () => {
     }
   };
 
-  // Function to create chat notifications for message recipients
   const createChatNotifications = async (
     messageId: string,
     senderId: string,
@@ -578,7 +577,6 @@ const GlobalChatWidget = () => {
   ) => {
     try {
       if (isDm && recipientId) {
-        // DM: notify only the recipient
         await supabase.from("virtual_office_chat_notifications").insert({
           recipient_staff_id: recipientId,
           sender_staff_id: senderId,
@@ -587,7 +585,6 @@ const GlobalChatWidget = () => {
           is_dm: true,
         });
       } else if (roomId) {
-        // Room message: notify all staff members except sender
         const otherStaff = staffMembers.filter(s => s.id !== senderId);
         
         if (otherStaff.length > 0) {
@@ -608,7 +605,6 @@ const GlobalChatWidget = () => {
   };
 
   const startDMConversation = (staff: StaffMember) => {
-    // Check if conversation exists
     const existing = conversations.find(
       (c) => c.type === "dm" && c.recipientId === staff.id
     );
@@ -626,7 +622,26 @@ const GlobalChatWidget = () => {
       setConversations((prev) => [newConv, ...prev]);
       setActiveConversation(newConv);
     }
-    setActiveTab("conversations");
+    setActiveTab("chats");
+  };
+
+  const openGroupConversation = (room: Room) => {
+    const existing = conversations.find(
+      (c) => c.type === "room" && c.id === room.id
+    );
+
+    if (existing) {
+      setActiveConversation(existing);
+    } else {
+      const newConv: Conversation = {
+        type: "room",
+        id: room.id,
+        name: room.name,
+        unreadCount: 0,
+      };
+      setConversations((prev) => [newConv, ...prev]);
+      setActiveConversation(newConv);
+    }
   };
 
   const getStaffName = (staffId: string) => {
@@ -645,120 +660,220 @@ const GlobalChatWidget = () => {
   const formatMessageTime = (dateStr: string) => {
     const date = parseISO(dateStr);
     if (isToday(date)) return format(date, "HH:mm", { locale: ptBR });
-    if (isYesterday(date)) return "Ontem " + format(date, "HH:mm", { locale: ptBR });
-    return format(date, "dd/MM HH:mm", { locale: ptBR });
+    if (isYesterday(date)) return "Ontem";
+    return format(date, "dd/MM", { locale: ptBR });
   };
 
-  const getRoleColor = (role: string) => {
+  const getRoleLabel = (role: string) => {
     switch (role) {
-      case "admin": return "bg-purple-500";
-      case "cs": return "bg-blue-500";
-      case "consultant": return "bg-green-500";
-      default: return "bg-muted";
+      case "admin": return "Admin";
+      case "cs": return "CS";
+      case "consultant": return "Consultor";
+      case "closer": return "Closer";
+      case "sdr": return "SDR";
+      default: return role;
     }
   };
+
+  // Filter conversations
+  const groupConversations = conversations.filter(c => c.type === "room");
+  const dmConversations = conversations.filter(c => c.type === "dm");
+  const groupsUnread = groupConversations.reduce((sum, c) => sum + c.unreadCount, 0);
+  const chatsUnread = dmConversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
   if (!currentStaff) return null;
 
   return (
     <>
-      {/* Floating button */}
+      {/* Floating button - WhatsApp style */}
       <Button
         onClick={() => setIsOpen(true)}
         className={cn(
-          "fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50",
+          "fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 bg-[#25D366] hover:bg-[#128C7E]",
           totalUnread > 0 && "animate-pulse"
         )}
         size="icon"
       >
-        <MessageCircle className="h-6 w-6" />
+        <MessageCircle className="h-6 w-6 text-white" />
         {totalUnread > 0 && (
           <Badge
-            className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-xs animate-bounce"
-            variant="destructive"
+            className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-xs bg-red-500 hover:bg-red-500"
           >
             {totalUnread > 99 ? "99+" : totalUnread}
           </Badge>
         )}
       </Button>
 
-      {/* Chat panel */}
+      {/* Chat panel - WhatsApp style */}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent className="w-full sm:max-w-md p-0 flex flex-col">
+        <SheetContent className="w-full sm:max-w-md p-0 flex flex-col bg-background">
           {!activeConversation ? (
             <>
-              <SheetHeader className="p-4 border-b">
-                <SheetTitle className="flex items-center gap-2">
+              {/* Header */}
+              <SheetHeader className="p-4 border-b bg-[#075E54] text-white">
+                <SheetTitle className="flex items-center gap-2 text-white">
                   <MessageCircle className="h-5 w-5" />
                   Chat
                 </SheetTitle>
               </SheetHeader>
 
+              {/* WhatsApp-style tabs */}
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col">
-                <TabsList className="grid w-full grid-cols-2 mx-4 mt-2" style={{ width: "calc(100% - 32px)" }}>
-                  <TabsTrigger value="conversations" className="gap-2">
+                <TabsList className="grid w-full grid-cols-3 rounded-none border-b bg-[#075E54] h-12">
+                  <TabsTrigger 
+                    value="groups" 
+                    className="gap-1.5 text-white/70 data-[state=active]:text-white data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none"
+                  >
+                    <UsersRound className="h-4 w-4" />
+                    Grupos
+                    {groupsUnread > 0 && (
+                      <Badge className="h-5 min-w-[20px] px-1 text-xs bg-red-500 hover:bg-red-500">
+                        {groupsUnread}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="chats" 
+                    className="gap-1.5 text-white/70 data-[state=active]:text-white data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none"
+                  >
                     <MessageCircle className="h-4 w-4" />
                     Conversas
+                    {chatsUnread > 0 && (
+                      <Badge className="h-5 min-w-[20px] px-1 text-xs bg-red-500 hover:bg-red-500">
+                        {chatsUnread}
+                      </Badge>
+                    )}
                   </TabsTrigger>
-                  <TabsTrigger value="people" className="gap-2">
+                  <TabsTrigger 
+                    value="people" 
+                    className="gap-1.5 text-white/70 data-[state=active]:text-white data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none"
+                  >
                     <Users className="h-4 w-4" />
                     Pessoas
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="conversations" className="flex-1 m-0 overflow-hidden">
+                {/* Groups Tab */}
+                <TabsContent value="groups" className="flex-1 m-0 overflow-hidden">
                   <ScrollArea className="h-full">
-                    <div className="p-2">
-                      {conversations.length === 0 ? (
+                    <div className="divide-y">
+                      {rooms.length === 0 ? (
                         <p className="text-center text-muted-foreground py-8">
-                          Nenhuma conversa ainda
+                          Nenhum grupo disponível
                         </p>
                       ) : (
-                        conversations.map((conv) => (
-                          <button
-                            key={conv.id}
-                            onClick={() => setActiveConversation(conv)}
-                            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
-                          >
-                            <Avatar className="h-10 w-10">
-                              <AvatarFallback className={conv.type === "room" ? "bg-primary/10" : ""}>
-                                {conv.type === "room" ? (
-                                  <Users className="h-4 w-4" />
-                                ) : (
-                                  getStaffInitials(conv.name)
-                                )}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium truncate">{conv.name}</span>
-                                {conv.lastMessageTime && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {formatMessageTime(conv.lastMessageTime)}
-                                  </span>
+                        rooms.map((room) => {
+                          const conv = groupConversations.find(c => c.id === room.id);
+                          return (
+                            <button
+                              key={room.id}
+                              onClick={() => openGroupConversation(room)}
+                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                            >
+                              <Avatar className="h-12 w-12 bg-[#25D366]/10">
+                                <AvatarFallback className="bg-[#25D366]/20 text-[#075E54]">
+                                  <UsersRound className="h-5 w-5" />
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium truncate">{room.name}</span>
+                                  {conv?.lastMessageTime && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {formatMessageTime(conv.lastMessageTime)}
+                                    </span>
+                                  )}
+                                </div>
+                                {conv?.lastMessage && (
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    {conv.lastMessage}
+                                  </p>
                                 )}
                               </div>
-                              {conv.lastMessage && (
-                                <p className="text-sm text-muted-foreground truncate">
-                                  {conv.lastMessage}
-                                </p>
+                              {conv && conv.unreadCount > 0 && (
+                                <Badge className="bg-[#25D366] hover:bg-[#25D366] text-white">
+                                  {conv.unreadCount}
+                                </Badge>
                               )}
-                            </div>
-                            {conv.unreadCount > 0 && (
-                              <Badge variant="destructive" className="text-xs">
-                                {conv.unreadCount}
-                              </Badge>
-                            )}
-                          </button>
-                        ))
+                            </button>
+                          );
+                        })
                       )}
                     </div>
                   </ScrollArea>
                 </TabsContent>
 
+                {/* DM Conversations Tab */}
+                <TabsContent value="chats" className="flex-1 m-0 overflow-hidden">
+                  <ScrollArea className="h-full">
+                    <div className="divide-y">
+                      {dmConversations.length === 0 ? (
+                        <div className="text-center py-8 px-4">
+                          <User className="h-12 w-12 mx-auto text-muted-foreground/50 mb-2" />
+                          <p className="text-muted-foreground">
+                            Nenhuma conversa ainda
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Vá em "Pessoas" para iniciar uma conversa
+                          </p>
+                        </div>
+                      ) : (
+                        dmConversations.map((conv) => {
+                          const partner = staffMembers.find(s => s.id === conv.recipientId);
+                          const status = partner ? getPresenceStatus(partner.id) : "offline";
+                          const isOnline = status !== "offline";
+
+                          return (
+                            <button
+                              key={conv.id}
+                              onClick={() => setActiveConversation(conv)}
+                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                            >
+                              <div className="relative">
+                                <Avatar className="h-12 w-12">
+                                  <AvatarFallback className="bg-primary/10">
+                                    {getStaffInitials(conv.name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                {isOnline && (
+                                  <span className="absolute bottom-0 right-0 h-3 w-3 bg-[#25D366] rounded-full border-2 border-background" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium truncate">{conv.name}</span>
+                                  {conv.lastMessageTime && (
+                                    <span className={cn(
+                                      "text-xs",
+                                      conv.unreadCount > 0 ? "text-[#25D366] font-medium" : "text-muted-foreground"
+                                    )}>
+                                      {formatMessageTime(conv.lastMessageTime)}
+                                    </span>
+                                  )}
+                                </div>
+                                {conv.lastMessage && (
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    {conv.lastMessage}
+                                  </p>
+                                )}
+                              </div>
+                              {conv.unreadCount > 0 && (
+                                <Badge className="bg-[#25D366] hover:bg-[#25D366] text-white">
+                                  {conv.unreadCount}
+                                </Badge>
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                {/* People Tab */}
                 <TabsContent value="people" className="flex-1 m-0 overflow-hidden">
                   <ScrollArea className="h-full">
-                    <div className="p-2">
+                    <div className="divide-y">
                       {staffMembers
                         .filter((s) => s.id !== currentStaff.id)
                         .map((staff) => {
@@ -769,27 +884,30 @@ const GlobalChatWidget = () => {
                             <button
                               key={staff.id}
                               onClick={() => startDMConversation(staff)}
-                              className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
                             >
                               <div className="relative">
-                                <Avatar className="h-10 w-10">
-                                  <AvatarFallback className={getRoleColor(staff.role) + " text-white"}>
+                                <Avatar className="h-12 w-12">
+                                  <AvatarFallback className="bg-primary/10">
                                     {getStaffInitials(staff.name)}
                                   </AvatarFallback>
                                 </Avatar>
-                                <Circle
-                                  className={cn(
-                                    "absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-current",
-                                    isOnline ? "text-green-500" : "text-gray-400"
-                                  )}
-                                />
+                                {isOnline && (
+                                  <span className="absolute bottom-0 right-0 h-3 w-3 bg-[#25D366] rounded-full border-2 border-background" />
+                                )}
                               </div>
                               <div className="flex-1">
                                 <p className="font-medium">{staff.name}</p>
-                                <p className="text-xs text-muted-foreground capitalize">
-                                  {staff.role === "admin" ? "Admin" : staff.role === "cs" ? "CS" : "Consultor"}
+                                <p className="text-xs text-muted-foreground">
+                                  {getRoleLabel(staff.role)}
                                 </p>
                               </div>
+                              <Circle
+                                className={cn(
+                                  "h-2.5 w-2.5 fill-current",
+                                  isOnline ? "text-[#25D366]" : "text-gray-300"
+                                )}
+                              />
                             </button>
                           );
                         })}
@@ -800,107 +918,115 @@ const GlobalChatWidget = () => {
             </>
           ) : (
             <>
-              {/* Conversation view */}
-              <div className="p-4 border-b flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => setActiveConversation(null)}>
+              {/* Conversation view - WhatsApp style */}
+              <div className="p-3 border-b flex items-center gap-3 bg-[#075E54] text-white">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setActiveConversation(null)}
+                  className="text-white hover:bg-white/10"
+                >
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <Avatar className="h-9 w-9">
-                  <AvatarFallback>
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-white/20 text-white">
                     {activeConversation.type === "room" ? (
-                      <Users className="h-4 w-4" />
+                      <UsersRound className="h-4 w-4" />
                     ) : (
                       getStaffInitials(activeConversation.name)
                     )}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <p className="font-medium">{activeConversation.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {activeConversation.type === "room" ? "Grupo" : "Mensagem direta"}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{activeConversation.name}</p>
+                  <p className="text-xs text-white/70">
+                    {activeConversation.type === "room" ? "Grupo" : "Online"}
                   </p>
                 </div>
               </div>
 
-              <ScrollArea className="flex-1 p-4">
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
-                  </div>
-                ) : messages.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    Nenhuma mensagem ainda
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {messages.map((msg) => {
-                      const isOwn = msg.staff_id === currentStaff.id;
-                      const senderName = getStaffName(msg.staff_id);
-                      const wasRead = isOwn && isMessageRead(msg.id, msg.staff_id);
-
-                      return (
-                        <div
-                          key={msg.id}
-                          className={cn("flex gap-2", isOwn && "flex-row-reverse")}
-                        >
-                          {!isOwn && (
-                            <Avatar className="h-7 w-7">
-                              <AvatarFallback className="text-xs">
-                                {getStaffInitials(senderName)}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                          <div
-                            className={cn(
-                              "max-w-[75%] px-3 py-2 rounded-xl",
-                              isOwn
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted"
-                            )}
-                          >
-                            {!isOwn && activeConversation.type === "room" && (
-                              <p className="text-xs font-medium mb-1 opacity-70">
-                                {senderName}
-                              </p>
-                            )}
-                            <p className="text-sm whitespace-pre-wrap break-words">
-                              {msg.content}
-                            </p>
-                            <div
-                              className={cn(
-                                "flex items-center justify-end gap-1 mt-1",
-                                isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
-                              )}
-                            >
-                              <span className="text-[10px]">
-                                {format(parseISO(msg.created_at), "HH:mm", { locale: ptBR })}
-                              </span>
-                              {isOwn && (
-                                wasRead ? (
-                                  <CheckCheck className="h-3.5 w-3.5 text-blue-400" />
-                                ) : (
-                                  <Check className="h-3.5 w-3.5" />
-                                )
-                              )}
-                            </div>
-                          </div>
+              {/* Messages area with WhatsApp-like background */}
+              <div className="flex-1 overflow-hidden bg-[#ECE5DD] dark:bg-zinc-900">
+                <ScrollArea className="h-full">
+                  <div className="p-4">
+                    {loading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#075E54]" />
+                      </div>
+                    ) : messages.length === 0 ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="bg-white/80 dark:bg-zinc-800 rounded-lg px-4 py-2 shadow-sm">
+                          <p className="text-sm text-muted-foreground">
+                            Nenhuma mensagem ainda. Diga olá! 👋
+                          </p>
                         </div>
-                      );
-                    })}
-                    <div ref={messagesEndRef} />
-                  </div>
-                )}
-              </ScrollArea>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {messages.map((msg) => {
+                          const isOwn = msg.staff_id === currentStaff.id;
+                          const senderName = getStaffName(msg.staff_id);
+                          const wasRead = isOwn && isMessageRead(msg.id, msg.staff_id);
 
-              {/* Message input */}
-              <div className="p-3 border-t flex gap-2">
+                          return (
+                            <div
+                              key={msg.id}
+                              className={cn("flex", isOwn ? "justify-end" : "justify-start")}
+                            >
+                              <div
+                                className={cn(
+                                  "max-w-[80%] px-3 py-2 rounded-lg shadow-sm relative",
+                                  isOwn
+                                    ? "bg-[#DCF8C6] dark:bg-[#005C4B] rounded-tr-none"
+                                    : "bg-white dark:bg-zinc-800 rounded-tl-none"
+                                )}
+                              >
+                                {!isOwn && activeConversation.type === "room" && (
+                                  <p className="text-xs font-medium text-[#075E54] dark:text-[#25D366] mb-1">
+                                    {senderName}
+                                  </p>
+                                )}
+                                <p className="text-sm whitespace-pre-wrap break-words text-foreground">
+                                  {msg.content}
+                                </p>
+                                <div className="flex items-center justify-end gap-1 mt-1">
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {format(parseISO(msg.created_at), "HH:mm", { locale: ptBR })}
+                                  </span>
+                                  {isOwn && (
+                                    wasRead ? (
+                                      <CheckCheck className="h-3.5 w-3.5 text-[#53BDEB]" />
+                                    ) : (
+                                      <Check className="h-3.5 w-3.5 text-muted-foreground" />
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div ref={messagesEndRef} />
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              {/* Message input - WhatsApp style */}
+              <div className="p-2 border-t bg-[#F0F0F0] dark:bg-zinc-900 flex gap-2 items-center">
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Digite uma mensagem..."
+                  placeholder="Digite uma mensagem"
+                  className="flex-1 rounded-full bg-white dark:bg-zinc-800 border-0"
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
                 />
-                <Button onClick={sendMessage} size="icon" disabled={!newMessage.trim()}>
+                <Button 
+                  onClick={sendMessage} 
+                  size="icon" 
+                  disabled={!newMessage.trim()}
+                  className="rounded-full bg-[#075E54] hover:bg-[#128C7E] h-10 w-10"
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
