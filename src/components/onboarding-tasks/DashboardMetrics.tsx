@@ -87,6 +87,7 @@ interface DashboardMetricsProps {
   overdueTasks: Task[];
   todayTasks: Task[];
   onDataRefresh?: () => void;
+  currentStaffUserId?: string | null;
 }
 
 const DashboardMetrics = ({ 
@@ -97,7 +98,8 @@ const DashboardMetrics = ({
   dateRange,
   overdueTasks,
   todayTasks,
-  onDataRefresh
+  onDataRefresh,
+  currentStaffUserId
 }: DashboardMetricsProps) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
@@ -502,6 +504,7 @@ const DashboardMetrics = ({
               fetchData();
               onDataRefresh?.();
             }}
+            currentStaffUserId={currentStaffUserId}
           />
         </TabsContent>
 
