@@ -62,6 +62,7 @@ export const SupportRoomPanel = ({ currentStaff, onSessionUpdate }: SupportRoomP
   const [meetLink, setMeetLink] = useState("");
   const [sessionNotes, setSessionNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [creatingMeet, setCreatingMeet] = useState(false);
 
   useEffect(() => {
     fetchSessions();
@@ -107,7 +108,65 @@ export const SupportRoomPanel = ({ currentStaff, onSessionUpdate }: SupportRoomP
   const handleAttendSession = (session: SupportSession) => {
     setSelectedSession(session);
     setMeetLink("");
+    setCreatingMeet(false);
     setShowAttendDialog(true);
+  };
+
+  const createMeetWithCalendar = async () => {
+    if (!selectedSession) return;
+    
+    setCreatingMeet(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        toast.error("Você precisa estar logado para usar esta funcionalidade");
+        return;
+      }
+
+      const eventTitle = `Suporte (${selectedSession.company_name || selectedSession.client_name})`;
+      const now = new Date();
+      const end = new Date(now.getTime() + 30 * 60000); // 30 min duration
+
+      const response = await supabase.functions.invoke("google-calendar", {
+        body: {
+          title: eventTitle,
+          description: `Sessão de suporte ao cliente ${selectedSession.client_name}`,
+          startDateTime: now.toISOString(),
+          endDateTime: end.toISOString(),
+        },
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Erro ao criar evento");
+      }
+
+      const data = response.data as { success?: boolean; event?: { meetingLink?: string }; needsAuth?: boolean; error?: string };
+
+      if (data?.needsAuth) {
+        toast.error("Você precisa conectar sua conta Google na aba 'Minha Agenda'");
+        return;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      if (data?.success && data?.event?.meetingLink) {
+        setMeetLink(data.event.meetingLink);
+        toast.success("Link do Meet criado com sucesso!");
+      } else {
+        toast.error("Não foi possível obter o link do Meet");
+      }
+    } catch (error: unknown) {
+      console.error("Error creating calendar event:", error);
+      const errorMessage = error instanceof Error ? error.message : "Erro ao criar evento no calendário";
+      toast.error(errorMessage);
+    } finally {
+      setCreatingMeet(false);
+    }
   };
 
   const confirmAttendSession = async () => {
@@ -369,17 +428,11 @@ export const SupportRoomPanel = ({ currentStaff, onSessionUpdate }: SupportRoomP
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      const eventTitle = encodeURIComponent(`Suporte (${selectedSession.company_name || selectedSession.client_name})`);
-                      const now = new Date();
-                      const end = new Date(now.getTime() + 30 * 60000); // 30 min duration
-                      const formatDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-                      const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${formatDate(now)}/${formatDate(end)}&details=${encodeURIComponent('Sessão de suporte ao cliente')}&add=meet`;
-                      window.open(calendarUrl, '_blank');
-                    }}
+                    onClick={createMeetWithCalendar}
+                    disabled={creatingMeet}
                   >
                     <Calendar className="h-4 w-4 mr-1" />
-                    Criar no Google Agenda
+                    {creatingMeet ? "Criando..." : "Criar no Google Agenda"}
                   </Button>
                 </div>
                 <Input
@@ -389,7 +442,7 @@ export const SupportRoomPanel = ({ currentStaff, onSessionUpdate }: SupportRoomP
                   onChange={(e) => setMeetLink(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Cole o link da sala do Google Meet para enviar ao cliente
+                  Clique em "Criar no Google Agenda" para gerar um link automaticamente, ou cole um link existente
                 </p>
               </div>
             </div>
