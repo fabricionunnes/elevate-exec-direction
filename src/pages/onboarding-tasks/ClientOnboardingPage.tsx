@@ -103,10 +103,15 @@ const ClientOnboardingPage = () => {
   }, [projectId]);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const checkAuthAndLoadData = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (!isMounted) return;
+        
+        if (authError || !user) {
           navigate("/onboarding-tasks/login");
           return;
         }
@@ -117,9 +122,18 @@ const ClientOnboardingPage = () => {
           .select("*, project:onboarding_projects(*, onboarding_company:onboarding_companies(name))")
           .eq("user_id", user.id)
           .eq("project_id", projectId)
-          .single();
+          .maybeSingle();
 
-        if (userError || !onboardingUser) {
+        if (!isMounted) return;
+
+        if (userError) {
+          console.error("Error fetching onboarding user:", userError);
+          toast.error("Erro ao carregar dados do usuário");
+          navigate("/onboarding-tasks/login");
+          return;
+        }
+        
+        if (!onboardingUser) {
           toast.error("Você não tem acesso a este projeto");
           navigate("/onboarding-tasks/login");
           return;
@@ -132,13 +146,21 @@ const ClientOnboardingPage = () => {
         await Promise.all([fetchTasks(), fetchUsers()]);
       } catch (error: any) {
         console.error("Error loading data:", error);
-        toast.error("Erro ao carregar dados");
+        if (isMounted) {
+          toast.error("Erro ao carregar dados");
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     checkAuthAndLoadData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [projectId, navigate, fetchTasks, fetchUsers]);
 
   // Real-time subscriptions

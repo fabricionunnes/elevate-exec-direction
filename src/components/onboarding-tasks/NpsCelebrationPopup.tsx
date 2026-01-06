@@ -27,23 +27,38 @@ export const NpsCelebrationPopup = () => {
 
   // Get current staff ID
   useEffect(() => {
+    let isMounted = true;
+    
     const getStaffId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user || !isMounted) return;
 
-      const { data: staff } = await supabase
-        .from("onboarding_staff")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle();
+        const { data: staff, error: staffError } = await supabase
+          .from("onboarding_staff")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
 
-      if (staff) {
-        setStaffId(staff.id);
+        if (staffError) {
+          console.warn("Error fetching staff for NPS celebration:", staffError);
+          return;
+        }
+
+        if (staff && isMounted) {
+          setStaffId(staff.id);
+        }
+      } catch (error) {
+        console.warn("Error in getStaffId for NPS:", error);
       }
     };
 
     getStaffId();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Load pending celebrations on mount

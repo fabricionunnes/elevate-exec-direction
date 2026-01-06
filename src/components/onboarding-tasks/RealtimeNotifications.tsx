@@ -37,23 +37,38 @@ export const RealtimeNotifications = () => {
 
   // Get current staff id
   useEffect(() => {
+    let isMounted = true;
+    
     const getStaffId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user || !isMounted) return;
 
-      const { data: staff } = await supabase
-        .from("onboarding_staff")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
+        const { data: staff, error: staffError } = await supabase
+          .from("onboarding_staff")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
 
-      if (staff) {
-        setStaffId(staff.id);
+        if (staffError) {
+          console.warn("Error fetching staff for notifications:", staffError);
+          return;
+        }
+
+        if (staff && isMounted) {
+          setStaffId(staff.id);
+        }
+      } catch (error) {
+        console.warn("Error in getStaffId:", error);
       }
     };
 
     getStaffId();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Fetch unread notifications
@@ -61,15 +76,24 @@ export const RealtimeNotifications = () => {
     if (!staffId) return;
 
     const fetchNotifications = async () => {
-      const { data } = await supabase
-        .from("onboarding_notifications")
-        .select("*")
-        .eq("staff_id", staffId)
-        .eq("is_read", false)
-        .order("created_at", { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from("onboarding_notifications")
+          .select("*")
+          .eq("staff_id", staffId)
+          .eq("is_read", false)
+          .order("created_at", { ascending: false });
 
-      if (data) {
-        setNotifications(data);
+        if (error) {
+          console.warn("Error fetching notifications:", error);
+          return;
+        }
+
+        if (data) {
+          setNotifications(data);
+        }
+      } catch (error) {
+        console.warn("Error in fetchNotifications:", error);
       }
     };
 
