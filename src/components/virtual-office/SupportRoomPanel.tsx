@@ -127,7 +127,7 @@ export const SupportRoomPanel = ({ currentStaff, onSessionUpdate }: SupportRoomP
       const now = new Date();
       const end = new Date(now.getTime() + 30 * 60000); // 30 min duration
 
-      const response = await supabase.functions.invoke("google-calendar", {
+      const response = await supabase.functions.invoke("google-calendar?action=create-event", {
         body: {
           title: eventTitle,
           description: `Sessão de suporte ao cliente ${selectedSession.client_name}`,
