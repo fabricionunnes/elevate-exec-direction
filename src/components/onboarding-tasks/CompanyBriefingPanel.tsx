@@ -39,6 +39,13 @@ const COMPANY_STATUS_OPTIONS = [
   { value: "closed", label: "Encerrada" },
 ];
 
+interface QuarterlyGoals {
+  q1: { pessimista: string; realista: string; otimista: string };
+  q2: { pessimista: string; realista: string; otimista: string };
+  q3: { pessimista: string; realista: string; otimista: string };
+  q4: { pessimista: string; realista: string; otimista: string };
+}
+
 interface CompanyData {
   id: string;
   name: string;
@@ -65,6 +72,27 @@ interface CompanyData {
   notes: string | null;
   cs?: { id: string; name: string } | null;
   consultant?: { id: string; name: string } | null;
+  // Kickoff fields
+  sales_team_size: string | null;
+  conversion_rate: string | null;
+  average_ticket: string | null;
+  acquisition_channels: string | null;
+  has_structured_process: string | null;
+  crm_usage: string | null;
+  has_sales_goals: string | null;
+  swot_strengths: string | null;
+  swot_weaknesses: string | null;
+  swot_opportunities: string | null;
+  swot_threats: string | null;
+  commercial_structure: string | null;
+  growth_target: string | null;
+  tools_used: string | null;
+  objectives_with_unv: string | null;
+  key_results: string | null;
+  quarterly_goals: QuarterlyGoals | null;
+  growth_expectation_3m: string | null;
+  growth_expectation_6m: string | null;
+  growth_expectation_12m: string | null;
 }
 
 interface CACFormData {
@@ -128,10 +156,16 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
 
       if (error) throw error;
       if (data) {
+        const rawQuarterlyGoals = data.quarterly_goals as unknown;
+        const quarterlyGoals = rawQuarterlyGoals && typeof rawQuarterlyGoals === 'object' && 'q1' in rawQuarterlyGoals
+          ? rawQuarterlyGoals as QuarterlyGoals
+          : null;
+          
         const companyData: CompanyData = {
           ...data,
           stakeholders: Array.isArray(data.stakeholders) ? data.stakeholders : null,
           expected_timeline: data.expected_timeline,
+          quarterly_goals: quarterlyGoals,
         };
         setCompany(companyData);
         setFormData(companyData);
@@ -485,6 +519,193 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
           {renderField("Concorrentes", company.competitors, "competitors", "textarea")}
         </CardContent>
       </Card>
+
+      {/* Diagnóstico Comercial (Kickoff) */}
+      {(company.main_challenges || company.sales_team_size || company.conversion_rate) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              Diagnóstico Comercial (Kickoff)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Perguntas do Diagnóstico */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-muted-foreground">Vendedores ativos na equipe</label>
+                <p className="font-medium">{company.sales_team_size || "-"}</p>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Taxa de conversão atual</label>
+                <p className="font-medium">{company.conversion_rate || "-"}</p>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Ticket médio de venda</label>
+                <p className="font-medium">{company.average_ticket || "-"}</p>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Canais de aquisição</label>
+                <p className="font-medium">{company.acquisition_channels || "-"}</p>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Processo estruturado</label>
+                <p className="font-medium">{company.has_structured_process || "-"}</p>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Uso do CRM</label>
+                <p className="font-medium">{company.crm_usage || "-"}</p>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Plano de metas</label>
+                <p className="font-medium">{company.has_sales_goals || "-"}</p>
+              </div>
+            </div>
+
+            {/* Checklist */}
+            {(company.commercial_structure || company.growth_target || company.tools_used) && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-semibold mb-3">Checklist de Informações</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-muted-foreground">Estrutura atual da equipe comercial</label>
+                      <p className="font-medium whitespace-pre-wrap">{company.commercial_structure || "-"}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-muted-foreground">Meta de crescimento</label>
+                      <p className="font-medium whitespace-pre-wrap">{company.growth_target || "-"}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-sm text-muted-foreground">Ferramentas utilizadas (CRM, automação)</label>
+                      <p className="font-medium whitespace-pre-wrap">{company.tools_used || "-"}</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* SWOT */}
+            {(company.swot_strengths || company.swot_weaknesses || company.swot_opportunities || company.swot_threats) && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-semibold mb-3">Análise SWOT</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-3 rounded-lg border border-green-500/20 bg-green-500/5">
+                      <label className="text-sm font-medium text-green-600">Forças</label>
+                      <p className="font-medium whitespace-pre-wrap mt-1">{company.swot_strengths || "-"}</p>
+                    </div>
+                    <div className="p-3 rounded-lg border border-red-500/20 bg-red-500/5">
+                      <label className="text-sm font-medium text-red-600">Fraquezas</label>
+                      <p className="font-medium whitespace-pre-wrap mt-1">{company.swot_weaknesses || "-"}</p>
+                    </div>
+                    <div className="p-3 rounded-lg border border-blue-500/20 bg-blue-500/5">
+                      <label className="text-sm font-medium text-blue-600">Oportunidades</label>
+                      <p className="font-medium whitespace-pre-wrap mt-1">{company.swot_opportunities || "-"}</p>
+                    </div>
+                    <div className="p-3 rounded-lg border border-orange-500/20 bg-orange-500/5">
+                      <label className="text-sm font-medium text-orange-600">Ameaças</label>
+                      <p className="font-medium whitespace-pre-wrap mt-1">{company.swot_threats || "-"}</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* OKRs */}
+            {(company.objectives_with_unv || company.key_results) && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-semibold mb-3">OKRs</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm text-muted-foreground">Principais objetivos com a UNV</label>
+                      <p className="font-medium whitespace-pre-wrap">{company.objectives_with_unv || "-"}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-muted-foreground">Resultados-chave esperados</label>
+                      <p className="font-medium whitespace-pre-wrap">{company.key_results || "-"}</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Metas Trimestrais */}
+            {company.quarterly_goals && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-semibold mb-3">Metas e Checkpoints Trimestrais</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2 font-medium text-muted-foreground"></th>
+                          <th className="text-center p-2 font-medium">1º Tri</th>
+                          <th className="text-center p-2 font-medium">2º Tri</th>
+                          <th className="text-center p-2 font-medium">3º Tri</th>
+                          <th className="text-center p-2 font-medium">4º Tri</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b">
+                          <td className="p-2 font-medium text-red-600">Pessimista</td>
+                          <td className="p-2 text-center">{company.quarterly_goals.q1?.pessimista || "-"}</td>
+                          <td className="p-2 text-center">{company.quarterly_goals.q2?.pessimista || "-"}</td>
+                          <td className="p-2 text-center">{company.quarterly_goals.q3?.pessimista || "-"}</td>
+                          <td className="p-2 text-center">{company.quarterly_goals.q4?.pessimista || "-"}</td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="p-2 font-medium text-yellow-600">Realista</td>
+                          <td className="p-2 text-center">{company.quarterly_goals.q1?.realista || "-"}</td>
+                          <td className="p-2 text-center">{company.quarterly_goals.q2?.realista || "-"}</td>
+                          <td className="p-2 text-center">{company.quarterly_goals.q3?.realista || "-"}</td>
+                          <td className="p-2 text-center">{company.quarterly_goals.q4?.realista || "-"}</td>
+                        </tr>
+                        <tr>
+                          <td className="p-2 font-medium text-green-600">Otimista</td>
+                          <td className="p-2 text-center">{company.quarterly_goals.q1?.otimista || "-"}</td>
+                          <td className="p-2 text-center">{company.quarterly_goals.q2?.otimista || "-"}</td>
+                          <td className="p-2 text-center">{company.quarterly_goals.q3?.otimista || "-"}</td>
+                          <td className="p-2 text-center">{company.quarterly_goals.q4?.otimista || "-"}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Expectativas de Crescimento */}
+            {(company.growth_expectation_3m || company.growth_expectation_6m || company.growth_expectation_12m) && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-semibold mb-3">Alinhamento de Expectativas</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-lg border bg-muted/30">
+                      <label className="text-sm text-muted-foreground">Expectativa 3 meses</label>
+                      <p className="font-medium whitespace-pre-wrap mt-1">{company.growth_expectation_3m || "-"}</p>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-muted/30">
+                      <label className="text-sm text-muted-foreground">Expectativa 6 meses</label>
+                      <p className="font-medium whitespace-pre-wrap mt-1">{company.growth_expectation_6m || "-"}</p>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-muted/30">
+                      <label className="text-sm text-muted-foreground">Expectativa 12 meses</label>
+                      <p className="font-medium whitespace-pre-wrap mt-1">{company.growth_expectation_12m || "-"}</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Informações de Contrato */}
       <Card>
