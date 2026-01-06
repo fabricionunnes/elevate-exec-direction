@@ -2346,6 +2346,68 @@ export type Database = {
         }
         Relationships: []
       }
+      virtual_office_chat_notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_dm: boolean | null
+          is_read: boolean | null
+          message_id: string
+          recipient_staff_id: string
+          room_id: string | null
+          sender_staff_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_dm?: boolean | null
+          is_read?: boolean | null
+          message_id: string
+          recipient_staff_id: string
+          room_id?: string | null
+          sender_staff_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_dm?: boolean | null
+          is_read?: boolean | null
+          message_id?: string
+          recipient_staff_id?: string
+          room_id?: string | null
+          sender_staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_office_chat_notifications_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_office_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_office_chat_notifications_recipient_staff_id_fkey"
+            columns: ["recipient_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_office_chat_notifications_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_office_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_office_chat_notifications_sender_staff_id_fkey"
+            columns: ["sender_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       virtual_office_message_reads: {
         Row: {
           id: string

@@ -521,10 +521,12 @@ const GlobalChatWidget = () => {
         message_type: "text",
       };
 
+      let recipientId: string | null = null;
+
       if (activeConversation.type === "room") {
         insertData.room_id = activeConversation.id;
       } else {
-        const recipientId = activeConversation.recipientId;
+        recipientId = activeConversation.recipientId || null;
         if (!recipientId) {
           console.error("DM sem recipientId - não enviando.", activeConversation);
           return;
@@ -541,12 +543,67 @@ const GlobalChatWidget = () => {
         insertData.recipient_staff_id = recipientId;
       }
 
-      const { error } = await supabase.from("virtual_office_messages").insert(insertData);
+      const { data: insertedMessage, error } = await supabase
+        .from("virtual_office_messages")
+        .insert(insertData)
+        .select("id")
+        .single();
 
       if (error) throw error;
+
+      // Create notifications for recipients
+      if (insertedMessage) {
+        await createChatNotifications(
+          insertedMessage.id,
+          currentStaff.id,
+          activeConversation.type === "room" ? activeConversation.id : null,
+          recipientId,
+          activeConversation.type === "dm"
+        );
+      }
+
       setNewMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
+    }
+  };
+
+  // Function to create chat notifications for message recipients
+  const createChatNotifications = async (
+    messageId: string,
+    senderId: string,
+    roomId: string | null,
+    recipientId: string | null,
+    isDm: boolean
+  ) => {
+    try {
+      if (isDm && recipientId) {
+        // DM: notify only the recipient
+        await supabase.from("virtual_office_chat_notifications").insert({
+          recipient_staff_id: recipientId,
+          sender_staff_id: senderId,
+          message_id: messageId,
+          room_id: roomId,
+          is_dm: true,
+        });
+      } else if (roomId) {
+        // Room message: notify all staff members except sender
+        const otherStaff = staffMembers.filter(s => s.id !== senderId);
+        
+        if (otherStaff.length > 0) {
+          const notifications = otherStaff.map(staff => ({
+            recipient_staff_id: staff.id,
+            sender_staff_id: senderId,
+            message_id: messageId,
+            room_id: roomId,
+            is_dm: false,
+          }));
+
+          await supabase.from("virtual_office_chat_notifications").insert(notifications);
+        }
+      }
+    } catch (error) {
+      console.error("Error creating chat notifications:", error);
     }
   };
 
