@@ -837,36 +837,44 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
           )}
         </ScrollArea>
       ) : (
-        <div className="flex-1 flex flex-col p-4 overflow-hidden bg-gradient-to-br from-background via-background to-muted/20">
+        <div className="flex-1 flex flex-col p-4 overflow-hidden bg-gradient-to-br from-background via-muted/5 to-muted/10">
           {/* Calendar Navigation */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="flex items-center bg-card rounded-xl border shadow-sm p-1">
-                <Button variant="ghost" size="icon" onClick={navigatePrevious} className="h-8 w-8 rounded-lg hover:bg-muted">
+              <div className="flex items-center bg-card/80 backdrop-blur-sm rounded-xl border shadow-sm p-1 gap-0.5">
+                <Button variant="ghost" size="icon" onClick={navigatePrevious} className="h-9 w-9 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={goToToday} className="h-8 px-3 rounded-lg font-medium">
+                <Button variant="ghost" size="sm" onClick={goToToday} className="h-9 px-4 rounded-lg font-medium hover:bg-primary/10 hover:text-primary transition-colors">
                   Hoje
                 </Button>
-                <Button variant="ghost" size="icon" onClick={navigateNext} className="h-8 w-8 rounded-lg hover:bg-muted">
+                <Button variant="ghost" size="icon" onClick={navigateNext} className="h-9 w-9 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-            <h3 className="text-lg font-semibold capitalize text-foreground">
+            <h3 className="text-xl font-bold capitalize bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
               {format(currentDate, viewMode === "month" ? "MMMM yyyy" : "'Semana de' d 'de' MMMM", { locale: ptBR })}
             </h3>
           </div>
 
           {/* Calendar Grid with Day Detail Panel */}
-          <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+          <div className="flex-1 flex gap-5 overflow-hidden min-h-0">
             {/* Calendar Grid */}
             <div className="flex-1 overflow-auto min-w-0">
-              <div className="bg-card rounded-2xl border shadow-sm p-3 sm:p-4">
-                <div className="grid grid-cols-7 gap-1 sm:gap-2">
+              <div className="bg-card/60 backdrop-blur-sm rounded-2xl border shadow-lg p-4 sm:p-5">
+                <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
                   {/* Week Day Headers */}
-                  {weekDays.map((day) => (
-                    <div key={day} className="text-center text-[10px] sm:text-xs font-semibold text-muted-foreground py-2 uppercase tracking-wide">
+                  {weekDays.map((day, idx) => (
+                    <div 
+                      key={day} 
+                      className={cn(
+                        "text-center text-[10px] sm:text-xs font-bold py-2.5 uppercase tracking-wider rounded-lg",
+                        idx === 0 && "text-rose-500/80",
+                        idx === 6 && "text-rose-500/80",
+                        idx > 0 && idx < 6 && "text-muted-foreground"
+                      )}
+                    >
                       {day}
                     </div>
                   ))}
@@ -880,21 +888,22 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                     const isSelectedDay = format(day, "yyyy-MM-dd") === format(selectedDayForDetail, "yyyy-MM-dd");
                     const hasEvents = dayEvents.length > 0;
                     const hasMeeting = dayEvents.some(e => e.meetingLink);
+                    const isWeekend = day.getDay() === 0 || day.getDay() === 6;
 
                     // Color palette for events
                     const getEventColor = (event: CalendarEvent, index: number) => {
                       if (event.meetingLink) {
-                        return "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-l-2 border-blue-500";
+                        return "bg-gradient-to-r from-blue-500/25 to-blue-400/15 text-blue-700 dark:text-blue-300 border-l-2 border-blue-500";
                       }
                       const colors = [
-                        "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-l-2 border-emerald-500",
-                        "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-l-2 border-purple-500",
-                        "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-l-2 border-amber-500",
-                        "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-l-2 border-rose-500",
-                        "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-l-2 border-cyan-500",
-                        "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-l-2 border-orange-500",
+                        "bg-gradient-to-r from-emerald-500/20 to-emerald-400/10 text-emerald-700 dark:text-emerald-300 border-l-2 border-emerald-500",
+                        "bg-gradient-to-r from-purple-500/20 to-purple-400/10 text-purple-700 dark:text-purple-300 border-l-2 border-purple-500",
+                        "bg-gradient-to-r from-amber-500/20 to-amber-400/10 text-amber-700 dark:text-amber-300 border-l-2 border-amber-500",
+                        "bg-gradient-to-r from-rose-500/20 to-rose-400/10 text-rose-700 dark:text-rose-300 border-l-2 border-rose-500",
+                        "bg-gradient-to-r from-cyan-500/20 to-cyan-400/10 text-cyan-700 dark:text-cyan-300 border-l-2 border-cyan-500",
+                        "bg-gradient-to-r from-orange-500/20 to-orange-400/10 text-orange-700 dark:text-orange-300 border-l-2 border-orange-500",
+                        "bg-gradient-to-r from-pink-500/20 to-pink-400/10 text-pink-700 dark:text-pink-300 border-l-2 border-pink-500",
                       ];
-                      // Use title hash for consistent color per event
                       const hash = event.title.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
                       return colors[hash % colors.length];
                     };
@@ -903,51 +912,55 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                       <div
                         key={dateKey}
                         className={cn(
-                          "rounded-lg sm:rounded-xl p-1.5 sm:p-2 min-h-[75px] sm:min-h-[90px] transition-all duration-200 cursor-pointer relative group",
-                          viewMode === "week" && "min-h-[140px]",
-                          !isCurrentMonth && viewMode === "month" && "bg-muted/20 opacity-40",
-                          isCurrentMonth && !isSelectedDay && "bg-muted/5 hover:bg-muted/40 hover:shadow-sm",
-                          isCurrentDay && !isSelectedDay && "bg-primary/10 border-2 border-primary/30",
-                          isSelectedDay && "bg-primary/15 border-2 border-primary shadow-md shadow-primary/10",
+                          "rounded-xl p-2 sm:p-2.5 min-h-[80px] sm:min-h-[95px] transition-all duration-200 cursor-pointer relative group border",
+                          viewMode === "week" && "min-h-[150px]",
+                          !isCurrentMonth && viewMode === "month" && "bg-muted/10 opacity-35 border-transparent",
+                          isCurrentMonth && !isSelectedDay && !isCurrentDay && "bg-background/50 border-border/30 hover:bg-muted/30 hover:border-border/50 hover:shadow-sm",
+                          isCurrentMonth && isWeekend && !isSelectedDay && !isCurrentDay && "bg-muted/20",
+                          isCurrentDay && !isSelectedDay && "bg-gradient-to-br from-primary/15 to-primary/5 border-primary/40 shadow-sm",
+                          isSelectedDay && "bg-gradient-to-br from-primary/20 to-primary/10 border-primary shadow-md ring-1 ring-primary/20",
                         )}
                         onClick={() => handleDayClick(day)}
                       >
-                        <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center justify-between mb-2">
                           <span className={cn(
                             "text-xs sm:text-sm font-medium transition-all",
-                            isCurrentDay && "bg-primary text-primary-foreground rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center font-bold shadow-sm",
-                            !isCurrentDay && isSelectedDay && "text-primary font-semibold"
+                            isCurrentDay && "bg-primary text-primary-foreground rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center font-bold shadow-md",
+                            !isCurrentDay && isSelectedDay && "text-primary font-bold",
+                            !isCurrentDay && !isSelectedDay && isWeekend && "text-muted-foreground/70"
                           )}>
                             {format(day, "d")}
                           </span>
                           {hasEvents && (
                             <span className={cn(
-                              "flex items-center gap-0.5 text-[10px] font-medium px-1 py-0.5 rounded-full",
-                              hasMeeting ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "bg-muted text-muted-foreground"
+                              "flex items-center gap-0.5 text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded-full transition-all",
+                              hasMeeting 
+                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" 
+                                : "bg-muted text-muted-foreground"
                             )}>
-                              {hasMeeting && <Video className="h-2 w-2" />}
+                              {hasMeeting && <Video className="h-2.5 w-2.5" />}
                               {dayEvents.length}
                             </span>
                           )}
                         </div>
-                        <div className="space-y-0.5 sm:space-y-1">
+                        <div className="space-y-1">
                           {dayEvents.slice(0, viewMode === "week" ? 4 : 2).map((event, idx) => (
                             <div
                               key={event.id}
                               className={cn(
-                                "text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 sm:py-1 rounded truncate font-medium transition-all",
+                                "text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md truncate font-medium transition-all shadow-sm",
                                 getEventColor(event, idx)
                               )}
                               title={event.title}
                             >
-                              <div className="flex items-center gap-0.5">
-                                {event.meetingLink && <Video className="h-2 w-2 shrink-0" />}
+                              <div className="flex items-center gap-1">
+                                {event.meetingLink && <Video className="h-2.5 w-2.5 shrink-0" />}
                                 <span className="truncate">{event.title}</span>
                               </div>
                             </div>
                           ))}
                           {dayEvents.length > (viewMode === "week" ? 4 : 2) && (
-                            <span className="text-[9px] sm:text-[10px] text-primary font-medium px-1">
+                            <span className="text-[9px] sm:text-[10px] text-primary font-semibold px-1.5 hover:underline">
                               +{dayEvents.length - (viewMode === "week" ? 4 : 2)} mais
                             </span>
                           )}
@@ -960,24 +973,26 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
             </div>
 
             {/* Day Detail Panel - Fixed width with proper overflow */}
-            <div className="w-[300px] xl:w-[340px] shrink-0 hidden lg:flex flex-col min-h-0">
-              <Card className="flex-1 flex flex-col overflow-hidden border shadow-lg bg-gradient-to-b from-card to-card/95 min-h-0">
+            <div className="w-[320px] xl:w-[360px] shrink-0 hidden lg:flex flex-col min-h-0">
+              <Card className="flex-1 flex flex-col overflow-hidden border-0 shadow-xl bg-gradient-to-b from-card via-card to-muted/20 min-h-0 rounded-2xl ring-1 ring-border/50">
                 {/* Header com gradiente sutil */}
-                <div className="px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent shrink-0">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="px-5 py-4 border-b bg-gradient-to-r from-primary/8 via-primary/5 to-transparent shrink-0">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="text-base font-bold capitalize text-foreground truncate">
-                        {format(selectedDayForDetail, "EEEE, d", { locale: ptBR })}
+                      <h3 className="text-lg font-bold capitalize text-foreground truncate">
+                        {format(selectedDayForDetail, "EEEE", { locale: ptBR })}
                       </h3>
-                      <p className="text-xs text-muted-foreground capitalize mt-0.5">
-                        {format(selectedDayForDetail, "MMMM 'de' yyyy", { locale: ptBR })}
+                      <p className="text-sm text-muted-foreground capitalize mt-0.5 flex items-center gap-2">
+                        <span className="font-semibold text-foreground">{format(selectedDayForDetail, "d", { locale: ptBR })}</span>
+                        <span>de</span>
+                        <span>{format(selectedDayForDetail, "MMMM 'de' yyyy", { locale: ptBR })}</span>
                       </p>
                     </div>
                     {isViewingOwnCalendar && (
                       <Button
                         size="sm"
                         onClick={() => openCreateDialog(selectedDayForDetail)}
-                        className="gap-1 shrink-0 h-8 text-xs"
+                        className="gap-1.5 shrink-0 h-9 text-xs shadow-sm"
                       >
                         <Plus className="h-3.5 w-3.5" />
                         Novo
@@ -988,19 +1003,19 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                 
                 <CardContent className="flex-1 overflow-hidden p-0 min-h-0">
                   <ScrollArea className="h-full">
-                    <div className="px-3 py-3">
+                    <div className="px-4 py-4">
                       {selectedDayEvents.length === 0 ? (
-                        <div className="text-center py-10">
-                          <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-muted/50 flex items-center justify-center">
-                            <Calendar className="h-7 w-7 text-muted-foreground/50" />
+                        <div className="text-center py-12">
+                          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-muted/50 to-muted/30 flex items-center justify-center shadow-inner">
+                            <Calendar className="h-8 w-8 text-muted-foreground/40" />
                           </div>
-                          <p className="text-sm text-muted-foreground mb-3">Nenhum evento</p>
+                          <p className="text-sm text-muted-foreground mb-4 font-medium">Nenhum evento</p>
                           {isViewingOwnCalendar && (
                             <Button 
                               size="sm" 
                               variant="outline" 
                               onClick={() => openCreateDialog(selectedDayForDetail)}
-                              className="gap-1 h-8 text-xs"
+                              className="gap-1.5 h-9 text-xs shadow-sm"
                             >
                               <Plus className="h-3.5 w-3.5" />
                               Criar evento
@@ -1008,7 +1023,7 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                           )}
                         </div>
                       ) : (
-                        <div className="space-y-2.5">
+                        <div className="space-y-3">
                           {selectedDayEvents
                             .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())
                             .map((event, idx) => {
@@ -1018,16 +1033,17 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                               
                               // Color for event card
                               const getEventCardStyle = () => {
-                                if (isNow) return "bg-gradient-to-r from-primary/15 to-primary/5 border-primary/40";
-                                if (isSoon) return "bg-gradient-to-r from-amber-500/10 to-transparent border-amber-400/30";
-                                if (event.meetingLink) return "bg-gradient-to-r from-blue-500/8 to-transparent border-blue-400/30";
+                                if (isNow) return "bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 border-primary/50 shadow-sm shadow-primary/10";
+                                if (isSoon) return "bg-gradient-to-br from-amber-500/15 via-amber-500/8 to-transparent border-amber-400/40";
+                                if (event.meetingLink) return "bg-gradient-to-br from-blue-500/12 via-blue-500/6 to-transparent border-blue-400/40";
                                 
                                 const colors = [
-                                  "bg-gradient-to-r from-emerald-500/8 to-transparent border-emerald-400/30",
-                                  "bg-gradient-to-r from-purple-500/8 to-transparent border-purple-400/30",
-                                  "bg-gradient-to-r from-rose-500/8 to-transparent border-rose-400/30",
-                                  "bg-gradient-to-r from-cyan-500/8 to-transparent border-cyan-400/30",
-                                  "bg-gradient-to-r from-orange-500/8 to-transparent border-orange-400/30",
+                                  "bg-gradient-to-br from-emerald-500/12 via-emerald-500/6 to-transparent border-emerald-400/40",
+                                  "bg-gradient-to-br from-purple-500/12 via-purple-500/6 to-transparent border-purple-400/40",
+                                  "bg-gradient-to-br from-rose-500/12 via-rose-500/6 to-transparent border-rose-400/40",
+                                  "bg-gradient-to-br from-cyan-500/12 via-cyan-500/6 to-transparent border-cyan-400/40",
+                                  "bg-gradient-to-br from-orange-500/12 via-orange-500/6 to-transparent border-orange-400/40",
+                                  "bg-gradient-to-br from-pink-500/12 via-pink-500/6 to-transparent border-pink-400/40",
                                 ];
                                 const hash = event.title.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
                                 return colors[hash % colors.length];
@@ -1037,34 +1053,34 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                                 <div
                                   key={event.id}
                                   className={cn(
-                                    "rounded-lg p-3 transition-all duration-200 border",
+                                    "rounded-xl p-3.5 transition-all duration-200 border hover:shadow-md group/event",
                                     getEventCardStyle()
                                   )}
                                 >
                                   {/* Event Header */}
-                                  <div className="flex items-start justify-between gap-2 mb-2">
+                                  <div className="flex items-start justify-between gap-2 mb-2.5">
                                     <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-1.5 mb-1">
+                                      <div className="flex items-center gap-2 mb-1.5">
                                         <h4 className="font-semibold text-sm text-foreground line-clamp-2 leading-tight">{event.title}</h4>
                                         {event.meetingLink && (
-                                          <span className="shrink-0 bg-blue-500/20 text-blue-600 dark:text-blue-400 p-0.5 rounded">
+                                          <span className="shrink-0 bg-blue-500/20 text-blue-600 dark:text-blue-400 p-1 rounded-md">
                                             <Video className="h-3 w-3" />
                                           </span>
                                         )}
                                       </div>
-                                      <div className="flex items-center flex-wrap gap-1.5">
-                                        <span className="flex items-center gap-1 text-[11px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
-                                          <Clock className="h-2.5 w-2.5" />
+                                      <div className="flex items-center flex-wrap gap-2">
+                                        <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-background/60 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm border border-border/30">
+                                          <Clock className="h-3 w-3" />
                                           {format(parseISO(event.start), "HH:mm")} - {format(parseISO(event.end), "HH:mm")}
                                         </span>
                                         {timeUntil && (
                                           <span className={cn(
-                                            "text-[10px] font-medium px-1.5 py-0.5 rounded",
+                                            "text-[10px] font-semibold px-2 py-1 rounded-md",
                                             isNow 
-                                              ? "bg-primary text-primary-foreground" 
+                                              ? "bg-primary text-primary-foreground shadow-sm" 
                                               : isSoon
-                                                ? "bg-amber-500/20 text-amber-700 dark:text-amber-400"
-                                                : "bg-muted text-muted-foreground"
+                                                ? "bg-amber-500/25 text-amber-700 dark:text-amber-400"
+                                                : "bg-muted/80 text-muted-foreground"
                                           )}>
                                             {timeUntil}
                                           </span>
@@ -1075,11 +1091,11 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                                     {isViewingOwnCalendar && (
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 rounded hover:bg-muted">
-                                            <MoreVertical className="h-3.5 w-3.5" />
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-lg hover:bg-background/80 opacity-0 group-hover/event:opacity-100 transition-opacity">
+                                            <MoreVertical className="h-4 w-4" />
                                           </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-36">
+                                        <DropdownMenuContent align="end" className="w-40 bg-card/95 backdrop-blur-sm">
                                           <DropdownMenuItem onClick={() => openEditDialog(event)} className="gap-2 text-xs">
                                             <Pencil className="h-3.5 w-3.5" />
                                             Editar
@@ -1097,7 +1113,7 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                                   </div>
                                   
                                   {event.description && (
-                                    <p className="text-[11px] text-muted-foreground mb-2 line-clamp-2 leading-relaxed">
+                                    <p className="text-[11px] text-muted-foreground mb-3 line-clamp-2 leading-relaxed bg-background/30 p-2 rounded-lg">
                                       {event.description}
                                     </p>
                                   )}
@@ -1107,8 +1123,8 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                                     size="sm"
                                     variant={event.meetingLink ? "default" : "outline"}
                                     className={cn(
-                                      "w-full h-8 text-xs gap-1.5 font-medium rounded transition-all",
-                                      event.meetingLink && "shadow-sm hover:shadow-md"
+                                      "w-full h-9 text-xs gap-2 font-semibold rounded-lg transition-all",
+                                      event.meetingLink && "shadow-md hover:shadow-lg hover:scale-[1.02]"
                                     )}
                                     onClick={() => {
                                       if (event.meetingLink) {
@@ -1120,13 +1136,13 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                                   >
                                     {event.meetingLink ? (
                                       <>
-                                        <Video className="h-3 w-3" />
-                                        Entrar
+                                        <Video className="h-3.5 w-3.5" />
+                                        Entrar na Reunião
                                       </>
                                     ) : (
                                       <>
-                                        <ExternalLink className="h-3 w-3" />
-                                        Ver
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                        Ver no Calendar
                                       </>
                                     )}
                                   </Button>
