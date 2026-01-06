@@ -70,6 +70,7 @@ import OnboardingBulkTemplatesPage from "./pages/onboarding-tasks/OnboardingBulk
 import OnboardingImportPage from "./pages/onboarding-tasks/OnboardingImportPage";
 import VirtualOfficePage from "./pages/onboarding-tasks/VirtualOfficePage";
 import CACFormPage from "./pages/onboarding-tasks/CACFormPage";
+import RescheduleTasks from "./pages/onboarding-tasks/RescheduleTasks";
 import NPSSurveyPage from "./pages/NPSSurveyPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
@@ -134,6 +135,7 @@ const App = () => (
             <Route path="/onboarding-tasks/services/:serviceSlug/templates" element={<OnboardingServiceTemplatesPage />} />
             <Route path="/onboarding-tasks/import" element={<OnboardingImportPage />} />
             <Route path="/onboarding-tasks/office" element={<VirtualOfficePage />} />
+            <Route path="/onboarding-tasks/reschedule" element={<RescheduleTasks />} />
             <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
           </Route>
           
