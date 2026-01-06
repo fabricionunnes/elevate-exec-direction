@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { 
   Headphones, 
@@ -55,8 +56,10 @@ export const SupportRoomPanel = ({ currentStaff, onSessionUpdate }: SupportRoomP
   const [sessions, setSessions] = useState<SupportSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAttendDialog, setShowAttendDialog] = useState(false);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [selectedSession, setSelectedSession] = useState<SupportSession | null>(null);
   const [meetLink, setMeetLink] = useState("");
+  const [sessionNotes, setSessionNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -140,21 +143,36 @@ export const SupportRoomPanel = ({ currentStaff, onSessionUpdate }: SupportRoomP
     }
   };
 
-  const completeSession = async (session: SupportSession) => {
+  const handleCompleteSession = (session: SupportSession) => {
+    setSelectedSession(session);
+    setSessionNotes("");
+    setShowCompleteDialog(true);
+  };
+
+  const confirmCompleteSession = async () => {
+    if (!selectedSession) return;
+
+    setSubmitting(true);
     try {
       const { error } = await supabase
         .from("support_room_sessions")
         .update({
           status: "completed",
           ended_at: new Date().toISOString(),
+          notes: sessionNotes.trim() || null,
         })
-        .eq("id", session.id);
+        .eq("id", selectedSession.id);
 
       if (error) throw error;
-      toast.success("Atendimento finalizado");
+      toast.success("Atendimento finalizado e registrado no histórico");
+      setShowCompleteDialog(false);
+      setSelectedSession(null);
+      setSessionNotes("");
     } catch (error) {
       console.error("Error completing session:", error);
       toast.error("Erro ao finalizar atendimento");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -298,7 +316,7 @@ export const SupportRoomPanel = ({ currentStaff, onSessionUpdate }: SupportRoomP
                       size="sm" 
                       variant="default"
                       className="bg-green-600 hover:bg-green-700"
-                      onClick={() => completeSession(session)}
+                      onClick={() => handleCompleteSession(session)}
                     >
                       <CheckCircle2 className="h-4 w-4 mr-1" />
                       Finalizar
@@ -364,6 +382,72 @@ export const SupportRoomPanel = ({ currentStaff, onSessionUpdate }: SupportRoomP
             </Button>
             <Button onClick={confirmAttendSession} disabled={submitting}>
               {submitting ? "Iniciando..." : "Iniciar Atendimento"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para finalizar atendimento com notas */}
+      <Dialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Finalizar Atendimento</DialogTitle>
+            <DialogDescription>
+              Registre o que foi tratado neste atendimento. Essas informações ficarão salvas no histórico do cliente.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedSession && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
+                <Avatar>
+                  <AvatarFallback>
+                    {selectedSession.client_name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{selectedSession.client_name}</p>
+                  {selectedSession.company_name && (
+                    <p className="text-sm text-muted-foreground">{selectedSession.company_name}</p>
+                  )}
+                  {selectedSession.attended_at && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Em atendimento há {formatDistanceToNow(new Date(selectedSession.attended_at), { locale: ptBR })}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="session-notes">
+                  <MessageSquare className="h-4 w-4 inline mr-1" />
+                  O que foi tratado neste atendimento?
+                </Label>
+                <Textarea
+                  id="session-notes"
+                  placeholder="Descreva os principais pontos discutidos, dúvidas resolvidas, encaminhamentos..."
+                  value={sessionNotes}
+                  onChange={(e) => setSessionNotes(e.target.value)}
+                  rows={5}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Essas notas ficam visíveis no histórico de suporte do cliente
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowCompleteDialog(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={confirmCompleteSession} 
+              disabled={submitting}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {submitting ? "Finalizando..." : "Finalizar Atendimento"}
             </Button>
           </DialogFooter>
         </DialogContent>
