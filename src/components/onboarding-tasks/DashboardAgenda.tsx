@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isPast, addMonths, subMonths, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, Building2, Package, Plus, ExternalLink, Circle, CalendarX } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, Building2, Package, Plus, ExternalLink, Circle, CalendarX, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +52,7 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskProjectId, setNewTaskProjectId] = useState("");
   const [addingTask, setAddingTask] = useState(false);
+  const [projectSearch, setProjectSearch] = useState("");
 
   // Create maps for quick lookup
   const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
@@ -61,6 +62,22 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
   const availableProjects = useMemo(() => {
     return projects.filter(p => filteredProjectIds.has(p.id));
   }, [projects, filteredProjectIds]);
+
+  // Filtered projects based on search
+  const filteredAvailableProjects = useMemo(() => {
+    if (!projectSearch.trim()) return availableProjects;
+    
+    const searchLower = projectSearch.toLowerCase();
+    return availableProjects.filter(project => {
+      const company = project.onboarding_company_id 
+        ? companyMap.get(project.onboarding_company_id) 
+        : null;
+      const companyName = company?.name?.toLowerCase() || "";
+      const productName = project.product_name?.toLowerCase() || "";
+      
+      return companyName.includes(searchLower) || productName.includes(searchLower);
+    });
+  }, [availableProjects, projectSearch, companyMap]);
 
   // Get tasks by date
   const tasksByDate = useMemo(() => {
@@ -114,6 +131,7 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
     setSelectedDate(date);
     setNewTaskTitle("");
     setNewTaskProjectId("");
+    setProjectSearch("");
     setShowAddTaskDialog(true);
   };
 
@@ -506,7 +524,7 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
 
       {/* Add Task Dialog */}
       <Dialog open={showAddTaskDialog} onOpenChange={setShowAddTaskDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5 text-primary" />
@@ -531,27 +549,76 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="agenda-task-project">Projeto</Label>
-              <Select value={newTaskProjectId} onValueChange={setNewTaskProjectId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o projeto..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableProjects.map((project) => {
-                    const company = project.onboarding_company_id 
-                      ? companyMap.get(project.onboarding_company_id) 
-                      : null;
-                    return (
-                      <SelectItem key={project.id} value={project.id}>
-                        <span className="flex items-center gap-2">
-                          {company && <span className="text-muted-foreground">{company.name} -</span>}
-                          <span>{project.product_name}</span>
-                        </span>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+              <Label>Projeto</Label>
+              
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar empresa ou projeto..."
+                  value={projectSearch}
+                  onChange={(e) => setProjectSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              
+              {/* Project List */}
+              <div className="border rounded-lg bg-muted/30">
+                <ScrollArea className="h-[200px]">
+                  <div className="p-2 space-y-1">
+                    {filteredAvailableProjects.length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground">
+                        <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Nenhum projeto encontrado</p>
+                      </div>
+                    ) : (
+                      filteredAvailableProjects.map((project) => {
+                        const company = project.onboarding_company_id 
+                          ? companyMap.get(project.onboarding_company_id) 
+                          : null;
+                        const isSelected = newTaskProjectId === project.id;
+                        
+                        return (
+                          <button
+                            key={project.id}
+                            type="button"
+                            onClick={() => setNewTaskProjectId(project.id)}
+                            className={`
+                              w-full text-left p-3 rounded-md transition-all
+                              ${isSelected 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'hover:bg-muted bg-background'
+                              }
+                            `}
+                          >
+                            <div className="flex items-start gap-2">
+                              <Building2 className={`h-4 w-4 mt-0.5 shrink-0 ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">
+                                  {company?.name || "Sem empresa"}
+                                </p>
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <Package className={`h-3 w-3 shrink-0 ${isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`} />
+                                  <span className={`text-xs truncate ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                                    {project.product_name}
+                                  </span>
+                                </div>
+                              </div>
+                              {isSelected && (
+                                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+              
+              <p className="text-xs text-muted-foreground">
+                {filteredAvailableProjects.length} projeto(s) disponível(is)
+              </p>
             </div>
           </div>
 
