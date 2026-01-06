@@ -1,38 +1,29 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { COMPANY_SEGMENTS } from "@/data/companySegments";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
   Building2,
   Users,
   Target,
-  DollarSign,
-  Calendar,
   ChevronLeft,
   ChevronRight,
   Check,
   Plus,
   Trash2,
-  Save,
+  Send,
   Briefcase,
-  Link,
-  Copy,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
 
 interface Stakeholder {
@@ -44,7 +35,6 @@ interface Stakeholder {
 }
 
 interface KickoffFormData {
-  // Empresa
   name: string;
   cnpj: string;
   segment: string;
@@ -53,41 +43,13 @@ interface KickoffFormData {
   email: string;
   address: string;
   company_description: string;
-  
-  // Negócio
   main_challenges: string;
   goals_short_term: string;
   goals_long_term: string;
   target_audience: string;
   competitors: string;
-  
-  // Contrato
-  kickoff_date: string;
-  contract_start_date: string;
-  contract_end_date: string;
-  contract_value: number | null;
-  billing_day: number | null;
-  
-  // Stakeholders
   stakeholders: Stakeholder[];
-  
-  // Cronograma
-  expected_timeline: {
-    discovery: string;
-    implementation: string;
-    goLive: string;
-    optimization: string;
-  };
-  
-  // Notas
   notes: string;
-}
-
-interface KickoffFormDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  companyId: string;
-  onSuccess?: () => void;
 }
 
 const STEPS = [
@@ -95,8 +57,6 @@ const STEPS = [
   { id: 2, title: "Negócio & Mercado", icon: Briefcase },
   { id: 3, title: "Objetivos & Desafios", icon: Target },
   { id: 4, title: "Stakeholders", icon: Users },
-  { id: 5, title: "Contrato", icon: DollarSign },
-  { id: 6, title: "Cronograma", icon: Calendar },
 ];
 
 const initialFormData: KickoffFormData = {
@@ -113,39 +73,29 @@ const initialFormData: KickoffFormData = {
   goals_long_term: "",
   target_audience: "",
   competitors: "",
-  kickoff_date: "",
-  contract_start_date: "",
-  contract_end_date: "",
-  contract_value: null,
-  billing_day: null,
   stakeholders: [],
-  expected_timeline: {
-    discovery: "",
-    implementation: "",
-    goLive: "",
-    optimization: "",
-  },
   notes: "",
 };
 
-export const KickoffFormDialog = ({
-  open,
-  onOpenChange,
-  companyId,
-  onSuccess,
-}: KickoffFormDialogProps) => {
+const KickoffFormPage = () => {
+  const { companyId } = useParams<{ companyId: string }>();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<KickoffFormData>(initialFormData);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [companyName, setCompanyName] = useState("");
 
   useEffect(() => {
-    if (open && companyId) {
+    if (companyId) {
       fetchCompanyData();
     }
-  }, [open, companyId]);
+  }, [companyId]);
 
   const fetchCompanyData = async () => {
+    if (!companyId) return;
+    
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -157,7 +107,8 @@ export const KickoffFormDialog = ({
       if (error) throw error;
 
       if (data) {
-        const stakeholders = Array.isArray(data.stakeholders) 
+        setCompanyName(data.name);
+        const stakeholders = Array.isArray(data.stakeholders)
           ? (data.stakeholders as any[]).map((s) => ({
               name: s.name || "",
               role: s.role || "",
@@ -166,16 +117,6 @@ export const KickoffFormDialog = ({
               isDecisionMaker: s.isDecisionMaker || false,
             }))
           : [];
-
-        const timelineData = data.expected_timeline as Record<string, string> | null;
-        const timeline = timelineData && typeof timelineData === "object" && !Array.isArray(timelineData)
-          ? {
-              discovery: timelineData.discovery || "",
-              implementation: timelineData.implementation || "",
-              goLive: timelineData.goLive || "",
-              optimization: timelineData.optimization || "",
-            }
-          : initialFormData.expected_timeline;
 
         setFormData({
           name: data.name || "",
@@ -191,13 +132,7 @@ export const KickoffFormDialog = ({
           goals_long_term: data.goals_long_term || "",
           target_audience: data.target_audience || "",
           competitors: data.competitors || "",
-          kickoff_date: data.kickoff_date || "",
-          contract_start_date: data.contract_start_date || "",
-          contract_end_date: data.contract_end_date || "",
-          contract_value: data.contract_value || null,
-          billing_day: data.billing_day || null,
           stakeholders,
-          expected_timeline: timeline,
           notes: data.notes || "",
         });
       }
@@ -211,13 +146,6 @@ export const KickoffFormDialog = ({
 
   const updateField = (field: keyof KickoffFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const updateTimeline = (field: keyof KickoffFormData["expected_timeline"], value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      expected_timeline: { ...prev.expected_timeline, [field]: value },
-    }));
   };
 
   const addStakeholder = () => {
@@ -246,7 +174,9 @@ export const KickoffFormDialog = ({
     }));
   };
 
-  const handleSave = async () => {
+  const handleSubmit = async () => {
+    if (!companyId) return;
+    
     setSaving(true);
     try {
       const { error } = await supabase
@@ -265,34 +195,21 @@ export const KickoffFormDialog = ({
           goals_long_term: formData.goals_long_term || null,
           target_audience: formData.target_audience || null,
           competitors: formData.competitors || null,
-          kickoff_date: formData.kickoff_date || null,
-          contract_start_date: formData.contract_start_date || null,
-          contract_end_date: formData.contract_end_date || null,
-          contract_value: formData.contract_value,
-          billing_day: formData.billing_day,
           stakeholders: JSON.parse(JSON.stringify(formData.stakeholders)),
-          expected_timeline: JSON.parse(JSON.stringify(formData.expected_timeline)),
           notes: formData.notes || null,
         })
         .eq("id", companyId);
 
       if (error) throw error;
 
-      toast.success("Formulário de Kickoff salvo com sucesso!");
-      onSuccess?.();
-      onOpenChange(false);
+      setSubmitted(true);
+      toast.success("Formulário enviado com sucesso!");
     } catch (error) {
       console.error("Error saving kickoff:", error);
-      toast.error("Erro ao salvar formulário de Kickoff");
+      toast.error("Erro ao enviar formulário");
     } finally {
       setSaving(false);
     }
-  };
-
-  const copyFormLink = () => {
-    const link = `${window.location.origin}/kickoff/${companyId}`;
-    navigator.clipboard.writeText(link);
-    toast.success("Link copiado para a área de transferência!");
   };
 
   const nextStep = () => {
@@ -306,6 +223,53 @@ export const KickoffFormDialog = ({
       setCurrentStep(currentStep - 1);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+          <p className="mt-4 text-muted-foreground">Carregando formulário...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full text-center">
+          <CardContent className="pt-8 pb-8">
+            <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 className="h-10 w-10 text-green-600" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">Formulário Enviado!</h1>
+            <p className="text-muted-foreground mb-6">
+              Obrigado por preencher o formulário de Kickoff. Nossa equipe irá analisar as informações.
+            </p>
+            <Badge variant="secondary" className="text-base px-4 py-2">
+              {companyName}
+            </Badge>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!companyId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full text-center">
+          <CardContent className="pt-8 pb-8">
+            <h1 className="text-2xl font-bold mb-2">Link Inválido</h1>
+            <p className="text-muted-foreground">
+              Este link de formulário não é válido ou expirou.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -467,6 +431,17 @@ export const KickoffFormDialog = ({
                 rows={3}
               />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Observações Adicionais</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => updateField("notes", e.target.value)}
+                placeholder="Alguma informação adicional que gostaria de compartilhar?"
+                rows={3}
+              />
+            </div>
           </div>
         );
 
@@ -520,11 +495,11 @@ export const KickoffFormDialog = ({
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Cargo/Função</Label>
+                          <Label>Cargo</Label>
                           <Input
                             value={stakeholder.role}
                             onChange={(e) => updateStakeholder(index, "role", e.target.value)}
-                            placeholder="Ex: CEO, Diretor Comercial..."
+                            placeholder="Ex: CEO, Diretor Comercial"
                           />
                         </div>
                         <div className="space-y-2">
@@ -551,10 +526,10 @@ export const KickoffFormDialog = ({
                           id={`decision-maker-${index}`}
                           checked={stakeholder.isDecisionMaker}
                           onChange={(e) => updateStakeholder(index, "isDecisionMaker", e.target.checked)}
-                          className="rounded"
+                          className="h-4 w-4 rounded border-gray-300"
                         />
-                        <Label htmlFor={`decision-maker-${index}`} className="text-sm cursor-pointer">
-                          É tomador de decisão
+                        <Label htmlFor={`decision-maker-${index}`} className="text-sm font-normal">
+                          Decisor Principal
                         </Label>
                       </div>
                     </CardContent>
@@ -565,220 +540,86 @@ export const KickoffFormDialog = ({
           </div>
         );
 
-      case 5:
-        return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="kickoff_date">Data do Kickoff</Label>
-                <Input
-                  id="kickoff_date"
-                  type="date"
-                  value={formData.kickoff_date}
-                  onChange={(e) => updateField("kickoff_date", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="billing_day">Dia de Cobrança</Label>
-                <Input
-                  id="billing_day"
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={formData.billing_day || ""}
-                  onChange={(e) => updateField("billing_day", e.target.value ? parseInt(e.target.value) : null)}
-                  placeholder="Ex: 10"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="contract_start_date">Início do Contrato</Label>
-                <Input
-                  id="contract_start_date"
-                  type="date"
-                  value={formData.contract_start_date}
-                  onChange={(e) => updateField("contract_start_date", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contract_end_date">Término do Contrato</Label>
-                <Input
-                  id="contract_end_date"
-                  type="date"
-                  value={formData.contract_end_date}
-                  onChange={(e) => updateField("contract_end_date", e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="contract_value">Valor do Contrato (R$)</Label>
-              <Input
-                id="contract_value"
-                type="number"
-                value={formData.contract_value || ""}
-                onChange={(e) => updateField("contract_value", e.target.value ? parseFloat(e.target.value) : null)}
-                placeholder="0,00"
-              />
-            </div>
-
-            <Separator />
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notas Internas</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => updateField("notes", e.target.value)}
-                placeholder="Informações adicionais, observações importantes..."
-                rows={4}
-              />
-            </div>
-          </div>
-        );
-
-      case 6:
-        return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Defina as datas previstas para cada etapa do projeto
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="discovery">Fase de Discovery</Label>
-                <Input
-                  id="discovery"
-                  type="date"
-                  value={formData.expected_timeline.discovery}
-                  onChange={(e) => updateTimeline("discovery", e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Entendimento profundo do negócio
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="implementation">Fase de Implementação</Label>
-                <Input
-                  id="implementation"
-                  type="date"
-                  value={formData.expected_timeline.implementation}
-                  onChange={(e) => updateTimeline("implementation", e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Execução das ações planejadas
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="goLive">Go Live</Label>
-                <Input
-                  id="goLive"
-                  type="date"
-                  value={formData.expected_timeline.goLive}
-                  onChange={(e) => updateTimeline("goLive", e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Início da operação plena
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="optimization">Fase de Otimização</Label>
-                <Input
-                  id="optimization"
-                  type="date"
-                  value={formData.expected_timeline.optimization}
-                  onChange={(e) => updateTimeline("optimization", e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Ajustes e melhorias contínuas
-                </p>
-              </div>
-            </div>
-          </div>
-        );
-
       default:
         return null;
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Formulário de Kickoff
-          </DialogTitle>
-          <DialogDescription>
-            Preencha todas as informações do cliente para iniciar o projeto
-          </DialogDescription>
-        </DialogHeader>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
+      <div className="max-w-3xl mx-auto p-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">Formulário de Kickoff</h1>
+          <p className="text-muted-foreground">
+            Preencha as informações abaixo para iniciarmos o projeto
+          </p>
+          {companyName && (
+            <Badge variant="secondary" className="mt-4 text-base px-4 py-2">
+              {companyName}
+            </Badge>
+          )}
+        </div>
 
         {/* Progress Steps */}
-        <div className="flex items-center justify-between px-2 py-4 overflow-x-auto">
+        <div className="flex items-center justify-center gap-2 mb-8">
           {STEPS.map((step, index) => {
             const StepIcon = step.icon;
-            const isActive = currentStep === step.id;
             const isCompleted = currentStep > step.id;
-            
+            const isCurrent = currentStep === step.id;
+
             return (
               <div key={step.id} className="flex items-center">
                 <button
                   onClick={() => setCurrentStep(step.id)}
-                  className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors ${
-                    isActive
-                      ? "text-primary"
-                      : isCompleted
-                      ? "text-primary/70"
-                      : "text-muted-foreground"
-                  }`}
+                  className={`
+                    flex items-center gap-2 px-3 py-2 rounded-full transition-all
+                    ${isCurrent 
+                      ? "bg-primary text-primary-foreground" 
+                      : isCompleted 
+                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" 
+                        : "bg-muted text-muted-foreground"
+                    }
+                  `}
                 >
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${
-                      isActive
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : isCompleted
-                        ? "border-primary bg-primary/10"
-                        : "border-muted-foreground/30"
-                    }`}
-                  >
-                    {isCompleted ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      <StepIcon className="h-5 w-5" />
-                    )}
-                  </div>
-                  <span className="text-xs font-medium whitespace-nowrap">
-                    {step.title}
-                  </span>
+                  {isCompleted ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <StepIcon className="h-4 w-4" />
+                  )}
+                  <span className="text-sm font-medium hidden md:inline">{step.title}</span>
                 </button>
                 {index < STEPS.length - 1 && (
-                  <div
-                    className={`w-8 h-0.5 mx-1 ${
-                      isCompleted ? "bg-primary" : "bg-muted-foreground/30"
-                    }`}
-                  />
+                  <div className={`w-8 h-0.5 mx-1 ${isCompleted ? "bg-green-500" : "bg-muted"}`} />
                 )}
               </div>
             );
           })}
         </div>
 
-        <ScrollArea className="h-[400px] pr-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            </div>
-          ) : (
-            <div className="pr-2">{renderStepContent()}</div>
-          )}
-        </ScrollArea>
+        {/* Form Content */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {(() => {
+                const StepIcon = STEPS[currentStep - 1].icon;
+                return <StepIcon className="h-5 w-5" />;
+              })()}
+              {STEPS[currentStep - 1].title}
+            </CardTitle>
+            <CardDescription>
+              Etapa {currentStep} de {STEPS.length}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="max-h-[60vh]">
+              {renderStepContent()}
+            </ScrollArea>
+          </CardContent>
+        </Card>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between pt-4 border-t">
+        <div className="flex justify-between mt-6">
           <Button
             variant="outline"
             onClick={prevStep}
@@ -788,29 +629,30 @@ export const KickoffFormDialog = ({
             Anterior
           </Button>
 
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={copyFormLink} title="Copiar link do formulário">
-              <Link className="h-4 w-4 mr-2" />
-              Copiar Link
+          {currentStep === STEPS.length ? (
+            <Button onClick={handleSubmit} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Enviar Formulário
+                </>
+              )}
             </Button>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+          ) : (
+            <Button onClick={nextStep}>
+              Próximo
+              <ChevronRight className="h-4 w-4 ml-2" />
             </Button>
-            
-            {currentStep === STEPS.length ? (
-              <Button onClick={handleSave} disabled={saving || !formData.name}>
-                <Save className="h-4 w-4 mr-2" />
-                {saving ? "Salvando..." : "Salvar Kickoff"}
-              </Button>
-            ) : (
-              <Button onClick={nextStep}>
-                Próximo
-                <ChevronRight className="h-4 w-4 ml-2" />
-              </Button>
-            )}
-          </div>
+          )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 };
+
+export default KickoffFormPage;
