@@ -56,16 +56,48 @@ Deno.serve(async (req) => {
 
     console.log(`Google Calendar action: ${action} for user: ${user.id}`);
 
+    // Check for target_user_id query param (for CS/Admin viewing other calendars)
+    const targetUserId = url.searchParams.get("target_user_id");
+    const effectiveUserId = targetUserId || user.id;
+
     // Check if user has Google tokens
     const { data: tokenData, error: tokenError } = await supabase
       .from("user_google_tokens")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", effectiveUserId)
       .single();
 
     if (action === "check-connection") {
       return new Response(
         JSON.stringify({ connected: !!tokenData && !tokenError }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "list-connected-staff") {
+      // List all staff members who have connected their Google Calendar
+      const { data: connectedTokens } = await supabase
+        .from("user_google_tokens")
+        .select("user_id");
+
+      if (!connectedTokens || connectedTokens.length === 0) {
+        return new Response(
+          JSON.stringify({ staff: [] }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const userIds = connectedTokens.map((t) => t.user_id);
+
+      // Get staff info for these users
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("id, name, role, user_id")
+        .in("user_id", userIds)
+        .eq("is_active", true);
+
+      return new Response(
+        JSON.stringify({ staff: staffData || [] }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -319,6 +351,176 @@ Deno.serve(async (req) => {
             calendarLink: createdEvent.htmlLink,
           },
         }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "update-event") {
+      if (!tokenData) {
+        return new Response(
+          JSON.stringify({ error: "Not connected to Google Calendar", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const body = await req.json();
+      const { eventId, title, description, startDateTime, endDateTime, attendees } = body;
+
+      if (!eventId || !title || !startDateTime || !endDateTime) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields: eventId, title, startDateTime, endDateTime" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const accessToken = tokenData.access_token;
+
+      // Check if token is expired
+      if (tokenData.token_expires_at && new Date(tokenData.token_expires_at) < new Date()) {
+        return new Response(
+          JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Update event
+      const eventData: Record<string, unknown> = {
+        summary: title,
+        description: description || "",
+        start: {
+          dateTime: startDateTime,
+          timeZone: "America/Sao_Paulo",
+        },
+        end: {
+          dateTime: endDateTime,
+          timeZone: "America/Sao_Paulo",
+        },
+      };
+
+      // Add attendees if provided
+      if (attendees && Array.isArray(attendees) && attendees.length > 0) {
+        eventData.attendees = attendees.map((email: string) => ({ email }));
+      }
+
+      console.log("Updating calendar event...", eventData);
+
+      const updateUrl = `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}?sendUpdates=all`;
+      
+      const updateResponse = await fetch(updateUrl, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(eventData),
+      });
+
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error("Update event error:", errorText);
+        
+        if (updateResponse.status === 401) {
+          return new Response(
+            JSON.stringify({ error: "Token invalid, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (updateResponse.status === 403) {
+          return new Response(
+            JSON.stringify({ error: "Permissão negada. Reconecte sua conta Google com permissões de escrita.", needsAuth: true }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        return new Response(
+          JSON.stringify({ error: "Failed to update event: " + errorText }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const updatedEvent = await updateResponse.json();
+      console.log("Event updated successfully:", updatedEvent.id);
+
+      const meetingLink = updatedEvent.hangoutLink || 
+        updatedEvent.conferenceData?.entryPoints?.find((ep: { entryPointType: string; uri: string }) => ep.entryPointType === "video")?.uri;
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          event: {
+            id: updatedEvent.id,
+            title: updatedEvent.summary,
+            start: updatedEvent.start.dateTime || updatedEvent.start.date,
+            end: updatedEvent.end.dateTime || updatedEvent.end.date,
+            meetingLink,
+            calendarLink: updatedEvent.htmlLink,
+          },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "delete-event") {
+      if (!tokenData) {
+        return new Response(
+          JSON.stringify({ error: "Not connected to Google Calendar", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const body = await req.json();
+      const { eventId } = body;
+
+      if (!eventId) {
+        return new Response(
+          JSON.stringify({ error: "Missing required field: eventId" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const accessToken = tokenData.access_token;
+
+      // Check if token is expired
+      if (tokenData.token_expires_at && new Date(tokenData.token_expires_at) < new Date()) {
+        return new Response(
+          JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log("Deleting calendar event...", eventId);
+
+      const deleteUrl = `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}?sendUpdates=all`;
+      
+      const deleteResponse = await fetch(deleteUrl, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!deleteResponse.ok && deleteResponse.status !== 204) {
+        const errorText = await deleteResponse.text();
+        console.error("Delete event error:", errorText);
+        
+        if (deleteResponse.status === 401) {
+          return new Response(
+            JSON.stringify({ error: "Token invalid, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        return new Response(
+          JSON.stringify({ error: "Failed to delete event: " + errorText }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log("Event deleted successfully");
+
+      return new Response(
+        JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
