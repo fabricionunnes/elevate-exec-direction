@@ -859,14 +859,14 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
           </div>
 
           {/* Calendar Grid with Day Detail Panel */}
-          <div className="flex-1 flex gap-6 overflow-hidden">
+          <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
             {/* Calendar Grid */}
-            <div className="flex-1 overflow-auto">
-              <div className="bg-card rounded-2xl border shadow-sm p-4">
-                <div className="grid grid-cols-7 gap-2">
+            <div className="flex-1 overflow-auto min-w-0">
+              <div className="bg-card rounded-2xl border shadow-sm p-3 sm:p-4">
+                <div className="grid grid-cols-7 gap-1 sm:gap-2">
                   {/* Week Day Headers */}
                   {weekDays.map((day) => (
-                    <div key={day} className="text-center text-xs font-semibold text-muted-foreground py-2 uppercase tracking-wide">
+                    <div key={day} className="text-center text-[10px] sm:text-xs font-semibold text-muted-foreground py-2 uppercase tracking-wide">
                       {day}
                     </div>
                   ))}
@@ -881,11 +881,29 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                     const hasEvents = dayEvents.length > 0;
                     const hasMeeting = dayEvents.some(e => e.meetingLink);
 
+                    // Color palette for events
+                    const getEventColor = (event: CalendarEvent, index: number) => {
+                      if (event.meetingLink) {
+                        return "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-l-2 border-blue-500";
+                      }
+                      const colors = [
+                        "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-l-2 border-emerald-500",
+                        "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-l-2 border-purple-500",
+                        "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-l-2 border-amber-500",
+                        "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-l-2 border-rose-500",
+                        "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-l-2 border-cyan-500",
+                        "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-l-2 border-orange-500",
+                      ];
+                      // Use title hash for consistent color per event
+                      const hash = event.title.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+                      return colors[hash % colors.length];
+                    };
+
                     return (
                       <div
                         key={dateKey}
                         className={cn(
-                          "rounded-xl p-2 min-h-[85px] sm:min-h-[95px] transition-all duration-200 cursor-pointer relative group",
+                          "rounded-lg sm:rounded-xl p-1.5 sm:p-2 min-h-[75px] sm:min-h-[90px] transition-all duration-200 cursor-pointer relative group",
                           viewMode === "week" && "min-h-[140px]",
                           !isCurrentMonth && viewMode === "month" && "bg-muted/20 opacity-40",
                           isCurrentMonth && !isSelectedDay && "bg-muted/5 hover:bg-muted/40 hover:shadow-sm",
@@ -894,44 +912,42 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                         )}
                         onClick={() => handleDayClick(day)}
                       >
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center justify-between mb-1.5">
                           <span className={cn(
-                            "text-sm font-medium transition-all",
-                            isCurrentDay && "bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center font-bold shadow-sm",
+                            "text-xs sm:text-sm font-medium transition-all",
+                            isCurrentDay && "bg-primary text-primary-foreground rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center font-bold shadow-sm",
                             !isCurrentDay && isSelectedDay && "text-primary font-semibold"
                           )}>
                             {format(day, "d")}
                           </span>
                           {hasEvents && (
                             <span className={cn(
-                              "flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full",
+                              "flex items-center gap-0.5 text-[10px] font-medium px-1 py-0.5 rounded-full",
                               hasMeeting ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "bg-muted text-muted-foreground"
                             )}>
-                              {hasMeeting && <Video className="h-2.5 w-2.5" />}
+                              {hasMeeting && <Video className="h-2 w-2" />}
                               {dayEvents.length}
                             </span>
                           )}
                         </div>
-                        <div className="space-y-1">
-                          {dayEvents.slice(0, viewMode === "week" ? 4 : 2).map((event) => (
+                        <div className="space-y-0.5 sm:space-y-1">
+                          {dayEvents.slice(0, viewMode === "week" ? 4 : 2).map((event, idx) => (
                             <div
                               key={event.id}
                               className={cn(
-                                "text-[10px] px-1.5 py-1 rounded-md truncate font-medium transition-all",
-                                event.meetingLink 
-                                  ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-l-2 border-blue-500" 
-                                  : "bg-muted/80 text-muted-foreground border-l-2 border-muted-foreground/30"
+                                "text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 sm:py-1 rounded truncate font-medium transition-all",
+                                getEventColor(event, idx)
                               )}
                               title={event.title}
                             >
-                              <div className="flex items-center gap-1">
-                                {event.meetingLink && <Video className="h-2.5 w-2.5 shrink-0" />}
+                              <div className="flex items-center gap-0.5">
+                                {event.meetingLink && <Video className="h-2 w-2 shrink-0" />}
                                 <span className="truncate">{event.title}</span>
                               </div>
                             </div>
                           ))}
                           {dayEvents.length > (viewMode === "week" ? 4 : 2) && (
-                            <span className="text-[10px] text-primary font-medium px-1.5">
+                            <span className="text-[9px] sm:text-[10px] text-primary font-medium px-1">
                               +{dayEvents.length - (viewMode === "week" ? 4 : 2)} mais
                             </span>
                           )}
@@ -943,17 +959,17 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
               </div>
             </div>
 
-            {/* Day Detail Panel */}
-            <div className="w-[340px] shrink-0 hidden lg:flex flex-col">
-              <Card className="flex-1 flex flex-col overflow-hidden border-0 shadow-lg bg-gradient-to-b from-card to-card/95">
+            {/* Day Detail Panel - Fixed width with proper overflow */}
+            <div className="w-[300px] xl:w-[340px] shrink-0 hidden lg:flex flex-col min-h-0">
+              <Card className="flex-1 flex flex-col overflow-hidden border shadow-lg bg-gradient-to-b from-card to-card/95 min-h-0">
                 {/* Header com gradiente sutil */}
-                <div className="px-5 py-4 border-b bg-gradient-to-r from-primary/5 to-transparent">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-bold capitalize text-foreground">
+                <div className="px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent shrink-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="text-base font-bold capitalize text-foreground truncate">
                         {format(selectedDayForDetail, "EEEE, d", { locale: ptBR })}
                       </h3>
-                      <p className="text-sm text-muted-foreground capitalize mt-0.5">
+                      <p className="text-xs text-muted-foreground capitalize mt-0.5">
                         {format(selectedDayForDetail, "MMMM 'de' yyyy", { locale: ptBR })}
                       </p>
                     </div>
@@ -961,76 +977,89 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                       <Button
                         size="sm"
                         onClick={() => openCreateDialog(selectedDayForDetail)}
-                        className="gap-1.5 shadow-sm"
+                        className="gap-1 shrink-0 h-8 text-xs"
                       >
-                        <Plus className="h-4 w-4" />
+                        <Plus className="h-3.5 w-3.5" />
                         Novo
                       </Button>
                     )}
                   </div>
                 </div>
                 
-                <CardContent className="flex-1 overflow-hidden p-0">
+                <CardContent className="flex-1 overflow-hidden p-0 min-h-0">
                   <ScrollArea className="h-full">
-                    <div className="px-4 py-4">
+                    <div className="px-3 py-3">
                       {selectedDayEvents.length === 0 ? (
-                        <div className="text-center py-12">
-                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
-                            <Calendar className="h-8 w-8 text-muted-foreground/50" />
+                        <div className="text-center py-10">
+                          <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-muted/50 flex items-center justify-center">
+                            <Calendar className="h-7 w-7 text-muted-foreground/50" />
                           </div>
-                          <p className="text-muted-foreground mb-4">Nenhum evento neste dia</p>
+                          <p className="text-sm text-muted-foreground mb-3">Nenhum evento</p>
                           {isViewingOwnCalendar && (
                             <Button 
                               size="sm" 
                               variant="outline" 
                               onClick={() => openCreateDialog(selectedDayForDetail)}
-                              className="gap-1.5"
+                              className="gap-1 h-8 text-xs"
                             >
-                              <Plus className="h-4 w-4" />
+                              <Plus className="h-3.5 w-3.5" />
                               Criar evento
                             </Button>
                           )}
                         </div>
                       ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-2.5">
                           {selectedDayEvents
                             .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())
-                            .map((event) => {
+                            .map((event, idx) => {
                               const timeUntil = getTimeUntilEvent(event.start);
                               const isNow = timeUntil === "Em andamento";
                               const isSoon = timeUntil && !isNow && parseInt(timeUntil) <= 30;
+                              
+                              // Color for event card
+                              const getEventCardStyle = () => {
+                                if (isNow) return "bg-gradient-to-r from-primary/15 to-primary/5 border-primary/40";
+                                if (isSoon) return "bg-gradient-to-r from-amber-500/10 to-transparent border-amber-400/30";
+                                if (event.meetingLink) return "bg-gradient-to-r from-blue-500/8 to-transparent border-blue-400/30";
+                                
+                                const colors = [
+                                  "bg-gradient-to-r from-emerald-500/8 to-transparent border-emerald-400/30",
+                                  "bg-gradient-to-r from-purple-500/8 to-transparent border-purple-400/30",
+                                  "bg-gradient-to-r from-rose-500/8 to-transparent border-rose-400/30",
+                                  "bg-gradient-to-r from-cyan-500/8 to-transparent border-cyan-400/30",
+                                  "bg-gradient-to-r from-orange-500/8 to-transparent border-orange-400/30",
+                                ];
+                                const hash = event.title.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+                                return colors[hash % colors.length];
+                              };
                               
                               return (
                                 <div
                                   key={event.id}
                                   className={cn(
-                                    "rounded-xl p-4 transition-all duration-200 border",
-                                    isNow 
-                                      ? "bg-gradient-to-r from-primary/15 to-primary/5 border-primary/30 shadow-sm shadow-primary/10" 
-                                      : isSoon
-                                        ? "bg-gradient-to-r from-amber-500/10 to-transparent border-amber-500/20"
-                                        : "bg-card hover:bg-muted/30 border-border/50"
+                                    "rounded-lg p-3 transition-all duration-200 border",
+                                    getEventCardStyle()
                                   )}
                                 >
                                   {/* Event Header */}
-                                  <div className="flex items-start justify-between gap-3 mb-3">
+                                  <div className="flex items-start justify-between gap-2 mb-2">
                                     <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-1.5">
-                                        <h4 className="font-semibold text-sm text-foreground truncate">{event.title}</h4>
+                                      <div className="flex items-center gap-1.5 mb-1">
+                                        <h4 className="font-semibold text-sm text-foreground line-clamp-2 leading-tight">{event.title}</h4>
                                         {event.meetingLink && (
-                                          <span className="shrink-0 bg-blue-500/20 text-blue-600 dark:text-blue-400 p-1 rounded-md">
+                                          <span className="shrink-0 bg-blue-500/20 text-blue-600 dark:text-blue-400 p-0.5 rounded">
                                             <Video className="h-3 w-3" />
                                           </span>
                                         )}
                                       </div>
-                                      <div className="flex items-center flex-wrap gap-2">
-                                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
-                                          <Clock className="h-3 w-3" />
+                                      <div className="flex items-center flex-wrap gap-1.5">
+                                        <span className="flex items-center gap-1 text-[11px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                                          <Clock className="h-2.5 w-2.5" />
                                           {format(parseISO(event.start), "HH:mm")} - {format(parseISO(event.end), "HH:mm")}
                                         </span>
                                         {timeUntil && (
                                           <span className={cn(
-                                            "text-xs font-medium px-2 py-1 rounded-md",
+                                            "text-[10px] font-medium px-1.5 py-0.5 rounded",
                                             isNow 
                                               ? "bg-primary text-primary-foreground" 
                                               : isSoon
@@ -1046,20 +1075,20 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                                     {isViewingOwnCalendar && (
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-lg hover:bg-muted">
-                                            <MoreVertical className="h-4 w-4" />
+                                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 rounded hover:bg-muted">
+                                            <MoreVertical className="h-3.5 w-3.5" />
                                           </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-40">
-                                          <DropdownMenuItem onClick={() => openEditDialog(event)} className="gap-2">
-                                            <Pencil className="h-4 w-4" />
+                                        <DropdownMenuContent align="end" className="w-36">
+                                          <DropdownMenuItem onClick={() => openEditDialog(event)} className="gap-2 text-xs">
+                                            <Pencil className="h-3.5 w-3.5" />
                                             Editar
                                           </DropdownMenuItem>
                                           <DropdownMenuItem 
                                             onClick={() => confirmDelete(event)}
-                                            className="text-destructive focus:text-destructive gap-2"
+                                            className="text-destructive focus:text-destructive gap-2 text-xs"
                                           >
-                                            <Trash2 className="h-4 w-4" />
+                                            <Trash2 className="h-3.5 w-3.5" />
                                             Excluir
                                           </DropdownMenuItem>
                                         </DropdownMenuContent>
@@ -1068,41 +1097,39 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                                   </div>
                                   
                                   {event.description && (
-                                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2 leading-relaxed">
+                                    <p className="text-[11px] text-muted-foreground mb-2 line-clamp-2 leading-relaxed">
                                       {event.description}
                                     </p>
                                   )}
                                   
-                                  {/* Action Buttons */}
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant={event.meetingLink ? "default" : "outline"}
-                                      className={cn(
-                                        "flex-1 h-9 text-xs gap-2 font-medium rounded-lg transition-all",
-                                        event.meetingLink && "shadow-sm hover:shadow-md"
-                                      )}
-                                      onClick={() => {
-                                        if (event.meetingLink) {
-                                          window.open(event.meetingLink, "_blank");
-                                        } else {
-                                          window.open(event.calendarLink, "_blank");
-                                        }
-                                      }}
-                                    >
-                                      {event.meetingLink ? (
-                                        <>
-                                          <Video className="h-3.5 w-3.5" />
-                                          Entrar
-                                        </>
-                                      ) : (
-                                        <>
-                                          <ExternalLink className="h-3.5 w-3.5" />
-                                          Ver
-                                        </>
-                                      )}
-                                    </Button>
-                                  </div>
+                                  {/* Action Button */}
+                                  <Button
+                                    size="sm"
+                                    variant={event.meetingLink ? "default" : "outline"}
+                                    className={cn(
+                                      "w-full h-8 text-xs gap-1.5 font-medium rounded transition-all",
+                                      event.meetingLink && "shadow-sm hover:shadow-md"
+                                    )}
+                                    onClick={() => {
+                                      if (event.meetingLink) {
+                                        window.open(event.meetingLink, "_blank");
+                                      } else {
+                                        window.open(event.calendarLink, "_blank");
+                                      }
+                                    }}
+                                  >
+                                    {event.meetingLink ? (
+                                      <>
+                                        <Video className="h-3 w-3" />
+                                        Entrar
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ExternalLink className="h-3 w-3" />
+                                        Ver
+                                      </>
+                                    )}
+                                  </Button>
                                 </div>
                               );
                             })}
