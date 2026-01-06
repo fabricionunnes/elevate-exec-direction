@@ -39,7 +39,8 @@ export const ProjectUrgentTasks = ({ tasks, onTaskClick }: ProjectUrgentTasksPro
     const todayList: Task[] = [];
 
     tasks.forEach(task => {
-      if (task.status === "completed" || !task.due_date) return;
+      // Skip completed tasks (check both status and completed_at)
+      if (task.status === "completed" || task.completed_at || !task.due_date) return;
       
       const dueDate = startOfDay(new Date(task.due_date));
       
