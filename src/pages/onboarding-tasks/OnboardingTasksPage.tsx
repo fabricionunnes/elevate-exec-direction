@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
@@ -815,6 +815,10 @@ const OnboardingTasksPage = () => {
                         <CalendarClock className="h-4 w-4 mr-2" />
                         Reagendar Tarefas
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/renewals")}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Renovações
+                      </DropdownMenuItem>
                     </>
                   )}
                 </DropdownMenuContent>
@@ -842,6 +846,12 @@ const OnboardingTasksPage = () => {
               <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/reschedule")}>
                 <CalendarClock className="h-4 w-4 mr-2" />
                 Reagendar
+              </Button>
+            )}
+            {isAdmin && (
+              <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/renewals")}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Renovações
               </Button>
             )}
             {canCreateCompany && (
