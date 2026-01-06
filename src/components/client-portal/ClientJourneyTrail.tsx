@@ -8,8 +8,6 @@ import {
   Clock,
   Calendar,
   ChevronDown,
-  User,
-  Sparkles,
   Trophy,
   Rocket,
   Target,
@@ -18,9 +16,13 @@ import {
   Zap,
   Crown,
   Medal,
-  MapPin,
+  Gift,
+  Sparkles,
+  Flame,
+  Shield,
+  Gem,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, isBefore, startOfDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface OnboardingTask {
@@ -47,38 +49,42 @@ interface ClientJourneyTrailProps {
   onTaskClick: (task: OnboardingTask) => void;
 }
 
-const PHASE_ICONS = [
-  <Rocket className="h-5 w-5" />,
-  <Target className="h-5 w-5" />,
-  <Zap className="h-5 w-5" />,
-  <Flag className="h-5 w-5" />,
-  <Star className="h-5 w-5" />,
-  <Medal className="h-5 w-5" />,
-  <Crown className="h-5 w-5" />,
-  <Sparkles className="h-5 w-5" />,
-];
+const PHASE_ICONS = [Rocket, Target, Zap, Flag, Star, Medal, Crown, Gift, Shield, Gem];
 
-const PHASE_GRADIENTS = [
-  "from-cyan-500 to-blue-600",
-  "from-violet-500 to-purple-600",
-  "from-amber-500 to-orange-600",
-  "from-emerald-500 to-green-600",
-  "from-rose-500 to-pink-600",
-  "from-teal-500 to-cyan-600",
-  "from-fuchsia-500 to-purple-600",
-  "from-lime-500 to-green-600",
+const PHASE_THEMES = [
+  { gradient: "from-blue-500 to-cyan-400", ring: "ring-blue-400", shadow: "shadow-blue-500/30", bg: "bg-blue-500", text: "text-blue-500" },
+  { gradient: "from-violet-500 to-purple-400", ring: "ring-violet-400", shadow: "shadow-violet-500/30", bg: "bg-violet-500", text: "text-violet-500" },
+  { gradient: "from-orange-500 to-amber-400", ring: "ring-orange-400", shadow: "shadow-orange-500/30", bg: "bg-orange-500", text: "text-orange-500" },
+  { gradient: "from-emerald-500 to-green-400", ring: "ring-emerald-400", shadow: "shadow-emerald-500/30", bg: "bg-emerald-500", text: "text-emerald-500" },
+  { gradient: "from-rose-500 to-pink-400", ring: "ring-rose-400", shadow: "shadow-rose-500/30", bg: "bg-rose-500", text: "text-rose-500" },
+  { gradient: "from-cyan-500 to-teal-400", ring: "ring-cyan-400", shadow: "shadow-cyan-500/30", bg: "bg-cyan-500", text: "text-cyan-500" },
+  { gradient: "from-fuchsia-500 to-purple-400", ring: "ring-fuchsia-400", shadow: "shadow-fuchsia-500/30", bg: "bg-fuchsia-500", text: "text-fuchsia-500" },
+  { gradient: "from-yellow-500 to-amber-400", ring: "ring-yellow-400", shadow: "shadow-yellow-500/30", bg: "bg-yellow-500", text: "text-yellow-500" },
+  { gradient: "from-indigo-500 to-blue-400", ring: "ring-indigo-400", shadow: "shadow-indigo-500/30", bg: "bg-indigo-500", text: "text-indigo-500" },
+  { gradient: "from-red-500 to-rose-400", ring: "ring-red-400", shadow: "shadow-red-500/30", bg: "bg-red-500", text: "text-red-500" },
 ];
 
 export const ClientJourneyTrail = ({ phases, onTaskClick }: ClientJourneyTrailProps) => {
-  const [expandedPhase, setExpandedPhase] = useState<number | null>(
-    phases.findIndex(p => p.completedCount > 0 && p.completedCount < p.tasks.length) !== -1
-      ? phases.findIndex(p => p.completedCount > 0 && p.completedCount < p.tasks.length)
-      : 0
+  const [expandedPhase, setExpandedPhase] = useState<string | null>(
+    phases.find(p => p.completedCount > 0 && p.completedCount < p.tasks.length)?.name || phases[0]?.name || null
   );
 
   const totalTasks = phases.reduce((sum, p) => sum + p.tasks.length, 0);
   const completedTasks = phases.reduce((sum, p) => sum + p.completedCount, 0);
   const overallProgress = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const xp = completedTasks * 100;
+  const level = Math.floor(xp / 500) + 1;
+  const xpForNextLevel = (level * 500) - xp;
+
+  const isTaskOverdue = (task: OnboardingTask) => {
+    if (!task.due_date || task.status === "completed") return false;
+    return isBefore(startOfDay(new Date(task.due_date)), startOfDay(new Date()));
+  };
+
+  const isTaskDueToday = (task: OnboardingTask) => {
+    if (!task.due_date || task.status === "completed") return false;
+    return isToday(new Date(task.due_date));
+  };
 
   const getInitials = (name: string) => {
     return name
@@ -95,337 +101,426 @@ export const ClientJourneyTrail = ({ phases, onTaskClick }: ClientJourneyTrailPr
     return null;
   };
 
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case "cs": return "Customer Success";
-      case "consultant": return "Consultor";
-      case "client": return "Você";
-      case "admin": return "Administrador";
-      default: return role;
-    }
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Hero Progress - Mobile optimized */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-5 text-primary-foreground"
-      >
+    <div className="space-y-6 pb-8">
+      {/* Hero Banner - Game Style */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-5 md:p-8 border border-slate-700/50">
+        {/* Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-            className="absolute -top-1/2 -right-1/2 w-full h-full bg-gradient-to-br from-white/10 to-transparent rounded-full"
-          />
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-cyan-500/5 rounded-full blur-2xl" />
+          {/* Grid pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]" />
         </div>
 
         <div className="relative z-10">
-          <div className="flex items-center gap-4 mb-4">
-            <motion.div
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="p-3 rounded-xl bg-white/20 backdrop-blur-sm"
-            >
-              <MapPin className="h-6 w-6" />
-            </motion.div>
-            <div className="flex-1">
-              <h2 className="text-xl font-bold">Sua Jornada</h2>
-              <p className="text-sm opacity-80">
-                {completedTasks} de {totalTasks} etapas concluídas
-              </p>
+          {/* Top Row: Level Badge & Stats */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 mb-5">
+            {/* Level & XP */}
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br ${overallProgress === 100 ? "from-yellow-400 to-amber-500" : "from-blue-500 to-purple-600"} flex items-center justify-center shadow-2xl ${overallProgress === 100 ? "shadow-yellow-500/30" : "shadow-blue-500/30"}`}>
+                  {overallProgress === 100 ? (
+                    <Crown className="h-8 w-8 md:h-10 md:w-10 text-white" />
+                  ) : (
+                    <span className="text-2xl md:text-3xl font-black text-white">{level}</span>
+                  )}
+                </div>
+                {/* Level badge */}
+                <div className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-600 text-xs font-bold text-white">
+                  LVL
+                </div>
+              </div>
+              <div>
+                <p className="text-slate-400 text-sm font-medium">Nível do Projeto</p>
+                <p className="text-white text-xl md:text-2xl font-black">
+                  {overallProgress === 100 ? "CAMPEÃO" : `Nível ${level}`}
+                </p>
+                <p className="text-slate-500 text-xs">
+                  {overallProgress === 100 ? "Missão completa!" : `${xpForNextLevel} XP para próximo nível`}
+                </p>
+              </div>
             </div>
-            <motion.div
-              key={overallProgress}
-              initial={{ scale: 1.2 }}
-              animate={{ scale: 1 }}
-              className="text-3xl font-black"
-            >
-              {overallProgress}%
-            </motion.div>
+
+            {/* Stats Cards */}
+            <div className="flex gap-2 md:gap-3">
+              <div className="px-3 md:px-4 py-2 md:py-3 rounded-xl bg-slate-800/80 border border-slate-700/50 text-center min-w-[70px] md:min-w-[80px]">
+                <div className="flex items-center justify-center gap-1 text-emerald-400 mb-1">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
+                <p className="text-white text-lg md:text-xl font-bold">{completedTasks}</p>
+                <p className="text-slate-500 text-[10px] md:text-xs">Completas</p>
+              </div>
+              <div className="px-3 md:px-4 py-2 md:py-3 rounded-xl bg-slate-800/80 border border-slate-700/50 text-center min-w-[70px] md:min-w-[80px]">
+                <div className="flex items-center justify-center gap-1 text-amber-400 mb-1">
+                  <Flame className="h-4 w-4" />
+                </div>
+                <p className="text-white text-lg md:text-xl font-bold">{totalTasks - completedTasks}</p>
+                <p className="text-slate-500 text-[10px] md:text-xs">Restantes</p>
+              </div>
+              <div className="px-3 md:px-4 py-2 md:py-3 rounded-xl bg-gradient-to-br from-yellow-500/20 to-amber-500/10 border border-yellow-500/30 text-center min-w-[70px] md:min-w-[80px]">
+                <div className="flex items-center justify-center gap-1 text-yellow-400 mb-1">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <p className="text-yellow-400 text-lg md:text-xl font-bold">{xp}</p>
+                <p className="text-yellow-500/70 text-[10px] md:text-xs">XP Total</p>
+              </div>
+            </div>
           </div>
 
-          {/* Progress bar */}
-          <div className="relative h-3 bg-black/20 rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${overallProgress}%` }}
-              transition={{ duration: 1, ease: "easeOut" }}
-              className="h-full bg-gradient-to-r from-white/90 to-white rounded-full"
-            />
+          {/* Progress Bar */}
+          <div className="relative">
+            <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+              <span>Progresso da Jornada</span>
+              <span className="text-white font-bold">{overallProgress}%</span>
+            </div>
+            <div className="relative h-4 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${overallProgress}%` }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                className={`absolute inset-y-0 left-0 rounded-full ${
+                  overallProgress === 100 
+                    ? "bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500" 
+                    : "bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"
+                }`}
+              />
+              {/* Shimmer effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-[shimmer_2s_infinite]" style={{ backgroundSize: "200% 100%" }} />
+            </div>
+            {/* Milestone markers */}
+            <div className="absolute left-0 right-0 top-[calc(100%-8px)] flex justify-between px-0.5 pointer-events-none">
+              {[25, 50, 75, 100].map((milestone) => (
+                <div 
+                  key={milestone} 
+                  className={`w-3 h-3 rounded-full border-2 ${
+                    overallProgress >= milestone 
+                      ? "bg-white border-white shadow-lg shadow-white/30" 
+                      : "bg-slate-700 border-slate-600"
+                  }`}
+                  style={{ marginLeft: milestone === 25 ? "23%" : milestone === 50 ? "24%" : milestone === 75 ? "23%" : "auto" }}
+                />
+              ))}
+            </div>
           </div>
         </div>
-      </motion.div>
+      </div>
 
-      {/* Trail phases */}
-      <div className="relative pl-6">
-        {/* Vertical connecting line */}
-        <div className="absolute left-[11px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-primary via-primary/50 to-muted" />
+      {/* Phases Trail */}
+      <div className="relative space-y-4">
+        {phases.map((phase, phaseIndex) => {
+          const isExpanded = expandedPhase === phase.name;
+          const phaseProgress = phase.tasks.length 
+            ? Math.round((phase.completedCount / phase.tasks.length) * 100) 
+            : 0;
+          const isCompleted = phaseProgress === 100;
+          const isActive = phaseProgress > 0 && phaseProgress < 100;
+          const theme = PHASE_THEMES[phaseIndex % PHASE_THEMES.length];
+          const PhaseIcon = PHASE_ICONS[phaseIndex % PHASE_ICONS.length];
 
-        <div className="space-y-4">
-          {phases.map((phase, phaseIndex) => {
-            const isExpanded = expandedPhase === phaseIndex;
-            const phaseProgress = phase.tasks.length
-              ? Math.round((phase.completedCount / phase.tasks.length) * 100)
-              : 0;
-            const isCompleted = phaseProgress === 100;
-            const isActive = phaseProgress > 0 && phaseProgress < 100;
-            const gradient = PHASE_GRADIENTS[phaseIndex % PHASE_GRADIENTS.length];
-            const icon = PHASE_ICONS[phaseIndex % PHASE_ICONS.length];
-
-            return (
-              <motion.div
-                key={phase.name}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: phaseIndex * 0.1 }}
-                className="relative"
+          return (
+            <motion.div
+              key={phase.name}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: phaseIndex * 0.05 }}
+            >
+              <div 
+                className={`
+                  relative overflow-hidden rounded-2xl border-2 transition-all duration-300 cursor-pointer
+                  ${isCompleted 
+                    ? "bg-gradient-to-br from-emerald-500/10 to-green-500/5 border-emerald-500/50" 
+                    : isActive
+                    ? `bg-card border-2 ${theme.ring.replace("ring", "border")}/50`
+                    : "bg-card/50 border-border hover:border-border/80"
+                  }
+                `}
+                onClick={() => setExpandedPhase(isExpanded ? null : phase.name)}
               >
-                {/* Phase node */}
-                <motion.div
-                  whileTap={{ scale: 0.95 }}
-                  className={`
-                    absolute -left-6 top-4 w-6 h-6 rounded-full flex items-center justify-center z-10
-                    ${isCompleted
-                      ? "bg-emerald-500 text-white"
-                      : isActive
-                        ? `bg-gradient-to-br ${gradient} text-white animate-pulse`
-                        : "bg-muted border-2 border-dashed border-muted-foreground/30"
-                    }
-                  `}
-                >
-                  {isCompleted ? (
-                    <CheckCircle2 className="h-4 w-4" />
-                  ) : (
-                    <span className="text-xs font-bold">{phaseIndex + 1}</span>
-                  )}
-                </motion.div>
+                {/* Active phase glow */}
+                {isActive && (
+                  <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5`} />
+                )}
 
-                {/* Phase card */}
-                <motion.div
-                  whileTap={{ scale: 0.98 }}
-                  className={`
-                    ml-4 rounded-xl overflow-hidden border-2 transition-all duration-300
-                    ${isExpanded
-                      ? isCompleted
-                        ? "border-emerald-400/50 shadow-lg"
-                        : isActive
-                          ? "border-primary/50 shadow-lg"
-                          : "border-border"
-                      : "border-border"
-                    }
-                    ${isCompleted ? "bg-emerald-500/5" : "bg-card"}
-                  `}
-                  onClick={() => setExpandedPhase(isExpanded ? null : phaseIndex)}
-                >
-                  {/* Phase header */}
-                  <div className="p-4 flex items-center gap-3">
-                    <div
-                      className={`
-                        w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
-                        ${isCompleted
-                          ? "bg-emerald-500 text-white"
+                {/* Phase Header */}
+                <div className="relative p-4 md:p-5">
+                  <div className="flex items-center gap-3 md:gap-4">
+                    {/* Phase Icon Badge */}
+                    <div className="relative">
+                      <div 
+                        className={`
+                          w-12 h-12 md:w-16 md:h-16 rounded-xl flex items-center justify-center transition-all
+                          ${isCompleted 
+                            ? "bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg shadow-emerald-500/30" 
+                            : isActive
+                            ? `bg-gradient-to-br ${theme.gradient} shadow-lg ${theme.shadow}`
+                            : "bg-muted"
+                          }
+                        `}
+                      >
+                        {isCompleted ? (
+                          <CheckCircle2 className="h-6 w-6 md:h-8 md:w-8 text-white" />
+                        ) : (
+                          <PhaseIcon className={`h-6 w-6 md:h-8 md:w-8 ${isActive ? "text-white" : "text-muted-foreground"}`} />
+                        )}
+                      </div>
+                      {/* Phase number */}
+                      <div className={`
+                        absolute -top-1 -right-1 w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold
+                        ${isCompleted 
+                          ? "bg-yellow-400 text-yellow-900" 
                           : isActive
-                            ? `bg-gradient-to-br ${gradient} text-white`
-                            : "bg-muted text-muted-foreground"
+                          ? `${theme.bg} text-white`
+                          : "bg-muted-foreground/20 text-muted-foreground"
                         }
-                      `}
-                    >
-                      {icon}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold truncate">{phase.name}</h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{phase.completedCount}/{phase.tasks.length}</span>
-                        {isActive && (
-                          <Badge variant="outline" className="text-xs border-amber-400 text-amber-600">
-                            Em andamento
-                          </Badge>
-                        )}
-                        {isCompleted && (
-                          <Badge className="text-xs bg-emerald-500">Concluído</Badge>
-                        )}
+                      `}>
+                        {phaseIndex + 1}
                       </div>
                     </div>
 
-                    {/* Progress ring */}
-                    <div className="relative w-10 h-10 flex-shrink-0">
-                      <svg className="w-full h-full -rotate-90">
-                        <circle
-                          cx="20"
-                          cy="20"
-                          r="16"
-                          fill="none"
-                          stroke="hsl(var(--muted))"
-                          strokeWidth="3"
-                        />
-                        <motion.circle
-                          cx="20"
-                          cy="20"
-                          r="16"
-                          fill="none"
-                          stroke={isCompleted ? "#10b981" : "hsl(var(--primary))"}
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                          initial={{ strokeDasharray: "0 100" }}
-                          animate={{ strokeDasharray: `${phaseProgress} 100` }}
-                        />
-                      </svg>
-                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">
-                        {phaseProgress}%
-                      </span>
+                    {/* Phase Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1 md:mb-2">
+                        <h3 className={`font-bold text-sm md:text-lg truncate ${isCompleted ? "text-emerald-600" : ""}`}>
+                          {phase.name}
+                        </h3>
+                        {isActive && (
+                          <Badge className={`${theme.bg} text-white text-[10px] md:text-xs px-1.5 md:px-2 py-0`}>
+                            <Flame className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5 md:mr-1" />
+                            Ativo
+                          </Badge>
+                        )}
+                        {isCompleted && (
+                          <Badge className="bg-emerald-500 text-white text-[10px] md:text-xs px-1.5 md:px-2 py-0">
+                            <Star className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5 md:mr-1 fill-current" />
+                            Completo
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {/* Mini Progress */}
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden max-w-[150px] md:max-w-[200px]">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${phaseProgress}%` }}
+                            transition={{ duration: 0.5 }}
+                            className={`h-full rounded-full ${
+                              isCompleted 
+                                ? "bg-gradient-to-r from-emerald-400 to-green-500" 
+                                : `bg-gradient-to-r ${theme.gradient}`
+                            }`}
+                          />
+                        </div>
+                        <span className={`text-xs md:text-sm font-medium ${isCompleted ? "text-emerald-600" : "text-muted-foreground"}`}>
+                          {phase.completedCount}/{phase.tasks.length}
+                        </span>
+                      </div>
                     </div>
 
-                    <motion.div
-                      animate={{ rotate: isExpanded ? 180 : 0 }}
-                      className="flex-shrink-0"
-                    >
-                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                    </motion.div>
+                    {/* XP Badge & Chevron */}
+                    <div className="flex items-center gap-2 md:gap-3 shrink-0">
+                      <div className={`
+                        hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold
+                        ${isCompleted 
+                          ? "bg-yellow-500/20 text-yellow-600" 
+                          : "bg-muted text-muted-foreground"
+                        }
+                      `}>
+                        <Sparkles className="h-4 w-4" />
+                        +{phase.tasks.length * 100} XP
+                      </div>
+                      <ChevronDown 
+                        className={`h-5 w-5 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                      />
+                    </div>
                   </div>
+                </div>
 
-                  {/* Tasks list */}
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="border-t"
-                      >
-                        <div className="p-3 space-y-2">
-                          {phase.tasks.map((task, taskIndex) => {
-                            const responsibleName = getResponsibleName(task);
+                {/* Expanded Tasks */}
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="border-t border-border overflow-hidden"
+                    >
+                      <div className="p-3 md:p-4 grid gap-2">
+                        {phase.tasks.map((task, taskIndex) => {
+                          const overdue = isTaskOverdue(task);
+                          const dueToday = isTaskDueToday(task);
+                          const taskCompleted = task.status === "completed";
+                          const taskActive = task.status === "in_progress";
+                          const responsibleName = getResponsibleName(task);
+                          
+                          return (
+                            <motion.div
+                              key={task.id}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: taskIndex * 0.02 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onTaskClick(task);
+                              }}
+                              className={`
+                                group flex items-start gap-3 p-3 md:p-4 rounded-xl cursor-pointer transition-all
+                                ${taskCompleted
+                                  ? "bg-emerald-500/5 border border-emerald-500/20"
+                                  : taskActive
+                                  ? "bg-amber-500/5 border border-amber-500/30"
+                                  : overdue
+                                  ? "bg-red-500/5 border border-red-500/30 hover:bg-red-500/10"
+                                  : dueToday
+                                  ? "bg-amber-500/5 border border-amber-500/20 hover:bg-amber-500/10"
+                                  : "bg-muted/30 border border-transparent hover:bg-muted/50 hover:border-border"
+                                }
+                              `}
+                            >
+                              {/* Status Icon */}
+                              <div className="shrink-0 mt-0.5">
+                                {taskCompleted ? (
+                                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                                    <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5 text-white" />
+                                  </div>
+                                ) : taskActive ? (
+                                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30 animate-pulse">
+                                    <Clock className="h-4 w-4 md:h-5 md:w-5 text-white" />
+                                  </div>
+                                ) : (
+                                  <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full border-2 ${overdue ? "border-red-400" : "border-muted-foreground/30"} flex items-center justify-center`}>
+                                    <Circle className={`h-3 w-3 md:h-4 md:w-4 ${overdue ? "text-red-400" : "text-muted-foreground/30"}`} />
+                                  </div>
+                                )}
+                              </div>
 
-                            return (
-                              <motion.div
-                                key={task.id}
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: taskIndex * 0.05 }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onTaskClick(task);
-                                }}
-                                className={`
-                                  p-3 rounded-lg border transition-all duration-200
-                                  ${task.status === "completed"
-                                    ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30"
-                                    : task.status === "in_progress"
-                                      ? "bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30"
-                                      : "bg-background border-border hover:border-primary/50"
+                              {/* Task Content */}
+                              <div className="flex-1 min-w-0">
+                                <p className={`
+                                  text-sm font-medium leading-tight
+                                  ${taskCompleted 
+                                    ? "line-through text-muted-foreground" 
+                                    : overdue 
+                                    ? "text-red-600" 
+                                    : ""
                                   }
-                                `}
-                              >
-                                <div className="flex items-start gap-3">
-                                  {/* Status icon */}
-                                  <div className="flex-shrink-0 mt-0.5">
-                                    {task.status === "completed" ? (
-                                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                                    ) : task.status === "in_progress" ? (
-                                      <Clock className="h-5 w-5 text-amber-500" />
-                                    ) : (
-                                      <Circle className="h-5 w-5 text-muted-foreground" />
-                                    )}
-                                  </div>
+                                `}>
+                                  {task.title}
+                                </p>
 
-                                  <div className="flex-1 min-w-0">
-                                    {/* Task title */}
-                                    <h4
-                                      className={`font-medium text-sm leading-tight ${
-                                        task.status === "completed" ? "line-through text-muted-foreground" : ""
-                                      }`}
-                                    >
-                                      {task.title}
-                                    </h4>
+                                {/* Task description */}
+                                {task.description && (
+                                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                    {task.description}
+                                  </p>
+                                )}
 
-                                    {/* Task description */}
-                                    {task.description && (
-                                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                        {task.description}
-                                      </p>
-                                    )}
+                                {/* Task Meta */}
+                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                  {task.due_date && (
+                                    <span className={`
+                                      text-xs flex items-center gap-1 px-2 py-0.5 rounded-full font-medium
+                                      ${taskCompleted
+                                        ? "bg-muted text-muted-foreground"
+                                        : overdue 
+                                        ? "bg-red-500/20 text-red-600" 
+                                        : dueToday
+                                        ? "bg-amber-500/20 text-amber-600"
+                                        : "bg-muted text-muted-foreground"
+                                      }
+                                    `}>
+                                      <Calendar className="h-3 w-3" />
+                                      {format(new Date(task.due_date), "dd/MM", { locale: ptBR })}
+                                    </span>
+                                  )}
 
-                                    {/* Task meta */}
-                                    <div className="flex flex-wrap items-center gap-2 mt-2">
-                                      {task.due_date && (
-                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                          <Calendar className="h-3 w-3" />
-                                          <span>
-                                            {format(new Date(task.due_date), "dd/MM", { locale: ptBR })}
-                                          </span>
-                                        </div>
-                                      )}
-
-                                      {responsibleName && (
-                                        <div className="flex items-center gap-1.5">
-                                          <Avatar className="h-5 w-5">
-                                            <AvatarFallback className="text-[8px] bg-primary/10">
-                                              {getInitials(responsibleName)}
-                                            </AvatarFallback>
-                                          </Avatar>
-                                          <span className="text-xs text-muted-foreground">
-                                            {task.assignee?.role === "client" ? "Você" : responsibleName.split(" ")[0]}
-                                          </span>
-                                        </div>
-                                      )}
-
-                                      {task.status === "completed" && task.completed_at && (
-                                        <Badge variant="outline" className="text-[10px] h-5">
-                                          ✓ {format(new Date(task.completed_at), "dd/MM", { locale: ptBR })}
-                                        </Badge>
-                                      )}
+                                  {responsibleName && (
+                                    <div className="flex items-center gap-1.5">
+                                      <Avatar className="h-5 w-5">
+                                        <AvatarFallback className="text-[8px] bg-primary/10">
+                                          {getInitials(responsibleName)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="text-xs text-muted-foreground">
+                                        {task.assignee?.role === "client" ? "Você" : responsibleName.split(" ")[0]}
+                                      </span>
                                     </div>
+                                  )}
 
-                                    {/* Observations */}
-                                    {task.observations && task.status === "completed" && (
-                                      <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-                                        <span className="font-medium">Resultado: </span>
-                                        {task.observations}
-                                      </div>
-                                    )}
-                                  </div>
+                                  {taskCompleted && (
+                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/20">
+                                      <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                                      <span className="text-xs font-bold text-yellow-600">+100</span>
+                                    </div>
+                                  )}
                                 </div>
-                              </motion.div>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              </motion.div>
-            );
-          })}
 
-          {/* Finish line */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: phases.length * 0.1 }}
-            className="relative ml-4"
-          >
-            <div
-              className={`
-                absolute -left-10 top-2 w-6 h-6 rounded-full flex items-center justify-center
-                ${overallProgress === 100
-                  ? "bg-gradient-to-br from-yellow-400 to-amber-500 shadow-lg shadow-amber-500/30"
-                  : "bg-muted border-2 border-dashed border-muted-foreground/30"
+                                {/* Observations */}
+                                {task.observations && task.status === "completed" && (
+                                  <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+                                    <span className="font-medium">Resultado: </span>
+                                    {task.observations}
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          );
+        })}
+
+        {/* Final Trophy */}
+        <motion.div 
+          className="flex justify-center pt-4"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: phases.length * 0.05 }}
+        >
+          <div className={`
+            relative p-5 md:p-6 rounded-2xl border-2 border-dashed transition-all
+            ${overallProgress === 100 
+              ? "border-yellow-400 bg-gradient-to-br from-yellow-500/20 via-amber-500/10 to-orange-500/5" 
+              : "border-muted-foreground/20 bg-muted/5"
+            }
+          `}>
+            {overallProgress === 100 && (
+              <div className="absolute inset-0 overflow-hidden rounded-2xl">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-40 bg-yellow-400/20 rounded-full blur-3xl animate-pulse" />
+              </div>
+            )}
+            <div className="relative flex items-center gap-4">
+              <div className={`
+                w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center
+                ${overallProgress === 100 
+                  ? "bg-gradient-to-br from-yellow-400 to-amber-500 shadow-xl shadow-amber-500/40" 
+                  : "bg-muted"
                 }
-              `}
-            >
-              <Trophy className={`h-4 w-4 ${overallProgress === 100 ? "text-white" : "text-muted-foreground"}`} />
+              `}>
+                <Trophy className={`h-7 w-7 md:h-8 md:w-8 ${overallProgress === 100 ? "text-white" : "text-muted-foreground"}`} />
+              </div>
+              <div>
+                <p className={`font-bold text-base md:text-lg ${overallProgress === 100 ? "text-amber-600" : "text-muted-foreground"}`}>
+                  {overallProgress === 100 ? "🏆 Missão Cumprida!" : "Linha de Chegada"}
+                </p>
+                <p className="text-xs md:text-sm text-muted-foreground">
+                  {overallProgress === 100 
+                    ? `${xp} XP conquistados!`
+                    : `${totalTasks - completedTasks} conquistas restantes`
+                  }
+                </p>
+              </div>
             </div>
-            <div className="p-4 rounded-lg border-2 border-dashed">
-              <p className={`text-sm font-medium ${overallProgress === 100 ? "text-amber-600" : "text-muted-foreground"}`}>
-                {overallProgress === 100 ? "🎉 Jornada Concluída!" : "Meta: Completar a Jornada"}
-              </p>
-            </div>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
