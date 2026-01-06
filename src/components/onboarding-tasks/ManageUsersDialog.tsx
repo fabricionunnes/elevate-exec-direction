@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Copy, Eye, EyeOff } from "lucide-react";
+import { Loader2, Plus, Trash2, Copy, Eye, EyeOff, KeyRound } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -50,6 +50,7 @@ interface ManageUsersDialogProps {
   projectId: string;
   users: OnboardingUser[];
   onUsersChanged: () => void;
+  isAdmin?: boolean;
 }
 
 export const ManageUsersDialog = ({
@@ -58,6 +59,7 @@ export const ManageUsersDialog = ({
   projectId,
   users,
   onUsersChanged,
+  isAdmin = false,
 }: ManageUsersDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -71,6 +73,12 @@ export const ManageUsersDialog = ({
   });
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [showNewPassword, setShowNewPassword] = useState(false);
+  
+  // Change password state
+  const [changingPasswordUserId, setChangingPasswordUserId] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -232,6 +240,55 @@ export const ManageUsersDialog = ({
     toast.success("Senha copiada!");
   };
 
+  const handleChangePassword = async () => {
+    if (!changingPasswordUserId || !newPassword.trim()) {
+      toast.error("Digite a nova senha");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+
+    const user = users.find(u => u.id === changingPasswordUserId);
+    if (!user) return;
+
+    setChangingPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-onboarding-user", {
+        body: {
+          email: user.email,
+          password: newPassword.trim(),
+          name: user.name,
+          project_id: projectId,
+          role: user.role,
+          is_password_reset: true,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success("Senha alterada com sucesso!");
+      setChangingPasswordUserId(null);
+      setNewPassword("");
+      setShowChangePassword(false);
+      onUsersChanged();
+    } catch (error: any) {
+      console.error("Error changing password:", error);
+      toast.error(error.message || "Erro ao alterar senha");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const openChangePasswordDialog = (userId: string) => {
+    setChangingPasswordUserId(userId);
+    setNewPassword("");
+    setShowChangePassword(false);
+  };
+
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "admin":
@@ -269,7 +326,7 @@ export const ManageUsersDialog = ({
                 <TableHead>Email</TableHead>
                 <TableHead>Perfil</TableHead>
                 <TableHead>Senha Temp.</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
+                <TableHead className="w-[100px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -316,14 +373,27 @@ export const ManageUsersDialog = ({
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => handleDeleteUser(user.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {isAdmin && user.role === "client" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => openChangePasswordDialog(user.id)}
+                          title="Alterar senha"
+                        >
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => handleDeleteUser(user.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -458,6 +528,64 @@ export const ManageUsersDialog = ({
               <Plus className="h-4 w-4 mr-2" />
               Adicionar Usuário
             </Button>
+          )}
+
+          {/* Change Password Dialog */}
+          {changingPasswordUserId && (
+            <div className="border rounded-lg p-4 space-y-4 bg-amber-50/50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 text-amber-600" />
+                  Alterar Senha
+                </h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setChangingPasswordUserId(null);
+                    setNewPassword("");
+                    setShowChangePassword(false);
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Alterando senha de: <span className="font-medium text-foreground">{users.find(u => u.id === changingPasswordUserId)?.name}</span>
+                </p>
+                
+                <div className="space-y-2">
+                  <Label>Nova Senha</Label>
+                  <div className="relative">
+                    <Input
+                      type={showChangePassword ? "text" : "password"}
+                      placeholder="Mínimo 6 caracteres"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowChangePassword(!showChangePassword)}
+                    >
+                      {showChangePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button onClick={handleChangePassword} disabled={changingPassword}>
+                    {changingPassword && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Alterar Senha
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </DialogContent>

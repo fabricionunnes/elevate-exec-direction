@@ -1135,6 +1135,7 @@ const OnboardingProjectPage = () => {
         projectId={projectId!}
         users={users}
         onUsersChanged={fetchProjectData}
+        isAdmin={isAdmin}
       />
 
       <TaskDetailsDialog
