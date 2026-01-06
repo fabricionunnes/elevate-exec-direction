@@ -32,7 +32,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { format, differenceInDays, addMonths, parseISO, startOfMonth, endOfMonth, isBefore, isWithinInterval } from "date-fns";
+import { format, differenceInDays, addMonths, parseISO, startOfMonth, endOfMonth, isBefore, isWithinInterval, addQuarters, addYears, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import {
@@ -84,8 +84,89 @@ export default function OnboardingRenewalsPage() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [selectedMonth, setSelectedMonth] = useState(() => startOfMonth(new Date()));
+  const [periodType, setPeriodType] = useState<"monthly" | "quarterly" | "semiannual" | "annual">("monthly");
+  const [selectedPeriodStart, setSelectedPeriodStart] = useState(() => startOfMonth(new Date()));
   const [includePending, setIncludePending] = useState(true);
+
+  // Calculate period end based on period type
+  const getPeriodRange = (start: Date, type: typeof periodType) => {
+    switch (type) {
+      case "monthly":
+        return { start: startOfMonth(start), end: endOfMonth(start) };
+      case "quarterly":
+        return { start: startOfQuarter(start), end: endOfQuarter(start) };
+      case "semiannual":
+        const semiStart = start.getMonth() < 6 
+          ? new Date(start.getFullYear(), 0, 1) 
+          : new Date(start.getFullYear(), 6, 1);
+        const semiEnd = start.getMonth() < 6 
+          ? new Date(start.getFullYear(), 5, 30) 
+          : new Date(start.getFullYear(), 11, 31);
+        return { start: semiStart, end: semiEnd };
+      case "annual":
+        return { start: startOfYear(start), end: endOfYear(start) };
+      default:
+        return { start: startOfMonth(start), end: endOfMonth(start) };
+    }
+  };
+
+  const currentPeriodRange = getPeriodRange(selectedPeriodStart, periodType);
+
+  const handlePeriodTypeChange = (newType: typeof periodType) => {
+    setPeriodType(newType);
+    // Recalculate start based on new period type
+    const now = new Date();
+    switch (newType) {
+      case "monthly":
+        setSelectedPeriodStart(startOfMonth(now));
+        break;
+      case "quarterly":
+        setSelectedPeriodStart(startOfQuarter(now));
+        break;
+      case "semiannual":
+        setSelectedPeriodStart(now.getMonth() < 6 ? new Date(now.getFullYear(), 0, 1) : new Date(now.getFullYear(), 6, 1));
+        break;
+      case "annual":
+        setSelectedPeriodStart(startOfYear(now));
+        break;
+    }
+  };
+
+  const navigatePeriod = (direction: "prev" | "next") => {
+    const multiplier = direction === "prev" ? -1 : 1;
+    switch (periodType) {
+      case "monthly":
+        setSelectedPeriodStart(prev => addMonths(prev, multiplier));
+        break;
+      case "quarterly":
+        setSelectedPeriodStart(prev => addQuarters(prev, multiplier));
+        break;
+      case "semiannual":
+        setSelectedPeriodStart(prev => addMonths(prev, 6 * multiplier));
+        break;
+      case "annual":
+        setSelectedPeriodStart(prev => addYears(prev, multiplier));
+        break;
+    }
+  };
+
+  const formatPeriodLabel = () => {
+    const { start, end } = currentPeriodRange;
+    switch (periodType) {
+      case "monthly":
+        return format(start, "MMMM yyyy", { locale: ptBR });
+      case "quarterly":
+        const quarter = Math.ceil((start.getMonth() + 1) / 3);
+        return `${quarter}º Trimestre ${format(start, "yyyy")}`;
+      case "semiannual":
+        const semester = start.getMonth() < 6 ? "1º" : "2º";
+        return `${semester} Semestre ${format(start, "yyyy")}`;
+      case "annual":
+        return format(start, "yyyy");
+      default:
+        return "";
+    }
+  };
   
   const [renewDialogOpen, setRenewDialogOpen] = useState(false);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -296,28 +377,30 @@ export default function OnboardingRenewalsPage() {
   };
 
   const filteredCompanies = companies.filter(company => {
+    // Exclude inactive companies
+    if (company.status === "inactive") return false;
+    
     const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Month filter logic
-    let matchesMonth = true;
+    // Period filter logic
+    let matchesPeriod = true;
     if (company.contract_end_date) {
       const endDate = parseISO(company.contract_end_date);
-      const monthStart = startOfMonth(selectedMonth);
-      const monthEnd = endOfMonth(selectedMonth);
+      const { start: periodStart, end: periodEnd } = currentPeriodRange;
       
-      // Check if contract ends in selected month
-      const endsInSelectedMonth = isWithinInterval(endDate, { start: monthStart, end: monthEnd });
+      // Check if contract ends in selected period
+      const endsInSelectedPeriod = isWithinInterval(endDate, { start: periodStart, end: periodEnd });
       
-      // Check if it's a pending renewal from previous months (expired before selected month)
-      const isPendingFromPast = includePending && isBefore(endDate, monthStart);
+      // Check if it's a pending renewal from previous periods (expired before selected period)
+      const isPendingFromPast = includePending && isBefore(endDate, periodStart);
       
-      matchesMonth = endsInSelectedMonth || isPendingFromPast;
+      matchesPeriod = endsInSelectedPeriod || isPendingFromPast;
     } else {
       // Companies without end date - show only if includePending is true
-      matchesMonth = includePending;
+      matchesPeriod = includePending;
     }
     
-    if (!matchesMonth) return false;
+    if (!matchesPeriod) return false;
     
     // Status filter
     if (filterStatus === "all") return matchesSearch;
@@ -335,11 +418,12 @@ export default function OnboardingRenewalsPage() {
     return statusA.priority - statusB.priority;
   });
 
-  // Count pending from previous months
+  // Count pending from previous periods
   const pendingFromPastCount = companies.filter(c => {
+    if (c.status === "inactive") return false;
     if (!c.contract_end_date) return false;
     const endDate = parseISO(c.contract_end_date);
-    return isBefore(endDate, startOfMonth(selectedMonth));
+    return isBefore(endDate, currentPeriodRange.start);
   }).length;
 
   // Stats based on filtered companies
@@ -446,12 +530,32 @@ export default function OnboardingRenewalsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                {/* Month Picker */}
-                <MonthYearPicker 
-                  value={selectedMonth} 
-                  onChange={(range) => setSelectedMonth(range.start)} 
-                />
+            <div className="flex flex-col md:flex-row gap-4">
+                {/* Period Type Selector */}
+                <Select value={periodType} onValueChange={(v) => handlePeriodTypeChange(v as typeof periodType)}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Mensal</SelectItem>
+                    <SelectItem value="quarterly">Trimestral</SelectItem>
+                    <SelectItem value="semiannual">Semestral</SelectItem>
+                    <SelectItem value="annual">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Period Navigator */}
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" onClick={() => navigatePeriod("prev")}>
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="min-w-[160px] text-center font-medium capitalize">
+                    {formatPeriodLabel()}
+                  </div>
+                  <Button variant="outline" size="icon" onClick={() => navigatePeriod("next")}>
+                    <ArrowLeft className="h-4 w-4 rotate-180" />
+                  </Button>
+                </div>
                 
                 {/* Search */}
                 <div className="flex-1 relative">
@@ -492,7 +596,7 @@ export default function OnboardingRenewalsPage() {
                   className="h-4 w-4 rounded border-input"
                 />
                 <label htmlFor="includePending" className="text-sm text-muted-foreground cursor-pointer">
-                  Incluir pendências de meses anteriores
+                  Incluir pendências de períodos anteriores
                   {stats.pendingFromPast > 0 && (
                     <Badge variant="destructive" className="ml-2">
                       {stats.pendingFromPast} pendentes
