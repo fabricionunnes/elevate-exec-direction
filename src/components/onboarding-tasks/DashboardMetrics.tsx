@@ -64,6 +64,7 @@ interface Project {
   reactivated_at?: string | null;
   current_nps?: number | null;
   onboarding_company_id?: string | null;
+  churn_date?: string | null;
 }
 
 interface Company {
@@ -268,7 +269,7 @@ const DashboardMetrics = ({
       const closedInMonth = projects.filter(p => {
         if (p.status !== "closed" && p.status !== "completed") return false;
         // Prioriza churn_date, depois updated_at como fallback
-        const churnDateStr = (p as any).churn_date || p.updated_at;
+        const churnDateStr = p.churn_date || p.updated_at;
         // Parse a data corretamente para evitar problemas de timezone
         // Se for só data (YYYY-MM-DD), adiciona T12:00:00 para evitar offset
         const churnDate = churnDateStr.length === 10 
@@ -280,7 +281,7 @@ const DashboardMetrics = ({
         if (new Date(p.created_at) > monthEnd) return false;
         if (p.status === "closed" || p.status === "completed") {
           // Usa churn_date como referência
-          const churnDateStr = (p as any).churn_date || p.updated_at;
+          const churnDateStr = p.churn_date || p.updated_at;
           const churnDate = churnDateStr.length === 10 
             ? new Date(churnDateStr + "T12:00:00") 
             : new Date(churnDateStr);
