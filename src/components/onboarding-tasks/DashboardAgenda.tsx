@@ -711,8 +711,8 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
 
       {/* Add Task Dialog */}
       <Dialog open={showAddTaskDialog} onOpenChange={setShowAddTaskDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5 text-primary" />
               Nova Tarefa
@@ -724,7 +724,7 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto space-y-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="agenda-task-title">Título da Tarefa</Label>
               <Input
@@ -750,8 +750,8 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
               </div>
               
               {/* Project List */}
-              <div className="border rounded-lg bg-muted/30">
-                <ScrollArea className="h-[200px]">
+              <div className="border rounded-lg bg-muted/30 overflow-hidden">
+                <ScrollArea className="h-[180px]">
                   <div className="p-2 space-y-1">
                     {filteredAvailableProjects.length === 0 ? (
                       <div className="text-center py-6 text-muted-foreground">
@@ -782,12 +782,12 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
                               <Building2 className={`h-4 w-4 mt-0.5 shrink-0 ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-sm truncate">
-                                  {company?.name || "Sem empresa"}
+                                  {company?.name || "Sem empresa"} / {project.product_name}
                                 </p>
                                 <div className="flex items-center gap-1 mt-0.5">
                                   <Package className={`h-3 w-3 shrink-0 ${isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`} />
                                   <span className={`text-xs truncate ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                                    {project.product_name}
+                                    {company?.name} - {project.product_name}
                                   </span>
                                 </div>
                               </div>
@@ -809,7 +809,7 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 border-t pt-4">
             <Button variant="outline" onClick={() => setShowAddTaskDialog(false)}>
               Cancelar
             </Button>
