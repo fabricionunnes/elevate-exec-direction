@@ -86,6 +86,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   const [meetingToDelete, setMeetingToDelete] = useState<MeetingNote | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(false);
   
   // Finalize meeting dialog
@@ -138,12 +139,13 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
     const { data } = await supabase
       .from("onboarding_staff")
-      .select("id")
+      .select("id, role")
       .eq("user_id", user.id)
       .single();
 
     if (data) {
       setCurrentStaffId(data.id);
+      setIsAdmin(data.role === "admin");
     }
   };
 
@@ -740,8 +742,8 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                 </div>
               </div>
 
-              {/* Actions */}
-              {currentStaffId === selectedMeeting.staff?.id && (
+              {/* Actions - only Admin can delete */}
+              {isAdmin && (
                 <div className="flex justify-end">
                   <Button
                     variant="destructive"
