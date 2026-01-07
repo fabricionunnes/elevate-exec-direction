@@ -113,7 +113,7 @@ const DashboardMetrics = ({
   const [tasksDialogType, setTasksDialogType] = useState<"overdue" | "today" | "status">("overdue");
   const [tasksDialogIds, setTasksDialogIds] = useState<string[]>([]);
   const [tasksDialogStatus, setTasksDialogStatus] = useState<"completed" | "pending" | "in_progress" | null>(null);
-  const [npsDetailType, setNpsDetailType] = useState<"promoters" | "detractors" | "neutrals" | null>(null);
+  const [npsDetailType, setNpsDetailType] = useState<"promoters" | "detractors" | "neutrals" | "all" | null>(null);
   const [npsDetailPage, setNpsDetailPage] = useState(1);
   const npsPerPage = 10;
 
@@ -341,16 +341,16 @@ const DashboardMetrics = ({
   const isCardActive = (type: string, value: string) => activeMetricFilter?.type === type && activeMetricFilter?.value === value;
 
   const handleNpsCardClick = (type: "promoters" | "detractors" | "neutrals") => {
-    const newValue = npsDetailType === type ? null : type;
+    const newValue = npsDetailType === type ? "all" : type;
     setNpsDetailType(newValue);
     setNpsDetailPage(1);
-    onNpsDetailChange?.(newValue !== null);
   };
 
   const getFilteredNpsResponses = (type: "promoters" | "detractors" | "neutrals" | null) => {
-    if (!type) return [];
+  const getFilteredNpsResponses = (type: "promoters" | "detractors" | "neutrals" | "all" | null) => {
     const filteredProjectIds = new Set(projects.map(p => p.id));
     const responses = npsResponses.filter(r => filteredProjectIds.has(r.project_id));
+    if (!type || type === "all") return responses;
     switch (type) {
       case "promoters":
         return responses.filter(r => r.score >= 9);
@@ -358,6 +358,8 @@ const DashboardMetrics = ({
         return responses.filter(r => r.score <= 6);
       case "neutrals":
         return responses.filter(r => r.score >= 7 && r.score <= 8);
+      default:
+        return responses;
     }
   };
 
@@ -489,7 +491,15 @@ const DashboardMetrics = ({
       </div>
 
       {/* Tabbed Details - Mobile Optimized */}
-      <Tabs defaultValue="empresas" className="w-full" onValueChange={(value) => onActiveTabChange?.(value)}>
+      <Tabs defaultValue="empresas" className="w-full" onValueChange={(value) => {
+        onActiveTabChange?.(value);
+        if (value === "nps") {
+          setNpsDetailType("all");
+          setNpsDetailPage(1);
+        } else {
+          setNpsDetailType(null);
+        }
+      }}>
         <TabsList className="w-full grid grid-cols-5 h-8 sm:h-9">
           <TabsTrigger value="empresas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Building2 className="h-3 w-3" /><span className="hidden sm:inline">Empresas</span><span className="sm:hidden">Emp</span></TabsTrigger>
           <TabsTrigger value="agenda" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Calendar className="h-3 w-3" /><span className="hidden sm:inline">Agenda</span><span className="sm:hidden">Ag</span></TabsTrigger>
@@ -617,15 +627,26 @@ const DashboardMetrics = ({
             const totalPages = Math.ceil(allResponses.length / npsPerPage);
             const paginatedResponses = allResponses.slice((npsDetailPage - 1) * npsPerPage, npsDetailPage * npsPerPage);
             
+            const getTitle = () => {
+              switch (npsDetailType) {
+                case "promoters": return "Promotores (9-10)";
+                case "detractors": return "Detratores (0-6)";
+                case "neutrals": return "Neutros (7-8)";
+                default: return "Todas as Respostas";
+              }
+            };
+            
             return (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-medium flex items-center gap-2">
-                    <Star className={cn("h-4 w-4", npsDetailType === "promoters" ? "text-green-500" : npsDetailType === "detractors" ? "text-red-500" : "text-yellow-500")} />
-                    {npsDetailType === "promoters" ? "Promotores (9-10)" : npsDetailType === "detractors" ? "Detratores (0-6)" : "Neutros (7-8)"}
+                    <Star className={cn("h-4 w-4", npsDetailType === "promoters" ? "text-green-500" : npsDetailType === "detractors" ? "text-red-500" : npsDetailType === "neutrals" ? "text-yellow-500" : "text-primary")} />
+                    {getTitle()}
                     <span className="text-muted-foreground">({allResponses.length})</span>
                   </h4>
-                  <button onClick={() => { setNpsDetailType(null); onNpsDetailChange?.(false); }} className="text-xs text-muted-foreground hover:text-foreground">Fechar</button>
+                  {npsDetailType !== "all" && (
+                    <button onClick={() => { setNpsDetailType("all"); setNpsDetailPage(1); }} className="text-xs text-muted-foreground hover:text-foreground">Limpar filtro</button>
+                  )}
                 </div>
                 <div className="grid gap-2">
                   {paginatedResponses.map((response) => (
