@@ -896,9 +896,10 @@ const OnboardingProjectPage = () => {
               <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <NexusHeader title={project.onboarding_company?.name || "UNV Nexus"} />
+              <NexusHeader />
               {project.onboarding_company?.name && (
                 <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-muted-foreground hidden sm:block">{project.onboarding_company.name}</p>
                   {project.onboarding_company_id && (
                     <Button 
                       variant="ghost" 
