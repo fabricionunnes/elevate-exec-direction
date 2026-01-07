@@ -507,6 +507,50 @@ export type Database = {
           },
         ]
       }
+      company_sales_history: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_pre_unv: boolean | null
+          month_year: string
+          notes: string | null
+          revenue: number
+          sales_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_pre_unv?: boolean | null
+          month_year: string
+          notes?: string | null
+          revenue?: number
+          sales_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_pre_unv?: boolean | null
+          month_year?: string
+          notes?: string | null
+          revenue?: number
+          sales_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_sales_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_salespeople: {
         Row: {
           access_code: string

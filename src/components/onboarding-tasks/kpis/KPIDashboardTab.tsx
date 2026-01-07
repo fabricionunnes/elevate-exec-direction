@@ -27,6 +27,8 @@ import { toast } from "sonner";
 import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2 } from "lucide-react";
 import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidget";
 import { GamificationDashboardWidget } from "../gamification/GamificationDashboardWidget";
+import { SalesHistoryDialog } from "./SalesHistoryDialog";
+import { SalesComparisonChart } from "./SalesComparisonChart";
 
 interface KPI {
   id: string;
@@ -78,6 +80,8 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
   const [selectedKpi, setSelectedKpi] = useState<string>("all");
   const [selectedSalesperson, setSelectedSalesperson] = useState<string>("all");
   const [selectedUnit, setSelectedUnit] = useState<string>("all");
+  const [salesHistoryRefreshKey, setSalesHistoryRefreshKey] = useState(0);
+  const [contractStartDate, setContractStartDate] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -93,11 +97,12 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
     }
 
     try {
-      const [kpisRes, salespeopleRes, entriesRes, unitsRes] = await Promise.all([
+      const [kpisRes, salespeopleRes, entriesRes, unitsRes, companyRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
         supabase.from("company_salespeople").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("kpi_entries").select("*").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end),
         supabase.from("company_units").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
+        supabase.from("onboarding_companies").select("contract_start_date").eq("id", companyId).single(),
       ]);
 
       console.log("[KPIDashboardTab] Results:", {
@@ -120,6 +125,9 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
       setSalespeople(salespeopleRes.data || []);
       setEntries(entriesRes.data || []);
       setUnits(unitsRes.data || []);
+      if (companyRes.data) {
+        setContractStartDate(companyRes.data.contract_start_date);
+      }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       toast.error("Erro ao carregar dados");
@@ -434,6 +442,13 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex items-end">
+              <SalesHistoryDialog 
+                companyId={companyId} 
+                contractStartDate={contractStartDate}
+                onDataChange={() => setSalesHistoryRefreshKey(prev => prev + 1)}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -521,6 +536,14 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
           </CardContent>
         </Card>
       )}
+
+      {/* Sales Comparison Chart - Before vs After UNV */}
+      <SalesComparisonChart 
+        companyId={companyId} 
+        contractStartDate={contractStartDate}
+        currentMonthRevenue={calculatedMetrics.totalRevenue}
+        refreshKey={salesHistoryRefreshKey}
+      />
 
       {/* Conversion Card - Small */}
       {calculatedMetrics.hasLeadsData && calculatedMetrics.hasSalesData && (
