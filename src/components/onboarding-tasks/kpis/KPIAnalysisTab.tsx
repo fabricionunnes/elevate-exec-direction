@@ -49,6 +49,33 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
     fetchAllAnalyses();
   }, [companyId, projectId]);
 
+  const resolveActor = async (): Promise<{ staff_id: string | null; user_id: string | null }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !projectId) return { staff_id: null, user_id: null };
+
+    // Prefer staff identity when available
+    const { data: staff } = await supabase
+      .from("onboarding_staff")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (staff?.id) return { staff_id: staff.id, user_id: null };
+
+    // Fallback to client identity within this project
+    const { data: onboardingUser } = await supabase
+      .from("onboarding_users")
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (onboardingUser?.id) return { staff_id: null, user_id: onboardingUser.id };
+
+    return { staff_id: null, user_id: null };
+  };
+
   const fetchAllAnalyses = async () => {
     if (!projectId) return;
     
@@ -178,12 +205,21 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
         setAnalysis(tempAnalysis);
         setStreamedContent("");
         
+        const actor = await resolveActor();
+        if (!actor.staff_id && !actor.user_id) {
+          toast.error("Sem permissão para salvar esta análise no histórico");
+          setAllAnalyses(prev => [tempAnalysis, ...prev]);
+          return;
+        }
+
         const { data: savedAnalysis, error } = await supabase
           .from("onboarding_ai_chat")
           .insert({
             project_id: projectId,
             role: "kpi_analysis",
             content: fullContent,
+            staff_id: actor.staff_id,
+            user_id: actor.user_id,
           })
           .select()
           .single();
