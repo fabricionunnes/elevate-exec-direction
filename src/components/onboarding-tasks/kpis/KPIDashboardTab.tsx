@@ -25,6 +25,7 @@ import { format, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek } fro
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2 } from "lucide-react";
+import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidget";
 
 interface KPI {
   id: string;
@@ -60,9 +61,10 @@ interface Unit {
 
 interface KPIDashboardTabProps {
   companyId: string;
+  projectId?: string;
 }
 
-export const KPIDashboardTab = ({ companyId }: KPIDashboardTabProps) => {
+export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) => {
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -613,6 +615,11 @@ export const KPIDashboardTab = ({ companyId }: KPIDashboardTabProps) => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Endomarketing Campaigns Widget */}
+      {projectId && (
+        <CampaignDashboardWidget companyId={companyId} projectId={projectId} />
+      )}
     </div>
   );
 };

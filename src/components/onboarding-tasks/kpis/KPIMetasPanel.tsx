@@ -101,7 +101,7 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-6">
-          <KPIDashboardTab companyId={companyId} />
+          <KPIDashboardTab companyId={companyId} projectId={projectId} />
         </TabsContent>
 
         <TabsContent value="salespeople" className="mt-6">
