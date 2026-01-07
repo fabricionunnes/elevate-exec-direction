@@ -522,108 +522,24 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
         </Card>
       )}
 
-      {/* Sales Conversion Card - Highlighted */}
-      {(calculatedMetrics.hasLeadsData || calculatedMetrics.hasProposalsData || calculatedMetrics.hasSalesData) && (
-        <Card className="border-2 border-primary bg-gradient-to-br from-primary/10 to-primary/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Percent className="h-5 w-5 text-primary" />
-              Conversão de Vendas
-            </CardTitle>
+      {/* Conversion Card - Small */}
+      {calculatedMetrics.hasLeadsData && calculatedMetrics.hasSalesData && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Conversão de Vendas</CardTitle>
+            <Percent className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              {/* Lead to Proposal */}
-              {calculatedMetrics.hasLeadsData && calculatedMetrics.hasProposalsData && (
-                <div className="text-center p-4 bg-background/60 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Lead → Proposta</p>
-                  <p className={`text-3xl font-bold ${
-                    calculatedMetrics.leadToProposal >= 50 ? 'text-green-600' :
-                    calculatedMetrics.leadToProposal >= 30 ? 'text-amber-600' :
-                    'text-destructive'
-                  }`}>
-                    {calculatedMetrics.leadToProposal.toFixed(1)}%
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {calculatedMetrics.totalProposals} de {calculatedMetrics.totalLeads} leads
-                  </p>
-                </div>
-              )}
-
-              {/* Proposal to Sale */}
-              {calculatedMetrics.hasProposalsData && calculatedMetrics.hasSalesData && (
-                <div className="text-center p-4 bg-background/60 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Proposta → Venda</p>
-                  <p className={`text-3xl font-bold ${
-                    calculatedMetrics.proposalToSale >= 40 ? 'text-green-600' :
-                    calculatedMetrics.proposalToSale >= 20 ? 'text-amber-600' :
-                    'text-destructive'
-                  }`}>
-                    {calculatedMetrics.proposalToSale.toFixed(1)}%
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {calculatedMetrics.totalSales} de {calculatedMetrics.totalProposals} propostas
-                  </p>
-                </div>
-              )}
-
-              {/* Lead to Sale (General Conversion) */}
-              {calculatedMetrics.hasLeadsData && calculatedMetrics.hasSalesData && (
-                <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
-                  <p className="text-sm text-muted-foreground mb-1">Lead → Venda</p>
-                  <p className={`text-3xl font-bold ${
-                    calculatedMetrics.leadToSale >= 20 ? 'text-green-600' :
-                    calculatedMetrics.leadToSale >= 10 ? 'text-amber-600' :
-                    'text-destructive'
-                  }`}>
-                    {calculatedMetrics.leadToSale.toFixed(1)}%
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {calculatedMetrics.totalSales} vendas de {calculatedMetrics.totalLeads} leads
-                  </p>
-                </div>
-              )}
+            <div className={`text-2xl font-bold ${
+              calculatedMetrics.leadToSale >= 20 ? 'text-green-600' :
+              calculatedMetrics.leadToSale >= 10 ? 'text-amber-600' :
+              'text-destructive'
+            }`}>
+              {calculatedMetrics.leadToSale.toFixed(1)}%
             </div>
-
-            {/* Summary row */}
-            <div className="grid gap-4 md:grid-cols-4 mt-4 pt-4 border-t">
-              {calculatedMetrics.hasLeadsData && (
-                <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Leads</p>
-                    <p className="text-xl font-semibold">{calculatedMetrics.totalLeads.toLocaleString("pt-BR")}</p>
-                  </div>
-                </div>
-              )}
-              {calculatedMetrics.hasProposalsData && (
-                <div className="flex items-center gap-3">
-                  <Hash className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Propostas</p>
-                    <p className="text-xl font-semibold">{calculatedMetrics.totalProposals.toLocaleString("pt-BR")}</p>
-                  </div>
-                </div>
-              )}
-              {calculatedMetrics.hasSalesData && (
-                <div className="flex items-center gap-3">
-                  <Target className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Vendas</p>
-                    <p className="text-xl font-semibold">{calculatedMetrics.totalSales.toLocaleString("pt-BR")}</p>
-                  </div>
-                </div>
-              )}
-              {calculatedMetrics.hasRevenueData && calculatedMetrics.hasSalesData && (
-                <div className="flex items-center gap-3">
-                  <DollarSign className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Ticket Médio</p>
-                    <p className="text-xl font-semibold">{formatValue(calculatedMetrics.avgTicket, "monetary")}</p>
-                  </div>
-                </div>
-              )}
-            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {calculatedMetrics.totalSales} vendas de {calculatedMetrics.totalLeads} leads
+            </p>
           </CardContent>
         </Card>
       )}
