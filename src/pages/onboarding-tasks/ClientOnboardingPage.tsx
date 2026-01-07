@@ -14,6 +14,7 @@ import {
   Headphones,
   BarChart3,
   Video,
+  ClipboardCheck,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,6 +29,7 @@ import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalPro
 import { ClientSupportButton } from "@/components/client-portal/ClientSupportButton";
 import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistoryPanel";
 import { ClientMeetingsView } from "@/components/client-portal/ClientMeetingsView";
+import { ClientAssessmentsView } from "@/components/client-portal/ClientAssessmentsView";
 
 interface OnboardingTask {
   id: string;
@@ -63,7 +65,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings";
+type ViewType = "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -294,8 +296,8 @@ const ClientOnboardingPage = () => {
     { id: "list" as ViewType, icon: List, label: "Lista" },
     { id: "metrics" as ViewType, icon: BarChart3, label: "Métricas" },
     { id: "tickets" as ViewType, icon: MessageSquare, label: "Chamados" },
-    { id: "supports" as ViewType, icon: Headphones, label: "Suportes" },
     { id: "meetings" as ViewType, icon: Video, label: "Reuniões" },
+    { id: "assessments" as ViewType, icon: ClipboardCheck, label: "Testes" },
   ];
 
 return (
@@ -466,6 +468,17 @@ return (
               exit={{ opacity: 0, x: 20 }}
             >
               <ClientMeetingsView projectId={project.id} />
+            </motion.div>
+          )}
+
+          {activeView === "assessments" && (
+            <motion.div
+              key="assessments"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientAssessmentsView projectId={project.id} />
             </motion.div>
           )}
         </AnimatePresence>
