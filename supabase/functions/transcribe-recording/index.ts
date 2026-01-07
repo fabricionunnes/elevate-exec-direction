@@ -103,15 +103,61 @@ serve(async (req) => {
     const fileId = fileIdMatch[1];
     console.log(`Extracted file ID: ${fileId}`);
 
-    // Download file from Google Drive
-    const driveResponse = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    // First, get file metadata to check permissions
+    const metadataResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType,capabilities,shared,permissions&supportsAllDrives=true`,
       {
         headers: {
           Authorization: `Bearer ${googleToken.access_token}`,
         },
       }
     );
+
+    if (metadataResponse.ok) {
+      const metadata = await metadataResponse.json();
+      console.log("File metadata:", JSON.stringify(metadata, null, 2));
+    }
+
+    // Try to download file from Google Drive with export for Google Workspace files
+    let driveResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
+      {
+        headers: {
+          Authorization: `Bearer ${googleToken.access_token}`,
+        },
+      }
+    );
+
+    // If 403, check if we need to request export or if file needs to be shared differently
+    if (driveResponse.status === 403) {
+      const errorData = await driveResponse.json();
+      console.error("Drive 403 error details:", JSON.stringify(errorData, null, 2));
+      
+      // Try webContentLink approach for some file types
+      const linkResponse = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?fields=webContentLink,exportLinks&supportsAllDrives=true`,
+        {
+          headers: {
+            Authorization: `Bearer ${googleToken.access_token}`,
+          },
+        }
+      );
+      
+      if (linkResponse.ok) {
+        const linkData = await linkResponse.json();
+        console.log("File links:", JSON.stringify(linkData, null, 2));
+        
+        if (linkData.webContentLink) {
+          // Try downloading via webContentLink
+          driveResponse = await fetch(linkData.webContentLink, {
+            headers: {
+              Authorization: `Bearer ${googleToken.access_token}`,
+            },
+            redirect: "follow",
+          });
+        }
+      }
+    }
 
     if (!driveResponse.ok) {
       // Try to refresh token if expired
@@ -143,7 +189,7 @@ serve(async (req) => {
 
           // Retry download with new token
           const retryResponse = await fetch(
-            `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+            `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
             {
               headers: {
                 Authorization: `Bearer ${tokenData.access_token}`,
@@ -170,7 +216,9 @@ serve(async (req) => {
       console.error("Drive error:", errorText);
       
       return new Response(
-        JSON.stringify({ error: "Não foi possível baixar o arquivo do Google Drive. Verifique se o link está correto e se você tem acesso." }),
+        JSON.stringify({ 
+          error: "Não foi possível baixar o arquivo do Google Drive. Isso pode acontecer se a gravação do Meet ainda não estiver disponível ou se você não tem permissão de download. Aguarde alguns minutos e tente novamente." 
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
