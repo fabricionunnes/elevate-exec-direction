@@ -295,10 +295,22 @@ Deno.serve(async (req) => {
     }
 
     if (action === "create-event") {
-      const body = await req.json();
+      let body;
+      try {
+        body = await req.json();
+      } catch (parseError) {
+        console.error("Failed to parse request body:", parseError);
+        return new Response(
+          JSON.stringify({ error: "Invalid request body" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       const { title, description, startDateTime, endDateTime, attendees, target_user_id } = body;
+      console.log("create-event body:", { title, startDateTime, endDateTime, target_user_id });
 
       if (!title || !startDateTime || !endDateTime) {
+        console.error("Missing required fields:", { title, startDateTime, endDateTime });
         return new Response(
           JSON.stringify({ error: "Missing required fields: title, startDateTime, endDateTime" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -307,6 +319,7 @@ Deno.serve(async (req) => {
 
       // Determine which user's calendar to use
       const calendarUserId = target_user_id || user.id;
+      console.log("Using calendar for user:", calendarUserId);
 
       // Get token for the target calendar user
       const { data: calendarTokenData, error: calendarTokenError } = await supabase
@@ -315,7 +328,10 @@ Deno.serve(async (req) => {
         .eq("user_id", calendarUserId)
         .single();
 
+      console.log("Token lookup result:", { hasToken: !!calendarTokenData, error: calendarTokenError?.message });
+
       if (!calendarTokenData || calendarTokenError) {
+        console.error("No token found for user:", calendarUserId);
         return new Response(
           JSON.stringify({ error: "Target user not connected to Google Calendar", needsAuth: true }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
