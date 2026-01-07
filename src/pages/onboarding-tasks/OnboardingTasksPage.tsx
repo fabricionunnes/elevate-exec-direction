@@ -118,12 +118,24 @@ const OnboardingTasksPage = () => {
   const companiesPerPage = 10;
 
   useEffect(() => {
-    checkUserPermissions();
-    fetchCompanies();
-    fetchFiltersData();
-    fetchAllTasks();
-    fetchNpsResponses();
-    fetchMonthlyGoals();
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // Run all independent fetches in parallel for faster load
+        await Promise.all([
+          checkUserPermissions(),
+          fetchFiltersData(),
+          fetchNpsResponses(),
+          fetchMonthlyGoals(),
+        ]);
+        
+        // Then fetch tasks and companies (companies now depends on tasks)
+        await fetchAllTasks();
+      } catch (error) {
+        console.error("Error loading dashboard:", error);
+      }
+    };
+    loadData();
   }, []);
 
   const fetchAllTasks = async () => {
@@ -150,8 +162,12 @@ const OnboardingTasksPage = () => {
       }
 
       setAllTasks(all);
+      
+      // After tasks are loaded, fetch companies (which will use task counts from allTasks)
+      await fetchCompanies(all);
     } catch (error) {
       console.error("Error fetching tasks:", error);
+      setLoading(false);
     }
   };
 
@@ -232,52 +248,54 @@ const OnboardingTasksPage = () => {
     }
   };
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = async (tasksData: typeof allTasks) => {
     try {
-      // Fetch companies with staff info
-      const { data: companiesData, error: companiesError } = await supabase
-        .from("onboarding_companies")
-        .select(`
-          *,
-          cs:onboarding_staff!onboarding_companies_cs_id_fkey(id, name, role),
-          consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(id, name, role)
-        `)
-        .order("name");
+      // Fetch companies and projects in parallel
+      const [companiesResult, projectsResult] = await Promise.all([
+        supabase
+          .from("onboarding_companies")
+          .select(`
+            *,
+            cs:onboarding_staff!onboarding_companies_cs_id_fkey(id, name, role),
+            consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(id, name, role)
+          `)
+          .order("name"),
+        supabase
+          .from("onboarding_projects")
+          .select("*")
+          .order("created_at", { ascending: false })
+      ]);
 
-      if (companiesError) throw companiesError;
+      if (companiesResult.error) throw companiesResult.error;
+      if (projectsResult.error) throw projectsResult.error;
 
-      // Fetch all projects
-      const { data: projectsData, error: projectsError } = await supabase
-        .from("onboarding_projects")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const companiesData = companiesResult.data || [];
+      const projectsData = projectsResult.data || [];
 
-      if (projectsError) throw projectsError;
+      // Calculate task counts from the already-loaded tasks (no extra queries!)
+      const taskCountsByProject = new Map<string, { total: number; completed: number }>();
+      
+      tasksData.forEach(task => {
+        const counts = taskCountsByProject.get(task.project_id) || { total: 0, completed: 0 };
+        counts.total++;
+        if (task.status === "completed") {
+          counts.completed++;
+        }
+        taskCountsByProject.set(task.project_id, counts);
+      });
 
-      // Fetch task counts for each project
-      const projectsWithCounts = await Promise.all(
-        (projectsData || []).map(async (project) => {
-          const { count: tasksCount } = await supabase
-            .from("onboarding_tasks")
-            .select("*", { count: "exact", head: true })
-            .eq("project_id", project.id);
-
-          const { count: completedCount } = await supabase
-            .from("onboarding_tasks")
-            .select("*", { count: "exact", head: true })
-            .eq("project_id", project.id)
-            .eq("status", "completed");
-
-          return {
-            ...project,
-            tasks_count: tasksCount || 0,
-            completed_count: completedCount || 0,
-          };
-        })
-      );
+      // Add counts to projects
+      const projectsWithCounts = projectsData.map(project => {
+        const counts = taskCountsByProject.get(project.id) || { total: 0, completed: 0 };
+        return {
+          ...project,
+          tasks_count: counts.total,
+          completed_count: counts.completed,
+        };
+      });
 
       // Group projects by company
-      const companiesWithProjects = (companiesData || []).map((company) => {
+      const companiesWithProjects = companiesData.map((company) => {
         const companyProjects = projectsWithCounts.filter(
           (p) => p.onboarding_company_id === company.id
         );
@@ -293,7 +311,7 @@ const OnboardingTasksPage = () => {
       });
 
       // Store all projects for dashboard metrics
-      setAllProjects((projectsData || []).map(p => ({
+      setAllProjects(projectsData.map(p => ({
         id: p.id,
         product_id: p.product_id,
         product_name: p.product_name,
@@ -314,6 +332,10 @@ const OnboardingTasksPage = () => {
     }
   };
 
+  // Wrapper to refresh all data (used by child components)
+  const refreshData = async () => {
+    await fetchAllTasks();
+  };
   // Calculate overdue and today tasks for dashboard (respects consultant/service/status filters)
   // IMPORTANT: Only consider ACTIVE projects for dashboard metrics
   const activeProjects = useMemo(() => {
@@ -1064,10 +1086,7 @@ const OnboardingTasksPage = () => {
           onDateRangeChange={setDateRange}
           overdueTasks={overdueTasks}
           todayTasks={todayTasks}
-          onDataRefresh={() => {
-            fetchAllTasks();
-            fetchCompanies();
-          }}
+          onDataRefresh={refreshData}
           currentStaffUserId={currentUserId}
         />
 
@@ -1323,7 +1342,7 @@ const OnboardingTasksPage = () => {
       <CreateProjectDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
-        onProjectCreated={fetchCompanies}
+        onProjectCreated={refreshData}
       />
 
       {/* Task notifications popup */}
