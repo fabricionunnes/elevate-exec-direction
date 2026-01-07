@@ -141,23 +141,29 @@ const ClientOnboardingPage = () => {
           return;
         }
 
-        // Fetch all projects the user has access to
+        // Fetch all projects the user has access to (only active ones)
         const { data: allUserProjects } = await supabase
           .from("onboarding_users")
-          .select("project:onboarding_projects(id, product_name, onboarding_company:onboarding_companies(name))")
+          .select("project:onboarding_projects(id, product_name, status, onboarding_company:onboarding_companies(name, status))")
           .eq("user_id", user.id);
 
         if (allUserProjects && isMounted) {
           const projects = allUserProjects
             .map(u => u.project)
-            .filter((p): p is UserProject => p !== null);
+            .filter((p): p is UserProject & { status: string; onboarding_company: { name: string; status: string } | null } => {
+              if (!p) return false;
+              // Only show active projects with active companies
+              const isProjectActive = p.status !== "closed" && p.status !== "completed";
+              const isCompanyActive = !p.onboarding_company || p.onboarding_company.status !== "inactive";
+              return isProjectActive && isCompanyActive;
+            });
           setUserProjects(projects);
         }
 
         // Find onboarding user for this project
         const { data: onboardingUser, error: userError } = await supabase
           .from("onboarding_users")
-          .select("*, project:onboarding_projects(*, onboarding_company:onboarding_companies(name))")
+          .select("*, project:onboarding_projects(*, onboarding_company:onboarding_companies(name, status))")
           .eq("user_id", user.id)
           .eq("project_id", projectId)
           .maybeSingle();
@@ -173,6 +179,17 @@ const ClientOnboardingPage = () => {
         
         if (!onboardingUser) {
           toast.error("Você não tem acesso a este projeto");
+          navigate("/onboarding-tasks/login");
+          return;
+        }
+
+        // Block access if project is closed/completed or company is inactive
+        const projectStatus = onboardingUser.project?.status;
+        const companyStatus = onboardingUser.project?.onboarding_company?.status;
+        
+        if (projectStatus === "closed" || projectStatus === "completed" || companyStatus === "inactive") {
+          toast.error("Este projeto foi encerrado e não está mais disponível");
+          await supabase.auth.signOut();
           navigate("/onboarding-tasks/login");
           return;
         }
