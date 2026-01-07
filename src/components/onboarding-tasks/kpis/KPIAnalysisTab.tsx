@@ -43,7 +43,7 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
   const [streamedContent, setStreamedContent] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["resumo", "alertas"]));
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchAllAnalyses();
@@ -187,7 +187,8 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
             if (content) {
               fullContent += content;
               setStreamedContent(fullContent);
-              scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+              // keep the last token visible during streaming
+              endRef.current?.scrollIntoView({ block: "end" });
             }
           } catch {
             textBuffer = line + "\n" + textBuffer;
@@ -256,21 +257,21 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
     let currentSection: { title: string; lines: string[] } | null = null;
 
     const sectionConfig: Record<string, { icon: React.ReactNode; color: string }> = {
-      'resumo': { icon: <Zap className="h-5 w-5" />, color: 'text-primary' },
-      'executivo': { icon: <Zap className="h-5 w-5" />, color: 'text-primary' },
-      'kpi': { icon: <BarChart3 className="h-5 w-5" />, color: 'text-blue-500' },
-      'indicador': { icon: <BarChart3 className="h-5 w-5" />, color: 'text-blue-500' },
-      'vendedor': { icon: <Users className="h-5 w-5" />, color: 'text-violet-500' },
-      'equipe': { icon: <Users className="h-5 w-5" />, color: 'text-violet-500' },
-      'alerta': { icon: <AlertTriangle className="h-5 w-5" />, color: 'text-amber-500' },
-      'atenção': { icon: <AlertTriangle className="h-5 w-5" />, color: 'text-amber-500' },
-      'ação': { icon: <CheckCircle2 className="h-5 w-5" />, color: 'text-green-500' },
-      'plano': { icon: <Target className="h-5 w-5" />, color: 'text-green-500' },
-      'recomend': { icon: <Lightbulb className="h-5 w-5" />, color: 'text-amber-500' },
-      'sugest': { icon: <Lightbulb className="h-5 w-5" />, color: 'text-amber-500' },
-      'conversa': { icon: <MessageSquare className="h-5 w-5" />, color: 'text-cyan-500' },
-      'reunião': { icon: <MessageSquare className="h-5 w-5" />, color: 'text-cyan-500' },
-      'default': { icon: <TrendingUp className="h-5 w-5" />, color: 'text-muted-foreground' },
+      "resumo": { icon: <Zap className="h-5 w-5" />, color: "text-primary" },
+      "executivo": { icon: <Zap className="h-5 w-5" />, color: "text-primary" },
+      "kpi": { icon: <BarChart3 className="h-5 w-5" />, color: "text-accent-foreground" },
+      "indicador": { icon: <BarChart3 className="h-5 w-5" />, color: "text-accent-foreground" },
+      "vendedor": { icon: <Users className="h-5 w-5" />, color: "text-secondary-foreground" },
+      "equipe": { icon: <Users className="h-5 w-5" />, color: "text-secondary-foreground" },
+      "alerta": { icon: <AlertTriangle className="h-5 w-5" />, color: "text-destructive" },
+      "atenção": { icon: <AlertTriangle className="h-5 w-5" />, color: "text-destructive" },
+      "ação": { icon: <CheckCircle2 className="h-5 w-5" />, color: "text-primary" },
+      "plano": { icon: <Target className="h-5 w-5" />, color: "text-primary" },
+      "recomend": { icon: <Lightbulb className="h-5 w-5" />, color: "text-muted-foreground" },
+      "sugest": { icon: <Lightbulb className="h-5 w-5" />, color: "text-muted-foreground" },
+      "conversa": { icon: <MessageSquare className="h-5 w-5" />, color: "text-muted-foreground" },
+      "reunião": { icon: <MessageSquare className="h-5 w-5" />, color: "text-muted-foreground" },
+      "default": { icon: <TrendingUp className="h-5 w-5" />, color: "text-muted-foreground" },
     };
 
     const getConfig = (title: string) => {
@@ -315,6 +316,41 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
 
   const contentToShow = generating ? streamedContent : analysis?.content;
   const parsedSections = contentToShow && !generating ? parseContentIntoSections(contentToShow) : [];
+
+  const Markdown = ({ markdown }: { markdown: string }) => (
+    <ReactMarkdown
+      components={{
+        p: ({ children }) => {
+          const parts = Array.isArray(children) ? children : [children];
+          const raw = parts
+            .map((c) => (typeof c === "string" ? c : ""))
+            .join("")
+            .trim();
+
+          const labelMatch = raw.match(/^(Ação|Meta|Impacto|Diagnóstico|Observação):\s*/i);
+          if (labelMatch) {
+            const label = labelMatch[1];
+            const rest = raw.replace(labelMatch[0], "");
+            return (
+              <p className="rounded-md border bg-muted/40 px-3 py-2">
+                <strong className="text-foreground">{label}:</strong> {rest}
+              </p>
+            );
+          }
+
+          return <p>{children}</p>;
+        },
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-2 border-primary/40 pl-4 text-muted-foreground">
+            {children}
+          </blockquote>
+        ),
+        hr: () => <hr className="my-6 border-border" />,
+      }}
+    >
+      {markdown}
+    </ReactMarkdown>
+  );
 
   if (loading) {
     return (
@@ -446,10 +482,11 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
       {generating && streamedContent ? (
         <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <ScrollArea className="h-[calc(100vh-380px)] min-h-[400px]" ref={scrollRef}>
+            <ScrollArea className="h-[calc(100vh-380px)] min-h-[400px]">
               <div className="p-6">
                 <div className="prose prose-sm dark:prose-invert max-w-none">
                   <ReactMarkdown>{streamedContent}</ReactMarkdown>
+                  <div ref={endRef} />
                   <div className="flex items-center gap-2 mt-4 text-primary animate-pulse">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span className="text-sm">Gerando análise...</span>
