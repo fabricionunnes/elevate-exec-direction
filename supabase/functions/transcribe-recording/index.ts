@@ -123,17 +123,19 @@ serve(async (req) => {
       fileSize = parseInt(metadata.size || "0", 10);
       mimeType = metadata.mimeType || "video/mp4";
       
-      // Check if file is too large (limit to 50MB for processing)
-      const maxFileSize = 50 * 1024 * 1024; // 50MB
+      // Check if file is too large (limit to 200MB for processing)
+      const maxFileSize = 200 * 1024 * 1024; // 200MB
       if (fileSize > maxFileSize) {
         console.error(`File too large: ${fileSize} bytes (max: ${maxFileSize})`);
         return new Response(
           JSON.stringify({ 
-            error: `O arquivo de gravação é muito grande (${Math.round(fileSize / 1024 / 1024)}MB). O limite para transcrição automática é de 50MB. Considere usar a transcrição manual.` 
+            error: `O arquivo de gravação é muito grande (${Math.round(fileSize / 1024 / 1024)}MB). O limite para transcrição automática é de 200MB. Para arquivos maiores, considere usar a transcrição manual.` 
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      
+      console.log(`File size: ${Math.round(fileSize / 1024 / 1024)}MB - proceeding with download...`);
       
       if (metadata.capabilities?.canDownload === false) {
         return new Response(
