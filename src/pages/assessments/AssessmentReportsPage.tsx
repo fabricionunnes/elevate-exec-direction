@@ -79,49 +79,63 @@ export default function AssessmentReportsPage() {
   const [cycleInfo, setCycleInfo] = useState<{ title: string; type: string } | null>(null);
 
   useEffect(() => {
-    if (cycleId) {
-      fetchData();
-    }
+    if (!cycleId) return;
+    setLoading(true);
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cycleId]);
 
   const fetchData = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        // Relatórios são restritos a usuários autenticados (e.g. equipe/admin)
+        navigate("/onboarding-tasks/login");
+        return;
+      }
+
       // Get cycle info
-      const { data: cycle } = await supabase
+      const { data: cycle, error: cycleError } = await supabase
         .from("assessment_cycles")
         .select("title, type")
         .eq("id", cycleId)
         .single();
 
-      if (cycle) setCycleInfo(cycle);
+      if (cycleError) throw cycleError;
+      setCycleInfo(cycle);
 
       // Get participants
-      const { data: participantsData } = await supabase
+      const { data: participantsData, error: participantsError } = await supabase
         .from("assessment_participants")
         .select("id, name, role, department")
         .eq("cycle_id", cycleId)
         .order("name");
 
+      if (participantsError) throw participantsError;
       setParticipants(participantsData || []);
 
       // Get DISC responses
-      const { data: discData } = await supabase
+      const { data: discData, error: discError } = await supabase
         .from("disc_responses")
         .select("*")
         .eq("cycle_id", cycleId);
 
+      if (discError) throw discError;
       setDiscResponses(discData || []);
 
       // Get 360 evaluations
-      const { data: eval360Data } = await supabase
+      const { data: eval360Data, error: eval360Error } = await supabase
         .from("assessment_360_evaluations")
         .select("*")
         .eq("cycle_id", cycleId)
         .eq("is_completed", true);
 
+      if (eval360Error) throw eval360Error;
       setEvaluations360(eval360Data || []);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching assessment report data:", error);
+      // Evita falha silenciosa: mostra um aviso quando for bloqueio de permissão/RLS
+      alert("Não foi possível carregar o relatório. Verifique se você está logado como equipe/admin.");
     } finally {
       setLoading(false);
     }
