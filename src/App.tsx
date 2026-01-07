@@ -80,6 +80,7 @@ import NPSSurveyPage from "./pages/NPSSurveyPage";
 import DISCAssessmentPage from "./pages/assessments/DISCAssessmentPage";
 import Assessment360Page from "./pages/assessments/Assessment360Page";
 import AssessmentReportsPage from "./pages/assessments/AssessmentReportsPage";
+import UnifiedAssessmentPage from "./pages/assessments/UnifiedAssessmentPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
 // Loading fallback component
@@ -171,6 +172,7 @@ const App = () => (
             <Route path="/nps" element={<NPSSurveyPage />} />
             <Route path="/disc" element={<DISCAssessmentPage />} />
             <Route path="/360" element={<Assessment360Page />} />
+            <Route path="/avaliacao" element={<UnifiedAssessmentPage />} />
             <Route path="/onboarding-tasks/:projectId/reports" element={<AssessmentReportsPage />} />
             
             {/* Portal do Planejamento 2026 */}
