@@ -74,6 +74,7 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
+  const [staffNameSearch, setStaffNameSearch] = useState<string>("");
 
   useEffect(() => {
     fetchFiltersData();
@@ -410,9 +411,17 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
         return false;
       }
 
-      // Staff filter
+      // Staff filter (dropdown)
       if (selectedStaff !== "all" && activity.staffId !== selectedStaff) {
         return false;
+      }
+
+      // Staff name search filter (text search)
+      if (staffNameSearch.trim()) {
+        const searchLower = staffNameSearch.toLowerCase().trim();
+        if (!activity.staffName?.toLowerCase().includes(searchLower)) {
+          return false;
+        }
       }
 
       // Type filter
@@ -422,7 +431,7 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
 
       return true;
     });
-  }, [activities, dateFrom, dateTo, selectedCompany, selectedStaff, selectedType]);
+  }, [activities, dateFrom, dateTo, selectedCompany, selectedStaff, selectedType, staffNameSearch]);
 
   const clearFilters = () => {
     setDateFrom("");
@@ -430,6 +439,7 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
     setSelectedCompany("all");
     setSelectedStaff("all");
     setSelectedType("all");
+    setStaffNameSearch("");
   };
 
   const getActivityIcon = (type: string, action: string) => {
@@ -540,6 +550,17 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
               </SelectContent>
             </Select>
 
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground whitespace-nowrap">Usuário:</Label>
+              <Input
+                type="text"
+                placeholder="Buscar por nome..."
+                value={staffNameSearch}
+                onChange={(e) => setStaffNameSearch(e.target.value)}
+                className="h-8 w-40 text-sm"
+              />
+            </div>
+
             <Select value={selectedStaff} onValueChange={setSelectedStaff}>
               <SelectTrigger className="h-8 w-[180px] text-sm">
                 <User className="h-3 w-3 mr-1" />
@@ -569,7 +590,7 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
               </SelectContent>
             </Select>
 
-            {(dateFrom || dateTo || selectedCompany !== "all" || selectedStaff !== "all" || selectedType !== "all") && (
+            {(dateFrom || dateTo || selectedCompany !== "all" || selectedStaff !== "all" || selectedType !== "all" || staffNameSearch.trim()) && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8">
                 <X className="h-3 w-3 mr-1" />
                 Limpar
