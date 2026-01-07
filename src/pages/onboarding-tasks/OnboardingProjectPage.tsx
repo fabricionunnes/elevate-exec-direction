@@ -1121,54 +1121,41 @@ const OnboardingProjectPage = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="overflow-x-auto -mx-4 px-4 mb-6">
-            <TabsList className="inline-flex w-max min-w-full justify-start">
-              <TabsTrigger value="kpis" className="gap-2 whitespace-nowrap">
-                <BarChart3 className="h-4 w-4" />
-                KPIs
-              </TabsTrigger>
-              <TabsTrigger value="tasks" className="gap-2 whitespace-nowrap">
-                <CheckCircle2 className="h-4 w-4" />
-                Jornada
-              </TabsTrigger>
-              <TabsTrigger value="briefing" className="gap-2 whitespace-nowrap">
-                <Building2 className="h-4 w-4" />
-                Briefing
-              </TabsTrigger>
-              <TabsTrigger value="variables" className="gap-2 whitespace-nowrap">
-                <Settings className="h-4 w-4" />
-                Variáveis
-              </TabsTrigger>
-              <TabsTrigger value="tickets" className="gap-2 whitespace-nowrap">
-                <MessageSquare className="h-4 w-4" />
-                Chamados
-              </TabsTrigger>
-              <TabsTrigger value="ai-coach" className="gap-2 whitespace-nowrap">
-                <Sparkles className="h-4 w-4" />
-                IA Coach
-              </TabsTrigger>
-              <TabsTrigger value="nps" className="gap-2 whitespace-nowrap">
-                <TrendingUp className="h-4 w-4" />
-                NPS
-              </TabsTrigger>
-              <TabsTrigger value="support-history" className="gap-2 whitespace-nowrap">
-                <Headphones className="h-4 w-4" />
-                Suportes
-              </TabsTrigger>
-              <TabsTrigger value="meetings" className="gap-2 whitespace-nowrap">
-                <Video className="h-4 w-4" />
-                Reuniões
-              </TabsTrigger>
-              <TabsTrigger value="assessments" className="gap-2 whitespace-nowrap">
-                <Brain className="h-4 w-4" />
-                Avaliações
-              </TabsTrigger>
-              <TabsTrigger value="endomarketing" className="gap-2 whitespace-nowrap">
-                <Trophy className="h-4 w-4" />
-                Endomarketing
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList className="mb-6 flex-wrap h-auto gap-1">
+            <TabsTrigger value="kpis" className="px-3" title="KPIs">
+              <BarChart3 className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="px-3" title="Jornada">
+              <CheckCircle2 className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger value="briefing" className="px-3" title="Briefing">
+              <Building2 className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger value="variables" className="px-3" title="Variáveis">
+              <Settings className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger value="tickets" className="px-3" title="Chamados">
+              <MessageSquare className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger value="ai-coach" className="px-3" title="IA Coach">
+              <Sparkles className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger value="nps" className="px-3" title="NPS">
+              <TrendingUp className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger value="support-history" className="px-3" title="Suportes">
+              <Headphones className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger value="meetings" className="px-3" title="Reuniões">
+              <Video className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger value="assessments" className="px-3" title="Avaliações">
+              <Brain className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger value="endomarketing" className="px-3" title="Endomarketing">
+              <Trophy className="h-4 w-4" />
+            </TabsTrigger>
+          </TabsList>
 
           <TabsContent value="tasks">
             {/* Search, View Toggle and Add Task */}
