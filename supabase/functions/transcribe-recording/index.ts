@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.87.1";
-import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,18 +80,7 @@ serve(async (req) => {
     // Extract file ID from Google Drive URL
     const fileIdMatch = recordingUrl.match(/\/d\/([^\/]+)/);
     if (!fileIdMatch) {
-      console.log("Could not extract file ID from URL, attempting direct transcription prompt");
-      
-      // If we can't get the file, use Gemini to explain the situation
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (!LOVABLE_API_KEY) {
-        return new Response(
-          JSON.stringify({ error: "LOVABLE_API_KEY not configured" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // For now, provide a helpful message about manual transcription
+      console.log("Could not extract file ID from URL");
       return new Response(
         JSON.stringify({ 
           error: "Não foi possível acessar o arquivo de gravação automaticamente. Verifique se o link do Google Drive está correto e se você tem permissão de acesso." 
@@ -104,7 +92,7 @@ serve(async (req) => {
     const fileId = fileIdMatch[1];
     console.log(`Extracted file ID: ${fileId}`);
 
-    // First, get file metadata to check permissions and size
+    // Get file metadata
     console.log("Fetching file metadata...");
     const metadataResponse = await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType,size,capabilities&supportsAllDrives=true`,
@@ -117,20 +105,23 @@ serve(async (req) => {
 
     let fileSize = 0;
     let mimeType = "video/mp4";
+    let fileName = "recording";
+    
     if (metadataResponse.ok) {
       const metadata = await metadataResponse.json();
       console.log("File metadata:", JSON.stringify(metadata, null, 2));
       fileSize = parseInt(metadata.size || "0", 10);
       mimeType = metadata.mimeType || "video/mp4";
+      fileName = metadata.name || "recording";
       
-      // Check if file is too large (limit to 25MB - edge function memory constraint)
-      const maxFileSize = 25 * 1024 * 1024; // 25MB
+      // ElevenLabs supports files up to 1GB, but limit to 500MB for safety
+      const maxFileSize = 500 * 1024 * 1024; // 500MB
       if (fileSize > maxFileSize) {
         const fileSizeMB = Math.round(fileSize / 1024 / 1024);
         console.error(`File too large: ${fileSize} bytes (max: ${maxFileSize})`);
         return new Response(
           JSON.stringify({ 
-            error: `O arquivo de gravação é muito grande (${fileSizeMB}MB). O limite para transcrição automática é de 25MB devido às restrições de processamento. Para arquivos maiores, recomendamos:\n\n• Comprimir o vídeo antes de enviar\n• Usar ferramentas externas como Otter.ai ou Descript\n• Ou transcrever manualmente` 
+            error: `O arquivo de gravação é muito grande (${fileSizeMB}MB). O limite para transcrição automática é de 500MB.` 
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -215,7 +206,7 @@ serve(async (req) => {
             .eq("user_id", user.id);
 
           // Retry download with new token
-          const retryResponse = await fetch(
+          driveResponse = await fetch(
             `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
             {
               headers: {
@@ -224,36 +215,32 @@ serve(async (req) => {
             }
           );
 
-          if (!retryResponse.ok) {
-            console.error("Failed to download file after token refresh:", retryResponse.status);
+          if (!driveResponse.ok) {
+            console.error("Failed to download file after token refresh:", driveResponse.status);
             return new Response(
               JSON.stringify({ error: "Não foi possível baixar o arquivo do Google Drive. Verifique suas permissões." }),
               { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
-
-          // Continue with retryResponse
-          const audioBuffer = await retryResponse.arrayBuffer();
-          return await processAudioWithGemini(audioBuffer, meeting, supabase);
         }
+      } else {
+        console.error("Failed to download file from Drive:", driveResponse.status);
+        const errorText = await driveResponse.text();
+        console.error("Drive error:", errorText);
+        
+        return new Response(
+          JSON.stringify({ 
+            error: "Não foi possível baixar o arquivo do Google Drive. Isso pode acontecer se a gravação do Meet ainda não estiver disponível ou se você não tem permissão de download. Aguarde alguns minutos e tente novamente." 
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-
-      console.error("Failed to download file from Drive:", driveResponse.status);
-      const errorText = await driveResponse.text();
-      console.error("Drive error:", errorText);
-      
-      return new Response(
-        JSON.stringify({ 
-          error: "Não foi possível baixar o arquivo do Google Drive. Isso pode acontecer se a gravação do Meet ainda não estiver disponível ou se você não tem permissão de download. Aguarde alguns minutos e tente novamente." 
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
 
     const audioBuffer = await driveResponse.arrayBuffer();
     console.log(`Downloaded file size: ${audioBuffer.byteLength} bytes`);
 
-    return await processAudioWithGemini(audioBuffer, meeting, supabase);
+    return await processAudioWithElevenLabs(audioBuffer, meeting, supabase, fileName);
 
   } catch (error) {
     console.error("Transcription error:", error);
@@ -264,104 +251,92 @@ serve(async (req) => {
   }
 });
 
-async function processAudioWithGemini(
+async function processAudioWithElevenLabs(
   audioBuffer: ArrayBuffer, 
   meeting: any, 
-  supabase: any
+  supabase: any,
+  fileName: string
 ) {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) {
+  const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
+  if (!ELEVENLABS_API_KEY) {
     return new Response(
-      JSON.stringify({ error: "LOVABLE_API_KEY not configured" }),
+      JSON.stringify({ error: "ELEVENLABS_API_KEY not configured" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  // Convert audio to base64 - use Deno's base64 encoder to avoid stack overflow
-  const maxSize = 20 * 1024 * 1024; // 20MB limit
-  const audioData = audioBuffer.slice(0, maxSize);
-  const base64Audio = base64Encode(audioData);
+  console.log(`Processing audio with ElevenLabs STT (${audioBuffer.byteLength} bytes)...`);
+
+  // Create form data for ElevenLabs API
+  const formData = new FormData();
   
-  console.log(`Audio size: ${audioData.byteLength} bytes, base64 length: ${base64Audio.length}`);
+  // Determine file extension from name or default to mp4
+  const extension = fileName.split('.').pop()?.toLowerCase() || 'mp4';
+  const contentType = extension === 'mp3' ? 'audio/mpeg' : 
+                      extension === 'wav' ? 'audio/wav' : 
+                      extension === 'webm' ? 'audio/webm' : 'video/mp4';
+  
+  const audioBlob = new Blob([audioBuffer], { type: contentType });
+  formData.append("file", audioBlob, fileName);
+  formData.append("model_id", "scribe_v1");
+  formData.append("language_code", "por"); // Portuguese
+  formData.append("diarize", "true"); // Enable speaker detection
+  formData.append("tag_audio_events", "true"); // Tag laughter, applause, etc.
 
-  console.log("Sending audio to Gemini for transcription...");
+  console.log("Sending audio to ElevenLabs Speech-to-Text API...");
 
-  // Use Gemini for transcription via Lovable AI Gateway
-  // Using inline_data format for video/audio content
-  const geminiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const elevenLabsResponse = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
+      "xi-api-key": ELEVENLABS_API_KEY,
     },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        {
-          role: "system",
-          content: `Você é um assistente especializado em transcrição de reuniões de negócios. 
-Sua tarefa é transcrever o áudio da reunião de forma clara e organizada.
-
-Formato da transcrição:
-1. Identifique os participantes quando possível (Participante 1, Participante 2, etc.)
-2. Organize a transcrição em parágrafos lógicos
-3. Destaque pontos-chave e decisões tomadas
-4. No final, adicione um resumo dos principais pontos discutidos
-
-Mantenha a transcrição fiel ao conteúdo, mas remova hesitações excessivas (uhm, ah, etc.) para melhor legibilidade.`
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Por favor, transcreva esta gravação de reunião: "${meeting.meeting_title}" realizada em ${meeting.meeting_date}. Forneça a transcrição completa seguida de um resumo dos pontos principais.`
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:video/mp4;base64,${base64Audio}`
-              }
-            }
-          ]
-        }
-      ],
-    }),
+    body: formData,
   });
 
-  if (!geminiResponse.ok) {
-    const errorData = await geminiResponse.text();
-    console.error("Gemini API error:", geminiResponse.status, errorData);
+  if (!elevenLabsResponse.ok) {
+    const errorText = await elevenLabsResponse.text();
+    console.error("ElevenLabs API error:", elevenLabsResponse.status, errorText);
     
-    if (geminiResponse.status === 429) {
+    if (elevenLabsResponse.status === 401) {
+      return new Response(
+        JSON.stringify({ error: "Chave da API ElevenLabs inválida. Verifique a configuração." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (elevenLabsResponse.status === 429) {
       return new Response(
         JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    
-    if (geminiResponse.status === 402) {
-      return new Response(
-        JSON.stringify({ error: "Créditos insuficientes. Adicione créditos à sua conta Lovable." }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     return new Response(
-      JSON.stringify({ error: "Erro ao processar transcrição com IA" }),
+      JSON.stringify({ error: "Erro ao processar transcrição com ElevenLabs" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  const geminiData = await geminiResponse.json();
-  const transcription = geminiData.choices?.[0]?.message?.content;
+  const transcriptionData = await elevenLabsResponse.json();
+  console.log("ElevenLabs response received:", JSON.stringify(transcriptionData).substring(0, 500));
+
+  // Extract the transcription text
+  let transcription = transcriptionData.text || "";
 
   if (!transcription) {
-    console.error("No transcription in response:", geminiData);
+    console.error("No transcription in response:", transcriptionData);
     return new Response(
       JSON.stringify({ error: "Não foi possível gerar a transcrição. O formato do áudio pode não ser suportado." }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+  }
+
+  // Format transcription with speaker diarization if available
+  if (transcriptionData.words && transcriptionData.words.length > 0) {
+    const formattedTranscription = formatTranscriptionWithSpeakers(transcriptionData);
+    if (formattedTranscription) {
+      transcription = formattedTranscription;
+    }
   }
 
   console.log("Transcription generated successfully");
@@ -369,7 +344,7 @@ Mantenha a transcrição fiel ao conteúdo, mas remova hesitações excessivas (
   // Update meeting notes with transcription
   const existingNotes = meeting.notes || "";
   const separator = existingNotes ? "\n\n---\n\n" : "";
-  const newNotes = existingNotes + separator + "## Transcrição Automática\n\n" + transcription;
+  const newNotes = existingNotes + separator + "## Transcrição Automática (ElevenLabs)\n\n" + transcription;
 
   const { error: updateError } = await supabase
     .from("onboarding_meeting_notes")
@@ -392,4 +367,36 @@ Mantenha a transcrição fiel ao conteúdo, mas remova hesitações excessivas (
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
+}
+
+function formatTranscriptionWithSpeakers(data: any): string | null {
+  if (!data.words || data.words.length === 0) {
+    return null;
+  }
+
+  let result = "";
+  let currentSpeaker = "";
+  let currentText = "";
+
+  for (const word of data.words) {
+    const speaker = word.speaker || "Participante";
+    
+    if (speaker !== currentSpeaker) {
+      // Save previous speaker's text
+      if (currentText.trim()) {
+        result += `**${currentSpeaker}:** ${currentText.trim()}\n\n`;
+      }
+      currentSpeaker = speaker;
+      currentText = word.text + " ";
+    } else {
+      currentText += word.text + " ";
+    }
+  }
+
+  // Add last speaker's text
+  if (currentText.trim()) {
+    result += `**${currentSpeaker}:** ${currentText.trim()}\n\n`;
+  }
+
+  return result.trim() || null;
 }
