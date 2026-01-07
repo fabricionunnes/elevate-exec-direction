@@ -779,8 +779,34 @@ const OnboardingTasksPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+          {/* Skeleton Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-muted animate-pulse" />
+            <div className="h-6 w-32 bg-muted animate-pulse rounded" />
+          </div>
+          
+          {/* Skeleton Filters */}
+          <div className="flex gap-2 mb-6">
+            <div className="h-9 w-24 bg-muted animate-pulse rounded" />
+            <div className="h-9 flex-1 bg-muted animate-pulse rounded" />
+          </div>
+          
+          {/* Skeleton Metrics Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />
+            ))}
+          </div>
+          
+          {/* Skeleton Companies List */}
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -1089,6 +1115,7 @@ const OnboardingTasksPage = () => {
           onDateRangeChange={setDateRange}
           overdueTasks={overdueTasks}
           todayTasks={todayTasks}
+          allTasks={allTasks}
           onDataRefresh={refreshData}
           currentStaffUserId={currentUserId}
           onActiveTabChange={setActiveDashboardTab}
