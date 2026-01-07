@@ -1121,41 +1121,59 @@ const OnboardingProjectPage = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 flex-wrap h-auto gap-1">
-            <TabsTrigger value="kpis" className="px-3" title="KPIs">
-              <BarChart3 className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="tasks" className="px-3" title="Jornada">
-              <CheckCircle2 className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="briefing" className="px-3" title="Briefing">
-              <Building2 className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="variables" className="px-3" title="Variáveis">
-              <Settings className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="tickets" className="px-3" title="Chamados">
-              <MessageSquare className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="ai-coach" className="px-3" title="IA Coach">
-              <Sparkles className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="nps" className="px-3" title="NPS">
-              <TrendingUp className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="support-history" className="px-3" title="Suportes">
-              <Headphones className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="meetings" className="px-3" title="Reuniões">
-              <Video className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="assessments" className="px-3" title="Avaliações">
-              <Brain className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="endomarketing" className="px-3" title="Endomarketing">
-              <Trophy className="h-4 w-4" />
-            </TabsTrigger>
-          </TabsList>
+          <div className="mb-6 space-y-2">
+            {/* Primeira linha: Gestão do Projeto */}
+            <TabsList className="h-auto w-full justify-start gap-1">
+              <TabsTrigger value="kpis" className="gap-1.5">
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">KPIs</span>
+              </TabsTrigger>
+              <TabsTrigger value="tasks" className="gap-1.5">
+                <CheckCircle2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Jornada</span>
+              </TabsTrigger>
+              <TabsTrigger value="briefing" className="gap-1.5">
+                <Building2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Briefing</span>
+              </TabsTrigger>
+              <TabsTrigger value="variables" className="gap-1.5">
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">Variáveis</span>
+              </TabsTrigger>
+              <TabsTrigger value="tickets" className="gap-1.5">
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Chamados</span>
+              </TabsTrigger>
+              <TabsTrigger value="ai-coach" className="gap-1.5">
+                <Sparkles className="h-4 w-4" />
+                <span className="hidden sm:inline">IA Coach</span>
+              </TabsTrigger>
+            </TabsList>
+            
+            {/* Segunda linha: Histórico e Análises */}
+            <TabsList className="h-auto w-full justify-start gap-1">
+              <TabsTrigger value="nps" className="gap-1.5">
+                <TrendingUp className="h-4 w-4" />
+                <span className="hidden sm:inline">NPS</span>
+              </TabsTrigger>
+              <TabsTrigger value="support-history" className="gap-1.5">
+                <Headphones className="h-4 w-4" />
+                <span className="hidden sm:inline">Suportes</span>
+              </TabsTrigger>
+              <TabsTrigger value="meetings" className="gap-1.5">
+                <Video className="h-4 w-4" />
+                <span className="hidden sm:inline">Reuniões</span>
+              </TabsTrigger>
+              <TabsTrigger value="assessments" className="gap-1.5">
+                <Brain className="h-4 w-4" />
+                <span className="hidden sm:inline">Avaliações</span>
+              </TabsTrigger>
+              <TabsTrigger value="endomarketing" className="gap-1.5">
+                <Trophy className="h-4 w-4" />
+                <span className="hidden sm:inline">Endomarketing</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="tasks">
             {/* Search, View Toggle and Add Task */}
