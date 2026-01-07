@@ -313,6 +313,22 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
       if (error) throw error;
 
+      // Mark associated task as completed if meeting has a link
+      if (meetingToFinalize.meeting_link) {
+        const { error: taskError } = await supabase
+          .from("onboarding_tasks")
+          .update({
+            status: "completed",
+            completed_at: new Date().toISOString(),
+          })
+          .eq("project_id", projectId)
+          .eq("meeting_link", meetingToFinalize.meeting_link);
+
+        if (taskError) {
+          console.error("Error updating task status:", taskError);
+        }
+      }
+
       toast.success("Reunião finalizada com sucesso!");
       setMeetingToFinalize(null);
       setFinalizeForm({ notes: "", attendees: "", recordingLink: "" });
