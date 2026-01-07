@@ -45,6 +45,7 @@ import { format } from "date-fns";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
 import { COMPANY_SEGMENTS } from "@/data/companySegments";
 import { ContactsContractsPanel } from "@/components/onboarding-tasks/ContactsContractsPanel";
+import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 
 interface Staff {
   id: string;
@@ -364,14 +365,7 @@ const OnboardingCompanyDetailPage = () => {
             <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks/companies")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold">
-                {isNew ? "Nova Empresa" : form.name || "Empresa"}
-              </h1>
-              <p className="text-muted-foreground">
-                {isNew ? "Cadastre uma nova empresa" : "Edite as informações da empresa"}
-              </p>
-            </div>
+            <NexusHeader title={isNew ? "Nova Empresa" : (form.name || "Empresa")} />
           </div>
           <div className="flex items-center gap-2">
             {canDeleteCompany && !isNew && (

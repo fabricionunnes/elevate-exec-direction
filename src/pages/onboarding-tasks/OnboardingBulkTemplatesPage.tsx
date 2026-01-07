@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Trash2, LogOut, Layers, Save, AlertTriangle, EyeOff } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 
 interface Service {
   id: string;
@@ -382,10 +383,7 @@ export default function OnboardingBulkTemplatesPage() {
             <Button variant="ghost" size="icon" onClick={() => navigate('/onboarding-tasks/services')}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="flex items-center gap-2">
-              <Layers className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-bold">Operações em Lote</h1>
-            </div>
+            <NexusHeader title="Operações em Lote" />
           </div>
           <Button variant="outline" size="sm" onClick={handleLogout}>
             <LogOut className="h-4 w-4 mr-2" />

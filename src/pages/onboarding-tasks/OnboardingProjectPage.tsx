@@ -56,6 +56,7 @@ import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasks
 import { GeneratePDFTasksDialog } from "@/components/onboarding-tasks/GeneratePDFTasksDialog";
 import { Settings, Sparkles, Building2, Wand2, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
+import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { ChurnReasonDialog } from "@/components/onboarding-tasks/ChurnReasonDialog";
 import { NoticePeriodDialog } from "@/components/onboarding-tasks/NoticePeriodDialog";
 
@@ -895,108 +896,105 @@ const OnboardingProjectPage = () => {
               <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <div>
-                <WelcomeHeader className="text-xs text-muted-foreground" />
-                <h1 className="text-2xl font-bold">{project.product_name}</h1>
-                {project.onboarding_company?.name && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-muted-foreground">{project.onboarding_company.name}</p>
-                    {project.onboarding_company_id && (
+              <NexusHeader title={project.product_name} />
+              {project.onboarding_company?.name && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-muted-foreground hidden sm:block">{project.onboarding_company.name}</p>
+                  {project.onboarding_company_id && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 px-2 text-xs"
+                      onClick={() => navigate(`/onboarding-tasks/companies/${project.onboarding_company_id}`)}
+                    >
+                      <Building2 className="h-3 w-3 mr-1" />
+                      Ver Empresa
+                    </Button>
+                  )}
+                  {/* CRM Button */}
+                  {project.crm_link ? (
+                    <div className="flex items-center gap-1">
                       <Button 
-                        variant="ghost" 
+                        variant="outline" 
                         size="sm" 
                         className="h-6 px-2 text-xs"
-                        onClick={() => navigate(`/onboarding-tasks/companies/${project.onboarding_company_id}`)}
+                        onClick={() => window.open(project.crm_link!, "_blank")}
                       >
-                        <Building2 className="h-3 w-3 mr-1" />
-                        Ver Empresa
-                      </Button>
-                    )}
-                    {/* CRM Button */}
-                    {project.crm_link ? (
-                      <div className="flex items-center gap-1">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-6 px-2 text-xs"
-                          onClick={() => window.open(project.crm_link!, "_blank")}
-                        >
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          CRM
-                        </Button>
-                        {currentUserRole && currentUserRole !== "client" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => {
-                              setCrmLinkInput(project.crm_link || "");
-                              setShowCrmDialog(true);
-                            }}
-                            title="Editar link do CRM"
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    ) : currentUserRole && currentUserRole !== "client" && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-6 px-2 text-xs text-muted-foreground"
-                        onClick={() => {
-                          setCrmLinkInput("");
-                          setShowCrmDialog(true);
-                        }}
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
+                        <ExternalLink className="h-3 w-3 mr-1" />
                         CRM
                       </Button>
-                    )}
-                    {/* Documentos Button */}
-                    {project.documents_link ? (
-                      <div className="flex items-center gap-1">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-6 px-2 text-xs"
-                          onClick={() => window.open(project.documents_link!, "_blank")}
+                      {currentUserRole && currentUserRole !== "client" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => {
+                            setCrmLinkInput(project.crm_link || "");
+                            setShowCrmDialog(true);
+                          }}
+                          title="Editar link do CRM"
                         >
-                          <FolderOpen className="h-3 w-3 mr-1" />
-                          Documentos
+                          <Pencil className="h-3 w-3" />
                         </Button>
-                        {currentUserRole && currentUserRole !== "client" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => {
-                              setDocsLinkInput(project.documents_link || "");
-                              setShowDocsDialog(true);
-                            }}
-                            title="Editar link de documentos"
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    ) : currentUserRole && currentUserRole !== "client" && (
+                      )}
+                    </div>
+                  ) : currentUserRole && currentUserRole !== "client" && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 px-2 text-xs text-muted-foreground"
+                      onClick={() => {
+                        setCrmLinkInput("");
+                        setShowCrmDialog(true);
+                      }}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      CRM
+                    </Button>
+                  )}
+                  {/* Documentos Button */}
+                  {project.documents_link ? (
+                    <div className="flex items-center gap-1">
                       <Button 
-                        variant="ghost" 
+                        variant="outline" 
                         size="sm" 
-                        className="h-6 px-2 text-xs text-muted-foreground"
-                        onClick={() => {
-                          setDocsLinkInput("");
-                          setShowDocsDialog(true);
-                        }}
+                        className="h-6 px-2 text-xs"
+                        onClick={() => window.open(project.documents_link!, "_blank")}
                       >
-                        <Plus className="h-3 w-3 mr-1" />
+                        <ExternalLink className="h-3 w-3 mr-1" />
                         Documentos
                       </Button>
-                    )}
-                  </div>
-                )}
-              </div>
+                      {currentUserRole && currentUserRole !== "client" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => {
+                            setDocsLinkInput(project.documents_link || "");
+                            setShowDocsDialog(true);
+                          }}
+                          title="Editar link dos documentos"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  ) : currentUserRole && currentUserRole !== "client" && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 px-2 text-xs text-muted-foreground"
+                      onClick={() => {
+                        setDocsLinkInput("");
+                        setShowDocsDialog(true);
+                      }}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Documentos
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {currentUserRole && currentUserRole !== "client" && (

@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { format, differenceInDays, addMonths, parseISO, startOfMonth, endOfMonth, isBefore, isWithinInterval, addQuarters, addYears, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
+import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import {
   ArrowLeft,
   RefreshCw,
@@ -717,10 +718,7 @@ export default function OnboardingRenewalsPage() {
               <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <div>
-                <h1 className="text-2xl font-bold">Gestão de Renovações</h1>
-                <p className="text-muted-foreground">Controle de contratos e renovações</p>
-              </div>
+              <NexusHeader title="Renovações" />
             </div>
             <Button onClick={fetchData} variant="outline">
               <RefreshCw className="h-4 w-4 mr-2" />

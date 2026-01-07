@@ -25,6 +25,7 @@ import {
   Users
 } from 'lucide-react';
 import { addDays, parse, isValid } from 'date-fns';
+import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 
 interface ParsedTask {
   taskId: string;
@@ -507,10 +508,7 @@ export default function OnboardingImportPage() {
             <Button variant="ghost" size="icon" onClick={() => navigate('/onboarding-tasks')}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="flex items-center gap-2">
-              <Upload className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-bold">Importar do Asana</h1>
-            </div>
+            <NexusHeader title="Importar Asana" />
           </div>
         </div>
       </header>

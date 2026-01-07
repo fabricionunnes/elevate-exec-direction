@@ -42,6 +42,7 @@ import {
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2, LogOut, Key, Eye, EyeOff, Loader2 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
+import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -357,10 +358,7 @@ const OnboardingStaffPage = () => {
             <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold">Equipe UNV</h1>
-              <WelcomeHeader className="text-sm text-muted-foreground" />
-            </div>
+            <NexusHeader title="Equipe" />
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={openNewDialog}>

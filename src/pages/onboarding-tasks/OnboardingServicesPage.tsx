@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Pencil, Trash2, ListTodo, LogOut, Package, Layers } from 'lucide-react';
+import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 
 interface Service {
   id: string;
@@ -238,10 +239,7 @@ export default function OnboardingServicesPage() {
             <Button variant="ghost" size="icon" onClick={() => navigate('/onboarding-tasks')}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="flex items-center gap-2">
-              <Package className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-bold">Gerenciar Serviços</h1>
-            </div>
+            <NexusHeader title="Serviços" />
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => navigate('/onboarding-tasks/services/bulk')}>

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, LogOut } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
+import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { AdminActivityHistory } from "@/components/onboarding-tasks/AdminActivityHistory";
 
 const OnboardingActivityHistoryPage = () => {
@@ -65,10 +66,7 @@ const OnboardingActivityHistoryPage = () => {
             <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Histórico de Atividades</h1>
-              <WelcomeHeader className="text-sm text-muted-foreground" />
-            </div>
+            <NexusHeader title="Histórico de Atividades" />
           </div>
           <Button 
             variant="ghost" 
