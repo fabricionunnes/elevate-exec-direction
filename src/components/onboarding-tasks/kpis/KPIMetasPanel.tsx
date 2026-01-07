@@ -76,25 +76,27 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
             <BarChart3 className="h-4 w-4" />
             Dashboard
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="analysis" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              Análise IA
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="units" className="gap-2">
+              <Building2 className="h-4 w-4" />
+              Unidades
+            </TabsTrigger>
+          )}
           <TabsTrigger value="salespeople" className="gap-2">
             <Users className="h-4 w-4" />
             Vendedores
           </TabsTrigger>
           {isAdmin && (
-            <>
-              <TabsTrigger value="units" className="gap-2">
-                <Building2 className="h-4 w-4" />
-                Unidades
-              </TabsTrigger>
-              <TabsTrigger value="analysis" className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                Análise IA
-              </TabsTrigger>
-              <TabsTrigger value="config" className="gap-2">
-                <Settings className="h-4 w-4" />
-                Configuração
-              </TabsTrigger>
-            </>
+            <TabsTrigger value="config" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Configuração
+            </TabsTrigger>
           )}
         </TabsList>
 
