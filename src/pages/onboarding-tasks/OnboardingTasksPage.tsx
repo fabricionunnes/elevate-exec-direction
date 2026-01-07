@@ -342,9 +342,20 @@ const OnboardingTasksPage = () => {
   };
   // Calculate overdue and today tasks for dashboard (respects consultant/service/status filters)
   // IMPORTANT: Only consider ACTIVE projects for dashboard metrics
+  // For consultants: also exclude projects from inactive companies
   const activeProjects = useMemo(() => {
-    return allProjects.filter(p => p.status === "active");
-  }, [allProjects]);
+    const active = allProjects.filter(p => p.status === "active");
+    
+    // For consultants, also filter out projects from inactive companies
+    if (currentUserRole === "consultant") {
+      const activeCompanyIds = new Set(
+        companies.filter(c => c.status !== "inactive").map(c => c.id)
+      );
+      return active.filter(p => !p.onboarding_company_id || activeCompanyIds.has(p.onboarding_company_id));
+    }
+    
+    return active;
+  }, [allProjects, currentUserRole, companies]);
 
   const filteredProjectIds = useMemo(() => {
     // Start with active projects only
@@ -583,6 +594,11 @@ const OnboardingTasksPage = () => {
 
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
+      // For consultants: hide inactive companies entirely
+      if (currentUserRole === "consultant" && company.status === "inactive") {
+        return false;
+      }
+      
       // Text search filter
       const matchesSearch =
         company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -642,6 +658,13 @@ const OnboardingTasksPage = () => {
             const reactivatedDate = new Date(p.reactivated_at);
             return isWithinInterval(reactivatedDate, { start: dateRange.start, end: dateRange.end });
           }) ?? false;
+        } else if (activeMetricFilter.type === "status" && activeMetricFilter.value === "closed") {
+          // Filter companies with closed projects in the period
+          matchesMetricFilter = company.projects?.some(p => {
+            if (p.status !== "closed" && p.status !== "completed") return false;
+            const updatedAt = new Date(p.updated_at);
+            return isWithinInterval(updatedAt, { start: dateRange.start, end: dateRange.end });
+          }) ?? false;
         } else if (activeMetricFilter.type === "status") {
           // For status filters from cards (active, cancellation_signaled, notice_period), 
           // filter by projects that changed to this status in the selected period
@@ -671,13 +694,13 @@ const OnboardingTasksPage = () => {
       return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
     });
     
-    // Sort: inactive companies appear last
+    // Sort: inactive companies appear last (only visible for admin/CS)
     return filtered.sort((a, b) => {
       if (a.status === "inactive" && b.status !== "inactive") return 1;
       if (a.status !== "inactive" && b.status === "inactive") return -1;
       return a.name.localeCompare(b.name);
     });
-  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, projectsGoalRanges]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, projectsGoalRanges, currentUserRole]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
