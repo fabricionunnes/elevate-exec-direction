@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { 
   Sparkles, RefreshCw, Loader2, TrendingUp, Target, Users, Brain, Calendar, 
   Lightbulb, History, ChevronRight, AlertTriangle, CheckCircle2, TrendingDown,
-  MessageSquare, Zap, BarChart3
+  MessageSquare, Zap, BarChart3, Trash2
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { format } from "date-fns";
@@ -16,6 +16,17 @@ import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface KPIAnalysisTabProps {
   companyId: string;
@@ -43,11 +54,53 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
   const [streamedContent, setStreamedContent] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["resumo", "alertas"]));
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchAllAnalyses();
+    checkIfAdmin();
   }, [companyId, projectId]);
+
+  const checkIfAdmin = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: staff } = await supabase
+      .from("onboarding_staff")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    setIsAdmin(staff?.role === "admin");
+  };
+
+  const handleDeleteAllHistory = async () => {
+    if (!projectId) return;
+    
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_ai_chat")
+        .delete()
+        .eq("project_id", projectId)
+        .eq("role", "kpi_analysis");
+
+      if (error) throw error;
+
+      setAllAnalyses([]);
+      setAnalysis(null);
+      setHistoryOpen(false);
+      toast.success("Histórico de análises excluído com sucesso");
+    } catch (error) {
+      console.error("Error deleting history:", error);
+      toast.error("Erro ao excluir histórico");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const resolveActor = async (): Promise<{ staff_id: string | null; user_id: string | null }> => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -396,10 +449,40 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
                 </SheetTrigger>
                 <SheetContent className="w-[400px] sm:w-[450px]">
                   <SheetHeader>
-                    <SheetTitle className="flex items-center gap-2">
-                      <History className="h-5 w-5" />
-                      Histórico de Análises
-                    </SheetTitle>
+                    <div className="flex items-center justify-between">
+                      <SheetTitle className="flex items-center gap-2">
+                        <History className="h-5 w-5" />
+                        Histórico de Análises
+                      </SheetTitle>
+                      {isAdmin && allAnalyses.length > 0 && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="gap-1 text-destructive hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                              Limpar
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir todo o histórico?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação irá excluir permanentemente todas as {allAnalyses.length} análises do histórico. Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={handleDeleteAllHistory} 
+                                disabled={deleting}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                {deleting ? "Excluindo..." : "Excluir tudo"}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
                   </SheetHeader>
                   <ScrollArea className="h-[calc(100vh-120px)] mt-4">
                     <div className="space-y-2 pr-4">
