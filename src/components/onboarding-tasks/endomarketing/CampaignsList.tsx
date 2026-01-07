@@ -15,7 +15,8 @@ import {
   XCircle,
   Play,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Trash2
 } from "lucide-react";
 import { format, parseISO, isAfter, isBefore, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -70,6 +71,7 @@ export const CampaignsList = ({
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("active");
   const [endingCampaignId, setEndingCampaignId] = useState<string | null>(null);
+  const [deletingCampaignId, setDeletingCampaignId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCampaigns();
@@ -148,6 +150,33 @@ export const CampaignsList = ({
       toast.error("Erro ao encerrar campanha");
     } finally {
       setEndingCampaignId(null);
+    }
+  };
+
+  const handleDeleteCampaign = async () => {
+    if (!deletingCampaignId) return;
+
+    try {
+      // Delete related data first (prizes, participants, teams, snapshots)
+      await supabase.from("endomarketing_snapshots").delete().eq("campaign_id", deletingCampaignId);
+      await supabase.from("endomarketing_prizes").delete().eq("campaign_id", deletingCampaignId);
+      await supabase.from("endomarketing_participants").delete().eq("campaign_id", deletingCampaignId);
+      await supabase.from("endomarketing_teams").delete().eq("campaign_id", deletingCampaignId);
+      
+      const { error } = await supabase
+        .from("endomarketing_campaigns")
+        .delete()
+        .eq("id", deletingCampaignId);
+
+      if (error) throw error;
+
+      toast.success("Campanha excluída com sucesso");
+      fetchCampaigns();
+    } catch (error) {
+      console.error("Error deleting campaign:", error);
+      toast.error("Erro ao excluir campanha");
+    } finally {
+      setDeletingCampaignId(null);
     }
   };
 
@@ -310,6 +339,15 @@ export const CampaignsList = ({
                         Encerrar
                       </Button>
                     )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setDeletingCampaignId(campaign.id)}
+                      className="gap-2 text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Excluir
+                    </Button>
                   </div>
                 )}
               </CardContent>
@@ -331,6 +369,24 @@ export const CampaignsList = ({
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleEndCampaign}>
               Encerrar campanha
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete campaign confirmation dialog */}
+      <AlertDialog open={!!deletingCampaignId} onOpenChange={() => setDeletingCampaignId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir campanha?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá excluir permanentemente a campanha e todos os dados relacionados (participantes, prêmios, resultados). Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCampaign} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir campanha
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
