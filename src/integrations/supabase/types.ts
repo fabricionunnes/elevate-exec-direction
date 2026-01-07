@@ -454,6 +454,103 @@ export type Database = {
         }
         Relationships: []
       }
+      company_kpis: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          is_individual: boolean | null
+          is_required: boolean | null
+          kpi_type: string
+          name: string
+          periodicity: string
+          sort_order: number | null
+          target_value: number
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_individual?: boolean | null
+          is_required?: boolean | null
+          kpi_type: string
+          name: string
+          periodicity: string
+          sort_order?: number | null
+          target_value?: number
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_individual?: boolean | null
+          is_required?: boolean | null
+          kpi_type?: string
+          name?: string
+          periodicity?: string
+          sort_order?: number | null
+          target_value?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_kpis_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_salespeople: {
+        Row: {
+          access_code: string
+          company_id: string
+          created_at: string | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_code?: string
+          company_id: string
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_code?: string
+          company_id?: string
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_salespeople_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       disc_responses: {
         Row: {
           completed_at: string
@@ -516,6 +613,64 @@ export type Database = {
             columns: ["participant_id"]
             isOneToOne: false
             referencedRelation: "assessment_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kpi_entries: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          entry_date: string
+          id: string
+          kpi_id: string
+          observations: string | null
+          salesperson_id: string
+          updated_at: string | null
+          value: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          entry_date?: string
+          id?: string
+          kpi_id: string
+          observations?: string | null
+          salesperson_id: string
+          updated_at?: string | null
+          value?: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          entry_date?: string
+          id?: string
+          kpi_id?: string
+          observations?: string | null
+          salesperson_id?: string
+          updated_at?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_entries_kpi_id_fkey"
+            columns: ["kpi_id"]
+            isOneToOne: false
+            referencedRelation: "company_kpis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_entries_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "company_salespeople"
             referencedColumns: ["id"]
           },
         ]
