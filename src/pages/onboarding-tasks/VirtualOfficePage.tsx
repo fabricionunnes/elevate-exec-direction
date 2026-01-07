@@ -50,6 +50,7 @@ import { RoomAccessManager } from "@/components/virtual-office/RoomAccessManager
 import { OfficeFloorMap } from "@/components/virtual-office/OfficeFloorMap";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { SupportRoomPanel } from "@/components/virtual-office/SupportRoomPanel";
+import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 
 
 interface Room {
@@ -539,13 +540,10 @@ const VirtualOfficePage = () => {
           <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <h1 className="text-lg font-semibold">Escritório UNV</h1>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <WelcomeHeader className="text-xs text-muted-foreground" />
-              <span>•</span>
-              <span>{onlineStaff.length} online</span>
-            </div>
+          <NexusHeader title="Escritório UNV" />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground ml-2">
+            <span>•</span>
+            <span>{onlineStaff.length} online</span>
           </div>
         </div>
 

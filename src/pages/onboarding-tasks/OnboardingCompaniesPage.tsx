@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Plus, Building2, Search, LogOut } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 
 interface Staff {
   id: string;
@@ -142,12 +143,7 @@ const OnboardingCompaniesPage = () => {
             <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold">Empresas</h1>
-              <p className="text-muted-foreground">
-                Gerencie empresas e kickoffs
-              </p>
-            </div>
+            <NexusHeader title="Empresas" />
           </div>
           <div className="flex items-center gap-2">
             {canCreateCompany && (

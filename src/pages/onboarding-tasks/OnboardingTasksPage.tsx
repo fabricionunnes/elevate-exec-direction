@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
-import logoNexus from "@/assets/logo-unv-nexus.png";
+import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -793,17 +793,8 @@ const OnboardingTasksPage = () => {
           {/* Top Row - Logo, Title & Logout */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-slate-900 rounded-lg p-1.5 hidden sm:block">
-                <img 
-                  src={logoNexus} 
-                  alt="UNV Nexus" 
-                  className="h-8 sm:h-10 w-auto"
-                />
-              </div>
-              <div>
-                <h1 className="text-lg sm:text-3xl font-bold leading-tight">UNV Nexus</h1>
-                <WelcomeHeader className="text-xs sm:text-sm text-muted-foreground" />
-              </div>
+              <NexusHeader />
+              <WelcomeHeader className="text-xs sm:text-sm text-muted-foreground hidden sm:block" />
             </div>
             
             {/* Mobile Actions - Compact */}

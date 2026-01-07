@@ -10,6 +10,7 @@ import { format, addDays, differenceInDays, parseISO, isSaturday, isSunday, getD
 import { ptBR } from "date-fns/locale";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 
 // Brazilian national holidays (fixed dates)
 const FIXED_HOLIDAYS = [
@@ -528,12 +529,7 @@ export default function RescheduleTasks() {
           <Button variant="ghost" size="icon" onClick={() => navigate('/onboarding-tasks')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Gerenciar Datas das Tarefas</h1>
-            <p className="text-muted-foreground">
-              Reagendar tarefas ou atribuir datas às tarefas sem data
-            </p>
-          </div>
+          <NexusHeader title="Reagendar Tarefas" />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
