@@ -76,6 +76,7 @@ import RescheduleTasks from "./pages/onboarding-tasks/RescheduleTasks";
 import KickoffFormPage from "./pages/onboarding-tasks/KickoffFormPage";
 import OnboardingRenewalsPage from "./pages/onboarding-tasks/OnboardingRenewalsPage";
 import OnboardingActivityHistoryPage from "./pages/onboarding-tasks/OnboardingActivityHistoryPage";
+import KPIEntryPage from "./pages/onboarding-tasks/KPIEntryPage";
 import NPSSurveyPage from "./pages/NPSSurveyPage";
 import DISCAssessmentPage from "./pages/assessments/DISCAssessmentPage";
 import Assessment360Page from "./pages/assessments/Assessment360Page";
@@ -170,6 +171,7 @@ const App = () => (
             <Route path="/cac-form/:projectId" element={<CACFormPage />} />
             <Route path="/kickoff/:companyId" element={<KickoffFormPage />} />
             <Route path="/nps" element={<NPSSurveyPage />} />
+            <Route path="/kpi-entry/:companyId" element={<KPIEntryPage />} />
             <Route path="/disc" element={<DISCAssessmentPage />} />
             <Route path="/360" element={<Assessment360Page />} />
             <Route path="/avaliacao" element={<UnifiedAssessmentPage />} />
