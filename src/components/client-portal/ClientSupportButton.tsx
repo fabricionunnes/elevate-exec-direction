@@ -12,7 +12,8 @@ import {
   ExternalLink, 
   X,
   Video,
-  CheckCircle2
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -230,6 +231,25 @@ export const ClientSupportButton = ({
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-4"
               >
+                {/* Important notice */}
+                <Card className="border-amber-500/30 bg-amber-500/10">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-amber-500/20">
+                        <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-amber-700">Atenção: Suporte Rápido</h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Este canal é exclusivo para <strong>dúvidas rápidas e questões emergenciais</strong>. 
+                          Não é destinado a reuniões demoradas. Caso identifiquemos que sua demanda requer 
+                          maior atenção, <strong>agendaremos uma data específica</strong> para execução junto com você.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <Card className="border-primary/20 bg-primary/5">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
