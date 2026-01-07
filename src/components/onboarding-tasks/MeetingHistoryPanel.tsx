@@ -163,7 +163,14 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
       if (error) throw error;
 
-      setMeetings(data || []);
+      const nextMeetings = data || [];
+      setMeetings(nextMeetings);
+
+      // If a detail dialog is open, keep it in sync with fresh DB data
+      if (selectedMeeting) {
+        const updated = nextMeetings.find((m) => m.id === selectedMeeting.id);
+        if (updated) setSelectedMeeting(updated);
+      }
     } catch (error) {
       console.error("Error fetching meetings:", error);
     }
