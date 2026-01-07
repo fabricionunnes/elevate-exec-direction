@@ -237,10 +237,85 @@ serve(async (req) => {
       }
     }
 
-    const audioBuffer = await driveResponse.arrayBuffer();
-    console.log(`Downloaded file size: ${audioBuffer.byteLength} bytes`);
+    if (!driveResponse.ok) {
+      // Try to refresh token if expired
+      if (driveResponse.status === 401 && googleToken.refresh_token) {
+        console.log("Token expired, attempting refresh...");
 
-    return await processAudioWithElevenLabs(audioBuffer, meeting, supabase, fileName);
+        const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
+        const clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+
+        const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: clientId!,
+            client_secret: clientSecret!,
+            refresh_token: googleToken.refresh_token,
+            grant_type: "refresh_token",
+          }),
+        });
+
+        if (refreshResponse.ok) {
+          const tokenData = await refreshResponse.json();
+
+          // Update stored token
+          await supabase
+            .from("user_google_tokens")
+            .update({ access_token: tokenData.access_token })
+            .eq("user_id", user.id);
+
+          // Retry download with new token
+          driveResponse = await fetch(
+            `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
+            {
+              headers: {
+                Authorization: `Bearer ${tokenData.access_token}`,
+              },
+            }
+          );
+
+          if (!driveResponse.ok) {
+            console.error("Failed to download file after token refresh:", driveResponse.status);
+            return new Response(
+              JSON.stringify({ error: "Não foi possível baixar o arquivo do Google Drive. Verifique suas permissões." }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+      } else {
+        console.error("Failed to download file from Drive:", driveResponse.status);
+        const errorText = await driveResponse.text();
+        console.error("Drive error:", errorText);
+
+        return new Response(
+          JSON.stringify({
+            error:
+              "Não foi possível baixar o arquivo do Google Drive. Isso pode acontecer se a gravação do Meet ainda não estiver disponível ou se você não tem permissão de download. Aguarde alguns minutos e tente novamente.",
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    if (!driveResponse.body) {
+      console.error("Drive response has no body stream");
+      return new Response(
+        JSON.stringify({ error: "Não foi possível ler o arquivo de gravação." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`Streaming download to ElevenLabs (${Math.round(fileSize / 1024 / 1024)}MB)...`);
+
+    return await processDriveStreamWithElevenLabs({
+      driveStream: driveResponse.body,
+      meeting,
+      supabase,
+      fileName,
+      mimeType,
+      fileSize,
+    });
 
   } catch (error) {
     console.error("Transcription error:", error);
@@ -251,12 +326,16 @@ serve(async (req) => {
   }
 });
 
-async function processAudioWithElevenLabs(
-  audioBuffer: ArrayBuffer, 
-  meeting: any, 
-  supabase: any,
-  fileName: string
-) {
+type ElevenLabsStreamInput = {
+  driveStream: ReadableStream<Uint8Array>;
+  meeting: any;
+  supabase: any;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+};
+
+async function processDriveStreamWithElevenLabs(input: ElevenLabsStreamInput) {
   const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
   if (!ELEVENLABS_API_KEY) {
     return new Response(
@@ -265,45 +344,73 @@ async function processAudioWithElevenLabs(
     );
   }
 
-  console.log(`Processing audio with ElevenLabs STT (${audioBuffer.byteLength} bytes)...`);
+  console.log(`Processing audio with ElevenLabs STT via stream (${input.fileSize} bytes)...`);
 
-  // Create form data for ElevenLabs API
-  const formData = new FormData();
-  
-  // Determine file extension from name or default to mp4
-  const extension = fileName.split('.').pop()?.toLowerCase() || 'mp4';
-  const contentType = extension === 'mp3' ? 'audio/mpeg' : 
-                      extension === 'wav' ? 'audio/wav' : 
-                      extension === 'webm' ? 'audio/webm' : 'video/mp4';
-  
-  const audioBlob = new Blob([audioBuffer], { type: contentType });
-  formData.append("file", audioBlob, fileName);
-  formData.append("model_id", "scribe_v1");
-  formData.append("language_code", "por"); // Portuguese
-  formData.append("diarize", "true"); // Enable speaker detection
-  formData.append("tag_audio_events", "true"); // Tag laughter, applause, etc.
+  const boundary = `----lovable-elevenlabs-${crypto.randomUUID()}`;
+  const encoder = new TextEncoder();
 
-  console.log("Sending audio to ElevenLabs Speech-to-Text API...");
+  const fieldPart = (name: string, value: string) =>
+    `--${boundary}\r\n` +
+    `Content-Disposition: form-data; name="${name}"\r\n\r\n` +
+    `${value}\r\n`;
+
+  const fileHeader =
+    `--${boundary}\r\n` +
+    `Content-Disposition: form-data; name="file"; filename="${escapeQuotes(input.fileName)}"\r\n` +
+    `Content-Type: ${input.mimeType || "application/octet-stream"}\r\n\r\n`;
+
+  const closing = `\r\n--${boundary}--\r\n`;
+
+  const prefix =
+    fieldPart("model_id", "scribe_v1") +
+    fieldPart("language_code", "por") +
+    fieldPart("diarize", "true") +
+    fieldPart("tag_audio_events", "true") +
+    fileHeader;
+
+  const multipartStream = new ReadableStream<Uint8Array>({
+    start: async (controller) => {
+      try {
+        controller.enqueue(encoder.encode(prefix));
+
+        const reader = input.driveStream.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) controller.enqueue(value);
+        }
+
+        controller.enqueue(encoder.encode(closing));
+        controller.close();
+      } catch (e) {
+        console.error("Error streaming multipart body:", e);
+        controller.error(e);
+      }
+    },
+  });
+
+  console.log("Sending stream to ElevenLabs Speech-to-Text API...");
 
   const elevenLabsResponse = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
     method: "POST",
     headers: {
       "xi-api-key": ELEVENLABS_API_KEY,
+      "Content-Type": `multipart/form-data; boundary=${boundary}`,
     },
-    body: formData,
+    body: multipartStream,
   });
 
   if (!elevenLabsResponse.ok) {
     const errorText = await elevenLabsResponse.text();
     console.error("ElevenLabs API error:", elevenLabsResponse.status, errorText);
-    
+
     if (elevenLabsResponse.status === 401) {
       return new Response(
         JSON.stringify({ error: "Chave da API ElevenLabs inválida. Verifique a configuração." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    
+
     if (elevenLabsResponse.status === 429) {
       return new Response(
         JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." }),
@@ -318,9 +425,11 @@ async function processAudioWithElevenLabs(
   }
 
   const transcriptionData = await elevenLabsResponse.json();
-  console.log("ElevenLabs response received:", JSON.stringify(transcriptionData).substring(0, 500));
+  console.log(
+    "ElevenLabs response received:",
+    JSON.stringify(transcriptionData).substring(0, 500)
+  );
 
-  // Extract the transcription text
   let transcription = transcriptionData.text || "";
 
   if (!transcription) {
@@ -331,7 +440,6 @@ async function processAudioWithElevenLabs(
     );
   }
 
-  // Format transcription with speaker diarization if available
   if (transcriptionData.words && transcriptionData.words.length > 0) {
     const formattedTranscription = formatTranscriptionWithSpeakers(transcriptionData);
     if (formattedTranscription) {
@@ -341,15 +449,15 @@ async function processAudioWithElevenLabs(
 
   console.log("Transcription generated successfully");
 
-  // Update meeting notes with transcription
-  const existingNotes = meeting.notes || "";
+  const existingNotes = input.meeting.notes || "";
   const separator = existingNotes ? "\n\n---\n\n" : "";
-  const newNotes = existingNotes + separator + "## Transcrição Automática (ElevenLabs)\n\n" + transcription;
+  const newNotes =
+    existingNotes + separator + "## Transcrição Automática (ElevenLabs)\n\n" + transcription;
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await input.supabase
     .from("onboarding_meeting_notes")
     .update({ notes: newNotes })
-    .eq("id", meeting.id);
+    .eq("id", input.meeting.id);
 
   if (updateError) {
     console.error("Error updating meeting notes:", updateError);
@@ -360,14 +468,19 @@ async function processAudioWithElevenLabs(
   }
 
   return new Response(
-    JSON.stringify({ 
-      success: true, 
+    JSON.stringify({
+      success: true,
       transcription,
-      message: "Transcrição adicionada às notas da reunião" 
+      message: "Transcrição adicionada às notas da reunião",
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 }
+
+function escapeQuotes(s: string) {
+  return s.replaceAll("\"", "'");
+}
+
 
 function formatTranscriptionWithSpeakers(data: any): string | null {
   if (!data.words || data.words.length === 0) {
