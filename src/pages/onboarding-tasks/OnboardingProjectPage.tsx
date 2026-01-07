@@ -47,11 +47,11 @@ import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
 import { GeneratePDFTasksDialog } from "@/components/onboarding-tasks/GeneratePDFTasksDialog";
-import { Settings, Sparkles, Building2, Wand2, Target, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp } from "lucide-react";
+import { Settings, Sparkles, Building2, Wand2, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { ChurnReasonDialog } from "@/components/onboarding-tasks/ChurnReasonDialog";
 import { NoticePeriodDialog } from "@/components/onboarding-tasks/NoticePeriodDialog";
-import { MonthlyGoalsCard } from "@/components/onboarding-tasks/MonthlyGoalsCard";
+
 import { RealtimeNotifications } from "@/components/onboarding-tasks/RealtimeNotifications";
 import { TasksGameTrailView } from "@/components/onboarding-tasks/TasksGameTrailView";
 import { TasksListView } from "@/components/onboarding-tasks/TasksListView";
@@ -147,7 +147,7 @@ const OnboardingProjectPage = () => {
   const [showUsersDialog, setShowUsersDialog] = useState(false);
   const [selectedTask, setSelectedTask] = useState<OnboardingTask | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [activeTab, setActiveTab] = useState("tasks");
+  const [activeTab, setActiveTab] = useState("kpis");
   const [currentUserRole, setCurrentUserRole] = useState<"admin" | "cs" | "consultant" | "client" | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
@@ -1026,6 +1026,10 @@ const OnboardingProjectPage = () => {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6 flex-wrap">
+            <TabsTrigger value="kpis" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              KPIs
+            </TabsTrigger>
             <TabsTrigger value="tasks" className="gap-2">
               <CheckCircle2 className="h-4 w-4" />
               Jornada
@@ -1046,10 +1050,6 @@ const OnboardingProjectPage = () => {
               <Sparkles className="h-4 w-4" />
               IA Coach
             </TabsTrigger>
-            <TabsTrigger value="goals" className="gap-2">
-              <Target className="h-4 w-4" />
-              Metas
-            </TabsTrigger>
             <TabsTrigger value="nps" className="gap-2">
               <TrendingUp className="h-4 w-4" />
               NPS
@@ -1065,10 +1065,6 @@ const OnboardingProjectPage = () => {
             <TabsTrigger value="assessments" className="gap-2">
               <Brain className="h-4 w-4" />
               Avaliações
-            </TabsTrigger>
-            <TabsTrigger value="kpis" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              KPIs
             </TabsTrigger>
           </TabsList>
 
@@ -1201,13 +1197,6 @@ const OnboardingProjectPage = () => {
             />
           </TabsContent>
 
-          <TabsContent value="goals">
-            <MonthlyGoalsCard
-              projectId={projectId!}
-              canEdit={isAdmin || currentUserRole === "cs" || currentUserRole === "consultant"}
-              currentStaffId={isStaffAdmin || currentUserRole === "cs" || currentUserRole === "consultant" ? currentUserId : null}
-            />
-          </TabsContent>
 
           <TabsContent value="nps">
             <NPSHistoryPanel
