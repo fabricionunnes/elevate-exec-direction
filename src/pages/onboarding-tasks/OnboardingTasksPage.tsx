@@ -117,8 +117,8 @@ const OnboardingTasksPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const companiesPerPage = 10;
   
-  // NPS detail view state (hides companies list when showing NPS responses)
-  const [isShowingNpsDetail, setIsShowingNpsDetail] = useState(false);
+  // Active dashboard tab state (hides companies list when on NPS tab)
+  const [activeDashboardTab, setActiveDashboardTab] = useState("empresas");
 
   useEffect(() => {
     const loadData = async () => {
@@ -1085,11 +1085,11 @@ const OnboardingTasksPage = () => {
           todayTasks={todayTasks}
           onDataRefresh={refreshData}
           currentStaffUserId={currentUserId}
-          onNpsDetailChange={setIsShowingNpsDetail}
+          onActiveTabChange={setActiveDashboardTab}
         />
 
-        {/* Companies List */}
-        {filteredCompanies.length === 0 ? (
+        {/* Companies List - Hidden when on NPS tab */}
+        {activeDashboardTab === "nps" ? null : filteredCompanies.length === 0 ? (
           <Card className="p-12 text-center">
             <Building2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">Nenhuma empresa encontrada</h3>
