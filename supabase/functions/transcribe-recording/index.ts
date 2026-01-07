@@ -261,6 +261,7 @@ async function processAudioWithGemini(
   console.log("Sending audio to Gemini for transcription...");
 
   // Use Gemini for transcription via Lovable AI Gateway
+  // Using inline_data format for video/audio content
   const geminiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -291,10 +292,9 @@ Mantenha a transcrição fiel ao conteúdo, mas remova hesitações excessivas (
               text: `Por favor, transcreva esta gravação de reunião: "${meeting.meeting_title}" realizada em ${meeting.meeting_date}. Forneça a transcrição completa seguida de um resumo dos pontos principais.`
             },
             {
-              type: "input_audio",
-              input_audio: {
-                data: base64Audio,
-                format: "mp3"
+              type: "image_url",
+              image_url: {
+                url: `data:video/mp4;base64,${base64Audio}`
               }
             }
           ]
