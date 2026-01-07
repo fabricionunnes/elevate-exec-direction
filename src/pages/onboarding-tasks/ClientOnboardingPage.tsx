@@ -496,6 +496,7 @@ const ClientOnboardingPage = () => {
               <KPIMetasPanel 
                 companyId={project.onboarding_company_id || ""} 
                 isAdmin={false}
+                projectId={projectId}
               />
             </motion.div>
           )}
