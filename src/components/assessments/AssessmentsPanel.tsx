@@ -45,6 +45,7 @@ export function AssessmentsPanel({ projectId }: Props) {
   const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false);
   const [isLinksOpen, setIsLinksOpen] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [newCycle, setNewCycle] = useState({
     title: "",
@@ -57,6 +58,24 @@ export function AssessmentsPanel({ projectId }: Props) {
     role: "employee" as "owner" | "manager" | "employee" | "peer",
     department: "",
   });
+
+  useEffect(() => {
+    checkAdminStatus();
+  }, []);
+
+  const checkAdminStatus = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: staff } = await supabase
+      .from("onboarding_staff")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    setIsAdmin(staff?.role === "admin");
+  };
 
   useEffect(() => {
     fetchCycles();
@@ -186,6 +205,29 @@ export function AssessmentsPanel({ projectId }: Props) {
     }
   };
 
+  const handleDeleteCycle = async (cycleId: string) => {
+    if (!confirm("Excluir este ciclo e todas as respostas associadas? Esta ação não pode ser desfeita.")) return;
+
+    try {
+      // Delete in order: evaluations, disc_responses, participants, cycle
+      await supabase.from("assessment_360_evaluations").delete().eq("cycle_id", cycleId);
+      await supabase.from("disc_responses").delete().eq("cycle_id", cycleId);
+      await supabase.from("assessment_participants").delete().eq("cycle_id", cycleId);
+      
+      const { error } = await supabase.from("assessment_cycles").delete().eq("id", cycleId);
+      if (error) throw error;
+
+      setCycles(cycles.filter(c => c.id !== cycleId));
+      if (selectedCycle?.id === cycleId) {
+        setSelectedCycle(cycles.find(c => c.id !== cycleId) || null);
+      }
+      toast.success("Ciclo excluído com sucesso");
+    } catch (error) {
+      console.error("Error deleting cycle:", error);
+      toast.error("Erro ao excluir ciclo");
+    }
+  };
+
   const getAssessmentLinks = (participant: Participant) => {
     const baseUrl = window.location.origin;
     
@@ -274,6 +316,17 @@ export function AssessmentsPanel({ projectId }: Props) {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{cycle.title}</CardTitle>
                     <div className="flex gap-2">
+                      {isAdmin && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleDeleteCycle(cycle.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Excluir Ciclo
+                        </Button>
+                      )}
                       <Button variant="outline" size="sm" onClick={() => window.open(`/onboarding-tasks/${projectId}/reports?cycle=${cycle.id}`, "_blank")}>
                         <BarChart3 className="w-4 h-4 mr-2" />
                         Ver Relatórios
