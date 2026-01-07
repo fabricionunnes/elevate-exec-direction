@@ -303,10 +303,10 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
       );
     };
 
-    // Common KPI patterns
-    const leadsKpi = findKpiByPattern(['lead', 'leads', 'oportunidade', 'oportunidades']);
+    // Common KPI patterns - expanded to match more naming conventions
+    const leadsKpi = findKpiByPattern(['lead', 'leads', 'oportunidade', 'oportunidades', 'atendimento', 'atendimentos', 'contato', 'contatos']);
     const proposalsKpi = findKpiByPattern(['proposta', 'propostas', 'orçamento', 'orcamento']);
-    const salesKpi = findKpiByPattern(['venda', 'vendas', 'fechamento', 'fechamentos']);
+    const salesKpi = findKpiByPattern(['venda', 'vendas', 'fechamento', 'fechamentos', 'qtd venda', 'quantidade venda']);
     const revenueKpi = kpis.find(k => k.kpi_type === 'monetary');
     const meetingsKpi = findKpiByPattern(['reunião', 'reuniao', 'reuniões', 'reunioes', 'call', 'calls', 'ligação', 'ligações']);
 
