@@ -4,17 +4,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Settings, Users, BarChart3, Link, Copy } from "lucide-react";
+import { Settings, Users, BarChart3, Link, Copy, Sparkles } from "lucide-react";
 import { KPIConfigurationTab } from "./KPIConfigurationTab";
 import { SalespeopleTab } from "./SalespeopleTab";
 import { KPIDashboardTab } from "./KPIDashboardTab";
+import { KPIAnalysisTab } from "./KPIAnalysisTab";
 
 interface KPIMetasPanelProps {
   companyId: string;
   isAdmin: boolean;
+  projectId?: string;
 }
 
-export const KPIMetasPanel = ({ companyId, isAdmin }: KPIMetasPanelProps) => {
+export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelProps) => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [companyName, setCompanyName] = useState("");
 
@@ -73,6 +75,10 @@ export const KPIMetasPanel = ({ companyId, isAdmin }: KPIMetasPanelProps) => {
             <BarChart3 className="h-4 w-4" />
             Dashboard
           </TabsTrigger>
+          <TabsTrigger value="analysis" className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            Análise IA
+          </TabsTrigger>
           <TabsTrigger value="salespeople" className="gap-2">
             <Users className="h-4 w-4" />
             Vendedores
@@ -87,6 +93,10 @@ export const KPIMetasPanel = ({ companyId, isAdmin }: KPIMetasPanelProps) => {
 
         <TabsContent value="dashboard" className="mt-6">
           <KPIDashboardTab companyId={companyId} />
+        </TabsContent>
+
+        <TabsContent value="analysis" className="mt-6">
+          <KPIAnalysisTab companyId={companyId} projectId={projectId} />
         </TabsContent>
 
         <TabsContent value="salespeople" className="mt-6">

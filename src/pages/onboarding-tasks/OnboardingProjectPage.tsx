@@ -1222,6 +1222,7 @@ const OnboardingProjectPage = () => {
             <KPIMetasPanel 
               companyId={project.onboarding_company_id || ""} 
               isAdmin={isAdmin}
+              projectId={projectId}
             />
           </TabsContent>
         </Tabs>

@@ -43,3 +43,6 @@ verify_jwt = true
 
 [functions.transcribe-recording]
 verify_jwt = true
+
+[functions.kpi-analysis]
+verify_jwt = true
