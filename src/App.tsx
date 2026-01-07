@@ -76,6 +76,7 @@ import RescheduleTasks from "./pages/onboarding-tasks/RescheduleTasks";
 import KickoffFormPage from "./pages/onboarding-tasks/KickoffFormPage";
 import OnboardingRenewalsPage from "./pages/onboarding-tasks/OnboardingRenewalsPage";
 import OnboardingActivityHistoryPage from "./pages/onboarding-tasks/OnboardingActivityHistoryPage";
+import OnboardingCompaniesReportPage from "./pages/onboarding-tasks/OnboardingCompaniesReportPage";
 import KPIEntryPage from "./pages/onboarding-tasks/KPIEntryPage";
 import NPSSurveyPage from "./pages/NPSSurveyPage";
 import DISCAssessmentPage from "./pages/assessments/DISCAssessmentPage";
@@ -164,6 +165,7 @@ const App = () => (
               <Route path="/onboarding-tasks/reschedule" element={<RescheduleTasks />} />
               <Route path="/onboarding-tasks/renewals" element={<OnboardingRenewalsPage />} />
               <Route path="/onboarding-tasks/activity-history" element={<OnboardingActivityHistoryPage />} />
+              <Route path="/onboarding-tasks/companies-report" element={<OnboardingCompaniesReportPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
             </Route>
             
