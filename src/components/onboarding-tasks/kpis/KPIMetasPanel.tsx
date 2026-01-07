@@ -75,19 +75,21 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
             <BarChart3 className="h-4 w-4" />
             Dashboard
           </TabsTrigger>
-          <TabsTrigger value="analysis" className="gap-2">
-            <Sparkles className="h-4 w-4" />
-            Análise IA
-          </TabsTrigger>
           <TabsTrigger value="salespeople" className="gap-2">
             <Users className="h-4 w-4" />
             Vendedores
           </TabsTrigger>
           {isAdmin && (
-            <TabsTrigger value="config" className="gap-2">
-              <Settings className="h-4 w-4" />
-              Configuração
-            </TabsTrigger>
+            <>
+              <TabsTrigger value="analysis" className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                Análise IA
+              </TabsTrigger>
+              <TabsTrigger value="config" className="gap-2">
+                <Settings className="h-4 w-4" />
+                Configuração
+              </TabsTrigger>
+            </>
           )}
         </TabsList>
 
@@ -95,18 +97,20 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
           <KPIDashboardTab companyId={companyId} />
         </TabsContent>
 
-        <TabsContent value="analysis" className="mt-6">
-          <KPIAnalysisTab companyId={companyId} projectId={projectId} />
-        </TabsContent>
-
         <TabsContent value="salespeople" className="mt-6">
           <SalespeopleTab companyId={companyId} isAdmin={isAdmin} />
         </TabsContent>
 
         {isAdmin && (
-          <TabsContent value="config" className="mt-6">
-            <KPIConfigurationTab companyId={companyId} isAdmin={isAdmin} />
-          </TabsContent>
+          <>
+            <TabsContent value="analysis" className="mt-6">
+              <KPIAnalysisTab companyId={companyId} projectId={projectId} />
+            </TabsContent>
+
+            <TabsContent value="config" className="mt-6">
+              <KPIConfigurationTab companyId={companyId} isAdmin={isAdmin} />
+            </TabsContent>
+          </>
         )}
       </Tabs>
     </div>
