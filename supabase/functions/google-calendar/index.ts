@@ -845,12 +845,39 @@ Deno.serve(async (req) => {
          const errorText = await driveResponse.text();
          console.error("Drive API error (sync-recordings):", errorText);
 
+         let parsed: any = null;
+         try {
+           parsed = JSON.parse(errorText);
+         } catch {
+           // ignore
+         }
+
+         const isDriveApiDisabled =
+           driveResponse.status === 403 &&
+           (errorText.includes("accessNotConfigured") ||
+             errorText.includes("SERVICE_DISABLED") ||
+             parsed?.error?.status === "PERMISSION_DENIED" &&
+               (parsed?.error?.message || "").toLowerCase().includes("drive api"));
+
+         if (isDriveApiDisabled) {
+           return new Response(
+             JSON.stringify({
+               synced: 0,
+               needsDriveApi: true,
+               message:
+                 "A API do Google Drive não está habilitada no seu projeto Google. Ative a Google Drive API e tente novamente.",
+             }),
+             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+           );
+         }
+
          if (driveResponse.status === 401 || driveResponse.status === 403) {
            return new Response(
              JSON.stringify({
                synced: 0,
                needsDriveAuth: true,
-               message: "Para buscar gravações automaticamente, reconecte sua conta Google com permissão do Drive",
+               message:
+                 "Para buscar gravações automaticamente, reconecte sua conta Google com permissão do Drive.",
              }),
              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
            );

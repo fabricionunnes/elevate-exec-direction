@@ -270,11 +270,25 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
       });
 
       const payload = response.data as
-        | { synced?: number; total?: number; needsDriveAuth?: boolean; message?: string }
+        | {
+            synced?: number;
+            total?: number;
+            needsDriveAuth?: boolean;
+            needsDriveApi?: boolean;
+            message?: string;
+          }
         | undefined;
 
+      if (payload?.needsDriveApi) {
+        toast.error(payload.message || "Ative a Google Drive API para buscar gravações automaticamente.");
+        return;
+      }
+
       if (payload?.needsDriveAuth) {
-        toast.error(payload.message || "Para buscar gravações automaticamente, reconecte sua conta Google com permissão do Drive.");
+        toast.error(
+          payload.message ||
+            "Para buscar gravações automaticamente, reconecte sua conta Google com permissão do Drive."
+        );
         return;
       }
 
