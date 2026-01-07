@@ -904,6 +904,66 @@ export type Database = {
           },
         ]
       }
+      onboarding_meeting_notes: {
+        Row: {
+          attendees: string | null
+          created_at: string
+          google_event_id: string | null
+          id: string
+          meeting_date: string
+          meeting_link: string | null
+          meeting_title: string
+          notes: string | null
+          project_id: string
+          staff_id: string | null
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          attendees?: string | null
+          created_at?: string
+          google_event_id?: string | null
+          id?: string
+          meeting_date: string
+          meeting_link?: string | null
+          meeting_title: string
+          notes?: string | null
+          project_id: string
+          staff_id?: string | null
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          attendees?: string | null
+          created_at?: string
+          google_event_id?: string | null
+          id?: string
+          meeting_date?: string
+          meeting_link?: string | null
+          meeting_title?: string
+          notes?: string | null
+          project_id?: string
+          staff_id?: string | null
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_meeting_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_meeting_notes_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_monthly_goals: {
         Row: {
           created_at: string

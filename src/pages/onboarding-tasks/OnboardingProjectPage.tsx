@@ -61,7 +61,8 @@ import { ProjectUrgentTasks } from "@/components/onboarding-tasks/ProjectUrgentT
 import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
 import { ProjectSupportBanner } from "@/components/onboarding-tasks/ProjectSupportBanner";
 import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistoryPanel";
-import { TrendingUp, Headphones } from "lucide-react";
+import { MeetingHistoryPanel } from "@/components/onboarding-tasks/MeetingHistoryPanel";
+import { TrendingUp, Headphones, Video } from "lucide-react";
 
 
 interface OnboardingTask {
@@ -1055,6 +1056,10 @@ const OnboardingProjectPage = () => {
               <Headphones className="h-4 w-4" />
               Suportes
             </TabsTrigger>
+            <TabsTrigger value="meetings" className="gap-2">
+              <Video className="h-4 w-4" />
+              Reuniões
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks">
@@ -1204,6 +1209,10 @@ const OnboardingProjectPage = () => {
 
           <TabsContent value="support-history">
             <SupportHistoryPanel projectId={projectId!} />
+          </TabsContent>
+
+          <TabsContent value="meetings">
+            <MeetingHistoryPanel projectId={projectId!} />
           </TabsContent>
         </Tabs>
       </div>
