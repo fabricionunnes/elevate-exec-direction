@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.87.1";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -250,10 +251,12 @@ async function processAudioWithGemini(
     );
   }
 
-  // Convert audio to base64
-  const base64Audio = btoa(
-    String.fromCharCode(...new Uint8Array(audioBuffer.slice(0, 20 * 1024 * 1024))) // Limit to 20MB for API
-  );
+  // Convert audio to base64 - use Deno's base64 encoder to avoid stack overflow
+  const maxSize = 20 * 1024 * 1024; // 20MB limit
+  const audioData = audioBuffer.slice(0, maxSize);
+  const base64Audio = base64Encode(audioData);
+  
+  console.log(`Audio size: ${audioData.byteLength} bytes, base64 length: ${base64Audio.length}`);
 
   console.log("Sending audio to Gemini for transcription...");
 
