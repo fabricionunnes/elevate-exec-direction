@@ -88,6 +88,7 @@ interface DashboardMetricsProps {
   todayTasks: Task[];
   onDataRefresh?: () => void;
   currentStaffUserId?: string | null;
+  onNpsDetailChange?: (isShowingDetail: boolean) => void;
 }
 
 const DashboardMetrics = ({ 
@@ -99,7 +100,8 @@ const DashboardMetrics = ({
   overdueTasks,
   todayTasks,
   onDataRefresh,
-  currentStaffUserId
+  currentStaffUserId,
+  onNpsDetailChange
 }: DashboardMetricsProps) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
@@ -335,7 +337,9 @@ const DashboardMetrics = ({
   const isCardActive = (type: string, value: string) => activeMetricFilter?.type === type && activeMetricFilter?.value === value;
 
   const handleNpsCardClick = (type: "promoters" | "detractors" | "neutrals") => {
-    setNpsDetailType(npsDetailType === type ? null : type);
+    const newValue = npsDetailType === type ? null : type;
+    setNpsDetailType(newValue);
+    onNpsDetailChange?.(newValue !== null);
   };
 
   const getFilteredNpsResponses = (type: "promoters" | "detractors" | "neutrals" | null) => {
@@ -611,7 +615,7 @@ const DashboardMetrics = ({
                   {npsDetailType === "promoters" ? "Promotores (9-10)" : npsDetailType === "detractors" ? "Detratores (0-6)" : "Neutros (7-8)"}
                   <span className="text-muted-foreground">({getFilteredNpsResponses(npsDetailType).length})</span>
                 </h4>
-                <button onClick={() => setNpsDetailType(null)} className="text-xs text-muted-foreground hover:text-foreground">Fechar</button>
+                <button onClick={() => { setNpsDetailType(null); onNpsDetailChange?.(false); }} className="text-xs text-muted-foreground hover:text-foreground">Fechar</button>
               </div>
               <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-1">
                 {getFilteredNpsResponses(npsDetailType).map((response) => (
