@@ -522,94 +522,112 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
         </Card>
       )}
 
-      {/* Calculated Metrics - Conversion, Ticket, etc. */}
-      {(calculatedMetrics.hasLeadsData || calculatedMetrics.hasSalesData || calculatedMetrics.hasRevenueData) && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          {/* Total Leads */}
-          {calculatedMetrics.hasLeadsData && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Leads</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{calculatedMetrics.totalLeads.toLocaleString("pt-BR")}</div>
-                <p className="text-xs text-muted-foreground mt-1">Total no período</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Total Proposals */}
-          {calculatedMetrics.hasProposalsData && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Propostas</CardTitle>
-                <Hash className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{calculatedMetrics.totalProposals.toLocaleString("pt-BR")}</div>
-                {calculatedMetrics.hasLeadsData && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {calculatedMetrics.leadToProposal.toFixed(1)}% dos leads
+      {/* Sales Conversion Card - Highlighted */}
+      {(calculatedMetrics.hasLeadsData || calculatedMetrics.hasProposalsData || calculatedMetrics.hasSalesData) && (
+        <Card className="border-2 border-primary bg-gradient-to-br from-primary/10 to-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Percent className="h-5 w-5 text-primary" />
+              Conversão de Vendas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              {/* Lead to Proposal */}
+              {calculatedMetrics.hasLeadsData && calculatedMetrics.hasProposalsData && (
+                <div className="text-center p-4 bg-background/60 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-1">Lead → Proposta</p>
+                  <p className={`text-3xl font-bold ${
+                    calculatedMetrics.leadToProposal >= 50 ? 'text-green-600' :
+                    calculatedMetrics.leadToProposal >= 30 ? 'text-amber-600' :
+                    'text-destructive'
+                  }`}>
+                    {calculatedMetrics.leadToProposal.toFixed(1)}%
                   </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Sales Count */}
-          {calculatedMetrics.hasSalesData && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Vendas</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{calculatedMetrics.totalSales.toLocaleString("pt-BR")}</div>
-                {calculatedMetrics.hasProposalsData && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {calculatedMetrics.proposalToSale.toFixed(1)}% das propostas
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {calculatedMetrics.totalProposals} de {calculatedMetrics.totalLeads} leads
                   </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Conversion Rate */}
-          {calculatedMetrics.hasLeadsData && calculatedMetrics.hasSalesData && (
-            <Card className="border-primary/30 bg-primary/5">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Conversão Geral</CardTitle>
-                <Percent className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${
-                  calculatedMetrics.leadToSale >= 20 ? 'text-green-600' :
-                  calculatedMetrics.leadToSale >= 10 ? 'text-amber-600' :
-                  'text-destructive'
-                }`}>
-                  {calculatedMetrics.leadToSale.toFixed(1)}%
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Lead → Venda</p>
-              </CardContent>
-            </Card>
-          )}
+              )}
 
-          {/* Average Ticket */}
-          {calculatedMetrics.hasRevenueData && calculatedMetrics.hasSalesData && (
-            <Card className="border-primary/30 bg-primary/5">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-                <DollarSign className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatValue(calculatedMetrics.avgTicket, "monetary")}</div>
-                <p className="text-xs text-muted-foreground mt-1">Por venda fechada</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              {/* Proposal to Sale */}
+              {calculatedMetrics.hasProposalsData && calculatedMetrics.hasSalesData && (
+                <div className="text-center p-4 bg-background/60 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-1">Proposta → Venda</p>
+                  <p className={`text-3xl font-bold ${
+                    calculatedMetrics.proposalToSale >= 40 ? 'text-green-600' :
+                    calculatedMetrics.proposalToSale >= 20 ? 'text-amber-600' :
+                    'text-destructive'
+                  }`}>
+                    {calculatedMetrics.proposalToSale.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {calculatedMetrics.totalSales} de {calculatedMetrics.totalProposals} propostas
+                  </p>
+                </div>
+              )}
+
+              {/* Lead to Sale (General Conversion) */}
+              {calculatedMetrics.hasLeadsData && calculatedMetrics.hasSalesData && (
+                <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
+                  <p className="text-sm text-muted-foreground mb-1">Lead → Venda</p>
+                  <p className={`text-3xl font-bold ${
+                    calculatedMetrics.leadToSale >= 20 ? 'text-green-600' :
+                    calculatedMetrics.leadToSale >= 10 ? 'text-amber-600' :
+                    'text-destructive'
+                  }`}>
+                    {calculatedMetrics.leadToSale.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {calculatedMetrics.totalSales} vendas de {calculatedMetrics.totalLeads} leads
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Summary row */}
+            <div className="grid gap-4 md:grid-cols-4 mt-4 pt-4 border-t">
+              {calculatedMetrics.hasLeadsData && (
+                <div className="flex items-center gap-3">
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Leads</p>
+                    <p className="text-xl font-semibold">{calculatedMetrics.totalLeads.toLocaleString("pt-BR")}</p>
+                  </div>
+                </div>
+              )}
+              {calculatedMetrics.hasProposalsData && (
+                <div className="flex items-center gap-3">
+                  <Hash className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Propostas</p>
+                    <p className="text-xl font-semibold">{calculatedMetrics.totalProposals.toLocaleString("pt-BR")}</p>
+                  </div>
+                </div>
+              )}
+              {calculatedMetrics.hasSalesData && (
+                <div className="flex items-center gap-3">
+                  <Target className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Vendas</p>
+                    <p className="text-xl font-semibold">{calculatedMetrics.totalSales.toLocaleString("pt-BR")}</p>
+                  </div>
+                </div>
+              )}
+              {calculatedMetrics.hasRevenueData && calculatedMetrics.hasSalesData && (
+                <div className="flex items-center gap-3">
+                  <DollarSign className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Ticket Médio</p>
+                    <p className="text-xl font-semibold">{formatValue(calculatedMetrics.avgTicket, "monetary")}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
+
 
       {/* KPI Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
