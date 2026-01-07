@@ -268,7 +268,7 @@ export function AssessmentsPanel({ projectId }: Props) {
 
           {cycles.map(cycle => (
             <TabsContent key={cycle.id} value={cycle.id} className="space-y-4">
-              {/* Cycle Info */}
+              {/* Cycle Info + Public Link */}
               <Card>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
@@ -284,26 +284,50 @@ export function AssessmentsPanel({ projectId }: Props) {
                     Criado em {format(new Date(cycle.created_at), "dd/MM/yyyy", { locale: ptBR })}
                   </CardDescription>
                 </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Public Link */}
+                  <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-primary">🔗 Link Público da Avaliação</p>
+                        <p className="text-sm text-muted-foreground">
+                          Envie este link para todos responderem. Cada pessoa informa o nome ao acessar.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        readOnly
+                        value={`${window.location.origin}/avaliacao?cycle=${cycle.id}`}
+                        className="font-mono text-xs"
+                      />
+                      <Button
+                        variant="default"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/avaliacao?cycle=${cycle.id}`);
+                          toast.success("Link copiado!");
+                        }}
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        Copiar
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
               </Card>
 
-              {/* Participants */}
+              {/* Participants (responses) */}
               <Card>
                 <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      Participantes ({participants.length})
-                    </CardTitle>
-                    <Button size="sm" onClick={() => setIsAddParticipantOpen(true)}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Adicionar
-                    </Button>
-                  </div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Respostas Recebidas ({participants.length})
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {participants.length === 0 ? (
                     <p className="text-muted-foreground text-sm text-center py-4">
-                      Adicione participantes para gerar os links das avaliações
+                      Nenhuma resposta ainda. Compartilhe o link acima!
                     </p>
                   ) : (
                     <div className="space-y-2">
@@ -316,26 +340,13 @@ export function AssessmentsPanel({ projectId }: Props) {
                               {participant.department && ` • ${participant.department}`}
                             </p>
                           </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedParticipant(participant);
-                                setIsLinksOpen(true);
-                              }}
-                            >
-                              <Link2 className="w-4 h-4 mr-2" />
-                              Links
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteParticipant(participant.id)}
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteParticipant(participant.id)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
                         </div>
                       ))}
                     </div>
