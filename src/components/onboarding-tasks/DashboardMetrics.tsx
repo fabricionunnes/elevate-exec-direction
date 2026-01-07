@@ -256,10 +256,21 @@ const DashboardMetrics = ({
     return months.map(monthDate => {
       const monthStart = startOfMonth(monthDate);
       const monthEnd = endOfMonth(monthDate);
-      const closedInMonth = projects.filter(p => (p.status === "closed" || p.status === "completed") && isWithinInterval(new Date(p.updated_at), { start: monthStart, end: monthEnd })).length;
+      // Usa churn_date como referência para determinar o mês do churn
+      const closedInMonth = projects.filter(p => {
+        if (p.status !== "closed" && p.status !== "completed") return false;
+        // Prioriza churn_date, depois updated_at como fallback
+        const churnDateStr = (p as any).churn_date || p.updated_at;
+        const churnDate = new Date(churnDateStr);
+        return isWithinInterval(churnDate, { start: monthStart, end: monthEnd });
+      }).length;
       const activeAtMonthStart = projects.filter(p => {
         if (new Date(p.created_at) > monthEnd) return false;
-        if (p.status === "closed" || p.status === "completed") return new Date(p.updated_at) >= monthStart;
+        if (p.status === "closed" || p.status === "completed") {
+          // Usa churn_date como referência
+          const churnDateStr = (p as any).churn_date || p.updated_at;
+          return new Date(churnDateStr) >= monthStart;
+        }
         return true;
       }).length;
       const churnRate = activeAtMonthStart > 0 ? Math.round((closedInMonth / activeAtMonthStart) * 100 * 10) / 10 : 0;
