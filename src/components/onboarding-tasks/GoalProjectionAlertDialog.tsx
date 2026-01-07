@@ -8,9 +8,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { TrendingDown, Target, AlertTriangle, Lightbulb, ArrowRight, CheckCircle2 } from "lucide-react";
-import { getDaysInMonth } from "date-fns";
+import { getDaysInMonth, startOfMonth, endOfMonth, format } from "date-fns";
 
 interface GoalProjectionAlertDialogProps {
   projectId: string;
@@ -60,14 +59,6 @@ export const GoalProjectionAlertDialog = ({
       const daysPassed = today.getDate();
       const daysRemaining = totalDaysInMonth - daysPassed;
 
-      const { data: goal } = await supabase
-        .from("onboarding_monthly_goals")
-        .select("sales_target, sales_result")
-        .eq("project_id", projectId)
-        .eq("month", currentMonth)
-        .eq("year", currentYear)
-        .maybeSingle();
-
       // Check if already dismissed in this session
       const sessionKey = `goal_alert_dismissed_${projectId}_${currentMonth}_${currentYear}`;
       const wasDismissed = sessionStorage.getItem(sessionKey);
@@ -78,19 +69,61 @@ export const GoalProjectionAlertDialog = ({
         return;
       }
 
-      const hasGoal = !!goal?.sales_target && goal.sales_target > 0;
-      const salesTarget = goal?.sales_target || null;
-      const salesResult = goal?.sales_result || 0;
+      // Get company_id from project
+      const { data: project } = await supabase
+        .from("onboarding_projects")
+        .select("onboarding_company_id")
+        .eq("id", projectId)
+        .maybeSingle();
+
+      if (!project?.onboarding_company_id) {
+        setLoading(false);
+        return;
+      }
+
+      const companyId = project.onboarding_company_id;
+
+      // Get monetary KPIs (type = 'currency') for this company
+      const { data: monetaryKpis } = await supabase
+        .from("company_kpis")
+        .select("id, target_value")
+        .eq("company_id", companyId)
+        .eq("kpi_type", "currency")
+        .eq("is_active", true);
+
+      const hasGoal = monetaryKpis && monetaryKpis.length > 0 && monetaryKpis.some(k => k.target_value > 0);
+      
+      // Calculate total target from all monetary KPIs
+      const salesTarget = monetaryKpis?.reduce((sum, kpi) => sum + (kpi.target_value || 0), 0) || 0;
+
+      // Get current month entries for monetary KPIs
+      const monthStart = format(startOfMonth(today), "yyyy-MM-dd");
+      const monthEnd = format(endOfMonth(today), "yyyy-MM-dd");
+      
+      const kpiIds = monetaryKpis?.map(k => k.id) || [];
+      
+      let salesResult = 0;
+      if (kpiIds.length > 0) {
+        const { data: entries } = await supabase
+          .from("kpi_entries")
+          .select("value")
+          .eq("company_id", companyId)
+          .in("kpi_id", kpiIds)
+          .gte("entry_date", monthStart)
+          .lte("entry_date", monthEnd);
+
+        salesResult = entries?.reduce((sum, e) => sum + (e.value || 0), 0) || 0;
+      }
 
       let projection: number | null = null;
-      if (hasGoal && salesTarget && daysPassed > 0) {
+      if (hasGoal && salesTarget > 0 && daysPassed > 0) {
         const timeProgress = daysPassed / totalDaysInMonth;
         projection = ((salesResult / salesTarget) / timeProgress) * 100;
       }
 
       setGoalData({
-        hasGoal,
-        salesTarget,
+        hasGoal: hasGoal || false,
+        salesTarget: salesTarget || null,
         salesResult,
         projection,
         daysRemaining,
