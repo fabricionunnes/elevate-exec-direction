@@ -94,13 +94,13 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
             <Users className="h-4 w-4" />
             Vendedores
           </TabsTrigger>
-          <TabsTrigger value="endomarketing" className="gap-2">
-            <Trophy className="h-4 w-4" />
-            Endomarketing
-          </TabsTrigger>
           <TabsTrigger value="gamification" className="gap-2">
             <Gamepad2 className="h-4 w-4" />
             Gamificação
+          </TabsTrigger>
+          <TabsTrigger value="endomarketing" className="gap-2">
+            <Trophy className="h-4 w-4" />
+            Endomarketing
           </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="config" className="gap-2">
@@ -118,16 +118,16 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
           <SalespeopleTab companyId={companyId} isAdmin={isAdmin} />
         </TabsContent>
 
-        <TabsContent value="endomarketing" className="mt-6">
-          <EndomarketingPanel
+        <TabsContent value="gamification" className="mt-6">
+          <GamificationPanel
             companyId={companyId}
             projectId={projectId || ""}
             isAdmin={isAdmin}
           />
         </TabsContent>
 
-        <TabsContent value="gamification" className="mt-6">
-          <GamificationPanel
+        <TabsContent value="endomarketing" className="mt-6">
+          <EndomarketingPanel
             companyId={companyId}
             projectId={projectId || ""}
             isAdmin={isAdmin}
