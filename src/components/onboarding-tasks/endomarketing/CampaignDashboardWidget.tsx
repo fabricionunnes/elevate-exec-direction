@@ -54,6 +54,27 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
 
   useEffect(() => {
     fetchActiveCampaigns();
+
+    // Subscribe to realtime changes for campaigns
+    const channel = supabase
+      .channel(`endomarketing-campaigns-${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'endomarketing_campaigns',
+          filter: `project_id=eq.${projectId}`,
+        },
+        () => {
+          fetchActiveCampaigns();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [projectId]);
 
   useEffect(() => {
