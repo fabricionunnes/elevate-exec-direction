@@ -92,6 +92,7 @@ interface DashboardMetricsProps {
   currentStaffUserId?: string | null;
   onNpsDetailChange?: (isShowingDetail: boolean) => void;
   onActiveTabChange?: (tab: string) => void;
+  staffRole?: string | null;
 }
 
 const DashboardMetrics = ({ 
@@ -106,7 +107,8 @@ const DashboardMetrics = ({
   onDataRefresh,
   currentStaffUserId,
   onNpsDetailChange,
-  onActiveTabChange
+  onActiveTabChange,
+  staffRole
 }: DashboardMetricsProps) => {
   const [internalTasks, setInternalTasks] = useState<Task[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
@@ -622,11 +624,13 @@ const DashboardMetrics = ({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
             <Card>
-              <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium flex items-center gap-1 sm:gap-1.5"><DollarSign className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-teal-500" />Ticket Médio & Permanência</CardTitle></CardHeader>
+              <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium flex items-center gap-1 sm:gap-1.5"><Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-indigo-500" />Tempo de Permanência</CardTitle></CardHeader>
               <CardContent className="px-3 sm:px-4 pb-2 sm:pb-3">
-                <div className="grid grid-cols-2 gap-2 sm:gap-4 text-center">
+                <div className={cn("text-center", staffRole === "admin" && "grid grid-cols-2 gap-2 sm:gap-4")}>
                   <div><p className="text-xl sm:text-2xl font-bold text-indigo-500">{ltvMetrics.averageLifetimeMonths}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">meses</p></div>
-                  <div><p className="text-xl sm:text-2xl font-bold text-teal-500">{ltvMetrics.averageTicket > 0 ? `R$ ${(ltvMetrics.averageTicket / 1000).toFixed(1)}k` : "—"}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Ticket Médio</p></div>
+                  {staffRole === "admin" && (
+                    <div><p className="text-xl sm:text-2xl font-bold text-teal-500">{ltvMetrics.averageTicket > 0 ? `R$ ${(ltvMetrics.averageTicket / 1000).toFixed(1)}k` : "—"}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Ticket Médio</p></div>
+                  )}
                 </div>
               </CardContent>
             </Card>
