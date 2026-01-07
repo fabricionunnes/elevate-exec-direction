@@ -14,6 +14,179 @@ export type Database = {
   }
   public: {
     Tables: {
+      assessment_360_evaluations: {
+        Row: {
+          additional_comments: string | null
+          communication_score: number | null
+          completed_at: string | null
+          conflict_management_score: number | null
+          created_at: string
+          cycle_id: string
+          evaluated_id: string
+          evaluator_email: string | null
+          evaluator_id: string | null
+          evaluator_name: string
+          id: string
+          improvements: string | null
+          is_completed: boolean | null
+          leadership_score: number | null
+          proactivity_score: number | null
+          relationship: string
+          results_delivery_score: number | null
+          strengths: string | null
+          teamwork_score: number | null
+        }
+        Insert: {
+          additional_comments?: string | null
+          communication_score?: number | null
+          completed_at?: string | null
+          conflict_management_score?: number | null
+          created_at?: string
+          cycle_id: string
+          evaluated_id: string
+          evaluator_email?: string | null
+          evaluator_id?: string | null
+          evaluator_name: string
+          id?: string
+          improvements?: string | null
+          is_completed?: boolean | null
+          leadership_score?: number | null
+          proactivity_score?: number | null
+          relationship: string
+          results_delivery_score?: number | null
+          strengths?: string | null
+          teamwork_score?: number | null
+        }
+        Update: {
+          additional_comments?: string | null
+          communication_score?: number | null
+          completed_at?: string | null
+          conflict_management_score?: number | null
+          created_at?: string
+          cycle_id?: string
+          evaluated_id?: string
+          evaluator_email?: string | null
+          evaluator_id?: string | null
+          evaluator_name?: string
+          id?: string
+          improvements?: string | null
+          is_completed?: boolean | null
+          leadership_score?: number | null
+          proactivity_score?: number | null
+          relationship?: string
+          results_delivery_score?: number | null
+          strengths?: string | null
+          teamwork_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_360_evaluations_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_360_evaluations_evaluated_id_fkey"
+            columns: ["evaluated_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_360_evaluations_evaluator_id_fkey"
+            columns: ["evaluator_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_cycles: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          id: string
+          project_id: string
+          start_date: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          project_id: string
+          start_date?: string | null
+          status?: string
+          title?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          project_id?: string
+          start_date?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_cycles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_participants: {
+        Row: {
+          access_token: string
+          created_at: string
+          cycle_id: string
+          department: string | null
+          email: string | null
+          id: string
+          name: string
+          role: string
+        }
+        Insert: {
+          access_token?: string
+          created_at?: string
+          cycle_id: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          role: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          cycle_id?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_participants_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_cycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_advisor_leads: {
         Row: {
           created_at: string
@@ -280,6 +453,72 @@ export type Database = {
           why_scheduled?: string | null
         }
         Relationships: []
+      }
+      disc_responses: {
+        Row: {
+          completed_at: string
+          conscientiousness_score: number
+          created_at: string
+          cycle_id: string
+          dominance_score: number
+          id: string
+          influence_score: number
+          participant_id: string
+          primary_profile: string | null
+          raw_answers: Json
+          respondent_email: string | null
+          respondent_name: string
+          secondary_profile: string | null
+          steadiness_score: number
+        }
+        Insert: {
+          completed_at?: string
+          conscientiousness_score?: number
+          created_at?: string
+          cycle_id: string
+          dominance_score?: number
+          id?: string
+          influence_score?: number
+          participant_id: string
+          primary_profile?: string | null
+          raw_answers?: Json
+          respondent_email?: string | null
+          respondent_name: string
+          secondary_profile?: string | null
+          steadiness_score?: number
+        }
+        Update: {
+          completed_at?: string
+          conscientiousness_score?: number
+          created_at?: string
+          cycle_id?: string
+          dominance_score?: number
+          id?: string
+          influence_score?: number
+          participant_id?: string
+          primary_profile?: string | null
+          raw_answers?: Json
+          respondent_email?: string | null
+          respondent_name?: string
+          secondary_profile?: string | null
+          steadiness_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disc_responses_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disc_responses_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_participants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mastermind_applications: {
         Row: {

@@ -77,6 +77,9 @@ import KickoffFormPage from "./pages/onboarding-tasks/KickoffFormPage";
 import OnboardingRenewalsPage from "./pages/onboarding-tasks/OnboardingRenewalsPage";
 import OnboardingActivityHistoryPage from "./pages/onboarding-tasks/OnboardingActivityHistoryPage";
 import NPSSurveyPage from "./pages/NPSSurveyPage";
+import DISCAssessmentPage from "./pages/assessments/DISCAssessmentPage";
+import Assessment360Page from "./pages/assessments/Assessment360Page";
+import AssessmentReportsPage from "./pages/assessments/AssessmentReportsPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
 // Loading fallback component
@@ -166,6 +169,9 @@ const App = () => (
             <Route path="/cac-form/:projectId" element={<CACFormPage />} />
             <Route path="/kickoff/:companyId" element={<KickoffFormPage />} />
             <Route path="/nps" element={<NPSSurveyPage />} />
+            <Route path="/disc" element={<DISCAssessmentPage />} />
+            <Route path="/360" element={<Assessment360Page />} />
+            <Route path="/onboarding-tasks/:projectId/reports" element={<AssessmentReportsPage />} />
             
             {/* Portal do Planejamento 2026 */}
             <Route path="/portal" element={<PortalLandingPage />} />
