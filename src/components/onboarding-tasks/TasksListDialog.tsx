@@ -49,6 +49,7 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<TaskWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -70,6 +71,30 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
       setLoading(false);
     }
   }, [open, type, status, taskIds, projectIds]);
+
+  const handleCompleteTask = async (e: React.MouseEvent, task: TaskWithDetails) => {
+    e.stopPropagation();
+    setCompletingTaskId(task.id);
+    
+    try {
+      const { error } = await supabase
+        .from("onboarding_tasks")
+        .update({ 
+          status: "completed",
+          completed_at: new Date().toISOString()
+        })
+        .eq("id", task.id);
+
+      if (error) throw error;
+
+      // Remove completed task from list
+      setTasks(prev => prev.filter(t => t.id !== task.id));
+    } catch (error) {
+      console.error("Error completing task:", error);
+    } finally {
+      setCompletingTaskId(null);
+    }
+  };
 
   const fetchTasksByDateFilter = async () => {
     setLoading(true);
@@ -357,7 +382,23 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
                 >
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5">
-                      {getStatusIcon(task.status)}
+                      {task.status !== "completed" ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 p-0 hover:bg-green-100 dark:hover:bg-green-900"
+                          onClick={(e) => handleCompleteTask(e, task)}
+                          disabled={completingTaskId === task.id}
+                        >
+                          {completingTaskId === task.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-green-500" />
+                          ) : (
+                            <Circle className="h-4 w-4 text-muted-foreground hover:text-green-500" />
+                          )}
+                        </Button>
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
