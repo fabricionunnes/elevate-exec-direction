@@ -65,31 +65,22 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
           kpi:company_kpis(name, kpi_type)
         `)
         .eq("project_id", projectId)
-        .order("end_date", { ascending: true });
+        .order("start_date", { ascending: true });
 
       if (error) throw error;
 
-      // Filter campaigns that are currently active based on dates (not ended status)
+      // Show campaigns that are still relevant (not ended + not past end date)
+      // This includes "scheduled" campaigns that start in the future.
       const now = new Date();
-      const activeCampaigns = (data || []).filter(campaign => {
-        // Skip ended campaigns
-        if (campaign.status === "ended") return false;
-        
-        const startDate = parseISO(campaign.start_date);
-        const endDate = parseISO(campaign.end_date);
-        
-        // Check if campaign is within active period or hasn't ended yet
-        const isActive = isWithinInterval(now, { start: startDate, end: endDate }) || 
-               (isBefore(startDate, now) && isAfter(endDate, now));
-        
-        // Also include scheduled campaigns that have already started
-        const hasStarted = isBefore(startDate, now) || startDate <= now;
-        const hasNotEnded = isAfter(endDate, now) || endDate >= now;
-        
-        return isActive || (hasStarted && hasNotEnded);
-      }).slice(0, 3);
+      const visibleCampaigns = (data || [])
+        .filter((campaign) => {
+          if (campaign.status === "ended") return false;
+          const endDate = parseISO(campaign.end_date);
+          return isAfter(endDate, now) || endDate >= now;
+        })
+        .slice(0, 3);
 
-      setCampaigns(activeCampaigns);
+      setCampaigns(visibleCampaigns);
     } catch (error) {
       console.error("Error fetching campaigns:", error);
     } finally {
@@ -207,20 +198,29 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
     fetchCampaignRanking(campaign);
   };
 
-  const getTimeRemaining = (endDate: string) => {
-    const end = parseISO(endDate);
+  const getTimeRemaining = (startDateStr: string, endDateStr: string) => {
+    const start = parseISO(startDateStr);
+    const end = parseISO(endDateStr);
     const now = new Date();
+
+    // Upcoming campaign
+    if (isBefore(now, start)) {
+      const daysToStart = differenceInDays(start, now);
+      if (daysToStart > 0) return `Começa em ${daysToStart} dia${daysToStart > 1 ? "s" : ""}`;
+
+      const hoursToStart = differenceInHours(start, now);
+      if (hoursToStart > 0) return `Começa em ${hoursToStart} hora${hoursToStart > 1 ? "s" : ""}`;
+
+      return "Começa em breve";
+    }
+
+    // Running / ending
     const days = differenceInDays(end, now);
-    
-    if (days > 0) {
-      return `${days} dia${days > 1 ? "s" : ""} restante${days > 1 ? "s" : ""}`;
-    }
-    
+    if (days > 0) return `${days} dia${days > 1 ? "s" : ""} restante${days > 1 ? "s" : ""}`;
+
     const hours = differenceInHours(end, now);
-    if (hours > 0) {
-      return `${hours} hora${hours > 1 ? "s" : ""} restante${hours > 1 ? "s" : ""}`;
-    }
-    
+    if (hours > 0) return `${hours} hora${hours > 1 ? "s" : ""} restante${hours > 1 ? "s" : ""}`;
+
     return "Encerrando";
   };
 
@@ -296,7 +296,7 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
                     <p className="font-medium truncate">{campaign.name}</p>
                     <Badge variant="secondary" className="text-xs">
                       <Clock className="h-3 w-3 mr-1" />
-                      {getTimeRemaining(campaign.end_date)}
+                      {getTimeRemaining(campaign.start_date, campaign.end_date)}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -432,7 +432,7 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
               {/* Time remaining */}
               <div className="text-center text-sm text-muted-foreground">
                 <Clock className="h-4 w-4 inline mr-1" />
-                {getTimeRemaining(selectedCampaign.end_date)}
+                {getTimeRemaining(selectedCampaign.start_date, selectedCampaign.end_date)}
               </div>
             </div>
           )}
