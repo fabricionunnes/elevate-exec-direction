@@ -21,8 +21,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Copy, RefreshCw, Link } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Link, Building2 } from "lucide-react";
 
 interface Salesperson {
   id: string;
@@ -30,6 +37,14 @@ interface Salesperson {
   email: string | null;
   phone: string | null;
   access_code: string;
+  is_active: boolean;
+  unit_id: string | null;
+}
+
+interface Unit {
+  id: string;
+  name: string;
+  code: string | null;
   is_active: boolean;
 }
 
@@ -40,6 +55,7 @@ interface SalespeopleTabProps {
 
 export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Salesperson | null>(null);
@@ -47,25 +63,37 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
     name: "",
     email: "",
     phone: "",
+    unit_id: "",
   });
 
   useEffect(() => {
-    fetchSalespeople();
+    fetchData();
   }, [companyId]);
 
-  const fetchSalespeople = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
-        .from("company_salespeople")
-        .select("*")
-        .eq("company_id", companyId)
-        .order("name");
+      const [salespeopleRes, unitsRes] = await Promise.all([
+        supabase
+          .from("company_salespeople")
+          .select("*")
+          .eq("company_id", companyId)
+          .order("name"),
+        supabase
+          .from("company_units")
+          .select("*")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name"),
+      ]);
 
-      if (error) throw error;
-      setSalespeople(data || []);
+      if (salespeopleRes.error) throw salespeopleRes.error;
+      if (unitsRes.error) throw unitsRes.error;
+
+      setSalespeople(salespeopleRes.data || []);
+      setUnits(unitsRes.data || []);
     } catch (error) {
-      console.error("Error fetching salespeople:", error);
-      toast.error("Erro ao carregar vendedores");
+      console.error("Error fetching data:", error);
+      toast.error("Erro ao carregar dados");
     } finally {
       setLoading(false);
     }
@@ -77,7 +105,15 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
       return;
     }
 
+    // If there are multiple units, require unit selection
+    if (units.length > 1 && !formData.unit_id) {
+      toast.error("Selecione a unidade do vendedor");
+      return;
+    }
+
     try {
+      const unitId = formData.unit_id || (units.length === 1 ? units[0].id : null);
+
       if (editingPerson) {
         const { error } = await supabase
           .from("company_salespeople")
@@ -85,6 +121,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
             name: formData.name,
             email: formData.email || null,
             phone: formData.phone || null,
+            unit_id: unitId,
           })
           .eq("id", editingPerson.id);
 
@@ -96,6 +133,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
           name: formData.name,
           email: formData.email || null,
           phone: formData.phone || null,
+          unit_id: unitId,
         });
 
         if (error) throw error;
@@ -104,7 +142,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
 
       setShowDialog(false);
       resetForm();
-      fetchSalespeople();
+      fetchData();
     } catch (error) {
       console.error("Error saving salesperson:", error);
       toast.error("Erro ao salvar vendedor");
@@ -122,7 +160,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
 
       if (error) throw error;
       toast.success("Vendedor excluído");
-      fetchSalespeople();
+      fetchData();
     } catch (error) {
       console.error("Error deleting salesperson:", error);
       toast.error("Erro ao excluir vendedor");
@@ -138,7 +176,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
 
       if (error) throw error;
       toast.success(isActive ? "Vendedor ativado" : "Vendedor desativado");
-      fetchSalespeople();
+      fetchData();
     } catch (error) {
       console.error("Error toggling salesperson:", error);
       toast.error("Erro ao atualizar vendedor");
@@ -155,7 +193,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
 
       if (error) throw error;
       toast.success("Código de acesso regenerado");
-      fetchSalespeople();
+      fetchData();
     } catch (error) {
       console.error("Error regenerating code:", error);
       toast.error("Erro ao regenerar código");
@@ -175,6 +213,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
       name: "",
       email: "",
       phone: "",
+      unit_id: "",
     });
   };
 
@@ -184,8 +223,15 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
       name: person.name,
       email: person.email || "",
       phone: person.phone || "",
+      unit_id: person.unit_id || "",
     });
     setShowDialog(true);
+  };
+
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId) return "-";
+    const unit = units.find((u) => u.id === unitId);
+    return unit ? unit.name : "-";
   };
 
   if (loading) {
@@ -222,6 +268,27 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
                     placeholder="Nome do vendedor"
                   />
                 </div>
+
+                {units.length > 1 && (
+                  <div>
+                    <Label>Unidade *</Label>
+                    <Select
+                      value={formData.unit_id}
+                      onValueChange={(v) => setFormData({ ...formData, unit_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a unidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {units.map((unit) => (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            {unit.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div>
                   <Label>E-mail</Label>
@@ -269,6 +336,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                {units.length > 0 && <TableHead>Unidade</TableHead>}
                 <TableHead>E-mail</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>Código de Acesso</TableHead>
@@ -280,6 +348,14 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
               {salespeople.map((person) => (
                 <TableRow key={person.id} className={!person.is_active ? "opacity-50" : ""}>
                   <TableCell className="font-medium">{person.name}</TableCell>
+                  {units.length > 0 && (
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Building2 className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-sm">{getUnitName(person.unit_id)}</span>
+                      </div>
+                    </TableCell>
+                  )}
                   <TableCell>{person.email || "-"}</TableCell>
                   <TableCell>{person.phone || "-"}</TableCell>
                   <TableCell>
