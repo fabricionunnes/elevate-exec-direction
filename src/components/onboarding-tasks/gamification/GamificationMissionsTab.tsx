@@ -792,14 +792,14 @@ export const GamificationMissionsTab = ({ companyId, projectId, isAdmin }: Gamif
               <div className="space-y-2">
                 <Label>KPI Base</Label>
                 <Select
-                  value={missionForm.metric_kpi_id}
-                  onValueChange={(value) => setMissionForm({ ...missionForm, metric_kpi_id: value })}
+                  value={missionForm.metric_kpi_id || "none"}
+                  onValueChange={(value) => setMissionForm({ ...missionForm, metric_kpi_id: value === "none" ? "" : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {kpis.map((kpi) => (
                       <SelectItem key={kpi.id} value={kpi.id}>{kpi.name}</SelectItem>
                     ))}
