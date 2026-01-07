@@ -2,6 +2,7 @@ import { useEffect, useState, Suspense, lazy } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useGlobalPresence } from "@/hooks/useGlobalPresence";
+import { useGoogleCalendarTokenSync } from "@/hooks/useGoogleCalendarTokenSync";
 
 // Lazy load heavy components to prevent white screen issues
 const RealtimeNotifications = lazy(() => import("./RealtimeNotifications").then(m => ({ default: m.RealtimeNotifications })));
@@ -24,6 +25,9 @@ export const OnboardingStaffLayout = () => {
 
   // Hook global de presença - mantém online enquanto logado
   useGlobalPresence(staffId);
+
+  // Sincroniza tokens do Google Calendar após retorno do OAuth
+  useGoogleCalendarTokenSync();
 
   useEffect(() => {
     let isMounted = true;
