@@ -4,12 +4,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Settings, Users, BarChart3, Link, Copy, Sparkles, Building2 } from "lucide-react";
+import { Settings, Users, BarChart3, Link, Copy, Sparkles, Building2, Trophy, Gamepad2 } from "lucide-react";
 import { KPIConfigurationTab } from "./KPIConfigurationTab";
 import { SalespeopleTab } from "./SalespeopleTab";
 import { KPIDashboardTab } from "./KPIDashboardTab";
 import { KPIAnalysisTab } from "./KPIAnalysisTab";
 import { UnitsTab } from "./UnitsTab";
+import { EndomarketingPanel } from "../endomarketing/EndomarketingPanel";
+import { GamificationPanel } from "../gamification/GamificationPanel";
 
 interface KPIMetasPanelProps {
   companyId: string;
@@ -92,6 +94,14 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
             <Users className="h-4 w-4" />
             Vendedores
           </TabsTrigger>
+          <TabsTrigger value="endomarketing" className="gap-2">
+            <Trophy className="h-4 w-4" />
+            Endomarketing
+          </TabsTrigger>
+          <TabsTrigger value="gamification" className="gap-2">
+            <Gamepad2 className="h-4 w-4" />
+            Gamificação
+          </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="config" className="gap-2">
               <Settings className="h-4 w-4" />
@@ -106,6 +116,22 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
 
         <TabsContent value="salespeople" className="mt-6">
           <SalespeopleTab companyId={companyId} isAdmin={isAdmin} />
+        </TabsContent>
+
+        <TabsContent value="endomarketing" className="mt-6">
+          <EndomarketingPanel
+            companyId={companyId}
+            projectId={projectId || ""}
+            isAdmin={isAdmin}
+          />
+        </TabsContent>
+
+        <TabsContent value="gamification" className="mt-6">
+          <GamificationPanel
+            companyId={companyId}
+            projectId={projectId || ""}
+            isAdmin={isAdmin}
+          />
         </TabsContent>
 
         {isAdmin && (

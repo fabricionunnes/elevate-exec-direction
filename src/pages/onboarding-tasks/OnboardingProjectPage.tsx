@@ -71,9 +71,7 @@ import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistor
 import { MeetingHistoryPanel } from "@/components/onboarding-tasks/MeetingHistoryPanel";
 import { AssessmentsPanel } from "@/components/assessments/AssessmentsPanel";
 import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
-import { EndomarketingPanel } from "@/components/onboarding-tasks/endomarketing/EndomarketingPanel";
-import { GamificationPanel } from "@/components/onboarding-tasks/gamification/GamificationPanel";
-import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Trophy, Gamepad2 } from "lucide-react";
+import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
 interface OnboardingTask {
@@ -1169,14 +1167,6 @@ const OnboardingProjectPage = () => {
                 <Brain className="h-4 w-4" />
                 <span className="hidden sm:inline">Avaliações</span>
               </TabsTrigger>
-              <TabsTrigger value="endomarketing" className="gap-1.5">
-                <Trophy className="h-4 w-4" />
-                <span className="hidden sm:inline">Endomarketing</span>
-              </TabsTrigger>
-              <TabsTrigger value="gamification" className="gap-1.5">
-                <Gamepad2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Gamificação</span>
-              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -1338,21 +1328,6 @@ const OnboardingProjectPage = () => {
             />
           </TabsContent>
 
-          <TabsContent value="endomarketing">
-            <EndomarketingPanel
-              companyId={project.onboarding_company_id || ""}
-              projectId={projectId!}
-              isAdmin={isAdmin}
-            />
-          </TabsContent>
-
-          <TabsContent value="gamification">
-            <GamificationPanel
-              companyId={project.onboarding_company_id || ""}
-              projectId={projectId!}
-              isAdmin={isAdmin}
-            />
-          </TabsContent>
         </Tabs>
       </div>
 
