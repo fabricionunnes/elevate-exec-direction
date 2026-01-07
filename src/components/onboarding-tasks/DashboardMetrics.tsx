@@ -242,20 +242,32 @@ const DashboardMetrics = ({
   }, [filteredCompanies, dateRange, projects]);
 
   const churnMetrics = useMemo(() => {
-    const closedInPeriod = projects.filter(p => (p.status === "closed" || p.status === "completed") && isWithinInterval(new Date(p.updated_at), { start: dateRange.start, end: dateRange.end })).length;
-    const signaledInPeriod = projects.filter(p => (p.status === "cancellation_signaled" || p.status === "notice_period") && isWithinInterval(new Date(p.updated_at), { start: dateRange.start, end: dateRange.end })).length;
+    const getClosedDate = (p: Project) => {
+      const churnDateStr = p.churn_date || p.updated_at;
+      const dateOnly = churnDateStr.substring(0, 10);
+      return new Date(dateOnly + "T12:00:00");
+    };
+
+    const closedInPeriod = projects.filter(
+      p => (p.status === "closed" || p.status === "completed") && isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end })
+    ).length;
+
+    const signaledInPeriod = projects.filter(
+      p => (p.status === "cancellation_signaled" || p.status === "notice_period") && isWithinInterval(new Date(p.updated_at), { start: dateRange.start, end: dateRange.end })
+    ).length;
+
     const totalActiveStart = projectMetrics.activeProjects + closedInPeriod + signaledInPeriod;
     const churnRate = totalActiveStart > 0 ? Math.round((closedInPeriod / totalActiveStart) * 100) : 0;
-    
+
     // Count unique companies with closed projects in the period
     const closedCompanyIds = new Set(
       projects
-        .filter(p => (p.status === "closed" || p.status === "completed") && isWithinInterval(new Date(p.updated_at), { start: dateRange.start, end: dateRange.end }))
+        .filter(p => (p.status === "closed" || p.status === "completed") && isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end }))
         .map(p => p.onboarding_company_id)
         .filter(Boolean)
     );
     const closedCompaniesInPeriod = closedCompanyIds.size;
-    
+
     return { closedInPeriod, signaledInPeriod, churnRate, closedCompaniesInPeriod };
   }, [projects, dateRange, projectMetrics]);
 
