@@ -240,20 +240,30 @@ export default function UnifiedAssessmentPage() {
     setSubmitting(true);
 
     try {
-      // First, create participant record
-      const { data: participant, error: participantError } = await supabase
+      const generateId = () => {
+        if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+        return `${Date.now()}-${Math.random()}`;
+      };
+
+      const participantId = generateId();
+      const accessToken = generateId();
+
+      // First, create participant record (no RETURNING to avoid public SELECT requirements)
+      const { error: participantError } = await supabase
         .from("assessment_participants")
         .insert({
+          id: participantId,
+          access_token: accessToken,
           cycle_id: cycleId,
           name: respondentName.trim(),
           email: respondentEmail.trim() || null,
           role: "employee",
           department: department.trim() || null,
-        })
-        .select()
-        .single();
+        });
 
       if (participantError) throw participantError;
+
+      const participant = { id: participantId };
 
       // Save DISC response if applicable
       if (cycleInfo?.type === "disc" || cycleInfo?.type === "both") {
