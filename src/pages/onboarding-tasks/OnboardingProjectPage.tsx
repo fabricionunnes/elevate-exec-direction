@@ -880,7 +880,7 @@ const OnboardingProjectPage = () => {
           projectId={projectId}
           companyName={project.onboarding_company?.name || project.product_name}
           isStaff={true}
-          onNavigateToGoals={() => setActiveTab("goals")}
+          onNavigateToGoals={() => setActiveTab("kpis")}
         />
       )}
       

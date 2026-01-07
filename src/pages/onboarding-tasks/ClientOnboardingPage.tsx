@@ -348,7 +348,7 @@ const ClientOnboardingPage = () => {
           projectId={projectId}
           companyName={company?.name || project.product_name}
           isStaff={false}
-          onNavigateToGoals={() => setActiveView("metrics")}
+          onNavigateToGoals={() => setActiveView("kpis")}
         />
       )}
       
