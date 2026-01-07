@@ -841,12 +841,26 @@ Deno.serve(async (req) => {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
-      if (!driveResponse.ok) {
-        return new Response(
-          JSON.stringify({ synced: 0, needsDriveAuth: true }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+       if (!driveResponse.ok) {
+         const errorText = await driveResponse.text();
+         console.error("Drive API error (sync-recordings):", errorText);
+
+         if (driveResponse.status === 401 || driveResponse.status === 403) {
+           return new Response(
+             JSON.stringify({
+               synced: 0,
+               needsDriveAuth: true,
+               message: "Para buscar gravações automaticamente, reconecte sua conta Google com permissão do Drive",
+             }),
+             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+           );
+         }
+
+         return new Response(
+           JSON.stringify({ synced: 0, error: "Failed to fetch recordings" }),
+           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+         );
+       }
 
       const driveData = await driveResponse.json();
       const recordings = driveData.files || [];

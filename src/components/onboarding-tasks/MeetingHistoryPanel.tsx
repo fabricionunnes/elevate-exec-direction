@@ -260,11 +260,30 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
-      if (response.data?.synced > 0) {
-        console.log(`Synced ${response.data.synced} recordings`);
+      const payload = response.data as
+        | { synced?: number; total?: number; needsDriveAuth?: boolean; message?: string }
+        | undefined;
+
+      if (payload?.needsDriveAuth) {
+        toast.error(payload.message || "Para buscar gravações automaticamente, reconecte sua conta Google com permissão do Drive.");
+        return;
+      }
+
+      const synced = payload?.synced ?? 0;
+      const total = payload?.total ?? 0;
+
+      if (synced > 0) {
+        toast.success(`${synced} gravação(ões) vinculada(s) às reuniões`);
+      } else {
+        toast.message(
+          total > 0
+            ? "Nenhuma gravação encontrada ainda (pode levar um tempo para aparecer no Drive)."
+            : "Nenhuma reunião pendente de gravação para sincronizar."
+        );
       }
     } catch (error) {
       console.error("Error syncing recordings:", error);
+      toast.error("Erro ao sincronizar gravações");
     }
   };
 
