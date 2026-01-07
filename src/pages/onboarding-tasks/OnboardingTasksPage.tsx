@@ -107,7 +107,7 @@ const OnboardingTasksPage = () => {
     end: endOfMonth(new Date()),
   }));
   const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null; completed_at: string | null }[]>([]);
-  const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null }[]>([]);
+  const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null; churn_date: string | null }[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
   
@@ -325,6 +325,7 @@ const OnboardingTasksPage = () => {
         consultant_id: p.consultant_id,
         reactivated_at: p.reactivated_at,
         onboarding_company_id: p.onboarding_company_id,
+        churn_date: p.churn_date,
       })));
 
       setCompanies(companiesWithProjects);
