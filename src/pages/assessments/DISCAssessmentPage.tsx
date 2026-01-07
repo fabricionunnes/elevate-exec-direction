@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -239,7 +240,7 @@ export default function DISCAssessmentPage() {
         conscientiousness_score: scores.C,
         primary_profile: primary,
         secondary_profile: secondary,
-        raw_answers: answers,
+        raw_answers: answers as unknown as Json,
       }]);
 
       if (error) throw error;
