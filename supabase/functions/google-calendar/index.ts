@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       .from("user_google_tokens")
       .select("*")
       .eq("user_id", effectiveUserId)
-      .single();
+      .maybeSingle();
 
     if (action === "check-connection") {
       return new Response(
@@ -326,7 +326,7 @@ Deno.serve(async (req) => {
         .from("user_google_tokens")
         .select("*")
         .eq("user_id", calendarUserId)
-        .single();
+        .maybeSingle();
 
       console.log("Token lookup result:", { hasToken: !!calendarTokenData, error: calendarTokenError?.message });
 
