@@ -827,6 +827,10 @@ const OnboardingTasksPage = () => {
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Renovações
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/activity-history")}>
+                        <History className="h-4 w-4 mr-2" />
+                        Histórico de Atividades
+                      </DropdownMenuItem>
                     </>
                   )}
                 </DropdownMenuContent>
