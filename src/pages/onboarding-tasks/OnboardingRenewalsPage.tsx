@@ -217,6 +217,11 @@ export default function OnboardingRenewalsPage() {
   });
   const [saving, setSaving] = useState(false);
 
+  // Edit churn date dialog
+  const [editChurnDateDialogOpen, setEditChurnDateDialogOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<ClosedProject | null>(null);
+  const [newChurnDate, setNewChurnDate] = useState("");
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -358,6 +363,39 @@ export default function OnboardingRenewalsPage() {
     const companyHistory = renewals.filter(r => r.company_id === company.id);
     setCompanyRenewals(companyHistory);
     setHistoryDialogOpen(true);
+  };
+
+  const openEditChurnDateDialog = (project: ClosedProject) => {
+    setSelectedProject(project);
+    setNewChurnDate(project.churn_date || "");
+    setEditChurnDateDialogOpen(true);
+  };
+
+  const handleSaveChurnDate = async () => {
+    if (!selectedProject || !newChurnDate) {
+      toast.error("Selecione uma data válida");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_projects")
+        .update({ churn_date: newChurnDate })
+        .eq("id", selectedProject.id);
+
+      if (error) throw error;
+
+      toast.success("Data de encerramento atualizada");
+      setEditChurnDateDialogOpen(false);
+      setSelectedProject(null);
+      fetchData();
+    } catch (error) {
+      console.error("Error updating churn date:", error);
+      toast.error("Erro ao atualizar data de encerramento");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleRenew = async () => {
@@ -1131,6 +1169,7 @@ export default function OnboardingRenewalsPage() {
                     <TableHead>Data Encerramento</TableHead>
                     <TableHead>Motivo</TableHead>
                     <TableHead>Observações</TableHead>
+                    <TableHead className="w-[80px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1156,11 +1195,21 @@ export default function OnboardingRenewalsPage() {
                       <TableCell className="max-w-[200px] truncate" title={project.churn_notes || "-"}>
                         {project.churn_notes || "-"}
                       </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditChurnDateDialog(project)}
+                          title="Editar data de encerramento"
+                        >
+                          <Calendar className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                   {closedProjects.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         Nenhum projeto encerrado
                       </TableCell>
                     </TableRow>
@@ -1332,6 +1381,45 @@ export default function OnboardingRenewalsPage() {
               </div>
             )}
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Churn Date Dialog */}
+      <Dialog open={editChurnDateDialogOpen} onOpenChange={setEditChurnDateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Data de Encerramento</DialogTitle>
+            <DialogDescription>
+              {selectedProject?.company_name} - {selectedProject?.product_name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Data de Encerramento</Label>
+              <Input
+                type="date"
+                value={newChurnDate}
+                onChange={(e) => setNewChurnDate(e.target.value)}
+              />
+            </div>
+
+            {selectedProject?.churn_reason && (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">Motivo do encerramento:</p>
+                <p className="font-medium">{selectedProject.churn_reason}</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditChurnDateDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveChurnDate} disabled={saving}>
+              {saving ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
