@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Sparkles, RefreshCw, Loader2, TrendingUp, TrendingDown, AlertTriangle, Target, Users } from "lucide-react";
+import { Sparkles, RefreshCw, Loader2, TrendingUp, AlertTriangle, Target, Users, Brain, Calendar, Lightbulb, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface KPIAnalysisTabProps {
   companyId: string;
@@ -29,19 +30,19 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
 
   useEffect(() => {
     fetchLatestAnalysis();
-  }, [companyId]);
+  }, [companyId, projectId]);
 
   const fetchLatestAnalysis = async () => {
+    if (!projectId) return;
+    
     setLoading(true);
     try {
-      // Check if we have a cached analysis from today
-      const today = new Date().toISOString().split('T')[0];
+      // Fetch the most recent analysis (not limited to today)
       const { data } = await supabase
         .from("onboarding_ai_chat")
         .select("*")
         .eq("project_id", projectId)
         .eq("role", "kpi_analysis")
-        .gte("created_at", today)
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
@@ -68,7 +69,6 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
 
     setGenerating(true);
     setStreamedContent("");
-    setAnalysis(null);
 
     try {
       const response = await fetch(
@@ -154,6 +154,7 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
             content: fullContent,
             created_at: savedAnalysis.created_at,
           });
+          setStreamedContent("");
         }
       }
 
@@ -163,9 +164,10 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
       toast.error("Erro ao gerar análise");
     } finally {
       setGenerating(false);
-      setStreamedContent("");
     }
   };
+
+  const contentToShow = generating ? streamedContent : analysis?.content;
 
   if (loading) {
     return (
@@ -176,128 +178,140 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <Card>
+    <div className="space-y-4">
+      {/* Header Card */}
+      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
         <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Sparkles className="h-5 w-5 text-primary" />
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
+                <Brain className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <CardTitle className="text-lg">Análise Inteligente de KPIs</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  IA avalia os números e direciona ações para o consultor
+                <CardTitle className="text-xl flex items-center gap-2">
+                  Análise Inteligente
+                  <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-primary/10 text-primary">IA</span>
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Avaliação automática dos KPIs com recomendações personalizadas
                 </p>
               </div>
             </div>
-            <Button 
-              onClick={generateAnalysis} 
-              disabled={generating}
-              className="gap-2"
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Analisando...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  {analysis ? "Atualizar Análise" : "Gerar Análise"}
-                </>
+            <div className="flex items-center gap-3">
+              {analysis && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span>
+                    {format(new Date(analysis.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </span>
+                </div>
               )}
-            </Button>
+              <Button 
+                onClick={generateAnalysis} 
+                disabled={generating}
+                className="gap-2 shadow-lg"
+                size="sm"
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Analisando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    {analysis ? "Nova Análise" : "Gerar Análise"}
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </CardHeader>
       </Card>
 
       {/* Analysis Content */}
-      {generating && streamedContent ? (
-        <Card>
-          <CardContent className="pt-6">
-            <ScrollArea className="h-[600px]" ref={scrollRef}>
-              <div className="prose prose-sm dark:prose-invert max-w-none pr-4">
-                <ReactMarkdown>{streamedContent}</ReactMarkdown>
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      ) : analysis ? (
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Última análise: {format(new Date(analysis.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[600px]">
-              <div className="prose prose-sm dark:prose-invert max-w-none pr-4">
-                <ReactMarkdown>{analysis.content}</ReactMarkdown>
+      {contentToShow ? (
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <ScrollArea className="h-[calc(100vh-380px)] min-h-[400px]" ref={scrollRef}>
+              <div className="p-6">
+                <div className={cn(
+                  "prose prose-sm dark:prose-invert max-w-none",
+                  "prose-headings:text-foreground prose-headings:font-semibold",
+                  "prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-3 prose-h2:pb-2 prose-h2:border-b prose-h2:border-border",
+                  "prose-h3:text-base prose-h3:mt-4 prose-h3:mb-2",
+                  "prose-p:text-muted-foreground prose-p:leading-relaxed",
+                  "prose-li:text-muted-foreground prose-li:marker:text-primary",
+                  "prose-strong:text-foreground prose-strong:font-semibold",
+                  "prose-ul:my-2 prose-ol:my-2",
+                  "prose-table:border prose-table:border-border prose-th:bg-muted/50 prose-th:p-2 prose-td:p-2 prose-td:border prose-td:border-border",
+                  "[&_h2]:flex [&_h2]:items-center [&_h2]:gap-2",
+                )}>
+                  <ReactMarkdown
+                    components={{
+                      h2: ({ children }) => (
+                        <h2 className="flex items-center gap-2">
+                          <span className="w-1 h-5 bg-primary rounded-full"></span>
+                          {children}
+                        </h2>
+                      ),
+                    }}
+                  >
+                    {contentToShow}
+                  </ReactMarkdown>
+                  {generating && (
+                    <div className="flex items-center gap-2 mt-4 text-primary animate-pulse">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">Gerando análise...</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </ScrollArea>
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="p-4 rounded-full bg-muted">
-                <TrendingUp className="h-8 w-8 text-muted-foreground" />
+        <Card className="border-dashed">
+          <CardContent className="py-16">
+            <div className="flex flex-col items-center gap-6 text-center">
+              <div className="relative">
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-muted to-muted/50">
+                  <Sparkles className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <div className="absolute -top-1 -right-1 p-1.5 rounded-full bg-primary text-primary-foreground">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-lg">Nenhuma análise gerada</h3>
-                <p className="text-muted-foreground text-sm mt-1 max-w-md mx-auto">
-                  Clique em "Gerar Análise" para que a IA avalie os KPIs, identifique pontos de melhoria e sugira ações para cada vendedor.
+              <div className="space-y-2 max-w-md">
+                <h3 className="font-semibold text-xl">Nenhuma análise gerada ainda</h3>
+                <p className="text-muted-foreground text-sm">
+                  A IA irá analisar todos os KPIs, identificar pontos de melhoria por vendedor e sugerir ações práticas para atingir as metas.
                 </p>
               </div>
-              <Button onClick={generateAnalysis} disabled={generating} className="mt-2 gap-2">
+              
+              {/* Feature highlights */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl mt-4">
+                <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/30">
+                  <Target className="h-5 w-5 text-primary" />
+                  <span className="text-xs font-medium">Metas vs Resultados</span>
+                </div>
+                <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/30">
+                  <Users className="h-5 w-5 text-blue-500" />
+                  <span className="text-xs font-medium">Análise por Vendedor</span>
+                </div>
+                <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/30">
+                  <Lightbulb className="h-5 w-5 text-amber-500" />
+                  <span className="text-xs font-medium">Sugestões de Ação</span>
+                </div>
+              </div>
+
+              <Button onClick={generateAnalysis} disabled={generating} size="lg" className="mt-4 gap-2 shadow-lg">
                 <Sparkles className="h-4 w-4" />
                 Gerar Primeira Análise
               </Button>
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Quick Stats */}
-      {!generating && !analysis && (
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Target className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="text-sm text-muted-foreground">O que a IA analisa</p>
-                  <p className="font-medium">Metas vs Resultados</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Users className="h-5 w-5 text-blue-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Performance individual</p>
-                  <p className="font-medium">Por vendedor</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Sugestões práticas</p>
-                  <p className="font-medium">Ações de melhoria</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       )}
     </div>
   );
