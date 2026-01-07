@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, parseISO, isPast } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
   Video, 
@@ -39,8 +39,10 @@ import {
   Users,
   ChevronRight,
   PlayCircle,
-  Plus,
-  Loader2
+  Loader2,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle2
 } from "lucide-react";
 
 interface MeetingNote {
@@ -48,16 +50,27 @@ interface MeetingNote {
   meeting_title: string;
   meeting_date: string;
   subject: string;
-  notes: string;
+  notes: string | null;
   attendees: string | null;
   meeting_link: string | null;
   recording_link: string | null;
   created_at: string;
   is_finalized: boolean;
+  google_event_id: string | null;
   staff?: {
     id: string;
     name: string;
   } | null;
+}
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  start: string;
+  end: string;
+  meetingLink?: string;
+  calendarLink: string;
 }
 
 interface MeetingHistoryPanelProps {
@@ -66,28 +79,37 @@ interface MeetingHistoryPanelProps {
 
 export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => {
   const [meetings, setMeetings] = useState<MeetingNote[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<MeetingNote | null>(null);
   const [meetingToDelete, setMeetingToDelete] = useState<MeetingNote | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
+  const [calendarConnected, setCalendarConnected] = useState(false);
   
-  // New meeting form state
-  const [showNewMeetingDialog, setShowNewMeetingDialog] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [newMeeting, setNewMeeting] = useState({
-    subject: "",
+  // Finalize meeting dialog
+  const [meetingToFinalize, setMeetingToFinalize] = useState<MeetingNote | null>(null);
+  const [finalizing, setFinalizing] = useState(false);
+  const [finalizeForm, setFinalizeForm] = useState({
     notes: "",
     attendees: "",
-    meetingDate: format(new Date(), "yyyy-MM-dd"),
-    meetingTime: format(new Date(), "HH:mm"),
     recordingLink: "",
   });
 
   useEffect(() => {
-    fetchMeetings();
-    fetchCurrentStaff();
+    fetchAll();
   }, [projectId]);
+
+  const fetchAll = async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchCurrentStaff(),
+      fetchMeetings(),
+      syncCalendarEvents(),
+    ]);
+    setLoading(false);
+  };
 
   const fetchCurrentStaff = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -105,7 +127,6 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   };
 
   const fetchMeetings = async () => {
-    setLoading(true);
     try {
       const { data, error } = await supabase
         .from("onboarding_meeting_notes")
@@ -124,10 +145,87 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
       setMeetings(data || []);
     } catch (error) {
       console.error("Error fetching meetings:", error);
-      toast.error("Erro ao carregar histórico de reuniões");
-    } finally {
-      setLoading(false);
     }
+  };
+
+  const syncCalendarEvents = async () => {
+    try {
+      // Check if calendar is connected
+      const { data: connectionData } = await supabase.functions.invoke("google-calendar?action=check-connection", {
+        body: {},
+      });
+
+      if (!connectionData?.connected) {
+        setCalendarConnected(false);
+        return;
+      }
+
+      setCalendarConnected(true);
+
+      // Fetch events from Google Calendar
+      const { data } = await supabase.functions.invoke("google-calendar?action=events", {
+        body: {},
+      });
+
+      if (data?.events) {
+        setCalendarEvents(data.events);
+        
+        // Auto-create meeting entries for past events that don't exist yet
+        await createMeetingsFromCalendarEvents(data.events);
+      }
+    } catch (error) {
+      console.error("Error syncing calendar events:", error);
+    }
+  };
+
+  const createMeetingsFromCalendarEvents = async (events: CalendarEvent[]) => {
+    if (!currentStaffId) return;
+
+    // Get existing google_event_ids
+    const { data: existingMeetings } = await supabase
+      .from("onboarding_meeting_notes")
+      .select("google_event_id")
+      .eq("project_id", projectId)
+      .not("google_event_id", "is", null);
+
+    const existingEventIds = new Set((existingMeetings || []).map(m => m.google_event_id));
+
+    // Filter past events that don't exist yet
+    const pastEvents = events.filter(event => {
+      const eventDate = parseISO(event.start);
+      return isPast(eventDate) && !existingEventIds.has(event.id);
+    });
+
+    if (pastEvents.length === 0) return;
+
+    // Create meeting entries for new past events
+    const newMeetings = pastEvents.map(event => ({
+      project_id: projectId,
+      staff_id: currentStaffId,
+      google_event_id: event.id,
+      meeting_title: event.title,
+      meeting_date: event.start,
+      subject: event.title,
+      notes: null,
+      meeting_link: event.meetingLink || null,
+      is_finalized: false,
+    }));
+
+    const { error } = await supabase
+      .from("onboarding_meeting_notes")
+      .insert(newMeetings);
+
+    if (!error) {
+      await fetchMeetings();
+    }
+  };
+
+  const handleRefreshCalendar = async () => {
+    setSyncing(true);
+    await syncCalendarEvents();
+    await fetchMeetings();
+    setSyncing(false);
+    toast.success("Reuniões sincronizadas");
   };
 
   const handleDelete = async () => {
@@ -153,149 +251,52 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     }
   };
 
-  const handleSaveNewMeeting = async () => {
-    if (!newMeeting.subject.trim()) {
-      toast.error("Informe o assunto da reunião");
-      return;
-    }
-    if (!newMeeting.notes.trim()) {
+  const handleFinalizeMeeting = async () => {
+    if (!meetingToFinalize) return;
+    
+    if (!finalizeForm.notes.trim()) {
       toast.error("Descreva o que foi tratado na reunião");
       return;
     }
 
-    setSaving(true);
+    setFinalizing(true);
     try {
-      const meetingDateTime = `${newMeeting.meetingDate}T${newMeeting.meetingTime}:00`;
-      
-      const { error } = await supabase.from("onboarding_meeting_notes").insert({
-        project_id: projectId,
-        staff_id: currentStaffId,
-        meeting_title: newMeeting.subject,
-        meeting_date: meetingDateTime,
-        subject: newMeeting.subject.trim(),
-        notes: newMeeting.notes.trim(),
-        attendees: newMeeting.attendees.trim() || null,
-        recording_link: newMeeting.recordingLink.trim() || null,
-        is_finalized: true, // Auto-finalize when notes are provided
-      });
+      const { error } = await supabase
+        .from("onboarding_meeting_notes")
+        .update({
+          notes: finalizeForm.notes.trim(),
+          attendees: finalizeForm.attendees.trim() || null,
+          recording_link: finalizeForm.recordingLink.trim() || null,
+          is_finalized: true,
+        })
+        .eq("id", meetingToFinalize.id);
 
       if (error) throw error;
 
-      toast.success("Reunião registrada com sucesso!");
-      setShowNewMeetingDialog(false);
-      setNewMeeting({
-        subject: "",
-        notes: "",
-        attendees: "",
-        meetingDate: format(new Date(), "yyyy-MM-dd"),
-        meetingTime: format(new Date(), "HH:mm"),
-        recordingLink: "",
-      });
+      toast.success("Reunião finalizada com sucesso!");
+      setMeetingToFinalize(null);
+      setFinalizeForm({ notes: "", attendees: "", recordingLink: "" });
       fetchMeetings();
     } catch (error) {
-      console.error("Error saving meeting:", error);
-      toast.error("Erro ao registrar reunião");
+      console.error("Error finalizing meeting:", error);
+      toast.error("Erro ao finalizar reunião");
     } finally {
-      setSaving(false);
+      setFinalizing(false);
     }
   };
 
-  const NewMeetingButton = () => (
-    <Button onClick={() => setShowNewMeetingDialog(true)} className="gap-2">
-      <Plus className="h-4 w-4" />
-      Registrar Reunião
-    </Button>
-  );
+  const openFinalizeDialog = (meeting: MeetingNote) => {
+    setMeetingToFinalize(meeting);
+    setFinalizeForm({
+      notes: meeting.notes || "",
+      attendees: meeting.attendees || "",
+      recordingLink: meeting.recording_link || "",
+    });
+  };
 
-  const NewMeetingDialog = () => (
-    <Dialog open={showNewMeetingDialog} onOpenChange={setShowNewMeetingDialog}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
-            Registrar Reunião
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Data *</Label>
-              <Input
-                type="date"
-                value={newMeeting.meetingDate}
-                onChange={(e) => setNewMeeting({ ...newMeeting, meetingDate: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Horário *</Label>
-              <Input
-                type="time"
-                value={newMeeting.meetingTime}
-                onChange={(e) => setNewMeeting({ ...newMeeting, meetingTime: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Assunto *</Label>
-            <Input
-              placeholder="Ex: Alinhamento semanal, Revisão de processos..."
-              value={newMeeting.subject}
-              onChange={(e) => setNewMeeting({ ...newMeeting, subject: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>O que foi tratado? *</Label>
-            <Textarea
-              placeholder="Descreva os principais pontos discutidos, decisões tomadas, próximos passos..."
-              value={newMeeting.notes}
-              onChange={(e) => setNewMeeting({ ...newMeeting, notes: e.target.value })}
-              rows={5}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Participantes (opcional)</Label>
-            <Input
-              placeholder="Nomes dos participantes"
-              value={newMeeting.attendees}
-              onChange={(e) => setNewMeeting({ ...newMeeting, attendees: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <PlayCircle className="h-4 w-4 text-red-500" />
-              Link da Gravação (opcional)
-            </Label>
-            <Input
-              placeholder="https://drive.google.com/file/..."
-              value={newMeeting.recordingLink}
-              onChange={(e) => setNewMeeting({ ...newMeeting, recordingLink: e.target.value })}
-            />
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => setShowNewMeetingDialog(false)} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSaveNewMeeting} disabled={saving}>
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Salvando...
-              </>
-            ) : (
-              "Salvar Registro"
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+  // Separate meetings into pending and finalized
+  const pendingMeetings = meetings.filter(m => !m.is_finalized);
+  const finalizedMeetings = meetings.filter(m => m.is_finalized);
 
   if (loading) {
     return (
@@ -313,97 +314,267 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     );
   }
 
-  if (meetings.length === 0) {
-    return (
-      <>
-        <Card>
-          <CardContent className="py-12 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-              <Video className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-medium mb-2">Nenhuma reunião registrada</h3>
-            <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
-              Registre as reuniões realizadas com o cliente para manter o histórico.
-            </p>
-            <NewMeetingButton />
-          </CardContent>
-        </Card>
-        <NewMeetingDialog />
-      </>
-    );
-  }
-
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Video className="h-5 w-5 text-primary" />
-            Histórico de Reuniões
+            Reuniões
           </h3>
           <div className="flex items-center gap-2">
-            <NewMeetingButton />
+            {calendarConnected && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRefreshCalendar}
+                disabled={syncing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                Sincronizar
+              </Button>
+            )}
             <Badge variant="secondary">{meetings.length} reuniões</Badge>
           </div>
         </div>
 
-        <div className="space-y-3">
-          {meetings.map((meeting) => (
-            <Card 
-              key={meeting.id} 
-              className="cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={() => setSelectedMeeting(meeting)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium truncate">{meeting.subject}</h4>
-                      {!meeting.is_finalized && (
-                        <Badge variant="destructive" className="shrink-0 text-xs">
-                          Pendente
-                        </Badge>
-                      )}
-                      {meeting.meeting_link && (
-                        <Badge variant="outline" className="shrink-0 text-xs">
-                          <Video className="h-3 w-3 mr-1" />
-                          Meet
-                        </Badge>
-                      )}
-                      {meeting.recording_link && (
-                        <Badge variant="secondary" className="shrink-0 text-xs">
-                          <PlayCircle className="h-3 w-3 mr-1" />
-                          Gravação
-                        </Badge>
-                      )}
+        {/* Calendar Connection Notice */}
+        {!calendarConnected && (
+          <Card className="border-amber-200 bg-amber-50">
+            <CardContent className="py-4 flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-800">
+                  Google Calendar não conectado
+                </p>
+                <p className="text-xs text-amber-600">
+                  Conecte seu Google Calendar no Escritório Virtual para sincronizar reuniões automaticamente.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Pending Meetings Section */}
+        {pendingMeetings.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-destructive" />
+              <h4 className="font-medium text-destructive">
+                Reuniões pendentes de finalização ({pendingMeetings.length})
+              </h4>
+            </div>
+            <div className="space-y-3">
+              {pendingMeetings.map((meeting) => (
+                <Card 
+                  key={meeting.id} 
+                  className="border-destructive/50 bg-destructive/5"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium truncate">{meeting.subject}</h4>
+                          <Badge variant="destructive" className="shrink-0 text-xs">
+                            Pendente
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {format(new Date(meeting.meeting_date), "dd/MM/yyyy", { locale: ptBR })}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {format(new Date(meeting.meeting_date), "HH:mm", { locale: ptBR })}
+                          </span>
+                        </div>
+                        {meeting.meeting_link && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 mb-2"
+                            onClick={() => window.open(meeting.meeting_link!, "_blank")}
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Link da reunião
+                          </Button>
+                        )}
+                      </div>
+                      <Button 
+                        onClick={() => openFinalizeDialog(meeting)}
+                        size="sm"
+                      >
+                        Finalizar
+                      </Button>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {format(new Date(meeting.meeting_date), "dd/MM/yyyy", { locale: ptBR })}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {format(new Date(meeting.meeting_date), "HH:mm", { locale: ptBR })}
-                      </span>
-                      {meeting.staff && (
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {meeting.staff.name}
-                        </span>
-                      )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Finalized Meetings Section */}
+        {finalizedMeetings.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <h4 className="font-medium text-muted-foreground">
+                Reuniões finalizadas ({finalizedMeetings.length})
+              </h4>
+            </div>
+            <div className="space-y-3">
+              {finalizedMeetings.map((meeting) => (
+                <Card 
+                  key={meeting.id} 
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => setSelectedMeeting(meeting)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium truncate">{meeting.subject}</h4>
+                          {meeting.meeting_link && (
+                            <Badge variant="outline" className="shrink-0 text-xs">
+                              <Video className="h-3 w-3 mr-1" />
+                              Meet
+                            </Badge>
+                          )}
+                          {meeting.recording_link && (
+                            <Badge variant="secondary" className="shrink-0 text-xs">
+                              <PlayCircle className="h-3 w-3 mr-1" />
+                              Gravação
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {format(new Date(meeting.meeting_date), "dd/MM/yyyy", { locale: ptBR })}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {format(new Date(meeting.meeting_date), "HH:mm", { locale: ptBR })}
+                          </span>
+                          {meeting.staff && (
+                            <span className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {meeting.staff.name}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {meeting.notes}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {meeting.notes}
-                    </p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {meetings.length === 0 && (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+                <Video className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">Nenhuma reunião ainda</h3>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                As reuniões do Google Calendar aparecerão aqui automaticamente quando ocorrerem.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      {/* Finalize Meeting Dialog */}
+      <Dialog open={!!meetingToFinalize} onOpenChange={(open) => !open && setMeetingToFinalize(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Finalizar Reunião
+            </DialogTitle>
+          </DialogHeader>
+
+          {meetingToFinalize && (
+            <div className="space-y-4">
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="font-medium">{meetingToFinalize.subject}</p>
+                <p className="text-sm text-muted-foreground">
+                  {format(new Date(meetingToFinalize.meeting_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </p>
+                {meetingToFinalize.meeting_link && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="p-0 h-auto text-xs"
+                    onClick={() => window.open(meetingToFinalize.meeting_link!, "_blank")}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    Ver link da reunião
+                  </Button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>O que foi tratado? *</Label>
+                <Textarea
+                  placeholder="Descreva os principais pontos discutidos, decisões tomadas, próximos passos..."
+                  value={finalizeForm.notes}
+                  onChange={(e) => setFinalizeForm({ ...finalizeForm, notes: e.target.value })}
+                  rows={5}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Participantes (opcional)</Label>
+                <Input
+                  placeholder="Nomes dos participantes"
+                  value={finalizeForm.attendees}
+                  onChange={(e) => setFinalizeForm({ ...finalizeForm, attendees: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <PlayCircle className="h-4 w-4 text-red-500" />
+                  Link da Gravação (opcional)
+                </Label>
+                <Input
+                  placeholder="https://drive.google.com/file/..."
+                  value={finalizeForm.recordingLink}
+                  onChange={(e) => setFinalizeForm({ ...finalizeForm, recordingLink: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setMeetingToFinalize(null)} disabled={finalizing}>
+              Cancelar
+            </Button>
+            <Button onClick={handleFinalizeMeeting} disabled={finalizing}>
+              {finalizing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Finalizando...
+                </>
+              ) : (
+                "Finalizar Reunião"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Meeting Detail Dialog */}
       <Dialog open={!!selectedMeeting} onOpenChange={(open) => !open && setSelectedMeeting(null)}>
@@ -447,28 +618,30 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                     <span>{selectedMeeting.attendees}</span>
                   </div>
                 )}
-                {selectedMeeting.meeting_link && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => window.open(selectedMeeting.meeting_link!, "_blank")}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    Ver link da reunião
-                  </Button>
-                )}
-                {selectedMeeting.recording_link && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => window.open(selectedMeeting.recording_link!, "_blank")}
-                  >
-                    <PlayCircle className="h-3.5 w-3.5" />
-                    Ver Gravação
-                  </Button>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  {selectedMeeting.meeting_link && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => window.open(selectedMeeting.meeting_link!, "_blank")}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Link da reunião
+                    </Button>
+                  )}
+                  {selectedMeeting.recording_link && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => window.open(selectedMeeting.recording_link!, "_blank")}
+                    >
+                      <PlayCircle className="h-3.5 w-3.5" />
+                      Ver Gravação
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Notes */}
@@ -506,20 +679,21 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir registro de reunião?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. O registro da reunião será removido permanentemente.
+              Esta ação não pode ser desfeita. O registro será permanentemente excluído.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={deleting}>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               {deleting ? "Excluindo..." : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* New Meeting Dialog */}
-      <NewMeetingDialog />
     </>
   );
 };
