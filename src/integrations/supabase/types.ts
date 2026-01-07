@@ -1655,9 +1655,11 @@ export type Database = {
           consultant_id: string | null
           created_at: string
           created_by: string | null
+          crm_link: string | null
           cs_id: string | null
           current_blockers: string | null
           current_nps: number | null
+          documents_link: string | null
           id: string
           last_executive_checkpoint: string | null
           notice_end_date: string | null
@@ -1685,9 +1687,11 @@ export type Database = {
           consultant_id?: string | null
           created_at?: string
           created_by?: string | null
+          crm_link?: string | null
           cs_id?: string | null
           current_blockers?: string | null
           current_nps?: number | null
+          documents_link?: string | null
           id?: string
           last_executive_checkpoint?: string | null
           notice_end_date?: string | null
@@ -1715,9 +1719,11 @@ export type Database = {
           consultant_id?: string | null
           created_at?: string
           created_by?: string | null
+          crm_link?: string | null
           cs_id?: string | null
           current_blockers?: string | null
           current_nps?: number | null
+          documents_link?: string | null
           id?: string
           last_executive_checkpoint?: string | null
           notice_end_date?: string | null

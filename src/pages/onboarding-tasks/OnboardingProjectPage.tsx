@@ -7,6 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -64,8 +70,8 @@ import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistor
 import { MeetingHistoryPanel } from "@/components/onboarding-tasks/MeetingHistoryPanel";
 import { AssessmentsPanel } from "@/components/assessments/AssessmentsPanel";
 import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
-import { TrendingUp, Headphones, Video, Brain, BarChart3 } from "lucide-react";
-
+import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
 interface OnboardingTask {
   id: string;
@@ -105,6 +111,8 @@ interface Project {
   onboarding_company?: { name: string } | null;
   consultant_id: string | null;
   cs_id: string | null;
+  crm_link: string | null;
+  documents_link: string | null;
 }
 
 interface TaskPhase {
@@ -163,6 +171,10 @@ const OnboardingProjectPage = () => {
   const [noticePeriodLoading, setNoticePeriodLoading] = useState(false);
   const [churnLoading, setChurnLoading] = useState(false);
   const [cancellationSignalLoading, setCancellationSignalLoading] = useState(false);
+  const [showCrmDialog, setShowCrmDialog] = useState(false);
+  const [showDocsDialog, setShowDocsDialog] = useState(false);
+  const [crmLinkInput, setCrmLinkInput] = useState("");
+  const [docsLinkInput, setDocsLinkInput] = useState("");
 
   // Check for attention/risk alerts when opening project
   const checkProjectAlerts = async () => {
@@ -339,7 +351,7 @@ const OnboardingProjectPage = () => {
       // Fetch project
       const { data: projectData, error: projectError } = await supabase
         .from("onboarding_projects")
-        .select(`*, onboarding_company_id, current_nps, onboarding_company:onboarding_companies(name)`)
+        .select(`*, onboarding_company_id, current_nps, crm_link, documents_link, onboarding_company:onboarding_companies(name)`)
         .eq("id", projectId)
         .single();
 
@@ -886,7 +898,7 @@ const OnboardingProjectPage = () => {
                 <WelcomeHeader className="text-xs text-muted-foreground" />
                 <h1 className="text-2xl font-bold">{project.product_name}</h1>
                 {project.onboarding_company?.name && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-muted-foreground">{project.onboarding_company.name}</p>
                     {project.onboarding_company_id && (
                       <Button 
@@ -897,6 +909,68 @@ const OnboardingProjectPage = () => {
                       >
                         <Building2 className="h-3 w-3 mr-1" />
                         Ver Empresa
+                      </Button>
+                    )}
+                    {/* CRM Button */}
+                    {project.crm_link ? (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-6 px-2 text-xs"
+                        onClick={() => window.open(project.crm_link!, "_blank")}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setCrmLinkInput(project.crm_link || "");
+                          setShowCrmDialog(true);
+                        }}
+                        title="Clique para abrir, clique com botão direito para editar"
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        CRM
+                      </Button>
+                    ) : currentUserRole && currentUserRole !== "client" && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 px-2 text-xs text-muted-foreground"
+                        onClick={() => {
+                          setCrmLinkInput("");
+                          setShowCrmDialog(true);
+                        }}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        CRM
+                      </Button>
+                    )}
+                    {/* Documentos Button */}
+                    {project.documents_link ? (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-6 px-2 text-xs"
+                        onClick={() => window.open(project.documents_link!, "_blank")}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setDocsLinkInput(project.documents_link || "");
+                          setShowDocsDialog(true);
+                        }}
+                        title="Clique para abrir, clique com botão direito para editar"
+                      >
+                        <FolderOpen className="h-3 w-3 mr-1" />
+                        Documentos
+                      </Button>
+                    ) : currentUserRole && currentUserRole !== "client" && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 px-2 text-xs text-muted-foreground"
+                        onClick={() => {
+                          setDocsLinkInput("");
+                          setShowDocsDialog(true);
+                        }}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Documentos
                       </Button>
                     )}
                   </div>
@@ -1289,6 +1363,94 @@ const OnboardingProjectPage = () => {
         onConfirm={handleNoticePeriodConfirm}
         isLoading={noticePeriodLoading}
       />
+
+      {/* CRM Link Dialog */}
+      <Dialog open={showCrmDialog} onOpenChange={setShowCrmDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Link do CRM</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>URL do CRM do cliente</Label>
+              <Input
+                value={crmLinkInput}
+                onChange={(e) => setCrmLinkInput(e.target.value)}
+                placeholder="https://crm.exemplo.com/cliente/..."
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowCrmDialog(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    const { error } = await supabase
+                      .from("onboarding_projects")
+                      .update({ crm_link: crmLinkInput || null })
+                      .eq("id", projectId);
+                    if (error) throw error;
+                    setProject(prev => prev ? { ...prev, crm_link: crmLinkInput || null } : null);
+                    setShowCrmDialog(false);
+                    toast.success("Link do CRM atualizado");
+                  } catch (error) {
+                    console.error("Error updating CRM link:", error);
+                    toast.error("Erro ao atualizar link");
+                  }
+                }}
+                className="flex-1"
+              >
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Documents Link Dialog */}
+      <Dialog open={showDocsDialog} onOpenChange={setShowDocsDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Link dos Documentos</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>URL da pasta no Google Drive</Label>
+              <Input
+                value={docsLinkInput}
+                onChange={(e) => setDocsLinkInput(e.target.value)}
+                placeholder="https://drive.google.com/drive/folders/..."
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowDocsDialog(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    const { error } = await supabase
+                      .from("onboarding_projects")
+                      .update({ documents_link: docsLinkInput || null })
+                      .eq("id", projectId);
+                    if (error) throw error;
+                    setProject(prev => prev ? { ...prev, documents_link: docsLinkInput || null } : null);
+                    setShowDocsDialog(false);
+                    toast.success("Link de documentos atualizado");
+                  } catch (error) {
+                    console.error("Error updating documents link:", error);
+                    toast.error("Erro ao atualizar link");
+                  }
+                }}
+                className="flex-1"
+              >
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
