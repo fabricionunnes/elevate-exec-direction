@@ -54,6 +54,7 @@ interface Evaluation360 {
   results_delivery_score: number | null;
   strengths: string | null;
   improvements: string | null;
+  additional_comments: string | null;
   completed_at: string | null;
 }
 
@@ -541,6 +542,23 @@ export default function AssessmentReportsPage() {
                         <p className="text-muted-foreground text-sm">Nenhum feedback ainda</p>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <h4 className="font-medium mb-3">Comentários adicionais</h4>
+                  <div className="space-y-2">
+                    {filteredEvaluations
+                      .filter(e => e.additional_comments)
+                      .map(e => (
+                        <div key={e.id} className="p-3 bg-muted/50 rounded-lg text-sm">
+                          <p className="text-muted-foreground italic">"{e.additional_comments}"</p>
+                          <p className="text-xs mt-1">— {e.evaluator_name}</p>
+                        </div>
+                      ))}
+                    {filteredEvaluations.filter(e => e.additional_comments).length === 0 && (
+                      <p className="text-muted-foreground text-sm">Nenhum comentário adicional ainda</p>
+                    )}
                   </div>
                 </div>
               </CardContent>
