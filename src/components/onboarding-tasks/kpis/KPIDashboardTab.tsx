@@ -292,6 +292,62 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
       .slice(0, 10);
   };
 
+  // Calculate derived metrics (conversion rate, average ticket, etc.)
+  const getCalculatedMetrics = () => {
+    const filteredEntries = getFilteredEntries();
+    
+    // Try to find relevant KPIs by common naming patterns
+    const findKpiByPattern = (patterns: string[]) => {
+      return kpis.find(kpi => 
+        patterns.some(pattern => kpi.name.toLowerCase().includes(pattern.toLowerCase()))
+      );
+    };
+
+    // Common KPI patterns
+    const leadsKpi = findKpiByPattern(['lead', 'leads', 'oportunidade', 'oportunidades']);
+    const proposalsKpi = findKpiByPattern(['proposta', 'propostas', 'orçamento', 'orcamento']);
+    const salesKpi = findKpiByPattern(['venda', 'vendas', 'fechamento', 'fechamentos']);
+    const revenueKpi = kpis.find(k => k.kpi_type === 'monetary');
+    const meetingsKpi = findKpiByPattern(['reunião', 'reuniao', 'reuniões', 'reunioes', 'call', 'calls', 'ligação', 'ligações']);
+
+    // Calculate totals for each found KPI
+    const getKpiTotal = (kpi: KPI | undefined) => {
+      if (!kpi) return 0;
+      return filteredEntries.filter(e => e.kpi_id === kpi.id).reduce((sum, e) => sum + e.value, 0);
+    };
+
+    const totalLeads = getKpiTotal(leadsKpi);
+    const totalProposals = getKpiTotal(proposalsKpi);
+    const totalSales = getKpiTotal(salesKpi);
+    const totalRevenue = getKpiTotal(revenueKpi);
+    const totalMeetings = getKpiTotal(meetingsKpi);
+
+    // Calculate conversion rates
+    const leadToProposal = totalLeads > 0 ? (totalProposals / totalLeads) * 100 : 0;
+    const proposalToSale = totalProposals > 0 ? (totalSales / totalProposals) * 100 : 0;
+    const leadToSale = totalLeads > 0 ? (totalSales / totalLeads) * 100 : 0;
+
+    // Calculate average ticket
+    const avgTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
+
+    return {
+      totalLeads,
+      totalProposals,
+      totalSales,
+      totalRevenue,
+      totalMeetings,
+      leadToProposal,
+      proposalToSale,
+      leadToSale,
+      avgTicket,
+      hasLeadsData: !!leadsKpi && totalLeads > 0,
+      hasProposalsData: !!proposalsKpi && totalProposals > 0,
+      hasSalesData: !!salesKpi && totalSales > 0,
+      hasRevenueData: !!revenueKpi && totalRevenue > 0,
+      hasMeetingsData: !!meetingsKpi && totalMeetings > 0,
+    };
+  };
+
   if (loading) {
     return <div className="flex justify-center p-8">Carregando...</div>;
   }
@@ -310,6 +366,7 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
   const dailyData = getDailyChartData();
   const rankingData = getRankingData();
   const selectedKpiData = selectedKpi !== "all" ? kpis.find(k => k.id === selectedKpi) : null;
+  const calculatedMetrics = getCalculatedMetrics();
 
   return (
     <div className="space-y-6">
@@ -463,6 +520,95 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Calculated Metrics - Conversion, Ticket, etc. */}
+      {(calculatedMetrics.hasLeadsData || calculatedMetrics.hasSalesData || calculatedMetrics.hasRevenueData) && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          {/* Total Leads */}
+          {calculatedMetrics.hasLeadsData && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Leads</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{calculatedMetrics.totalLeads.toLocaleString("pt-BR")}</div>
+                <p className="text-xs text-muted-foreground mt-1">Total no período</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Total Proposals */}
+          {calculatedMetrics.hasProposalsData && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Propostas</CardTitle>
+                <Hash className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{calculatedMetrics.totalProposals.toLocaleString("pt-BR")}</div>
+                {calculatedMetrics.hasLeadsData && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {calculatedMetrics.leadToProposal.toFixed(1)}% dos leads
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Sales Count */}
+          {calculatedMetrics.hasSalesData && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Vendas</CardTitle>
+                <Target className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{calculatedMetrics.totalSales.toLocaleString("pt-BR")}</div>
+                {calculatedMetrics.hasProposalsData && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {calculatedMetrics.proposalToSale.toFixed(1)}% das propostas
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Conversion Rate */}
+          {calculatedMetrics.hasLeadsData && calculatedMetrics.hasSalesData && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Conversão Geral</CardTitle>
+                <Percent className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${
+                  calculatedMetrics.leadToSale >= 20 ? 'text-green-600' :
+                  calculatedMetrics.leadToSale >= 10 ? 'text-amber-600' :
+                  'text-destructive'
+                }`}>
+                  {calculatedMetrics.leadToSale.toFixed(1)}%
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Lead → Venda</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Average Ticket */}
+          {calculatedMetrics.hasRevenueData && calculatedMetrics.hasSalesData && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+                <DollarSign className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatValue(calculatedMetrics.avgTicket, "monetary")}</div>
+                <p className="text-xs text-muted-foreground mt-1">Por venda fechada</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
       {/* KPI Summary Cards */}
