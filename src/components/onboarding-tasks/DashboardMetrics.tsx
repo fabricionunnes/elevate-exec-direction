@@ -346,7 +346,6 @@ const DashboardMetrics = ({
     setNpsDetailPage(1);
   };
 
-  const getFilteredNpsResponses = (type: "promoters" | "detractors" | "neutrals" | null) => {
   const getFilteredNpsResponses = (type: "promoters" | "detractors" | "neutrals" | "all" | null) => {
     const filteredProjectIds = new Set(projects.map(p => p.id));
     const responses = npsResponses.filter(r => filteredProjectIds.has(r.project_id));
