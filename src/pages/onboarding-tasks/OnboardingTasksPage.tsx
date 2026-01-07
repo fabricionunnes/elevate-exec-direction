@@ -1088,8 +1088,8 @@ const OnboardingTasksPage = () => {
           onNpsDetailChange={setIsShowingNpsDetail}
         />
 
-        {/* Companies List - Hidden when showing NPS detail */}
-        {isShowingNpsDetail ? null : filteredCompanies.length === 0 ? (
+        {/* Companies List */}
+        {filteredCompanies.length === 0 ? (
           <Card className="p-12 text-center">
             <Building2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">Nenhuma empresa encontrada</h3>
