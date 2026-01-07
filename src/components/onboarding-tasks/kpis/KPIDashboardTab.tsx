@@ -71,12 +71,29 @@ export const KPIDashboardTab = ({ companyId }: KPIDashboardTabProps) => {
   }, [companyId, dateRange]);
 
   const fetchData = async () => {
+    console.log("[KPIDashboardTab] Fetching data for companyId:", companyId);
+    
+    if (!companyId) {
+      console.warn("[KPIDashboardTab] No companyId provided");
+      setLoading(false);
+      return;
+    }
+
     try {
       const [kpisRes, salespeopleRes, entriesRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
         supabase.from("company_salespeople").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("kpi_entries").select("*").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end),
       ]);
+
+      console.log("[KPIDashboardTab] Results:", {
+        kpis: kpisRes.data?.length || 0,
+        kpisError: kpisRes.error,
+        salespeople: salespeopleRes.data?.length || 0,
+        salespeopleError: salespeopleRes.error,
+        entries: entriesRes.data?.length || 0,
+        entriesError: entriesRes.error,
+      });
 
       if (kpisRes.error) throw kpisRes.error;
       if (salespeopleRes.error) throw salespeopleRes.error;

@@ -177,6 +177,9 @@ const ClientOnboardingPage = () => {
           return;
         }
 
+        console.log("[ClientOnboardingPage] onboardingUser.project:", onboardingUser.project);
+        console.log("[ClientOnboardingPage] onboarding_company_id:", onboardingUser.project?.onboarding_company_id);
+
         setCurrentUser(onboardingUser);
         setProject(onboardingUser.project);
         setCompany(onboardingUser.project?.onboarding_company);
