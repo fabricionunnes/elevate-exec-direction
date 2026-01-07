@@ -237,7 +237,17 @@ const DashboardMetrics = ({
     const signaledInPeriod = projects.filter(p => (p.status === "cancellation_signaled" || p.status === "notice_period") && isWithinInterval(new Date(p.updated_at), { start: dateRange.start, end: dateRange.end })).length;
     const totalActiveStart = projectMetrics.activeProjects + closedInPeriod + signaledInPeriod;
     const churnRate = totalActiveStart > 0 ? Math.round((closedInPeriod / totalActiveStart) * 100) : 0;
-    return { closedInPeriod, signaledInPeriod, churnRate };
+    
+    // Count unique companies with closed projects in the period
+    const closedCompanyIds = new Set(
+      projects
+        .filter(p => (p.status === "closed" || p.status === "completed") && isWithinInterval(new Date(p.updated_at), { start: dateRange.start, end: dateRange.end }))
+        .map(p => p.onboarding_company_id)
+        .filter(Boolean)
+    );
+    const closedCompaniesInPeriod = closedCompanyIds.size;
+    
+    return { closedInPeriod, signaledInPeriod, churnRate, closedCompaniesInPeriod };
   }, [projects, dateRange, projectMetrics]);
 
   const monthlyChurnData = useMemo(() => {
@@ -565,10 +575,11 @@ const DashboardMetrics = ({
         </TabsList>
 
         <TabsContent value="empresas" className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
             <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "all") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "all")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold">{filteredCompanies.length}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Total</p></CardContent></Card>
             <Card className={cn("cursor-pointer", isCardActive("status", "notice_period") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("status", "notice_period")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-orange-500">{projectMetrics.noticePeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Aviso</p></CardContent></Card>
-            <Card className={cn("cursor-pointer", isCardActive("contracts", "ending") && "ring-2 ring-purple-500")} onClick={() => handleCardClick("contracts", "ending")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-purple-500">{companyMetrics.contractsEndingInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencendo</p></CardContent></Card>
+            <Card className={cn("cursor-pointer", isCardActive("status", "closed") && "ring-2 ring-red-600")} onClick={() => handleCardClick("status", "closed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-600">{churnMetrics.closedCompaniesInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Encerradas</p></CardContent></Card>
+            <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "ending") && "ring-2 ring-purple-500")} onClick={() => handleCardClick("contracts", "ending")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-purple-500">{companyMetrics.contractsEndingInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencendo</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "expired") && "ring-2 ring-rose-500")} onClick={() => handleCardClick("contracts", "expired")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-rose-500">{companyMetrics.expiredContracts}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencidos</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden lg:block", isCardActive("status", "reactivated") && "ring-2 ring-cyan-500")} onClick={() => handleCardClick("status", "reactivated")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-cyan-500">{projectMetrics.reactivatedInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Revertidos</p></CardContent></Card>
             <Card className="hidden lg:block"><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{churnMetrics.churnRate}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Churn</p></CardContent></Card>
