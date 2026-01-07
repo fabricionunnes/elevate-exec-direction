@@ -98,6 +98,10 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     recordingLink: "",
   });
 
+  // Manual recording link edit (fallback when automatic sync isn't available)
+  const [isEditingRecordingLink, setIsEditingRecordingLink] = useState(false);
+  const [recordingLinkDraft, setRecordingLinkDraft] = useState("");
+  const [savingRecordingLink, setSavingRecordingLink] = useState(false);
   useEffect(() => {
     fetchAll();
     
@@ -335,7 +339,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
   const handleFinalizeMeeting = async () => {
     if (!meetingToFinalize) return;
-    
+
     if (!finalizeForm.notes.trim()) {
       toast.error("Descreva o que foi tratado na reunião");
       return;
@@ -380,6 +384,29 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
       toast.error("Erro ao finalizar reunião");
     } finally {
       setFinalizing(false);
+    }
+  };
+
+  const handleSaveRecordingLink = async () => {
+    if (!selectedMeeting) return;
+    setSavingRecordingLink(true);
+    try {
+      const nextLink = recordingLinkDraft.trim();
+      const { error } = await supabase
+        .from("onboarding_meeting_notes")
+        .update({ recording_link: nextLink ? nextLink : null })
+        .eq("id", selectedMeeting.id);
+
+      if (error) throw error;
+
+      toast.success("Link da gravação atualizado");
+      setIsEditingRecordingLink(false);
+      await fetchMeetings();
+    } catch (e) {
+      console.error("Error saving recording link:", e);
+      toast.error("Não foi possível salvar o link da gravação");
+    } finally {
+      setSavingRecordingLink(false);
     }
   };
 
@@ -685,7 +712,10 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
           </DialogHeader>
 
           {selectedMeeting && (
-            <div className="space-y-4">
+            <div className="space-y-4" onMouseDown={() => {
+              // Close inline editor when changing meetings
+              if (isEditingRecordingLink) setIsEditingRecordingLink(false);
+            }}>
               {/* Header Info */}
               <div className="bg-muted/50 rounded-lg p-4 space-y-3">
                 <div>
@@ -739,6 +769,60 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                        <PlayCircle className="h-3.5 w-3.5" />
                        Ver Gravação
                      </Button>
+                   ) : isAdmin ? (
+                     <div className="flex flex-col gap-2">
+                       {!isEditingRecordingLink ? (
+                         <div className="flex items-center gap-3">
+                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                             <PlayCircle className="h-3.5 w-3.5" />
+                             <span>Gravação não vinculada</span>
+                           </div>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             className="gap-2"
+                             onClick={() => {
+                               setIsEditingRecordingLink(true);
+                               setRecordingLinkDraft("");
+                             }}
+                           >
+                             Inserir link
+                           </Button>
+                         </div>
+                       ) : (
+                         <div className="flex flex-col sm:flex-row gap-2">
+                           <Input
+                             value={recordingLinkDraft}
+                             onChange={(e) => setRecordingLinkDraft(e.target.value)}
+                             placeholder="Cole aqui o link da gravação (Drive)"
+                           />
+                           <div className="flex gap-2">
+                             <Button
+                               size="sm"
+                               onClick={handleSaveRecordingLink}
+                               disabled={savingRecordingLink}
+                             >
+                               {savingRecordingLink ? (
+                                 <Loader2 className="h-4 w-4 animate-spin" />
+                               ) : (
+                                 "Salvar"
+                               )}
+                             </Button>
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => setIsEditingRecordingLink(false)}
+                               disabled={savingRecordingLink}
+                             >
+                               Cancelar
+                             </Button>
+                           </div>
+                         </div>
+                       )}
+                       <p className="text-xs text-muted-foreground">
+                         Dica: a sincronização automática depende da API do Drive; enquanto isso, você pode colar o link manualmente.
+                       </p>
+                     </div>
                    ) : (
                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
                        <PlayCircle className="h-3.5 w-3.5" />
