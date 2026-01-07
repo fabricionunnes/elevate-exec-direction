@@ -6,27 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Users, Brain, Copy, ExternalLink, BarChart3, Trash2, Link2, TrendingUp, Star, X } from "lucide-react";
+import { Plus, Users, Brain, Copy, ExternalLink, BarChart3, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { discProfiles } from "@/data/discQuestions";
-import {
-  ResponsiveContainer,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-} from "recharts";
-import { cn } from "@/lib/utils";
+import { AssessmentReportSheet } from "./AssessmentReportSheet";
 
 interface AssessmentCycle {
   id: string;
@@ -51,36 +37,6 @@ interface Props {
   projectId: string;
 }
 
-interface DISCResponse {
-  id: string;
-  participant_id: string;
-  respondent_name: string;
-  dominance_score: number;
-  influence_score: number;
-  steadiness_score: number;
-  conscientiousness_score: number;
-  primary_profile: string;
-  secondary_profile: string;
-  completed_at: string;
-}
-
-interface Evaluation360 {
-  id: string;
-  evaluated_id: string;
-  evaluator_name: string;
-  relationship: string;
-  leadership_score: number | null;
-  communication_score: number | null;
-  teamwork_score: number | null;
-  conflict_management_score: number | null;
-  proactivity_score: number | null;
-  results_delivery_score: number | null;
-  strengths: string | null;
-  improvements: string | null;
-  additional_comments: string | null;
-  completed_at: string | null;
-}
-
 export function AssessmentsPanel({ projectId }: Props) {
   const [cycles, setCycles] = useState<AssessmentCycle[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -93,9 +49,7 @@ export function AssessmentsPanel({ projectId }: Props) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [reportCycleId, setReportCycleId] = useState<string | null>(null);
-  const [discResponses, setDiscResponses] = useState<DISCResponse[]>([]);
-  const [evaluations360, setEvaluations360] = useState<Evaluation360[]>([]);
-  const [loadingReports, setLoadingReports] = useState(false);
+  const [reportCycleTitle, setReportCycleTitle] = useState<string>("");
 
   const [newCycle, setNewCycle] = useState({
     title: "",
@@ -278,108 +232,11 @@ export function AssessmentsPanel({ projectId }: Props) {
     }
   };
 
-  const openReports = async (cycleId: string) => {
-    setReportCycleId(cycleId);
+  const openReports = (cycle: AssessmentCycle) => {
+    setReportCycleId(cycle.id);
+    setReportCycleTitle(cycle.title);
     setIsReportsOpen(true);
-    setLoadingReports(true);
-
-    try {
-      // Get DISC responses
-      const { data: discData } = await supabase
-        .from("disc_responses")
-        .select("*")
-        .eq("cycle_id", cycleId);
-      setDiscResponses(discData || []);
-
-      // Get 360 evaluations
-      const { data: eval360Data } = await supabase
-        .from("assessment_360_evaluations")
-        .select("*")
-        .eq("cycle_id", cycleId)
-        .eq("is_completed", true);
-      setEvaluations360(eval360Data || []);
-    } catch (error) {
-      console.error("Error fetching reports:", error);
-      toast.error("Erro ao carregar relatórios");
-    } finally {
-      setLoadingReports(false);
-    }
   };
-
-  // Calculate 360 averages
-  const calculate360Averages = (evals: Evaluation360[]) => {
-    if (evals.length === 0) return null;
-
-    const avgScores = {
-      leadership: 0,
-      communication: 0,
-      teamwork: 0,
-      conflict_management: 0,
-      proactivity: 0,
-      results_delivery: 0,
-    };
-
-    let counts = { ...avgScores };
-
-    evals.forEach(e => {
-      if (e.leadership_score) { avgScores.leadership += e.leadership_score; counts.leadership++; }
-      if (e.communication_score) { avgScores.communication += e.communication_score; counts.communication++; }
-      if (e.teamwork_score) { avgScores.teamwork += e.teamwork_score; counts.teamwork++; }
-      if (e.conflict_management_score) { avgScores.conflict_management += e.conflict_management_score; counts.conflict_management++; }
-      if (e.proactivity_score) { avgScores.proactivity += e.proactivity_score; counts.proactivity++; }
-      if (e.results_delivery_score) { avgScores.results_delivery += e.results_delivery_score; counts.results_delivery++; }
-    });
-
-    return {
-      leadership: counts.leadership ? (avgScores.leadership / counts.leadership).toFixed(1) : "0",
-      communication: counts.communication ? (avgScores.communication / counts.communication).toFixed(1) : "0",
-      teamwork: counts.teamwork ? (avgScores.teamwork / counts.teamwork).toFixed(1) : "0",
-      conflict_management: counts.conflict_management ? (avgScores.conflict_management / counts.conflict_management).toFixed(1) : "0",
-      proactivity: counts.proactivity ? (avgScores.proactivity / counts.proactivity).toFixed(1) : "0",
-      results_delivery: counts.results_delivery ? (avgScores.results_delivery / counts.results_delivery).toFixed(1) : "0",
-    };
-  };
-
-  const avgScores360 = calculate360Averages(evaluations360);
-
-  const radarData = avgScores360 ? [
-    { subject: "Liderança", A: parseFloat(avgScores360.leadership), fullMark: 5 },
-    { subject: "Comunicação", A: parseFloat(avgScores360.communication), fullMark: 5 },
-    { subject: "Trabalho em Equipe", A: parseFloat(avgScores360.teamwork), fullMark: 5 },
-    { subject: "Gestão de Conflitos", A: parseFloat(avgScores360.conflict_management), fullMark: 5 },
-    { subject: "Proatividade", A: parseFloat(avgScores360.proactivity), fullMark: 5 },
-    { subject: "Entrega de Resultados", A: parseFloat(avgScores360.results_delivery), fullMark: 5 },
-  ] : [];
-
-  const overallClimate = avgScores360 
-    ? (
-        (parseFloat(avgScores360.leadership) +
-         parseFloat(avgScores360.communication) +
-         parseFloat(avgScores360.teamwork) +
-         parseFloat(avgScores360.conflict_management) +
-         parseFloat(avgScores360.proactivity) +
-         parseFloat(avgScores360.results_delivery)) / 6
-      ).toFixed(2)
-    : null;
-
-  const getClimateLabel = (score: number) => {
-    if (score >= 4.5) return { label: "Excelente", color: "text-green-500", bg: "bg-green-500/10" };
-    if (score >= 4.0) return { label: "Muito Bom", color: "text-emerald-500", bg: "bg-emerald-500/10" };
-    if (score >= 3.5) return { label: "Bom", color: "text-blue-500", bg: "bg-blue-500/10" };
-    if (score >= 3.0) return { label: "Regular", color: "text-amber-500", bg: "bg-amber-500/10" };
-    return { label: "Precisa Atenção", color: "text-red-500", bg: "bg-red-500/10" };
-  };
-
-  const discDistribution = discResponses.reduce((acc, r) => {
-    acc[r.primary_profile] = (acc[r.primary_profile] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const discChartData = Object.entries(discDistribution).map(([profile, count]) => ({
-    name: discProfiles[profile as keyof typeof discProfiles]?.name || profile,
-    value: count,
-    color: discProfiles[profile as keyof typeof discProfiles]?.color || "#888",
-  }));
 
   const getAssessmentLinks = (participant: Participant) => {
     const baseUrl = window.location.origin;
@@ -480,7 +337,7 @@ export function AssessmentsPanel({ projectId }: Props) {
                           Excluir Ciclo
                         </Button>
                       )}
-                      <Button variant="outline" size="sm" onClick={() => openReports(cycle.id)}>
+                      <Button variant="outline" size="sm" onClick={() => openReports(cycle)}>
                         <BarChart3 className="w-4 h-4 mr-2" />
                         Ver Relatórios
                       </Button>
@@ -759,247 +616,14 @@ export function AssessmentsPanel({ projectId }: Props) {
       </Dialog>
 
       {/* Reports Sheet */}
-      <Sheet open={isReportsOpen} onOpenChange={setIsReportsOpen}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" />
-              Relatórios de Avaliação
-            </SheetTitle>
-            <SheetDescription>
-              {selectedCycle?.title || "Ciclo de Avaliação"}
-            </SheetDescription>
-          </SheetHeader>
-
-          {loadingReports ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            </div>
-          ) : (
-            <div className="space-y-6 mt-6">
-              {/* Summary Cards */}
-              <div className="grid grid-cols-2 gap-4">
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-purple-500/10 rounded-lg">
-                        <Brain className="w-5 h-5 text-purple-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Respostas DISC</p>
-                        <p className="text-xl font-bold">{discResponses.length}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-500/10 rounded-lg">
-                        <Users className="w-5 h-5 text-blue-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Avaliações 360°</p>
-                        <p className="text-xl font-bold">{evaluations360.length}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Climate Score */}
-              {overallClimate && (
-                <Card className={cn(getClimateLabel(parseFloat(overallClimate)).bg)}>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-background rounded-lg">
-                        <Star className={cn("w-5 h-5", getClimateLabel(parseFloat(overallClimate)).color)} />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Clima Organizacional</p>
-                        <p className={cn("text-xl font-bold", getClimateLabel(parseFloat(overallClimate)).color)}>
-                          {overallClimate}/5
-                        </p>
-                        <Badge variant="secondary" className="mt-1">
-                          {getClimateLabel(parseFloat(overallClimate)).label}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* DISC Section */}
-              {discResponses.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Brain className="w-4 h-4" />
-                      Perfis DISC Identificados
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 gap-4">
-                      {discChartData.length > 0 && (
-                        <ResponsiveContainer width="100%" height={200}>
-                          <PieChart>
-                            <Pie
-                              data={discChartData}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                              outerRadius={70}
-                              fill="#8884d8"
-                              dataKey="value"
-                            >
-                              {discChartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      )}
-                      <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                        {discResponses.map(response => {
-                          const primary = discProfiles[response.primary_profile as keyof typeof discProfiles];
-                          const secondary = discProfiles[response.secondary_profile as keyof typeof discProfiles];
-                          return (
-                            <div key={response.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
-                              <span className="font-medium">{response.respondent_name}</span>
-                              <div className="flex gap-1">
-                                <Badge style={{ backgroundColor: primary?.color }} className="text-white text-xs">
-                                  {primary?.emoji} {primary?.name}
-                                </Badge>
-                                {secondary && (
-                                  <Badge variant="outline" className="text-xs" style={{ borderColor: secondary.color, color: secondary.color }}>
-                                    {secondary.emoji} {secondary.name}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* 360 Section */}
-              {evaluations360.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      Avaliação 360° - Competências
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {radarData.length > 0 && (
-                      <ResponsiveContainer width="100%" height={250}>
-                        <RadarChart data={radarData}>
-                          <PolarGrid />
-                          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10 }} />
-                          <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fontSize: 10 }} />
-                          <Radar name="Média" dataKey="A" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.4} />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    )}
-
-                    {/* Scores breakdown */}
-                    {avgScores360 && (
-                      <div className="grid grid-cols-2 gap-2 mt-4">
-                        <div className="p-2 bg-muted/50 rounded text-sm">
-                          <span className="text-muted-foreground">Liderança:</span>
-                          <span className="font-bold ml-2">{avgScores360.leadership}</span>
-                        </div>
-                        <div className="p-2 bg-muted/50 rounded text-sm">
-                          <span className="text-muted-foreground">Comunicação:</span>
-                          <span className="font-bold ml-2">{avgScores360.communication}</span>
-                        </div>
-                        <div className="p-2 bg-muted/50 rounded text-sm">
-                          <span className="text-muted-foreground">Trabalho em Equipe:</span>
-                          <span className="font-bold ml-2">{avgScores360.teamwork}</span>
-                        </div>
-                        <div className="p-2 bg-muted/50 rounded text-sm">
-                          <span className="text-muted-foreground">Gestão de Conflitos:</span>
-                          <span className="font-bold ml-2">{avgScores360.conflict_management}</span>
-                        </div>
-                        <div className="p-2 bg-muted/50 rounded text-sm">
-                          <span className="text-muted-foreground">Proatividade:</span>
-                          <span className="font-bold ml-2">{avgScores360.proactivity}</span>
-                        </div>
-                        <div className="p-2 bg-muted/50 rounded text-sm">
-                          <span className="text-muted-foreground">Entrega de Resultados:</span>
-                          <span className="font-bold ml-2">{avgScores360.results_delivery}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Comments */}
-                    <div className="mt-4">
-                      <h4 className="font-medium text-sm mb-2">Pontos Fortes</h4>
-                      <div className="space-y-1 max-h-[150px] overflow-y-auto">
-                        {evaluations360.filter(e => e.strengths).map(e => (
-                          <div key={e.id + "-str"} className="p-2 bg-green-500/10 rounded text-xs">
-                            <p className="italic">"{e.strengths}"</p>
-                            <p className="text-muted-foreground mt-1">— {e.evaluator_name}</p>
-                          </div>
-                        ))}
-                        {evaluations360.filter(e => e.strengths).length === 0 && (
-                          <p className="text-muted-foreground text-xs">Nenhum comentário ainda</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <h4 className="font-medium text-sm mb-2">Pontos a Melhorar</h4>
-                      <div className="space-y-1 max-h-[150px] overflow-y-auto">
-                        {evaluations360.filter(e => e.improvements).map(e => (
-                          <div key={e.id + "-imp"} className="p-2 bg-amber-500/10 rounded text-xs">
-                            <p className="italic">"{e.improvements}"</p>
-                            <p className="text-muted-foreground mt-1">— {e.evaluator_name}</p>
-                          </div>
-                        ))}
-                        {evaluations360.filter(e => e.improvements).length === 0 && (
-                          <p className="text-muted-foreground text-xs">Nenhum comentário ainda</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <h4 className="font-medium text-sm mb-2">Comentários Adicionais</h4>
-                      <div className="space-y-1 max-h-[150px] overflow-y-auto">
-                        {evaluations360.filter(e => e.additional_comments).map(e => (
-                          <div key={e.id + "-add"} className="p-2 bg-muted/50 rounded text-xs">
-                            <p className="italic">"{e.additional_comments}"</p>
-                            <p className="text-muted-foreground mt-1">— {e.evaluator_name}</p>
-                          </div>
-                        ))}
-                        {evaluations360.filter(e => e.additional_comments).length === 0 && (
-                          <p className="text-muted-foreground text-xs">Nenhum comentário ainda</p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Empty state */}
-              {discResponses.length === 0 && evaluations360.length === 0 && (
-                <div className="text-center py-8">
-                  <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Nenhuma resposta recebida ainda</p>
-                  <p className="text-sm text-muted-foreground">Compartilhe o link da avaliação para receber respostas</p>
-                </div>
-              )}
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
+      {reportCycleId && (
+        <AssessmentReportSheet
+          open={isReportsOpen}
+          onOpenChange={setIsReportsOpen}
+          cycleId={reportCycleId}
+          cycleTitle={reportCycleTitle}
+        />
+      )}
     </div>
   );
 }
