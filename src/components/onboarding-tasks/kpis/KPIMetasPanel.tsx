@@ -4,11 +4,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Settings, Users, BarChart3, Link, Copy, Sparkles } from "lucide-react";
+import { Settings, Users, BarChart3, Link, Copy, Sparkles, Building2 } from "lucide-react";
 import { KPIConfigurationTab } from "./KPIConfigurationTab";
 import { SalespeopleTab } from "./SalespeopleTab";
 import { KPIDashboardTab } from "./KPIDashboardTab";
 import { KPIAnalysisTab } from "./KPIAnalysisTab";
+import { UnitsTab } from "./UnitsTab";
 
 interface KPIMetasPanelProps {
   companyId: string;
@@ -81,6 +82,10 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
           </TabsTrigger>
           {isAdmin && (
             <>
+              <TabsTrigger value="units" className="gap-2">
+                <Building2 className="h-4 w-4" />
+                Unidades
+              </TabsTrigger>
               <TabsTrigger value="analysis" className="gap-2">
                 <Sparkles className="h-4 w-4" />
                 Análise IA
@@ -103,6 +108,10 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
 
         {isAdmin && (
           <>
+            <TabsContent value="units" className="mt-6">
+              <UnitsTab companyId={companyId} isAdmin={isAdmin} />
+            </TabsContent>
+
             <TabsContent value="analysis" className="mt-6">
               <KPIAnalysisTab companyId={companyId} projectId={projectId} />
             </TabsContent>

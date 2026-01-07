@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle2, Calendar, User, DollarSign, Percent, Hash, AlertCircle } from "lucide-react";
+import { CheckCircle2, Calendar, User, DollarSign, Percent, Hash, AlertCircle, Building2 } from "lucide-react";
 
 interface KPI {
   id: string;
@@ -26,9 +27,15 @@ interface Salesperson {
   name: string;
   access_code: string;
   company_id: string;
+  unit_id: string | null;
 }
 
 interface Company {
+  id: string;
+  name: string;
+}
+
+interface Unit {
   id: string;
   name: string;
 }
@@ -42,6 +49,8 @@ export default function KPIEntryPage() {
   const [accessCode, setAccessCode] = useState(codeFromUrl || "");
   const [salesperson, setSalesperson] = useState<Salesperson | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [selectedUnit, setSelectedUnit] = useState<string>("");
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [entryDate, setEntryDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [values, setValues] = useState<Record<string, number>>({});
@@ -88,6 +97,22 @@ export default function KPIEntryPage() {
 
       setCompany(companyData);
 
+      // Fetch units
+      const { data: unitsData } = await supabase
+        .from("company_units")
+        .select("id, name")
+        .eq("company_id", companyId)
+        .eq("is_active", true)
+        .order("name");
+
+      setUnits(unitsData || []);
+      
+      // Set default unit if salesperson has one
+      if (salespersonData.unit_id) {
+        setSelectedUnit(salespersonData.unit_id);
+      } else if (unitsData && unitsData.length > 0) {
+        setSelectedUnit(unitsData[0].id);
+      }
       // Fetch active KPIs
       const { data: kpisData, error: kpisError } = await supabase
         .from("company_kpis")
@@ -173,6 +198,7 @@ export default function KPIEntryPage() {
         entry_date: entryDate,
         value: values[kpi.id] || 0,
         observations: observations,
+        unit_id: selectedUnit || null,
       }));
 
       const { error } = await supabase.from("kpi_entries").insert(entries);
@@ -298,6 +324,26 @@ export default function KPIEntryPage() {
                 </p>
               )}
             </div>
+
+            {/* Unit Selection */}
+            {units.length > 0 && (
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Unidade / Filial
+                </Label>
+                <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {units.map(unit => (
+                      <SelectItem key={unit.id} value={unit.id}>{unit.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* KPI Fields */}
             <div className="space-y-4">
