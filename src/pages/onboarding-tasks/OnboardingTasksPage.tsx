@@ -452,6 +452,11 @@ const OnboardingTasksPage = () => {
       // When clearing a status filter, reset to "all"
       setFilterStatus("all");
     }
+    
+    // When filtering by NPS responded/not_responded, switch to empresas tab to show results
+    if (filter?.type === "nps" && (filter.value === "responded" || filter.value === "not_responded")) {
+      setActiveDashboardTab("empresas");
+    }
   };
 
   // Get set of project IDs that have NPS responses
