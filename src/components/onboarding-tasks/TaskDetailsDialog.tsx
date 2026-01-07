@@ -22,8 +22,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { CalendarIcon, Loader2, Trash2, EyeOff } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { CalendarIcon, Loader2, Trash2, EyeOff, Video, ExternalLink, Clock } from "lucide-react";
+import { format, parseISO, addHours } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { TaskAttachments } from "./TaskAttachments";
@@ -101,6 +101,10 @@ export const TaskDetailsDialog = ({
 }: TaskDetailsDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [editedTask, setEditedTask] = useState<Partial<OnboardingTask>>({});
+  const [creatingMeeting, setCreatingMeeting] = useState(false);
+  const [meetingTime, setMeetingTime] = useState("09:00");
+  const [meetingDuration, setMeetingDuration] = useState("60");
+  const [showMeetingForm, setShowMeetingForm] = useState(false);
 
   useEffect(() => {
     if (task) {
@@ -153,6 +157,92 @@ export const TaskDetailsDialog = ({
       : [];
 
   const [historyKey, setHistoryKey] = useState(0);
+
+  const createGoogleMeetMeeting = async () => {
+    if (!editedTask.due_date) {
+      toast.error("Defina uma data de execução para agendar a reunião");
+      return;
+    }
+
+    setCreatingMeeting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Você precisa estar logado");
+        return;
+      }
+
+      // Parse date and time
+      const [hours, minutes] = meetingTime.split(":").map(Number);
+      const startDate = parseISO(editedTask.due_date);
+      startDate.setHours(hours, minutes, 0, 0);
+      
+      const durationMinutes = parseInt(meetingDuration);
+      const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000);
+
+      // Get assignee staff info for calendar creation
+      const assigneeId = editedTask.assignee_id;
+      let targetUserId: string | null = null;
+      
+      if (assigneeId) {
+        // Check if assignee is a staff member with connected calendar
+        const staffMember = staffList.find(s => s.id === assigneeId);
+        if (staffMember) {
+          // Get the staff's auth user_id
+          const { data: staffData } = await supabase
+            .from("onboarding_staff")
+            .select("user_id")
+            .eq("id", assigneeId)
+            .single();
+          
+          if (staffData?.user_id) {
+            targetUserId = staffData.user_id;
+          }
+        }
+      }
+
+      const response = await supabase.functions.invoke("google-calendar", {
+        body: {
+          title: editedTask.title || task?.title || "Reunião",
+          description: editedTask.description || task?.description || "",
+          startDateTime: startDate.toISOString(),
+          endDateTime: endDate.toISOString(),
+          target_user_id: targetUserId,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Erro ao criar reunião");
+      }
+
+      const data = response.data;
+      
+      if (data.error) {
+        if (data.needsAuth) {
+          toast.error("Conecte sua conta Google Calendar primeiro");
+        } else {
+          toast.error(data.error);
+        }
+        return;
+      }
+
+      // Update task with meeting link in observations
+      const meetingInfo = `\n\n🔗 Google Meet: ${data.event.meetingLink}`;
+      const newObservations = (editedTask.observations || "") + meetingInfo;
+      setEditedTask({ ...editedTask, observations: newObservations });
+      
+      toast.success("Reunião criada com sucesso!");
+      setShowMeetingForm(false);
+    } catch (error: any) {
+      console.error("Error creating meeting:", error);
+      toast.error(error.message || "Erro ao criar reunião");
+    } finally {
+      setCreatingMeeting(false);
+    }
+  };
 
   const logHistory = async (action: string, fieldChanged: string | null, oldValue: string | null, newValue: string | null) => {
     if (!currentUserId || !task) return;
@@ -518,6 +608,87 @@ export const TaskDetailsDialog = ({
                   checked={editedTask.is_internal ?? false}
                   onCheckedChange={(checked) => setEditedTask({ ...editedTask, is_internal: checked })}
                 />
+              </div>
+            )}
+
+            {/* Google Meet section - only for staff */}
+            {(isAdmin || isStaffRole) && (
+              <div className="border-t pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Video className="h-5 w-5 text-primary" />
+                    <Label className="text-sm font-medium">Agendar Reunião Google Meet</Label>
+                  </div>
+                  {!showMeetingForm && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowMeetingForm(true)}
+                      disabled={!editedTask.due_date}
+                    >
+                      <Video className="h-4 w-4 mr-2" />
+                      Criar Reunião
+                    </Button>
+                  )}
+                </div>
+                
+                {showMeetingForm && (
+                  <div className="p-4 rounded-lg border bg-muted/30 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm">Horário</Label>
+                        <Input
+                          type="time"
+                          value={meetingTime}
+                          onChange={(e) => setMeetingTime(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm">Duração</Label>
+                        <Select value={meetingDuration} onValueChange={setMeetingDuration}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="15">15 minutos</SelectItem>
+                            <SelectItem value="30">30 minutos</SelectItem>
+                            <SelectItem value="45">45 minutos</SelectItem>
+                            <SelectItem value="60">1 hora</SelectItem>
+                            <SelectItem value="90">1h30</SelectItem>
+                            <SelectItem value="120">2 horas</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={createGoogleMeetMeeting}
+                        disabled={creatingMeeting || !editedTask.due_date}
+                        className="flex-1"
+                      >
+                        {creatingMeeting ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Video className="h-4 w-4 mr-2" />
+                        )}
+                        Criar e Adicionar Link
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowMeetingForm(false)}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                    
+                    {!editedTask.due_date && (
+                      <p className="text-xs text-muted-foreground">
+                        Defina uma data de execução para agendar a reunião
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
