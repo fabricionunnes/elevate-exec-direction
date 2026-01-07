@@ -100,9 +100,20 @@ interface Renewal {
   staff_name?: string;
 }
 
+interface ClosedProject {
+  id: string;
+  product_name: string;
+  status: string;
+  churn_date: string | null;
+  churn_reason: string | null;
+  churn_notes: string | null;
+  company_name: string | null;
+}
+
 export default function OnboardingRenewalsPage() {
   const navigate = useNavigate();
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [closedProjects, setClosedProjects] = useState<ClosedProject[]>([]);
   const [renewals, setRenewals] = useState<Renewal[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -274,6 +285,36 @@ export default function OnboardingRenewalsPage() {
         staff_name: r.staff?.name || "Sistema",
       }));
       setRenewals(formattedRenewals);
+    }
+
+    // Fetch closed/churned projects
+    const { data: projectsData, error: projectsError } = await supabase
+      .from("onboarding_projects")
+      .select(`
+        id,
+        product_name,
+        status,
+        churn_date,
+        churn_reason,
+        churn_notes,
+        onboarding_company:onboarding_company_id(name)
+      `)
+      .in("status", ["closed", "completed"])
+      .order("churn_date", { ascending: false, nullsFirst: false });
+
+    if (projectsError) {
+      console.error("Error fetching closed projects:", projectsError);
+    } else {
+      const formattedProjects = (projectsData || []).map((p: any) => ({
+        id: p.id,
+        product_name: p.product_name,
+        status: p.status,
+        churn_date: p.churn_date,
+        churn_reason: p.churn_reason,
+        churn_notes: p.churn_notes,
+        company_name: p.onboarding_company?.name || null,
+      }));
+      setClosedProjects(formattedProjects);
     }
 
     setLoading(false);
@@ -1062,6 +1103,65 @@ export default function OnboardingRenewalsPage() {
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                         Nenhuma empresa encerrada
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* Closed Projects Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-muted-foreground" />
+              Projetos Encerrados ({closedProjects.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[300px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Empresa</TableHead>
+                    <TableHead>Produto/Serviço</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Data Encerramento</TableHead>
+                    <TableHead>Motivo</TableHead>
+                    <TableHead>Observações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {closedProjects.map((project) => (
+                    <TableRow key={project.id}>
+                      <TableCell className="font-medium max-w-[150px] truncate" title={project.company_name || "-"}>
+                        {project.company_name || "-"}
+                      </TableCell>
+                      <TableCell>{project.product_name}</TableCell>
+                      <TableCell>
+                        <Badge variant={project.status === "completed" ? "default" : "destructive"}>
+                          {project.status === "completed" ? "Concluído" : "Encerrado"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {project.churn_date
+                          ? format(parseISO(project.churn_date), "dd/MM/yyyy")
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="max-w-[150px] truncate" title={project.churn_reason || "-"}>
+                        {project.churn_reason || "-"}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate" title={project.churn_notes || "-"}>
+                        {project.churn_notes || "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {closedProjects.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        Nenhum projeto encerrado
                       </TableCell>
                     </TableRow>
                   )}
