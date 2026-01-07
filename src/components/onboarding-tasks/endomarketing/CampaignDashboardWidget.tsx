@@ -11,7 +11,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Trophy, Clock, Medal, Target, TrendingUp, Crown, Eye } from "lucide-react";
-import { format, parseISO, differenceInDays, differenceInHours } from "date-fns";
+import { format, parseISO, differenceInDays, differenceInHours, isWithinInterval, isBefore, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface Campaign {
@@ -65,12 +65,23 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
           kpi:company_kpis(name, kpi_type)
         `)
         .eq("project_id", projectId)
-        .eq("status", "active")
-        .order("end_date", { ascending: true })
-        .limit(3);
+        .neq("status", "ended")
+        .order("end_date", { ascending: true });
 
       if (error) throw error;
-      setCampaigns(data || []);
+
+      // Filter campaigns that are currently active based on dates
+      const now = new Date();
+      const activeCampaigns = (data || []).filter(campaign => {
+        const startDate = parseISO(campaign.start_date);
+        const endDate = parseISO(campaign.end_date);
+        
+        // Check if campaign is within active period
+        return isWithinInterval(now, { start: startDate, end: endDate }) || 
+               (isBefore(startDate, now) && isAfter(endDate, now));
+      }).slice(0, 3);
+
+      setCampaigns(activeCampaigns);
     } catch (error) {
       console.error("Error fetching campaigns:", error);
     } finally {
