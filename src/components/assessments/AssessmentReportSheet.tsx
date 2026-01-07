@@ -353,10 +353,11 @@ export function AssessmentReportSheet({
 
                 {/* Tabs for different report sections */}
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="w-full grid grid-cols-3">
+                  <TabsList className="w-full grid grid-cols-4">
                     <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-                    <TabsTrigger value="disc">Perfil DISC</TabsTrigger>
-                    <TabsTrigger value="360">Avaliação 360°</TabsTrigger>
+                    <TabsTrigger value="disc">DISC</TabsTrigger>
+                    <TabsTrigger value="360">360°</TabsTrigger>
+                    <TabsTrigger value="climate">Clima</TabsTrigger>
                   </TabsList>
 
                   {/* Overview Tab */}
@@ -673,6 +674,91 @@ export function AssessmentReportSheet({
                           </CardContent>
                         </Card>
                       </>
+                    )}
+                  </TabsContent>
+
+                  {/* Climate Tab */}
+                  <TabsContent value="climate" className="space-y-4 mt-4">
+                    {overallClimate > 0 ? (
+                      <>
+                        <Card className={getClimateLabel(overallClimate).bg}>
+                          <CardContent className="py-8 text-center">
+                            <div className={cn("inline-block p-6 rounded-full mb-4", getClimateLabel(overallClimate).bg)}>
+                              <p className={cn("text-5xl font-bold", getClimateLabel(overallClimate).color)}>
+                                {overallClimate.toFixed(2)}
+                              </p>
+                              <p className="text-muted-foreground text-sm">/5.00</p>
+                            </div>
+                            <Badge className={cn("text-base px-4 py-1", getClimateLabel(overallClimate).bg, getClimateLabel(overallClimate).color)}>
+                              {getClimateLabel(overallClimate).label}
+                            </Badge>
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-sm">Interpretação do Resultado</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-2 text-xs">
+                            <div className="p-3 bg-green-500/10 rounded-lg">
+                              <p className="font-medium text-green-600">4.5 - 5.0: Excelente</p>
+                              <p className="text-muted-foreground">Clima altamente positivo e motivador</p>
+                            </div>
+                            <div className="p-3 bg-emerald-500/10 rounded-lg">
+                              <p className="font-medium text-emerald-600">4.0 - 4.4: Muito Bom</p>
+                              <p className="text-muted-foreground">Clima positivo com oportunidades de melhoria</p>
+                            </div>
+                            <div className="p-3 bg-blue-500/10 rounded-lg">
+                              <p className="font-medium text-blue-600">3.5 - 3.9: Bom</p>
+                              <p className="text-muted-foreground">Clima satisfatório, requer atenção em algumas áreas</p>
+                            </div>
+                            <div className="p-3 bg-amber-500/10 rounded-lg">
+                              <p className="font-medium text-amber-600">3.0 - 3.4: Regular</p>
+                              <p className="text-muted-foreground">Áreas de preocupação que precisam ser trabalhadas</p>
+                            </div>
+                            <div className="p-3 bg-red-500/10 rounded-lg">
+                              <p className="font-medium text-red-600">Abaixo de 3.0: Precisa Atenção</p>
+                              <p className="text-muted-foreground">Intervenção necessária para melhorar o ambiente</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Competencies breakdown */}
+                        {radarData && (
+                          <Card>
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm">Detalhamento por Competência</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                              {radarData.map((item) => (
+                                <div key={item.subject} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                                  <span className="text-sm">{item.subject}</span>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                                      <div 
+                                        className="h-full bg-primary transition-all"
+                                        style={{ width: `${(item.value / 5) * 100}%` }}
+                                      />
+                                    </div>
+                                    <span className={cn("text-sm font-medium min-w-[40px] text-right", getClimateLabel(item.value).color)}>
+                                      {item.value.toFixed(1)}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </CardContent>
+                          </Card>
+                        )}
+                      </>
+                    ) : (
+                      <Card className="border-dashed">
+                        <CardContent className="py-8 text-center">
+                          <Star className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                          <p className="text-sm text-muted-foreground">
+                            Aguardando avaliações 360° para calcular o clima organizacional
+                          </p>
+                        </CardContent>
+                      </Card>
                     )}
                   </TabsContent>
                 </Tabs>
