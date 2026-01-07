@@ -1143,6 +1143,7 @@ const OnboardingTasksPage = () => {
           onDataRefresh={refreshData}
           currentStaffUserId={currentUserId}
           onActiveTabChange={setActiveDashboardTab}
+          staffRole={currentUserRole}
         />
 
         {/* Companies List - Hidden when on NPS tab */}
