@@ -28,6 +28,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { TaskAttachments } from "./TaskAttachments";
 import { TaskHistory } from "./TaskHistory";
+import { ScheduleMeetingDialog } from "./ScheduleMeetingDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -106,6 +107,7 @@ export const TaskDetailsDialog = ({
   const [meetingTime, setMeetingTime] = useState("09:00");
   const [meetingDuration, setMeetingDuration] = useState("60");
   const [showMeetingForm, setShowMeetingForm] = useState(false);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
 
   useEffect(() => {
     if (task) {
@@ -696,76 +698,15 @@ export const TaskDetailsDialog = ({
                     <Video className="h-5 w-5 text-primary" />
                     <Label className="text-sm font-medium">Agendar Reunião Google Meet</Label>
                   </div>
-                  {!showMeetingForm && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowMeetingForm(true)}
-                      disabled={!editedTask.due_date}
-                    >
-                      <Video className="h-4 w-4 mr-2" />
-                      Criar Reunião
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowScheduleDialog(true)}
+                  >
+                    <Video className="h-4 w-4 mr-2" />
+                    Agendar Reunião
+                  </Button>
                 </div>
-                
-                {showMeetingForm && (
-                  <div className="p-4 rounded-lg border bg-muted/30 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm">Horário</Label>
-                        <Input
-                          type="time"
-                          value={meetingTime}
-                          onChange={(e) => setMeetingTime(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm">Duração</Label>
-                        <Select value={meetingDuration} onValueChange={setMeetingDuration}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="15">15 minutos</SelectItem>
-                            <SelectItem value="30">30 minutos</SelectItem>
-                            <SelectItem value="45">45 minutos</SelectItem>
-                            <SelectItem value="60">1 hora</SelectItem>
-                            <SelectItem value="90">1h30</SelectItem>
-                            <SelectItem value="120">2 horas</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={createGoogleMeetMeeting}
-                        disabled={creatingMeeting || !editedTask.due_date}
-                        className="flex-1"
-                      >
-                        {creatingMeeting ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Video className="h-4 w-4 mr-2" />
-                        )}
-                        Criar e Adicionar Link
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowMeetingForm(false)}
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                    
-                    {!editedTask.due_date && (
-                      <p className="text-xs text-muted-foreground">
-                        Defina uma data de execução para agendar a reunião
-                      </p>
-                    )}
-                  </div>
-                )}
               </div>
             )}
 
@@ -796,6 +737,22 @@ export const TaskDetailsDialog = ({
             <TaskHistory key={historyKey} taskId={task.id} />
           </TabsContent>
         </Tabs>
+
+        {/* Schedule Meeting Dialog */}
+        {taskProjectId && (
+          <ScheduleMeetingDialog
+            open={showScheduleDialog}
+            onOpenChange={setShowScheduleDialog}
+            projectId={taskProjectId}
+            defaultTitle={editedTask.title || task.title}
+            defaultDescription={editedTask.description || task.description || ""}
+            defaultDate={editedTask.due_date || task.due_date || undefined}
+            onMeetingCreated={(meetingLink) => {
+              setEditedTask({ ...editedTask, meeting_link: meetingLink });
+              setShowScheduleDialog(false);
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
