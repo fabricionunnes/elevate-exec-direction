@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CalendarClock, Clock, CheckCircle2, Circle } from "lucide-react";
-import { format, isToday, isBefore, startOfDay } from "date-fns";
+import { format, isToday, isBefore, startOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -42,7 +42,7 @@ export const ProjectUrgentTasks = ({ tasks, onTaskClick }: ProjectUrgentTasksPro
       // Skip completed tasks (check both status and completed_at)
       if (task.status === "completed" || task.completed_at || !task.due_date) return;
       
-      const dueDate = startOfDay(new Date(task.due_date));
+      const dueDate = startOfDay(parseISO(task.due_date));
       
       if (isBefore(dueDate, today)) {
         overdue.push(task);
@@ -97,7 +97,7 @@ export const ProjectUrgentTasks = ({ tasks, onTaskClick }: ProjectUrgentTasksPro
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {task.due_date && (
             <span className={isOverdue ? "text-destructive font-medium" : "text-amber-600"}>
-              {format(new Date(task.due_date), "dd/MM", { locale: ptBR })}
+              {format(parseISO(task.due_date), "dd/MM", { locale: ptBR })}
             </span>
           )}
           {getResponsibleName(task) && (
