@@ -113,11 +113,12 @@ export default function OnboardingCompaniesReportPage() {
   const fetchData = async () => {
     setLoading(true);
 
-    // Fetch staff (consultants)
+    // Fetch staff (only consultants)
     const { data: staffData } = await supabase
       .from("onboarding_staff")
       .select("id, name")
       .eq("is_active", true)
+      .eq("role", "consultant")
       .order("name");
 
     if (staffData) {
