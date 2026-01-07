@@ -114,21 +114,23 @@ serve(async (req) => {
       mimeType = metadata.mimeType || "video/mp4";
       fileName = metadata.name || "recording";
       
-      // ElevenLabs supports files up to 1GB, but limit to 500MB for safety
-      const maxFileSize = 500 * 1024 * 1024; // 500MB
+      // Limit due to backend function runtime/memory constraints
+      const maxFileSize = 25 * 1024 * 1024; // 25MB
       if (fileSize > maxFileSize) {
         const fileSizeMB = Math.round(fileSize / 1024 / 1024);
         console.error(`File too large: ${fileSize} bytes (max: ${maxFileSize})`);
         return new Response(
-          JSON.stringify({ 
-            error: `O arquivo de gravação é muito grande (${fileSizeMB}MB). O limite para transcrição automática é de 500MB.` 
+          JSON.stringify({
+            error:
+              `O arquivo de gravação é muito grande (${fileSizeMB}MB). O limite atual para transcrição automática é de 25MB por restrições de processamento.\n\nRecomendamos:\n\n• Exportar/baixar apenas o áudio (MP3)\n• Comprimir ou dividir a gravação em partes menores\n• Usar uma ferramenta externa de transcrição e colar o texto nas notas`,
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
-      console.log(`File size: ${Math.round(fileSize / 1024 / 1024)}MB - proceeding with download...`);
-      
+
+      console.log(
+        `File size: ${Math.round(fileSize / 1024 / 1024)}MB - proceeding with download...`
+      );
       if (metadata.capabilities?.canDownload === false) {
         return new Response(
           JSON.stringify({ error: "Você não tem permissão para baixar este arquivo. Verifique as configurações de compartilhamento no Google Drive." }),
