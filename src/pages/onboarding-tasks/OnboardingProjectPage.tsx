@@ -28,6 +28,7 @@ import {
   ChevronDown,
   ChevronRight,
   RefreshCw,
+  Pencil,
   Search,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -913,21 +914,31 @@ const OnboardingProjectPage = () => {
                     )}
                     {/* CRM Button */}
                     {project.crm_link ? (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-6 px-2 text-xs"
-                        onClick={() => window.open(project.crm_link!, "_blank")}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          setCrmLinkInput(project.crm_link || "");
-                          setShowCrmDialog(true);
-                        }}
-                        title="Clique para abrir, clique com botão direito para editar"
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        CRM
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-6 px-2 text-xs"
+                          onClick={() => window.open(project.crm_link!, "_blank")}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          CRM
+                        </Button>
+                        {currentUserRole && currentUserRole !== "client" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => {
+                              setCrmLinkInput(project.crm_link || "");
+                              setShowCrmDialog(true);
+                            }}
+                            title="Editar link do CRM"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                     ) : currentUserRole && currentUserRole !== "client" && (
                       <Button 
                         variant="ghost" 
@@ -944,21 +955,31 @@ const OnboardingProjectPage = () => {
                     )}
                     {/* Documentos Button */}
                     {project.documents_link ? (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-6 px-2 text-xs"
-                        onClick={() => window.open(project.documents_link!, "_blank")}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          setDocsLinkInput(project.documents_link || "");
-                          setShowDocsDialog(true);
-                        }}
-                        title="Clique para abrir, clique com botão direito para editar"
-                      >
-                        <FolderOpen className="h-3 w-3 mr-1" />
-                        Documentos
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-6 px-2 text-xs"
+                          onClick={() => window.open(project.documents_link!, "_blank")}
+                        >
+                          <FolderOpen className="h-3 w-3 mr-1" />
+                          Documentos
+                        </Button>
+                        {currentUserRole && currentUserRole !== "client" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => {
+                              setDocsLinkInput(project.documents_link || "");
+                              setShowDocsDialog(true);
+                            }}
+                            title="Editar link de documentos"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                     ) : currentUserRole && currentUserRole !== "client" && (
                       <Button 
                         variant="ghost" 
