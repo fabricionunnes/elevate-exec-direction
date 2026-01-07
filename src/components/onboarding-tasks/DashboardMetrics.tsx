@@ -107,7 +107,8 @@ const DashboardMetrics = ({
 }: DashboardMetricsProps) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
-  const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
+  const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
+  const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
   const [tasksDialogType, setTasksDialogType] = useState<"overdue" | "today" | "status">("overdue");
@@ -140,17 +141,20 @@ const DashboardMetrics = ({
         from += pageSize;
       }
 
-      const [npsResult, goalsResult] = await Promise.all([
+      const [npsResult, kpisResult, entriesResult] = await Promise.all([
         supabase.from("onboarding_nps_responses").select("id, project_id, score, feedback, what_can_improve, would_recommend_why, respondent_name, respondent_email, created_at").order("created_at", { ascending: false }),
-        supabase.from("onboarding_monthly_goals").select("project_id, month, year, sales_target, sales_result"),
+        supabase.from("company_kpis").select("id, company_id, kpi_type, periodicity, target_value").eq("is_active", true),
+        supabase.from("kpi_entries").select("company_id, kpi_id, value, entry_date"),
       ]);
 
       if (npsResult.error) throw npsResult.error;
-      if (goalsResult.error) throw goalsResult.error;
+      if (kpisResult.error) throw kpisResult.error;
+      if (entriesResult.error) throw entriesResult.error;
 
       setAllTasks(allTasksData);
       setNpsResponses(npsResult.data || []);
-      setMonthlyGoals(goalsResult.data || []);
+      setCompanyKpis(kpisResult.data || []);
+      setKpiEntries(entriesResult.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -310,25 +314,78 @@ const DashboardMetrics = ({
     const daysInMonth = new Date(periodYear, periodMonth, 0).getDate();
     const currentDay = isCurrentMonth ? today.getDate() : daysInMonth;
     const timeElapsedPercent = currentDay / daysInMonth;
-    const filteredProjectIds = new Set(projects.map(p => p.id));
-    const filteredGoals = monthlyGoals.filter(g => filteredProjectIds.has(g.project_id) && g.month === periodMonth && g.year === periodYear);
-    const projectsWithGoals = filteredGoals.filter(g => g.sales_target && g.sales_target > 0);
-    const projectsWithGoalsIds = new Set(projectsWithGoals.map(g => g.project_id));
-    const noGoalCount = projects.filter(p => !projectsWithGoalsIds.has(p.id)).length;
-    const projectsWithProjection = projectsWithGoals.map(g => {
-      const result = g.sales_result || 0;
-      const target = g.sales_target || 1;
-      const projectionPercent = timeElapsedPercent > 0 ? Math.round(((result / target) / timeElapsedPercent) * 100) : 0;
-      return { ...g, projectionPercent };
+
+    // Get company IDs from filtered projects
+    const filteredCompanyIds = new Set(
+      projects
+        .filter(p => p.onboarding_company_id)
+        .map(p => p.onboarding_company_id)
+    );
+
+    // Filter entries for the period
+    const monthStart = `${periodYear}-${String(periodMonth).padStart(2, '0')}-01`;
+    const monthEnd = `${periodYear}-${String(periodMonth).padStart(2, '0')}-${daysInMonth}`;
+    
+    // Calculate metrics per company
+    const companyMetricsMap = new Map<string, { target: number; realized: number; projectionPercent: number }>();
+
+    filteredCompanyIds.forEach(companyId => {
+      if (!companyId) return;
+
+      // Get KPIs for this company (only monetary for main goals tracking)
+      const companyKpisList = companyKpis.filter(k => k.company_id === companyId && k.kpi_type === "monetary");
+      
+      if (companyKpisList.length === 0) return;
+
+      // Calculate monthly target
+      let totalMonthlyTarget = 0;
+      companyKpisList.forEach(kpi => {
+        if (kpi.periodicity === "daily") {
+          totalMonthlyTarget += kpi.target_value * daysInMonth;
+        } else if (kpi.periodicity === "weekly") {
+          totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
+        } else {
+          totalMonthlyTarget += kpi.target_value;
+        }
+      });
+
+      // Get entries for this company in the period
+      const companyEntries = kpiEntries.filter(e => 
+        e.company_id === companyId &&
+        e.entry_date >= monthStart &&
+        e.entry_date <= monthEnd &&
+        companyKpisList.some(k => k.id === e.kpi_id)
+      );
+
+      const totalRealized = companyEntries.reduce((sum, e) => sum + e.value, 0);
+      
+      // Calculate projection
+      const projectionPercent = timeElapsedPercent > 0 && totalMonthlyTarget > 0 
+        ? Math.round(((totalRealized / totalMonthlyTarget) / timeElapsedPercent) * 100) 
+        : 0;
+
+      companyMetricsMap.set(companyId, { 
+        target: totalMonthlyTarget, 
+        realized: totalRealized, 
+        projectionPercent 
+      });
     });
-    const meetingGoal = projectsWithProjection.filter(g => g.projectionPercent >= 100).length;
-    const above70 = projectsWithProjection.filter(g => g.projectionPercent >= 70 && g.projectionPercent < 100).length;
-    const between50And70 = projectsWithProjection.filter(g => g.projectionPercent >= 50 && g.projectionPercent < 70).length;
-    const below50 = projectsWithProjection.filter(g => g.projectionPercent < 50).length;
-    const totalWithGoals = projectsWithGoals.length;
+
+    // Calculate aggregated metrics
+    const companiesWithGoals = Array.from(companyMetricsMap.entries()).filter(([_, m]) => m.target > 0);
+    const companiesWithGoalsIds = new Set(companiesWithGoals.map(([id]) => id));
+    const noGoalCount = Array.from(filteredCompanyIds).filter(id => id && !companiesWithGoalsIds.has(id)).length;
+    
+    const meetingGoal = companiesWithGoals.filter(([_, m]) => m.projectionPercent >= 100).length;
+    const above70 = companiesWithGoals.filter(([_, m]) => m.projectionPercent >= 70 && m.projectionPercent < 100).length;
+    const between50And70 = companiesWithGoals.filter(([_, m]) => m.projectionPercent >= 50 && m.projectionPercent < 70).length;
+    const below50 = companiesWithGoals.filter(([_, m]) => m.projectionPercent < 50).length;
+    
+    const totalWithGoals = companiesWithGoals.length;
     const goalRate = totalWithGoals > 0 ? Math.round((meetingGoal / totalWithGoals) * 100) : 0;
+
     return { totalWithGoals, meetingGoal, above70, between50And70, below50, noGoalCount, goalRate };
-  }, [projects, monthlyGoals, dateRange]);
+  }, [projects, companyKpis, kpiEntries, dateRange]);
 
   const handleCardClick = (filterType: string, filterValue: string) => {
     if (activeMetricFilter?.type === filterType && activeMetricFilter?.value === filterValue) {
