@@ -58,8 +58,10 @@ import {
   Users,
   Pencil,
   Trash2,
-  MoreVertical
+  MoreVertical,
+  FileText
 } from "lucide-react";
+import { MeetingNotesDialog } from "@/components/onboarding-tasks/MeetingNotesDialog";
 import { 
   format, 
   parseISO, 
@@ -143,6 +145,10 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
   const [deleting, setDeleting] = useState(false);
+  
+  // Meeting notes dialog
+  const [showMeetingNotesDialog, setShowMeetingNotesDialog] = useState(false);
+  const [eventForNotes, setEventForNotes] = useState<CalendarEvent | null>(null);
 
   useEffect(() => {
     checkConnection();
@@ -779,6 +785,19 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                                       size="icon"
                                       variant="ghost"
                                       className="h-8 w-8"
+                                      title="Encerrar e Registrar"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEventForNotes(event);
+                                        setShowMeetingNotesDialog(true);
+                                      }}
+                                    >
+                                      <FileText className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         openEditDialog(event);
@@ -1095,7 +1114,18 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                                             <MoreVertical className="h-4 w-4" />
                                           </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-40 bg-card/95 backdrop-blur-sm">
+                                        <DropdownMenuContent align="end" className="w-48 bg-card/95 backdrop-blur-sm">
+                                          <DropdownMenuItem 
+                                            onClick={() => {
+                                              setEventForNotes(event);
+                                              setShowMeetingNotesDialog(true);
+                                            }} 
+                                            className="gap-2 text-xs"
+                                          >
+                                            <FileText className="h-3.5 w-3.5" />
+                                            Encerrar e Registrar
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
                                           <DropdownMenuItem onClick={() => openEditDialog(event)} className="gap-2 text-xs">
                                             <Pencil className="h-3.5 w-3.5" />
                                             Editar
@@ -1332,6 +1362,14 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Meeting Notes Dialog */}
+      <MeetingNotesDialog
+        open={showMeetingNotesDialog}
+        onOpenChange={setShowMeetingNotesDialog}
+        event={eventForNotes}
+        onSaved={() => setEventForNotes(null)}
+      />
     </div>
   );
 };
