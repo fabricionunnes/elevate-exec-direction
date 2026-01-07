@@ -244,9 +244,28 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   const handleRefreshCalendar = async () => {
     setSyncing(true);
     await syncCalendarEvents();
+    await syncRecordings();
     await fetchMeetings();
     setSyncing(false);
-    toast.success("Reuniões sincronizadas");
+    toast.success("Reuniões e gravações sincronizadas");
+  };
+
+  const syncRecordings = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await supabase.functions.invoke("google-calendar?action=sync-recordings", {
+        body: { projectId },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (response.data?.synced > 0) {
+        console.log(`Synced ${response.data.synced} recordings`);
+      }
+    } catch (error) {
+      console.error("Error syncing recordings:", error);
+    }
   };
 
   const handleDelete = async () => {
