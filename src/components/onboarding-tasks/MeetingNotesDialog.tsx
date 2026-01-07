@@ -154,6 +154,7 @@ export const MeetingNotesDialog = ({
         attendees: attendees.trim() || null,
         meeting_link: event?.meetingLink || null,
         recording_link: recordingLink.trim() || null,
+        is_finalized: true, // Auto-finalize when notes are provided
       });
 
       if (error) throw error;

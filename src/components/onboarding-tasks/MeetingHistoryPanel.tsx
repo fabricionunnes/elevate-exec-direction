@@ -53,6 +53,7 @@ interface MeetingNote {
   meeting_link: string | null;
   recording_link: string | null;
   created_at: string;
+  is_finalized: boolean;
   staff?: {
     id: string;
     name: string;
@@ -175,6 +176,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
         notes: newMeeting.notes.trim(),
         attendees: newMeeting.attendees.trim() || null,
         recording_link: newMeeting.recordingLink.trim() || null,
+        is_finalized: true, // Auto-finalize when notes are provided
       });
 
       if (error) throw error;
@@ -357,6 +359,11 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium truncate">{meeting.subject}</h4>
+                      {!meeting.is_finalized && (
+                        <Badge variant="destructive" className="shrink-0 text-xs">
+                          Pendente
+                        </Badge>
+                      )}
                       {meeting.meeting_link && (
                         <Badge variant="outline" className="shrink-0 text-xs">
                           <Video className="h-3 w-3 mr-1" />

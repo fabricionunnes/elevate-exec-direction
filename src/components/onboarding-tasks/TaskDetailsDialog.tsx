@@ -185,6 +185,18 @@ export const TaskDetailsDialog = ({
       // Get assignee staff info for calendar creation
       const assigneeId = editedTask.assignee_id;
       let targetUserId: string | null = null;
+      let creatorStaffId: string | null = null;
+      
+      // Get current staff ID for meeting notes
+      const { data: currentStaff } = await supabase
+        .from("onboarding_staff")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .single();
+      
+      if (currentStaff) {
+        creatorStaffId = currentStaff.id;
+      }
       
       if (assigneeId) {
         // Check if assignee is a staff member with connected calendar
@@ -234,7 +246,29 @@ export const TaskDetailsDialog = ({
       // Update task with meeting link in dedicated field
       setEditedTask({ ...editedTask, meeting_link: data.event.meetingLink });
       
-      toast.success("Reunião criada com sucesso!");
+      // Create meeting notes record (not finalized - requires completion later)
+      const taskProjectId = projectId || task?.project_id;
+      if (taskProjectId && creatorStaffId) {
+        const { error: meetingError } = await supabase
+          .from("onboarding_meeting_notes")
+          .insert({
+            project_id: taskProjectId,
+            staff_id: creatorStaffId,
+            google_event_id: data.event.id || null,
+            meeting_title: editedTask.title || task?.title || "Reunião",
+            meeting_date: startDate.toISOString(),
+            subject: editedTask.title || task?.title || "Reunião",
+            notes: "", // Empty - needs to be finalized
+            meeting_link: data.event.meetingLink || null,
+            is_finalized: false, // Must be finalized after meeting
+          });
+        
+        if (meetingError) {
+          console.error("Error creating meeting notes:", meetingError);
+        }
+      }
+      
+      toast.success("Reunião criada! Lembre-se de finalizar após a reunião.");
       setShowMeetingForm(false);
     } catch (error: any) {
       console.error("Error creating meeting:", error);

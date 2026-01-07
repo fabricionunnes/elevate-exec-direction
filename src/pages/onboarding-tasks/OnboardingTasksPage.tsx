@@ -14,6 +14,7 @@ import { ptBR } from "date-fns/locale";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
 import { TaskNotificationsDialog } from "@/components/onboarding-tasks/TaskNotificationsDialog";
 import DashboardMetrics from "@/components/onboarding-tasks/DashboardMetrics";
+import { PendingMeetingsAlert } from "@/components/onboarding-tasks/PendingMeetingsAlert";
 import { AnnouncementDialog } from "@/components/onboarding-tasks/AnnouncementDialog";
 import {
   DropdownMenu,
@@ -1046,8 +1047,11 @@ const OnboardingTasksPage = () => {
           </div>
         </div>
 
+        {/* Pending Meetings Alert */}
+        <PendingMeetingsAlert />
+
         {/* Dashboard Metrics */}
-        <DashboardMetrics 
+        <DashboardMetrics
           companies={companies} 
           projects={filteredProjects}
           onFilterChange={handleMetricFilterChange}
