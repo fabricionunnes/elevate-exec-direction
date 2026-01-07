@@ -42,6 +42,7 @@ import {
 } from "recharts";
 import { TasksListDialog } from "./TasksListDialog";
 import { DashboardAgenda } from "./DashboardAgenda";
+import NPSResponsesDialog from "./NPSResponsesDialog";
 
 interface Task {
   id: string;
@@ -102,13 +103,15 @@ const DashboardMetrics = ({
   currentStaffUserId
 }: DashboardMetricsProps) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
-  const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
+  const [npsResponses, setNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
   const [tasksDialogType, setTasksDialogType] = useState<"overdue" | "today" | "status">("overdue");
   const [tasksDialogIds, setTasksDialogIds] = useState<string[]>([]);
   const [tasksDialogStatus, setTasksDialogStatus] = useState<"completed" | "pending" | "in_progress" | null>(null);
+  const [npsDialogOpen, setNpsDialogOpen] = useState(false);
+  const [npsDialogType, setNpsDialogType] = useState<"promoters" | "detractors" | "neutrals">("promoters");
 
   useEffect(() => {
     fetchData();
@@ -134,7 +137,7 @@ const DashboardMetrics = ({
       }
 
       const [npsResult, goalsResult] = await Promise.all([
-        supabase.from("onboarding_nps_responses").select("project_id, score"),
+        supabase.from("onboarding_nps_responses").select("id, project_id, score, feedback, what_can_improve, would_recommend_why, respondent_name, respondent_email, created_at").order("created_at", { ascending: false }),
         supabase.from("onboarding_monthly_goals").select("project_id, month, year, sales_target, sales_result"),
       ]);
 
@@ -332,6 +335,36 @@ const DashboardMetrics = ({
   };
 
   const isCardActive = (type: string, value: string) => activeMetricFilter?.type === type && activeMetricFilter?.value === value;
+
+  const handleNpsCardClick = (type: "promoters" | "detractors" | "neutrals") => {
+    setNpsDialogType(type);
+    setNpsDialogOpen(true);
+  };
+
+  const getFilteredNpsResponses = () => {
+    const filteredProjectIds = new Set(projects.map(p => p.id));
+    const responses = npsResponses.filter(r => filteredProjectIds.has(r.project_id));
+    switch (npsDialogType) {
+      case "promoters":
+        return responses.filter(r => r.score >= 9);
+      case "detractors":
+        return responses.filter(r => r.score <= 6);
+      case "neutrals":
+        return responses.filter(r => r.score >= 7 && r.score <= 8);
+    }
+  };
+
+  const getCompanyName = (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    if (!project?.onboarding_company_id) return "Empresa não encontrada";
+    const company = companies.find(c => c.id === project.onboarding_company_id);
+    return company?.name || "Empresa não encontrada";
+  };
+
+  const getProjectName = (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    return project?.product_name || "Projeto";
+  };
 
   const taskStatusData = [
     { name: "Concluídas", value: taskMetrics.totalCompleted, color: "#22c55e" },
@@ -568,8 +601,8 @@ const DashboardMetrics = ({
             <Card><CardContent className="p-2 sm:p-3 text-center"><p className={cn("text-lg sm:text-xl font-bold", npsMetrics.responseRate >= 70 ? "text-green-500" : npsMetrics.responseRate >= 40 ? "text-yellow-500" : "text-orange-500")}>{npsMetrics.responseRate}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Taxa</p></CardContent></Card>
             <Card className={cn("cursor-pointer", isCardActive("nps", "responded") && "ring-2 ring-blue-500")} onClick={() => handleCardClick("nps", "responded")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-blue-500">{npsMetrics.respondedCount}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Respond.</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden lg:block", isCardActive("nps", "not_responded") && "ring-2 ring-gray-500")} onClick={() => handleCardClick("nps", "not_responded")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-gray-500">{npsMetrics.notRespondedCount}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Não Resp.</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("nps", "promoters") && "ring-2 ring-green-500")} onClick={() => handleCardClick("nps", "promoters")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-green-500">{npsMetrics.promoters}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Promotores</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("nps", "detractors") && "ring-2 ring-red-500")} onClick={() => handleCardClick("nps", "detractors")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{npsMetrics.detractors}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Detratores</p></CardContent></Card>
+            <Card className="cursor-pointer hidden lg:block hover:shadow-md transition-all" onClick={() => handleNpsCardClick("promoters")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-green-500">{npsMetrics.promoters}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Promotores</p></CardContent></Card>
+            <Card className="cursor-pointer hidden lg:block hover:shadow-md transition-all" onClick={() => handleNpsCardClick("detractors")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{npsMetrics.detractors}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Detratores</p></CardContent></Card>
           </div>
         </TabsContent>
       </Tabs>
@@ -581,6 +614,15 @@ const DashboardMetrics = ({
         taskIds={tasksDialogIds}
         status={tasksDialogStatus ?? undefined}
         projectIds={projects.map((p) => p.id)}
+      />
+
+      <NPSResponsesDialog
+        open={npsDialogOpen}
+        onOpenChange={setNpsDialogOpen}
+        responses={getFilteredNpsResponses()}
+        type={npsDialogType}
+        getCompanyName={getCompanyName}
+        getProjectName={getProjectName}
       />
     </div>
   );
