@@ -123,13 +123,14 @@ serve(async (req) => {
       fileSize = parseInt(metadata.size || "0", 10);
       mimeType = metadata.mimeType || "video/mp4";
       
-      // Check if file is too large (limit to 200MB for processing)
-      const maxFileSize = 200 * 1024 * 1024; // 200MB
+      // Check if file is too large (limit to 25MB - edge function memory constraint)
+      const maxFileSize = 25 * 1024 * 1024; // 25MB
       if (fileSize > maxFileSize) {
+        const fileSizeMB = Math.round(fileSize / 1024 / 1024);
         console.error(`File too large: ${fileSize} bytes (max: ${maxFileSize})`);
         return new Response(
           JSON.stringify({ 
-            error: `O arquivo de gravação é muito grande (${Math.round(fileSize / 1024 / 1024)}MB). O limite para transcrição automática é de 200MB. Para arquivos maiores, considere usar a transcrição manual.` 
+            error: `O arquivo de gravação é muito grande (${fileSizeMB}MB). O limite para transcrição automática é de 25MB devido às restrições de processamento. Para arquivos maiores, recomendamos:\n\n• Comprimir o vídeo antes de enviar\n• Usar ferramentas externas como Otter.ai ou Descript\n• Ou transcrever manualmente` 
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
