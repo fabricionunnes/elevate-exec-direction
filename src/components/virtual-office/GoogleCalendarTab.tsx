@@ -256,7 +256,8 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/onboarding-tasks/office`,
-          scopes: "https://www.googleapis.com/auth/calendar.events",
+          // Include Calendar and Drive scopes for events and recordings
+          scopes: "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.readonly",
           queryParams: {
             access_type: "offline",
             prompt: "consent",
