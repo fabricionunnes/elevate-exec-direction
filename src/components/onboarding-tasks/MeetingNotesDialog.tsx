@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FileText, Video, Building2, Loader2 } from "lucide-react";
+import { FileText, Video, Building2, Loader2, PlayCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -62,6 +62,7 @@ export const MeetingNotesDialog = ({
   const [subject, setSubject] = useState("");
   const [notes, setNotes] = useState("");
   const [attendees, setAttendees] = useState("");
+  const [recordingLink, setRecordingLink] = useState("");
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -152,6 +153,7 @@ export const MeetingNotesDialog = ({
         notes: notes.trim(),
         attendees: attendees.trim() || null,
         meeting_link: event?.meetingLink || null,
+        recording_link: recordingLink.trim() || null,
       });
 
       if (error) throw error;
@@ -173,6 +175,7 @@ export const MeetingNotesDialog = ({
     setSubject("");
     setNotes("");
     setAttendees("");
+    setRecordingLink("");
   };
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
@@ -264,6 +267,22 @@ export const MeetingNotesDialog = ({
               value={attendees}
               onChange={(e) => setAttendees(e.target.value)}
             />
+          </div>
+
+          {/* Recording Link */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <PlayCircle className="h-4 w-4 text-red-500" />
+              Link da Gravação (opcional)
+            </Label>
+            <Input
+              placeholder="https://drive.google.com/file/... ou link da gravação"
+              value={recordingLink}
+              onChange={(e) => setRecordingLink(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Cole o link da gravação do Google Meet ou outro serviço
+            </p>
           </div>
         </div>
 

@@ -55,6 +55,7 @@ interface OnboardingTask {
   template_id?: string | null;
   responsible_staff?: { id: string; name: string } | null;
   is_internal?: boolean;
+  meeting_link?: string | null;
 }
 
 interface OnboardingUser {
@@ -118,6 +119,7 @@ export const TaskDetailsDialog = ({
         assignee_id: effectiveAssigneeId,
         observations: task.observations,
         is_internal: task.is_internal ?? false,
+        meeting_link: task.meeting_link ?? null,
       });
     }
   }, [task]);
@@ -229,10 +231,8 @@ export const TaskDetailsDialog = ({
         return;
       }
 
-      // Update task with meeting link in observations
-      const meetingInfo = `\n\n🔗 Google Meet: ${data.event.meetingLink}`;
-      const newObservations = (editedTask.observations || "") + meetingInfo;
-      setEditedTask({ ...editedTask, observations: newObservations });
+      // Update task with meeting link in dedicated field
+      setEditedTask({ ...editedTask, meeting_link: data.event.meetingLink });
       
       toast.success("Reunião criada com sucesso!");
       setShowMeetingForm(false);
@@ -390,6 +390,13 @@ export const TaskDetailsDialog = ({
           historyPromises.push(logHistory("edit", "visibilidade", task.is_internal ? "Interna" : "Pública", editedTask.is_internal ? "Interna" : "Pública"));
         }
         updates.is_internal = editedTask.is_internal ?? false;
+      }
+
+      // Save meeting link if changed (staff only)
+      if (isAdmin || isStaffRole) {
+        if (editedTask.meeting_link !== (task.meeting_link ?? null)) {
+          updates.meeting_link = editedTask.meeting_link || null;
+        }
       }
 
       // Log all history entries
@@ -611,8 +618,44 @@ export const TaskDetailsDialog = ({
               </div>
             )}
 
+            {/* Meeting Link Display */}
+            {editedTask.meeting_link && (
+              <div className="p-4 rounded-lg border bg-primary/5 border-primary/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Video className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Reunião Google Meet</p>
+                      <p className="text-xs text-muted-foreground">Link da reunião disponível</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => window.open(editedTask.meeting_link!, "_blank")}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Entrar na Reunião
+                    </Button>
+                    {(isAdmin || isStaffRole) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditedTask({ ...editedTask, meeting_link: null })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Google Meet section - only for staff */}
-            {(isAdmin || isStaffRole) && (
+            {(isAdmin || isStaffRole) && !editedTask.meeting_link && (
               <div className="border-t pt-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
