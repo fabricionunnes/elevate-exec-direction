@@ -793,13 +793,15 @@ const OnboardingTasksPage = () => {
           {/* Top Row - Logo, Title & Logout */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img 
-                src={logoNexus} 
-                alt="UNV Nexus" 
-                className="h-8 sm:h-10 w-auto hidden sm:block"
-              />
+              <div className="bg-slate-900 rounded-lg p-1.5 hidden sm:block">
+                <img 
+                  src={logoNexus} 
+                  alt="UNV Nexus" 
+                  className="h-8 sm:h-10 w-auto"
+                />
+              </div>
               <div>
-                <h1 className="text-lg sm:text-3xl font-bold leading-tight">Dashboard</h1>
+                <h1 className="text-lg sm:text-3xl font-bold leading-tight">UNV Nexus</h1>
                 <WelcomeHeader className="text-xs sm:text-sm text-muted-foreground" />
               </div>
             </div>
