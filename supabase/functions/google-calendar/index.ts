@@ -322,14 +322,65 @@ Deno.serve(async (req) => {
         );
       }
 
-      const accessToken = calendarTokenData.access_token;
+      let accessToken = calendarTokenData.access_token;
 
-      // Check if token is expired
+      // Check if token is expired and refresh if needed
       if (calendarTokenData.token_expires_at && new Date(calendarTokenData.token_expires_at) < new Date()) {
-        return new Response(
-          JSON.stringify({ error: "Token expired, target user needs to reconnect", needsAuth: true }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        console.log("Token expired for create-event, attempting refresh...");
+        
+        if (!calendarTokenData.refresh_token) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+        const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+
+        if (!googleClientId || !googleClientSecret) {
+          console.error("Missing Google OAuth credentials for token refresh");
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Refresh the token
+        const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: googleClientId,
+            client_secret: googleClientSecret,
+            refresh_token: calendarTokenData.refresh_token,
+            grant_type: "refresh_token",
+          }),
+        });
+
+        if (!refreshResponse.ok) {
+          const errorText = await refreshResponse.text();
+          console.error("Token refresh failed:", errorText);
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const refreshData = await refreshResponse.json();
+        accessToken = refreshData.access_token;
+        const newExpiresAt = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000);
+
+        // Update token in database
+        await supabase
+          .from("user_google_tokens")
+          .update({
+            access_token: accessToken,
+            token_expires_at: newExpiresAt.toISOString(),
+          })
+          .eq("user_id", calendarUserId);
+
+        console.log("Token refreshed successfully for create-event");
       }
 
       // Create event with Google Meet link
