@@ -146,6 +146,16 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
 
       // Save the analysis to the database
       if (fullContent) {
+        // First, set it locally so it's visible immediately
+        const tempAnalysis = {
+          id: crypto.randomUUID(),
+          content: fullContent,
+          created_at: new Date().toISOString(),
+        };
+        setAnalysis(tempAnalysis);
+        setStreamedContent("");
+        
+        // Then try to save to database
         const { data: savedAnalysis, error } = await supabase
           .from("onboarding_ai_chat")
           .insert({
@@ -156,7 +166,12 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
           .select()
           .single();
 
-        if (!error && savedAnalysis) {
+        if (error) {
+          console.error("Error saving analysis:", error);
+          toast.error("Análise gerada mas houve erro ao salvar. Tente novamente.");
+          // Keep the temp analysis visible anyway
+          setAllAnalyses(prev => [tempAnalysis, ...prev]);
+        } else if (savedAnalysis) {
           const newAnalysis = {
             id: savedAnalysis.id,
             content: fullContent,
@@ -164,11 +179,11 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
           };
           setAnalysis(newAnalysis);
           setAllAnalyses(prev => [newAnalysis, ...prev]);
-          setStreamedContent("");
+          toast.success("Análise gerada e salva com sucesso!");
         }
+      } else {
+        toast.error("Nenhum conteúdo gerado pela IA");
       }
-
-      toast.success("Análise gerada com sucesso!");
     } catch (error) {
       console.error("Error generating analysis:", error);
       toast.error("Erro ao gerar análise");
