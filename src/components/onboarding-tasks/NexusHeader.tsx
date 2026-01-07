@@ -10,11 +10,11 @@ interface NexusHeaderProps {
 export const NexusHeader = ({ title, showTitle = true, className = "" }: NexusHeaderProps) => {
   return (
     <Link to="/onboarding-tasks" className={`flex items-center gap-3 ${className}`}>
-      <div className="bg-slate-900 rounded-lg p-1.5">
+      <div className="bg-slate-900 rounded-lg p-2">
         <img 
           src={logoNexus} 
           alt="UNV Nexus" 
-          className="h-8 sm:h-10 w-auto"
+          className="h-6 sm:h-7 w-auto"
         />
       </div>
       {showTitle && (
