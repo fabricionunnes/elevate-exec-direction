@@ -693,30 +693,36 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                     <span>{selectedMeeting.attendees}</span>
                   </div>
                 )}
-                <div className="flex flex-wrap gap-2">
-                  {selectedMeeting.meeting_link && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => window.open(selectedMeeting.meeting_link!, "_blank")}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Link da reunião
-                    </Button>
-                  )}
-                  {selectedMeeting.recording_link && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => window.open(selectedMeeting.recording_link!, "_blank")}
-                    >
-                      <PlayCircle className="h-3.5 w-3.5" />
-                      Ver Gravação
-                    </Button>
-                  )}
-                </div>
+                 <div className="flex flex-wrap gap-2">
+                   {selectedMeeting.meeting_link && (
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       className="gap-2"
+                       onClick={() => window.open(selectedMeeting.meeting_link!, "_blank")}
+                     >
+                       <ExternalLink className="h-3.5 w-3.5" />
+                       Link da reunião
+                     </Button>
+                   )}
+
+                   {selectedMeeting.recording_link ? (
+                     <Button
+                       variant="default"
+                       size="sm"
+                       className="gap-2"
+                       onClick={() => window.open(selectedMeeting.recording_link!, "_blank")}
+                     >
+                       <PlayCircle className="h-3.5 w-3.5" />
+                       Ver Gravação
+                     </Button>
+                   ) : (
+                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                       <PlayCircle className="h-3.5 w-3.5" />
+                       <span>Gravação ainda não disponível</span>
+                     </div>
+                   )}
+                 </div>
               </div>
 
               {/* Notes */}
