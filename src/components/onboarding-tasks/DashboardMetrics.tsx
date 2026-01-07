@@ -112,6 +112,8 @@ const DashboardMetrics = ({
   const [tasksDialogIds, setTasksDialogIds] = useState<string[]>([]);
   const [tasksDialogStatus, setTasksDialogStatus] = useState<"completed" | "pending" | "in_progress" | null>(null);
   const [npsDetailType, setNpsDetailType] = useState<"promoters" | "detractors" | "neutrals" | null>(null);
+  const [npsDetailPage, setNpsDetailPage] = useState(1);
+  const npsPerPage = 10;
 
   useEffect(() => {
     fetchData();
@@ -339,6 +341,7 @@ const DashboardMetrics = ({
   const handleNpsCardClick = (type: "promoters" | "detractors" | "neutrals") => {
     const newValue = npsDetailType === type ? null : type;
     setNpsDetailType(newValue);
+    setNpsDetailPage(1);
     onNpsDetailChange?.(newValue !== null);
   };
 
@@ -607,48 +610,75 @@ const DashboardMetrics = ({
             <Card className={cn("cursor-pointer hidden lg:block hover:shadow-md transition-all", npsDetailType === "detractors" && "ring-2 ring-red-500")} onClick={() => handleNpsCardClick("detractors")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{npsMetrics.detractors}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Detratores</p></CardContent></Card>
           </div>
           
-          {npsDetailType && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium flex items-center gap-2">
-                  <Star className={cn("h-4 w-4", npsDetailType === "promoters" ? "text-green-500" : npsDetailType === "detractors" ? "text-red-500" : "text-yellow-500")} />
-                  {npsDetailType === "promoters" ? "Promotores (9-10)" : npsDetailType === "detractors" ? "Detratores (0-6)" : "Neutros (7-8)"}
-                  <span className="text-muted-foreground">({getFilteredNpsResponses(npsDetailType).length})</span>
-                </h4>
-                <button onClick={() => { setNpsDetailType(null); onNpsDetailChange?.(false); }} className="text-xs text-muted-foreground hover:text-foreground">Fechar</button>
-              </div>
-              <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-1">
-                {getFilteredNpsResponses(npsDetailType).map((response) => (
-                  <Card key={response.id} className="border-l-4" style={{ borderLeftColor: response.score >= 9 ? "#22c55e" : response.score <= 6 ? "#ef4444" : "#eab308" }}>
-                    <CardContent className="p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="font-medium text-sm truncate">{getCompanyName(response.project_id)}</span>
-                            <span className="text-[10px] px-1.5 py-0.5 bg-muted rounded">{getProjectName(response.project_id)}</span>
-                          </div>
-                          {response.respondent_name && (
-                            <p className="text-[10px] text-muted-foreground mt-0.5">{response.respondent_name}</p>
-                          )}
-                          {(response.feedback || response.would_recommend_why || response.what_can_improve) && (
-                            <div className="mt-2 space-y-1 text-xs text-foreground/80">
-                              {response.would_recommend_why && <p>"{response.would_recommend_why}"</p>}
-                              {response.feedback && <p className="text-muted-foreground">{response.feedback}</p>}
-                              {response.what_can_improve && <p className="text-muted-foreground italic">Melhoria: {response.what_can_improve}</p>}
+          {npsDetailType && (() => {
+            const allResponses = getFilteredNpsResponses(npsDetailType);
+            const totalPages = Math.ceil(allResponses.length / npsPerPage);
+            const paginatedResponses = allResponses.slice((npsDetailPage - 1) * npsPerPage, npsDetailPage * npsPerPage);
+            
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <Star className={cn("h-4 w-4", npsDetailType === "promoters" ? "text-green-500" : npsDetailType === "detractors" ? "text-red-500" : "text-yellow-500")} />
+                    {npsDetailType === "promoters" ? "Promotores (9-10)" : npsDetailType === "detractors" ? "Detratores (0-6)" : "Neutros (7-8)"}
+                    <span className="text-muted-foreground">({allResponses.length})</span>
+                  </h4>
+                  <button onClick={() => { setNpsDetailType(null); onNpsDetailChange?.(false); }} className="text-xs text-muted-foreground hover:text-foreground">Fechar</button>
+                </div>
+                <div className="grid gap-2">
+                  {paginatedResponses.map((response) => (
+                    <Card key={response.id} className="border-l-4" style={{ borderLeftColor: response.score >= 9 ? "#22c55e" : response.score <= 6 ? "#ef4444" : "#eab308" }}>
+                      <CardContent className="p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              <span className="font-medium text-sm truncate">{getCompanyName(response.project_id)}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 bg-muted rounded">{getProjectName(response.project_id)}</span>
                             </div>
-                          )}
+                            {response.respondent_name && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">{response.respondent_name}</p>
+                            )}
+                            {(response.feedback || response.would_recommend_why || response.what_can_improve) && (
+                              <div className="mt-2 space-y-1 text-xs text-foreground/80">
+                                {response.would_recommend_why && <p>"{response.would_recommend_why}"</p>}
+                                {response.feedback && <p className="text-muted-foreground">{response.feedback}</p>}
+                                {response.what_can_improve && <p className="text-muted-foreground italic">Melhoria: {response.what_can_improve}</p>}
+                              </div>
+                            )}
+                          </div>
+                          <div className={cn("shrink-0 text-white font-bold text-sm rounded-full w-8 h-8 flex items-center justify-center", response.score >= 9 ? "bg-green-500" : response.score <= 6 ? "bg-red-500" : "bg-yellow-500")}>
+                            {response.score}
+                          </div>
                         </div>
-                        <div className={cn("shrink-0 text-white font-bold text-sm rounded-full w-8 h-8 flex items-center justify-center", response.score >= 9 ? "bg-green-500" : response.score <= 6 ? "bg-red-500" : "bg-yellow-500")}>
-                          {response.score}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 pt-2">
+                    <button 
+                      onClick={() => setNpsDetailPage(p => Math.max(1, p - 1))} 
+                      disabled={npsDetailPage === 1}
+                      className="px-3 py-1 text-xs rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
+                    >
+                      Anterior
+                    </button>
+                    <span className="text-xs text-muted-foreground">
+                      Página {npsDetailPage} de {totalPages}
+                    </span>
+                    <button 
+                      onClick={() => setNpsDetailPage(p => Math.min(totalPages, p + 1))} 
+                      disabled={npsDetailPage === totalPages}
+                      className="px-3 py-1 text-xs rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
+                    >
+                      Próxima
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
         </TabsContent>
       </Tabs>
 
