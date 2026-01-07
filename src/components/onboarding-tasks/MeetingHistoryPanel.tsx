@@ -42,7 +42,8 @@ import {
   Loader2,
   RefreshCw,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  FileAudio
 } from "lucide-react";
 
 interface MeetingNote {
@@ -101,6 +102,9 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   // Manual recording link edit (fallback when automatic sync isn't available)
   const [isEditingRecordingLink, setIsEditingRecordingLink] = useState(false);
   const [recordingLinkDraft, setRecordingLinkDraft] = useState("");
+  
+  // Transcription state
+  const [transcribing, setTranscribing] = useState(false);
   const [savingRecordingLink, setSavingRecordingLink] = useState(false);
   useEffect(() => {
     fetchAll();
@@ -417,6 +421,49 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
       attendees: meeting.attendees || "",
       recordingLink: meeting.recording_link || "",
     });
+  };
+
+  const handleTranscribe = async (meeting: MeetingNote) => {
+    if (!meeting.recording_link) {
+      toast.error("Esta reunião não possui link de gravação");
+      return;
+    }
+
+    setTranscribing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Sessão expirada. Faça login novamente.");
+        return;
+      }
+
+      toast.info("Iniciando transcrição... Isso pode levar alguns minutos.");
+
+      const response = await supabase.functions.invoke("transcribe-recording", {
+        body: { 
+          meetingId: meeting.id, 
+          recordingUrl: meeting.recording_link 
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Erro na transcrição");
+      }
+
+      const data = response.data as { success?: boolean; error?: string; message?: string };
+      
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast.success(data?.message || "Transcrição adicionada com sucesso!");
+      await fetchMeetings();
+    } catch (error) {
+      console.error("Transcription error:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao transcrever gravação");
+    } finally {
+      setTranscribing(false);
+    }
   };
 
   // Separate meetings into pending and finalized
@@ -760,15 +807,31 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                    )}
 
                    {selectedMeeting.recording_link ? (
-                     <Button
-                       variant="default"
-                       size="sm"
-                       className="gap-2"
-                       onClick={() => window.open(selectedMeeting.recording_link!, "_blank")}
-                     >
-                       <PlayCircle className="h-3.5 w-3.5" />
-                       Ver Gravação
-                     </Button>
+                     <div className="flex gap-2">
+                       <Button
+                         variant="default"
+                         size="sm"
+                         className="gap-2"
+                         onClick={() => window.open(selectedMeeting.recording_link!, "_blank")}
+                       >
+                         <PlayCircle className="h-3.5 w-3.5" />
+                         Ver Gravação
+                       </Button>
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         className="gap-2"
+                         onClick={() => handleTranscribe(selectedMeeting)}
+                         disabled={transcribing}
+                       >
+                         {transcribing ? (
+                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                         ) : (
+                           <FileAudio className="h-3.5 w-3.5" />
+                         )}
+                         {transcribing ? "Transcrevendo..." : "Transcrever"}
+                       </Button>
+                     </div>
                    ) : isAdmin ? (
                      <div className="flex flex-col gap-2">
                        {!isEditingRecordingLink ? (

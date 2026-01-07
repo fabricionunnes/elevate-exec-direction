@@ -40,3 +40,6 @@ verify_jwt = true
 
 [functions.generate-pdf-tasks]
 verify_jwt = true
+
+[functions.transcribe-recording]
+verify_jwt = true
