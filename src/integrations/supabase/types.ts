@@ -682,7 +682,7 @@ export type Database = {
           has_goal: boolean
           has_prizes: boolean
           id: string
-          kpi_id: string
+          kpi_id: string | null
           name: string
           prize_model: string | null
           prize_top_n: number | null
@@ -708,7 +708,7 @@ export type Database = {
           has_goal?: boolean
           has_prizes?: boolean
           id?: string
-          kpi_id: string
+          kpi_id?: string | null
           name: string
           prize_model?: string | null
           prize_top_n?: number | null
@@ -734,7 +734,7 @@ export type Database = {
           has_goal?: boolean
           has_prizes?: boolean
           id?: string
-          kpi_id?: string
+          kpi_id?: string | null
           name?: string
           prize_model?: string | null
           prize_top_n?: number | null
