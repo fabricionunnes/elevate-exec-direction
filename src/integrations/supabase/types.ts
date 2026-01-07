@@ -910,6 +910,7 @@ export type Database = {
           created_at: string
           google_event_id: string | null
           id: string
+          is_finalized: boolean
           meeting_date: string
           meeting_link: string | null
           meeting_title: string
@@ -925,6 +926,7 @@ export type Database = {
           created_at?: string
           google_event_id?: string | null
           id?: string
+          is_finalized?: boolean
           meeting_date: string
           meeting_link?: string | null
           meeting_title: string
@@ -940,6 +942,7 @@ export type Database = {
           created_at?: string
           google_event_id?: string | null
           id?: string
+          is_finalized?: boolean
           meeting_date?: string
           meeting_link?: string | null
           meeting_title?: string
