@@ -33,7 +33,8 @@ import {
   ExternalLink, 
   Trash2,
   Users,
-  ChevronRight
+  ChevronRight,
+  PlayCircle
 } from "lucide-react";
 
 interface MeetingNote {
@@ -44,6 +45,7 @@ interface MeetingNote {
   notes: string;
   attendees: string | null;
   meeting_link: string | null;
+  recording_link: string | null;
   created_at: string;
   staff?: {
     id: string;
@@ -193,6 +195,12 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                           Meet
                         </Badge>
                       )}
+                      {meeting.recording_link && (
+                        <Badge variant="secondary" className="shrink-0 text-xs">
+                          <PlayCircle className="h-3 w-3 mr-1" />
+                          Gravação
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
                       <span className="flex items-center gap-1">
@@ -273,6 +281,17 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                     Ver link da reunião
+                  </Button>
+                )}
+                {selectedMeeting.recording_link && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => window.open(selectedMeeting.recording_link!, "_blank")}
+                  >
+                    <PlayCircle className="h-3.5 w-3.5" />
+                    Ver Gravação
                   </Button>
                 )}
               </div>

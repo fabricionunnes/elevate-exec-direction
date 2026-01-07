@@ -915,6 +915,7 @@ export type Database = {
           meeting_title: string
           notes: string | null
           project_id: string
+          recording_link: string | null
           staff_id: string | null
           subject: string
           updated_at: string
@@ -929,6 +930,7 @@ export type Database = {
           meeting_title: string
           notes?: string | null
           project_id: string
+          recording_link?: string | null
           staff_id?: string | null
           subject: string
           updated_at?: string
@@ -943,6 +945,7 @@ export type Database = {
           meeting_title?: string
           notes?: string | null
           project_id?: string
+          recording_link?: string | null
           staff_id?: string | null
           subject?: string
           updated_at?: string
@@ -1585,6 +1588,7 @@ export type Database = {
           estimated_hours: number | null
           id: string
           is_internal: boolean
+          meeting_link: string | null
           observations: string | null
           priority: string | null
           project_id: string
@@ -1608,6 +1612,7 @@ export type Database = {
           estimated_hours?: number | null
           id?: string
           is_internal?: boolean
+          meeting_link?: string | null
           observations?: string | null
           priority?: string | null
           project_id: string
@@ -1631,6 +1636,7 @@ export type Database = {
           estimated_hours?: number | null
           id?: string
           is_internal?: boolean
+          meeting_link?: string | null
           observations?: string | null
           priority?: string | null
           project_id?: string
