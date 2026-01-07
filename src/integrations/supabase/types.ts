@@ -665,6 +665,304 @@ export type Database = {
           },
         ]
       }
+      endomarketing_campaigns: {
+        Row: {
+          all_salespeople: boolean
+          calculation_method: string
+          company_id: string
+          competition_type: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string
+          ended_manually_at: string | null
+          ended_manually_by: string | null
+          goal_type: string | null
+          goal_value: number | null
+          has_goal: boolean
+          has_prizes: boolean
+          id: string
+          kpi_id: string
+          name: string
+          prize_model: string | null
+          prize_top_n: number | null
+          project_id: string
+          start_date: string
+          status: string
+          tiebreaker: string | null
+          updated_at: string
+        }
+        Insert: {
+          all_salespeople?: boolean
+          calculation_method?: string
+          company_id: string
+          competition_type?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date: string
+          ended_manually_at?: string | null
+          ended_manually_by?: string | null
+          goal_type?: string | null
+          goal_value?: number | null
+          has_goal?: boolean
+          has_prizes?: boolean
+          id?: string
+          kpi_id: string
+          name: string
+          prize_model?: string | null
+          prize_top_n?: number | null
+          project_id: string
+          start_date: string
+          status?: string
+          tiebreaker?: string | null
+          updated_at?: string
+        }
+        Update: {
+          all_salespeople?: boolean
+          calculation_method?: string
+          company_id?: string
+          competition_type?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string
+          ended_manually_at?: string | null
+          ended_manually_by?: string | null
+          goal_type?: string | null
+          goal_value?: number | null
+          has_goal?: boolean
+          has_prizes?: boolean
+          id?: string
+          kpi_id?: string
+          name?: string
+          prize_model?: string | null
+          prize_top_n?: number | null
+          project_id?: string
+          start_date?: string
+          status?: string
+          tiebreaker?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "endomarketing_campaigns_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "endomarketing_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "endomarketing_campaigns_ended_manually_by_fkey"
+            columns: ["ended_manually_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "endomarketing_campaigns_kpi_id_fkey"
+            columns: ["kpi_id"]
+            isOneToOne: false
+            referencedRelation: "company_kpis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "endomarketing_campaigns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      endomarketing_participants: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          salesperson_id: string
+          team_id: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          salesperson_id: string
+          team_id?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          salesperson_id?: string
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "endomarketing_participants_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "endomarketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "endomarketing_participants_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "company_salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "endomarketing_participants_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "endomarketing_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      endomarketing_prizes: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          position: number
+          prize_type: string
+          value: number | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          position: number
+          prize_type?: string
+          value?: number | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          position?: number
+          prize_type?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "endomarketing_prizes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "endomarketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      endomarketing_snapshots: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          final_position: number
+          final_value: number
+          goal_percentage: number | null
+          id: string
+          prize_id: string | null
+          salesperson_id: string | null
+          team_id: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          final_position: number
+          final_value: number
+          goal_percentage?: number | null
+          id?: string
+          prize_id?: string | null
+          salesperson_id?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          final_position?: number
+          final_value?: number
+          goal_percentage?: number | null
+          id?: string
+          prize_id?: string | null
+          salesperson_id?: string | null
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "endomarketing_snapshots_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "endomarketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "endomarketing_snapshots_prize_id_fkey"
+            columns: ["prize_id"]
+            isOneToOne: false
+            referencedRelation: "endomarketing_prizes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "endomarketing_snapshots_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "company_salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "endomarketing_snapshots_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "endomarketing_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      endomarketing_teams: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "endomarketing_teams_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "endomarketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kpi_entries: {
         Row: {
           company_id: string
