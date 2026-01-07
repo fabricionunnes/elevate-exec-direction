@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Sparkles, RefreshCw, Loader2, TrendingUp, AlertTriangle, Target, Users, Brain, Calendar, Lightbulb, MessageSquare } from "lucide-react";
+import { Sparkles, RefreshCw, Loader2, TrendingUp, Target, Users, Brain, Calendar, Lightbulb, History, ChevronRight, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 
 interface KPIAnalysisTabProps {
   companyId: string;
@@ -23,42 +25,48 @@ interface AnalysisResult {
 
 export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) => {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [allAnalyses, setAllAnalyses] = useState<AnalysisResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [streamedContent, setStreamedContent] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchLatestAnalysis();
+    fetchAllAnalyses();
   }, [companyId, projectId]);
 
-  const fetchLatestAnalysis = async () => {
+  const fetchAllAnalyses = async () => {
     if (!projectId) return;
     
     setLoading(true);
     try {
-      // Fetch the most recent analysis (not limited to today)
       const { data } = await supabase
         .from("onboarding_ai_chat")
         .select("*")
         .eq("project_id", projectId)
         .eq("role", "kpi_analysis")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
+        .order("created_at", { ascending: false });
 
-      if (data) {
-        setAnalysis({
-          id: data.id,
-          content: data.content,
-          created_at: data.created_at,
-        });
+      if (data && data.length > 0) {
+        const analyses = data.map(d => ({
+          id: d.id,
+          content: d.content,
+          created_at: d.created_at,
+        }));
+        setAllAnalyses(analyses);
+        setAnalysis(analyses[0]); // Set the most recent as current
       }
     } catch (error) {
-      // No cached analysis found
+      console.error("Error fetching analyses:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const selectAnalysis = (selected: AnalysisResult) => {
+    setAnalysis(selected);
+    setHistoryOpen(false);
   };
 
   const generateAnalysis = async () => {
@@ -149,11 +157,13 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
           .single();
 
         if (!error && savedAnalysis) {
-          setAnalysis({
+          const newAnalysis = {
             id: savedAnalysis.id,
             content: fullContent,
             created_at: savedAnalysis.created_at,
-          });
+          };
+          setAnalysis(newAnalysis);
+          setAllAnalyses(prev => [newAnalysis, ...prev]);
           setStreamedContent("");
         }
       }
@@ -197,9 +207,68 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              {allAnalyses.length > 0 && (
+                <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <History className="h-4 w-4" />
+                      Histórico
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                        {allAnalyses.length}
+                      </Badge>
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent className="w-[400px] sm:w-[450px]">
+                    <SheetHeader>
+                      <SheetTitle className="flex items-center gap-2">
+                        <History className="h-5 w-5" />
+                        Histórico de Análises
+                      </SheetTitle>
+                    </SheetHeader>
+                    <ScrollArea className="h-[calc(100vh-120px)] mt-4">
+                      <div className="space-y-2 pr-4">
+                        {allAnalyses.map((item, index) => (
+                          <button
+                            key={item.id}
+                            onClick={() => selectAnalysis(item)}
+                            className={cn(
+                              "w-full text-left p-4 rounded-lg border transition-all hover:bg-accent",
+                              analysis?.id === item.id && "border-primary bg-primary/5"
+                            )}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={cn(
+                                  "p-2 rounded-lg",
+                                  index === 0 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                                )}>
+                                  <Brain className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-sm">
+                                    {index === 0 ? "Análise mais recente" : `Análise #${allAnalyses.length - index}`}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                    <Calendar className="h-3 w-3" />
+                                    {format(new Date(item.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                  </p>
+                                </div>
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                              {item.content.slice(0, 150)}...
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </SheetContent>
+                </Sheet>
+              )}
               {analysis && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
+                <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
                   <Calendar className="h-3.5 w-3.5" />
                   <span>
                     {format(new Date(analysis.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
