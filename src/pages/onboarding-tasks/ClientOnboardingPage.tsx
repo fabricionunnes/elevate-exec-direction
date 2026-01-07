@@ -25,13 +25,14 @@ import { ClientCalendarView } from "@/components/client-portal/ClientCalendarVie
 import { ClientTasksList } from "@/components/client-portal/ClientTasksList";
 import { ClientTaskDetailSheet } from "@/components/client-portal/ClientTaskDetailSheet";
 import { ClientSettingsSheet } from "@/components/client-portal/ClientSettingsSheet";
-import { ClientMetricsView } from "@/components/client-portal/ClientMetricsView";
+
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
 import { ClientSupportButton } from "@/components/client-portal/ClientSupportButton";
 import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistoryPanel";
 import { ClientMeetingsView } from "@/components/client-portal/ClientMeetingsView";
 import { ClientAssessmentsView } from "@/components/client-portal/ClientAssessmentsView";
+import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,7 +82,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -92,7 +93,7 @@ const ClientOnboardingPage = () => {
   const [tasks, setTasks] = useState<OnboardingTask[]>([]);
   const [users, setUsers] = useState<OnboardingUser[]>([]);
   const [currentUser, setCurrentUser] = useState<OnboardingUser | null>(null);
-  const [activeView, setActiveView] = useState<ViewType>("trail");
+  const [activeView, setActiveView] = useState<ViewType>("kpis");
   const [selectedTask, setSelectedTask] = useState<OnboardingTask | null>(null);
   const [showTaskDetail, setShowTaskDetail] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -321,10 +322,10 @@ const ClientOnboardingPage = () => {
   }
 
   const viewTabs = [
+    { id: "kpis" as ViewType, icon: BarChart3, label: "KPIs" },
     { id: "trail" as ViewType, icon: Map, label: "Trilha" },
     { id: "timeline" as ViewType, icon: Calendar, label: "Cronograma" },
     { id: "list" as ViewType, icon: List, label: "Lista" },
-    { id: "metrics" as ViewType, icon: BarChart3, label: "Métricas" },
     { id: "tickets" as ViewType, icon: MessageSquare, label: "Chamados" },
     { id: "meetings" as ViewType, icon: Video, label: "Reuniões" },
     { id: "assessments" as ViewType, icon: ClipboardCheck, label: "Testes" },
@@ -482,6 +483,20 @@ const ClientOnboardingPage = () => {
       {/* Main content */}
       <main className="p-4 pb-0 max-w-7xl mx-auto">
         <AnimatePresence mode="wait">
+          {activeView === "kpis" && (
+            <motion.div
+              key="kpis"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <KPIMetasPanel 
+                companyId={project.onboarding_company_id || ""} 
+                isAdmin={false}
+              />
+            </motion.div>
+          )}
+
           {activeView === "trail" && (
             <motion.div
               key="trail"
@@ -524,16 +539,6 @@ const ClientOnboardingPage = () => {
             </motion.div>
           )}
 
-          {activeView === "metrics" && (
-            <motion.div
-              key="metrics"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-            >
-              <ClientMetricsView projectId={project.id} />
-            </motion.div>
-          )}
 
           {activeView === "tickets" && (
             <motion.div
