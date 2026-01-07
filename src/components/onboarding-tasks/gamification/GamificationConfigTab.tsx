@@ -952,14 +952,14 @@ export const GamificationConfigTab = ({ companyId, projectId, isAdmin }: Gamific
             <div className="space-y-2">
               <Label>KPI Base</Label>
               <Select
-                value={ruleForm.kpi_id}
-                onValueChange={(value) => setRuleForm({ ...ruleForm, kpi_id: value })}
+                value={ruleForm.kpi_id || "none"}
+                onValueChange={(value) => setRuleForm({ ...ruleForm, kpi_id: value === "none" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um KPI" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="none">Nenhum</SelectItem>
                   {kpis.map((kpi) => (
                     <SelectItem key={kpi.id} value={kpi.id}>{kpi.name}</SelectItem>
                   ))}
