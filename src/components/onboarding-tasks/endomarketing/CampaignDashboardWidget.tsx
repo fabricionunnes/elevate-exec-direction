@@ -1,17 +1,18 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { Trophy, Clock, Medal, Target, TrendingUp, Crown, Eye } from "lucide-react";
-import { format, parseISO, differenceInDays, differenceInHours, isWithinInterval, isBefore, isAfter } from "date-fns";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Trophy, Clock, Medal, Target, TrendingUp, Crown, Users, Gift } from "lucide-react";
+import { format, parseISO, differenceInDays, differenceInHours, isBefore, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface Campaign {
@@ -47,14 +48,19 @@ interface CampaignDashboardWidgetProps {
 export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashboardWidgetProps) => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
   const [ranking, setRanking] = useState<RankingEntry[]>([]);
-  const [rankingLoading, setRankingLoading] = useState(false);
   const [teamTotal, setTeamTotal] = useState(0);
 
   useEffect(() => {
     fetchActiveCampaigns();
   }, [projectId]);
+
+  useEffect(() => {
+    if (activeCampaign) {
+      fetchCampaignRanking(activeCampaign);
+    }
+  }, [activeCampaign]);
 
   const fetchActiveCampaigns = async () => {
     try {
@@ -69,8 +75,6 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
 
       if (error) throw error;
 
-      // Show campaigns that are still relevant (not ended + not past end date)
-      // This includes "scheduled" campaigns that start in the future.
       const now = new Date();
       const visibleCampaigns = (data || [])
         .filter((campaign) => {
@@ -81,6 +85,17 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
         .slice(0, 3);
 
       setCampaigns(visibleCampaigns);
+      
+      // Set the first active campaign as the main one
+      if (visibleCampaigns.length > 0) {
+        const now = new Date();
+        const runningCampaign = visibleCampaigns.find(c => {
+          const start = parseISO(c.start_date);
+          const end = parseISO(c.end_date);
+          return start <= now && end >= now;
+        });
+        setActiveCampaign(runningCampaign || visibleCampaigns[0]);
+      }
     } catch (error) {
       console.error("Error fetching campaigns:", error);
     } finally {
@@ -89,9 +104,7 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
   };
 
   const fetchCampaignRanking = async (campaign: Campaign) => {
-    setRankingLoading(true);
     try {
-      // Fetch participants (or all salespeople if all_salespeople is true)
       let salespeopleIds: string[] = [];
       
       if (campaign.all_salespeople) {
@@ -117,7 +130,6 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
         return;
       }
 
-      // Fetch KPI entries for the campaign period
       const startDate = format(parseISO(campaign.start_date), "yyyy-MM-dd");
       const endDate = format(parseISO(campaign.end_date), "yyyy-MM-dd");
 
@@ -129,7 +141,6 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
         .lte("entry_date", endDate)
         .in("salesperson_id", salespeopleIds);
 
-      // Calculate values per salesperson
       const valuesBySalesperson = new Map<string, number[]>();
       (entries || []).forEach(entry => {
         const current = valuesBySalesperson.get(entry.salesperson_id) || [];
@@ -137,7 +148,6 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
         valuesBySalesperson.set(entry.salesperson_id, current);
       });
 
-      // Get salesperson names
       const { data: salespeople } = await supabase
         .from("company_salespeople")
         .select("id, name")
@@ -145,7 +155,6 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
 
       const salespeopleMap = new Map((salespeople || []).map(s => [s.id, s.name]));
 
-      // Calculate final values based on calculation method
       const results: RankingEntry[] = [];
       let total = 0;
 
@@ -178,7 +187,6 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
         });
       });
 
-      // Sort and assign positions
       results.sort((a, b) => b.value - a.value);
       results.forEach((r, i) => {
         r.position = i + 1;
@@ -188,14 +196,7 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
       setTeamTotal(total);
     } catch (error) {
       console.error("Error fetching ranking:", error);
-    } finally {
-      setRankingLoading(false);
     }
-  };
-
-  const handleViewDetails = (campaign: Campaign) => {
-    setSelectedCampaign(campaign);
-    fetchCampaignRanking(campaign);
   };
 
   const getTimeRemaining = (startDateStr: string, endDateStr: string) => {
@@ -203,24 +204,18 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
     const end = parseISO(endDateStr);
     const now = new Date();
 
-    // Upcoming campaign
     if (isBefore(now, start)) {
       const daysToStart = differenceInDays(start, now);
       if (daysToStart > 0) return `Começa em ${daysToStart} dia${daysToStart > 1 ? "s" : ""}`;
-
       const hoursToStart = differenceInHours(start, now);
       if (hoursToStart > 0) return `Começa em ${hoursToStart} hora${hoursToStart > 1 ? "s" : ""}`;
-
       return "Começa em breve";
     }
 
-    // Running / ending
     const days = differenceInDays(end, now);
     if (days > 0) return `${days} dia${days > 1 ? "s" : ""} restante${days > 1 ? "s" : ""}`;
-
     const hours = differenceInHours(end, now);
     if (hours > 0) return `${hours} hora${hours > 1 ? "s" : ""} restante${hours > 1 ? "s" : ""}`;
-
     return "Encerrando";
   };
 
@@ -235,209 +230,230 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
     return value.toLocaleString("pt-BR");
   };
 
-  const getMedalColor = (position: number) => {
+  const getPositionIcon = (position: number) => {
     switch (position) {
-      case 1: return "text-amber-500";
-      case 2: return "text-gray-400";
-      case 3: return "text-amber-700";
-      default: return "text-muted-foreground";
+      case 1: return <Crown className="h-5 w-5 text-yellow-500" />;
+      case 2: return <Medal className="h-5 w-5 text-gray-400" />;
+      case 3: return <Medal className="h-5 w-5 text-amber-600" />;
+      default: return null;
     }
   };
 
   if (loading) {
-    return (
-      <Card className="animate-pulse">
-        <CardHeader>
-          <div className="h-6 bg-muted rounded w-48"></div>
-        </CardHeader>
-        <CardContent>
-          <div className="h-24 bg-muted rounded"></div>
-        </CardContent>
-      </Card>
-    );
+    return null;
   }
 
   if (campaigns.length === 0) {
-    return (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-amber-500" />
-            Campanhas de Endomarketing
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Nenhuma campanha ativa no momento. Crie uma na aba Endomarketing.
-          </p>
-        </CardContent>
-      </Card>
-    );
+    return null;
   }
 
+  const topParticipant = ranking[0];
+
   return (
-    <>
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
+    <Card className="border-2 border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-amber-500" />
-            Campanhas de Endomarketing
+            🏆 Campanhas de Endomarketing
           </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {campaigns.map(campaign => (
-              <div
-                key={campaign.id}
-                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium truncate">{campaign.name}</p>
-                    <Badge variant="secondary" className="text-xs">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {getTimeRemaining(campaign.start_date, campaign.end_date)}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    KPI: {campaign.kpi?.name} • 
-                    {format(parseISO(campaign.start_date), " dd/MM", { locale: ptBR })} - 
-                    {format(parseISO(campaign.end_date), " dd/MM", { locale: ptBR })}
-                  </p>
+          {activeCampaign && (
+            <Badge variant="outline" className="gap-1">
+              <Clock className="h-3 w-3" />
+              {getTimeRemaining(activeCampaign.start_date, activeCampaign.end_date)}
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Quick Stats */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Target className="h-4 w-4" />
+                Campanha
+              </div>
+              <p className="text-lg font-bold truncate">{activeCampaign?.name || "—"}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Users className="h-4 w-4" />
+                Participantes
+              </div>
+              <p className="text-lg font-bold">{ranking.length}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Crown className="h-4 w-4 text-amber-500" />
+                Líder
+              </div>
+              <p className="text-lg font-bold truncate">
+                {topParticipant?.salesperson_name || "—"}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <TrendingUp className="h-4 w-4" />
+                Total do Time
+              </div>
+              <p className="text-lg font-bold">
+                {activeCampaign ? formatValue(teamTotal, activeCampaign.kpi?.kpi_type) : "—"}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Goal Progress */}
+        {activeCampaign?.has_goal && activeCampaign.goal_value && (
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Meta Geral da Campanha</span>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => handleViewDetails(campaign)} className="gap-2">
-                  <Eye className="h-4 w-4" />
-                  Ver detalhes
-                </Button>
+                <span className="text-sm font-medium">
+                  {Math.round((teamTotal / activeCampaign.goal_value) * 100)}%
+                </span>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <Progress value={Math.min((teamTotal / activeCampaign.goal_value) * 100, 100)} />
+              <p className="text-xs text-muted-foreground mt-2">
+                {formatValue(teamTotal, activeCampaign.kpi?.kpi_type)} de {formatValue(activeCampaign.goal_value, activeCampaign.kpi?.kpi_type)}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Campaign Details Sheet */}
-      <Sheet open={!!selectedCampaign} onOpenChange={() => setSelectedCampaign(null)}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-amber-500" />
-              {selectedCampaign?.name}
-            </SheetTitle>
-          </SheetHeader>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Ranking */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Medal className="h-4 w-4" />
+                Ranking
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {ranking.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">Sem participantes</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">#</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      {activeCampaign?.has_goal && <TableHead className="w-20">%</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ranking.slice(0, 10).map((entry) => (
+                      <TableRow key={entry.salesperson_id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-1">
+                            {getPositionIcon(entry.position)}
+                            {!getPositionIcon(entry.position) && entry.position}
+                          </div>
+                        </TableCell>
+                        <TableCell>{entry.salesperson_name}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatValue(entry.value, activeCampaign?.kpi?.kpi_type)}
+                        </TableCell>
+                        {activeCampaign?.has_goal && (
+                          <TableCell>
+                            <Badge variant={entry.goalPercent && entry.goalPercent >= 100 ? "default" : "secondary"}>
+                              {entry.goalPercent || 0}%
+                            </Badge>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
 
-          {selectedCampaign && (
-            <div className="mt-6 space-y-6">
-              {/* Summary Cards */}
-              <div className="grid grid-cols-2 gap-4">
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Total do time</span>
+          {/* Campaign Info & Prizes */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Gift className="h-4 w-4" />
+                Detalhes da Campanha
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {activeCampaign && (
+                <>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">KPI:</span>
+                      <span className="font-medium">{activeCampaign.kpi?.name}</span>
                     </div>
-                    <p className="text-xl font-bold mt-1">
-                      {formatValue(teamTotal, selectedCampaign.kpi?.kpi_type)}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center gap-2">
-                      <Crown className="h-4 w-4 text-amber-500" />
-                      <span className="text-sm text-muted-foreground">Líder atual</span>
-                    </div>
-                    <p className="text-xl font-bold mt-1 truncate">
-                      {ranking[0]?.salesperson_name || "—"}
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Goal progress */}
-              {selectedCampaign.has_goal && selectedCampaign.goal_value && (
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Target className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Meta geral</span>
-                      </div>
-                      <span className="text-sm font-medium">
-                        {Math.round((teamTotal / selectedCampaign.goal_value) * 100)}%
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Período:</span>
+                      <span className="font-medium">
+                        {format(parseISO(activeCampaign.start_date), "dd/MM", { locale: ptBR })} - {format(parseISO(activeCampaign.end_date), "dd/MM", { locale: ptBR })}
                       </span>
                     </div>
-                    <Progress value={Math.min((teamTotal / selectedCampaign.goal_value) * 100, 100)} />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {formatValue(teamTotal, selectedCampaign.kpi?.kpi_type)} de {formatValue(selectedCampaign.goal_value, selectedCampaign.kpi?.kpi_type)}
-                    </p>
-                  </CardContent>
-                </Card>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Cálculo:</span>
+                      <span className="font-medium">
+                        {activeCampaign.calculation_method === "sum" && "Soma"}
+                        {activeCampaign.calculation_method === "avg" && "Média"}
+                        {activeCampaign.calculation_method === "max" && "Máximo"}
+                      </span>
+                    </div>
+                    {activeCampaign.has_prizes && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Premiação:</span>
+                        <Badge variant="default">🎁 Com Prêmios</Badge>
+                      </div>
+                    )}
+                  </div>
+
+                  {activeCampaign.description && (
+                    <div className="pt-2 border-t">
+                      <p className="text-sm text-muted-foreground">{activeCampaign.description}</p>
+                    </div>
+                  )}
+                </>
               )}
 
-              {/* Ranking */}
-              <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2">
-                  <Medal className="h-4 w-4" />
-                  Ranking
-                </h4>
-                {rankingLoading ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Carregando ranking...
-                  </div>
-                ) : ranking.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Nenhum resultado registrado ainda
-                  </div>
-                ) : (
+              {/* Other campaigns */}
+              {campaigns.length > 1 && (
+                <div className="pt-4 border-t">
+                  <p className="text-xs text-muted-foreground mb-2">Outras campanhas:</p>
                   <div className="space-y-2">
-                    {ranking.map((entry) => (
+                    {campaigns.filter(c => c.id !== activeCampaign?.id).map(campaign => (
                       <div
-                        key={entry.salesperson_id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border ${
-                          entry.position <= 3 ? "bg-amber-50/50 border-amber-200" : ""
-                        }`}
+                        key={campaign.id}
+                        className="flex items-center justify-between p-2 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                        onClick={() => setActiveCampaign(campaign)}
                       >
-                        <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${
-                          entry.position === 1 ? "bg-amber-100 text-amber-700" :
-                          entry.position === 2 ? "bg-gray-100 text-gray-600" :
-                          entry.position === 3 ? "bg-amber-50 text-amber-800" :
-                          "bg-muted text-muted-foreground"
-                        }`}>
-                          {entry.position <= 3 ? (
-                            <Medal className={`h-4 w-4 ${getMedalColor(entry.position)}`} />
-                          ) : (
-                            entry.position
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{entry.salesperson_name}</p>
-                          {entry.goalPercent !== undefined && (
-                            <div className="flex items-center gap-2 mt-1">
-                              <Progress value={Math.min(entry.goalPercent, 100)} className="h-1.5 flex-1" />
-                              <span className="text-xs text-muted-foreground">{entry.goalPercent}%</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold">
-                            {formatValue(entry.value, selectedCampaign.kpi?.kpi_type)}
-                          </p>
-                        </div>
+                        <span className="text-sm font-medium truncate">{campaign.name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {getTimeRemaining(campaign.start_date, campaign.end_date)}
+                        </Badge>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-
-              {/* Time remaining */}
-              <div className="text-center text-sm text-muted-foreground">
-                <Clock className="h-4 w-4 inline mr-1" />
-                {getTimeRemaining(selectedCampaign.start_date, selectedCampaign.end_date)}
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-    </>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
