@@ -63,7 +63,8 @@ import { ProjectSupportBanner } from "@/components/onboarding-tasks/ProjectSuppo
 import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistoryPanel";
 import { MeetingHistoryPanel } from "@/components/onboarding-tasks/MeetingHistoryPanel";
 import { AssessmentsPanel } from "@/components/assessments/AssessmentsPanel";
-import { TrendingUp, Headphones, Video, Brain } from "lucide-react";
+import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
+import { TrendingUp, Headphones, Video, Brain, BarChart3 } from "lucide-react";
 
 
 interface OnboardingTask {
@@ -1065,6 +1066,10 @@ const OnboardingProjectPage = () => {
               <Brain className="h-4 w-4" />
               Avaliações
             </TabsTrigger>
+            <TabsTrigger value="kpis" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              KPIs
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks">
@@ -1222,6 +1227,13 @@ const OnboardingProjectPage = () => {
 
           <TabsContent value="assessments">
             <AssessmentsPanel projectId={projectId!} />
+          </TabsContent>
+
+          <TabsContent value="kpis">
+            <KPIMetasPanel 
+              companyId={project.onboarding_company_id || ""} 
+              isAdmin={isAdmin}
+            />
           </TabsContent>
         </Tabs>
       </div>
