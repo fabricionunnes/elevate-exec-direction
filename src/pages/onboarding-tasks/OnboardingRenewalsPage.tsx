@@ -974,6 +974,102 @@ export default function OnboardingRenewalsPage() {
             </ScrollArea>
           </CardContent>
         </Card>
+
+        {/* Closed Companies Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-muted-foreground" />
+              Empresas Encerradas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[300px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Empresa</TableHead>
+                    <TableHead>Segmento</TableHead>
+                    <TableHead>Último Valor</TableHead>
+                    <TableHead>Data de Encerramento</TableHead>
+                    <TableHead>Observações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {companies
+                    .filter(c => c.status === "inactive")
+                    .map((company) => (
+                      <TableRow key={company.id}>
+                        <TableCell className="font-medium max-w-[150px] truncate" title={company.name}>
+                          {company.name}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {company.segment || "-"}
+                        </TableCell>
+                        <TableCell>
+                          {formatCurrency(company.contract_value)}
+                        </TableCell>
+                        <TableCell>
+                          {isAdmin ? (
+                            <Input
+                              type="date"
+                              value={company.contract_end_date || ""}
+                              onChange={(e) => handleUpdateContract(
+                                company.id,
+                                "contract_end_date",
+                                e.target.value || null
+                              )}
+                              className="w-40 h-8"
+                            />
+                          ) : (
+                            company.contract_end_date
+                              ? format(parseISO(company.contract_end_date), "dd/MM/yyyy")
+                              : "-"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className={company.renewal_notes ? "text-primary" : "text-muted-foreground"}
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80">
+                              <div className="space-y-2">
+                                <Label>Observações</Label>
+                                <Textarea
+                                  value={company.renewal_notes || ""}
+                                  onChange={(e) => {
+                                    setCompanies(prev => prev.map(c => 
+                                      c.id === company.id ? { ...c, renewal_notes: e.target.value } : c
+                                    ));
+                                  }}
+                                  onBlur={(e) => handleRenewalNotesChange(company.id, e.target.value)}
+                                  placeholder="Adicione observações..."
+                                  rows={4}
+                                />
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {companies.filter(c => c.status === "inactive").length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        Nenhuma empresa encerrada
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Renew Dialog */}
