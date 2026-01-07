@@ -26,6 +26,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2 } from "lucide-react";
 import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidget";
+import { GamificationDashboardWidget } from "../gamification/GamificationDashboardWidget";
 
 interface KPI {
   id: string;
@@ -619,6 +620,11 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
       {/* Endomarketing Campaigns Widget */}
       {projectId && (
         <CampaignDashboardWidget companyId={companyId} projectId={projectId} />
+      )}
+
+      {/* Gamification Widget */}
+      {projectId && (
+        <GamificationDashboardWidget companyId={companyId} projectId={projectId} />
       )}
     </div>
   );
