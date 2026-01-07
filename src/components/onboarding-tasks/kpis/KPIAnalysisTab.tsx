@@ -4,13 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Sparkles, RefreshCw, Loader2, TrendingUp, Target, Users, Brain, Calendar, Lightbulb, History, ChevronRight, X } from "lucide-react";
+import { 
+  Sparkles, RefreshCw, Loader2, TrendingUp, Target, Users, Brain, Calendar, 
+  Lightbulb, History, ChevronRight, AlertTriangle, CheckCircle2, TrendingDown,
+  MessageSquare, Zap, BarChart3
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface KPIAnalysisTabProps {
   companyId: string;
@@ -23,6 +28,13 @@ interface AnalysisResult {
   created_at: string;
 }
 
+interface ParsedSection {
+  title: string;
+  content: string;
+  icon: React.ReactNode;
+  color: string;
+}
+
 export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) => {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [allAnalyses, setAllAnalyses] = useState<AnalysisResult[]>([]);
@@ -30,6 +42,7 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
   const [generating, setGenerating] = useState(false);
   const [streamedContent, setStreamedContent] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["resumo", "alertas"]));
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,7 +68,7 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
           created_at: d.created_at,
         }));
         setAllAnalyses(analyses);
-        setAnalysis(analyses[0]); // Set the most recent as current
+        setAnalysis(analyses[0]);
       }
     } catch (error) {
       console.error("Error fetching analyses:", error);
@@ -67,6 +80,18 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
   const selectAnalysis = (selected: AnalysisResult) => {
     setAnalysis(selected);
     setHistoryOpen(false);
+  };
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(section)) {
+        newSet.delete(section);
+      } else {
+        newSet.add(section);
+      }
+      return newSet;
+    });
   };
 
   const generateAnalysis = async () => {
@@ -144,9 +169,7 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
         }
       }
 
-      // Save the analysis to the database
       if (fullContent) {
-        // First, set it locally so it's visible immediately
         const tempAnalysis = {
           id: crypto.randomUUID(),
           content: fullContent,
@@ -155,7 +178,6 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
         setAnalysis(tempAnalysis);
         setStreamedContent("");
         
-        // Then try to save to database
         const { data: savedAnalysis, error } = await supabase
           .from("onboarding_ai_chat")
           .insert({
@@ -169,7 +191,6 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
         if (error) {
           console.error("Error saving analysis:", error);
           toast.error("Análise gerada mas houve erro ao salvar. Tente novamente.");
-          // Keep the temp analysis visible anyway
           setAllAnalyses(prev => [tempAnalysis, ...prev]);
         } else if (savedAnalysis) {
           const newAnalysis = {
@@ -192,7 +213,72 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
     }
   };
 
+  // Parse content into sections
+  const parseContentIntoSections = (content: string): ParsedSection[] => {
+    const sections: ParsedSection[] = [];
+    const lines = content.split('\n');
+    let currentSection: { title: string; lines: string[] } | null = null;
+
+    const sectionConfig: Record<string, { icon: React.ReactNode; color: string }> = {
+      'resumo': { icon: <Zap className="h-5 w-5" />, color: 'text-primary' },
+      'executivo': { icon: <Zap className="h-5 w-5" />, color: 'text-primary' },
+      'kpi': { icon: <BarChart3 className="h-5 w-5" />, color: 'text-blue-500' },
+      'indicador': { icon: <BarChart3 className="h-5 w-5" />, color: 'text-blue-500' },
+      'vendedor': { icon: <Users className="h-5 w-5" />, color: 'text-violet-500' },
+      'equipe': { icon: <Users className="h-5 w-5" />, color: 'text-violet-500' },
+      'alerta': { icon: <AlertTriangle className="h-5 w-5" />, color: 'text-amber-500' },
+      'atenção': { icon: <AlertTriangle className="h-5 w-5" />, color: 'text-amber-500' },
+      'ação': { icon: <CheckCircle2 className="h-5 w-5" />, color: 'text-green-500' },
+      'plano': { icon: <Target className="h-5 w-5" />, color: 'text-green-500' },
+      'recomend': { icon: <Lightbulb className="h-5 w-5" />, color: 'text-amber-500' },
+      'sugest': { icon: <Lightbulb className="h-5 w-5" />, color: 'text-amber-500' },
+      'conversa': { icon: <MessageSquare className="h-5 w-5" />, color: 'text-cyan-500' },
+      'reunião': { icon: <MessageSquare className="h-5 w-5" />, color: 'text-cyan-500' },
+      'default': { icon: <TrendingUp className="h-5 w-5" />, color: 'text-muted-foreground' },
+    };
+
+    const getConfig = (title: string) => {
+      const lowerTitle = title.toLowerCase();
+      for (const [key, config] of Object.entries(sectionConfig)) {
+        if (key !== 'default' && lowerTitle.includes(key)) {
+          return config;
+        }
+      }
+      return sectionConfig.default;
+    };
+
+    for (const line of lines) {
+      if (line.startsWith('## ')) {
+        if (currentSection) {
+          const config = getConfig(currentSection.title);
+          sections.push({
+            title: currentSection.title,
+            content: currentSection.lines.join('\n'),
+            icon: config.icon,
+            color: config.color,
+          });
+        }
+        currentSection = { title: line.replace('## ', '').trim(), lines: [] };
+      } else if (currentSection) {
+        currentSection.lines.push(line);
+      }
+    }
+
+    if (currentSection) {
+      const config = getConfig(currentSection.title);
+      sections.push({
+        title: currentSection.title,
+        content: currentSection.lines.join('\n'),
+        icon: config.icon,
+        color: config.color,
+      });
+    }
+
+    return sections;
+  };
+
   const contentToShow = generating ? streamedContent : analysis?.content;
+  const parsedSections = contentToShow && !generating ? parseContentIntoSections(contentToShow) : [];
 
   if (loading) {
     return (
@@ -223,27 +309,35 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {allAnalyses.length > 0 && (
-                <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <History className="h-4 w-4" />
-                      Histórico
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+              {/* History button always visible */}
+              <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <History className="h-4 w-4" />
+                    <span className="hidden sm:inline">Histórico</span>
+                    {allAnalyses.length > 0 && (
+                      <Badge variant="secondary" className="h-5 px-1.5">
                         {allAnalyses.length}
                       </Badge>
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent className="w-[400px] sm:w-[450px]">
-                    <SheetHeader>
-                      <SheetTitle className="flex items-center gap-2">
-                        <History className="h-5 w-5" />
-                        Histórico de Análises
-                      </SheetTitle>
-                    </SheetHeader>
-                    <ScrollArea className="h-[calc(100vh-120px)] mt-4">
-                      <div className="space-y-2 pr-4">
-                        {allAnalyses.map((item, index) => (
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent className="w-[400px] sm:w-[450px]">
+                  <SheetHeader>
+                    <SheetTitle className="flex items-center gap-2">
+                      <History className="h-5 w-5" />
+                      Histórico de Análises
+                    </SheetTitle>
+                  </SheetHeader>
+                  <ScrollArea className="h-[calc(100vh-120px)] mt-4">
+                    <div className="space-y-2 pr-4">
+                      {allAnalyses.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">Nenhuma análise no histórico</p>
+                        </div>
+                      ) : (
+                        allAnalyses.map((item, index) => (
                           <button
                             key={item.id}
                             onClick={() => selectAnalysis(item)}
@@ -272,24 +366,23 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
                               </div>
                               <ChevronRight className="h-4 w-4 text-muted-foreground" />
                             </div>
-                            <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                              {item.content.slice(0, 150)}...
-                            </p>
                           </button>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </SheetContent>
-                </Sheet>
-              )}
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </SheetContent>
+              </Sheet>
+
               {analysis && (
-                <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
+                <div className="hidden lg:flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
                   <Calendar className="h-3.5 w-3.5" />
                   <span>
                     {format(new Date(analysis.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </span>
                 </div>
               )}
+
               <Button 
                 onClick={generateAnalysis} 
                 disabled={generating}
@@ -303,7 +396,7 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
                   </>
                 ) : (
                   <>
-                    <RefreshCw className="h-4 w-4" />
+                    <Sparkles className="h-4 w-4" />
                     {analysis ? "Nova Análise" : "Gerar Análise"}
                   </>
                 )}
@@ -314,44 +407,104 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
       </Card>
 
       {/* Analysis Content */}
-      {contentToShow ? (
+      {generating && streamedContent ? (
         <Card className="overflow-hidden">
           <CardContent className="p-0">
             <ScrollArea className="h-[calc(100vh-380px)] min-h-[400px]" ref={scrollRef}>
               <div className="p-6">
-                <div className={cn(
-                  "prose prose-sm dark:prose-invert max-w-none",
-                  "prose-headings:text-foreground prose-headings:font-semibold",
-                  "prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-3 prose-h2:pb-2 prose-h2:border-b prose-h2:border-border",
-                  "prose-h3:text-base prose-h3:mt-4 prose-h3:mb-2",
-                  "prose-p:text-muted-foreground prose-p:leading-relaxed",
-                  "prose-li:text-muted-foreground prose-li:marker:text-primary",
-                  "prose-strong:text-foreground prose-strong:font-semibold",
-                  "prose-ul:my-2 prose-ol:my-2",
-                  "prose-table:border prose-table:border-border prose-th:bg-muted/50 prose-th:p-2 prose-td:p-2 prose-td:border prose-td:border-border",
-                  "[&_h2]:flex [&_h2]:items-center [&_h2]:gap-2",
-                )}>
-                  <ReactMarkdown
-                    components={{
-                      h2: ({ children }) => (
-                        <h2 className="flex items-center gap-2">
-                          <span className="w-1 h-5 bg-primary rounded-full"></span>
-                          {children}
-                        </h2>
-                      ),
-                    }}
-                  >
-                    {contentToShow}
-                  </ReactMarkdown>
-                  {generating && (
-                    <div className="flex items-center gap-2 mt-4 text-primary animate-pulse">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm">Gerando análise...</span>
-                    </div>
-                  )}
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown>{streamedContent}</ReactMarkdown>
+                  <div className="flex items-center gap-2 mt-4 text-primary animate-pulse">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Gerando análise...</span>
+                  </div>
                 </div>
               </div>
             </ScrollArea>
+          </CardContent>
+        </Card>
+      ) : parsedSections.length > 0 ? (
+        <div className="space-y-3">
+          {parsedSections.map((section, index) => {
+            const sectionKey = section.title.toLowerCase().replace(/\s+/g, '-');
+            const isExpanded = expandedSections.has(sectionKey) || expandedSections.has('all');
+            
+            return (
+              <Card key={index} className="overflow-hidden transition-all hover:shadow-md">
+                <Collapsible open={isExpanded} onOpenChange={() => toggleSection(sectionKey)}>
+                  <CollapsibleTrigger className="w-full">
+                    <CardHeader className="py-4 hover:bg-accent/50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "p-2 rounded-lg bg-muted",
+                            section.color
+                          )}>
+                            {section.icon}
+                          </div>
+                          <CardTitle className="text-base font-semibold">
+                            {section.title}
+                          </CardTitle>
+                        </div>
+                        <ChevronRight className={cn(
+                          "h-5 w-5 text-muted-foreground transition-transform",
+                          isExpanded && "rotate-90"
+                        )} />
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0 pb-4">
+                      <div className={cn(
+                        "prose prose-sm dark:prose-invert max-w-none",
+                        "prose-p:text-muted-foreground prose-p:leading-relaxed prose-p:my-2",
+                        "prose-li:text-muted-foreground prose-li:my-1",
+                        "prose-strong:text-foreground prose-strong:font-semibold",
+                        "prose-h3:text-sm prose-h3:font-semibold prose-h3:mt-4 prose-h3:mb-2",
+                        "prose-ul:my-2 prose-ol:my-2",
+                        "[&_ul]:space-y-1 [&_ol]:space-y-1",
+                        "[&_li]:pl-1",
+                      )}>
+                        <ReactMarkdown>{section.content}</ReactMarkdown>
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Collapsible>
+              </Card>
+            );
+          })}
+          
+          {/* Expand/Collapse All */}
+          <div className="flex justify-center pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (expandedSections.size === parsedSections.length) {
+                  setExpandedSections(new Set());
+                } else {
+                  setExpandedSections(new Set(parsedSections.map(s => s.title.toLowerCase().replace(/\s+/g, '-'))));
+                }
+              }}
+              className="text-muted-foreground"
+            >
+              {expandedSections.size === parsedSections.length ? "Recolher Tudo" : "Expandir Tudo"}
+            </Button>
+          </div>
+        </div>
+      ) : contentToShow ? (
+        <Card className="overflow-hidden">
+          <CardContent className="p-6">
+            <div className={cn(
+              "prose prose-sm dark:prose-invert max-w-none",
+              "prose-headings:text-foreground prose-headings:font-semibold",
+              "prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-3",
+              "prose-p:text-muted-foreground prose-p:leading-relaxed",
+              "prose-li:text-muted-foreground",
+              "prose-strong:text-foreground",
+            )}>
+              <ReactMarkdown>{contentToShow}</ReactMarkdown>
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -373,7 +526,6 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
                 </p>
               </div>
               
-              {/* Feature highlights */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl mt-4">
                 <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/30">
                   <Target className="h-5 w-5 text-primary" />
