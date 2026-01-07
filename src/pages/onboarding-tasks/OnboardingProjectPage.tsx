@@ -1121,7 +1121,7 @@ const OnboardingProjectPage = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 flex-wrap">
+          <TabsList className="mb-6 w-full justify-start overflow-x-auto">
             <TabsTrigger value="kpis" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               KPIs
