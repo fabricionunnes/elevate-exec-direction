@@ -11,10 +11,12 @@ import {
   Calendar,
   MessageSquare,
   Settings,
-  Headphones,
   BarChart3,
   Video,
   ClipboardCheck,
+  ChevronDown,
+  Building2,
+  Check,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,6 +32,20 @@ import { ClientSupportButton } from "@/components/client-portal/ClientSupportBut
 import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistoryPanel";
 import { ClientMeetingsView } from "@/components/client-portal/ClientMeetingsView";
 import { ClientAssessmentsView } from "@/components/client-portal/ClientAssessmentsView";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+
+interface UserProject {
+  id: string;
+  product_name: string;
+  onboarding_company: { name: string } | null;
+}
 
 interface OnboardingTask {
   id: string;
@@ -80,6 +96,7 @@ const ClientOnboardingPage = () => {
   const [selectedTask, setSelectedTask] = useState<OnboardingTask | null>(null);
   const [showTaskDetail, setShowTaskDetail] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [userProjects, setUserProjects] = useState<UserProject[]>([]);
 
   const fetchTasks = useCallback(async () => {
     if (!projectId) return;
@@ -121,6 +138,19 @@ const ClientOnboardingPage = () => {
         if (authError || !user) {
           navigate("/onboarding-tasks/login");
           return;
+        }
+
+        // Fetch all projects the user has access to
+        const { data: allUserProjects } = await supabase
+          .from("onboarding_users")
+          .select("project:onboarding_projects(id, product_name, onboarding_company:onboarding_companies(name))")
+          .eq("user_id", user.id);
+
+        if (allUserProjects && isMounted) {
+          const projects = allUserProjects
+            .map(u => u.project)
+            .filter((p): p is UserProject => p !== null);
+          setUserProjects(projects);
         }
 
         // Find onboarding user for this project
@@ -300,8 +330,14 @@ const ClientOnboardingPage = () => {
     { id: "assessments" as ViewType, icon: ClipboardCheck, label: "Testes" },
   ];
 
-return (
-    <div className="min-h-screen bg-background pb-24 safe-area-inset">
+  const handleSwitchProject = (newProjectId: string) => {
+    if (newProjectId !== projectId) {
+      navigate(`/onboarding-client/${newProjectId}`);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background pb-24 md:pb-4 safe-area-inset">
       {/* Goal Projection Alert Dialog for clients */}
       {projectId && project && (
         <GoalProjectionAlertDialog
@@ -312,17 +348,78 @@ return (
         />
       )}
       
-      {/* Header - Mobile App Style */}
+      {/* Header */}
       <header className="sticky top-0 z-50 bg-background/98 backdrop-blur-md border-b safe-area-top">
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between gap-2">
+        <div className="px-4 py-3 max-w-7xl mx-auto">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left: Company/Project selector */}
             <div className="flex-1 min-w-0">
-              <WelcomeHeader className="text-[10px] text-muted-foreground uppercase tracking-wider" />
-              <h1 className="text-base sm:text-lg font-bold truncate leading-tight">
-                {company?.name || project.product_name}
-              </h1>
+              <WelcomeHeader className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider" />
+              
+              {userProjects.length > 1 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-2 text-base md:text-lg font-bold leading-tight hover:text-primary transition-colors group max-w-full">
+                      <span className="truncate">{company?.name || project.product_name}</span>
+                      <ChevronDown className="h-4 w-4 flex-shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-72 bg-popover border shadow-lg">
+                    <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Building2 className="h-3.5 w-3.5" />
+                      Seus Projetos
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {userProjects.map((proj) => (
+                      <DropdownMenuItem
+                        key={proj.id}
+                        onClick={() => handleSwitchProject(proj.id)}
+                        className="flex items-center justify-between gap-2 cursor-pointer"
+                      >
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium truncate">
+                            {proj.onboarding_company?.name || proj.product_name}
+                          </span>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {proj.product_name}
+                          </span>
+                        </div>
+                        {proj.id === projectId && (
+                          <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <h1 className="text-base md:text-lg font-bold truncate leading-tight">
+                  {company?.name || project.product_name}
+                </h1>
+              )}
             </div>
-            <div className="flex items-center gap-0.5 flex-shrink-0">
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-1">
+              {viewTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeView === tab.id;
+                return (
+                  <Button
+                    key={tab.id}
+                    variant={isActive ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setActiveView(tab.id)}
+                    className={`gap-2 ${isActive ? "bg-primary/10 text-primary" : ""}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{tab.label}</span>
+                  </Button>
+                );
+              })}
+            </nav>
+
+            {/* Right: Actions */}
+            <div className="flex items-center gap-1 flex-shrink-0">
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -342,7 +439,7 @@ return (
             </div>
           </div>
 
-          {/* Quick progress bar */}
+          {/* Progress bar */}
           <div className="mt-2 flex items-center gap-3">
             <Progress value={progressPercent} className="h-2 flex-1" />
             <span className="text-xs font-bold text-primary tabular-nums">{progressPercent}%</span>
@@ -350,8 +447,8 @@ return (
         </div>
       </header>
 
-      {/* Bottom Navigation - App Style */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/98 backdrop-blur-md border-t safe-area-bottom">
+      {/* Bottom Navigation - Mobile Only */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/98 backdrop-blur-md border-t safe-area-bottom md:hidden">
         <div className="flex items-stretch">
           {viewTabs.map((tab) => {
             const Icon = tab.icon;
@@ -383,7 +480,7 @@ return (
       </nav>
 
       {/* Main content */}
-      <main className="p-4 pb-0">
+      <main className="p-4 pb-0 max-w-7xl mx-auto">
         <AnimatePresence mode="wait">
           {activeView === "trail" && (
             <motion.div
