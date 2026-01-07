@@ -517,6 +517,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           phone: string | null
+          unit_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -528,6 +529,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           phone?: string | null
+          unit_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -539,11 +541,57 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           phone?: string | null
+          unit_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "company_salespeople_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_salespeople_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "company_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_units: {
+        Row: {
+          code: string | null
+          company_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          code?: string | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_units_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "onboarding_companies"
@@ -626,6 +674,7 @@ export type Database = {
           kpi_id: string
           observations: string | null
           salesperson_id: string
+          unit_id: string | null
           updated_at: string | null
           value: number
         }
@@ -637,6 +686,7 @@ export type Database = {
           kpi_id: string
           observations?: string | null
           salesperson_id: string
+          unit_id?: string | null
           updated_at?: string | null
           value?: number
         }
@@ -648,6 +698,7 @@ export type Database = {
           kpi_id?: string
           observations?: string | null
           salesperson_id?: string
+          unit_id?: string | null
           updated_at?: string | null
           value?: number
         }
@@ -671,6 +722,13 @@ export type Database = {
             columns: ["salesperson_id"]
             isOneToOne: false
             referencedRelation: "company_salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_entries_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "company_units"
             referencedColumns: ["id"]
           },
         ]

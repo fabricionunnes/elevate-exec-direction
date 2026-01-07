@@ -24,7 +24,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2 } from "lucide-react";
 
 interface KPI {
   id: string;
@@ -40,6 +40,7 @@ interface Salesperson {
   id: string;
   name: string;
   is_active: boolean;
+  unit_id: string | null;
 }
 
 interface Entry {
@@ -48,6 +49,13 @@ interface Entry {
   salesperson_id: string;
   entry_date: string;
   value: number;
+  unit_id: string | null;
+}
+
+interface Unit {
+  id: string;
+  name: string;
+  is_active: boolean;
 }
 
 interface KPIDashboardTabProps {
@@ -58,6 +66,7 @@ export const KPIDashboardTab = ({ companyId }: KPIDashboardTabProps) => {
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
     start: format(startOfMonth(new Date()), "yyyy-MM-dd"),
@@ -65,6 +74,7 @@ export const KPIDashboardTab = ({ companyId }: KPIDashboardTabProps) => {
   });
   const [selectedKpi, setSelectedKpi] = useState<string>("all");
   const [selectedSalesperson, setSelectedSalesperson] = useState<string>("all");
+  const [selectedUnit, setSelectedUnit] = useState<string>("all");
 
   useEffect(() => {
     fetchData();
@@ -80,10 +90,11 @@ export const KPIDashboardTab = ({ companyId }: KPIDashboardTabProps) => {
     }
 
     try {
-      const [kpisRes, salespeopleRes, entriesRes] = await Promise.all([
+      const [kpisRes, salespeopleRes, entriesRes, unitsRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
         supabase.from("company_salespeople").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("kpi_entries").select("*").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end),
+        supabase.from("company_units").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
       ]);
 
       console.log("[KPIDashboardTab] Results:", {
@@ -93,15 +104,19 @@ export const KPIDashboardTab = ({ companyId }: KPIDashboardTabProps) => {
         salespeopleError: salespeopleRes.error,
         entries: entriesRes.data?.length || 0,
         entriesError: entriesRes.error,
+        units: unitsRes.data?.length || 0,
+        unitsError: unitsRes.error,
       });
 
       if (kpisRes.error) throw kpisRes.error;
       if (salespeopleRes.error) throw salespeopleRes.error;
       if (entriesRes.error) throw entriesRes.error;
+      if (unitsRes.error) throw unitsRes.error;
 
       setKpis((kpisRes.data || []) as KPI[]);
       setSalespeople(salespeopleRes.data || []);
       setEntries(entriesRes.data || []);
+      setUnits(unitsRes.data || []);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       toast.error("Erro ao carregar dados");
@@ -128,9 +143,18 @@ export const KPIDashboardTab = ({ companyId }: KPIDashboardTabProps) => {
     }
   };
 
+  // Filter entries based on selected unit
+  const getFilteredEntries = () => {
+    return entries.filter(e => {
+      if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
+      return true;
+    });
+  };
+
   // Calculate KPI summaries
   const getKpiSummary = (kpi: KPI) => {
-    const kpiEntries = entries.filter(e => e.kpi_id === kpi.id);
+    const filteredEntries = getFilteredEntries();
+    const kpiEntries = filteredEntries.filter(e => e.kpi_id === kpi.id);
     const total = kpiEntries.reduce((sum, e) => sum + e.value, 0);
     
     // Calculate target based on periodicity and date range
@@ -161,10 +185,13 @@ export const KPIDashboardTab = ({ companyId }: KPIDashboardTabProps) => {
     const daysRemaining = daysInMonth - currentDay;
     const timeProgress = currentDay / daysInMonth;
 
-    // Get entries for current month only
+    // Get entries for current month only, filtered by unit
     const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
     const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
-    const monthEntries = entries.filter(e => e.entry_date >= monthStart && e.entry_date <= monthEnd);
+    const allMonthEntries = entries.filter(e => e.entry_date >= monthStart && e.entry_date <= monthEnd);
+    const monthEntries = selectedUnit !== "all" 
+      ? allMonthEntries.filter(e => e.unit_id === selectedUnit)
+      : allMonthEntries;
 
     // Sum all entries and targets for monetary KPIs (main revenue KPIs)
     let totalRealized = 0;
@@ -217,6 +244,7 @@ export const KPIDashboardTab = ({ companyId }: KPIDashboardTabProps) => {
     const filteredEntries = entries.filter(e => {
       if (selectedKpi !== "all" && e.kpi_id !== selectedKpi) return false;
       if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
+      if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
       return true;
     });
 
@@ -238,14 +266,19 @@ export const KPIDashboardTab = ({ companyId }: KPIDashboardTabProps) => {
 
   // Prepare ranking data
   const getRankingData = () => {
+    const filteredSalespeople = selectedUnit !== "all"
+      ? salespeople.filter(sp => sp.unit_id === selectedUnit)
+      : salespeople;
+      
     const rankingMap: Record<string, { name: string; total: number }> = {};
     
-    salespeople.forEach(sp => {
+    filteredSalespeople.forEach(sp => {
       rankingMap[sp.id] = { name: sp.name, total: 0 };
     });
 
     entries.forEach(entry => {
       if (selectedKpi !== "all" && entry.kpi_id !== selectedKpi) return;
+      if (selectedUnit !== "all" && entry.unit_id !== selectedUnit) return;
       if (rankingMap[entry.salesperson_id]) {
         rankingMap[entry.salesperson_id].total += entry.value;
       }
@@ -311,6 +344,22 @@ export const KPIDashboardTab = ({ companyId }: KPIDashboardTabProps) => {
                 </SelectContent>
               </Select>
             </div>
+            {units.length > 0 && (
+              <div className="space-y-1">
+                <Label>Unidade</Label>
+                <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as Unidades</SelectItem>
+                    {units.map(unit => (
+                      <SelectItem key={unit.id} value={unit.id}>{unit.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1">
               <Label>Vendedor</Label>
               <Select value={selectedSalesperson} onValueChange={setSelectedSalesperson}>
