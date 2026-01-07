@@ -239,7 +239,21 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
   }
 
   if (campaigns.length === 0) {
-    return null; // Don't show widget if no active campaigns
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-amber-500" />
+            Campanhas de Endomarketing
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Nenhuma campanha ativa no momento. Crie uma na aba Endomarketing.
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
