@@ -89,6 +89,7 @@ interface DashboardMetricsProps {
   onDataRefresh?: () => void;
   currentStaffUserId?: string | null;
   onNpsDetailChange?: (isShowingDetail: boolean) => void;
+  onActiveTabChange?: (tab: string) => void;
 }
 
 const DashboardMetrics = ({ 
@@ -101,7 +102,8 @@ const DashboardMetrics = ({
   todayTasks,
   onDataRefresh,
   currentStaffUserId,
-  onNpsDetailChange
+  onNpsDetailChange,
+  onActiveTabChange
 }: DashboardMetricsProps) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
@@ -487,7 +489,7 @@ const DashboardMetrics = ({
       </div>
 
       {/* Tabbed Details - Mobile Optimized */}
-      <Tabs defaultValue="empresas" className="w-full">
+      <Tabs defaultValue="empresas" className="w-full" onValueChange={(value) => onActiveTabChange?.(value)}>
         <TabsList className="w-full grid grid-cols-5 h-8 sm:h-9">
           <TabsTrigger value="empresas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Building2 className="h-3 w-3" /><span className="hidden sm:inline">Empresas</span><span className="sm:hidden">Emp</span></TabsTrigger>
           <TabsTrigger value="agenda" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Calendar className="h-3 w-3" /><span className="hidden sm:inline">Agenda</span><span className="sm:hidden">Ag</span></TabsTrigger>
