@@ -65,20 +65,28 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
           kpi:company_kpis(name, kpi_type)
         `)
         .eq("project_id", projectId)
-        .neq("status", "ended")
         .order("end_date", { ascending: true });
 
       if (error) throw error;
 
-      // Filter campaigns that are currently active based on dates
+      // Filter campaigns that are currently active based on dates (not ended status)
       const now = new Date();
       const activeCampaigns = (data || []).filter(campaign => {
+        // Skip ended campaigns
+        if (campaign.status === "ended") return false;
+        
         const startDate = parseISO(campaign.start_date);
         const endDate = parseISO(campaign.end_date);
         
-        // Check if campaign is within active period
-        return isWithinInterval(now, { start: startDate, end: endDate }) || 
+        // Check if campaign is within active period or hasn't ended yet
+        const isActive = isWithinInterval(now, { start: startDate, end: endDate }) || 
                (isBefore(startDate, now) && isAfter(endDate, now));
+        
+        // Also include scheduled campaigns that have already started
+        const hasStarted = isBefore(startDate, now) || startDate <= now;
+        const hasNotEnded = isAfter(endDate, now) || endDate >= now;
+        
+        return isActive || (hasStarted && hasNotEnded);
       }).slice(0, 3);
 
       setCampaigns(activeCampaigns);
