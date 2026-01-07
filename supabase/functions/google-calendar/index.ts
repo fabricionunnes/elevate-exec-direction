@@ -588,6 +588,243 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === "fetch-recordings") {
+      // Fetch Google Meet recordings from Google Drive
+      if (!tokenData) {
+        return new Response(
+          JSON.stringify({ error: "Not connected to Google Calendar", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      let accessToken = tokenData.access_token;
+
+      // Check if token is expired and refresh if needed
+      if (tokenData.token_expires_at && new Date(tokenData.token_expires_at) < new Date()) {
+        console.log("Token expired, attempting refresh for recordings...");
+        
+        if (!tokenData.refresh_token) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+        const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+
+        if (!googleClientId || !googleClientSecret) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: googleClientId,
+            client_secret: googleClientSecret,
+            refresh_token: tokenData.refresh_token,
+            grant_type: "refresh_token",
+          }),
+        });
+
+        if (!refreshResponse.ok) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const refreshData = await refreshResponse.json();
+        accessToken = refreshData.access_token;
+        const newExpiresAt = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000);
+
+        await supabase
+          .from("user_google_tokens")
+          .update({
+            access_token: accessToken,
+            token_expires_at: newExpiresAt.toISOString(),
+          })
+          .eq("user_id", effectiveUserId);
+      }
+
+      // Search for Google Meet recordings in Drive
+      // Meet recordings are stored in "Meet Recordings" folder
+      const searchQuery = "mimeType='video/mp4' and name contains 'Meet Recording'";
+      const driveUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(searchQuery)}&fields=files(id,name,createdTime,webViewLink,webContentLink)&orderBy=createdTime desc&pageSize=50`;
+
+      console.log("Fetching recordings from Google Drive...");
+
+      const driveResponse = await fetch(driveUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!driveResponse.ok) {
+        const errorText = await driveResponse.text();
+        console.error("Drive API error:", errorText);
+        
+        if (driveResponse.status === 401 || driveResponse.status === 403) {
+          // Drive scope might not be authorized - this is expected for now
+          return new Response(
+            JSON.stringify({ 
+              recordings: [], 
+              message: "Para buscar gravações automaticamente, reconecte sua conta Google com permissão do Drive",
+              needsDriveAuth: true 
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch recordings" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const driveData = await driveResponse.json();
+      const recordings = (driveData.files || []).map((file: { id: string; name: string; createdTime: string; webViewLink: string }) => ({
+        id: file.id,
+        name: file.name,
+        createdTime: file.createdTime,
+        link: file.webViewLink,
+      }));
+
+      console.log(`Found ${recordings.length} recordings`);
+
+      return new Response(
+        JSON.stringify({ recordings }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "sync-recordings") {
+      // Sync recordings with meeting notes - match by date/title
+      const body = await req.json();
+      const { projectId } = body;
+
+      if (!projectId) {
+        return new Response(
+          JSON.stringify({ error: "Missing projectId" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!tokenData) {
+        return new Response(
+          JSON.stringify({ error: "Not connected", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      let accessToken = tokenData.access_token;
+
+      // Refresh token if needed (similar logic as above)
+      if (tokenData.token_expires_at && new Date(tokenData.token_expires_at) < new Date()) {
+        const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+        const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+
+        if (!googleClientId || !googleClientSecret || !tokenData.refresh_token) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: googleClientId,
+            client_secret: googleClientSecret,
+            refresh_token: tokenData.refresh_token,
+            grant_type: "refresh_token",
+          }),
+        });
+
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json();
+          accessToken = refreshData.access_token;
+        }
+      }
+
+      // Get meetings without recording links
+      const { data: meetingsWithoutRecording } = await supabase
+        .from("onboarding_meeting_notes")
+        .select("id, meeting_title, meeting_date, subject")
+        .eq("project_id", projectId)
+        .is("recording_link", null);
+
+      if (!meetingsWithoutRecording || meetingsWithoutRecording.length === 0) {
+        return new Response(
+          JSON.stringify({ synced: 0, message: "No meetings need recordings" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Search for recordings
+      const searchQuery = "mimeType='video/mp4' and (name contains 'Meet Recording' or name contains 'Gravação')";
+      const driveUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(searchQuery)}&fields=files(id,name,createdTime,webViewLink)&orderBy=createdTime desc&pageSize=100`;
+
+      const driveResponse = await fetch(driveUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!driveResponse.ok) {
+        return new Response(
+          JSON.stringify({ synced: 0, needsDriveAuth: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const driveData = await driveResponse.json();
+      const recordings = driveData.files || [];
+
+      let syncedCount = 0;
+
+      // Try to match recordings with meetings by date
+      for (const meeting of meetingsWithoutRecording) {
+        const meetingDate = new Date(meeting.meeting_date);
+        const meetingDateStr = meetingDate.toISOString().split('T')[0];
+
+        // Find recording from same day
+        const matchingRecording = recordings.find((rec: { createdTime: string; name: string }) => {
+          const recDate = new Date(rec.createdTime);
+          const recDateStr = recDate.toISOString().split('T')[0];
+          
+          // Match by date and optionally by title similarity
+          if (recDateStr === meetingDateStr) {
+            // Check if recording name contains part of meeting title
+            const titleWords = (meeting.meeting_title || meeting.subject || "").toLowerCase().split(" ");
+            const recName = rec.name.toLowerCase();
+            return titleWords.some((word: string) => word.length > 3 && recName.includes(word)) || true; // Fallback to date match
+          }
+          return false;
+        });
+
+        if (matchingRecording) {
+          const { error: updateError } = await supabase
+            .from("onboarding_meeting_notes")
+            .update({ recording_link: matchingRecording.webViewLink })
+            .eq("id", meeting.id);
+
+          if (!updateError) {
+            syncedCount++;
+            console.log(`Matched recording for meeting: ${meeting.meeting_title}`);
+          }
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ synced: syncedCount, total: meetingsWithoutRecording.length }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: "Invalid action" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
