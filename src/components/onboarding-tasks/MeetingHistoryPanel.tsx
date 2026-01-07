@@ -43,8 +43,10 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
-  FileAudio
+  FileAudio,
+  Plus
 } from "lucide-react";
+import { ScheduleMeetingDialog } from "./ScheduleMeetingDialog";
 
 interface MeetingNote {
   id: string;
@@ -106,6 +108,11 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   // Transcription state
   const [transcribing, setTranscribing] = useState(false);
   const [savingRecordingLink, setSavingRecordingLink] = useState(false);
+  
+  // Schedule meeting dialog
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [isCS, setIsCS] = useState(false);
+  
   useEffect(() => {
     fetchAll();
     
@@ -154,6 +161,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     if (data) {
       setCurrentStaffId(data.id);
       setIsAdmin(data.role === "admin");
+      setIsCS(data.role === "cs");
     }
   };
 
@@ -496,6 +504,15 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
             Reuniões
           </h3>
           <div className="flex items-center gap-2">
+            {(isAdmin || isCS) && (
+              <Button 
+                size="sm" 
+                onClick={() => setShowScheduleDialog(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Agendar Reunião
+              </Button>
+            )}
             {calendarConnected && (
               <Button 
                 variant="outline" 
@@ -945,6 +962,17 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Schedule Meeting Dialog */}
+      <ScheduleMeetingDialog
+        open={showScheduleDialog}
+        onOpenChange={setShowScheduleDialog}
+        projectId={projectId}
+        onMeetingCreated={() => {
+          fetchMeetings();
+          syncCalendarEvents();
+        }}
+      />
     </>
   );
 };
