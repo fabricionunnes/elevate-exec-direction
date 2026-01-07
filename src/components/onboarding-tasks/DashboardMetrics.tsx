@@ -270,11 +270,9 @@ const DashboardMetrics = ({
         if (p.status !== "closed" && p.status !== "completed") return false;
         // Prioriza churn_date, depois updated_at como fallback
         const churnDateStr = p.churn_date || p.updated_at;
-        // Parse a data corretamente para evitar problemas de timezone
-        // Se for só data (YYYY-MM-DD), adiciona T12:00:00 para evitar offset
-        const churnDate = churnDateStr.length === 10 
-          ? new Date(churnDateStr + "T12:00:00") 
-          : new Date(churnDateStr);
+        // Extrai apenas a parte da data (YYYY-MM-DD) para evitar problemas de timezone
+        const dateOnly = churnDateStr.substring(0, 10);
+        const churnDate = new Date(dateOnly + "T12:00:00");
         return isWithinInterval(churnDate, { start: monthStart, end: monthEnd });
       }).length;
       const activeAtMonthStart = projects.filter(p => {
@@ -282,9 +280,8 @@ const DashboardMetrics = ({
         if (p.status === "closed" || p.status === "completed") {
           // Usa churn_date como referência
           const churnDateStr = p.churn_date || p.updated_at;
-          const churnDate = churnDateStr.length === 10 
-            ? new Date(churnDateStr + "T12:00:00") 
-            : new Date(churnDateStr);
+          const dateOnly = churnDateStr.substring(0, 10);
+          const churnDate = new Date(dateOnly + "T12:00:00");
           return churnDate >= monthStart;
         }
         return true;
