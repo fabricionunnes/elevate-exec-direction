@@ -153,7 +153,7 @@ export const GamificationDashboardWidget = ({ companyId, projectId }: Gamificati
         logsRes,
         rewardsRes,
       ] = await Promise.all([
-        supabase.from("gamification_seasons").select("*").eq("config_id", configData.id).eq("is_current", true).single(),
+        supabase.from("gamification_seasons").select("*").eq("config_id", configData.id).eq("is_current", true).maybeSingle(),
         supabase.from("gamification_participants").select("*, salesperson:company_salespeople(id, name)").eq("config_id", configData.id),
         supabase.from("gamification_levels").select("*").eq("config_id", configData.id).order("level_number"),
         supabase.from("gamification_missions").select("*").eq("config_id", configData.id).eq("is_active", true),
@@ -163,7 +163,23 @@ export const GamificationDashboardWidget = ({ companyId, projectId }: Gamificati
         supabase.from("gamification_rewards").select("*").eq("config_id", configData.id).eq("is_active", true).eq("show_on_dashboard", true),
       ]);
 
-      setCurrentSeason(seasonsRes.data);
+      // If no current season marked, try to find one based on dates
+      let season = seasonsRes.data;
+      if (!season) {
+        const today = new Date().toISOString().split('T')[0];
+        const { data: activeSeason } = await supabase
+          .from("gamification_seasons")
+          .select("*")
+          .eq("config_id", configData.id)
+          .lte("start_date", today)
+          .gte("end_date", today)
+          .order("start_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        season = activeSeason;
+      }
+
+      setCurrentSeason(season);
       setParticipants(participantsRes.data || []);
       setLevels(levelsRes.data || []);
       setMissions(missionsRes.data || []);
