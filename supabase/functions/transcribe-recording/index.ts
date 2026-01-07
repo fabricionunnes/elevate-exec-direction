@@ -104,9 +104,10 @@ serve(async (req) => {
     const fileId = fileIdMatch[1];
     console.log(`Extracted file ID: ${fileId}`);
 
-    // First, get file metadata to check permissions
+    // First, get file metadata to check permissions and size
+    console.log("Fetching file metadata...");
     const metadataResponse = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType,capabilities,shared,permissions&supportsAllDrives=true`,
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType,size,capabilities&supportsAllDrives=true`,
       {
         headers: {
           Authorization: `Bearer ${googleToken.access_token}`,
@@ -114,12 +115,37 @@ serve(async (req) => {
       }
     );
 
+    let fileSize = 0;
+    let mimeType = "video/mp4";
     if (metadataResponse.ok) {
       const metadata = await metadataResponse.json();
       console.log("File metadata:", JSON.stringify(metadata, null, 2));
+      fileSize = parseInt(metadata.size || "0", 10);
+      mimeType = metadata.mimeType || "video/mp4";
+      
+      // Check if file is too large (limit to 50MB for processing)
+      const maxFileSize = 50 * 1024 * 1024; // 50MB
+      if (fileSize > maxFileSize) {
+        console.error(`File too large: ${fileSize} bytes (max: ${maxFileSize})`);
+        return new Response(
+          JSON.stringify({ 
+            error: `O arquivo de gravação é muito grande (${Math.round(fileSize / 1024 / 1024)}MB). O limite para transcrição automática é de 50MB. Considere usar a transcrição manual.` 
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      if (metadata.capabilities?.canDownload === false) {
+        return new Response(
+          JSON.stringify({ error: "Você não tem permissão para baixar este arquivo. Verifique as configurações de compartilhamento no Google Drive." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
-    // Try to download file from Google Drive with export for Google Workspace files
+    console.log("Starting file download...");
+    
+    // Try to download file from Google Drive
     let driveResponse = await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
       {
@@ -129,14 +155,12 @@ serve(async (req) => {
       }
     );
 
-    // If 403, check if we need to request export or if file needs to be shared differently
+    // If 403, try webContentLink approach
     if (driveResponse.status === 403) {
-      const errorData = await driveResponse.json();
-      console.error("Drive 403 error details:", JSON.stringify(errorData, null, 2));
+      console.log("Got 403, trying webContentLink approach...");
       
-      // Try webContentLink approach for some file types
       const linkResponse = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${fileId}?fields=webContentLink,exportLinks&supportsAllDrives=true`,
+        `https://www.googleapis.com/drive/v3/files/${fileId}?fields=webContentLink&supportsAllDrives=true`,
         {
           headers: {
             Authorization: `Bearer ${googleToken.access_token}`,
@@ -149,7 +173,6 @@ serve(async (req) => {
         console.log("File links:", JSON.stringify(linkData, null, 2));
         
         if (linkData.webContentLink) {
-          // Try downloading via webContentLink
           driveResponse = await fetch(linkData.webContentLink, {
             headers: {
               Authorization: `Bearer ${googleToken.access_token}`,
