@@ -99,6 +99,27 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
   useEffect(() => {
     fetchAll();
+    
+    // Subscribe to realtime updates on meeting notes
+    const channel = supabase
+      .channel(`meetings-${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'onboarding_meeting_notes',
+          filter: `project_id=eq.${projectId}`,
+        },
+        () => {
+          fetchMeetings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [projectId]);
 
   const fetchAll = async () => {
