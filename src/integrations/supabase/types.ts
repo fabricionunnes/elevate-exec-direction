@@ -963,6 +963,767 @@ export type Database = {
           },
         ]
       }
+      gamification_badges: {
+        Row: {
+          condition_kpi_id: string | null
+          condition_type: string
+          condition_value: number | null
+          config_id: string
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          is_repeatable: boolean | null
+          name: string
+          show_on_profile: boolean | null
+        }
+        Insert: {
+          condition_kpi_id?: string | null
+          condition_type: string
+          condition_value?: number | null
+          config_id: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_repeatable?: boolean | null
+          name: string
+          show_on_profile?: boolean | null
+        }
+        Update: {
+          condition_kpi_id?: string | null
+          condition_type?: string
+          condition_value?: number | null
+          config_id?: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_repeatable?: boolean | null
+          name?: string
+          show_on_profile?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_badges_condition_kpi_id_fkey"
+            columns: ["condition_kpi_id"]
+            isOneToOne: false
+            referencedRelation: "company_kpis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_badges_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamification_configs: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          project_id: string
+          reset_points_on_season_end: boolean | null
+          season_type: string | null
+          team_mode_enabled: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          project_id: string
+          reset_points_on_season_end?: boolean | null
+          season_type?: string | null
+          team_mode_enabled?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          project_id?: string
+          reset_points_on_season_end?: boolean | null
+          season_type?: string | null
+          team_mode_enabled?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_configs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_configs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamification_leaderboard_snapshots: {
+        Row: {
+          created_at: string
+          final_points: number
+          final_position: number
+          id: string
+          participant_id: string | null
+          reward_id: string | null
+          season_id: string
+          team_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          final_points: number
+          final_position: number
+          id?: string
+          participant_id?: string | null
+          reward_id?: string | null
+          season_id: string
+          team_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          final_points?: number
+          final_position?: number
+          id?: string
+          participant_id?: string | null
+          reward_id?: string | null
+          season_id?: string
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_leaderboard_snapshots_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_leaderboard_snapshots_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_rewards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_leaderboard_snapshots_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_leaderboard_snapshots_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamification_levels: {
+        Row: {
+          config_id: string
+          created_at: string
+          icon: string | null
+          id: string
+          level_number: number
+          min_points: number
+          name: string
+        }
+        Insert: {
+          config_id: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          level_number: number
+          min_points: number
+          name: string
+        }
+        Update: {
+          config_id?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          level_number?: number
+          min_points?: number
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_levels_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamification_mission_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          current_value: number | null
+          id: string
+          is_completed: boolean | null
+          mission_id: string
+          participant_id: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          current_value?: number | null
+          id?: string
+          is_completed?: boolean | null
+          mission_id: string
+          participant_id: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          current_value?: number | null
+          id?: string
+          is_completed?: boolean | null
+          mission_id?: string
+          participant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_mission_progress_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_mission_progress_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamification_missions: {
+        Row: {
+          condition_type: string
+          condition_value: number
+          config_id: string
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean | null
+          metric_kpi_id: string | null
+          mission_type: string | null
+          name: string
+          reward_badge_id: string | null
+          reward_points: number | null
+          season_id: string | null
+          start_date: string | null
+        }
+        Insert: {
+          condition_type: string
+          condition_value: number
+          config_id: string
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          metric_kpi_id?: string | null
+          mission_type?: string | null
+          name: string
+          reward_badge_id?: string | null
+          reward_points?: number | null
+          season_id?: string | null
+          start_date?: string | null
+        }
+        Update: {
+          condition_type?: string
+          condition_value?: number
+          config_id?: string
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          metric_kpi_id?: string | null
+          mission_type?: string | null
+          name?: string
+          reward_badge_id?: string | null
+          reward_points?: number | null
+          season_id?: string | null
+          start_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_missions_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_missions_metric_kpi_id_fkey"
+            columns: ["metric_kpi_id"]
+            isOneToOne: false
+            referencedRelation: "company_kpis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_missions_reward_badge_id_fkey"
+            columns: ["reward_badge_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_missions_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamification_participants: {
+        Row: {
+          config_id: string
+          created_at: string
+          current_level: number | null
+          id: string
+          salesperson_id: string
+          total_points: number | null
+          updated_at: string
+        }
+        Insert: {
+          config_id: string
+          created_at?: string
+          current_level?: number | null
+          id?: string
+          salesperson_id: string
+          total_points?: number | null
+          updated_at?: string
+        }
+        Update: {
+          config_id?: string
+          created_at?: string
+          current_level?: number | null
+          id?: string
+          salesperson_id?: string
+          total_points?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_participants_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_participants_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "company_salespeople"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamification_rewards: {
+        Row: {
+          condition_type: string
+          condition_value: number | null
+          config_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          mission_id: string | null
+          name: string
+          reward_type: string
+          season_id: string | null
+          show_on_dashboard: boolean | null
+          value: number | null
+        }
+        Insert: {
+          condition_type: string
+          condition_value?: number | null
+          config_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          mission_id?: string | null
+          name: string
+          reward_type: string
+          season_id?: string | null
+          show_on_dashboard?: boolean | null
+          value?: number | null
+        }
+        Update: {
+          condition_type?: string
+          condition_value?: number | null
+          config_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          mission_id?: string | null
+          name?: string
+          reward_type?: string
+          season_id?: string | null
+          show_on_dashboard?: boolean | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_rewards_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_rewards_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_rewards_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamification_score_logs: {
+        Row: {
+          created_at: string
+          entry_date: string
+          id: string
+          mission_id: string | null
+          participant_id: string
+          points: number
+          reason: string
+          rule_id: string | null
+          season_id: string | null
+          source_id: string | null
+          source_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          entry_date: string
+          id?: string
+          mission_id?: string | null
+          participant_id: string
+          points: number
+          reason: string
+          rule_id?: string | null
+          season_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          entry_date?: string
+          id?: string
+          mission_id?: string | null
+          participant_id?: string
+          points?: number
+          reason?: string
+          rule_id?: string | null
+          season_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_score_logs_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_score_logs_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_score_logs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_scoring_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_score_logs_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamification_scoring_rules: {
+        Row: {
+          config_id: string
+          created_at: string
+          description: string | null
+          event_type: string | null
+          id: string
+          is_active: boolean | null
+          kpi_id: string | null
+          max_points_per_day: number | null
+          max_points_per_week: number | null
+          name: string
+          points_per_unit: number | null
+          points_value: number
+          rule_type: string
+          streak_bonus: number | null
+          streak_days: number | null
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          config_id: string
+          created_at?: string
+          description?: string | null
+          event_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          kpi_id?: string | null
+          max_points_per_day?: number | null
+          max_points_per_week?: number | null
+          name: string
+          points_per_unit?: number | null
+          points_value?: number
+          rule_type: string
+          streak_bonus?: number | null
+          streak_days?: number | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          config_id?: string
+          created_at?: string
+          description?: string | null
+          event_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          kpi_id?: string | null
+          max_points_per_day?: number | null
+          max_points_per_week?: number | null
+          name?: string
+          points_per_unit?: number | null
+          points_value?: number
+          rule_type?: string
+          streak_bonus?: number | null
+          streak_days?: number | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_scoring_rules_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_scoring_rules_kpi_id_fkey"
+            columns: ["kpi_id"]
+            isOneToOne: false
+            referencedRelation: "company_kpis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamification_seasons: {
+        Row: {
+          config_id: string
+          created_at: string
+          end_date: string
+          id: string
+          is_current: boolean | null
+          name: string
+          start_date: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          config_id: string
+          created_at?: string
+          end_date: string
+          id?: string
+          is_current?: boolean | null
+          name: string
+          start_date: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          config_id?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_current?: boolean | null
+          name?: string
+          start_date?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_seasons_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamification_team_members: {
+        Row: {
+          created_at: string
+          id: string
+          salesperson_id: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          salesperson_id: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          salesperson_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_team_members_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "company_salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamification_teams: {
+        Row: {
+          config_id: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          config_id: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          config_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_teams_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamification_user_badges: {
+        Row: {
+          badge_id: string
+          earned_at: string
+          id: string
+          participant_id: string
+          season_id: string | null
+        }
+        Insert: {
+          badge_id: string
+          earned_at?: string
+          id?: string
+          participant_id: string
+          season_id?: string | null
+        }
+        Update: {
+          badge_id?: string
+          earned_at?: string
+          id?: string
+          participant_id?: string
+          season_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_user_badges_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamification_user_badges_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kpi_entries: {
         Row: {
           company_id: string
