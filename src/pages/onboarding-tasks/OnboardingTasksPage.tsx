@@ -626,12 +626,6 @@ const OnboardingTasksPage = () => {
         } else if (activeMetricFilter.type === "nps" && activeMetricFilter.value === "not_responded") {
           // Filter companies that have at least one project WITHOUT NPS response
           matchesMetricFilter = company.projects?.some(p => !projectsWithNpsResponse.has(p.id)) ?? false;
-        } else if (activeMetricFilter.type === "nps" && activeMetricFilter.value === "promoters") {
-          // Filter companies that have at least one project with NPS >= 9
-          matchesMetricFilter = company.projects?.some(p => projectsNpsCategories.promoters.has(p.id)) ?? false;
-        } else if (activeMetricFilter.type === "nps" && activeMetricFilter.value === "detractors") {
-          // Filter companies that have at least one project with NPS <= 6
-          matchesMetricFilter = company.projects?.some(p => projectsNpsCategories.detractors.has(p.id)) ?? false;
         } else if (activeMetricFilter.type === "status" && activeMetricFilter.value === "reactivated") {
           // Filter companies with projects reactivated in the period
           matchesMetricFilter = company.projects?.some(p => {
