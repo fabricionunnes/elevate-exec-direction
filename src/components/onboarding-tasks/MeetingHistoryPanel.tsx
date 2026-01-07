@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -10,6 +13,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -34,7 +38,9 @@ import {
   Trash2,
   Users,
   ChevronRight,
-  PlayCircle
+  PlayCircle,
+  Plus,
+  Loader2
 } from "lucide-react";
 
 interface MeetingNote {
@@ -64,6 +70,18 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   const [meetingToDelete, setMeetingToDelete] = useState<MeetingNote | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
+  
+  // New meeting form state
+  const [showNewMeetingDialog, setShowNewMeetingDialog] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [newMeeting, setNewMeeting] = useState({
+    subject: "",
+    notes: "",
+    attendees: "",
+    meetingDate: format(new Date(), "yyyy-MM-dd"),
+    meetingTime: format(new Date(), "HH:mm"),
+    recordingLink: "",
+  });
 
   useEffect(() => {
     fetchMeetings();
@@ -134,6 +152,149 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     }
   };
 
+  const handleSaveNewMeeting = async () => {
+    if (!newMeeting.subject.trim()) {
+      toast.error("Informe o assunto da reunião");
+      return;
+    }
+    if (!newMeeting.notes.trim()) {
+      toast.error("Descreva o que foi tratado na reunião");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const meetingDateTime = `${newMeeting.meetingDate}T${newMeeting.meetingTime}:00`;
+      
+      const { error } = await supabase.from("onboarding_meeting_notes").insert({
+        project_id: projectId,
+        staff_id: currentStaffId,
+        meeting_title: newMeeting.subject,
+        meeting_date: meetingDateTime,
+        subject: newMeeting.subject.trim(),
+        notes: newMeeting.notes.trim(),
+        attendees: newMeeting.attendees.trim() || null,
+        recording_link: newMeeting.recordingLink.trim() || null,
+      });
+
+      if (error) throw error;
+
+      toast.success("Reunião registrada com sucesso!");
+      setShowNewMeetingDialog(false);
+      setNewMeeting({
+        subject: "",
+        notes: "",
+        attendees: "",
+        meetingDate: format(new Date(), "yyyy-MM-dd"),
+        meetingTime: format(new Date(), "HH:mm"),
+        recordingLink: "",
+      });
+      fetchMeetings();
+    } catch (error) {
+      console.error("Error saving meeting:", error);
+      toast.error("Erro ao registrar reunião");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const NewMeetingButton = () => (
+    <Button onClick={() => setShowNewMeetingDialog(true)} className="gap-2">
+      <Plus className="h-4 w-4" />
+      Registrar Reunião
+    </Button>
+  );
+
+  const NewMeetingDialog = () => (
+    <Dialog open={showNewMeetingDialog} onOpenChange={setShowNewMeetingDialog}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            Registrar Reunião
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Data *</Label>
+              <Input
+                type="date"
+                value={newMeeting.meetingDate}
+                onChange={(e) => setNewMeeting({ ...newMeeting, meetingDate: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Horário *</Label>
+              <Input
+                type="time"
+                value={newMeeting.meetingTime}
+                onChange={(e) => setNewMeeting({ ...newMeeting, meetingTime: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Assunto *</Label>
+            <Input
+              placeholder="Ex: Alinhamento semanal, Revisão de processos..."
+              value={newMeeting.subject}
+              onChange={(e) => setNewMeeting({ ...newMeeting, subject: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>O que foi tratado? *</Label>
+            <Textarea
+              placeholder="Descreva os principais pontos discutidos, decisões tomadas, próximos passos..."
+              value={newMeeting.notes}
+              onChange={(e) => setNewMeeting({ ...newMeeting, notes: e.target.value })}
+              rows={5}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Participantes (opcional)</Label>
+            <Input
+              placeholder="Nomes dos participantes"
+              value={newMeeting.attendees}
+              onChange={(e) => setNewMeeting({ ...newMeeting, attendees: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <PlayCircle className="h-4 w-4 text-red-500" />
+              Link da Gravação (opcional)
+            </Label>
+            <Input
+              placeholder="https://drive.google.com/file/..."
+              value={newMeeting.recordingLink}
+              onChange={(e) => setNewMeeting({ ...newMeeting, recordingLink: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => setShowNewMeetingDialog(false)} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSaveNewMeeting} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              "Salvar Registro"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -152,17 +313,21 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
   if (meetings.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-            <Video className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-medium mb-2">Nenhuma reunião registrada</h3>
-          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            Quando você encerrar uma reunião na agenda, poderá registrar o assunto e o que foi tratado aqui.
-          </p>
-        </CardContent>
-      </Card>
+      <>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+              <Video className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-medium mb-2">Nenhuma reunião registrada</h3>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
+              Registre as reuniões realizadas com o cliente para manter o histórico.
+            </p>
+            <NewMeetingButton />
+          </CardContent>
+        </Card>
+        <NewMeetingDialog />
+      </>
     );
   }
 
@@ -174,7 +339,10 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
             <Video className="h-5 w-5 text-primary" />
             Histórico de Reuniões
           </h3>
-          <Badge variant="secondary">{meetings.length} reuniões</Badge>
+          <div className="flex items-center gap-2">
+            <NewMeetingButton />
+            <Badge variant="secondary">{meetings.length} reuniões</Badge>
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -342,6 +510,9 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* New Meeting Dialog */}
+      <NewMeetingDialog />
     </>
   );
 };
