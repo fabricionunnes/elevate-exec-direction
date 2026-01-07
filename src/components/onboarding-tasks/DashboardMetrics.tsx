@@ -86,6 +86,7 @@ interface DashboardMetricsProps {
   onDateRangeChange: (range: { start: Date; end: Date }) => void;
   overdueTasks: Task[];
   todayTasks: Task[];
+  allTasks?: Task[];
   onDataRefresh?: () => void;
   currentStaffUserId?: string | null;
   onNpsDetailChange?: (isShowingDetail: boolean) => void;
@@ -100,12 +101,13 @@ const DashboardMetrics = ({
   dateRange,
   overdueTasks,
   todayTasks,
+  allTasks: externalTasks,
   onDataRefresh,
   currentStaffUserId,
   onNpsDetailChange,
   onActiveTabChange
 }: DashboardMetricsProps) => {
-  const [allTasks, setAllTasks] = useState<Task[]>([]);
+  const [internalTasks, setInternalTasks] = useState<Task[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
   const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
   const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number }[]>([]);
@@ -118,27 +120,34 @@ const DashboardMetrics = ({
   const [npsDetailPage, setNpsDetailPage] = useState(1);
   const npsPerPage = 10;
 
+  // Use external tasks if provided, otherwise fetch internally
+  const allTasks = externalTasks || internalTasks;
+
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
-      const pageSize = 1000;
-      let from = 0;
-      let allTasksData: Task[] = [];
+      // Only fetch tasks if not provided externally
+      if (!externalTasks) {
+        const pageSize = 1000;
+        let from = 0;
+        let allTasksData: Task[] = [];
 
-      while (true) {
-        const { data, error } = await supabase
-          .from("onboarding_tasks")
-          .select("id, title, status, due_date, project_id, completed_at, responsible_staff_id")
-          .range(from, from + pageSize - 1);
+        while (true) {
+          const { data, error } = await supabase
+            .from("onboarding_tasks")
+            .select("id, title, status, due_date, project_id, completed_at, responsible_staff_id")
+            .range(from, from + pageSize - 1);
 
-        if (error) throw error;
-        const batch = data || [];
-        allTasksData = allTasksData.concat(batch);
-        if (batch.length < pageSize) break;
-        from += pageSize;
+          if (error) throw error;
+          const batch = data || [];
+          allTasksData = allTasksData.concat(batch);
+          if (batch.length < pageSize) break;
+          from += pageSize;
+        }
+        setInternalTasks(allTasksData);
       }
 
       const [npsResult, kpisResult, entriesResult] = await Promise.all([
@@ -151,7 +160,6 @@ const DashboardMetrics = ({
       if (kpisResult.error) throw kpisResult.error;
       if (entriesResult.error) throw entriesResult.error;
 
-      setAllTasks(allTasksData);
       setNpsResponses(npsResult.data || []);
       setCompanyKpis(kpisResult.data || []);
       setKpiEntries(entriesResult.data || []);
