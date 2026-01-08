@@ -46,7 +46,9 @@ import {
   ArrowUp,
   ArrowDown,
   Pencil,
+  RotateCw,
 } from "lucide-react";
+import RenewalsPanel from "@/components/onboarding-tasks/RenewalsPanel";
 
 interface Staff {
   id: string;
@@ -98,6 +100,10 @@ export default function OnboardingCompaniesReportPage() {
   const [editPaymentMethod, setEditPaymentMethod] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
+  // Renewals panel state
+  const [renewalsPanelOpen, setRenewalsPanelOpen] = useState(false);
+  const [staffId, setStaffId] = useState<string | null>(null);
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -127,6 +133,7 @@ export default function OnboardingCompaniesReportPage() {
       return;
     }
 
+    setStaffId(staffData.id);
     setIsAdmin(true);
     fetchData();
   };
@@ -434,6 +441,13 @@ export default function OnboardingCompaniesReportPage() {
           </div>
           <div className="flex items-center gap-2">
             <Button
+              onClick={() => setRenewalsPanelOpen(true)}
+              className="bg-primary"
+            >
+              <RotateCw className="h-4 w-4 mr-2" />
+              Renovações
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={fetchData}
@@ -447,6 +461,14 @@ export default function OnboardingCompaniesReportPage() {
             </Button>
           </div>
         </div>
+
+        {/* Renewals Panel */}
+        <RenewalsPanel
+          open={renewalsPanelOpen}
+          onOpenChange={setRenewalsPanelOpen}
+          staffId={staffId}
+          staff={staff}
+        />
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
