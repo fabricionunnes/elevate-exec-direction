@@ -76,6 +76,7 @@ import { AssessmentsPanel } from "@/components/assessments/AssessmentsPanel";
 import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
 import { CSATConfigPanel } from "@/components/onboarding-tasks/CSATConfigPanel";
 import { HealthScoreWidget } from "@/components/onboarding-tasks/health-score/HealthScoreWidget";
+import { HealthScoreDetailPanel } from "@/components/onboarding-tasks/health-score/HealthScoreDetailPanel";
 import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star, Heart } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Ticket } from "lucide-react";
@@ -1417,7 +1418,7 @@ const OnboardingProjectPage = () => {
           </TabsContent>
 
           <TabsContent value="health">
-            <HealthScoreWidget projectId={projectId!} />
+            <HealthScoreDetailPanel projectId={projectId!} isAdmin={isAdmin} />
           </TabsContent>
 
           <TabsContent value="kpis">

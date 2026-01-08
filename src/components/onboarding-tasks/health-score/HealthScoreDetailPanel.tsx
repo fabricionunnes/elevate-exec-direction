@@ -23,6 +23,7 @@ import {
   Activity,
   Calendar,
   Send,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
@@ -42,6 +43,7 @@ import {
   Radar,
 } from "recharts";
 import { Slider } from "@/components/ui/slider";
+import { HealthScoreAIInsights } from "./HealthScoreAIInsights";
 
 interface HealthScoreDetailPanelProps {
   projectId: string;
@@ -289,10 +291,14 @@ export const HealthScoreDetailPanel = ({ projectId, isAdmin = false }: HealthSco
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="overview" className="gap-2">
             <BarChart3 className="h-4 w-4" />
             Visão Geral
+          </TabsTrigger>
+          <TabsTrigger value="insights" className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            Insights IA
           </TabsTrigger>
           <TabsTrigger value="history" className="gap-2">
             <Activity className="h-4 w-4" />
@@ -309,6 +315,10 @@ export const HealthScoreDetailPanel = ({ projectId, isAdmin = false }: HealthSco
             </TabsTrigger>
           )}
         </TabsList>
+
+        <TabsContent value="insights">
+          <HealthScoreAIInsights projectId={projectId} />
+        </TabsContent>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid md:grid-cols-2 gap-6">
