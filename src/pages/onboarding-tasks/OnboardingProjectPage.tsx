@@ -1410,6 +1410,10 @@ const OnboardingProjectPage = () => {
             <SupportTabContent projectId={projectId!} users={users} />
           </TabsContent>
 
+          <TabsContent value="health">
+            <HealthScoreWidget projectId={projectId!} />
+          </TabsContent>
+
           <TabsContent value="kpis">
             <KPIMetasPanel 
               companyId={project.onboarding_company_id || ""} 
