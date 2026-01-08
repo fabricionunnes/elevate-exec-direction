@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Users, Brain, Copy, ExternalLink, BarChart3, Trash2 } from "lucide-react";
+import { Plus, Users, Brain, Copy, BarChart3, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AssessmentReportSheet } from "./AssessmentReportSheet";
@@ -44,8 +44,7 @@ export function AssessmentsPanel({ projectId }: Props) {
   const [loading, setLoading] = useState(true);
   const [isNewCycleOpen, setIsNewCycleOpen] = useState(false);
   const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false);
-  const [isLinksOpen, setIsLinksOpen] = useState(false);
-  const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
+  // Removed unused links dialog state - unified link at /avaliacao is used
   const [isAdmin, setIsAdmin] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [reportCycleId, setReportCycleId] = useState<string | null>(null);
@@ -238,22 +237,7 @@ export function AssessmentsPanel({ projectId }: Props) {
     setIsReportsOpen(true);
   };
 
-  const getAssessmentLinks = (participant: Participant) => {
-    const baseUrl = window.location.origin;
-    
-    const discLink = `${baseUrl}/disc?cycle=${selectedCycle?.id}&participant=${participant.id}&token=${participant.access_token}`;
-    const selfLink = `${baseUrl}/360?cycle=${selectedCycle?.id}&evaluated=${participant.id}&rel=self&token=${participant.access_token}`;
-    const peerLink = `${baseUrl}/360?cycle=${selectedCycle?.id}&evaluated=${participant.id}&rel=peer&token=${participant.access_token}`;
-    const managerLink = `${baseUrl}/360?cycle=${selectedCycle?.id}&evaluated=${participant.id}&rel=manager&token=${participant.access_token}`;
-    const subordinateLink = `${baseUrl}/360?cycle=${selectedCycle?.id}&evaluated=${participant.id}&rel=subordinate&token=${participant.access_token}`;
-
-    return { discLink, selfLink, peerLink, managerLink, subordinateLink };
-  };
-
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`Link ${label} copiado!`);
-  };
+  // Individual links removed - unified assessment link at /avaliacao is now the only link used
 
   const roleLabels = {
     owner: "Proprietário",
@@ -523,97 +507,7 @@ export function AssessmentsPanel({ projectId }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Links Dialog */}
-      <Dialog open={isLinksOpen} onOpenChange={setIsLinksOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Links de Avaliação - {selectedParticipant?.name}</DialogTitle>
-            <DialogDescription>Copie e envie os links apropriados para cada avaliador</DialogDescription>
-          </DialogHeader>
-          {selectedParticipant && selectedCycle && (
-            <div className="space-y-4">
-              {(selectedCycle.type === "disc" || selectedCycle.type === "both") && (
-                <div className="p-4 border rounded-lg space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-purple-500" />
-                    <span className="font-medium">Teste DISC</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Link para {selectedParticipant.name} responder o DISC</p>
-                  <div className="flex gap-2">
-                    <Input value={getAssessmentLinks(selectedParticipant).discLink} readOnly className="text-xs" />
-                    <Button size="icon" variant="outline" onClick={() => copyToClipboard(getAssessmentLinks(selectedParticipant).discLink, "DISC")}>
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                    <Button size="icon" variant="outline" onClick={() => window.open(getAssessmentLinks(selectedParticipant).discLink, "_blank")}>
-                      <ExternalLink className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {(selectedCycle.type === "360" || selectedCycle.type === "both") && (
-                <>
-                  <div className="p-4 border rounded-lg space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-5 h-5 text-green-500" />
-                      <span className="font-medium">Autoavaliação 360°</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Link para {selectedParticipant.name} se autoavaliar</p>
-                    <div className="flex gap-2">
-                      <Input value={getAssessmentLinks(selectedParticipant).selfLink} readOnly className="text-xs" />
-                      <Button size="icon" variant="outline" onClick={() => copyToClipboard(getAssessmentLinks(selectedParticipant).selfLink, "Autoavaliação")}>
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="p-4 border rounded-lg space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-5 h-5 text-blue-500" />
-                      <span className="font-medium">Avaliação pelo Gestor</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Link para o gestor avaliar {selectedParticipant.name}</p>
-                    <div className="flex gap-2">
-                      <Input value={getAssessmentLinks(selectedParticipant).managerLink} readOnly className="text-xs" />
-                      <Button size="icon" variant="outline" onClick={() => copyToClipboard(getAssessmentLinks(selectedParticipant).managerLink, "Gestor")}>
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="p-4 border rounded-lg space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-5 h-5 text-amber-500" />
-                      <span className="font-medium">Avaliação por Pares</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Link para colegas avaliarem {selectedParticipant.name}</p>
-                    <div className="flex gap-2">
-                      <Input value={getAssessmentLinks(selectedParticipant).peerLink} readOnly className="text-xs" />
-                      <Button size="icon" variant="outline" onClick={() => copyToClipboard(getAssessmentLinks(selectedParticipant).peerLink, "Pares")}>
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="p-4 border rounded-lg space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-5 h-5 text-red-500" />
-                      <span className="font-medium">Avaliação por Subordinados</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Link para subordinados avaliarem {selectedParticipant.name}</p>
-                    <div className="flex gap-2">
-                      <Input value={getAssessmentLinks(selectedParticipant).subordinateLink} readOnly className="text-xs" />
-                      <Button size="icon" variant="outline" onClick={() => copyToClipboard(getAssessmentLinks(selectedParticipant).subordinateLink, "Subordinados")}>
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Individual Links Dialog removed - unified link at /avaliacao is the only one used */}
 
       {/* Reports Sheet */}
       {reportCycleId && (
