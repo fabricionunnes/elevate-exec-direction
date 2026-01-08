@@ -339,6 +339,120 @@ export type Database = {
           },
         ]
       }
+      climate_survey_responses: {
+        Row: {
+          adequate_recognition: boolean | null
+          communication_with_superiors: number | null
+          company_offers_wellness: boolean | null
+          company_satisfaction: number | null
+          company_values_balance: boolean | null
+          completed_at: string
+          created_at: string
+          cycle_id: string
+          diversity_inclusion: number | null
+          enjoys_working_score: number | null
+          feels_comfortable_safe: boolean | null
+          feels_supported: number | null
+          feels_valued: string | null
+          feels_valued_for_work: boolean | null
+          good_coworker_relationship: boolean | null
+          has_growth_opportunities: boolean | null
+          id: string
+          manages_responsibilities: boolean | null
+          open_feedback: string | null
+          organizational_culture: number | null
+          participant_id: string
+          receives_feedback: string | null
+          respondent_email: string | null
+          respondent_name: string
+          rewards_rating: number | null
+          superior_interest_development: number | null
+          training_rating: number | null
+          what_company_does_well: string | null
+          what_company_should_improve: string | null
+          would_recommend_score: number | null
+        }
+        Insert: {
+          adequate_recognition?: boolean | null
+          communication_with_superiors?: number | null
+          company_offers_wellness?: boolean | null
+          company_satisfaction?: number | null
+          company_values_balance?: boolean | null
+          completed_at?: string
+          created_at?: string
+          cycle_id: string
+          diversity_inclusion?: number | null
+          enjoys_working_score?: number | null
+          feels_comfortable_safe?: boolean | null
+          feels_supported?: number | null
+          feels_valued?: string | null
+          feels_valued_for_work?: boolean | null
+          good_coworker_relationship?: boolean | null
+          has_growth_opportunities?: boolean | null
+          id?: string
+          manages_responsibilities?: boolean | null
+          open_feedback?: string | null
+          organizational_culture?: number | null
+          participant_id: string
+          receives_feedback?: string | null
+          respondent_email?: string | null
+          respondent_name: string
+          rewards_rating?: number | null
+          superior_interest_development?: number | null
+          training_rating?: number | null
+          what_company_does_well?: string | null
+          what_company_should_improve?: string | null
+          would_recommend_score?: number | null
+        }
+        Update: {
+          adequate_recognition?: boolean | null
+          communication_with_superiors?: number | null
+          company_offers_wellness?: boolean | null
+          company_satisfaction?: number | null
+          company_values_balance?: boolean | null
+          completed_at?: string
+          created_at?: string
+          cycle_id?: string
+          diversity_inclusion?: number | null
+          enjoys_working_score?: number | null
+          feels_comfortable_safe?: boolean | null
+          feels_supported?: number | null
+          feels_valued?: string | null
+          feels_valued_for_work?: boolean | null
+          good_coworker_relationship?: boolean | null
+          has_growth_opportunities?: boolean | null
+          id?: string
+          manages_responsibilities?: boolean | null
+          open_feedback?: string | null
+          organizational_culture?: number | null
+          participant_id?: string
+          receives_feedback?: string | null
+          respondent_email?: string | null
+          respondent_name?: string
+          rewards_rating?: number | null
+          superior_interest_development?: number | null
+          training_rating?: number | null
+          what_company_does_well?: string | null
+          what_company_should_improve?: string | null
+          would_recommend_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "climate_survey_responses_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "climate_survey_responses_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closer_diagnostics: {
         Row: {
           additional_context: string | null

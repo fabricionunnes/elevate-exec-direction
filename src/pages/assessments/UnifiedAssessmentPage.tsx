@@ -10,7 +10,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { discQuestions, discProfiles } from "@/data/discQuestions";
-import { CheckCircle2, ArrowRight, ArrowLeft, Brain, Users, Loader2 } from "lucide-react";
+import { climateQuestions, climateSections, getQuestionsBySection } from "@/data/climateQuestions";
+import { CheckCircle2, ArrowRight, ArrowLeft, Brain, Users, Loader2, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -30,7 +31,7 @@ interface DISCAnswer {
   least: string;
 }
 
-type AssessmentStep = "intro" | "disc" | "360" | "success";
+type AssessmentStep = "intro" | "disc" | "360" | "climate" | "success";
 
 export default function UnifiedAssessmentPage() {
   const [searchParams] = useSearchParams();
@@ -63,6 +64,10 @@ export default function UnifiedAssessmentPage() {
   const [strengths, setStrengths] = useState("");
   const [improvements, setImprovements] = useState("");
   const [comments, setComments] = useState("");
+
+  // Climate survey state
+  const [currentClimateSection, setCurrentClimateSection] = useState(0);
+  const [climateAnswers, setClimateAnswers] = useState<Record<string, string | number | boolean>>({});
 
   useEffect(() => {
     if (!cycleId) {
@@ -132,8 +137,11 @@ export default function UnifiedAssessmentPage() {
     // Determine first step based on cycle type
     if (cycleInfo?.type === "disc" || cycleInfo?.type === "both") {
       setStep("disc");
-    } else {
+    } else if (cycleInfo?.type === "360") {
       setStep("360");
+    } else {
+      // Climate only or other types - start with climate
+      setStep("climate");
     }
   };
 
@@ -174,11 +182,12 @@ export default function UnifiedAssessmentPage() {
       setCurrentMost(null);
       setCurrentLeast(null);
     } else {
-      // DISC completed - move to 360 or submit
+      // DISC completed - move to 360 then climate, or climate only
       if (cycleInfo?.type === "both") {
         setStep("360");
       } else {
-        handleSubmit(updatedAnswers);
+        // For disc only, go to climate
+        setStep("climate");
       }
     }
   };
@@ -225,6 +234,43 @@ export default function UnifiedAssessmentPage() {
     };
   };
 
+  // Climate navigation handlers
+  const handleNextClimateSection = () => {
+    // Validate current section
+    const currentSectionId = climateSections[currentClimateSection].id;
+    const sectionQuestions = getQuestionsBySection(currentSectionId);
+    
+    for (const q of sectionQuestions) {
+      if (q.required && climateAnswers[q.id] === undefined) {
+        toast.error("Por favor, responda todas as perguntas desta seção");
+        return;
+      }
+    }
+
+    if (currentClimateSection < climateSections.length - 1) {
+      setCurrentClimateSection(currentClimateSection + 1);
+    } else {
+      // All sections completed, submit
+      handleSubmit();
+    }
+  };
+
+  const handlePrevClimateSection = () => {
+    if (currentClimateSection > 0) {
+      setCurrentClimateSection(currentClimateSection - 1);
+    } else {
+      // Go back to 360 or disc
+      if (cycleInfo?.type === "360" || cycleInfo?.type === "both") {
+        setStep("360");
+      } else if (cycleInfo?.type === "disc") {
+        setStep("disc");
+        setCurrentDiscQuestion(discQuestions.length - 1);
+      } else {
+        setStep("intro");
+      }
+    }
+  };
+
   const handleSubmit = async (finalDiscAnswers?: DISCAnswer[]) => {
     const answersToUse = finalDiscAnswers || discAnswers;
     
@@ -233,6 +279,15 @@ export default function UnifiedAssessmentPage() {
       const answered360 = Object.keys(scores360).length;
       if (answered360 < competencies360.length) {
         toast.error("Por favor, avalie todas as competências");
+        return;
+      }
+    }
+
+    // Validate required climate questions
+    const requiredClimateQuestions = climateQuestions.filter(q => q.required);
+    for (const q of requiredClimateQuestions) {
+      if (climateAnswers[q.id] === undefined) {
+        toast.error("Por favor, responda todas as perguntas obrigatórias da pesquisa de clima");
         return;
       }
     }
@@ -310,6 +365,39 @@ export default function UnifiedAssessmentPage() {
         if (error360) throw error360;
       }
 
+      // Save climate survey response
+      const { error: climateError } = await supabase.from("climate_survey_responses").insert({
+        cycle_id: cycleId,
+        participant_id: participant.id,
+        respondent_name: respondentName.trim(),
+        respondent_email: respondentEmail.trim() || null,
+        company_satisfaction: climateAnswers.company_satisfaction as number || null,
+        organizational_culture: climateAnswers.organizational_culture as number || null,
+        feels_valued: climateAnswers.feels_valued as string || null,
+        communication_with_superiors: climateAnswers.communication_with_superiors as number || null,
+        superior_interest_development: climateAnswers.superior_interest_development as number || null,
+        feels_supported: climateAnswers.feels_supported as number || null,
+        has_growth_opportunities: climateAnswers.has_growth_opportunities as boolean || null,
+        receives_feedback: climateAnswers.receives_feedback as string || null,
+        training_rating: climateAnswers.training_rating as number || null,
+        company_values_balance: climateAnswers.company_values_balance as boolean || null,
+        company_offers_wellness: climateAnswers.company_offers_wellness as boolean || null,
+        manages_responsibilities: climateAnswers.manages_responsibilities as boolean || null,
+        feels_valued_for_work: climateAnswers.feels_valued_for_work as boolean || null,
+        adequate_recognition: climateAnswers.adequate_recognition as boolean || null,
+        rewards_rating: climateAnswers.rewards_rating as number || null,
+        feels_comfortable_safe: climateAnswers.feels_comfortable_safe as boolean || null,
+        good_coworker_relationship: climateAnswers.good_coworker_relationship as boolean || null,
+        diversity_inclusion: climateAnswers.diversity_inclusion as number || null,
+        what_company_does_well: climateAnswers.what_company_does_well as string || null,
+        what_company_should_improve: climateAnswers.what_company_should_improve as string || null,
+        enjoys_working_score: climateAnswers.enjoys_working_score as number || null,
+        would_recommend_score: climateAnswers.would_recommend_score as number || null,
+        open_feedback: climateAnswers.open_feedback as string || null,
+      });
+
+      if (climateError) throw climateError;
+
       setStep("success");
       toast.success("Avaliação enviada com sucesso!");
     } catch (error) {
@@ -322,24 +410,41 @@ export default function UnifiedAssessmentPage() {
 
   // Calculate progress
   const getTotalSteps = () => {
+    let total = climateSections.length; // Climate sections always included
     if (cycleInfo?.type === "both") {
-      return discQuestions.length + 1; // DISC questions + 360 page
+      total += discQuestions.length + 1; // DISC questions + 360 page
     } else if (cycleInfo?.type === "disc") {
-      return discQuestions.length;
+      total += discQuestions.length;
+    } else if (cycleInfo?.type === "360") {
+      total += 1; // 360 page
     }
-    return 1; // Just 360
+    return total;
   };
 
   const getCurrentStep = () => {
+    let currentStep = 0;
+    
     if (step === "disc") {
-      return currentDiscQuestion + 1;
+      currentStep = currentDiscQuestion + 1;
     } else if (step === "360") {
-      if (cycleInfo?.type === "both") {
-        return discQuestions.length + 1;
+      if (cycleInfo?.type === "both" || cycleInfo?.type === "disc") {
+        currentStep = discQuestions.length + 1;
+      } else {
+        currentStep = 1;
       }
-      return 1;
+    } else if (step === "climate") {
+      if (cycleInfo?.type === "both") {
+        currentStep = discQuestions.length + 1 + 1 + currentClimateSection;
+      } else if (cycleInfo?.type === "disc") {
+        currentStep = discQuestions.length + currentClimateSection + 1;
+      } else if (cycleInfo?.type === "360") {
+        currentStep = 1 + currentClimateSection + 1;
+      } else {
+        currentStep = currentClimateSection + 1;
+      }
     }
-    return 0;
+    
+    return currentStep;
   };
 
   const progress = step === "intro" ? 0 : (getCurrentStep() / getTotalSteps()) * 100;
@@ -409,8 +514,9 @@ export default function UnifiedAssessmentPage() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>
-                    {step === "disc" && `Pergunta ${currentDiscQuestion + 1} de ${discQuestions.length}`}
+                    {step === "disc" && `DISC - Pergunta ${currentDiscQuestion + 1} de ${discQuestions.length}`}
                     {step === "360" && "Avaliação 360°"}
+                    {step === "climate" && `Clima - ${climateSections[currentClimateSection].name}`}
                   </span>
                   <span>{Math.round(progress)}%</span>
                 </div>
@@ -611,7 +717,7 @@ export default function UnifiedAssessmentPage() {
               </CardContent>
             </Card>
 
-            {/* Submit */}
+            {/* Navigation */}
             <div className="flex justify-between">
               {cycleInfo.type === "both" && (
                 <Button
@@ -627,22 +733,169 @@ export default function UnifiedAssessmentPage() {
                 </Button>
               )}
               <Button
-                onClick={() => handleSubmit()}
-                disabled={submitting || Object.keys(scores360).length < competencies360.length}
-                className="bg-green-500 hover:bg-green-600 ml-auto"
+                onClick={() => setStep("climate")}
+                disabled={Object.keys(scores360).length < competencies360.length}
+                className="ml-auto"
               >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    Finalizar Avaliação
-                    <CheckCircle2 className="w-4 h-4 ml-2" />
-                  </>
-                )}
+                Próximo: Pesquisa de Clima
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
+            </div>
+          </>
+        )}
+
+        {/* Step: Climate Survey */}
+        {step === "climate" && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5" />
+                  Pesquisa de Clima - {climateSections[currentClimateSection].icon} {climateSections[currentClimateSection].name}
+                </CardTitle>
+                <CardDescription>
+                  Seção {currentClimateSection + 1} de {climateSections.length}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {getQuestionsBySection(climateSections[currentClimateSection].id).map((question) => (
+                  <div key={question.id} className="space-y-3">
+                    <Label className="text-base">
+                      {question.question}
+                      {question.required && <span className="text-red-500 ml-1">*</span>}
+                    </Label>
+
+                    {/* Scale 1-5 */}
+                    {question.type === 'scale_1_5' && (
+                      <div className="space-y-2">
+                        <RadioGroup
+                          value={climateAnswers[question.id]?.toString() || ""}
+                          onValueChange={(value) => setClimateAnswers({ ...climateAnswers, [question.id]: parseInt(value) })}
+                          className="flex gap-4 justify-center"
+                        >
+                          {[1, 2, 3, 4, 5].map((score) => (
+                            <div key={score} className="flex flex-col items-center gap-1">
+                              <RadioGroupItem value={score.toString()} id={`${question.id}-${score}`} />
+                              <Label htmlFor={`${question.id}-${score}`} className="text-xs">
+                                {score}
+                              </Label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                        <div className="flex justify-between text-xs text-muted-foreground px-2">
+                          <span>Muito ruim</span>
+                          <span>Muito bom</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Scale 0-5 */}
+                    {question.type === 'scale_0_5' && (
+                      <div className="space-y-2">
+                        <RadioGroup
+                          value={climateAnswers[question.id]?.toString() || ""}
+                          onValueChange={(value) => setClimateAnswers({ ...climateAnswers, [question.id]: parseInt(value) })}
+                          className="flex gap-3 justify-center"
+                        >
+                          {[0, 1, 2, 3, 4, 5].map((score) => (
+                            <div key={score} className="flex flex-col items-center gap-1">
+                              <RadioGroupItem value={score.toString()} id={`${question.id}-${score}`} />
+                              <Label htmlFor={`${question.id}-${score}`} className="text-xs">
+                                {score}
+                              </Label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                        <div className="flex justify-between text-xs text-muted-foreground px-2">
+                          <span>{question.id.includes('recommend') ? 'Não indicaria' : question.id.includes('enjoys') ? 'Não gosto' : 'Baixo'}</span>
+                          <span>{question.id.includes('recommend') ? 'Indicaria' : question.id.includes('enjoys') ? 'Gosto muito' : 'Alto'}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Boolean */}
+                    {question.type === 'boolean' && (
+                      <RadioGroup
+                        value={climateAnswers[question.id]?.toString() || ""}
+                        onValueChange={(value) => setClimateAnswers({ ...climateAnswers, [question.id]: value === 'true' })}
+                        className="flex gap-6"
+                      >
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="true" id={`${question.id}-yes`} />
+                          <Label htmlFor={`${question.id}-yes`}>Sim</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="false" id={`${question.id}-no`} />
+                          <Label htmlFor={`${question.id}-no`}>Não</Label>
+                        </div>
+                      </RadioGroup>
+                    )}
+
+                    {/* Options */}
+                    {question.type === 'options' && question.options && (
+                      <RadioGroup
+                        value={climateAnswers[question.id]?.toString() || ""}
+                        onValueChange={(value) => setClimateAnswers({ ...climateAnswers, [question.id]: value })}
+                        className="space-y-2"
+                      >
+                        {question.options.map((option) => (
+                          <div key={option.value} className="flex items-center gap-2">
+                            <RadioGroupItem value={option.value} id={`${question.id}-${option.value}`} />
+                            <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    )}
+
+                    {/* Text */}
+                    {question.type === 'text' && (
+                      <Textarea
+                        value={climateAnswers[question.id]?.toString() || ""}
+                        onChange={(e) => setClimateAnswers({ ...climateAnswers, [question.id]: e.target.value })}
+                        placeholder="Digite sua resposta..."
+                        rows={4}
+                      />
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Navigation */}
+            <div className="flex justify-between">
+              <Button
+                variant="outline"
+                onClick={handlePrevClimateSection}
+                className="text-white border-white/30 hover:bg-white/10"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar
+              </Button>
+              
+              {currentClimateSection < climateSections.length - 1 ? (
+                <Button onClick={handleNextClimateSection}>
+                  Próxima Seção
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleNextClimateSection}
+                  disabled={submitting}
+                  className="bg-green-500 hover:bg-green-600"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      Finalizar Avaliação
+                      <CheckCircle2 className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </>
         )}
