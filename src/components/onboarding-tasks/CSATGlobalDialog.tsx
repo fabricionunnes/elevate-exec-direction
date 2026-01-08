@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { format, isToday, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Copy, Search, Building2, MessageSquareHeart, ChevronDown, ChevronRight, Calendar, Star, Clock, CheckCircle2 } from "lucide-react";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface MeetingCSATData {
   meetingId: string;
@@ -253,7 +254,7 @@ export function CSATGlobalDialog({ open, onOpenChange }: CSATGlobalDialogProps) 
   };
 
   const getCSATLink = (accessToken: string) => {
-    return `${window.location.origin}/csat?token=${accessToken}`;
+    return `${getPublicBaseUrl()}/#/csat?token=${accessToken}`;
   };
 
   const copyLink = async (meeting: MeetingCSATData) => {

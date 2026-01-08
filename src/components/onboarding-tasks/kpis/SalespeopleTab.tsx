@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, RefreshCw, Link, Building2 } from "lucide-react";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface Salesperson {
   id: string;
@@ -201,8 +202,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
   };
 
   const copyAccessLink = (person: Salesperson) => {
-    const baseUrl = window.location.origin;
-    const link = `${baseUrl}/kpi-entry/${companyId}?code=${person.access_code}`;
+    const link = `${getPublicBaseUrl()}/#/kpi-entry/${companyId}?code=${person.access_code}`;
     navigator.clipboard.writeText(link);
     toast.success("Link copiado para a área de transferência");
   };

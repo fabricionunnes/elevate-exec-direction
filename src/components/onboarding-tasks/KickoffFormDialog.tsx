@@ -34,6 +34,7 @@ import {
   Link,
   Copy,
 } from "lucide-react";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface Stakeholder {
   name: string;
@@ -290,7 +291,7 @@ export const KickoffFormDialog = ({
   };
 
   const copyFormLink = () => {
-    const link = `${window.location.origin}/kickoff/${companyId}`;
+    const link = `${getPublicBaseUrl()}/#/kickoff/${companyId}`;
     navigator.clipboard.writeText(link);
     toast.success("Link copiado para a área de transferência!");
   };

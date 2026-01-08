@@ -13,6 +13,7 @@ import { Plus, Users, Brain, Copy, BarChart3, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AssessmentReportSheet } from "./AssessmentReportSheet";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface AssessmentCycle {
   id: string;
@@ -345,13 +346,13 @@ export function AssessmentsPanel({ projectId }: Props) {
                     <div className="flex gap-2">
                       <Input
                         readOnly
-                        value={`${window.location.origin}/?public=avaliacao&cycle=${cycle.id}`}
+                        value={`${getPublicBaseUrl()}/?public=avaliacao&cycle=${cycle.id}`}
                         className="font-mono text-xs"
                       />
                       <Button
                         variant="default"
                         onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/?public=avaliacao&cycle=${cycle.id}`);
+                          navigator.clipboard.writeText(`${getPublicBaseUrl()}/?public=avaliacao&cycle=${cycle.id}`);
                           toast.success("Link copiado!");
                         }}
                       >
