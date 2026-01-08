@@ -149,12 +149,27 @@ const OnboardingCompanyDetailPage = () => {
       if (user) {
         const { data: staffMember } = await supabase
           .from("onboarding_staff")
-          .select("role")
+          .select("id, role")
           .eq("user_id", user.id)
           .single();
         
         if (staffMember) {
           setCurrentUserRole(staffMember.role);
+          
+          // For consultants, verify they have access to this company
+          if (staffMember.role === "consultant" && !isNew && companyId) {
+            const { data: companyData } = await supabase
+              .from("onboarding_companies")
+              .select("consultant_id, cs_id")
+              .eq("id", companyId)
+              .single();
+            
+            if (companyData && companyData.consultant_id !== staffMember.id && companyData.cs_id !== staffMember.id) {
+              toast.error("Você não tem acesso a esta empresa");
+              navigate("/onboarding-tasks");
+              return;
+            }
+          }
         }
       }
     } catch (error) {

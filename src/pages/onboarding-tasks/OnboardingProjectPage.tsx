@@ -322,6 +322,9 @@ const OnboardingProjectPage = () => {
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
+      let staffId: string | null = null;
+      let staffRole: string | null = null;
+      
       if (user) {
         // Check if user is staff admin
         const { data: staffMember } = await supabase
@@ -331,6 +334,8 @@ const OnboardingProjectPage = () => {
           .single();
         
         if (staffMember) {
+          staffId = staffMember.id;
+          staffRole = staffMember.role;
           setCurrentUserId(staffMember.id);
           if (staffMember.role === "admin") {
             setIsStaffAdmin(true);
@@ -356,11 +361,32 @@ const OnboardingProjectPage = () => {
       // Fetch project
       const { data: projectData, error: projectError } = await supabase
         .from("onboarding_projects")
-        .select(`*, onboarding_company_id, current_nps, crm_link, documents_link, onboarding_company:onboarding_companies(name)`)
+        .select(`*, onboarding_company_id, current_nps, crm_link, documents_link, consultant_id, cs_id, onboarding_company:onboarding_companies(name, consultant_id, cs_id)`)
         .eq("id", projectId)
         .single();
 
       if (projectError) throw projectError;
+      
+      // For consultants, verify they have access to this project
+      if (staffRole === "consultant" && staffId) {
+        const projectConsultantId = projectData.consultant_id;
+        const projectCsId = projectData.cs_id;
+        const companyConsultantId = projectData.onboarding_company?.consultant_id;
+        const companyCsId = projectData.onboarding_company?.cs_id;
+        
+        const hasAccess = 
+          projectConsultantId === staffId ||
+          projectCsId === staffId ||
+          companyConsultantId === staffId ||
+          companyCsId === staffId;
+        
+        if (!hasAccess) {
+          toast.error("Você não tem acesso a este projeto");
+          navigate("/onboarding-tasks");
+          return;
+        }
+      }
+      
       setProject(projectData);
 
       // Fetch tasks with responsible staff

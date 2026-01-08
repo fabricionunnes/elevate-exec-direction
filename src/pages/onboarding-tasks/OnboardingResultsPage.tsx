@@ -171,11 +171,15 @@ const OnboardingResultsPage = () => {
 
   const clearFilters = () => {
     setSearchTerm("");
-    setFilterConsultant("all");
+    // Don't reset consultant filter for consultants since it's not visible
+    if (currentStaff?.role !== "consultant") {
+      setFilterConsultant("all");
+    }
     setFilterService("all");
   };
 
-  const hasActiveFilters = filterConsultant !== "all" || filterService !== "all" || searchTerm !== "";
+  // For consultants, don't consider consultant filter as active since they only see their own companies
+  const hasActiveFilters = (currentStaff?.role !== "consultant" && filterConsultant !== "all") || filterService !== "all" || searchTerm !== "";
 
   // Get selected company data
   const selectedCompany = useMemo(() => {
@@ -311,21 +315,24 @@ const OnboardingResultsPage = () => {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs text-muted-foreground">Consultor/CS</Label>
-                    <Select value={filterConsultant} onValueChange={setFilterConsultant}>
-                      <SelectTrigger className="w-[180px]">
-                        <Users className="h-4 w-4 mr-2" />
-                        <SelectValue placeholder="Todos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        {consultants.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Consultant filter - hidden for consultants since they only see their own companies */}
+                  {currentStaff.role !== "consultant" && (
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs text-muted-foreground">Consultor/CS</Label>
+                      <Select value={filterConsultant} onValueChange={setFilterConsultant}>
+                        <SelectTrigger className="w-[180px]">
+                          <Users className="h-4 w-4 mr-2" />
+                          <SelectValue placeholder="Todos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          {consultants.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <div className="flex flex-col gap-1.5">
                     <Label className="text-xs text-muted-foreground">Serviço</Label>
