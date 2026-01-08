@@ -88,8 +88,9 @@ const OnboardingResultsPage = () => {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (!staff || (staff.role !== "admin" && staff.role !== "cs")) {
-        toast.error("Acesso restrito a Admin e CS");
+      // Admin, CS and Consultants can access
+      if (!staff || (staff.role !== "admin" && staff.role !== "cs" && staff.role !== "consultant")) {
+        toast.error("Acesso restrito");
         navigate("/onboarding-tasks");
         return;
       }
@@ -138,9 +139,16 @@ const OnboardingResultsPage = () => {
     }
   };
 
-  // Filtered companies
+  // Filtered companies - consultants only see their own companies
   const filteredCompanies = useMemo(() => {
     return companies.filter(company => {
+      // Consultants can only see their own companies
+      if (currentStaff?.role === "consultant") {
+        if (company.consultant_id !== currentStaff.id && company.cs_id !== currentStaff.id) {
+          return false;
+        }
+      }
+      
       // Search filter
       const matchesSearch = searchTerm === "" || 
         company.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -159,7 +167,7 @@ const OnboardingResultsPage = () => {
       
       return matchesSearch && matchesConsultant && matchesService;
     });
-  }, [companies, searchTerm, filterConsultant, filterService, projects]);
+  }, [companies, searchTerm, filterConsultant, filterService, projects, currentStaff]);
 
   const clearFilters = () => {
     setSearchTerm("");
