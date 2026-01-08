@@ -8,9 +8,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface HealthScoreWidgetProps {
   projectId: string;
   onViewDetails?: () => void;
+  compact?: boolean;
 }
 
-export const HealthScoreWidget = ({ projectId, onViewDetails }: HealthScoreWidgetProps) => {
+export const HealthScoreWidget = ({ projectId, onViewDetails, compact = false }: HealthScoreWidgetProps) => {
   const { score, loading, calculating, calculateScore } = useHealthScore(projectId);
 
   const riskInfo = score ? getRiskLevelInfo(score.risk_level) : null;
@@ -44,15 +45,15 @@ export const HealthScoreWidget = ({ projectId, onViewDetails }: HealthScoreWidge
 
   if (loading) {
     return (
-      <Card className="border-2">
-        <CardHeader className="pb-2">
+      <Card className={cn("border-2", compact && "h-full")}>
+        <CardHeader className={cn("pb-2", compact && "py-3")}>
           <CardTitle className="flex items-center gap-2 text-base">
             <Heart className="h-5 w-5" />
             Saúde do Cliente
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Skeleton className="h-16 w-full mb-2" />
+        <CardContent className={compact ? "py-2" : ""}>
+          <Skeleton className={cn("w-full mb-2", compact ? "h-10" : "h-16")} />
           <Skeleton className="h-4 w-24" />
         </CardContent>
       </Card>
@@ -61,15 +62,15 @@ export const HealthScoreWidget = ({ projectId, onViewDetails }: HealthScoreWidge
 
   if (!score) {
     return (
-      <Card className="border-2 border-dashed">
-        <CardHeader className="pb-2">
+      <Card className={cn("border-2 border-dashed", compact && "h-full")}>
+        <CardHeader className={cn("pb-2", compact && "py-3")}>
           <CardTitle className="flex items-center gap-2 text-base">
             <Heart className="h-5 w-5 text-muted-foreground" />
             Saúde do Cliente
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center py-6">
-          <p className="text-sm text-muted-foreground mb-4 text-center">
+        <CardContent className={cn("flex flex-col items-center justify-center", compact ? "py-3" : "py-6")}>
+          <p className="text-sm text-muted-foreground mb-3 text-center">
             Score ainda não calculado
           </p>
           <Button onClick={calculateScore} disabled={calculating} size="sm">
@@ -85,6 +86,45 @@ export const HealthScoreWidget = ({ projectId, onViewDetails }: HealthScoreWidge
               </>
             )}
           </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (compact) {
+    return (
+      <Card className={cn("border-2 h-full", riskInfo?.border)}>
+        <CardContent className="p-4 h-full flex flex-col justify-center">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Heart className={cn("h-4 w-4", riskInfo?.color)} />
+              <span className="text-sm font-medium">Saúde do Cliente</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={calculateScore}
+              disabled={calculating}
+              title="Recalcular"
+            >
+              <RefreshCw className={cn("h-3 w-3", calculating && "animate-spin")} />
+            </Button>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className={cn("text-3xl font-bold", getScoreColor(score.total_score))}>
+              {score.total_score}
+            </div>
+            <div className="flex-1">
+              <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium", riskInfo?.bg, riskInfo?.color)}>
+                {riskInfo?.label}
+              </div>
+              <div className="flex items-center gap-1 mt-1">
+                <TrendIcon />
+                <span className={cn("text-xs", trendInfo?.color)}>{trendInfo?.label}</span>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
