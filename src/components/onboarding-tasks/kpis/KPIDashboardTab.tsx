@@ -36,6 +36,7 @@ interface KPI {
   kpi_type: "numeric" | "monetary" | "percentage";
   periodicity: "daily" | "weekly" | "monthly";
   target_value: number;
+  effective_target?: number; // Monthly target or default target
   is_individual: boolean;
   is_active: boolean;
 }
@@ -97,12 +98,16 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
     }
 
     try {
-      const [kpisRes, salespeopleRes, entriesRes, unitsRes, companyRes] = await Promise.all([
+      // Get the current month for monthly targets
+      const currentMonthYear = format(new Date(), "yyyy-MM");
+
+      const [kpisRes, salespeopleRes, entriesRes, unitsRes, companyRes, monthlyTargetsRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
         supabase.from("company_salespeople").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("kpi_entries").select("*").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end),
         supabase.from("company_units").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("onboarding_companies").select("contract_start_date").eq("id", companyId).single(),
+        supabase.from("kpi_monthly_targets").select("*").eq("company_id", companyId).eq("month_year", currentMonthYear),
       ]);
 
       console.log("[KPIDashboardTab] Results:", {
@@ -114,6 +119,7 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
         entriesError: entriesRes.error,
         units: unitsRes.data?.length || 0,
         unitsError: unitsRes.error,
+        monthlyTargets: monthlyTargetsRes.data?.length || 0,
       });
 
       if (kpisRes.error) throw kpisRes.error;
@@ -121,7 +127,19 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
       if (entriesRes.error) throw entriesRes.error;
       if (unitsRes.error) throw unitsRes.error;
 
-      setKpis((kpisRes.data || []) as KPI[]);
+      // Build map of monthly targets
+      const monthlyTargetMap: Record<string, number> = {};
+      (monthlyTargetsRes.data || []).forEach((mt: any) => {
+        monthlyTargetMap[mt.kpi_id] = mt.target_value;
+      });
+
+      // Merge monthly targets into KPIs
+      const kpisWithTargets = (kpisRes.data || []).map((kpi: any) => ({
+        ...kpi,
+        effective_target: monthlyTargetMap[kpi.id] !== undefined ? monthlyTargetMap[kpi.id] : kpi.target_value,
+      }));
+
+      setKpis(kpisWithTargets as KPI[]);
       setSalespeople(salespeopleRes.data || []);
       setEntries(entriesRes.data || []);
       setUnits(unitsRes.data || []);
@@ -173,11 +191,13 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
     const endDate = new Date(dateRange.end);
     const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     
-    let targetForPeriod = kpi.target_value;
+    // Use effective_target (monthly target or default)
+    const baseTarget = kpi.effective_target ?? kpi.target_value;
+    let targetForPeriod = baseTarget;
     if (kpi.periodicity === "daily") {
-      targetForPeriod = kpi.target_value * daysDiff;
+      targetForPeriod = baseTarget * daysDiff;
     } else if (kpi.periodicity === "weekly") {
-      targetForPeriod = kpi.target_value * Math.ceil(daysDiff / 7);
+      targetForPeriod = baseTarget * Math.ceil(daysDiff / 7);
     }
     // For monthly, use single target
 
@@ -212,12 +232,13 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
       const kpiEntries = monthEntries.filter(e => e.kpi_id === kpi.id);
       const kpiTotal = kpiEntries.reduce((sum, e) => sum + e.value, 0);
       
-      // Use monthly target directly
-      let monthlyTarget = kpi.target_value;
+      // Use effective_target (monthly target or default)
+      const baseTarget = kpi.effective_target ?? kpi.target_value;
+      let monthlyTarget = baseTarget;
       if (kpi.periodicity === "daily") {
-        monthlyTarget = kpi.target_value * daysInMonth;
+        monthlyTarget = baseTarget * daysInMonth;
       } else if (kpi.periodicity === "weekly") {
-        monthlyTarget = kpi.target_value * Math.ceil(daysInMonth / 7);
+        monthlyTarget = baseTarget * Math.ceil(daysInMonth / 7);
       }
 
       // Only sum monetary KPIs for the main projection (faturamento)
