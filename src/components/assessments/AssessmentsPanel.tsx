@@ -345,13 +345,13 @@ export function AssessmentsPanel({ projectId }: Props) {
                     <div className="flex gap-2">
                       <Input
                         readOnly
-                        value={`${window.location.origin}/avaliacao?cycle=${cycle.id}`}
+                        value={`${window.location.origin}/#/avaliacao?cycle=${cycle.id}`}
                         className="font-mono text-xs"
                       />
                       <Button
                         variant="default"
                         onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/avaliacao?cycle=${cycle.id}`);
+                          navigator.clipboard.writeText(`${window.location.origin}/#/avaliacao?cycle=${cycle.id}`);
                           toast.success("Link copiado!");
                         }}
                       >

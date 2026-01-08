@@ -724,7 +724,7 @@ export default function UnifiedAssessmentPage() {
             </Card>
 
             {/* Navigation */}
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               {cycleInfo.type === "both" && (
                 <Button
                   variant="outline"
@@ -738,10 +738,19 @@ export default function UnifiedAssessmentPage() {
                   Voltar ao DISC
                 </Button>
               )}
+
+              {/* For 360-only cycles, allow finishing without the climate survey */}
+              {cycleInfo.type === "360" && (
+                <Button onClick={() => handleSubmit()} className="ml-auto">
+                  Finalizar
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              )}
+
               <Button
                 onClick={() => setStep("climate")}
                 disabled={Object.keys(scores360).length < competencies360.length}
-                className="ml-auto"
+                variant={cycleInfo.type === "360" ? "outline" : "default"}
               >
                 Próximo: Pesquisa de Clima
                 <ArrowRight className="w-4 h-4 ml-2" />
