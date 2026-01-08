@@ -63,6 +63,7 @@ interface SalesHistoryEntry {
   sales_count: number | null;
   notes: string | null;
   is_pre_unv: boolean;
+  target_revenue: number | null;
 }
 
 interface SalesHistoryDialogProps {
@@ -81,6 +82,7 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   const [revenue, setRevenue] = useState("");
+  const [targetRevenue, setTargetRevenue] = useState("");
   const [salesCount, setSalesCount] = useState("");
   const [notes, setNotes] = useState("");
   const [isPreUnv, setIsPreUnv] = useState(true);
@@ -115,6 +117,7 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
     setSelectedMonth("");
     setSelectedYear("");
     setRevenue("");
+    setTargetRevenue("");
     setSalesCount("");
     setNotes("");
     setIsPreUnv(true);
@@ -141,6 +144,7 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
         company_id: companyId,
         month_year: format(monthDate, "yyyy-MM-dd"),
         revenue: parseFloat(revenue.replace(/\./g, "").replace(",", ".")),
+        target_revenue: targetRevenue ? parseFloat(targetRevenue.replace(/\./g, "").replace(",", ".")) : null,
         sales_count: salesCount ? parseInt(salesCount) : null,
         notes: notes || null,
         is_pre_unv: isPreUnv,
@@ -185,6 +189,7 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
     setSelectedMonth(String(date.getMonth() + 1).padStart(2, '0'));
     setSelectedYear(String(date.getFullYear()));
     setRevenue(entry.revenue.toString());
+    setTargetRevenue(entry.target_revenue?.toString() || "");
     setSalesCount(entry.sales_count?.toString() || "");
     setNotes(entry.notes || "");
     setIsPreUnv(entry.is_pre_unv);
@@ -233,13 +238,14 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
 
         <div className="space-y-6">
           {/* Form */}
-          <div className="grid gap-4 p-4 border rounded-lg bg-muted/30">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+            {/* Row 1: Mês, Ano, Período */}
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label>Mês *</Label>
+                <Label className="text-xs text-muted-foreground">Mês *</Label>
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Selecione" />
+                    <SelectValue placeholder="Mês" />
                   </SelectTrigger>
                   <SelectContent>
                     {MONTHS.map((month) => (
@@ -251,10 +257,10 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
                 </Select>
               </div>
               <div>
-                <Label>Ano *</Label>
+                <Label className="text-xs text-muted-foreground">Ano *</Label>
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Selecione" />
+                    <SelectValue placeholder="Ano" />
                   </SelectTrigger>
                   <SelectContent>
                     {getYearOptions().map((year) => (
@@ -265,10 +271,27 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex flex-col justify-end">
+                <Label className="text-xs text-muted-foreground mb-1">Período</Label>
+                <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-background">
+                  <Switch
+                    id="isPreUnv"
+                    checked={isPreUnv}
+                    onCheckedChange={setIsPreUnv}
+                    className="scale-90"
+                  />
+                  <Label htmlFor="isPreUnv" className="text-sm cursor-pointer">
+                    {isPreUnv ? "Antes UNV" : "Depois UNV"}
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Valores */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div>
-                <Label htmlFor="revenue">Faturamento (R$) *</Label>
+                <Label className="text-xs text-muted-foreground">Faturamento (R$) *</Label>
                 <Input
-                  id="revenue"
                   type="number"
                   value={revenue}
                   onChange={(e) => setRevenue(e.target.value)}
@@ -277,9 +300,18 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
                 />
               </div>
               <div>
-                <Label htmlFor="salesCount">Qtd. Vendas</Label>
+                <Label className="text-xs text-muted-foreground">Meta (R$)</Label>
                 <Input
-                  id="salesCount"
+                  type="number"
+                  value={targetRevenue}
+                  onChange={(e) => setTargetRevenue(e.target.value)}
+                  placeholder="Opcional"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Qtd. Vendas</Label>
+                <Input
                   type="number"
                   value={salesCount}
                   onChange={(e) => setSalesCount(e.target.value)}
@@ -287,23 +319,18 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
                   className="mt-1"
                 />
               </div>
-              <div className="flex items-end gap-2">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="isPreUnv"
-                    checked={isPreUnv}
-                    onCheckedChange={setIsPreUnv}
-                  />
-                  <Label htmlFor="isPreUnv" className="text-sm">
-                    {isPreUnv ? "Antes da UNV" : "Depois da UNV"}
-                  </Label>
-                </div>
+              <div className="flex items-end">
+                <Button onClick={handleSubmit} disabled={saving} className="w-full gap-2">
+                  <Plus className="h-4 w-4" />
+                  {editingId ? "Atualizar" : "Adicionar"}
+                </Button>
               </div>
             </div>
+
+            {/* Row 3: Observações */}
             <div>
-              <Label htmlFor="notes">Observações</Label>
+              <Label className="text-xs text-muted-foreground">Observações</Label>
               <Textarea
-                id="notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Notas sobre este período..."
@@ -311,17 +338,14 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
                 rows={2}
               />
             </div>
-            <div className="flex gap-2">
-              <Button onClick={handleSubmit} disabled={saving} className="gap-2">
-                <Plus className="h-4 w-4" />
-                {editingId ? "Atualizar" : "Adicionar"}
-              </Button>
-              {editingId && (
-                <Button variant="outline" onClick={resetForm}>
-                  Cancelar
+
+            {editingId && (
+              <div className="flex justify-end">
+                <Button variant="outline" size="sm" onClick={resetForm}>
+                  Cancelar Edição
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Table */}
@@ -332,59 +356,86 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
               Nenhum histórico cadastrado. Adicione dados de meses anteriores para comparação.
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Mês/Ano</TableHead>
-                  <TableHead>Faturamento</TableHead>
-                  <TableHead>Vendas</TableHead>
-                  <TableHead>Período</TableHead>
-                  <TableHead>Obs.</TableHead>
-                  <TableHead className="w-20">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="font-medium">
-                      {format(new Date(entry.month_year), "MMMM yyyy", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell>{formatCurrency(entry.revenue)}</TableCell>
-                    <TableCell>{entry.sales_count ?? "—"}</TableCell>
-                    <TableCell>
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        entry.is_pre_unv 
-                          ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" 
-                          : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      }`}>
-                        {entry.is_pre_unv ? "Antes UNV" : "Depois UNV"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="max-w-[150px] truncate" title={entry.notes || ""}>
-                      {entry.notes || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(entry)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(entry.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="font-semibold">Mês/Ano</TableHead>
+                    <TableHead className="font-semibold">Realizado</TableHead>
+                    <TableHead className="font-semibold">Meta</TableHead>
+                    <TableHead className="font-semibold">Vendas</TableHead>
+                    <TableHead className="font-semibold">Período</TableHead>
+                    <TableHead className="w-20">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {entries.map((entry) => {
+                    const atingimento = entry.target_revenue && entry.target_revenue > 0
+                      ? ((entry.revenue / entry.target_revenue) * 100).toFixed(0)
+                      : null;
+                    
+                    return (
+                      <TableRow key={entry.id}>
+                        <TableCell className="font-medium">
+                          {format(new Date(entry.month_year), "MMM/yy", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell className="font-medium text-green-600">
+                          {formatCurrency(entry.revenue)}
+                        </TableCell>
+                        <TableCell>
+                          {entry.target_revenue ? (
+                            <div className="flex flex-col">
+                              <span>{formatCurrency(entry.target_revenue)}</span>
+                              {atingimento && (
+                                <span className={`text-xs ${
+                                  parseFloat(atingimento) >= 100 
+                                    ? 'text-green-600' 
+                                    : parseFloat(atingimento) >= 80 
+                                    ? 'text-amber-600' 
+                                    : 'text-red-600'
+                                }`}>
+                                  {atingimento}%
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{entry.sales_count ?? "—"}</TableCell>
+                        <TableCell>
+                          <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
+                            entry.is_pre_unv 
+                              ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" 
+                              : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          }`}>
+                            {entry.is_pre_unv ? "Antes" : "Depois"}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(entry)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(entry.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
       </DialogContent>

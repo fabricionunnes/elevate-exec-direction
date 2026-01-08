@@ -690,6 +690,7 @@ export type Database = {
           notes: string | null
           revenue: number
           sales_count: number | null
+          target_revenue: number | null
           updated_at: string
         }
         Insert: {
@@ -701,6 +702,7 @@ export type Database = {
           notes?: string | null
           revenue?: number
           sales_count?: number | null
+          target_revenue?: number | null
           updated_at?: string
         }
         Update: {
@@ -712,6 +714,7 @@ export type Database = {
           notes?: string | null
           revenue?: number
           sales_count?: number | null
+          target_revenue?: number | null
           updated_at?: string
         }
         Relationships: [
