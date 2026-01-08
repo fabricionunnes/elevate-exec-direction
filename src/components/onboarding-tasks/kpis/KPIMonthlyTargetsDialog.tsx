@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -17,8 +17,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Save, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Save, Calendar, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
 import { format, addMonths, subMonths, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -56,13 +57,16 @@ export const KPIMonthlyTargetsDialog = ({
   const [existingTargets, setExistingTargets] = useState<Record<string, MonthlyTarget>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [copiedFromPrevious, setCopiedFromPrevious] = useState(false);
 
   const monthYear = format(selectedDate, "yyyy-MM");
   const monthLabel = format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR });
+  const previousMonthYear = format(subMonths(selectedDate, 1), "yyyy-MM");
 
   useEffect(() => {
     if (open) {
       fetchTargets();
+      setCopiedFromPrevious(false);
     }
   }, [open, monthYear, companyId]);
 
@@ -85,13 +89,6 @@ export const KPIMonthlyTargetsDialog = ({
         valuesMap[t.kpi_id] = t.target_value;
       });
 
-      // For KPIs without monthly target, use the default target_value
-      kpis.forEach((kpi) => {
-        if (!(kpi.id in valuesMap)) {
-          valuesMap[kpi.id] = kpi.target_value;
-        }
-      });
-
       setExistingTargets(targetsMap);
       setTargets(valuesMap);
     } catch (error) {
@@ -102,15 +99,57 @@ export const KPIMonthlyTargetsDialog = ({
     }
   };
 
+  const handleCopyFromPrevious = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("kpi_monthly_targets")
+        .select("*")
+        .eq("company_id", companyId)
+        .eq("month_year", previousMonthYear);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        // If no previous month data, copy from default KPI targets
+        const defaultTargets: Record<string, number> = {};
+        kpis.forEach((kpi) => {
+          defaultTargets[kpi.id] = kpi.target_value;
+        });
+        setTargets(defaultTargets);
+        toast.info("Metas padrão aplicadas (mês anterior sem dados)");
+      } else {
+        const copiedMap: Record<string, number> = {};
+        data.forEach((t: any) => {
+          copiedMap[t.kpi_id] = t.target_value;
+        });
+        setTargets(copiedMap);
+        toast.success("Metas copiadas do mês anterior");
+      }
+      setCopiedFromPrevious(true);
+    } catch (error) {
+      console.error("Error copying targets:", error);
+      toast.error("Erro ao copiar metas");
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      const upserts = kpis.map((kpi) => ({
-        kpi_id: kpi.id,
-        company_id: companyId,
-        month_year: monthYear,
-        target_value: targets[kpi.id] || 0,
-      }));
+      // Only save KPIs that have a value set
+      const upserts = kpis
+        .filter((kpi) => targets[kpi.id] !== undefined && targets[kpi.id] !== null)
+        .map((kpi) => ({
+          kpi_id: kpi.id,
+          company_id: companyId,
+          month_year: monthYear,
+          target_value: targets[kpi.id] || 0,
+        }));
+
+      if (upserts.length === 0) {
+        toast.warning("Nenhuma meta para salvar");
+        setSaving(false);
+        return;
+      }
 
       // Upsert all targets for the month
       const { error } = await supabase
@@ -148,16 +187,23 @@ export const KPIMonthlyTargetsDialog = ({
     return value.toLocaleString("pt-BR");
   };
 
+  const hasMonthlyTarget = (kpiId: string) => {
+    return existingTargets[kpiId] !== undefined;
+  };
+
   const activeKpis = kpis.filter((k: any) => k.is_active !== false);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             Metas Mensais por KPI
           </DialogTitle>
+          <DialogDescription>
+            Defina metas específicas para cada KPI em cada mês. Se não definir, será usado o valor padrão do KPI.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -166,9 +212,31 @@ export const KPIMonthlyTargetsDialog = ({
             <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="font-medium capitalize">{monthLabel}</span>
+            <span className="font-medium capitalize text-lg">{monthLabel}</span>
             <Button variant="ghost" size="icon" onClick={handleNextMonth}>
               <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Copy from previous button */}
+          <div className="flex justify-end">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleCopyFromPrevious}
+              disabled={loading}
+            >
+              {copiedFromPrevious ? (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Copiado
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copiar do Mês Anterior
+                </>
+              )}
             </Button>
           </div>
 
@@ -187,6 +255,7 @@ export const KPIMonthlyTargetsDialog = ({
                   <TableHead>KPI</TableHead>
                   <TableHead>Meta Padrão</TableHead>
                   <TableHead>Meta do Mês</TableHead>
+                  <TableHead className="w-[80px]">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -199,24 +268,31 @@ export const KPIMonthlyTargetsDialog = ({
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {kpi.kpi_type === "monetary" && (
-                          <span className="text-muted-foreground">R$</span>
+                          <span className="text-muted-foreground text-sm">R$</span>
                         )}
                         <Input
                           type="number"
-                          value={targets[kpi.id] || ""}
+                          value={targets[kpi.id] ?? ""}
                           onChange={(e) =>
                             setTargets({
                               ...targets,
-                              [kpi.id]: parseFloat(e.target.value) || 0,
+                              [kpi.id]: e.target.value === "" ? undefined : parseFloat(e.target.value) || 0,
                             })
                           }
                           className="w-32"
-                          placeholder="0"
+                          placeholder={kpi.target_value.toString()}
                         />
                         {kpi.kpi_type === "percentage" && (
-                          <span className="text-muted-foreground">%</span>
+                          <span className="text-muted-foreground text-sm">%</span>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {hasMonthlyTarget(kpi.id) ? (
+                        <Badge variant="default" className="text-xs">Definida</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">Padrão</Badge>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
