@@ -124,12 +124,11 @@ const OnboardingResultsPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [companiesRes, staffRes, servicesRes, projectsRes, goalsRes] = await Promise.all([
+      const [companiesRes, staffRes, servicesRes, projectsRes] = await Promise.all([
         supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status").eq("status", "active").order("name"),
         supabase.from("onboarding_staff").select("id, name, role").eq("is_active", true).order("name"),
         supabase.from("onboarding_services").select("id, name").order("name"),
         supabase.from("onboarding_projects").select("id, product_id, product_name, onboarding_company_id, status").eq("status", "active"),
-        supabase.from("kpi_monthly_targets").select("company_id").gt("target_value", 0),
       ]);
 
       setCompanies(companiesRes.data || []);
@@ -137,12 +136,20 @@ const OnboardingResultsPage = () => {
       setServices(servicesRes.data || []);
       setProjects(projectsRes.data || []);
       
+      // Fetch companies with goals - separate query to get distinct company_ids
+      const { data: goalsData } = await supabase
+        .from("kpi_monthly_targets")
+        .select("company_id")
+        .gt("target_value", 0);
+      
       // Create set of company IDs that have goals
       const companyIdsWithGoals = new Set<string>();
-      (goalsRes.data || []).forEach(g => {
+      (goalsData || []).forEach(g => {
         if (g.company_id) companyIdsWithGoals.add(g.company_id);
       });
       setCompaniesWithGoals(companyIdsWithGoals);
+      
+      console.log("Companies with goals:", Array.from(companyIdsWithGoals));
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Erro ao carregar dados");
