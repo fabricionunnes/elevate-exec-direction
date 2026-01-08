@@ -21,7 +21,8 @@ import {
   Search,
   ArrowLeft,
   ChevronRight,
-  X
+  X,
+  Target
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -66,12 +67,14 @@ const OnboardingResultsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterConsultant, setFilterConsultant] = useState<string>(() => searchParams.get("consultant") || "all");
   const [filterService, setFilterService] = useState<string>(() => searchParams.get("service") || "all");
+  const [filterGoals, setFilterGoals] = useState<string>(() => searchParams.get("goals") || "all");
   
   // Data states
   const [companies, setCompanies] = useState<Company[]>([]);
   const [consultants, setConsultants] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [companiesWithGoals, setCompaniesWithGoals] = useState<Set<string>>(new Set());
 
   // Check staff permissions
   useEffect(() => {
@@ -114,23 +117,32 @@ const OnboardingResultsPage = () => {
     if (selectedCompanyId) params.set("company", selectedCompanyId);
     if (filterConsultant !== "all") params.set("consultant", filterConsultant);
     if (filterService !== "all") params.set("service", filterService);
+    if (filterGoals !== "all") params.set("goals", filterGoals);
     setSearchParams(params, { replace: true });
-  }, [selectedCompanyId, filterConsultant, filterService, setSearchParams]);
+  }, [selectedCompanyId, filterConsultant, filterService, filterGoals, setSearchParams]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [companiesRes, staffRes, servicesRes, projectsRes] = await Promise.all([
+      const [companiesRes, staffRes, servicesRes, projectsRes, goalsRes] = await Promise.all([
         supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status").eq("status", "active").order("name"),
         supabase.from("onboarding_staff").select("id, name, role").eq("is_active", true).order("name"),
         supabase.from("onboarding_services").select("id, name").order("name"),
         supabase.from("onboarding_projects").select("id, product_id, product_name, onboarding_company_id, status").eq("status", "active"),
+        supabase.from("kpi_monthly_targets").select("company_id").gt("target_value", 0),
       ]);
 
       setCompanies(companiesRes.data || []);
       setConsultants((staffRes.data || []).filter(s => s.role === "consultant" || s.role === "cs"));
       setServices(servicesRes.data || []);
       setProjects(projectsRes.data || []);
+      
+      // Create set of company IDs that have goals
+      const companyIdsWithGoals = new Set<string>();
+      (goalsRes.data || []).forEach(g => {
+        if (g.company_id) companyIdsWithGoals.add(g.company_id);
+      });
+      setCompaniesWithGoals(companyIdsWithGoals);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Erro ao carregar dados");
@@ -165,9 +177,16 @@ const OnboardingResultsPage = () => {
         matchesService = companyProjects.some(p => p.product_id === filterService);
       }
       
-      return matchesSearch && matchesConsultant && matchesService;
+      // Goals filter
+      let matchesGoals = filterGoals === "all";
+      if (!matchesGoals) {
+        const hasGoals = companiesWithGoals.has(company.id);
+        matchesGoals = filterGoals === "with_goals" ? hasGoals : !hasGoals;
+      }
+      
+      return matchesSearch && matchesConsultant && matchesService && matchesGoals;
     });
-  }, [companies, searchTerm, filterConsultant, filterService, projects, currentStaff]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterGoals, projects, currentStaff, companiesWithGoals]);
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -176,10 +195,11 @@ const OnboardingResultsPage = () => {
       setFilterConsultant("all");
     }
     setFilterService("all");
+    setFilterGoals("all");
   };
 
   // For consultants, don't consider consultant filter as active since they only see their own companies
-  const hasActiveFilters = (currentStaff?.role !== "consultant" && filterConsultant !== "all") || filterService !== "all" || searchTerm !== "";
+  const hasActiveFilters = (currentStaff?.role !== "consultant" && filterConsultant !== "all") || filterService !== "all" || filterGoals !== "all" || searchTerm !== "";
 
   // Get selected company data
   const selectedCompany = useMemo(() => {
@@ -346,6 +366,21 @@ const OnboardingResultsPage = () => {
                         {services.map(s => (
                           <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Metas</Label>
+                    <Select value={filterGoals} onValueChange={setFilterGoals}>
+                      <SelectTrigger className="w-[180px]">
+                        <Target className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        <SelectItem value="with_goals">Com metas cadastradas</SelectItem>
+                        <SelectItem value="without_goals">Sem metas cadastradas</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
