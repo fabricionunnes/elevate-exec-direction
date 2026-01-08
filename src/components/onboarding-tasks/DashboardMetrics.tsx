@@ -306,30 +306,53 @@ const DashboardMetrics = ({
   }, [projects, dateRange]);
 
   const ltvMetrics = useMemo(() => {
-    const today = new Date();
+    // Calcular churn anual baseado nos dados do período
+    const currentYear = dateRange.start.getFullYear();
+    const monthsData = eachMonthOfInterval({ start: startOfYear(new Date(currentYear, 0, 1)), end: endOfYear(new Date(currentYear, 0, 1)) });
     
-    // Tempo médio: somente empresas com data de início de contrato
-    const companiesWithContractStart = filteredCompanies.filter(c => c.contract_start_date);
-    const companiesWithLifetime = companiesWithContractStart.map(company => {
-      const startDate = new Date(company.contract_start_date!);
-      let endDate: Date;
-      if (company.status === "closed" || company.status === "inactive") {
-        endDate = company.contract_end_date ? new Date(company.contract_end_date) : company.status_changed_at ? new Date(company.status_changed_at) : today;
-      } else {
-        endDate = today;
+    let totalChurnRate = 0;
+    let monthsWithData = 0;
+    
+    monthsData.forEach(monthDate => {
+      const monthStart = startOfMonth(monthDate);
+      const monthEnd = endOfMonth(monthDate);
+      
+      const closedInMonth = projects.filter(p => {
+        if (p.status !== "closed" && p.status !== "completed") return false;
+        const churnDateStr = p.churn_date || p.updated_at;
+        const dateOnly = churnDateStr.substring(0, 10);
+        const churnDate = new Date(dateOnly + "T12:00:00");
+        return isWithinInterval(churnDate, { start: monthStart, end: monthEnd });
+      }).length;
+      
+      const activeAtMonthStart = projects.filter(p => {
+        if (new Date(p.created_at) > monthEnd) return false;
+        if (p.status === "closed" || p.status === "completed") {
+          const churnDateStr = p.churn_date || p.updated_at;
+          const dateOnly = churnDateStr.substring(0, 10);
+          const churnDate = new Date(dateOnly + "T12:00:00");
+          return churnDate >= monthStart;
+        }
+        return true;
+      }).length;
+      
+      if (activeAtMonthStart > 0) {
+        const monthChurnRate = (closedInMonth / activeAtMonthStart) * 100;
+        totalChurnRate += monthChurnRate;
+        monthsWithData++;
       }
-      const lifetimeMonths = Math.max(0, differenceInMonths(endDate, startDate));
-      return { lifetimeMonths, contractValue: company.contract_value };
     });
     
-    const totalCompaniesWithStart = companiesWithLifetime.length;
-    const averageLifetimeMonths = totalCompaniesWithStart > 0 
-      ? Math.round((companiesWithLifetime.reduce((sum, c) => sum + c.lifetimeMonths, 0) / totalCompaniesWithStart) * 10) / 10 
-      : 0;
+    // Churn mensal médio (em percentual)
+    const averageMonthlyChurnPercent = monthsWithData > 0 ? totalChurnRate / monthsWithData : 0;
+    
+    // Tempo Médio = 1 ÷ Churn Mensal (convertendo percentual para decimal)
+    const churnDecimal = averageMonthlyChurnPercent / 100;
+    const averageLifetimeMonths = churnDecimal > 0 ? Math.round((1 / churnDecimal) * 10) / 10 : 0;
     
     // Ticket médio: somente empresas com valor de contrato
-    const companiesWithValue = companiesWithLifetime.filter(c => c.contractValue && c.contractValue > 0);
-    const totalContractValue = companiesWithValue.reduce((sum, c) => sum + (c.contractValue || 0), 0);
+    const companiesWithValue = filteredCompanies.filter(c => c.contract_value && c.contract_value > 0);
+    const totalContractValue = companiesWithValue.reduce((sum, c) => sum + (c.contract_value || 0), 0);
     const averageTicket = companiesWithValue.length > 0
       ? Math.round(totalContractValue / companiesWithValue.length)
       : 0;
@@ -337,8 +360,8 @@ const DashboardMetrics = ({
     // LTV = Ticket Médio Mensal × Tempo Médio de Permanência (em meses)
     const ltv = Math.round(averageTicket * averageLifetimeMonths);
     
-    return { averageLifetimeMonths, averageTicket, ltv };
-  }, [filteredCompanies]);
+    return { averageLifetimeMonths, ltv };
+  }, [filteredCompanies, projects, dateRange]);
 
   const npsMetrics = useMemo(() => {
     const filteredProjectIds = new Set(projects.map(p => p.id));
@@ -629,14 +652,9 @@ const DashboardMetrics = ({
             <Card>
               <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium flex items-center gap-1 sm:gap-1.5"><Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-indigo-500" />LTV & Retenção</CardTitle></CardHeader>
               <CardContent className="px-3 sm:px-4 pb-2 sm:pb-3">
-                <div className={cn("text-center", staffRole === "admin" && "grid grid-cols-3 gap-2 sm:gap-4")}>
+                <div className="text-center grid grid-cols-2 gap-2 sm:gap-4">
                   <div><p className="text-xl sm:text-2xl font-bold text-indigo-500">{ltvMetrics.averageLifetimeMonths}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Tempo Médio</p></div>
-                  {staffRole === "admin" && (
-                    <>
-                      <div><p className="text-xl sm:text-2xl font-bold text-teal-500">{ltvMetrics.averageTicket > 0 ? `R$ ${(ltvMetrics.averageTicket / 1000).toFixed(1)}k` : "—"}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Ticket Médio</p></div>
-                      <div><p className="text-xl sm:text-2xl font-bold text-emerald-500">{ltvMetrics.ltv > 0 ? `R$ ${(ltvMetrics.ltv / 1000).toFixed(1)}k` : "—"}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">LTV Médio</p></div>
-                    </>
-                  )}
+                  <div><p className="text-xl sm:text-2xl font-bold text-emerald-500">{ltvMetrics.ltv > 0 ? `R$ ${(ltvMetrics.ltv / 1000).toFixed(1)}k` : "—"}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">LTV Médio</p></div>
                 </div>
               </CardContent>
             </Card>
