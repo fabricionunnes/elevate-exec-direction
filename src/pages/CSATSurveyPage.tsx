@@ -24,8 +24,16 @@ interface SurveyContext {
 
 const CSATSurveyPage = () => {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
-  const meetingParam = searchParams.get('meeting');
+
+  const getHashParams = () => {
+    const hash = window.location.hash || "";
+    const idx = hash.indexOf("?");
+    return new URLSearchParams(idx >= 0 ? hash.slice(idx + 1) : "");
+  };
+
+  const hashParams = getHashParams();
+  const token = searchParams.get('token') || hashParams.get('token');
+  const meetingParam = searchParams.get('meeting') || hashParams.get('meeting');
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -49,55 +57,28 @@ const CSATSurveyPage = () => {
 
   const fetchSurveyContext = async () => {
     try {
-      // 1) Find the survey record
-      const surveyQuery = supabase
-        .from('csat_surveys')
-        .select('id, project_id, meeting_id, status, meeting:onboarding_meeting_notes(meeting_title, meeting_date)');
+      const effectiveToken = token;
+      if (!effectiveToken) {
+        setError('Link de pesquisa inválido');
+        return;
+      }
 
-      const { data: surveyData, error: surveyError } = token
-        ? await surveyQuery.eq('access_token', token).maybeSingle()
-        : await surveyQuery.eq('meeting_id', meetingParam).maybeSingle();
+      const { data, error } = await supabase.functions.invoke('csat-public', {
+        body: { action: 'get', token: effectiveToken },
+      });
 
-      if (surveyError || !surveyData) {
+      if (error) {
+        console.error('csat-public get error:', error);
         setError('Pesquisa não encontrada. Solicite um novo link.');
         return;
       }
 
-      if (surveyData.status === 'responded') {
+      if (data?.alreadyResponded) {
         setError('Esta pesquisa já foi respondida');
         return;
       }
 
-      // 2) Check if already responded (defensive)
-      const { data: existingResponse } = await supabase
-        .from('csat_responses')
-        .select('id')
-        .eq('survey_id', surveyData.id)
-        .maybeSingle();
-
-      if (existingResponse) {
-        setError('Esta pesquisa já foi respondida');
-        return;
-      }
-
-      // 3) Project
-      const { data: projectData } = await supabase
-        .from('onboarding_projects')
-        .select('product_name, onboarding_company:onboarding_companies(name)')
-        .eq('id', surveyData.project_id)
-        .single();
-
-      setCtx({
-        surveyId: surveyData.id,
-        meetingId: surveyData.meeting_id,
-        projectId: surveyData.project_id,
-        meetingTitle: (surveyData.meeting as any)?.meeting_title ?? null,
-        meetingDate: (surveyData.meeting as any)?.meeting_date ?? null,
-        project: {
-          product_name: projectData?.product_name || '',
-          company_name: (projectData?.onboarding_company as any)?.name || null,
-        },
-      });
+      setCtx(data);
     } catch (err) {
       console.error('Error fetching CSAT context:', err);
       setError('Erro ao carregar pesquisa');
@@ -114,30 +95,26 @@ const CSATSurveyPage = () => {
 
     setSubmitting(true);
     try {
-      const { error: insertError } = await supabase
-        .from('csat_responses')
-        .insert({
-          survey_id: ctx.surveyId,
-          project_id: ctx.projectId,
-          meeting_id: ctx.meetingId,
+      const { data, error } = await supabase.functions.invoke('csat-public', {
+        body: {
+          action: 'submit',
+          token: token,
           score,
           feedback: feedback || null,
-          respondent_name: respondentName || null,
-        });
+          respondentName: respondentName || null,
+        },
+      });
 
-      if (insertError) {
-        if (insertError.code === '23505') {
-          setError('Esta pesquisa já foi respondida');
-          return;
-        }
-        throw insertError;
+      if (error) {
+        console.error('csat-public submit error:', error);
+        toast.error('Erro ao enviar resposta');
+        return;
       }
 
-      // Mark survey responded
-      await supabase
-        .from('csat_surveys')
-        .update({ status: 'responded' })
-        .eq('id', ctx.surveyId);
+      if (data?.error === 'already_responded') {
+        setError('Esta pesquisa já foi respondida');
+        return;
+      }
 
       setSubmitted(true);
       toast.success('Obrigado pelo seu feedback!');
