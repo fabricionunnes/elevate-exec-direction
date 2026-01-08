@@ -91,6 +91,7 @@ interface DashboardMetricsProps {
   allTasks?: Task[];
   onDataRefresh?: () => void;
   currentStaffUserId?: string | null;
+  selectedConsultantStaffId?: string | null;
   onNpsDetailChange?: (isShowingDetail: boolean) => void;
   onActiveTabChange?: (tab: string) => void;
   staffRole?: string | null;
@@ -107,6 +108,7 @@ const DashboardMetrics = ({
   allTasks: externalTasks,
   onDataRefresh,
   currentStaffUserId,
+  selectedConsultantStaffId,
   onNpsDetailChange,
   onActiveTabChange,
   staffRole
@@ -711,6 +713,7 @@ const DashboardMetrics = ({
               onDataRefresh?.();
             }}
             currentStaffUserId={currentStaffUserId}
+            selectedConsultantStaffId={selectedConsultantStaffId}
           />
         </TabsContent>
 

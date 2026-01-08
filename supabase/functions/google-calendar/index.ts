@@ -226,10 +226,12 @@ Deno.serve(async (req) => {
         console.log("Token refreshed successfully");
       }
 
-      // Fetch calendar events
+      // Fetch calendar events - include past 7 days and next 30 days
       const now = new Date();
-      const timeMin = now.toISOString();
-      const timeMax = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(); // Next 30 days
+      const pastDays = 7;
+      const futureDays = 30;
+      const timeMin = new Date(now.getTime() - pastDays * 24 * 60 * 60 * 1000).toISOString();
+      const timeMax = new Date(now.getTime() + futureDays * 24 * 60 * 60 * 1000).toISOString();
 
       const calendarUrl = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=100`;
 

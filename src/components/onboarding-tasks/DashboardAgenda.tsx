@@ -52,9 +52,10 @@ interface DashboardAgendaProps {
   filteredProjectIds: Set<string>;
   onTaskAdded?: () => void;
   currentStaffUserId?: string | null;
+  selectedConsultantStaffId?: string | null;
 }
 
-export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds, onTaskAdded, currentStaffUserId }: DashboardAgendaProps) => {
+export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds, onTaskAdded, currentStaffUserId, selectedConsultantStaffId }: DashboardAgendaProps) => {
   const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -69,23 +70,56 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(false);
+  const [targetCalendarUserId, setTargetCalendarUserId] = useState<string | null>(null);
 
-  // Fetch Google Calendar events
+  // Get the user_id for the selected consultant (for viewing their calendar)
   useEffect(() => {
-    if (currentStaffUserId) {
-      checkCalendarConnection();
-    }
-  }, [currentStaffUserId]);
+    const fetchConsultantUserId = async () => {
+      if (selectedConsultantStaffId && selectedConsultantStaffId !== "all") {
+        try {
+          const { data } = await supabase
+            .from("onboarding_staff")
+            .select("user_id")
+            .eq("id", selectedConsultantStaffId)
+            .single();
+          
+          if (data?.user_id) {
+            setTargetCalendarUserId(data.user_id);
+          } else {
+            setTargetCalendarUserId(null);
+          }
+        } catch (error) {
+          console.error("Error fetching consultant user_id:", error);
+          setTargetCalendarUserId(null);
+        }
+      } else {
+        // No consultant selected, use current user's calendar
+        setTargetCalendarUserId(null);
+      }
+    };
+
+    fetchConsultantUserId();
+  }, [selectedConsultantStaffId]);
+
+  // Check calendar connection whenever target user changes
+  useEffect(() => {
+    checkCalendarConnection();
+  }, [currentStaffUserId, targetCalendarUserId]);
 
   useEffect(() => {
-    if (calendarConnected && currentStaffUserId) {
+    if (calendarConnected) {
       fetchCalendarEvents();
     }
-  }, [calendarConnected, currentMonth, currentStaffUserId]);
+  }, [calendarConnected, currentMonth, targetCalendarUserId]);
 
   const checkCalendarConnection = async () => {
     try {
-      const { data } = await supabase.functions.invoke("google-calendar?action=check-connection", {
+      const targetUserId = targetCalendarUserId || undefined;
+      const actionUrl = targetUserId 
+        ? `google-calendar?action=check-connection&target_user_id=${targetUserId}`
+        : "google-calendar?action=check-connection";
+      
+      const { data } = await supabase.functions.invoke(actionUrl, {
         body: {},
       });
       setCalendarConnected(data?.connected || false);
@@ -100,7 +134,12 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
     
     setLoadingEvents(true);
     try {
-      const { data, error } = await supabase.functions.invoke("google-calendar?action=events", {
+      const targetUserId = targetCalendarUserId || undefined;
+      const actionUrl = targetUserId 
+        ? `google-calendar?action=events&target_user_id=${targetUserId}`
+        : "google-calendar?action=events";
+
+      const { data, error } = await supabase.functions.invoke(actionUrl, {
         body: {},
       });
 
