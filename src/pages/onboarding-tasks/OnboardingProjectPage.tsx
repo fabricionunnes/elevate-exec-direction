@@ -179,7 +179,7 @@ const OnboardingProjectPage = () => {
   const [showDocsDialog, setShowDocsDialog] = useState(false);
   const [crmLinkInput, setCrmLinkInput] = useState("");
   const [docsLinkInput, setDocsLinkInput] = useState("");
-
+  const [kpiDefaultTab, setKpiDefaultTab] = useState<string | undefined>(undefined);
   // Check for attention/risk alerts when opening project
   const checkProjectAlerts = async () => {
     if (!projectId) return;
@@ -883,7 +883,10 @@ const OnboardingProjectPage = () => {
           projectId={projectId}
           companyName={project.onboarding_company?.name || project.product_name}
           isStaff={true}
-          onNavigateToGoals={() => setActiveTab("kpis")}
+          onNavigateToGoals={() => {
+            setKpiDefaultTab("config");
+            setActiveTab("kpis");
+          }}
         />
       )}
       
@@ -1354,6 +1357,7 @@ const OnboardingProjectPage = () => {
               isAdmin={isAdmin}
               projectId={projectId}
               isStaff={currentUserRole === "admin" || currentUserRole === "cs" || currentUserRole === "consultant"}
+              defaultTab={kpiDefaultTab}
             />
           </TabsContent>
 
