@@ -118,14 +118,14 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false }
         </TabsContent>
 
         <TabsContent value="salespeople" className="mt-6">
-          <SalespeopleTab companyId={companyId} isAdmin={canAccessAllTabs} />
+          <SalespeopleTab companyId={companyId} isAdmin={true} />
         </TabsContent>
 
         <TabsContent value="gamification" className="mt-6">
           <GamificationPanel
             companyId={companyId}
             projectId={projectId || ""}
-            isAdmin={canAccessAllTabs}
+            isAdmin={true}
           />
         </TabsContent>
 
@@ -133,14 +133,14 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false }
           <EndomarketingPanel
             companyId={companyId}
             projectId={projectId || ""}
-            isAdmin={canAccessAllTabs}
+            isAdmin={true}
           />
         </TabsContent>
 
         {canAccessAllTabs && (
           <>
             <TabsContent value="units" className="mt-6">
-              <UnitsTab companyId={companyId} isAdmin={canAccessAllTabs} />
+              <UnitsTab companyId={companyId} isAdmin={true} />
             </TabsContent>
 
             <TabsContent value="analysis" className="mt-6">
