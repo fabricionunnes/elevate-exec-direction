@@ -11,10 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Copy, Search, Building2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Copy, Search, Building2, TrendingUp } from "lucide-react";
 
 interface CompanyNPSData {
   companyId: string;
@@ -36,6 +37,7 @@ export function NPSGlobalDialog({ open, onOpenChange }: NPSGlobalDialogProps) {
   const [data, setData] = useState<CompanyNPSData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showOnlyNoResponse, setShowOnlyNoResponse] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -101,8 +103,17 @@ export function NPSGlobalDialog({ open, onOpenChange }: NPSGlobalDialogProps) {
         };
       });
 
-      // Sort by company name
-      companiesData.sort((a, b) => a.companyName.localeCompare(b.companyName));
+      // Sort by oldest response first (never responded at top, then oldest response date)
+      companiesData.sort((a, b) => {
+        // Never responded goes first
+        if (!a.lastResponseDate && !b.lastResponseDate) {
+          return a.companyName.localeCompare(b.companyName);
+        }
+        if (!a.lastResponseDate) return -1;
+        if (!b.lastResponseDate) return 1;
+        // Oldest response date first
+        return new Date(a.lastResponseDate).getTime() - new Date(b.lastResponseDate).getTime();
+      });
       
       setData(companiesData);
     } catch (error) {
@@ -136,10 +147,14 @@ export function NPSGlobalDialog({ open, onOpenChange }: NPSGlobalDialogProps) {
     return "Promotor";
   };
 
-  const filteredData = data.filter((item) =>
-    item.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.productName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredData = data
+    .filter((item) =>
+      item.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.productName.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .filter((item) => !showOnlyNoResponse || item.totalResponses === 0);
+
+  const noResponseCount = data.filter((item) => item.totalResponses === 0).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -151,17 +166,33 @@ export function NPSGlobalDialog({ open, onOpenChange }: NPSGlobalDialogProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar empresa ou serviço..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar empresa ou serviço..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="noResponse"
+              checked={showOnlyNoResponse}
+              onCheckedChange={(checked) => setShowOnlyNoResponse(checked === true)}
+            />
+            <label
+              htmlFor="noResponse"
+              className="text-sm cursor-pointer select-none"
+            >
+              Mostrar apenas sem resposta ({noResponseCount})
+            </label>
+          </div>
         </div>
 
-        <ScrollArea className="h-[60vh] pr-4">
+        <ScrollArea className="h-[55vh] pr-4">
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -187,6 +218,11 @@ export function NPSGlobalDialog({ open, onOpenChange }: NPSGlobalDialogProps) {
                         <Badge variant="outline" className="text-xs shrink-0 max-w-[280px] truncate">
                           {item.productName}
                         </Badge>
+                        {item.totalResponses === 0 && (
+                          <Badge variant="destructive" className="text-xs shrink-0">
+                            Sem resposta
+                          </Badge>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap items-center gap-3 text-sm">
