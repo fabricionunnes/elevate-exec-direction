@@ -1842,6 +1842,8 @@ export type Database = {
           created_at: string | null
           id: string
           kpi_id: string
+          level_name: string
+          level_order: number
           month_year: string
           target_value: number
           updated_at: string | null
@@ -1851,6 +1853,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           kpi_id: string
+          level_name?: string
+          level_order?: number
           month_year: string
           target_value?: number
           updated_at?: string | null
@@ -1860,6 +1864,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           kpi_id?: string
+          level_name?: string
+          level_order?: number
           month_year?: string
           target_value?: number
           updated_at?: string | null
@@ -1877,6 +1883,41 @@ export type Database = {
             columns: ["kpi_id"]
             isOneToOne: false
             referencedRelation: "company_kpis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kpi_target_levels: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_target_levels_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
             referencedColumns: ["id"]
           },
         ]
