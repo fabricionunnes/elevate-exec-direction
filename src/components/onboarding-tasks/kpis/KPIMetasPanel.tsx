@@ -17,9 +17,12 @@ interface KPIMetasPanelProps {
   companyId: string;
   isAdmin: boolean;
   projectId?: string;
+  isStaff?: boolean; // All staff (admin, cs, consultant) can edit
 }
 
-export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelProps) => {
+export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false }: KPIMetasPanelProps) => {
+  // Staff can access all tabs - use isStaff for tab visibility, isAdmin for specific admin-only features
+  const canAccessAllTabs = isStaff || isAdmin;
   const [activeTab, setActiveTab] = useState("dashboard");
   const [companyName, setCompanyName] = useState("");
 
@@ -78,13 +81,13 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
             <BarChart3 className="h-4 w-4" />
             Dashboard
           </TabsTrigger>
-          {isAdmin && (
+          {canAccessAllTabs && (
             <TabsTrigger value="analysis" className="gap-2">
               <Sparkles className="h-4 w-4" />
               Análise IA
             </TabsTrigger>
           )}
-          {isAdmin && (
+          {canAccessAllTabs && (
             <TabsTrigger value="units" className="gap-2">
               <Building2 className="h-4 w-4" />
               Unidades
@@ -102,7 +105,7 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
             <Trophy className="h-4 w-4" />
             Endomarketing
           </TabsTrigger>
-          {isAdmin && (
+          {canAccessAllTabs && (
             <TabsTrigger value="config" className="gap-2">
               <Settings className="h-4 w-4" />
               Configuração
@@ -134,10 +137,10 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
           />
         </TabsContent>
 
-        {isAdmin && (
+        {canAccessAllTabs && (
           <>
             <TabsContent value="units" className="mt-6">
-              <UnitsTab companyId={companyId} isAdmin={isAdmin} />
+              <UnitsTab companyId={companyId} isAdmin={canAccessAllTabs} />
             </TabsContent>
 
             <TabsContent value="analysis" className="mt-6">
@@ -145,7 +148,7 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId }: KPIMetasPanelPr
             </TabsContent>
 
             <TabsContent value="config" className="mt-6">
-              <KPIConfigurationTab companyId={companyId} isAdmin={isAdmin} />
+              <KPIConfigurationTab companyId={companyId} isAdmin={canAccessAllTabs} />
             </TabsContent>
           </>
         )}
