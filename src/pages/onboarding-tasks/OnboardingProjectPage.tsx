@@ -1071,27 +1071,29 @@ const OnboardingProjectPage = () => {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            {/* Desktop Actions */}
+            <div className="hidden sm:flex items-center gap-2">
               {currentUserRole && currentUserRole !== "client" && (
                 <>
-                  <Button variant="outline" onClick={() => setShowPDFTasksDialog(true)}>
-                    <FileUp className="h-4 w-4 mr-2" />
-                    Plano via PDF
+                  <Button variant="outline" size="sm" onClick={() => setShowPDFTasksDialog(true)}>
+                    <FileUp className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Plano via PDF</span>
                   </Button>
-                  <Button variant="outline" onClick={() => setShowGenerateTasksDialog(true)}>
-                    <Wand2 className="h-4 w-4 mr-2" />
-                    Gerar Tarefas
+                  <Button variant="outline" size="sm" onClick={() => setShowGenerateTasksDialog(true)}>
+                    <Wand2 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Gerar Tarefas</span>
                   </Button>
                 </>
               )}
-              <Button variant="outline" onClick={() => setShowUsersDialog(true)}>
-                <Users className="h-4 w-4 mr-2" />
-                Usuários ({users.length})
+              <Button variant="outline" size="sm" onClick={() => setShowUsersDialog(true)}>
+                <Users className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Usuários ({users.length})</span>
               </Button>
               {isStaffAdmin && (
                 <Button 
                   variant="destructive" 
                   size="icon"
+                  className="h-8 w-8"
                   onClick={handleDeleteProject}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -1100,6 +1102,7 @@ const OnboardingProjectPage = () => {
               <Button 
                 variant="ghost" 
                 size="icon"
+                className="h-8 w-8"
                 onClick={async () => {
                   await supabase.auth.signOut();
                   navigate("/onboarding-tasks/login");
@@ -1109,21 +1112,63 @@ const OnboardingProjectPage = () => {
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
+            
+            {/* Mobile Actions Menu */}
+            <div className="flex sm:hidden items-center gap-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-background">
+                  {currentUserRole && currentUserRole !== "client" && (
+                    <>
+                      <DropdownMenuItem onClick={() => setShowPDFTasksDialog(true)}>
+                        <FileUp className="h-4 w-4 mr-2" />
+                        Plano via PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowGenerateTasksDialog(true)}>
+                        <Wand2 className="h-4 w-4 mr-2" />
+                        Gerar Tarefas
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuItem onClick={() => setShowUsersDialog(true)}>
+                    <Users className="h-4 w-4 mr-2" />
+                    Usuários ({users.length})
+                  </DropdownMenuItem>
+                  {isStaffAdmin && (
+                    <DropdownMenuItem onClick={handleDeleteProject} className="text-destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir Projeto
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={async () => {
+                    await supabase.auth.signOut();
+                    navigate("/onboarding-tasks/login");
+                  }}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sair
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           {/* Project Settings Row - Only for admin/cs */}
           {(isAdmin || currentUserRole === "cs") && (
-            <div className="flex flex-wrap gap-4 pl-14">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Status:</span>
+            <div className="flex flex-wrap gap-2 sm:gap-4 pl-0 sm:pl-14 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
+              <div className="flex items-center gap-1 sm:gap-2 min-w-fit">
+                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Status:</span>
                 <Select 
                   value={project.status} 
                   onValueChange={handleProjectStatusChange}
                 >
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[130px] sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background">
                     <SelectItem value="active">Ativo</SelectItem>
                     <SelectItem value="cancellation_signaled">Sinalizou Cancelamento</SelectItem>
                     <SelectItem value="notice_period">Cumprindo Aviso</SelectItem>
@@ -1132,16 +1177,16 @@ const OnboardingProjectPage = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Consultor:</span>
+              <div className="flex items-center gap-1 sm:gap-2 min-w-fit">
+                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Consultor:</span>
                 <Select 
                   value={project.consultant_id || "none"} 
                   onValueChange={(value) => handleProjectUpdate("consultant_id", value === "none" ? null : value)}
                 >
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[120px] sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue placeholder="Selecionar..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background">
                     <SelectItem value="none">Nenhum</SelectItem>
                     {staffList.filter(s => s.role === "consultant").map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -1149,16 +1194,16 @@ const OnboardingProjectPage = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">CS:</span>
+              <div className="flex items-center gap-1 sm:gap-2 min-w-fit">
+                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">CS:</span>
                 <Select 
                   value={project.cs_id || "none"} 
                   onValueChange={(value) => handleProjectUpdate("cs_id", value === "none" ? null : value)}
                 >
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[120px] sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue placeholder="Selecionar..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background">
                     <SelectItem value="none">Nenhum</SelectItem>
                     {staffList.filter(s => s.role === "cs").map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -1171,19 +1216,19 @@ const OnboardingProjectPage = () => {
         </div>
 
         {/* Progress and Health Score */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
           {/* Progress */}
           <Card className="lg:col-span-2">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Progresso da Jornada</span>
-                <span className="font-medium">
-                  {completedTasks}/{totalTasks} tarefas concluídas ({totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0}%)
+            <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                <span className="text-xs sm:text-sm text-muted-foreground">Progresso da Jornada</span>
+                <span className="text-sm sm:text-base font-medium">
+                  {completedTasks}/{totalTasks} tarefas ({totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0}%)
                 </span>
               </div>
-              <div className="w-full bg-muted rounded-full h-3">
+              <div className="w-full bg-muted rounded-full h-2.5 sm:h-3">
                 <div
-                  className="bg-primary h-3 rounded-full transition-all"
+                  className="bg-primary h-2.5 sm:h-3 rounded-full transition-all"
                   style={{ width: `${totalTasks ? (completedTasks / totalTasks) * 100 : 0}%` }}
                 />
               </div>
@@ -1199,119 +1244,127 @@ const OnboardingProjectPage = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="mb-6">
-            {/* Todas as abas em um único container com flex-wrap */}
-            <TabsList className="h-auto w-full flex flex-wrap justify-start gap-1 bg-transparent p-0">
-              <TabsTrigger value="kpis" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <BarChart3 className="h-4 w-4" />
-                <span className="hidden sm:inline">KPIs</span>
-              </TabsTrigger>
-              <TabsTrigger value="briefing" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <Building2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Briefing</span>
-              </TabsTrigger>
-              <TabsTrigger value="tasks" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <CheckCircle2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Jornada</span>
-              </TabsTrigger>
-              <TabsTrigger value="ai-coach" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <Sparkles className="h-4 w-4" />
-                <span className="hidden sm:inline">IA Coach</span>
-              </TabsTrigger>
-              <TabsTrigger value="nps" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <TrendingUp className="h-4 w-4" />
-                <span className="hidden sm:inline">NPS</span>
-              </TabsTrigger>
-              <TabsTrigger value="csat" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <Star className="h-4 w-4" />
-                <span className="hidden sm:inline">CSAT</span>
-              </TabsTrigger>
-              <TabsTrigger value="assessments" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <Brain className="h-4 w-4" />
-                <span className="hidden sm:inline">Avaliações</span>
-              </TabsTrigger>
-              <TabsTrigger value="meetings" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <Video className="h-4 w-4" />
-                <span className="hidden sm:inline">Reuniões</span>
-              </TabsTrigger>
-              <TabsTrigger value="support" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <Headphones className="h-4 w-4" />
-                <span className="hidden sm:inline">Suporte</span>
-              </TabsTrigger>
-              <TabsTrigger value="health" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <Heart className="h-4 w-4" />
-                <span className="hidden sm:inline">Saúde</span>
-              </TabsTrigger>
-            </TabsList>
+          <div className="mb-4 sm:mb-6 -mx-2 px-2 sm:mx-0 sm:px-0">
+            {/* Scrollable tabs container for mobile */}
+            <div className="overflow-x-auto pb-1">
+              <TabsList className="h-auto w-max sm:w-full inline-flex sm:flex flex-nowrap sm:flex-wrap justify-start gap-1 bg-transparent p-0">
+                <TabsTrigger value="kpis" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  KPIs
+                </TabsTrigger>
+                <TabsTrigger value="briefing" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Briefing
+                </TabsTrigger>
+                <TabsTrigger value="tasks" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Jornada
+                </TabsTrigger>
+                <TabsTrigger value="ai-coach" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  IA
+                </TabsTrigger>
+                <TabsTrigger value="nps" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  NPS
+                </TabsTrigger>
+                <TabsTrigger value="csat" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  CSAT
+                </TabsTrigger>
+                <TabsTrigger value="assessments" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Aval.
+                </TabsTrigger>
+                <TabsTrigger value="meetings" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Video className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Reuniões
+                </TabsTrigger>
+                <TabsTrigger value="support" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Headphones className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Suporte
+                </TabsTrigger>
+                <TabsTrigger value="health" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Heart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Saúde
+                </TabsTrigger>
+              </TabsList>
+            </div>
           </div>
 
           <TabsContent value="tasks">
             {/* Search, View Toggle and Add Task */}
-            <div className="flex flex-col gap-4 mb-6">
+            <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
               {/* Search */}
-              <div className="relative max-w-md">
+              <div className="relative w-full sm:max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar tarefa pelo nome..."
+                  placeholder="Buscar tarefa..."
                   value={taskSearchQuery}
                   onChange={(e) => setTaskSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-9 sm:h-10 text-sm"
                 />
               </div>
               
-              <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* View mode buttons - scrollable on mobile */}
+                <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
                   <Button
                     variant={tasksViewMode === "trail" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setTasksViewMode("trail")}
+                    className="h-8 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
                   >
-                    <Route className="h-4 w-4 mr-2" />
-                    Trilha
+                    <Route className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Trilha</span>
                   </Button>
                   <Button
                     variant={tasksViewMode === "list" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setTasksViewMode("list")}
+                    className="h-8 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
                   >
-                    <LayoutList className="h-4 w-4 mr-2" />
-                    Lista
+                    <LayoutList className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Lista</span>
                   </Button>
                   <Button
                     variant={tasksViewMode === "schedule" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setTasksViewMode("schedule")}
+                    className="h-8 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
                   >
-                    <CalendarDays className="h-4 w-4 mr-2" />
-                    Cronograma
+                    <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Cronograma</span>
                   </Button>
                   <Button
                     variant={tasksViewMode === "panel" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setTasksViewMode("panel")}
+                    className="h-8 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
                   >
-                    <PanelIcon className="h-4 w-4 mr-2" />
-                    Painel
+                    <PanelIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Painel</span>
                   </Button>
                   <Button
                     variant={tasksViewMode === "kanban" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setTasksViewMode("kanban")}
+                    className="h-8 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
                   >
-                    <Columns3 className="h-4 w-4 mr-2" />
-                    Kanban
+                    <Columns3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Kanban</span>
                   </Button>
                 </div>
                 {canAddTasks && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 w-full sm:w-auto">
                     <Input
-                      placeholder="Adicionar nova tarefa..."
+                      placeholder="Nova tarefa..."
                       value={newTaskTitle}
                       onChange={(e) => setNewTaskTitle(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
-                      className="w-64"
+                      className="flex-1 sm:w-48 md:w-64 h-9 text-sm"
                     />
-                    <Button onClick={handleAddTask}>
+                    <Button onClick={handleAddTask} size="sm" className="h-9 w-9 p-0 sm:w-auto sm:px-3">
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>

@@ -624,28 +624,31 @@ const VirtualOfficePage = () => {
         </div>
       </header>
       {/* Tabs */}
-      <div className="border-b bg-card px-4">
+      <div className="border-b bg-card px-2 sm:px-4 -mx-2 sm:mx-0">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="h-10">
-            <TabsTrigger value="office" className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Salas
-            </TabsTrigger>
-            <TabsTrigger value="support" className="gap-2">
-              <Headphones className="h-4 w-4" />
-              Suporte
-            </TabsTrigger>
-            <TabsTrigger value="calendar" className="gap-2">
-              <Calendar className="h-4 w-4" />
-              Minha Agenda
-            </TabsTrigger>
-            {canViewHistory && (
-              <TabsTrigger value="history" className="gap-2">
-                <History className="h-4 w-4" />
-                Histórico
+          <div className="overflow-x-auto">
+            <TabsList className="h-9 sm:h-10 w-max sm:w-auto inline-flex">
+              <TabsTrigger value="office" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm">
+                <MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Salas</span>
               </TabsTrigger>
-            )}
-          </TabsList>
+              <TabsTrigger value="support" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm">
+                <Headphones className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Suporte</span>
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm">
+                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Minha Agenda</span>
+                <span className="sm:hidden">Agenda</span>
+              </TabsTrigger>
+              {canViewHistory && (
+                <TabsTrigger value="history" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm">
+                  <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Histórico</span>
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </div>
         </Tabs>
       </div>
 
@@ -656,15 +659,15 @@ const VirtualOfficePage = () => {
           <GoogleCalendarTab currentStaff={currentStaff ? { id: currentStaff.id, role: currentStaff.role, user_id: currentStaff.user_id } : undefined} />
         </div>
       ) : activeTab === "support" ? (
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto p-3 sm:p-4">
           <div className="max-w-2xl mx-auto">
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Headphones className="h-5 w-5" />
+            <div className="mb-4 sm:mb-6">
+              <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <Headphones className="h-4 w-4 sm:h-5 sm:w-5" />
                 Sala de Suporte ao Cliente
               </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Quando um cliente solicitar suporte, você será notificado aqui e poderá atendê-lo via Google Meet.
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                Quando um cliente solicitar suporte, você será notificado aqui.
               </p>
             </div>
             <SupportRoomPanel currentStaff={currentStaff} />
