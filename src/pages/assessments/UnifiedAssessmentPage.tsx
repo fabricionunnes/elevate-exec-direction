@@ -406,9 +406,13 @@ export default function UnifiedAssessmentPage() {
 
       setStep("success");
       toast.success("Avaliação enviada com sucesso!");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting:", error);
-      toast.error("Erro ao enviar avaliação");
+      const message =
+        typeof error?.message === "string" && error.message.trim().length > 0
+          ? error.message
+          : "Erro ao enviar avaliação";
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
