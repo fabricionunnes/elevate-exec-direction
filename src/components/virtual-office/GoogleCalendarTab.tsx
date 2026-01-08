@@ -1036,9 +1036,8 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                   </div>
                 </div>
                 
-                <CardContent className="flex-1 overflow-hidden p-0 min-h-0">
-                  <ScrollArea className="h-full">
-                    <div className="px-4 py-4">
+                <CardContent className="flex-1 overflow-auto p-0 min-h-0">
+                  <div className="px-4 py-4">
                       {selectedDayEvents.length === 0 ? (
                         <div className="text-center py-12">
                           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-muted/50 to-muted/30 flex items-center justify-center shadow-inner">
@@ -1213,7 +1212,6 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                         </div>
                       )}
                     </div>
-                  </ScrollArea>
                 </CardContent>
               </Card>
             </div>
