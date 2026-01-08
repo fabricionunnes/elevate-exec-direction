@@ -759,23 +759,23 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
         </Card>
       )}
 
-      {/* Sales Funnel Chart */}
-      {salesFunnel.hasData && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Funil de Vendas
-              </CardTitle>
-              {salesFunnel.overallConversion !== undefined && (
-                <Badge variant="outline" className="gap-1">
-                  Conversão Geral: {salesFunnel.overallConversion.toFixed(1)}%
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
+      {/* Sales Funnel Chart - Always show */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              Funil de Vendas
+            </CardTitle>
+            {salesFunnel.hasData && salesFunnel.overallConversion !== undefined && (
+              <Badge variant="outline" className="gap-1">
+                Conversão Geral: {salesFunnel.overallConversion.toFixed(1)}%
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {salesFunnel.hasData ? (
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Funnel Chart */}
               <ResponsiveContainer width="100%" height={300}>
@@ -842,9 +842,79 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
                 ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="h-[200px] flex flex-col items-center justify-center text-muted-foreground">
+              <Filter className="h-12 w-12 mb-4 opacity-20" />
+              <p className="font-medium">Nenhum dado para o funil no período</p>
+              <p className="text-sm">Lance KPIs como Ligações, Atendimentos, Propostas e Vendas para visualizar o funil</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Target vs Realized Chart - Always show */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Meta x Realizado (Acumulado)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {targetVsRealized.data.length > 0 && targetVsRealized.targetLevels.length > 0 ? (
+            <ResponsiveContainer width="100%" height={350}>
+              <LineChart data={targetVsRealized.data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis 
+                  tickFormatter={(value) => 
+                    selectedKpiData?.kpi_type === "monetary" || (!selectedKpiData && kpis.some(k => k.kpi_type === "monetary"))
+                      ? new Intl.NumberFormat("pt-BR", { notation: "compact", compactDisplay: "short" }).format(value)
+                      : value.toLocaleString("pt-BR")
+                  }
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => [
+                    selectedKpiData?.kpi_type === "monetary" || (!selectedKpiData && kpis.some(k => k.kpi_type === "monetary"))
+                      ? formatValue(value, "monetary")
+                      : value.toLocaleString("pt-BR"),
+                    name === "realizado" ? "Realizado" : name
+                  ]}
+                />
+                <Legend />
+                {/* Realized line */}
+                <Line 
+                  type="monotone" 
+                  dataKey="realizado" 
+                  name="Realizado"
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={3}
+                  dot={{ fill: "hsl(var(--primary))" }}
+                />
+                {/* Target level lines */}
+                {targetVsRealized.targetLevels.map((levelName, index) => (
+                  <Line 
+                    key={levelName}
+                    type="monotone" 
+                    dataKey={levelName} 
+                    name={levelName}
+                    stroke={targetLevelColors[index % targetLevelColors.length]} 
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[200px] flex flex-col items-center justify-center text-muted-foreground">
+              <Target className="h-12 w-12 mb-4 opacity-20" />
+              <p className="font-medium">Nenhum dado para o período selecionado</p>
+              <p className="text-sm">Lance valores nos KPIs para comparar com as metas</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* KPI Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -914,63 +984,6 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
         })}
       </div>
 
-      {/* Target vs Realized Chart */}
-      {targetVsRealized.data.length > 0 && targetVsRealized.targetLevels.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Meta x Realizado (Acumulado)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <LineChart data={targetVsRealized.data}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis 
-                  tickFormatter={(value) => 
-                    selectedKpiData?.kpi_type === "monetary" || (!selectedKpiData && kpis.some(k => k.kpi_type === "monetary"))
-                      ? new Intl.NumberFormat("pt-BR", { notation: "compact", compactDisplay: "short" }).format(value)
-                      : value.toLocaleString("pt-BR")
-                  }
-                />
-                <Tooltip 
-                  formatter={(value: number, name: string) => [
-                    selectedKpiData?.kpi_type === "monetary" || (!selectedKpiData && kpis.some(k => k.kpi_type === "monetary"))
-                      ? formatValue(value, "monetary")
-                      : value.toLocaleString("pt-BR"),
-                    name === "realizado" ? "Realizado" : name
-                  ]}
-                />
-                <Legend />
-                {/* Realized line */}
-                <Line 
-                  type="monotone" 
-                  dataKey="realizado" 
-                  name="Realizado"
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={3}
-                  dot={{ fill: "hsl(var(--primary))" }}
-                />
-                {/* Target level lines */}
-                {targetVsRealized.targetLevels.map((levelName, index) => (
-                  <Line 
-                    key={levelName}
-                    type="monotone" 
-                    dataKey={levelName} 
-                    name={levelName}
-                    stroke={targetLevelColors[index % targetLevelColors.length]} 
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    dot={false}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">
