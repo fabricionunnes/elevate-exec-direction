@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -19,10 +20,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { format, differenceInMonths, parseISO } from "date-fns";
+import { format, differenceInMonths, parseISO, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import {
@@ -36,6 +45,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Pencil,
 } from "lucide-react";
 
 interface Staff {
@@ -76,6 +86,14 @@ export default function OnboardingCompaniesReportPage() {
   // Sorting
   const [sortField, setSortField] = useState<SortField>("total_paid");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<CompanyReport | null>(null);
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editDurationMonths, setEditDurationMonths] = useState<number>(12);
+  const [editContractValue, setEditContractValue] = useState<number>(0);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -318,6 +336,59 @@ export default function OnboardingCompaniesReportPage() {
     navigate("/onboarding-tasks/login");
   };
 
+  const openEditDialog = (company: CompanyReport, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingCompany(company);
+    setEditStartDate(company.contract_start_date || "");
+    
+    // Calculate duration in months from start to end date
+    if (company.contract_start_date && company.contract_end_date) {
+      const start = parseISO(company.contract_start_date);
+      const end = parseISO(company.contract_end_date);
+      setEditDurationMonths(Math.max(1, differenceInMonths(end, start)));
+    } else {
+      setEditDurationMonths(0); // 0 means ongoing/monthly
+    }
+    
+    setEditContractValue(company.contract_value || 0);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingCompany) return;
+
+    setSaving(true);
+    try {
+      // Calculate end date based on duration
+      let endDate: string | null = null;
+      if (editDurationMonths > 0 && editStartDate) {
+        const start = parseISO(editStartDate);
+        endDate = format(addMonths(start, editDurationMonths), "yyyy-MM-dd");
+      }
+
+      const { error } = await supabase
+        .from("onboarding_companies")
+        .update({
+          contract_start_date: editStartDate || null,
+          contract_end_date: endDate,
+          contract_value: editContractValue,
+        })
+        .eq("id", editingCompany.id);
+
+      if (error) throw error;
+
+      toast.success("Contrato atualizado com sucesso!");
+      setEditDialogOpen(false);
+      setEditingCompany(null);
+      fetchData();
+    } catch (error) {
+      console.error("Error updating contract:", error);
+      toast.error("Erro ao atualizar contrato");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -548,12 +619,13 @@ export default function OnboardingCompaniesReportPage() {
                       <SortIcon field="status" />
                     </div>
                   </TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredCompanies.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       Nenhuma empresa encontrada
                     </TableCell>
                   </TableRow>
@@ -575,6 +647,16 @@ export default function OnboardingCompaniesReportPage() {
                         {formatCurrency(company.avg_ticket)}/mês
                       </TableCell>
                       <TableCell>{getStatusBadge(company.status)}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => openEditDialog(company, e)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -583,6 +665,72 @@ export default function OnboardingCompaniesReportPage() {
           </ScrollArea>
         </Card>
       </div>
+
+      {/* Edit Contract Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Contrato</DialogTitle>
+            <DialogDescription>
+              {editingCompany?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="startDate">Data de Início</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={editStartDate}
+                onChange={(e) => setEditStartDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="duration">Prazo (meses)</Label>
+              <Input
+                id="duration"
+                type="number"
+                min={0}
+                value={editDurationMonths}
+                onChange={(e) => setEditDurationMonths(parseInt(e.target.value) || 0)}
+                placeholder="0 = mensal/sem prazo"
+              />
+              <p className="text-xs text-muted-foreground">
+                Use 0 para contratos mensais (sem data de término)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="value">Valor do Contrato (R$)</Label>
+              <Input
+                id="value"
+                type="number"
+                min={0}
+                step={0.01}
+                value={editContractValue}
+                onChange={(e) => setEditContractValue(parseFloat(e.target.value) || 0)}
+              />
+              <p className="text-xs text-muted-foreground">
+                {editDurationMonths > 0 
+                  ? "Valor TOTAL do contrato (será dividido pelo prazo)"
+                  : "Valor MENSAL do contrato"
+                }
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={saving}>
+              {saving ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
