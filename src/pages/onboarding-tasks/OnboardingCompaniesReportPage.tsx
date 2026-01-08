@@ -492,7 +492,7 @@ export default function OnboardingCompaniesReportPage() {
             <CardHeader className="pb-2 pt-4 px-4">
               <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
                 <DollarSign className="h-4 w-4 text-green-500" />
-                LTV Total
+                Valor Total Pago
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4">
@@ -500,7 +500,7 @@ export default function OnboardingCompaniesReportPage() {
                 {formatCurrency(summaryMetrics.totalLTV)}
               </p>
               <p className="text-[10px] text-muted-foreground mt-1">
-                Valor total recebido
+                Soma dos pagamentos
               </p>
             </CardContent>
           </Card>
