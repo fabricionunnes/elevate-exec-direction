@@ -308,49 +308,30 @@ const DashboardMetrics = ({
   }, [projects, dateRange]);
 
   const ltvMetrics = useMemo(() => {
-    // Calcular churn anual baseado nos dados do período
-    const currentYear = dateRange.start.getFullYear();
-    const monthsData = eachMonthOfInterval({ start: startOfYear(new Date(currentYear, 0, 1)), end: endOfYear(new Date(currentYear, 0, 1)) });
+    const today = new Date();
     
-    let totalChurnRate = 0;
-    let monthsWithData = 0;
-    
-    monthsData.forEach(monthDate => {
-      const monthStart = startOfMonth(monthDate);
-      const monthEnd = endOfMonth(monthDate);
+    // Tempo médio: calcular tempo real de permanência de cada empresa
+    const companiesWithContractStart = filteredCompanies.filter(c => c.contract_start_date);
+    const companiesWithLifetime = companiesWithContractStart.map(company => {
+      const startDate = new Date(company.contract_start_date!);
+      let endDate: Date;
       
-      const closedInMonth = projects.filter(p => {
-        if (p.status !== "closed" && p.status !== "completed") return false;
-        const churnDateStr = p.churn_date || p.updated_at;
-        const dateOnly = churnDateStr.substring(0, 10);
-        const churnDate = new Date(dateOnly + "T12:00:00");
-        return isWithinInterval(churnDate, { start: monthStart, end: monthEnd });
-      }).length;
-      
-      const activeAtMonthStart = projects.filter(p => {
-        if (new Date(p.created_at) > monthEnd) return false;
-        if (p.status === "closed" || p.status === "completed") {
-          const churnDateStr = p.churn_date || p.updated_at;
-          const dateOnly = churnDateStr.substring(0, 10);
-          const churnDate = new Date(dateOnly + "T12:00:00");
-          return churnDate >= monthStart;
-        }
-        return true;
-      }).length;
-      
-      if (activeAtMonthStart > 0) {
-        const monthChurnRate = (closedInMonth / activeAtMonthStart) * 100;
-        totalChurnRate += monthChurnRate;
-        monthsWithData++;
+      // Se empresa está encerrada/inativa, usa a data de encerramento
+      if (company.status === "closed" || company.status === "inactive") {
+        endDate = company.status_changed_at ? new Date(company.status_changed_at) : today;
+      } else {
+        // Se empresa está ativa, calcula até hoje
+        endDate = today;
       }
+      
+      const lifetimeMonths = Math.max(0, differenceInMonths(endDate, startDate));
+      return { lifetimeMonths, contractValue: company.contract_value };
     });
     
-    // Churn mensal médio (em percentual)
-    const averageMonthlyChurnPercent = monthsWithData > 0 ? totalChurnRate / monthsWithData : 0;
-    
-    // Tempo Médio = 1 ÷ Churn Mensal (convertendo percentual para decimal)
-    const churnDecimal = averageMonthlyChurnPercent / 100;
-    const averageLifetimeMonths = churnDecimal > 0 ? Math.round((1 / churnDecimal) * 10) / 10 : 0;
+    const totalCompaniesWithStart = companiesWithLifetime.length;
+    const averageLifetimeMonths = totalCompaniesWithStart > 0 
+      ? Math.round((companiesWithLifetime.reduce((sum, c) => sum + c.lifetimeMonths, 0) / totalCompaniesWithStart) * 10) / 10 
+      : 0;
     
     // Ticket médio: somente empresas com valor de contrato
     const companiesWithValue = filteredCompanies.filter(c => c.contract_value && c.contract_value > 0);
