@@ -547,6 +547,18 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
   const selectedKpiData = selectedKpi !== "all" ? kpis.find(k => k.id === selectedKpi) : null;
   const calculatedMetrics = getCalculatedMetrics();
 
+  // Debug logs
+  console.log("[KPIDashboard] Target vs Realized:", { 
+    dataLength: targetVsRealized.data.length, 
+    targetLevels: targetVsRealized.targetLevels,
+    entries: entries.length 
+  });
+  console.log("[KPIDashboard] Sales Funnel:", { 
+    hasData: salesFunnel.hasData, 
+    dataLength: salesFunnel.data?.length || 0,
+    data: salesFunnel.data 
+  });
+
   // Colors for target level lines
   const targetLevelColors = [
     "hsl(142 76% 36%)", // green
