@@ -180,51 +180,12 @@ export function NPSGlobalDialog({ open, onOpenChange }: NPSGlobalDialogProps) {
                   key={`${item.companyId}-${item.projectId}`}
                   className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium truncate">{item.companyName}</h4>
-                        <Badge variant="outline" className="text-xs shrink-0">
-                          {item.productName}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex flex-wrap items-center gap-3 text-sm">
-                        {/* Last Score */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">Última nota:</span>
-                          <span className={`px-2 py-0.5 rounded font-medium ${getScoreColor(item.lastScore)}`}>
-                            {item.lastScore ?? "—"}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            ({getScoreLabel(item.lastScore)})
-                          </span>
-                        </div>
-                        
-                        {/* Average */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">Média:</span>
-                          <span className="font-medium">
-                            {item.averageScore?.toFixed(1) ?? "—"}
-                          </span>
-                        </div>
-                        
-                        {/* Total Responses */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">Respostas:</span>
-                          <span className="font-medium">{item.totalResponses}</span>
-                        </div>
-                        
-                        {/* Last Response Date */}
-                        {item.lastResponseDate && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground">Última resposta:</span>
-                            <span className="text-xs">
-                              {format(new Date(item.lastResponseDate), "dd/MM/yyyy", { locale: ptBR })}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                  <div className="flex items-center justify-between gap-4 mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <h4 className="font-medium truncate">{item.companyName}</h4>
+                      <Badge variant="outline" className="text-xs shrink-0">
+                        {item.productName}
+                      </Badge>
                     </div>
                     
                     <Button
@@ -236,6 +197,43 @@ export function NPSGlobalDialog({ open, onOpenChange }: NPSGlobalDialogProps) {
                       <Copy className="h-3.5 w-3.5" />
                       Copiar Link
                     </Button>
+                  </div>
+                      
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    {/* Last Score */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">Última nota:</span>
+                      <span className={`px-2 py-0.5 rounded font-medium ${getScoreColor(item.lastScore)}`}>
+                        {item.lastScore ?? "—"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        ({getScoreLabel(item.lastScore)})
+                      </span>
+                    </div>
+                    
+                    {/* Average */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">Média:</span>
+                      <span className="font-medium">
+                        {item.averageScore?.toFixed(1) ?? "—"}
+                      </span>
+                    </div>
+                    
+                    {/* Total Responses */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">Respostas:</span>
+                      <span className="font-medium">{item.totalResponses}</span>
+                    </div>
+                    
+                    {/* Last Response Date */}
+                    {item.lastResponseDate && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Última resposta:</span>
+                        <span className="text-xs">
+                          {format(new Date(item.lastResponseDate), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
