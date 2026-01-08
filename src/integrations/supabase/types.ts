@@ -2167,6 +2167,7 @@ export type Database = {
           has_sales_goals: string | null
           has_structured_process: string | null
           id: string
+          instagram: string | null
           key_results: string | null
           kickoff_date: string | null
           main_challenges: string | null
@@ -2221,6 +2222,7 @@ export type Database = {
           has_sales_goals?: string | null
           has_structured_process?: string | null
           id?: string
+          instagram?: string | null
           key_results?: string | null
           kickoff_date?: string | null
           main_challenges?: string | null
@@ -2275,6 +2277,7 @@ export type Database = {
           has_sales_goals?: string | null
           has_structured_process?: string | null
           id?: string
+          instagram?: string | null
           key_results?: string | null
           kickoff_date?: string | null
           main_challenges?: string | null

@@ -26,6 +26,8 @@ import {
   Link2,
   Copy,
   Calculator,
+  Instagram,
+  ExternalLink,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -55,6 +57,7 @@ interface CompanyData {
   phone: string | null;
   email: string | null;
   address: string | null;
+  instagram: string | null;
   company_description: string | null;
   main_challenges: string | null;
   goals_short_term: string | null;
@@ -453,6 +456,7 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
             </div>
             {renderField("Email", company.email, "email")}
             {renderField("Endereço", company.address, "address")}
+            {renderField("Instagram", company.instagram, "instagram")}
           </div>
 
           {!isEditing && (
@@ -472,6 +476,27 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                     Enviar email
                   </a>
                 </div>
+              )}
+              {company.instagram && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    let url = company.instagram!;
+                    // Handle both full URLs and just usernames
+                    if (!url.startsWith("http")) {
+                      // Remove @ if present
+                      const username = url.replace(/^@/, "");
+                      url = `https://instagram.com/${username}`;
+                    }
+                    window.open(url, "_blank");
+                  }}
+                  className="gap-2"
+                >
+                  <Instagram className="h-4 w-4" />
+                  Abrir Instagram
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
               )}
             </div>
           )}
