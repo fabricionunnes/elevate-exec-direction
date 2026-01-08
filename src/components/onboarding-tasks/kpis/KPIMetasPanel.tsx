@@ -125,7 +125,7 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false }
           <GamificationPanel
             companyId={companyId}
             projectId={projectId || ""}
-            isAdmin={isAdmin}
+            isAdmin={canAccessAllTabs}
           />
         </TabsContent>
 
@@ -133,7 +133,7 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false }
           <EndomarketingPanel
             companyId={companyId}
             projectId={projectId || ""}
-            isAdmin={isAdmin}
+            isAdmin={canAccessAllTabs}
           />
         </TabsContent>
 
