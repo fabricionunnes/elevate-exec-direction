@@ -130,6 +130,7 @@ export const useHealthScore = (projectId: string | undefined) => {
       // Check if project has cancellation-related status (impacts score negatively)
       const isCancellationStatus = [
         "cancellation_requested", 
+        "cancellation_signaled",
         "notice_period",
         "sinalizou_cancelamento",
         "cumprindo_aviso"
@@ -308,7 +309,7 @@ export const useHealthScore = (projectId: string | undefined) => {
 
       // Apply cancellation penalty (reduces score significantly)
       if (isCancellationStatus) {
-        totalScore = Math.max(0, totalScore - 30); // -30 points penalty
+        totalScore = Math.max(0, totalScore - 50); // -50 points penalty
       }
 
       // Determine risk level

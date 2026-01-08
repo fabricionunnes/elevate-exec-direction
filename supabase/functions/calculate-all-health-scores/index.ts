@@ -40,7 +40,7 @@ serve(async (req) => {
     const { data: projects, error: projectsError } = await supabase
       .from("onboarding_projects")
       .select("id, onboarding_company_id, status")
-      .in("status", ["active", "ativo", "cancellation_requested", "notice_period", "sinalizou_cancelamento", "cumprindo_aviso"]);
+      .in("status", ["active", "ativo", "cancellation_requested", "cancellation_signaled", "notice_period", "sinalizou_cancelamento", "cumprindo_aviso"]);
 
     if (projectsError) {
       throw new Error(`Failed to fetch projects: ${projectsError.message}`);
@@ -110,6 +110,7 @@ async function calculateProjectHealthScore(
   // Check cancellation status
   const isCancellationStatus = [
     "cancellation_requested",
+    "cancellation_signaled",
     "notice_period",
     "sinalizou_cancelamento",
     "cumprindo_aviso",
