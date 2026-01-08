@@ -94,9 +94,21 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
       return;
     }
 
+    // Validate monthYear format (should be yyyy-MM from input type="month")
+    if (!/^\d{4}-\d{2}$/.test(monthYear)) {
+      toast.error("Formato de mês inválido. Selecione o mês usando o seletor.");
+      return;
+    }
+
     setSaving(true);
     try {
       const monthDate = startOfMonth(parse(monthYear, "yyyy-MM", new Date()));
+      
+      if (isNaN(monthDate.getTime())) {
+        toast.error("Data inválida. Selecione um mês válido.");
+        setSaving(false);
+        return;
+      }
       
       const payload = {
         company_id: companyId,
