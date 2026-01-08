@@ -81,7 +81,7 @@ import OnboardingResultsPage from "./pages/onboarding-tasks/OnboardingResultsPag
 import KPIEntryPage from "./pages/onboarding-tasks/KPIEntryPage";
 import NPSSurveyPage from "./pages/NPSSurveyPage";
 import CSATSurveyPage from "./pages/CSATSurveyPage";
-import DISCAssessmentPage from "./pages/assessments/DISCAssessmentPage";
+import LegacyDiscRedirect from "./pages/assessments/LegacyDiscRedirect";
 import Assessment360Page from "./pages/assessments/Assessment360Page";
 import AssessmentReportsPage from "./pages/assessments/AssessmentReportsPage";
 import UnifiedAssessmentPage from "./pages/assessments/UnifiedAssessmentPage";
@@ -180,7 +180,7 @@ const App = () => (
             <Route path="/nps" element={<NPSSurveyPage />} />
             <Route path="/csat" element={<CSATSurveyPage />} />
             <Route path="/kpi-entry/:companyId" element={<KPIEntryPage />} />
-            <Route path="/disc" element={<DISCAssessmentPage />} />
+            <Route path="/disc" element={<LegacyDiscRedirect />} />
             <Route path="/360" element={<Assessment360Page />} />
             <Route path="/avaliacao" element={<UnifiedAssessmentPage />} />
             <Route path="/onboarding-tasks/:projectId/reports" element={<AssessmentReportsPage />} />
