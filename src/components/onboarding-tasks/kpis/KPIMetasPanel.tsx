@@ -148,7 +148,7 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false }
             </TabsContent>
 
             <TabsContent value="config" className="mt-6">
-              <KPIConfigurationTab companyId={companyId} isAdmin={canAccessAllTabs} />
+              <KPIConfigurationTab companyId={companyId} isAdmin={canAccessAllTabs} isClient={!isStaff} />
             </TabsContent>
           </>
         )}

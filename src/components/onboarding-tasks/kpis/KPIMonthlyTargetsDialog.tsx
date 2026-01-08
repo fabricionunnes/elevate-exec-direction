@@ -79,6 +79,7 @@ interface KPIMonthlyTargetsDialogProps {
   kpis: KPI[];
   onSaved?: () => void;
   onAddKPI?: () => void;
+  isClient?: boolean;
 }
 
 type TargetScope = "company" | "unit" | "salesperson";
@@ -90,6 +91,7 @@ export const KPIMonthlyTargetsDialog = ({
   kpis,
   onSaved,
   onAddKPI,
+  isClient = false,
 }: KPIMonthlyTargetsDialogProps) => {
   const [selectedDate, setSelectedDate] = useState(startOfMonth(new Date()));
   const [targetScope, setTargetScope] = useState<TargetScope>("company");
@@ -590,7 +592,7 @@ export const KPIMonthlyTargetsDialog = ({
                     {targetLevels.map((level) => (
                       <Badge key={level.id} variant="secondary" className="gap-1 pr-1">
                         {level.name}
-                        {targetLevels.length > 1 && (
+                        {!isClient && targetLevels.length > 1 && (
                           <button
                             onClick={() => handleRemoveLevel(level)}
                             className="ml-1 hover:text-destructive"
