@@ -185,7 +185,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
 
   // Helper function to get targets based on current filter (unit or salesperson)
   const getFilteredTargetsForKpi = (kpiId: string): Record<string, number> => {
-    // Priority: salesperson > unit > company
+    // Priority: salesperson > unit > company > sum of units/salespeople
     let relevantTargets: MonthlyTarget[] = [];
     
     if (selectedSalesperson !== "all") {
@@ -203,10 +203,29 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     }
     
     if (relevantTargets.length === 0) {
-      // Fallback to company-level targets
+      // Try company-level targets first
       relevantTargets = allMonthlyTargets.filter(
         mt => mt.kpi_id === kpiId && mt.unit_id === null && mt.salesperson_id === null
       );
+    }
+    
+    // If still no targets and we're showing "all", sum all unit targets
+    if (relevantTargets.length === 0 && selectedUnit === "all" && selectedSalesperson === "all") {
+      const unitTargets = allMonthlyTargets.filter(
+        mt => mt.kpi_id === kpiId && mt.unit_id !== null && mt.salesperson_id === null
+      );
+      
+      if (unitTargets.length > 0) {
+        // Sum targets by level_name
+        const sumByLevel: Record<string, number> = {};
+        unitTargets.forEach(mt => {
+          if (!sumByLevel[mt.level_name]) {
+            sumByLevel[mt.level_name] = 0;
+          }
+          sumByLevel[mt.level_name] += mt.target_value;
+        });
+        return sumByLevel;
+      }
     }
     
     // Build map from relevant targets
