@@ -643,9 +643,11 @@ export default function OnboardingRenewalsPage() {
   };
 
   const filteredCompanies = companies.filter(company => {
-    // Exclude inactive companies and recurring billing (auto-renew)
+    // Exclude inactive companies and recurring billing (auto-renew via payment_method monthly)
     if (company.status === "inactive") return false;
-    if (company.payment_method === "monthly" || company.renewal_plan_type === "monthly") return false;
+    // Only exclude if payment_method is 'monthly' (recorrência automática)
+    // Companies with payment_method 'card' need manual renewal regardless of plan type
+    if (company.payment_method === "monthly") return false;
     
     const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -688,7 +690,7 @@ export default function OnboardingRenewalsPage() {
   // Count pending from previous periods
   const pendingFromPastCount = companies.filter(c => {
     if (c.status === "inactive") return false;
-    if (c.payment_method === "monthly" || c.renewal_plan_type === "monthly") return false;
+    if (c.payment_method === "monthly") return false;
     if (!c.contract_end_date) return false;
     const endDate = parseISO(c.contract_end_date);
     return isBefore(endDate, currentPeriodRange.start);
