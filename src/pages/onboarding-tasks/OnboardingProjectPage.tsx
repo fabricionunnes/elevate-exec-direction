@@ -75,7 +75,8 @@ import { MeetingHistoryPanel } from "@/components/onboarding-tasks/MeetingHistor
 import { AssessmentsPanel } from "@/components/assessments/AssessmentsPanel";
 import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
 import { CSATConfigPanel } from "@/components/onboarding-tasks/CSATConfigPanel";
-import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star } from "lucide-react";
+import { HealthScoreWidget } from "@/components/onboarding-tasks/health-score/HealthScoreWidget";
+import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star, Heart } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Ticket } from "lucide-react";
 
@@ -1194,6 +1195,10 @@ const OnboardingProjectPage = () => {
           <div className="mb-6">
             {/* Todas as abas em um único container com flex-wrap */}
             <TabsList className="h-auto w-full flex flex-wrap justify-start gap-1 bg-transparent p-0">
+              <TabsTrigger value="health" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
+                <Heart className="h-4 w-4" />
+                <span className="hidden sm:inline">Saúde</span>
+              </TabsTrigger>
               <TabsTrigger value="kpis" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
                 <BarChart3 className="h-4 w-4" />
                 <span className="hidden sm:inline">KPIs</span>

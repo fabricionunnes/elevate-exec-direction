@@ -280,6 +280,65 @@ export type Database = {
         }
         Relationships: []
       }
+      client_health_scores: {
+        Row: {
+          commercial_score: number | null
+          created_at: string
+          engagement_score: number | null
+          goals_score: number | null
+          id: string
+          last_calculated_at: string | null
+          project_id: string
+          risk_level: string | null
+          satisfaction_score: number | null
+          support_score: number | null
+          total_score: number
+          trend_direction: string | null
+          trend_score: number | null
+          updated_at: string
+        }
+        Insert: {
+          commercial_score?: number | null
+          created_at?: string
+          engagement_score?: number | null
+          goals_score?: number | null
+          id?: string
+          last_calculated_at?: string | null
+          project_id: string
+          risk_level?: string | null
+          satisfaction_score?: number | null
+          support_score?: number | null
+          total_score?: number
+          trend_direction?: string | null
+          trend_score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          commercial_score?: number | null
+          created_at?: string
+          engagement_score?: number | null
+          goals_score?: number | null
+          id?: string
+          last_calculated_at?: string | null
+          project_id?: string
+          risk_level?: string | null
+          satisfaction_score?: number | null
+          support_score?: number | null
+          total_score?: number
+          trend_direction?: string | null
+          trend_score?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_health_scores_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closer_diagnostics: {
         Row: {
           additional_context: string | null
@@ -1933,6 +1992,189 @@ export type Database = {
             columns: ["season_id"]
             isOneToOne: false
             referencedRelation: "gamification_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_score_events: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          new_score: number | null
+          previous_score: number | null
+          project_id: string
+          triggered_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          new_score?: number | null
+          previous_score?: number | null
+          project_id: string
+          triggered_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          new_score?: number | null
+          previous_score?: number | null
+          project_id?: string
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_score_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_score_observations: {
+        Row: {
+          created_at: string
+          id: string
+          observation: string
+          observation_type: string | null
+          project_id: string
+          staff_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          observation: string
+          observation_type?: string | null
+          project_id: string
+          staff_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          observation?: string
+          observation_type?: string | null
+          project_id?: string
+          staff_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_score_observations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "health_score_observations_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_score_snapshots: {
+        Row: {
+          commercial_score: number | null
+          created_at: string
+          engagement_score: number | null
+          goals_score: number | null
+          id: string
+          project_id: string
+          risk_level: string | null
+          satisfaction_score: number | null
+          snapshot_date: string
+          support_score: number | null
+          total_score: number
+          trend_score: number | null
+        }
+        Insert: {
+          commercial_score?: number | null
+          created_at?: string
+          engagement_score?: number | null
+          goals_score?: number | null
+          id?: string
+          project_id: string
+          risk_level?: string | null
+          satisfaction_score?: number | null
+          snapshot_date?: string
+          support_score?: number | null
+          total_score: number
+          trend_score?: number | null
+        }
+        Update: {
+          commercial_score?: number | null
+          created_at?: string
+          engagement_score?: number | null
+          goals_score?: number | null
+          id?: string
+          project_id?: string
+          risk_level?: string | null
+          satisfaction_score?: number | null
+          snapshot_date?: string
+          support_score?: number | null
+          total_score?: number
+          trend_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_score_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_score_weights: {
+        Row: {
+          commercial_weight: number | null
+          created_at: string
+          engagement_weight: number | null
+          goals_weight: number | null
+          id: string
+          project_id: string
+          satisfaction_weight: number | null
+          support_weight: number | null
+          trend_weight: number | null
+          updated_at: string
+        }
+        Insert: {
+          commercial_weight?: number | null
+          created_at?: string
+          engagement_weight?: number | null
+          goals_weight?: number | null
+          id?: string
+          project_id: string
+          satisfaction_weight?: number | null
+          support_weight?: number | null
+          trend_weight?: number | null
+          updated_at?: string
+        }
+        Update: {
+          commercial_weight?: number | null
+          created_at?: string
+          engagement_weight?: number | null
+          goals_weight?: number | null
+          id?: string
+          project_id?: string
+          satisfaction_weight?: number | null
+          support_weight?: number | null
+          trend_weight?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_score_weights_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
             referencedColumns: ["id"]
           },
         ]
