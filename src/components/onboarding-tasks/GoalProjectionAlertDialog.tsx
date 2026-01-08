@@ -83,18 +83,21 @@ export const GoalProjectionAlertDialog = ({
 
       const companyId = project.onboarding_company_id;
 
-      // Get monetary KPIs (type = 'currency') for this company
-      const { data: monetaryKpis } = await supabase
+      // Check if ANY KPI has a target value set (not just monetary)
+      const { data: allKpis } = await supabase
         .from("company_kpis")
-        .select("id, target_value")
+        .select("id, target_value, kpi_type")
         .eq("company_id", companyId)
-        .eq("kpi_type", "currency")
         .eq("is_active", true);
 
-      const hasGoal = monetaryKpis && monetaryKpis.length > 0 && monetaryKpis.some(k => k.target_value > 0);
+      // If any KPI has a target_value > 0, consider that a goal exists
+      const hasGoal = allKpis && allKpis.length > 0 && allKpis.some(k => k.target_value > 0);
       
-      // Calculate total target from all monetary KPIs
-      const salesTarget = monetaryKpis?.reduce((sum, kpi) => sum + (kpi.target_value || 0), 0) || 0;
+      // Get monetary KPIs for projection calculation
+      const monetaryKpis = allKpis?.filter(k => k.kpi_type === "currency") || [];
+      
+      // Calculate total target from monetary KPIs for projection display
+      const salesTarget = monetaryKpis.reduce((sum, kpi) => sum + (kpi.target_value || 0), 0);
 
       // Get current month entries for monetary KPIs
       const monthStart = format(startOfMonth(today), "yyyy-MM-dd");
@@ -188,8 +191,8 @@ export const GoalProjectionAlertDialog = ({
             <div className="space-y-4">
               <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
                 <p className="text-sm">
-                  Este projeto ainda não possui uma meta de vendas cadastrada para o mês atual.
-                  Sem a meta, não é possível acompanhar a projeção de resultados.
+                  Este projeto ainda não possui metas cadastradas nos KPIs.
+                  Cadastre metas para acompanhar a projeção de resultados.
                 </p>
               </div>
 
@@ -199,7 +202,7 @@ export const GoalProjectionAlertDialog = ({
                 </Button>
                 <Button onClick={handleNavigateToGoals} className="flex-1">
                   <Target className="h-4 w-4 mr-2" />
-                  Cadastrar Meta
+                  Ir para KPIs
                 </Button>
               </div>
             </div>
@@ -299,10 +302,10 @@ export const GoalProjectionAlertDialog = ({
           <div className="space-y-4">
             <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
               <p className="text-sm">
-                Para acompanharmos melhor seu progresso, precisamos da sua <strong>meta de vendas do mês</strong>.
+                Para acompanharmos melhor seu progresso, precisamos das suas <strong>metas de KPIs</strong>.
               </p>
               <p className="text-sm mt-2 text-muted-foreground">
-                Entre em contato com seu Consultor ou CS para informar sua meta, ou atualize diretamente na aba de Métricas.
+                Acesse o menu de KPIs para cadastrar suas metas de vendas e acompanhar seu desempenho.
               </p>
             </div>
 
@@ -312,7 +315,7 @@ export const GoalProjectionAlertDialog = ({
               </Button>
               <Button onClick={handleNavigateToGoals} className="flex-1">
                 <Target className="h-4 w-4 mr-2" />
-                Ver Métricas
+                Ir para KPIs
               </Button>
             </div>
           </div>
