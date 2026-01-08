@@ -27,25 +27,6 @@
 
   <body>
     <div id="root"></div>
-    <script>
-      // HashRouter fallback: if someone opens /avaliacao?cycle=... directly (without /#/),
-      // rewrite to the correct hash-based route so the public assessment never hits staff/login pages.
-      (function () {
-        try {
-          var hasHashRoute = typeof window.location.hash === "string" && window.location.hash.length > 1;
-          if (hasHashRoute) return;
-
-          var pathname = window.location.pathname || "/";
-          var search = window.location.search || "";
-          var match = pathname.match(/^\/(avaliacao|disc|360)\/?$/);
-          if (!match) return;
-
-          window.location.replace("/#" + pathname + search);
-        } catch (_e) {
-          // no-op
-        }
-      })();
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
