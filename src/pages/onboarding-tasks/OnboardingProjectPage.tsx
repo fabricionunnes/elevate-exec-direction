@@ -50,7 +50,6 @@ import {
 import { ManageUsersDialog } from "@/components/onboarding-tasks/ManageUsersDialog";
 import { TaskDetailsDialog } from "@/components/onboarding-tasks/TaskDetailsDialog";
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
-import { ProjectVariablesPanel } from "@/components/onboarding-tasks/ProjectVariablesPanel";
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
@@ -78,6 +77,43 @@ import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel"
 import { CSATConfigPanel } from "@/components/onboarding-tasks/CSATConfigPanel";
 import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { Ticket } from "lucide-react";
+
+// Support Tab with sub-tabs
+const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
+  const [supportSubTab, setSupportSubTab] = useState<"history" | "tickets">("history");
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 border-b pb-3">
+        <Button
+          variant={supportSubTab === "history" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSupportSubTab("history")}
+          className="gap-2"
+        >
+          <Headphones className="h-4 w-4" />
+          Suportes
+        </Button>
+        <Button
+          variant={supportSubTab === "tickets" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSupportSubTab("tickets")}
+          className="gap-2"
+        >
+          <Ticket className="h-4 w-4" />
+          Chamados
+        </Button>
+      </div>
+      
+      {supportSubTab === "history" ? (
+        <SupportHistoryPanel projectId={projectId} />
+      ) : (
+        <TicketsPanel projectId={projectId} users={users} />
+      )}
+    </div>
+  );
+};
 
 interface OnboardingTask {
   id: string;
@@ -1162,21 +1198,13 @@ const OnboardingProjectPage = () => {
                 <BarChart3 className="h-4 w-4" />
                 <span className="hidden sm:inline">KPIs</span>
               </TabsTrigger>
-              <TabsTrigger value="tasks" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <CheckCircle2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Jornada</span>
-              </TabsTrigger>
               <TabsTrigger value="briefing" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
                 <Building2 className="h-4 w-4" />
                 <span className="hidden sm:inline">Briefing</span>
               </TabsTrigger>
-              <TabsTrigger value="variables" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <Settings className="h-4 w-4" />
-                <span className="hidden sm:inline">Variáveis</span>
-              </TabsTrigger>
-              <TabsTrigger value="tickets" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <MessageSquare className="h-4 w-4" />
-                <span className="hidden sm:inline">Chamados</span>
+              <TabsTrigger value="tasks" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
+                <CheckCircle2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Jornada</span>
               </TabsTrigger>
               <TabsTrigger value="ai-coach" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
                 <Sparkles className="h-4 w-4" />
@@ -1186,21 +1214,21 @@ const OnboardingProjectPage = () => {
                 <TrendingUp className="h-4 w-4" />
                 <span className="hidden sm:inline">NPS</span>
               </TabsTrigger>
-              <TabsTrigger value="support-history" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <Headphones className="h-4 w-4" />
-                <span className="hidden sm:inline">Suportes</span>
-              </TabsTrigger>
-              <TabsTrigger value="meetings" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <Video className="h-4 w-4" />
-                <span className="hidden sm:inline">Reuniões</span>
+              <TabsTrigger value="csat" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
+                <Star className="h-4 w-4" />
+                <span className="hidden sm:inline">CSAT</span>
               </TabsTrigger>
               <TabsTrigger value="assessments" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
                 <Brain className="h-4 w-4" />
                 <span className="hidden sm:inline">Avaliações</span>
               </TabsTrigger>
-              <TabsTrigger value="csat" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <Star className="h-4 w-4" />
-                <span className="hidden sm:inline">CSAT</span>
+              <TabsTrigger value="meetings" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
+                <Video className="h-4 w-4" />
+                <span className="hidden sm:inline">Reuniões</span>
+              </TabsTrigger>
+              <TabsTrigger value="support" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
+                <Headphones className="h-4 w-4" />
+                <span className="hidden sm:inline">Suporte</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1341,18 +1369,6 @@ const OnboardingProjectPage = () => {
             />
           </TabsContent>
 
-          <TabsContent value="variables">
-            <ProjectVariablesPanel
-              projectId={projectId!}
-              productId={project.product_id}
-              isAdmin={isAdmin}
-            />
-          </TabsContent>
-
-          <TabsContent value="tickets">
-            <TicketsPanel projectId={projectId!} users={users} />
-          </TabsContent>
-
           <TabsContent value="ai-coach">
             <ProjectAIChat
               projectId={projectId!}
@@ -1362,21 +1378,12 @@ const OnboardingProjectPage = () => {
             />
           </TabsContent>
 
-
           <TabsContent value="nps">
             <NPSHistoryPanel
               projectId={projectId!}
               currentNps={project.current_nps}
               userRole={isAdmin ? 'admin' : currentUserRole as 'cs' | 'consultant' | undefined}
             />
-          </TabsContent>
-
-          <TabsContent value="support-history">
-            <SupportHistoryPanel projectId={projectId!} />
-          </TabsContent>
-
-          <TabsContent value="meetings">
-            <MeetingHistoryPanel projectId={projectId!} />
           </TabsContent>
 
           <TabsContent value="csat">
@@ -1388,6 +1395,14 @@ const OnboardingProjectPage = () => {
 
           <TabsContent value="assessments">
             <AssessmentsPanel projectId={projectId!} />
+          </TabsContent>
+
+          <TabsContent value="meetings">
+            <MeetingHistoryPanel projectId={projectId!} />
+          </TabsContent>
+
+          <TabsContent value="support">
+            <SupportTabContent projectId={projectId!} users={users} />
           </TabsContent>
 
           <TabsContent value="kpis">
