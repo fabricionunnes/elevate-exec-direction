@@ -759,6 +759,74 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
         </Card>
       )}
 
+      {/* KPI Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {kpis.slice(0, 4).map(kpi => {
+          const summary = getKpiSummary(kpi);
+          const isOnTrack = summary.percentage >= 100;
+          const hasMultipleTargets = kpi.monthly_targets && Object.keys(kpi.monthly_targets).length > 1;
+          
+          return (
+            <Card key={kpi.id}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{kpi.name}</CardTitle>
+                {getKpiIcon(kpi.kpi_type)}
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatValue(summary.total, kpi.kpi_type)}</div>
+                
+                {/* Multiple targets display */}
+                {hasMultipleTargets ? (
+                  <div className="space-y-1 mt-2">
+                    {Object.entries(kpi.monthly_targets!).map(([levelName, targetValue]) => {
+                      const periodTarget = kpi.periodicity === "daily" 
+                        ? targetValue * (Math.ceil((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / (1000 * 60 * 60 * 24)) + 1)
+                        : kpi.periodicity === "weekly"
+                        ? targetValue * Math.ceil((Math.ceil((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / (1000 * 60 * 60 * 24)) + 1) / 7)
+                        : targetValue;
+                      const percentage = periodTarget > 0 ? (summary.total / periodTarget) * 100 : 0;
+                      const achieved = percentage >= 100;
+                      
+                      return (
+                        <div key={levelName} className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">
+                            {levelName}: {formatValue(periodTarget, kpi.kpi_type)}
+                          </span>
+                          <Badge 
+                            variant={achieved ? "default" : "outline"} 
+                            className={`gap-0.5 text-[10px] px-1.5 py-0 ${achieved ? 'bg-green-500' : ''}`}
+                          >
+                            {achieved && <Check className="h-2.5 w-2.5" />}
+                            {percentage.toFixed(0)}%
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-xs text-muted-foreground">
+                      Meta: {formatValue(summary.target, kpi.kpi_type)}
+                    </span>
+                    <Badge variant={isOnTrack ? "default" : "destructive"} className="gap-1">
+                      {isOnTrack ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                      {summary.percentage.toFixed(0)}%
+                    </Badge>
+                  </div>
+                )}
+                
+                <div className="w-full bg-muted rounded-full h-2 mt-2">
+                  <div
+                    className={`h-2 rounded-full ${isOnTrack ? 'bg-green-500' : 'bg-destructive'}`}
+                    style={{ width: `${Math.min(summary.percentage, 100)}%` }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
       {/* Sales Funnel Chart - Always show */}
       <Card>
         <CardHeader>
@@ -915,75 +983,6 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
           )}
         </CardContent>
       </Card>
-
-      {/* KPI Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {kpis.slice(0, 4).map(kpi => {
-          const summary = getKpiSummary(kpi);
-          const isOnTrack = summary.percentage >= 100;
-          const hasMultipleTargets = kpi.monthly_targets && Object.keys(kpi.monthly_targets).length > 1;
-          
-          return (
-            <Card key={kpi.id}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{kpi.name}</CardTitle>
-                {getKpiIcon(kpi.kpi_type)}
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatValue(summary.total, kpi.kpi_type)}</div>
-                
-                {/* Multiple targets display */}
-                {hasMultipleTargets ? (
-                  <div className="space-y-1 mt-2">
-                    {Object.entries(kpi.monthly_targets!).map(([levelName, targetValue]) => {
-                      const periodTarget = kpi.periodicity === "daily" 
-                        ? targetValue * (Math.ceil((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / (1000 * 60 * 60 * 24)) + 1)
-                        : kpi.periodicity === "weekly"
-                        ? targetValue * Math.ceil((Math.ceil((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / (1000 * 60 * 60 * 24)) + 1) / 7)
-                        : targetValue;
-                      const percentage = periodTarget > 0 ? (summary.total / periodTarget) * 100 : 0;
-                      const achieved = percentage >= 100;
-                      
-                      return (
-                        <div key={levelName} className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">
-                            {levelName}: {formatValue(periodTarget, kpi.kpi_type)}
-                          </span>
-                          <Badge 
-                            variant={achieved ? "default" : "outline"} 
-                            className={`gap-0.5 text-[10px] px-1.5 py-0 ${achieved ? 'bg-green-500' : ''}`}
-                          >
-                            {achieved && <Check className="h-2.5 w-2.5" />}
-                            {percentage.toFixed(0)}%
-                          </Badge>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-muted-foreground">
-                      Meta: {formatValue(summary.target, kpi.kpi_type)}
-                    </span>
-                    <Badge variant={isOnTrack ? "default" : "destructive"} className="gap-1">
-                      {isOnTrack ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                      {summary.percentage.toFixed(0)}%
-                    </Badge>
-                  </div>
-                )}
-                
-                <div className="w-full bg-muted rounded-full h-2 mt-2">
-                  <div
-                    className={`h-2 rounded-full ${isOnTrack ? 'bg-green-500' : 'bg-destructive'}`}
-                    style={{ width: `${Math.min(summary.percentage, 100)}%` }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
 
       {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">
