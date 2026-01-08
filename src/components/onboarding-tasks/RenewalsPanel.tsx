@@ -362,74 +362,90 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
     return { newEndDate, newTotalValue, monthlyValue };
   }, [selectedCompany, renewalMode, newMonthlyValue, newTermMonths, newStartDate]);
 
-  const handleSaveRenewal = async (confirmRenewal: boolean) => {
+  // Save only status and notes (does NOT update contract values)
+  const handleSaveStatusOnly = async () => {
     if (!selectedCompany || !staffId) return;
     
     setSaving(true);
     
     try {
-      const finalStatus = confirmRenewal ? "renovado" : renewalStatus;
-      const monthlyValue = renewalMode === "same" ? selectedCompany.monthly_value : newMonthlyValue;
-      const termMonths = renewalMode === "same" ? selectedCompany.contract_months : newTermMonths;
-      const newTotalValue = monthlyValue * termMonths;
-      
-      // Update company renewal status and notes
+      // Only update renewal status and notes - no contract changes
       const { error: updateError } = await supabase
         .from("onboarding_companies")
         .update({
-          renewal_status: finalStatus,
+          renewal_status: renewalStatus,
           renewal_notes: renewalNotes || null,
         })
         .eq("id", selectedCompany.id);
         
       if (updateError) throw updateError;
 
-      // If confirming as "renovado", create new contract and history
-      if (confirmRenewal) {
-        // Insert renewal history record
-        const { error: renewalError } = await supabase
-          .from("onboarding_contract_renewals")
-          .insert({
-            company_id: selectedCompany.id,
-            previous_start_date: selectedCompany.contract_start_date,
-            previous_end_date: selectedCompany.contract_end_date,
-            previous_value: selectedCompany.contract_value,
-            previous_term_months: selectedCompany.contract_months,
-            new_start_date: newStartDate,
-            new_end_date: calculatedValues.newEndDate,
-            new_value: newTotalValue,
-            new_term_months: termMonths,
-            notes: renewalNotes || null,
-            status: "renovado",
-            created_by: staffId,
-          });
-          
-        if (renewalError) throw renewalError;
-        
-        // Update company contract with new values
-        const { error: contractError } = await supabase
-          .from("onboarding_companies")
-          .update({
-            contract_start_date: newStartDate,
-            contract_end_date: calculatedValues.newEndDate,
-            contract_value: newTotalValue,
-            renewal_status: null, // Reset for next renewal cycle
-          })
-          .eq("id", selectedCompany.id);
-          
-        if (contractError) throw contractError;
-        
-        toast.success("Contrato renovado com sucesso!");
-      } else {
-        toast.success("Status de renovação atualizado");
-      }
+      toast.success("Status de renovação atualizado");
       
       setRenewDialogOpen(false);
       setSelectedCompany(null);
       fetchData();
     } catch (error) {
-      console.error("Error saving renewal:", error);
-      toast.error("Erro ao salvar renovação");
+      console.error("Error saving renewal status:", error);
+      toast.error("Erro ao salvar status");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Confirm renewal - updates contract with new values
+  const handleConfirmRenewal = async () => {
+    if (!selectedCompany || !staffId || !newStartDate) return;
+    
+    setSaving(true);
+    
+    try {
+      const monthlyValue = renewalMode === "same" ? selectedCompany.monthly_value : newMonthlyValue;
+      const termMonths = renewalMode === "same" ? selectedCompany.contract_months : newTermMonths;
+      const newTotalValue = monthlyValue * termMonths;
+      
+      // Insert renewal history record
+      const { error: renewalError } = await supabase
+        .from("onboarding_contract_renewals")
+        .insert({
+          company_id: selectedCompany.id,
+          previous_start_date: selectedCompany.contract_start_date,
+          previous_end_date: selectedCompany.contract_end_date,
+          previous_value: selectedCompany.contract_value,
+          previous_term_months: selectedCompany.contract_months,
+          new_start_date: newStartDate,
+          new_end_date: calculatedValues.newEndDate,
+          new_value: newTotalValue,
+          new_term_months: termMonths,
+          notes: renewalNotes || null,
+          status: "renovado",
+          created_by: staffId,
+        });
+        
+      if (renewalError) throw renewalError;
+      
+      // Update company contract with new values and reset renewal status
+      const { error: contractError } = await supabase
+        .from("onboarding_companies")
+        .update({
+          contract_start_date: newStartDate,
+          contract_end_date: calculatedValues.newEndDate,
+          contract_value: newTotalValue,
+          renewal_status: null, // Reset for next renewal cycle
+          renewal_notes: null,
+        })
+        .eq("id", selectedCompany.id);
+        
+      if (contractError) throw contractError;
+      
+      toast.success("Contrato renovado com sucesso!");
+      
+      setRenewDialogOpen(false);
+      setSelectedCompany(null);
+      fetchData();
+    } catch (error) {
+      console.error("Error confirming renewal:", error);
+      toast.error("Erro ao confirmar renovação");
     } finally {
       setSaving(false);
     }
@@ -800,13 +816,13 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
             </Button>
             <Button 
               variant="secondary" 
-              onClick={() => handleSaveRenewal(false)}
+              onClick={handleSaveStatusOnly}
               disabled={saving}
             >
-              {saving ? "Salvando..." : "Salvar como Pendente"}
+              {saving ? "Salvando..." : "Salvar Status"}
             </Button>
             <Button 
-              onClick={() => handleSaveRenewal(true)}
+              onClick={handleConfirmRenewal}
               disabled={saving || !newStartDate}
             >
               {saving ? "Confirmando..." : "Confirmar Renovação"}
