@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
@@ -19,6 +19,7 @@ import { PendingMeetingsAlert } from "@/components/onboarding-tasks/PendingMeeti
 import { AnnouncementDialog } from "@/components/onboarding-tasks/AnnouncementDialog";
 import { NPSGlobalDialog } from "@/components/onboarding-tasks/NPSGlobalDialog";
 import { CSATGlobalDialog } from "@/components/onboarding-tasks/CSATGlobalDialog";
+import { ResultsGlobalDialog } from "@/components/onboarding-tasks/ResultsGlobalDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -120,6 +121,7 @@ const OnboardingTasksPage = () => {
   // NPS and CSAT global dialogs
   const [showNPSGlobalDialog, setShowNPSGlobalDialog] = useState(false);
   const [showCSATGlobalDialog, setShowCSATGlobalDialog] = useState(false);
+  const [showResultsGlobalDialog, setShowResultsGlobalDialog] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -926,6 +928,10 @@ const OnboardingTasksPage = () => {
                         <MessageSquareHeart className="h-4 w-4 mr-2" />
                         Painel CSAT
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowResultsGlobalDialog(true)}>
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Resultados
+                      </DropdownMenuItem>
                     </>
                   )}
                 </DropdownMenuContent>
@@ -1012,7 +1018,7 @@ const OnboardingTasksPage = () => {
               </Button>
             )}
 
-            {/* NPS and CSAT Buttons - Admin/CS only */}
+            {/* NPS, CSAT and Results Buttons - Admin/CS only */}
             {canCreateCompany && (
               <>
                 <Button 
@@ -1032,6 +1038,15 @@ const OnboardingTasksPage = () => {
                 >
                   <MessageSquareHeart className="h-4 w-4" />
                   CSAT
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowResultsGlobalDialog(true)}
+                  className="gap-2"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Resultados
                 </Button>
               </>
             )}
@@ -1479,6 +1494,12 @@ const OnboardingTasksPage = () => {
       <CSATGlobalDialog
         open={showCSATGlobalDialog}
         onOpenChange={setShowCSATGlobalDialog}
+      />
+
+      {/* Results Global Dialog */}
+      <ResultsGlobalDialog
+        open={showResultsGlobalDialog}
+        onOpenChange={setShowResultsGlobalDialog}
       />
     </div>
   );
