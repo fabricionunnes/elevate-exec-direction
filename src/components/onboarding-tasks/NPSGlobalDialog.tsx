@@ -26,6 +26,9 @@ interface CompanyNPSData {
   averageScore: number | null;
   lastResponseDate: string | null;
   totalResponses: number;
+  // CSAT data
+  csatAverageScore: number | null;
+  csatTotalResponses: number;
 }
 
 interface NPSGlobalDialogProps {
@@ -74,6 +77,12 @@ export function NPSGlobalDialog({ open, onOpenChange }: NPSGlobalDialogProps) {
         .select("project_id, score, created_at")
         .order("created_at", { ascending: false });
 
+      // Get all CSAT responses
+      const { data: csatResponses } = await supabase
+        .from("csat_responses")
+        .select("project_id, score, created_at")
+        .order("created_at", { ascending: false });
+
       const responsesByProject = new Map<string, { scores: number[]; lastDate: string | null }>();
       
       (npsResponses || []).forEach((r) => {
@@ -85,9 +94,18 @@ export function NPSGlobalDialog({ open, onOpenChange }: NPSGlobalDialogProps) {
         responsesByProject.set(r.project_id, existing);
       });
 
+      const csatByProject = new Map<string, { scores: number[] }>();
+      
+      (csatResponses || []).forEach((r) => {
+        const existing = csatByProject.get(r.project_id) || { scores: [] };
+        existing.scores.push(r.score);
+        csatByProject.set(r.project_id, existing);
+      });
+
       const companiesData: CompanyNPSData[] = projects.map((project) => {
         const company = project.onboarding_companies as { id: string; name: string };
         const npsData = responsesByProject.get(project.id);
+        const csatData = csatByProject.get(project.id);
         
         return {
           companyId: company.id,
@@ -100,6 +118,10 @@ export function NPSGlobalDialog({ open, onOpenChange }: NPSGlobalDialogProps) {
             : null,
           lastResponseDate: npsData?.lastDate ?? null,
           totalResponses: npsData?.scores.length ?? 0,
+          csatAverageScore: csatData?.scores.length 
+            ? csatData.scores.reduce((a, b) => a + b, 0) / csatData.scores.length 
+            : null,
+          csatTotalResponses: csatData?.scores.length ?? 0,
         };
       });
 
@@ -237,17 +259,38 @@ export function NPSGlobalDialog({ open, onOpenChange }: NPSGlobalDialogProps) {
                           </span>
                         </div>
 
-                        {/* Average */}
+                        {/* NPS Average */}
                         <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">Média:</span>
+                          <span className="text-muted-foreground">Média NPS:</span>
                           <span className="font-medium">
                             {item.averageScore?.toFixed(1) ?? "—"}
                           </span>
                         </div>
 
-                        {/* Total Responses */}
+                        {/* CSAT Average */}
                         <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">Respostas:</span>
+                          <span className="text-muted-foreground">Média CSAT:</span>
+                          <span className={`font-medium ${
+                            item.csatAverageScore !== null 
+                              ? item.csatAverageScore >= 4 
+                                ? "text-green-600" 
+                                : item.csatAverageScore >= 3 
+                                  ? "text-yellow-600" 
+                                  : "text-destructive"
+                              : ""
+                          }`}>
+                            {item.csatAverageScore?.toFixed(1) ?? "—"}
+                          </span>
+                          {item.csatTotalResponses > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              ({item.csatTotalResponses})
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Total NPS Responses */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">Respostas NPS:</span>
                           <span className="font-medium">{item.totalResponses}</span>
                         </div>
 
