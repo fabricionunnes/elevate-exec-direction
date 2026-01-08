@@ -612,6 +612,11 @@ export default function OnboardingCompaniesReportPage() {
                       <SortIcon field="contract_start_date" />
                     </div>
                   </TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50">
+                    <div className="flex items-center">
+                      Data Término
+                    </div>
+                  </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50 text-right"
                     onClick={() => handleSort("contract_months")}
@@ -663,7 +668,7 @@ export default function OnboardingCompaniesReportPage() {
               <TableBody>
                 {filteredCompanies.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       Nenhuma empresa encontrada
                     </TableCell>
                   </TableRow>
@@ -677,6 +682,7 @@ export default function OnboardingCompaniesReportPage() {
                       <TableCell className="font-medium">{company.name}</TableCell>
                       <TableCell>{company.consultant_name || "—"}</TableCell>
                       <TableCell>{formatDate(company.contract_start_date)}</TableCell>
+                      <TableCell>{formatDate(company.contract_end_date)}</TableCell>
                       <TableCell className="text-right">{company.contract_months}</TableCell>
                       <TableCell className="text-right font-medium text-green-500">
                         {formatCurrency(company.total_paid)}
