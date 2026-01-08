@@ -602,6 +602,12 @@ const OnboardingTasksPage = () => {
 
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
+      // For consultants: only show companies where they are the consultant or CS
+      if (currentUserRole === "consultant" && currentStaffId) {
+        const isMyCompany = company.consultant_id === currentStaffId || company.cs_id === currentStaffId;
+        if (!isMyCompany) return false;
+      }
+      
       // For consultants: hide inactive companies entirely
       if (currentUserRole === "consultant" && company.status === "inactive") {
         return false;
@@ -613,7 +619,9 @@ const OnboardingTasksPage = () => {
         (company.segment && company.segment.toLowerCase().includes(searchTerm.toLowerCase()));
       
       // Consultant filter - check company's consultant OR project's consultant OR tasks with this consultant responsible
+      // Skip for consultants since they already see only their companies
       const matchesConsultant = 
+        currentUserRole === "consultant" ||
         filterConsultant === "all" || 
         company.consultant_id === filterConsultant ||
         company.projects?.some(p => p.consultant_id === filterConsultant) ||
@@ -712,7 +720,7 @@ const OnboardingTasksPage = () => {
       if (a.status !== "inactive" && b.status === "inactive") return -1;
       return a.name.localeCompare(b.name);
     });
-  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, projectsGoalRanges, currentUserRole]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, projectsGoalRanges, currentUserRole, currentStaffId, allTasks]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -932,6 +940,13 @@ const OnboardingTasksPage = () => {
                       </DropdownMenuItem>
                     </>
                   )}
+                  {/* Resultados for consultants in mobile menu */}
+                  {currentUserRole === "consultant" && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/results")}>
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Resultados
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -971,7 +986,15 @@ const OnboardingTasksPage = () => {
                 {companies.length > 0 ? (
                   <ScrollArea className="max-h-64">
                     {companies
-                      .filter((c) => c.name.toLowerCase().includes(companySearchTerm.toLowerCase()))
+                      .filter((c) => {
+                        // Filter by search term
+                        const matchesSearch = c.name.toLowerCase().includes(companySearchTerm.toLowerCase());
+                        // Consultants only see their companies
+                        if (currentUserRole === "consultant" && currentStaffId) {
+                          return matchesSearch && (c.consultant_id === currentStaffId || c.cs_id === currentStaffId);
+                        }
+                        return matchesSearch;
+                      })
                       .slice(0, 20)
                       .map((company) => (
                         <DropdownMenuItem
@@ -985,7 +1008,13 @@ const OnboardingTasksPage = () => {
                           </Badge>
                         </DropdownMenuItem>
                       ))}
-                    {companies.filter((c) => c.name.toLowerCase().includes(companySearchTerm.toLowerCase())).length === 0 && (
+                    {companies.filter((c) => {
+                      const matchesSearch = c.name.toLowerCase().includes(companySearchTerm.toLowerCase());
+                      if (currentUserRole === "consultant" && currentStaffId) {
+                        return matchesSearch && (c.consultant_id === currentStaffId || c.cs_id === currentStaffId);
+                      }
+                      return matchesSearch;
+                    }).length === 0 && (
                       <div className="px-2 py-3 text-sm text-muted-foreground text-center">
                         Nenhuma empresa encontrada
                       </div>
@@ -1016,7 +1045,7 @@ const OnboardingTasksPage = () => {
               </Button>
             )}
 
-            {/* NPS, CSAT and Results Buttons - Admin/CS only */}
+            {/* NPS, CSAT and Results Buttons - Admin/CS only, Resultados for all staff */}
             {canCreateCompany && (
               <>
                 <Button 
@@ -1037,16 +1066,19 @@ const OnboardingTasksPage = () => {
                   <MessageSquareHeart className="h-4 w-4" />
                   CSAT
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => navigate("/onboarding-tasks/results")}
-                  className="gap-2"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  Resultados
-                </Button>
               </>
+            )}
+            {/* Resultados button - visible for all staff (admin, cs, consultant) */}
+            {currentUserRole && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate("/onboarding-tasks/results")}
+                className="gap-2"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Resultados
+              </Button>
             )}
 
             {/* Admin/CS Actions Menu */}
