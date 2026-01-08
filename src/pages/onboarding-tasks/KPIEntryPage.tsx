@@ -172,10 +172,10 @@ export default function KPIEntryPage() {
   const handleSubmit = async () => {
     if (!salesperson) return;
 
-    // Validate required fields
+    // Validate required fields - allow 0 as a valid value
     const requiredKpis = kpis.filter(k => k.is_required);
     for (const kpi of requiredKpis) {
-      if (!values[kpi.id] || values[kpi.id] === 0) {
+      if (values[kpi.id] === undefined || values[kpi.id] === null || isNaN(values[kpi.id])) {
         toast.error(`O campo "${kpi.name}" é obrigatório`);
         return;
       }
