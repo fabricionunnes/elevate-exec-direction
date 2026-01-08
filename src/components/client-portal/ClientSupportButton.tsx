@@ -1,30 +1,29 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { 
   Headphones, 
-  Phone, 
   Clock, 
-  ExternalLink, 
   X,
   Video,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Phone
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface SupportSession {
   id: string;
-  status: "waiting" | "in_progress" | "completed" | "cancelled";
+  status: "waiting" | "in_progress" | "completed" | "cancelled" | "timeout";
   meet_link: string | null;
   started_at: string;
   attended_at: string | null;
+  timeout_at: string | null;
 }
 
 interface ClientSupportButtonProps {
@@ -33,6 +32,8 @@ interface ClientSupportButtonProps {
   userName: string;
   companyName: string;
 }
+
+const TIMEOUT_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 export const ClientSupportButton = ({ 
   projectId, 
@@ -43,11 +44,45 @@ export const ClientSupportButton = ({
   const [showDialog, setShowDialog] = useState(false);
   const [activeSession, setActiveSession] = useState<SupportSession | null>(null);
   const [loading, setLoading] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchActiveSession();
-    subscribeToSession();
+    const unsubscribe = subscribeToSession();
+    
+    return () => {
+      unsubscribe?.();
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [projectId, userId]);
+
+  // Handle countdown timer
+  useEffect(() => {
+    if (activeSession?.status === "waiting" && activeSession.timeout_at) {
+      const timeoutDate = new Date(activeSession.timeout_at).getTime();
+      
+      // Update countdown every second
+      intervalRef.current = setInterval(() => {
+        const now = Date.now();
+        const remaining = Math.max(0, timeoutDate - now);
+        setTimeRemaining(remaining);
+        
+        // Check if timeout has passed
+        if (remaining <= 0) {
+          handleTimeout();
+        }
+      }, 1000);
+
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+      };
+    } else {
+      setTimeRemaining(null);
+    }
+  }, [activeSession]);
 
   const fetchActiveSession = async () => {
     try {
@@ -80,17 +115,26 @@ export const ClientSupportButton = ({
         },
         (payload) => {
           console.log("Session update:", payload);
-          fetchActiveSession();
           
-          // Notificar cliente quando alguém atender
           if (payload.eventType === "UPDATE") {
             const newSession = payload.new as SupportSession;
+            setActiveSession(newSession);
+            
+            // Notify client when someone attends
             if (newSession.status === "in_progress" && newSession.meet_link) {
               toast.success("Um membro da equipe está pronto para atendê-lo!", {
                 description: "Clique no botão para entrar na videochamada",
                 duration: 10000,
               });
             }
+            
+            // Notify client when session times out
+            if (newSession.status === "timeout") {
+              setActiveSession(null);
+              setShowDialog(false);
+            }
+          } else if (payload.eventType === "DELETE") {
+            setActiveSession(null);
           }
         }
       )
@@ -101,9 +145,41 @@ export const ClientSupportButton = ({
     };
   };
 
+  const handleTimeout = async () => {
+    if (!activeSession || activeSession.status !== "waiting") return;
+    
+    try {
+      const { error } = await supabase
+        .from("support_room_sessions")
+        .update({
+          status: "timeout",
+          ended_at: new Date().toISOString(),
+        })
+        .eq("id", activeSession.id)
+        .eq("status", "waiting"); // Only update if still waiting
+
+      if (error) throw error;
+      
+      setActiveSession(null);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      
+      // Show timeout message to client
+      toast.info("Tempo de espera excedido", {
+        description: "Não se preocupe! Nossa equipe foi notificada e entrará em contato com você o mais breve possível.",
+        duration: 10000,
+      });
+      
+      setShowDialog(false);
+    } catch (error) {
+      console.error("Error handling timeout:", error);
+    }
+  };
+
   const startSupportSession = async () => {
     setLoading(true);
     try {
+      const timeoutAt = new Date(Date.now() + TIMEOUT_DURATION).toISOString();
+      
       const { data, error } = await supabase
         .from("support_room_sessions")
         .insert({
@@ -112,6 +188,7 @@ export const ClientSupportButton = ({
           client_name: userName,
           company_name: companyName,
           status: "waiting",
+          timeout_at: timeoutAt,
         })
         .select()
         .single();
@@ -147,6 +224,7 @@ export const ClientSupportButton = ({
       
       setActiveSession(null);
       setShowDialog(false);
+      if (intervalRef.current) clearInterval(intervalRef.current);
       toast.success("Solicitação cancelada");
     } catch (error) {
       console.error("Error cancelling session:", error);
@@ -165,9 +243,21 @@ export const ClientSupportButton = ({
     }
   };
 
+  const formatTimeRemaining = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  const getProgressPercentage = () => {
+    if (!timeRemaining) return 100;
+    return (timeRemaining / TIMEOUT_DURATION) * 100;
+  };
+
   return (
     <>
-      {/* Floating Support Button - Positioned above bottom nav */}
+      {/* Floating Support Button */}
       <motion.div
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -295,10 +385,28 @@ export const ClientSupportButton = ({
                     <p className="text-sm text-muted-foreground">
                       Nossa equipe foi notificada e entrará em contato em breve.
                     </p>
-                    <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mt-3">
-                      <Clock className="h-3 w-3" />
-                      Aguardando há {formatDistanceToNow(new Date(activeSession.started_at), { locale: ptBR })}
-                    </div>
+                    
+                    {/* Countdown Timer */}
+                    {timeRemaining !== null && (
+                      <div className="mt-4 space-y-2">
+                        <div className="flex items-center justify-center gap-2 text-lg font-semibold">
+                          <Clock className="h-5 w-5 text-amber-600" />
+                          <span className={timeRemaining < 60000 ? "text-destructive" : "text-amber-600"}>
+                            {formatTimeRemaining(timeRemaining)}
+                          </span>
+                        </div>
+                        <Progress 
+                          value={getProgressPercentage()} 
+                          className="h-2"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {timeRemaining < 60000 
+                            ? "Tempo quase esgotando..." 
+                            : "Tempo de espera estimado"
+                          }
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -309,7 +417,7 @@ export const ClientSupportButton = ({
                   </Button>
                 </DialogFooter>
               </motion.div>
-            ) : (
+            ) : activeSession.status === "in_progress" ? (
               <motion.div
                 key="in_progress"
                 initial={{ opacity: 0, y: 10 }}
@@ -337,6 +445,35 @@ export const ClientSupportButton = ({
 
                 <DialogFooter>
                   <Button variant="ghost" onClick={() => setShowDialog(false)}>
+                    Fechar
+                  </Button>
+                </DialogFooter>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="timeout"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4"
+              >
+                <Card className="border-blue-500/30 bg-blue-500/5">
+                  <CardContent className="p-6 text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <Phone className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <Badge variant="outline" className="border-blue-500 text-blue-600 mb-3">
+                      Entraremos em Contato
+                    </Badge>
+                    <p className="text-sm text-muted-foreground">
+                      Não foi possível atendê-lo no momento. Nossa equipe foi notificada e entrará 
+                      em contato com você o mais breve possível.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowDialog(false)}>
                     Fechar
                   </Button>
                 </DialogFooter>
