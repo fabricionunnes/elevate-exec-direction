@@ -13,6 +13,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -22,8 +29,32 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { History, Plus, Trash2, Pencil } from "lucide-react";
-import { format, parse, startOfMonth } from "date-fns";
+import { format, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const MONTHS = [
+  { value: "01", label: "Janeiro" },
+  { value: "02", label: "Fevereiro" },
+  { value: "03", label: "Março" },
+  { value: "04", label: "Abril" },
+  { value: "05", label: "Maio" },
+  { value: "06", label: "Junho" },
+  { value: "07", label: "Julho" },
+  { value: "08", label: "Agosto" },
+  { value: "09", label: "Setembro" },
+  { value: "10", label: "Outubro" },
+  { value: "11", label: "Novembro" },
+  { value: "12", label: "Dezembro" },
+];
+
+const getYearOptions = () => {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let year = currentYear; year >= currentYear - 10; year--) {
+    years.push({ value: year.toString(), label: year.toString() });
+  }
+  return years;
+};
 
 interface SalesHistoryEntry {
   id: string;
@@ -46,8 +77,9 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   
-  // Form state
-  const [monthYear, setMonthYear] = useState("");
+  // Form state - separate month and year
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
   const [revenue, setRevenue] = useState("");
   const [salesCount, setSalesCount] = useState("");
   const [notes, setNotes] = useState("");
@@ -80,7 +112,8 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
   };
 
   const resetForm = () => {
-    setMonthYear("");
+    setSelectedMonth("");
+    setSelectedYear("");
     setRevenue("");
     setSalesCount("");
     setNotes("");
@@ -89,20 +122,14 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
   };
 
   const handleSubmit = async () => {
-    if (!monthYear || !revenue) {
-      toast.error("Mês/Ano e Faturamento são obrigatórios");
-      return;
-    }
-
-    // Validate monthYear format (should be yyyy-MM from input type="month")
-    if (!/^\d{4}-\d{2}$/.test(monthYear)) {
-      toast.error("Formato de mês inválido. Selecione o mês usando o seletor.");
+    if (!selectedMonth || !selectedYear || !revenue) {
+      toast.error("Mês, Ano e Faturamento são obrigatórios");
       return;
     }
 
     setSaving(true);
     try {
-      const monthDate = startOfMonth(parse(monthYear, "yyyy-MM", new Date()));
+      const monthDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, 1);
       
       if (isNaN(monthDate.getTime())) {
         toast.error("Data inválida. Selecione um mês válido.");
@@ -154,7 +181,9 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
   };
 
   const handleEdit = (entry: SalesHistoryEntry) => {
-    setMonthYear(format(new Date(entry.month_year), "yyyy-MM"));
+    const date = new Date(entry.month_year);
+    setSelectedMonth(String(date.getMonth() + 1).padStart(2, '0'));
+    setSelectedYear(String(date.getFullYear()));
     setRevenue(entry.revenue.toString());
     setSalesCount(entry.sales_count?.toString() || "");
     setNotes(entry.notes || "");
@@ -205,16 +234,36 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
         <div className="space-y-6">
           {/* Form */}
           <div className="grid gap-4 p-4 border rounded-lg bg-muted/30">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div>
-                <Label htmlFor="monthYear">Mês/Ano *</Label>
-                <Input
-                  id="monthYear"
-                  type="month"
-                  value={monthYear}
-                  onChange={(e) => setMonthYear(e.target.value)}
-                  className="mt-1"
-                />
+                <Label>Mês *</Label>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTHS.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Ano *</Label>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getYearOptions().map((year) => (
+                      <SelectItem key={year.value} value={year.value}>
+                        {year.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="revenue">Faturamento (R$) *</Label>
