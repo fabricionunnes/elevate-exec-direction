@@ -92,6 +92,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   const [isAdmin, setIsAdmin] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [projectConsultantUserId, setProjectConsultantUserId] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string | null>(null);
   
   // Finalize meeting dialog
   const [meetingToFinalize, setMeetingToFinalize] = useState<MeetingNote | null>(null);
@@ -153,7 +154,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
   const fetchProjectConsultant = async () => {
     try {
-      // Get the project's consultant
+      // Get the project's consultant and company info
       const { data: project } = await supabase
         .from("onboarding_projects")
         .select("consultant_id, onboarding_company_id")
@@ -164,15 +165,20 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
       let consultantStaffId = project.consultant_id;
 
-      // If no project-level consultant, check company-level
-      if (!consultantStaffId && project.onboarding_company_id) {
+      // Get company name for filtering calendar events
+      if (project.onboarding_company_id) {
         const { data: company } = await supabase
           .from("onboarding_companies")
-          .select("consultant_id")
+          .select("name, consultant_id")
           .eq("id", project.onboarding_company_id)
           .single();
         
-        if (company?.consultant_id) {
+        if (company?.name) {
+          setCompanyName(company.name);
+        }
+        
+        // If no project-level consultant, use company-level
+        if (!consultantStaffId && company?.consultant_id) {
           consultantStaffId = company.consultant_id;
         }
       }
@@ -273,14 +279,34 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
       });
 
       if (data?.events) {
-        setCalendarEvents(data.events);
+        // Filter events to only include meetings for this specific client
+        const filteredEvents = filterEventsForClient(data.events);
+        setCalendarEvents(filteredEvents);
         
         // Auto-create meeting entries for past events that don't exist yet
-        await createMeetingsFromCalendarEvents(data.events);
+        await createMeetingsFromCalendarEvents(filteredEvents);
       }
     } catch (error) {
       console.error("Error syncing calendar events:", error);
     }
+  };
+
+  // Filter calendar events to only include those related to this client
+  const filterEventsForClient = (events: CalendarEvent[]): CalendarEvent[] => {
+    if (!companyName) {
+      console.log("No company name available, cannot filter events");
+      return [];
+    }
+
+    const normalizedCompanyName = companyName.toLowerCase().trim();
+    
+    return events.filter(event => {
+      const title = (event.title || "").toLowerCase();
+      const description = (event.description || "").toLowerCase();
+      
+      // Check if the event title or description contains the company name
+      return title.includes(normalizedCompanyName) || description.includes(normalizedCompanyName);
+    });
   };
 
   const createMeetingsFromCalendarEvents = async (events: CalendarEvent[]) => {
