@@ -71,7 +71,7 @@ interface CompanyReport {
   avg_ticket: number;
 }
 
-type SortField = "name" | "consultant_name" | "contract_start_date" | "contract_months" | "total_paid" | "avg_ticket" | "status" | "payment_method";
+type SortField = "name" | "consultant_name" | "contract_start_date" | "contract_end_date" | "contract_months" | "total_paid" | "avg_ticket" | "status" | "payment_method";
 type SortDirection = "asc" | "desc";
 
 export default function OnboardingCompaniesReportPage() {
@@ -86,10 +86,12 @@ export default function OnboardingCompaniesReportPage() {
   const [filterConsultant, setFilterConsultant] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterPaymentMethod, setFilterPaymentMethod] = useState<string>("all");
+  const [filterEndDateFrom, setFilterEndDateFrom] = useState<string>("");
+  const [filterEndDateTo, setFilterEndDateTo] = useState<string>("");
 
-  // Sorting
-  const [sortField, setSortField] = useState<SortField>("total_paid");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  // Sorting - default to contract_end_date ascending (earliest first)
+  const [sortField, setSortField] = useState<SortField>("contract_end_date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   // Edit dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -264,6 +266,20 @@ export default function OnboardingCompaniesReportPage() {
       }
     }
 
+    // Filter by contract end date period
+    if (filterEndDateFrom) {
+      result = result.filter(c => {
+        if (!c.contract_end_date) return false;
+        return c.contract_end_date >= filterEndDateFrom;
+      });
+    }
+    if (filterEndDateTo) {
+      result = result.filter(c => {
+        if (!c.contract_end_date) return false;
+        return c.contract_end_date <= filterEndDateTo;
+      });
+    }
+
     // Sort
     result.sort((a, b) => {
       let aVal: any = a[sortField];
@@ -285,7 +301,7 @@ export default function OnboardingCompaniesReportPage() {
     });
 
     return result;
-  }, [companies, searchTerm, filterConsultant, filterStatus, filterPaymentMethod, sortField, sortDirection]);
+  }, [companies, searchTerm, filterConsultant, filterStatus, filterPaymentMethod, filterEndDateFrom, filterEndDateTo, sortField, sortDirection]);
 
   // Summary metrics
   const summaryMetrics = useMemo(() => {
@@ -544,58 +560,94 @@ export default function OnboardingCompaniesReportPage() {
         {/* Filters */}
         <Card className="mb-6">
           <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar empresa..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
-                  />
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar empresa..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+                <div className="w-full sm:w-48">
+                  <Select value={filterConsultant} onValueChange={setFilterConsultant}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Consultor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os consultores</SelectItem>
+                      {staff.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full sm:w-40">
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os status</SelectItem>
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="closed">Encerrado</SelectItem>
+                      <SelectItem value="notice_period">Em Aviso</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full sm:w-44">
+                  <Select value={filterPaymentMethod} onValueChange={setFilterPaymentMethod}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pagamento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos pagamentos</SelectItem>
+                      <SelectItem value="card">Cartão</SelectItem>
+                      <SelectItem value="monthly">Recorrência</SelectItem>
+                      <SelectItem value="none">Não informado</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              <div className="w-full sm:w-48">
-                <Select value={filterConsultant} onValueChange={setFilterConsultant}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Consultor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os consultores</SelectItem>
-                    {staff.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-full sm:w-40">
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os status</SelectItem>
-                    <SelectItem value="active">Ativo</SelectItem>
-                    <SelectItem value="closed">Encerrado</SelectItem>
-                    <SelectItem value="notice_period">Em Aviso</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-full sm:w-44">
-                <Select value={filterPaymentMethod} onValueChange={setFilterPaymentMethod}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pagamento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos pagamentos</SelectItem>
-                    <SelectItem value="card">Cartão</SelectItem>
-                    <SelectItem value="monthly">Recorrência</SelectItem>
-                    <SelectItem value="none">Não informado</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Date period filter */}
+              <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="flex-1 sm:flex-none">
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Término de</Label>
+                  <Input
+                    type="date"
+                    value={filterEndDateFrom}
+                    onChange={(e) => setFilterEndDateFrom(e.target.value)}
+                    className="w-full sm:w-40"
+                  />
+                </div>
+                <div className="flex-1 sm:flex-none">
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Término até</Label>
+                  <Input
+                    type="date"
+                    value={filterEndDateTo}
+                    onChange={(e) => setFilterEndDateTo(e.target.value)}
+                    className="w-full sm:w-40"
+                  />
+                </div>
+                {(filterEndDateFrom || filterEndDateTo) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setFilterEndDateFrom("");
+                      setFilterEndDateTo("");
+                    }}
+                    className="text-muted-foreground"
+                  >
+                    Limpar período
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
@@ -634,9 +686,13 @@ export default function OnboardingCompaniesReportPage() {
                       <SortIcon field="contract_start_date" />
                     </div>
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted/50">
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort("contract_end_date")}
+                  >
                     <div className="flex items-center">
                       Data Término
+                      <SortIcon field="contract_end_date" />
                     </div>
                   </TableHead>
                   <TableHead 
