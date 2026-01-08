@@ -26,6 +26,13 @@ interface Meeting {
   is_finalized: boolean;
 }
 
+interface CSATSurvey {
+  id: string;
+  meeting_id: string;
+  access_token: string;
+  status: string | null;
+}
+
 interface CSATResponse {
   id: string;
   meeting_id: string;
@@ -40,10 +47,20 @@ interface CSATConfigPanelProps {
   userRole?: 'admin' | 'cs' | 'consultant';
 }
 
+function generateToken(bytes = 16) {
+  const arr = new Uint8Array(bytes);
+  crypto.getRandomValues(arr);
+  return Array.from(arr)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 export function CSATConfigPanel({ projectId }: CSATConfigPanelProps) {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [surveysByMeeting, setSurveysByMeeting] = useState<Map<string, CSATSurvey>>(new Map());
   const [responses, setResponses] = useState<Map<string, CSATResponse>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [creatingMeetingId, setCreatingMeetingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -62,16 +79,30 @@ export function CSATConfigPanel({ projectId }: CSATConfigPanelProps) {
       if (meetingsError) throw meetingsError;
       setMeetings(meetingsData || []);
 
-      // Fetch CSAT responses for these meetings
-      const meetingIds = meetingsData?.map(m => m.id) || [];
+      const meetingIds = meetingsData?.map((m) => m.id) || [];
+
+      // Fetch surveys (token links) for these meetings
       if (meetingIds.length > 0) {
+        const { data: surveysData } = await supabase
+          .from('csat_surveys')
+          .select('id, meeting_id, access_token, status')
+          .eq('project_id', projectId)
+          .in('meeting_id', meetingIds);
+
+        const surveysMap = new Map((surveysData || []).map((s) => [s.meeting_id, s]));
+        setSurveysByMeeting(surveysMap);
+
+        // Fetch CSAT responses for these meetings
         const { data: responsesData } = await supabase
           .from('csat_responses')
           .select('*')
           .in('meeting_id', meetingIds);
 
-        const responsesMap = new Map(responsesData?.map(r => [r.meeting_id, r]) || []);
+        const responsesMap = new Map((responsesData || []).map((r) => [r.meeting_id, r]));
         setResponses(responsesMap);
+      } else {
+        setSurveysByMeeting(new Map());
+        setResponses(new Map());
       }
     } catch (error) {
       console.error('Error fetching CSAT data:', error);
@@ -81,14 +112,49 @@ export function CSATConfigPanel({ projectId }: CSATConfigPanelProps) {
     }
   };
 
-  const getCSATLink = (meetingId: string) => {
+  const getCSATLink = (accessToken: string) => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/csat?meeting=${meetingId}`;
+    return `${baseUrl}/#/csat?token=${accessToken}`;
   };
 
-  const copyLink = (meetingId: string) => {
-    navigator.clipboard.writeText(getCSATLink(meetingId));
-    toast.success('Link copiado para a área de transferência');
+  const ensureSurveyAndCopy = async (meetingId: string) => {
+    const existing = surveysByMeeting.get(meetingId);
+    if (existing?.access_token) {
+      navigator.clipboard.writeText(getCSATLink(existing.access_token));
+      toast.success('Link copiado para a área de transferência');
+      return;
+    }
+
+    setCreatingMeetingId(meetingId);
+    try {
+      const accessToken = generateToken(16);
+      const { data, error } = await supabase
+        .from('csat_surveys')
+        .insert({
+          project_id: projectId,
+          meeting_id: meetingId,
+          access_token: accessToken,
+          status: 'pending',
+        })
+        .select('id, meeting_id, access_token, status')
+        .single();
+
+      if (error) throw error;
+
+      setSurveysByMeeting((prev) => {
+        const next = new Map(prev);
+        next.set(meetingId, data as any);
+        return next;
+      });
+
+      navigator.clipboard.writeText(getCSATLink(accessToken));
+      toast.success('Link copiado para a área de transferência');
+    } catch (e) {
+      console.error('Error creating CSAT survey:', e);
+      toast.error('Erro ao gerar link');
+    } finally {
+      setCreatingMeetingId(null);
+    }
   };
 
   const getScoreColor = (score: number) => {
@@ -256,15 +322,30 @@ export function CSATConfigPanel({ projectId }: CSATConfigPanelProps) {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => copyLink(meeting.id)}
+                            onClick={() => ensureSurveyAndCopy(meeting.id)}
+                            disabled={creatingMeetingId === meeting.id}
                           >
-                            <Copy className="h-4 w-4 mr-1" />
-                            Copiar Link
+                            {creatingMeetingId === meeting.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                Gerando...
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-4 w-4 mr-1" />
+                                Copiar Link
+                              </>
+                            )}
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => window.open(getCSATLink(meeting.id), '_blank')}
+                            disabled={!surveysByMeeting.get(meeting.id)?.access_token}
+                            onClick={() => {
+                              const s = surveysByMeeting.get(meeting.id);
+                              if (!s?.access_token) return;
+                              window.open(getCSATLink(s.access_token), '_blank');
+                            }}
                           >
                             <ExternalLink className="h-4 w-4" />
                           </Button>

@@ -10,12 +10,13 @@ import { Star, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
-interface MeetingData {
-  id: string;
-  meeting_title: string | null;
-  meeting_date: string | null;
-  project_id: string;
-  project?: {
+interface SurveyContext {
+  surveyId: string;
+  meetingId: string;
+  projectId: string;
+  meetingTitle: string | null;
+  meetingDate: string | null;
+  project: {
     product_name: string;
     company_name: string | null;
   };
@@ -23,71 +24,82 @@ interface MeetingData {
 
 const CSATSurveyPage = () => {
   const [searchParams] = useSearchParams();
-  const meetingId = searchParams.get('meeting');
+  const token = searchParams.get('token');
+  const meetingParam = searchParams.get('meeting');
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [meeting, setMeeting] = useState<MeetingData | null>(null);
-  
+  const [ctx, setCtx] = useState<SurveyContext | null>(null);
+
   const [score, setScore] = useState<number | null>(null);
   const [feedback, setFeedback] = useState('');
   const [respondentName, setRespondentName] = useState('');
 
   useEffect(() => {
-    if (meetingId) {
-      fetchMeeting();
+    if (token || meetingParam) {
+      fetchSurveyContext();
     } else {
       setError('Link de pesquisa inválido');
       setLoading(false);
     }
-  }, [meetingId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, meetingParam]);
 
-  const fetchMeeting = async () => {
+  const fetchSurveyContext = async () => {
     try {
-      // Fetch meeting data
-      const { data: meetingData, error: meetingError } = await supabase
-        .from('onboarding_meeting_notes')
-        .select('id, meeting_title, meeting_date, project_id')
-        .eq('id', meetingId)
-        .single();
+      // 1) Find the survey record
+      const surveyQuery = supabase
+        .from('csat_surveys')
+        .select('id, project_id, meeting_id, status, meeting:onboarding_meeting_notes(meeting_title, meeting_date)');
 
-      if (meetingError || !meetingData) {
-        setError('Pesquisa não encontrada ou link inválido');
-        setLoading(false);
+      const { data: surveyData, error: surveyError } = token
+        ? await surveyQuery.eq('access_token', token).maybeSingle()
+        : await surveyQuery.eq('meeting_id', meetingParam).maybeSingle();
+
+      if (surveyError || !surveyData) {
+        setError('Pesquisa não encontrada. Solicite um novo link.');
         return;
       }
 
-      // Check if already responded
+      if (surveyData.status === 'responded') {
+        setError('Esta pesquisa já foi respondida');
+        return;
+      }
+
+      // 2) Check if already responded (defensive)
       const { data: existingResponse } = await supabase
         .from('csat_responses')
         .select('id')
-        .eq('meeting_id', meetingId)
+        .eq('survey_id', surveyData.id)
         .maybeSingle();
 
       if (existingResponse) {
         setError('Esta pesquisa já foi respondida');
-        setLoading(false);
         return;
       }
 
-      // Fetch project data
+      // 3) Project
       const { data: projectData } = await supabase
         .from('onboarding_projects')
         .select('product_name, onboarding_company:onboarding_companies(name)')
-        .eq('id', meetingData.project_id)
+        .eq('id', surveyData.project_id)
         .single();
 
-      setMeeting({
-        ...meetingData,
+      setCtx({
+        surveyId: surveyData.id,
+        meetingId: surveyData.meeting_id,
+        projectId: surveyData.project_id,
+        meetingTitle: (surveyData.meeting as any)?.meeting_title ?? null,
+        meetingDate: (surveyData.meeting as any)?.meeting_date ?? null,
         project: {
           product_name: projectData?.product_name || '',
           company_name: (projectData?.onboarding_company as any)?.name || null,
         },
       });
     } catch (err) {
-      console.error('Error fetching meeting:', err);
+      console.error('Error fetching CSAT context:', err);
       setError('Erro ao carregar pesquisa');
     } finally {
       setLoading(false);
@@ -95,7 +107,7 @@ const CSATSurveyPage = () => {
   };
 
   const handleSubmit = async () => {
-    if (score === null || !meeting) {
+    if (score === null || !ctx) {
       toast.error('Por favor, selecione uma nota');
       return;
     }
@@ -105,9 +117,9 @@ const CSATSurveyPage = () => {
       const { error: insertError } = await supabase
         .from('csat_responses')
         .insert({
-          meeting_id: meeting.id,
-          project_id: meeting.project_id,
-          survey_id: meeting.id, // Using meeting_id as survey_id for simplicity
+          survey_id: ctx.surveyId,
+          project_id: ctx.projectId,
+          meeting_id: ctx.meetingId,
           score,
           feedback: feedback || null,
           respondent_name: respondentName || null,
@@ -120,6 +132,12 @@ const CSATSurveyPage = () => {
         }
         throw insertError;
       }
+
+      // Mark survey responded
+      await supabase
+        .from('csat_surveys')
+        .update({ status: 'responded' })
+        .eq('id', ctx.surveyId);
 
       setSubmitted(true);
       toast.success('Obrigado pelo seu feedback!');
@@ -213,11 +231,11 @@ const CSATSurveyPage = () => {
               <span className="text-xl font-semibold">Pesquisa de Satisfação</span>
             </div>
             <CardTitle className="text-lg">
-              {meeting?.project?.company_name || meeting?.project?.product_name}
+              {ctx?.project.company_name || ctx?.project.product_name}
             </CardTitle>
-            {meeting?.meeting_title && (
+            {ctx?.meetingTitle && (
               <CardDescription>
-                Reunião: {meeting.meeting_title}
+                Reunião: {ctx.meetingTitle}
               </CardDescription>
             )}
           </CardHeader>
