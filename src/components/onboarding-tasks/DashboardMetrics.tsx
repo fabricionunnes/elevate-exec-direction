@@ -185,9 +185,27 @@ const DashboardMetrics = ({
     }
   };
 
+
+  const fetchHealthScores = async () => {
+    const { data, error } = await supabase
+      .from("client_health_scores")
+      .select("project_id, total_score, risk_level");
+
+    if (error) {
+      console.error("Error fetching health scores:", error);
+      return;
+    }
+
+    setHealthScores(data || []);
+  };
+
+  // When the user changes the company/project filters, refresh health scores so the card doesn't show stale values
+  useEffect(() => {
+    fetchHealthScores();
+  }, [projects]);
+
   // Project IDs for filtering
   const filteredProjectIds = useMemo(() => new Set(projects.map(p => p.id)), [projects]);
-
   const filteredTasks = useMemo(() => {
     return allTasks.filter(t => filteredProjectIds.has(t.project_id));
   }, [allTasks, filteredProjectIds]);
