@@ -97,28 +97,44 @@ export default function UnifiedAssessmentPage() {
         return;
       }
 
-      // Get project info
-      const { data: project } = await supabase
-        .from("onboarding_projects")
-        .select("product_name, onboarding_company_id")
-        .eq("id", cycle.project_id)
-        .single();
+      // IMPORTANTE: manter este endpoint 100% público.
+      // Algumas tabelas auxiliares (ex.: onboarding_projects/onboarding_companies)
+      // podem exigir autenticação por RLS. Se isso acontecer, seguimos mesmo assim,
+      // exibindo a avaliação com informações mínimas.
+      let projectName = "";
+      let companyName: string | null = null;
 
-      let companyName = null;
-      if (project?.onboarding_company_id) {
-        const { data: company } = await supabase
-          .from("onboarding_companies")
-          .select("name")
-          .eq("id", project.onboarding_company_id)
+      try {
+        const { data: project, error: projectError } = await supabase
+          .from("onboarding_projects")
+          .select("product_name, onboarding_company_id")
+          .eq("id", cycle.project_id)
           .single();
-        companyName = company?.name || null;
+
+        if (!projectError && project) {
+          projectName = project.product_name || "";
+
+          if (project.onboarding_company_id) {
+            const { data: company, error: companyError } = await supabase
+              .from("onboarding_companies")
+              .select("name")
+              .eq("id", project.onboarding_company_id)
+              .single();
+
+            if (!companyError && company?.name) {
+              companyName = company.name;
+            }
+          }
+        }
+      } catch {
+        // Silencioso: página pública não pode depender dessas tabelas
       }
 
       setCycleInfo({
         title: cycle.title,
         type: cycle.type as "360" | "disc" | "both",
         companyName,
-        projectName: project?.product_name || "",
+        projectName,
       });
       setLoading(false);
     } catch (error) {
