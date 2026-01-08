@@ -4097,6 +4097,7 @@ export type Database = {
           project_id: string
           started_at: string
           status: string
+          timeout_at: string | null
           user_id: string
         }
         Insert: {
@@ -4112,6 +4113,7 @@ export type Database = {
           project_id: string
           started_at?: string
           status?: string
+          timeout_at?: string | null
           user_id: string
         }
         Update: {
@@ -4127,6 +4129,7 @@ export type Database = {
           project_id?: string
           started_at?: string
           status?: string
+          timeout_at?: string | null
           user_id?: string
         }
         Relationships: [
