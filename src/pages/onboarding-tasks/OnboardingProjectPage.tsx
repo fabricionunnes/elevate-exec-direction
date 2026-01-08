@@ -1353,6 +1353,7 @@ const OnboardingProjectPage = () => {
               companyId={project.onboarding_company_id || ""} 
               isAdmin={isAdmin}
               projectId={projectId}
+              isStaff={currentUserRole === "admin" || currentUserRole === "cs" || currentUserRole === "consultant"}
             />
           </TabsContent>
 
