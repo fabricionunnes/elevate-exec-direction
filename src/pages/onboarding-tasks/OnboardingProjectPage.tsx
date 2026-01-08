@@ -180,6 +180,7 @@ const OnboardingProjectPage = () => {
   const [churnLoading, setChurnLoading] = useState(false);
   const [cancellationSignalLoading, setCancellationSignalLoading] = useState(false);
   const [showCrmDialog, setShowCrmDialog] = useState(false);
+  const [crmDialogMode, setCrmDialogMode] = useState<"view" | "edit">("view");
   const [showDocsDialog, setShowDocsDialog] = useState(false);
   const [crmLinkInput, setCrmLinkInput] = useState("");
   const [crmLoginInput, setCrmLoginInput] = useState("");
@@ -959,27 +960,17 @@ const OnboardingProjectPage = () => {
                         variant="outline" 
                         size="sm" 
                         className="h-6 px-2 text-xs"
-                        onClick={() => window.open(project.crm_link!, "_blank")}
+                        onClick={() => {
+                          setCrmLinkInput(project.crm_link || "");
+                          setCrmLoginInput(project.crm_login || "");
+                          setCrmPasswordInput(project.crm_password || "");
+                          setCrmDialogMode("view");
+                          setShowCrmDialog(true);
+                        }}
                       >
                         <ExternalLink className="h-3 w-3 mr-1" />
                         CRM
                       </Button>
-                      {currentUserRole && currentUserRole !== "client" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => {
-                            setCrmLinkInput(project.crm_link || "");
-                            setCrmLoginInput(project.crm_login || "");
-                            setCrmPasswordInput(project.crm_password || "");
-                            setShowCrmDialog(true);
-                          }}
-                          title="Editar link do CRM"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                      )}
                     </div>
                   ) : currentUserRole && currentUserRole !== "client" && (
                     <Button 
@@ -990,6 +981,7 @@ const OnboardingProjectPage = () => {
                         setCrmLinkInput("");
                         setCrmLoginInput("");
                         setCrmPasswordInput("");
+                        setCrmDialogMode("edit");
                         setShowCrmDialog(true);
                       }}
                     >
@@ -1477,104 +1469,161 @@ const OnboardingProjectPage = () => {
       <Dialog open={showCrmDialog} onOpenChange={setShowCrmDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Link do CRM</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{crmDialogMode === "view" ? "Acesso ao CRM" : "Editar CRM"}</span>
+              {crmDialogMode === "view" && currentUserRole && currentUserRole !== "client" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCrmDialogMode("edit")}
+                  className="h-8 px-2"
+                >
+                  <Pencil className="h-4 w-4 mr-1" />
+                  Editar
+                </Button>
+              )}
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>URL do CRM do cliente</Label>
-              <Input
-                value={crmLinkInput}
-                onChange={(e) => setCrmLinkInput(e.target.value)}
-                placeholder="https://crm.exemplo.com/cliente/..."
-              />
+          
+          {crmDialogMode === "view" ? (
+            <div className="space-y-4">
+              {/* Go to CRM Button */}
+              {crmLinkInput && (
+                <Button
+                  className="w-full gap-2"
+                  onClick={() => window.open(crmLinkInput, "_blank")}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Acessar CRM
+                </Button>
+              )}
+              
+              {/* Login field */}
+              <div>
+                <Label className="text-muted-foreground text-xs">Login</Label>
+                <div className="flex gap-2 mt-1">
+                  <div className="flex-1 p-2 bg-muted rounded-md text-sm font-mono">
+                    {crmLoginInput || <span className="text-muted-foreground italic">Não informado</span>}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      if (crmLoginInput) {
+                        navigator.clipboard.writeText(crmLoginInput);
+                        toast.success("Login copiado!");
+                      }
+                    }}
+                    disabled={!crmLoginInput}
+                    title="Copiar login"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Password field */}
+              <div>
+                <Label className="text-muted-foreground text-xs">Senha</Label>
+                <div className="flex gap-2 mt-1">
+                  <div className="flex-1 p-2 bg-muted rounded-md text-sm font-mono">
+                    {crmPasswordInput || <span className="text-muted-foreground italic">Não informado</span>}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      if (crmPasswordInput) {
+                        navigator.clipboard.writeText(crmPasswordInput);
+                        toast.success("Senha copiada!");
+                      }
+                    }}
+                    disabled={!crmPasswordInput}
+                    title="Copiar senha"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              <Button variant="outline" onClick={() => setShowCrmDialog(false)} className="w-full">
+                Fechar
+              </Button>
             </div>
-            <div>
-              <Label>Login</Label>
-              <div className="flex gap-2">
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <Label>URL do CRM do cliente</Label>
+                <Input
+                  value={crmLinkInput}
+                  onChange={(e) => setCrmLinkInput(e.target.value)}
+                  placeholder="https://crm.exemplo.com/cliente/..."
+                />
+              </div>
+              <div>
+                <Label>Login</Label>
                 <Input
                   value={crmLoginInput}
                   onChange={(e) => setCrmLoginInput(e.target.value)}
                   placeholder="usuario@email.com"
-                  className="flex-1"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    if (crmLoginInput) {
-                      navigator.clipboard.writeText(crmLoginInput);
-                      toast.success("Login copiado!");
-                    }
-                  }}
-                  disabled={!crmLoginInput}
-                  title="Copiar login"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
               </div>
-            </div>
-            <div>
-              <Label>Senha</Label>
-              <div className="flex gap-2">
+              <div>
+                <Label>Senha</Label>
                 <Input
                   value={crmPasswordInput}
                   onChange={(e) => setCrmPasswordInput(e.target.value)}
-                  placeholder="••••••••"
-                  className="flex-1"
+                  placeholder="senha123"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    if (crmPasswordInput) {
-                      navigator.clipboard.writeText(crmPasswordInput);
-                      toast.success("Senha copiada!");
-                    }
-                  }}
-                  disabled={!crmPasswordInput}
-                  title="Copiar senha"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowCrmDialog(false)} className="flex-1">
-                Cancelar
-              </Button>
-              <Button
-                onClick={async () => {
-                  try {
-                    const { error } = await supabase
-                      .from("onboarding_projects")
-                      .update({ 
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    if (project?.crm_link) {
+                      setCrmDialogMode("view");
+                    } else {
+                      setShowCrmDialog(false);
+                    }
+                  }} 
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      const { error } = await supabase
+                        .from("onboarding_projects")
+                        .update({ 
+                          crm_link: crmLinkInput || null,
+                          crm_login: crmLoginInput || null,
+                          crm_password: crmPasswordInput || null
+                        })
+                        .eq("id", projectId);
+                      if (error) throw error;
+                      setProject(prev => prev ? { 
+                        ...prev, 
                         crm_link: crmLinkInput || null,
                         crm_login: crmLoginInput || null,
                         crm_password: crmPasswordInput || null
-                      })
-                      .eq("id", projectId);
-                    if (error) throw error;
-                    setProject(prev => prev ? { 
-                      ...prev, 
-                      crm_link: crmLinkInput || null,
-                      crm_login: crmLoginInput || null,
-                      crm_password: crmPasswordInput || null
-                    } : null);
-                    setShowCrmDialog(false);
-                    toast.success("Dados do CRM atualizados");
-                  } catch (error) {
-                    console.error("Error updating CRM data:", error);
-                    toast.error("Erro ao atualizar dados do CRM");
-                  }
-                }}
-                className="flex-1"
-              >
-                Salvar
-              </Button>
+                      } : null);
+                      setCrmDialogMode("view");
+                      toast.success("Dados do CRM atualizados");
+                    } catch (error) {
+                      console.error("Error updating CRM data:", error);
+                      toast.error("Erro ao atualizar dados do CRM");
+                    }
+                  }}
+                  className="flex-1"
+                >
+                  Salvar
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
