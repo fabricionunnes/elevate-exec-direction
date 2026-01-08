@@ -61,6 +61,7 @@ interface CompanyReport {
   contract_start_date: string | null;
   contract_end_date: string | null;
   contract_value: number | null;
+  payment_method: string | null;
   status: string;
   // Calculated fields
   total_paid: number;
@@ -68,7 +69,7 @@ interface CompanyReport {
   avg_ticket: number;
 }
 
-type SortField = "name" | "consultant_name" | "contract_start_date" | "contract_months" | "total_paid" | "avg_ticket" | "status";
+type SortField = "name" | "consultant_name" | "contract_start_date" | "contract_months" | "total_paid" | "avg_ticket" | "status" | "payment_method";
 type SortDirection = "asc" | "desc";
 
 export default function OnboardingCompaniesReportPage() {
@@ -93,6 +94,7 @@ export default function OnboardingCompaniesReportPage() {
   const [editStartDate, setEditStartDate] = useState("");
   const [editDurationMonths, setEditDurationMonths] = useState<number>(12);
   const [editContractValue, setEditContractValue] = useState<number>(0);
+  const [editPaymentMethod, setEditPaymentMethod] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -153,6 +155,7 @@ export default function OnboardingCompaniesReportPage() {
         contract_start_date,
         contract_end_date,
         contract_value,
+        payment_method,
         status,
         consultant:consultant_id(name)
       `)
@@ -212,6 +215,7 @@ export default function OnboardingCompaniesReportPage() {
         contract_start_date: company.contract_start_date,
         contract_end_date: company.contract_end_date,
         contract_value: company.contract_value,
+        payment_method: company.payment_method,
         status: company.status || "active",
         total_paid: totalPaid,
         contract_months: contractMonths,
@@ -351,6 +355,7 @@ export default function OnboardingCompaniesReportPage() {
     }
     
     setEditContractValue(company.contract_value || 0);
+    setEditPaymentMethod(company.payment_method || "");
     setEditDialogOpen(true);
   };
 
@@ -372,6 +377,7 @@ export default function OnboardingCompaniesReportPage() {
           contract_start_date: editStartDate || null,
           contract_end_date: endDate,
           contract_value: editContractValue,
+          payment_method: editPaymentMethod || null,
         })
         .eq("id", editingCompany.id);
 
@@ -619,13 +625,22 @@ export default function OnboardingCompaniesReportPage() {
                       <SortIcon field="status" />
                     </div>
                   </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort("payment_method")}
+                  >
+                    <div className="flex items-center">
+                      Pagamento
+                      <SortIcon field="payment_method" />
+                    </div>
+                  </TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredCompanies.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       Nenhuma empresa encontrada
                     </TableCell>
                   </TableRow>
@@ -647,6 +662,15 @@ export default function OnboardingCompaniesReportPage() {
                         {formatCurrency(company.avg_ticket)}/mês
                       </TableCell>
                       <TableCell>{getStatusBadge(company.status)}</TableCell>
+                      <TableCell>
+                        {company.payment_method === "card" ? (
+                          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">Cartão</Badge>
+                        ) : company.payment_method === "monthly" ? (
+                          <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">Recorrência</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Button
                           variant="ghost"
@@ -718,6 +742,19 @@ export default function OnboardingCompaniesReportPage() {
                   : "Valor MENSAL do contrato"
                 }
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
+              <Select value={editPaymentMethod} onValueChange={setEditPaymentMethod}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="card">Cartão (pagamento único)</SelectItem>
+                  <SelectItem value="monthly">Recorrência mensal</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

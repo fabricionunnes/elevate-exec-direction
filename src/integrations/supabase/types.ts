@@ -2173,6 +2173,7 @@ export type Database = {
           name: string
           notes: string | null
           objectives_with_unv: string | null
+          payment_method: string | null
           phone: string | null
           quarterly_goals: Json | null
           renewal_notes: string | null
@@ -2226,6 +2227,7 @@ export type Database = {
           name: string
           notes?: string | null
           objectives_with_unv?: string | null
+          payment_method?: string | null
           phone?: string | null
           quarterly_goals?: Json | null
           renewal_notes?: string | null
@@ -2279,6 +2281,7 @@ export type Database = {
           name?: string
           notes?: string | null
           objectives_with_unv?: string | null
+          payment_method?: string | null
           phone?: string | null
           quarterly_goals?: Json | null
           renewal_notes?: string | null
