@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Settings, Users, BarChart3, Link, Copy, Sparkles, Building2, Trophy, Gamepad2 } from "lucide-react";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { KPIConfigurationTab } from "./KPIConfigurationTab";
 import { SalespeopleTab } from "./SalespeopleTab";
 import { KPIDashboardTab } from "./KPIDashboardTab";
@@ -50,8 +51,7 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, 
   };
 
   const copyPublicLink = () => {
-    const baseUrl = window.location.origin;
-    const link = `${baseUrl}/kpi-entry/${companyId}`;
+    const link = `${getPublicBaseUrl()}/#/kpi-entry/${companyId}`;
     navigator.clipboard.writeText(link);
     toast.success("Link copiado! Compartilhe com os vendedores.");
   };

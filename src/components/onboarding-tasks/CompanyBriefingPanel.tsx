@@ -34,6 +34,7 @@ import { ptBR } from "date-fns/locale";
 import { KickoffFormDialog } from "./KickoffFormDialog";
 import { formatPhone } from "@/lib/utils";
 import { COMPANY_SEGMENTS } from "@/data/companySegments";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 const COMPANY_STATUS_OPTIONS = [
   { value: "active", label: "Ativa" },
@@ -869,13 +870,13 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
             <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
               <Link2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <code className="text-sm flex-1 truncate">
-                {window.location.origin}/cac-form/{projectId}
+                {getPublicBaseUrl()}/#/cac-form/{projectId}
               </code>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  navigator.clipboard.writeText(`${window.location.origin}/cac-form/${projectId}`);
+                  navigator.clipboard.writeText(`${getPublicBaseUrl()}/#/cac-form/${projectId}`);
                   toast.success("Link copiado!");
                 }}
               >

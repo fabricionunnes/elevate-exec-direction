@@ -20,6 +20,7 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface NPSResponse {
   id: string;
@@ -82,8 +83,7 @@ export function NPSHistoryPanel({ projectId, currentNps, userRole }: NPSHistoryP
   };
 
   const getNpsLink = () => {
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/nps?project=${projectId}`;
+    return `${getPublicBaseUrl()}/#/nps?project=${projectId}`;
   };
 
   const copyNpsLink = () => {

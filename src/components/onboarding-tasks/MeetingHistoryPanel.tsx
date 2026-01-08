@@ -48,6 +48,7 @@ import {
   Copy,
   MessageSquareHeart
 } from "lucide-react";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { ScheduleMeetingDialog } from "./ScheduleMeetingDialog";
 
 interface MeetingNote {
@@ -188,8 +189,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   };
 
   const copyCSATLink = (survey: CSATSurvey) => {
-    const baseUrl = window.location.origin;
-    const link = `${baseUrl}/csat?token=${survey.access_token}`;
+    const link = `${getPublicBaseUrl()}/#/csat?token=${survey.access_token}`;
     navigator.clipboard.writeText(link);
     toast.success("Link CSAT copiado para a área de transferência");
   };

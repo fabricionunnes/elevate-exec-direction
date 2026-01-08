@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Copy, Search, Building2, TrendingUp } from "lucide-react";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface CompanyNPSData {
   companyId: string;
@@ -147,7 +148,7 @@ export function NPSGlobalDialog({ open, onOpenChange }: NPSGlobalDialogProps) {
   };
 
   const getNPSLink = (projectId: string) => {
-    return `${window.location.origin}/nps?project=${projectId}`;
+    return `${getPublicBaseUrl()}/#/nps?project=${projectId}`;
   };
 
   const copyLink = (projectId: string) => {
