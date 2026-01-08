@@ -77,6 +77,19 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
     setCompletingTaskId(task.id);
     
     try {
+      // Get current user for history tracking
+      const { data: { user } } = await supabase.auth.getUser();
+      let staffId: string | null = null;
+      
+      if (user) {
+        const { data: staff } = await supabase
+          .from("onboarding_staff")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        staffId = staff?.id || null;
+      }
+
       const { error } = await supabase
         .from("onboarding_tasks")
         .update({ 
@@ -86,6 +99,16 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
         .eq("id", task.id);
 
       if (error) throw error;
+
+      // Log to task history
+      await supabase.from("onboarding_task_history").insert({
+        task_id: task.id,
+        staff_id: staffId,
+        action: "status_change",
+        field_changed: "status",
+        old_value: task.status,
+        new_value: "completed",
+      });
 
       // Remove completed task from list
       setTasks(prev => prev.filter(t => t.id !== task.id));
