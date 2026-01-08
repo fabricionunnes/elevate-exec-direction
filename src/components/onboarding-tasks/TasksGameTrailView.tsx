@@ -341,8 +341,9 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.2 }}
                       className="border-t border-border overflow-hidden"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="p-3 md:p-4 grid gap-2">
+                      <div className="p-3 md:p-4 grid gap-2" onClick={(e) => e.stopPropagation()}>
                         {phase.tasks.map((task, taskIndex) => {
                           const overdue = isTaskOverdue(task);
                           const dueToday = isTaskDueToday(task);
