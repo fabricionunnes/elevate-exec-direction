@@ -643,35 +643,26 @@ export default function OnboardingRenewalsPage() {
   };
 
   const filteredCompanies = companies.filter(company => {
-    // Exclude inactive companies and auto-renew contracts
+    // Exclude inactive companies
     if (company.status === "inactive") return false;
 
-    // Auto-renew via billing recurrence
-    if (company.payment_method === "monthly") return false;
-
-    // Auto-renew via plan type (monthly plans have no end date and renew automatically)
-    const isRecurringPlan = company.renewal_plan_type === "monthly" && !company.contract_end_date;
-    if (isRecurringPlan) return false;
+    // Recurrence = no contract_end_date (same logic as companies report)
+    // These contracts renew automatically, no manual renewal needed
+    if (!company.contract_end_date) return false;
 
     const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase());
 
     // Period filter logic
-    let matchesPeriod = true;
-    if (company.contract_end_date) {
-      const endDate = parseISO(company.contract_end_date);
-      const { start: periodStart, end: periodEnd } = currentPeriodRange;
+    const endDate = parseISO(company.contract_end_date);
+    const { start: periodStart, end: periodEnd } = currentPeriodRange;
 
-      // Check if contract ends in selected period
-      const endsInSelectedPeriod = isWithinInterval(endDate, { start: periodStart, end: periodEnd });
+    // Check if contract ends in selected period
+    const endsInSelectedPeriod = isWithinInterval(endDate, { start: periodStart, end: periodEnd });
 
-      // Check if it's a pending renewal from previous periods (expired before selected period)
-      const isPendingFromPast = includePending && isBefore(endDate, periodStart);
+    // Check if it's a pending renewal from previous periods (expired before selected period)
+    const isPendingFromPast = includePending && isBefore(endDate, periodStart);
 
-      matchesPeriod = endsInSelectedPeriod || isPendingFromPast;
-    } else {
-      // Companies without end date - show only if includePending is true
-      matchesPeriod = includePending;
-    }
+    const matchesPeriod = endsInSelectedPeriod || isPendingFromPast;
 
     if (!matchesPeriod) return false;
     
@@ -694,7 +685,7 @@ export default function OnboardingRenewalsPage() {
   // Count pending from previous periods
   const pendingFromPastCount = companies.filter(c => {
     if (c.status === "inactive") return false;
-    if (c.payment_method === "monthly") return false;
+    // Recurrence = no contract_end_date, skip
     if (!c.contract_end_date) return false;
     const endDate = parseISO(c.contract_end_date);
     return isBefore(endDate, currentPeriodRange.start);
