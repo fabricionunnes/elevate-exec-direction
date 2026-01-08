@@ -79,6 +79,7 @@ import OnboardingActivityHistoryPage from "./pages/onboarding-tasks/OnboardingAc
 import OnboardingCompaniesReportPage from "./pages/onboarding-tasks/OnboardingCompaniesReportPage";
 import KPIEntryPage from "./pages/onboarding-tasks/KPIEntryPage";
 import NPSSurveyPage from "./pages/NPSSurveyPage";
+import CSATSurveyPage from "./pages/CSATSurveyPage";
 import DISCAssessmentPage from "./pages/assessments/DISCAssessmentPage";
 import Assessment360Page from "./pages/assessments/Assessment360Page";
 import AssessmentReportsPage from "./pages/assessments/AssessmentReportsPage";
@@ -173,6 +174,7 @@ const App = () => (
             <Route path="/cac-form/:projectId" element={<CACFormPage />} />
             <Route path="/kickoff/:companyId" element={<KickoffFormPage />} />
             <Route path="/nps" element={<NPSSurveyPage />} />
+            <Route path="/csat" element={<CSATSurveyPage />} />
             <Route path="/kpi-entry/:companyId" element={<KPIEntryPage />} />
             <Route path="/disc" element={<DISCAssessmentPage />} />
             <Route path="/360" element={<Assessment360Page />} />

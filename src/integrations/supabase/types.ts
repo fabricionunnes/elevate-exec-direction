@@ -643,6 +643,175 @@ export type Database = {
           },
         ]
       }
+      csat_configs: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          link_reusable: boolean | null
+          main_question: string | null
+          open_question: string | null
+          project_id: string
+          scale_max: number | null
+          scale_min: number | null
+          send_timing: string | null
+          send_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          link_reusable?: boolean | null
+          main_question?: string | null
+          open_question?: string | null
+          project_id: string
+          scale_max?: number | null
+          scale_min?: number | null
+          send_timing?: string | null
+          send_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          link_reusable?: boolean | null
+          main_question?: string | null
+          open_question?: string | null
+          project_id?: string
+          scale_max?: number | null
+          scale_min?: number | null
+          send_timing?: string | null
+          send_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "csat_configs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      csat_responses: {
+        Row: {
+          created_at: string
+          feedback: string | null
+          id: string
+          meeting_id: string
+          project_id: string
+          responded_at: string
+          respondent_name: string | null
+          score: number
+          survey_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          meeting_id: string
+          project_id: string
+          responded_at?: string
+          respondent_name?: string | null
+          score: number
+          survey_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          meeting_id?: string
+          project_id?: string
+          responded_at?: string
+          respondent_name?: string | null
+          score?: number
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "csat_responses_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_meeting_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "csat_responses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "csat_responses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: true
+            referencedRelation: "csat_surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      csat_surveys: {
+        Row: {
+          access_token: string
+          created_at: string
+          id: string
+          meeting_id: string
+          project_id: string
+          sent_at: string | null
+          status: string | null
+          task_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string
+          created_at?: string
+          id?: string
+          meeting_id: string
+          project_id: string
+          sent_at?: string | null
+          status?: string | null
+          task_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          id?: string
+          meeting_id?: string
+          project_id?: string
+          sent_at?: string | null
+          status?: string | null
+          task_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "csat_surveys_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_meeting_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "csat_surveys_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "csat_surveys_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       disc_responses: {
         Row: {
           completed_at: string
