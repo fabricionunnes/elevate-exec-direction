@@ -652,7 +652,9 @@ const VirtualOfficePage = () => {
       {activeTab === "history" && canViewHistory ? (
         <ChatHistoryTab staffMembers={staffMembers} rooms={rooms} />
       ) : activeTab === "calendar" ? (
-        <GoogleCalendarTab currentStaff={currentStaff ? { id: currentStaff.id, role: currentStaff.role, user_id: currentStaff.user_id } : undefined} />
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <GoogleCalendarTab currentStaff={currentStaff ? { id: currentStaff.id, role: currentStaff.role, user_id: currentStaff.user_id } : undefined} />
+        </div>
       ) : activeTab === "support" ? (
         <div className="flex-1 overflow-auto p-4">
           <div className="max-w-2xl mx-auto">

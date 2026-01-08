@@ -617,7 +617,7 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
     : null;
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Header */}
       <div className="border-b p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-card">
         <div className="flex items-center gap-3 flex-wrap">
@@ -720,19 +720,20 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
 
       {/* Calendar/List Content */}
       {viewMode === "list" ? (
-        <ScrollArea className="flex-1 p-4">
-          {events.length === 0 ? (
-            <div className="text-center py-12">
-              <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground mb-4">Nenhum evento nos próximos dias</p>
-              {isViewingOwnCalendar && (
-                <Button onClick={() => openCreateDialog()} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Criar primeiro evento
-                </Button>
-              )}
-            </div>
-          ) : (
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="p-4">
+            {events.length === 0 ? (
+              <div className="text-center py-12">
+                <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground mb-4">Nenhum evento nos próximos dias</p>
+                {isViewingOwnCalendar && (
+                  <Button onClick={() => openCreateDialog()} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Criar primeiro evento
+                  </Button>
+                )}
+              </div>
+            ) : (
             <div className="space-y-6">
               {Object.entries(groupedEvents).map(([dateKey, dayEvents]) => (
                 <div key={dateKey}>
@@ -869,7 +870,8 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                 </div>
               ))}
             </div>
-          )}
+            )}
+          </div>
         </ScrollArea>
       ) : (
         <div className="flex-1 flex flex-col p-4 overflow-hidden bg-gradient-to-br from-background via-muted/5 to-muted/10">
