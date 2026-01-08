@@ -1195,10 +1195,6 @@ const OnboardingProjectPage = () => {
           <div className="mb-6">
             {/* Todas as abas em um único container com flex-wrap */}
             <TabsList className="h-auto w-full flex flex-wrap justify-start gap-1 bg-transparent p-0">
-              <TabsTrigger value="health" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
-                <Heart className="h-4 w-4" />
-                <span className="hidden sm:inline">Saúde</span>
-              </TabsTrigger>
               <TabsTrigger value="kpis" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
                 <BarChart3 className="h-4 w-4" />
                 <span className="hidden sm:inline">KPIs</span>
@@ -1234,6 +1230,10 @@ const OnboardingProjectPage = () => {
               <TabsTrigger value="support" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
                 <Headphones className="h-4 w-4" />
                 <span className="hidden sm:inline">Suporte</span>
+              </TabsTrigger>
+              <TabsTrigger value="health" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
+                <Heart className="h-4 w-4" />
+                <span className="hidden sm:inline">Saúde</span>
               </TabsTrigger>
             </TabsList>
           </div>
