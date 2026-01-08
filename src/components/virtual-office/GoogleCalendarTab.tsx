@@ -819,6 +819,21 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                                     </Button>
                                   </>
                                 )}
+                                {event.meetingLink && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8"
+                                    title="Copiar link da reunião"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigator.clipboard.writeText(event.meetingLink!);
+                                      toast.success("Link copiado!");
+                                    }}
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
+                                )}
                                 <Button
                                   size="sm"
                                   variant={event.meetingLink ? "default" : "outline"}
@@ -1149,34 +1164,49 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
                                     </p>
                                   )}
                                   
-                                  {/* Action Button */}
-                                  <Button
-                                    size="sm"
-                                    variant={event.meetingLink ? "default" : "outline"}
-                                    className={cn(
-                                      "w-full h-9 text-xs gap-2 font-semibold rounded-lg transition-all",
-                                      event.meetingLink && "shadow-md hover:shadow-lg hover:scale-[1.02]"
+                                  {/* Action Buttons */}
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant={event.meetingLink ? "default" : "outline"}
+                                      className={cn(
+                                        "flex-1 h-9 text-xs gap-2 font-semibold rounded-lg transition-all",
+                                        event.meetingLink && "shadow-md hover:shadow-lg hover:scale-[1.02]"
+                                      )}
+                                      onClick={() => {
+                                        if (event.meetingLink) {
+                                          window.open(event.meetingLink, "_blank");
+                                        } else {
+                                          window.open(event.calendarLink, "_blank");
+                                        }
+                                      }}
+                                    >
+                                      {event.meetingLink ? (
+                                        <>
+                                          <Video className="h-3.5 w-3.5" />
+                                          Entrar na Reunião
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ExternalLink className="h-3.5 w-3.5" />
+                                          Ver no Calendar
+                                        </>
+                                      )}
+                                    </Button>
+                                    {event.meetingLink && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-9 px-3 text-xs gap-1.5 rounded-lg"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(event.meetingLink!);
+                                          toast.success("Link copiado!");
+                                        }}
+                                      >
+                                        <Copy className="h-3.5 w-3.5" />
+                                      </Button>
                                     )}
-                                    onClick={() => {
-                                      if (event.meetingLink) {
-                                        window.open(event.meetingLink, "_blank");
-                                      } else {
-                                        window.open(event.calendarLink, "_blank");
-                                      }
-                                    }}
-                                  >
-                                    {event.meetingLink ? (
-                                      <>
-                                        <Video className="h-3.5 w-3.5" />
-                                        Entrar na Reunião
-                                      </>
-                                    ) : (
-                                      <>
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                        Ver no Calendar
-                                      </>
-                                    )}
-                                  </Button>
+                                  </div>
                                 </div>
                               );
                             })}
