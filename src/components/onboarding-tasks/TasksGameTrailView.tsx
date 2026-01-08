@@ -351,14 +351,21 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                           const taskActive = task.status === "in_progress";
                           
                           return (
-                            <motion.div
+                            <div
                               key={task.id}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: taskIndex * 0.02 }}
+                              role="button"
+                              tabIndex={0}
                               onClick={(e) => {
                                 e.stopPropagation();
+                                e.preventDefault();
                                 onTaskClick(task);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  onTaskClick(task);
+                                }
                               }}
                               className={`
                                 group flex items-center gap-3 p-3 md:p-4 rounded-xl cursor-pointer transition-all
@@ -452,7 +459,7 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                                   </div>
                                 )}
                               </div>
-                            </motion.div>
+                            </div>
                           );
                         })}
                       </div>
