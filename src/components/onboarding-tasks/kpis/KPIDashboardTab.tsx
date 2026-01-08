@@ -24,7 +24,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check } from "lucide-react";
 import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidget";
 import { GamificationDashboardWidget } from "../gamification/GamificationDashboardWidget";
 import { SalesHistoryDialog } from "./SalesHistoryDialog";
@@ -37,6 +37,7 @@ interface KPI {
   periodicity: "daily" | "weekly" | "monthly";
   target_value: number;
   effective_target?: number; // Monthly target or default target
+  monthly_targets?: Record<string, number>; // Multiple target levels: { "Meta": 100, "Super Meta": 150 }
   is_individual: boolean;
   is_active: boolean;
 }
@@ -107,7 +108,7 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
         supabase.from("kpi_entries").select("*").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end),
         supabase.from("company_units").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("onboarding_companies").select("contract_start_date").eq("id", companyId).single(),
-        supabase.from("kpi_monthly_targets").select("*").eq("company_id", companyId).eq("month_year", currentMonthYear),
+        supabase.from("kpi_monthly_targets").select("*").eq("company_id", companyId).eq("month_year", currentMonthYear).order("level_order"),
       ]);
 
       console.log("[KPIDashboardTab] Results:", {
@@ -127,17 +128,25 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
       if (entriesRes.error) throw entriesRes.error;
       if (unitsRes.error) throw unitsRes.error;
 
-      // Build map of monthly targets
-      const monthlyTargetMap: Record<string, number> = {};
+      // Build map of monthly targets with all levels: { kpi_id: { level_name: value } }
+      const monthlyTargetMap: Record<string, Record<string, number>> = {};
       (monthlyTargetsRes.data || []).forEach((mt: any) => {
-        monthlyTargetMap[mt.kpi_id] = mt.target_value;
+        if (!monthlyTargetMap[mt.kpi_id]) {
+          monthlyTargetMap[mt.kpi_id] = {};
+        }
+        monthlyTargetMap[mt.kpi_id][mt.level_name] = mt.target_value;
       });
 
-      // Merge monthly targets into KPIs
-      const kpisWithTargets = (kpisRes.data || []).map((kpi: any) => ({
-        ...kpi,
-        effective_target: monthlyTargetMap[kpi.id] !== undefined ? monthlyTargetMap[kpi.id] : kpi.target_value,
-      }));
+      // Merge monthly targets into KPIs - use first level (Meta) as effective_target
+      const kpisWithTargets = (kpisRes.data || []).map((kpi: any) => {
+        const kpiTargets = monthlyTargetMap[kpi.id] || {};
+        const firstLevelValue = kpiTargets["Meta"] ?? Object.values(kpiTargets)[0];
+        return {
+          ...kpi,
+          effective_target: firstLevelValue !== undefined ? firstLevelValue : kpi.target_value,
+          monthly_targets: Object.keys(kpiTargets).length > 0 ? kpiTargets : undefined,
+        };
+      });
 
       setKpis(kpisWithTargets as KPI[]);
       setSalespeople(salespeopleRes.data || []);
@@ -594,6 +603,7 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
         {kpis.slice(0, 4).map(kpi => {
           const summary = getKpiSummary(kpi);
           const isOnTrack = summary.percentage >= 100;
+          const hasMultipleTargets = kpi.monthly_targets && Object.keys(kpi.monthly_targets).length > 1;
           
           return (
             <Card key={kpi.id}>
@@ -603,15 +613,47 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{formatValue(summary.total, kpi.kpi_type)}</div>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-muted-foreground">
-                    Meta: {formatValue(summary.target, kpi.kpi_type)}
-                  </span>
-                  <Badge variant={isOnTrack ? "default" : "destructive"} className="gap-1">
-                    {isOnTrack ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                    {summary.percentage.toFixed(0)}%
-                  </Badge>
-                </div>
+                
+                {/* Multiple targets display */}
+                {hasMultipleTargets ? (
+                  <div className="space-y-1 mt-2">
+                    {Object.entries(kpi.monthly_targets!).map(([levelName, targetValue]) => {
+                      const periodTarget = kpi.periodicity === "daily" 
+                        ? targetValue * (Math.ceil((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / (1000 * 60 * 60 * 24)) + 1)
+                        : kpi.periodicity === "weekly"
+                        ? targetValue * Math.ceil((Math.ceil((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / (1000 * 60 * 60 * 24)) + 1) / 7)
+                        : targetValue;
+                      const percentage = periodTarget > 0 ? (summary.total / periodTarget) * 100 : 0;
+                      const achieved = percentage >= 100;
+                      
+                      return (
+                        <div key={levelName} className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">
+                            {levelName}: {formatValue(periodTarget, kpi.kpi_type)}
+                          </span>
+                          <Badge 
+                            variant={achieved ? "default" : "outline"} 
+                            className={`gap-0.5 text-[10px] px-1.5 py-0 ${achieved ? 'bg-green-500' : ''}`}
+                          >
+                            {achieved && <Check className="h-2.5 w-2.5" />}
+                            {percentage.toFixed(0)}%
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-xs text-muted-foreground">
+                      Meta: {formatValue(summary.target, kpi.kpi_type)}
+                    </span>
+                    <Badge variant={isOnTrack ? "default" : "destructive"} className="gap-1">
+                      {isOnTrack ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                      {summary.percentage.toFixed(0)}%
+                    </Badge>
+                  </div>
+                )}
+                
                 <div className="w-full bg-muted rounded-full h-2 mt-2">
                   <div
                     className={`h-2 rounded-full ${isOnTrack ? 'bg-green-500' : 'bg-destructive'}`}
