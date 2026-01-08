@@ -643,32 +643,36 @@ export default function OnboardingRenewalsPage() {
   };
 
   const filteredCompanies = companies.filter(company => {
-    // Exclude inactive companies and recurring billing (auto-renew via payment_method monthly)
+    // Exclude inactive companies and auto-renew contracts
     if (company.status === "inactive") return false;
-    // Only exclude if payment_method is 'monthly' (recorrência automática)
-    // Companies with payment_method 'card' need manual renewal regardless of plan type
+
+    // Auto-renew via billing recurrence
     if (company.payment_method === "monthly") return false;
-    
+
+    // Auto-renew via plan type (monthly plans have no end date and renew automatically)
+    const isRecurringPlan = company.renewal_plan_type === "monthly" && !company.contract_end_date;
+    if (isRecurringPlan) return false;
+
     const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     // Period filter logic
     let matchesPeriod = true;
     if (company.contract_end_date) {
       const endDate = parseISO(company.contract_end_date);
       const { start: periodStart, end: periodEnd } = currentPeriodRange;
-      
+
       // Check if contract ends in selected period
       const endsInSelectedPeriod = isWithinInterval(endDate, { start: periodStart, end: periodEnd });
-      
+
       // Check if it's a pending renewal from previous periods (expired before selected period)
       const isPendingFromPast = includePending && isBefore(endDate, periodStart);
-      
+
       matchesPeriod = endsInSelectedPeriod || isPendingFromPast;
     } else {
       // Companies without end date - show only if includePending is true
       matchesPeriod = includePending;
     }
-    
+
     if (!matchesPeriod) return false;
     
     // Status filter
