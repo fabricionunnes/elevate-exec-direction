@@ -344,6 +344,11 @@ export const KPIConfigurationTab = ({ companyId, isAdmin }: KPIConfigurationTabP
         companyId={companyId}
         kpis={kpis}
         onSaved={() => fetchKpis()}
+        onAddKPI={() => {
+          setShowMonthlyTargets(false);
+          resetForm();
+          setShowDialog(true);
+        }}
       />
 
       {kpis.length === 0 ? (
