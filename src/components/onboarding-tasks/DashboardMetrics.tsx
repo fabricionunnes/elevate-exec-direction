@@ -677,11 +677,13 @@ const DashboardMetrics = ({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
             <Card>
-              <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium flex items-center gap-1 sm:gap-1.5"><Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-indigo-500" />LTV & Retenção</CardTitle></CardHeader>
+              <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium flex items-center gap-1 sm:gap-1.5"><Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-indigo-500" />{staffRole === "admin" ? "LTV & Retenção" : "Retenção"}</CardTitle></CardHeader>
               <CardContent className="px-3 sm:px-4 pb-2 sm:pb-3">
-                <div className="text-center grid grid-cols-2 gap-2 sm:gap-4">
+                <div className={cn("text-center", staffRole === "admin" ? "grid grid-cols-2 gap-2 sm:gap-4" : "")}>
                   <div><p className="text-xl sm:text-2xl font-bold text-indigo-500">{ltvMetrics.averageLifetimeMonths}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Tempo Médio (meses)</p></div>
-                  <div><p className="text-xl sm:text-2xl font-bold text-emerald-500">{ltvMetrics.ltv > 0 ? `R$ ${(ltvMetrics.ltv / 1000).toFixed(1)}k` : "—"}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">LTV Médio</p></div>
+                  {staffRole === "admin" && (
+                    <div><p className="text-xl sm:text-2xl font-bold text-emerald-500">{ltvMetrics.ltv > 0 ? `R$ ${(ltvMetrics.ltv / 1000).toFixed(1)}k` : "—"}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">LTV Médio</p></div>
+                  )}
                 </div>
               </CardContent>
             </Card>
