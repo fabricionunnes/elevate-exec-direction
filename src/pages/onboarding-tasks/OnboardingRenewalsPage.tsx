@@ -69,6 +69,7 @@ interface Company {
   renewal_plan_type: string | null;
   renewal_status: string | null;
   renewal_notes: string | null;
+  payment_method?: string | null;
 }
 
 const RENEWAL_STATUS_OPTIONS = [
@@ -264,7 +265,7 @@ export default function OnboardingRenewalsPage() {
     // Fetch companies with contract info
     const { data: companiesData, error: companiesError } = await supabase
       .from("onboarding_companies")
-      .select("id, name, contract_value, contract_start_date, contract_end_date, status, segment, renewal_plan_type, renewal_status, renewal_notes")
+      .select("id, name, contract_value, contract_start_date, contract_end_date, status, segment, renewal_plan_type, renewal_status, renewal_notes, payment_method")
       .order("contract_end_date", { ascending: true, nullsFirst: false });
 
     if (companiesError) {
@@ -642,8 +643,9 @@ export default function OnboardingRenewalsPage() {
   };
 
   const filteredCompanies = companies.filter(company => {
-    // Exclude inactive companies
+    // Exclude inactive companies and recurring billing (auto-renew)
     if (company.status === "inactive") return false;
+    if (company.payment_method === "monthly" || company.renewal_plan_type === "monthly") return false;
     
     const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -686,6 +688,7 @@ export default function OnboardingRenewalsPage() {
   // Count pending from previous periods
   const pendingFromPastCount = companies.filter(c => {
     if (c.status === "inactive") return false;
+    if (c.payment_method === "monthly" || c.renewal_plan_type === "monthly") return false;
     if (!c.contract_end_date) return false;
     const endDate = parseISO(c.contract_end_date);
     return isBefore(endDate, currentPeriodRange.start);
