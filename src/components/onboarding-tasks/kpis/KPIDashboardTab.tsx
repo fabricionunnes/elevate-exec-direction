@@ -305,6 +305,78 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
       }));
   };
 
+  // Get target vs realized chart data with cumulative values and target levels
+  const getTargetVsRealizedData = () => {
+    const filteredEntries = entries.filter(e => {
+      if (selectedKpi !== "all" && e.kpi_id !== selectedKpi) return false;
+      if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
+      return true;
+    });
+
+    // Group entries by date
+    const groupedByDate: Record<string, number> = {};
+    filteredEntries.forEach(entry => {
+      if (!groupedByDate[entry.entry_date]) {
+        groupedByDate[entry.entry_date] = 0;
+      }
+      groupedByDate[entry.entry_date] += entry.value;
+    });
+
+    // Sort dates
+    const sortedDates = Object.keys(groupedByDate).sort();
+    if (sortedDates.length === 0) return { data: [], targetLevels: [] };
+
+    // Calculate target levels for selected KPI or aggregate of all monetary KPIs
+    let targetLevelsMap: Record<string, number> = {};
+    
+    if (selectedKpi !== "all") {
+      const kpi = kpis.find(k => k.id === selectedKpi);
+      if (kpi) {
+        if (kpi.monthly_targets && Object.keys(kpi.monthly_targets).length > 0) {
+          targetLevelsMap = { ...kpi.monthly_targets };
+        } else {
+          targetLevelsMap = { "Meta": kpi.effective_target ?? kpi.target_value };
+        }
+      }
+    } else {
+      // For "all KPIs", aggregate monetary KPI targets
+      kpis.filter(k => k.kpi_type === "monetary").forEach(kpi => {
+        if (kpi.monthly_targets && Object.keys(kpi.monthly_targets).length > 0) {
+          Object.entries(kpi.monthly_targets).forEach(([levelName, value]) => {
+            targetLevelsMap[levelName] = (targetLevelsMap[levelName] || 0) + value;
+          });
+        } else {
+          const baseTarget = kpi.effective_target ?? kpi.target_value;
+          targetLevelsMap["Meta"] = (targetLevelsMap["Meta"] || 0) + baseTarget;
+        }
+      });
+    }
+
+    const targetLevelNames = Object.keys(targetLevelsMap);
+    const totalDays = sortedDates.length;
+
+    // Build cumulative chart data
+    let cumulativeValue = 0;
+    const chartData = sortedDates.map((date, index) => {
+      cumulativeValue += groupedByDate[date];
+      const dayProgress = (index + 1) / totalDays;
+
+      const dataPoint: Record<string, any> = {
+        date: format(new Date(date), "dd/MM", { locale: ptBR }),
+        realizado: cumulativeValue,
+      };
+
+      // Add each target level as a line (proportional to progress)
+      targetLevelNames.forEach(levelName => {
+        dataPoint[levelName] = targetLevelsMap[levelName] * dayProgress;
+      });
+
+      return dataPoint;
+    });
+
+    return { data: chartData, targetLevels: targetLevelNames };
+  };
+
   // Prepare ranking data
   const getRankingData = () => {
     const filteredSalespeople = selectedUnit !== "all"
@@ -403,8 +475,18 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
 
   const dailyData = getDailyChartData();
   const rankingData = getRankingData();
+  const targetVsRealized = getTargetVsRealizedData();
   const selectedKpiData = selectedKpi !== "all" ? kpis.find(k => k.id === selectedKpi) : null;
   const calculatedMetrics = getCalculatedMetrics();
+
+  // Colors for target level lines
+  const targetLevelColors = [
+    "hsl(142 76% 36%)", // green
+    "hsl(38 92% 50%)",  // amber
+    "hsl(280 65% 60%)", // purple
+    "hsl(199 89% 48%)", // blue
+    "hsl(0 84% 60%)",   // red
+  ];
 
   return (
     <div className="space-y-6">
@@ -665,6 +747,64 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
           );
         })}
       </div>
+
+      {/* Target vs Realized Chart */}
+      {targetVsRealized.data.length > 0 && targetVsRealized.targetLevels.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Meta x Realizado (Acumulado)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={350}>
+              <LineChart data={targetVsRealized.data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis 
+                  tickFormatter={(value) => 
+                    selectedKpiData?.kpi_type === "monetary" || (!selectedKpiData && kpis.some(k => k.kpi_type === "monetary"))
+                      ? new Intl.NumberFormat("pt-BR", { notation: "compact", compactDisplay: "short" }).format(value)
+                      : value.toLocaleString("pt-BR")
+                  }
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => [
+                    selectedKpiData?.kpi_type === "monetary" || (!selectedKpiData && kpis.some(k => k.kpi_type === "monetary"))
+                      ? formatValue(value, "monetary")
+                      : value.toLocaleString("pt-BR"),
+                    name === "realizado" ? "Realizado" : name
+                  ]}
+                />
+                <Legend />
+                {/* Realized line */}
+                <Line 
+                  type="monotone" 
+                  dataKey="realizado" 
+                  name="Realizado"
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={3}
+                  dot={{ fill: "hsl(var(--primary))" }}
+                />
+                {/* Target level lines */}
+                {targetVsRealized.targetLevels.map((levelName, index) => (
+                  <Line 
+                    key={levelName}
+                    type="monotone" 
+                    dataKey={levelName} 
+                    name={levelName}
+                    stroke={targetLevelColors[index % targetLevelColors.length]} 
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">
