@@ -29,6 +29,7 @@ import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidge
 import { GamificationDashboardWidget } from "../gamification/GamificationDashboardWidget";
 import { SalesHistoryDialog } from "./SalesHistoryDialog";
 import { SalesComparisonChart } from "./SalesComparisonChart";
+import { KPIEntriesHistoryDialog } from "./KPIEntriesHistoryDialog";
 
 interface KPI {
   id: string;
@@ -67,9 +68,10 @@ interface Unit {
 interface KPIDashboardTabProps {
   companyId: string;
   projectId?: string;
+  canDeleteEntries?: boolean; // Admin or CS only
 }
 
-export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) => {
+export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false }: KPIDashboardTabProps) => {
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -305,10 +307,15 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
       }));
   };
 
-  // Get target vs realized chart data with cumulative values and target levels
+  // Get target vs realized chart data - ALWAYS use monetary KPIs (faturamento, receita, valor de vendas)
   const getTargetVsRealizedData = () => {
+    // Get only monetary KPIs for this chart
+    const monetaryKpis = kpis.filter(k => k.kpi_type === "monetary");
+    const monetaryKpiIds = monetaryKpis.map(k => k.id);
+    
+    // Filter entries to only include monetary KPIs and apply unit filter
     const filteredEntries = entries.filter(e => {
-      if (selectedKpi !== "all" && e.kpi_id !== selectedKpi) return false;
+      if (!monetaryKpiIds.includes(e.kpi_id)) return false;
       if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
       return true;
     });
@@ -326,31 +333,19 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
     const sortedDates = Object.keys(groupedByDate).sort();
     if (sortedDates.length === 0) return { data: [], targetLevels: [] };
 
-    // Calculate target levels for selected KPI or aggregate of all monetary KPIs
+    // Calculate target levels - aggregate all monetary KPI targets
     let targetLevelsMap: Record<string, number> = {};
     
-    if (selectedKpi !== "all") {
-      const kpi = kpis.find(k => k.id === selectedKpi);
-      if (kpi) {
-        if (kpi.monthly_targets && Object.keys(kpi.monthly_targets).length > 0) {
-          targetLevelsMap = { ...kpi.monthly_targets };
-        } else {
-          targetLevelsMap = { "Meta": kpi.effective_target ?? kpi.target_value };
-        }
+    monetaryKpis.forEach(kpi => {
+      if (kpi.monthly_targets && Object.keys(kpi.monthly_targets).length > 0) {
+        Object.entries(kpi.monthly_targets).forEach(([levelName, value]) => {
+          targetLevelsMap[levelName] = (targetLevelsMap[levelName] || 0) + value;
+        });
+      } else {
+        const baseTarget = kpi.effective_target ?? kpi.target_value;
+        targetLevelsMap["Meta"] = (targetLevelsMap["Meta"] || 0) + baseTarget;
       }
-    } else {
-      // For "all KPIs", aggregate monetary KPI targets
-      kpis.filter(k => k.kpi_type === "monetary").forEach(kpi => {
-        if (kpi.monthly_targets && Object.keys(kpi.monthly_targets).length > 0) {
-          Object.entries(kpi.monthly_targets).forEach(([levelName, value]) => {
-            targetLevelsMap[levelName] = (targetLevelsMap[levelName] || 0) + value;
-          });
-        } else {
-          const baseTarget = kpi.effective_target ?? kpi.target_value;
-          targetLevelsMap["Meta"] = (targetLevelsMap["Meta"] || 0) + baseTarget;
-        }
-      });
-    }
+    });
 
     const targetLevelNames = Object.keys(targetLevelsMap);
     const totalDays = sortedDates.length;
@@ -641,6 +636,13 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
                 onDataChange={() => setSalesHistoryRefreshKey(prev => prev + 1)}
               />
             </div>
+            <div className="flex items-end">
+              <KPIEntriesHistoryDialog 
+                companyId={companyId}
+                canDelete={canDeleteEntries}
+                onEntryDeleted={fetchData}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -920,13 +922,19 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
         </CardContent>
       </Card>
 
-      {/* Target vs Realized Chart - Always show */}
+      {/* Target vs Realized Chart - Always show (Monetary KPIs only) */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Target className="h-4 w-4" />
-            Meta x Realizado (Acumulado)
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Meta x Realizado (Faturamento)
+            </CardTitle>
+            <Badge variant="outline" className="gap-1">
+              <DollarSign className="h-3 w-3" />
+              KPIs Monetários
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent>
           {targetVsRealized.data.length > 0 && targetVsRealized.targetLevels.length > 0 ? (
@@ -936,16 +944,12 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
                 <XAxis dataKey="date" />
                 <YAxis 
                   tickFormatter={(value) => 
-                    selectedKpiData?.kpi_type === "monetary" || (!selectedKpiData && kpis.some(k => k.kpi_type === "monetary"))
-                      ? new Intl.NumberFormat("pt-BR", { notation: "compact", compactDisplay: "short" }).format(value)
-                      : value.toLocaleString("pt-BR")
+                    new Intl.NumberFormat("pt-BR", { notation: "compact", compactDisplay: "short" }).format(value)
                   }
                 />
                 <Tooltip 
                   formatter={(value: number, name: string) => [
-                    selectedKpiData?.kpi_type === "monetary" || (!selectedKpiData && kpis.some(k => k.kpi_type === "monetary"))
-                      ? formatValue(value, "monetary")
-                      : value.toLocaleString("pt-BR"),
+                    formatValue(value, "monetary"),
                     name === "realizado" ? "Realizado" : name
                   ]}
                 />
