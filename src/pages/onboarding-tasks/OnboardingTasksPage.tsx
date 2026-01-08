@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
@@ -17,6 +17,8 @@ import { TaskNotificationsDialog } from "@/components/onboarding-tasks/TaskNotif
 import DashboardMetrics from "@/components/onboarding-tasks/DashboardMetrics";
 import { PendingMeetingsAlert } from "@/components/onboarding-tasks/PendingMeetingsAlert";
 import { AnnouncementDialog } from "@/components/onboarding-tasks/AnnouncementDialog";
+import { NPSGlobalDialog } from "@/components/onboarding-tasks/NPSGlobalDialog";
+import { CSATGlobalDialog } from "@/components/onboarding-tasks/CSATGlobalDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,6 +116,10 @@ const OnboardingTasksPage = () => {
   
   // Announcement dialog state
   const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
+  
+  // NPS and CSAT global dialogs
+  const [showNPSGlobalDialog, setShowNPSGlobalDialog] = useState(false);
+  const [showCSATGlobalDialog, setShowCSATGlobalDialog] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -911,6 +917,15 @@ const OnboardingTasksPage = () => {
                         <History className="h-4 w-4 mr-2" />
                         Histórico de Atividades
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setShowNPSGlobalDialog(true)}>
+                        <TrendingUp className="h-4 w-4 mr-2" />
+                        Painel NPS
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowCSATGlobalDialog(true)}>
+                        <MessageSquareHeart className="h-4 w-4 mr-2" />
+                        Painel CSAT
+                      </DropdownMenuItem>
                     </>
                   )}
                 </DropdownMenuContent>
@@ -995,6 +1010,30 @@ const OnboardingTasksPage = () => {
                 <BookOpen className="h-4 w-4 mr-2" />
                 Onboarding
               </Button>
+            )}
+
+            {/* NPS and CSAT Buttons - Admin/CS only */}
+            {canCreateCompany && (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowNPSGlobalDialog(true)}
+                  className="gap-2"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  NPS
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowCSATGlobalDialog(true)}
+                  className="gap-2"
+                >
+                  <MessageSquareHeart className="h-4 w-4" />
+                  CSAT
+                </Button>
+              </>
             )}
 
             {/* Admin/CS Actions Menu */}
@@ -1429,6 +1468,18 @@ const OnboardingTasksPage = () => {
           staffId={currentStaffId}
         />
       )}
+
+      {/* NPS Global Dialog */}
+      <NPSGlobalDialog
+        open={showNPSGlobalDialog}
+        onOpenChange={setShowNPSGlobalDialog}
+      />
+
+      {/* CSAT Global Dialog */}
+      <CSATGlobalDialog
+        open={showCSATGlobalDialog}
+        onOpenChange={setShowCSATGlobalDialog}
+      />
     </div>
   );
 };
