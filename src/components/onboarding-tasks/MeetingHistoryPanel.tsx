@@ -44,7 +44,9 @@ import {
   AlertCircle,
   CheckCircle2,
   FileAudio,
-  Plus
+  Plus,
+  Copy,
+  MessageSquareHeart
 } from "lucide-react";
 import { ScheduleMeetingDialog } from "./ScheduleMeetingDialog";
 
@@ -66,6 +68,14 @@ interface MeetingNote {
   } | null;
 }
 
+interface CSATSurvey {
+  id: string;
+  meeting_id: string;
+  access_token: string;
+  status: string | null;
+  csat_responses: { score: number }[] | null;
+}
+
 interface CalendarEvent {
   id: string;
   title: string;
@@ -83,6 +93,7 @@ interface MeetingHistoryPanelProps {
 export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => {
   const [meetings, setMeetings] = useState<MeetingNote[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [csatSurveys, setCsatSurveys] = useState<CSATSurvey[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<MeetingNote | null>(null);
@@ -90,6 +101,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   const [deleting, setDeleting] = useState(false);
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isCS, setIsCS] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [projectConsultantUserId, setProjectConsultantUserId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
@@ -113,7 +125,6 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   
   // Schedule meeting dialog
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
-  const [isCS, setIsCS] = useState(false);
   
   useEffect(() => {
     fetchAll();
@@ -145,11 +156,42 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     await Promise.all([
       fetchCurrentStaff(),
       fetchMeetings(),
+      fetchCSATSurveys(),
     ]);
     // Fetch consultant info and then sync calendar with the returned values
     const consultantInfo = await fetchProjectConsultant();
     await syncCalendarEvents(consultantInfo?.consultantUserId, consultantInfo?.companyName);
     setLoading(false);
+  };
+
+  const fetchCSATSurveys = async () => {
+    try {
+      const { data } = await supabase
+        .from("csat_surveys")
+        .select(`
+          id,
+          meeting_id,
+          access_token,
+          status,
+          csat_responses (score)
+        `)
+        .eq("project_id", projectId);
+      
+      setCsatSurveys((data as unknown as CSATSurvey[]) || []);
+    } catch (error) {
+      console.error("Error fetching CSAT surveys:", error);
+    }
+  };
+
+  const getCSATSurveyForMeeting = (meetingId: string) => {
+    return csatSurveys.find(s => s.meeting_id === meetingId);
+  };
+
+  const copyCSATLink = (survey: CSATSurvey) => {
+    const baseUrl = window.location.origin;
+    const link = `${baseUrl}/csat?token=${survey.access_token}`;
+    navigator.clipboard.writeText(link);
+    toast.success("Link CSAT copiado para a área de transferência");
   };
 
   const fetchProjectConsultant = async (): Promise<{ consultantUserId: string | null; companyName: string | null }> => {
@@ -738,55 +780,87 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
               </h4>
             </div>
             <div className="space-y-3">
-              {finalizedMeetings.map((meeting) => (
-                <Card 
-                  key={meeting.id} 
-                  className="cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => setSelectedMeeting(meeting)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium truncate">{meeting.subject}</h4>
-                          {meeting.meeting_link && (
-                            <Badge variant="outline" className="shrink-0 text-xs">
-                              <Video className="h-3 w-3 mr-1" />
-                              Meet
-                            </Badge>
-                          )}
-                          {meeting.recording_link && (
-                            <Badge variant="secondary" className="shrink-0 text-xs">
-                              <PlayCircle className="h-3 w-3 mr-1" />
-                              Gravação
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {format(new Date(meeting.meeting_date), "dd/MM/yyyy", { locale: ptBR })}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {format(new Date(meeting.meeting_date), "HH:mm", { locale: ptBR })}
-                          </span>
-                          {meeting.staff && (
+              {finalizedMeetings.map((meeting) => {
+                const csatSurvey = getCSATSurveyForMeeting(meeting.id);
+                const csatResponse = csatSurvey?.csat_responses?.[0];
+                
+                return (
+                  <Card 
+                    key={meeting.id} 
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => setSelectedMeeting(meeting)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h4 className="font-medium truncate">{meeting.subject}</h4>
+                            {meeting.meeting_link && (
+                              <Badge variant="outline" className="shrink-0 text-xs">
+                                <Video className="h-3 w-3 mr-1" />
+                                Meet
+                              </Badge>
+                            )}
+                            {meeting.recording_link && (
+                              <Badge variant="secondary" className="shrink-0 text-xs">
+                                <PlayCircle className="h-3 w-3 mr-1" />
+                                Gravação
+                              </Badge>
+                            )}
+                            {csatSurvey && (
+                              <Badge 
+                                variant={csatResponse ? "default" : "outline"} 
+                                className={`shrink-0 text-xs ${csatResponse ? "bg-green-500 hover:bg-green-600" : ""}`}
+                              >
+                                <MessageSquareHeart className="h-3 w-3 mr-1" />
+                                {csatResponse ? `CSAT: ${csatResponse.score}` : "CSAT pendente"}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
                             <span className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              {meeting.staff.name}
+                              <Calendar className="h-3 w-3" />
+                              {format(new Date(meeting.meeting_date), "dd/MM/yyyy", { locale: ptBR })}
                             </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {format(new Date(meeting.meeting_date), "HH:mm", { locale: ptBR })}
+                            </span>
+                            {meeting.staff && (
+                              <span className="flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                {meeting.staff.name}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {meeting.notes}
+                          </p>
+                          
+                          {/* CSAT Link Button - visible for Admin/CS */}
+                          {csatSurvey && (isAdmin || isCS) && (
+                            <div className="mt-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyCSATLink(csatSurvey);
+                                }}
+                              >
+                                <Copy className="h-3 w-3" />
+                                Copiar link CSAT
+                              </Button>
+                            </div>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {meeting.notes}
-                        </p>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
                       </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1033,6 +1107,40 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                      </div>
                    )}
                  </div>
+
+                 {/* CSAT Link in Meeting Details */}
+                 {(() => {
+                   const csatSurvey = getCSATSurveyForMeeting(selectedMeeting.id);
+                   const csatResponse = csatSurvey?.csat_responses?.[0];
+                   
+                   if (csatSurvey && (isAdmin || isCS)) {
+                     return (
+                       <div className="mt-3 p-3 border rounded-lg bg-muted/30">
+                         <div className="flex items-center justify-between gap-3">
+                           <div className="flex items-center gap-2">
+                             <MessageSquareHeart className="h-4 w-4 text-primary" />
+                             <span className="text-sm font-medium">Pesquisa CSAT</span>
+                             {csatResponse ? (
+                               <Badge className="bg-green-500">Respondida: {csatResponse.score}/5</Badge>
+                             ) : (
+                               <Badge variant="outline">Pendente</Badge>
+                             )}
+                           </div>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             className="gap-2"
+                             onClick={() => copyCSATLink(csatSurvey)}
+                           >
+                             <Copy className="h-3.5 w-3.5" />
+                             Copiar link
+                           </Button>
+                         </div>
+                       </div>
+                     );
+                   }
+                   return null;
+                 })()}
               </div>
 
               {/* Notes */}
