@@ -30,6 +30,7 @@ import {
   RefreshCw,
   Pencil,
   Search,
+  Copy,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -117,6 +118,8 @@ interface Project {
   consultant_id: string | null;
   cs_id: string | null;
   crm_link: string | null;
+  crm_login: string | null;
+  crm_password: string | null;
   documents_link: string | null;
 }
 
@@ -179,6 +182,8 @@ const OnboardingProjectPage = () => {
   const [showCrmDialog, setShowCrmDialog] = useState(false);
   const [showDocsDialog, setShowDocsDialog] = useState(false);
   const [crmLinkInput, setCrmLinkInput] = useState("");
+  const [crmLoginInput, setCrmLoginInput] = useState("");
+  const [crmPasswordInput, setCrmPasswordInput] = useState("");
   const [docsLinkInput, setDocsLinkInput] = useState("");
   const [kpiDefaultTab, setKpiDefaultTab] = useState<string | undefined>(undefined);
   // Check for attention/risk alerts when opening project
@@ -361,7 +366,7 @@ const OnboardingProjectPage = () => {
       // Fetch project
       const { data: projectData, error: projectError } = await supabase
         .from("onboarding_projects")
-        .select(`*, onboarding_company_id, current_nps, crm_link, documents_link, consultant_id, cs_id, onboarding_company:onboarding_companies(name, consultant_id, cs_id)`)
+        .select(`*, onboarding_company_id, current_nps, crm_link, crm_login, crm_password, documents_link, consultant_id, cs_id, onboarding_company:onboarding_companies(name, consultant_id, cs_id)`)
         .eq("id", projectId)
         .single();
 
@@ -966,6 +971,8 @@ const OnboardingProjectPage = () => {
                           className="h-6 w-6 p-0"
                           onClick={() => {
                             setCrmLinkInput(project.crm_link || "");
+                            setCrmLoginInput(project.crm_login || "");
+                            setCrmPasswordInput(project.crm_password || "");
                             setShowCrmDialog(true);
                           }}
                           title="Editar link do CRM"
@@ -981,6 +988,8 @@ const OnboardingProjectPage = () => {
                       className="h-6 px-2 text-xs text-muted-foreground"
                       onClick={() => {
                         setCrmLinkInput("");
+                        setCrmLoginInput("");
+                        setCrmPasswordInput("");
                         setShowCrmDialog(true);
                       }}
                     >
@@ -1479,6 +1488,58 @@ const OnboardingProjectPage = () => {
                 placeholder="https://crm.exemplo.com/cliente/..."
               />
             </div>
+            <div>
+              <Label>Login</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={crmLoginInput}
+                  onChange={(e) => setCrmLoginInput(e.target.value)}
+                  placeholder="usuario@email.com"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    if (crmLoginInput) {
+                      navigator.clipboard.writeText(crmLoginInput);
+                      toast.success("Login copiado!");
+                    }
+                  }}
+                  disabled={!crmLoginInput}
+                  title="Copiar login"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div>
+              <Label>Senha</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={crmPasswordInput}
+                  onChange={(e) => setCrmPasswordInput(e.target.value)}
+                  placeholder="••••••••"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    if (crmPasswordInput) {
+                      navigator.clipboard.writeText(crmPasswordInput);
+                      toast.success("Senha copiada!");
+                    }
+                  }}
+                  disabled={!crmPasswordInput}
+                  title="Copiar senha"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShowCrmDialog(false)} className="flex-1">
                 Cancelar
@@ -1488,15 +1549,24 @@ const OnboardingProjectPage = () => {
                   try {
                     const { error } = await supabase
                       .from("onboarding_projects")
-                      .update({ crm_link: crmLinkInput || null })
+                      .update({ 
+                        crm_link: crmLinkInput || null,
+                        crm_login: crmLoginInput || null,
+                        crm_password: crmPasswordInput || null
+                      })
                       .eq("id", projectId);
                     if (error) throw error;
-                    setProject(prev => prev ? { ...prev, crm_link: crmLinkInput || null } : null);
+                    setProject(prev => prev ? { 
+                      ...prev, 
+                      crm_link: crmLinkInput || null,
+                      crm_login: crmLoginInput || null,
+                      crm_password: crmPasswordInput || null
+                    } : null);
                     setShowCrmDialog(false);
-                    toast.success("Link do CRM atualizado");
+                    toast.success("Dados do CRM atualizados");
                   } catch (error) {
-                    console.error("Error updating CRM link:", error);
-                    toast.error("Erro ao atualizar link");
+                    console.error("Error updating CRM data:", error);
+                    toast.error("Erro ao atualizar dados do CRM");
                   }
                 }}
                 className="flex-1"
