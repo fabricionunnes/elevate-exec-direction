@@ -153,23 +153,38 @@ export default function OnboardingCompaniesReportPage() {
       const endDate = company.contract_end_date ? parseISO(company.contract_end_date) : null;
       const now = new Date();
 
-      // Calculate contract months
+      // Calculate contract months (how long the company has been a client)
       let contractMonths = 1;
       if (startDate) {
         if (endDate && endDate > startDate) {
+          // Contract ended - use the contract duration
           contractMonths = Math.max(1, differenceInMonths(endDate, startDate));
         } else {
+          // Ongoing contract - count months from start until now
           contractMonths = Math.max(1, differenceInMonths(now, startDate));
         }
       }
 
-      // Total paid = contract_value * contract_months (simplification)
-      // In a real scenario, you'd sum actual payments
-      const monthlyValue = company.contract_value || 0;
+      // Calculate monthly value:
+      // - If there's an end date: contract_value is TOTAL, so divide by contract duration
+      // - If there's NO end date: contract_value is already MONTHLY
+      let monthlyValue = 0;
+      const contractValue = company.contract_value || 0;
+      
+      if (endDate && startDate) {
+        // Contract has end date - value is total, calculate monthly
+        const contractDuration = Math.max(1, differenceInMonths(endDate, startDate));
+        monthlyValue = contractDuration > 0 ? contractValue / contractDuration : contractValue;
+      } else {
+        // No end date - value is already monthly
+        monthlyValue = contractValue;
+      }
+
+      // Total paid = monthly value * months active
       const totalPaid = monthlyValue * contractMonths;
 
-      // Average ticket = total paid / contract months
-      const avgTicket = contractMonths > 0 ? totalPaid / contractMonths : 0;
+      // Average ticket = monthly value
+      const avgTicket = monthlyValue;
 
       return {
         id: company.id,
