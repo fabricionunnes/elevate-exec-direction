@@ -412,8 +412,13 @@ const DashboardMetrics = ({
   }, [projects, npsResponses]);
 
   const healthMetrics = useMemo(() => {
-    const filteredProjectIds = new Set(projects.map(p => p.id));
-    const filteredScores = healthScores.filter(h => filteredProjectIds.has(h.project_id));
+    // Only include active projects in health score average (exclude closed, completed, inactive)
+    const activeProjectIds = new Set(
+      projects
+        .filter(p => p.status === "active")
+        .map(p => p.id)
+    );
+    const filteredScores = healthScores.filter(h => activeProjectIds.has(h.project_id));
     
     if (filteredScores.length === 0) {
       return { averageScore: null, critical: 0, warning: 0, healthy: 0, excellent: 0, totalWithScore: 0 };
