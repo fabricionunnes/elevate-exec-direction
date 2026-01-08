@@ -30,7 +30,7 @@ import {
   X,
   FileText,
 } from "lucide-react";
-import { format, startOfDay, endOfDay, parseISO, isWithinInterval } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface ActivityItem {
@@ -390,20 +390,13 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
 
   const filteredActivities = useMemo(() => {
     return activities.filter((activity) => {
-      // Date filter
+      // Date filter (date-only to avoid timezone issues)
       if (dateFrom || dateTo) {
-        const activityDate = parseISO(activity.date);
-        if (dateFrom && dateTo) {
-          const interval = {
-            start: startOfDay(parseISO(dateFrom)),
-            end: endOfDay(parseISO(dateTo)),
-          };
-          if (!isWithinInterval(activityDate, interval)) return false;
-        } else if (dateFrom) {
-          if (activityDate < startOfDay(parseISO(dateFrom))) return false;
-        } else if (dateTo) {
-          if (activityDate > endOfDay(parseISO(dateTo))) return false;
-        }
+        const activityDateOnly = activity.date?.substring(0, 10);
+        if (!activityDateOnly) return false;
+
+        if (dateFrom && activityDateOnly < dateFrom) return false;
+        if (dateTo && activityDateOnly > dateTo) return false;
       }
 
       // Company filter
