@@ -18,17 +18,24 @@ interface KPIMetasPanelProps {
   isAdmin: boolean;
   projectId?: string;
   isStaff?: boolean; // All staff (admin, cs, consultant) can edit
+  defaultTab?: string;
 }
 
-export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false }: KPIMetasPanelProps) => {
+export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, defaultTab }: KPIMetasPanelProps) => {
   // Staff can access all tabs - use isStaff for tab visibility, isAdmin for specific admin-only features
   const canAccessAllTabs = isStaff || isAdmin;
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState(defaultTab || "dashboard");
   const [companyName, setCompanyName] = useState("");
 
   useEffect(() => {
     fetchCompanyName();
   }, [companyId]);
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab]);
 
   const fetchCompanyName = async () => {
     const { data } = await supabase
