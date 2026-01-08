@@ -1191,7 +1191,7 @@ const OnboardingProjectPage = () => {
           </Card>
 
           {/* Health Score Widget */}
-          <HealthScoreWidget projectId={projectId!} compact />
+          <HealthScoreWidget projectId={projectId!} compact onViewDetails={() => setActiveTab("health")} />
         </div>
 
         {/* Urgent Tasks Highlight */}
