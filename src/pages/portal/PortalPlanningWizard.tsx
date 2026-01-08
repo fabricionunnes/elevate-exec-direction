@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -515,53 +515,85 @@ const PortalPlanningWizard = () => {
   const StepIcon = STEPS[currentStep - 1].icon;
 
   return (
-    <div className="min-h-screen pb-24">
-      {/* Header */}
-      <div className="bg-slate-900/50 border-b border-slate-800 sticky top-0 lg:top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-lg font-bold text-white">Planejamento Comercial 2026</h1>
-              <p className="text-sm text-slate-400">
-                Etapa {currentStep} de 8: {STEPS[currentStep - 1].title}
-              </p>
+    <div className="min-h-screen pb-28 md:pb-24 flex flex-col">
+      {/* Mobile Header - Fixed */}
+      <div className="bg-slate-950 border-b border-slate-800 sticky top-0 z-40 safe-top">
+        <div className="px-4 py-3">
+          {/* Top row: Title and Save */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center">
+                <StepIcon className="w-5 h-5 text-amber-400" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-base font-bold text-white truncate">
+                  {STEPS[currentStep - 1].title}
+                </h1>
+                <p className="text-xs text-slate-500">
+                  Etapa {currentStep} de 8
+                </p>
+              </div>
             </div>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={saveStep}
               disabled={saving}
-              className="border-slate-700 text-slate-300"
+              className="h-9 px-3 text-slate-400 hover:text-white"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              Salvar
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             </Button>
           </div>
           
+          {/* Progress bar */}
           <div className="flex items-center gap-2">
-            <Progress value={progress} className="flex-1 h-2 bg-slate-800" />
-            <span className="text-xs text-slate-400 w-12 text-right">{progress}%</span>
+            <Progress value={progress} className="flex-1 h-1.5 bg-slate-800" />
+            <span className="text-xs text-amber-400 font-medium w-10 text-right">{progress}%</span>
+          </div>
+          
+          {/* Step dots - scrollable on mobile */}
+          <div className="flex items-center justify-center gap-1.5 mt-3 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
+            {STEPS.map((s) => (
+              <button
+                key={s.step}
+                onClick={() => s.step <= (plan?.current_step || currentStep) && setCurrentStep(s.step)}
+                disabled={s.step > (plan?.current_step || currentStep)}
+                className={`flex-shrink-0 h-7 px-2.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                  s.step === currentStep
+                    ? "bg-amber-500 text-slate-950"
+                    : s.step < currentStep
+                    ? "bg-slate-800 text-amber-400"
+                    : "bg-slate-800/50 text-slate-600"
+                } ${s.step <= (plan?.current_step || currentStep) ? "cursor-pointer" : "cursor-not-allowed"}`}
+              >
+                <s.icon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{s.title}</span>
+                <span className="sm:hidden">{s.step}</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <Card className="bg-slate-900/50 border-slate-800">
-          <CardHeader>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-amber-500/10 rounded-lg flex items-center justify-center">
-                <StepIcon className="w-6 h-6 text-amber-400" />
-              </div>
-              <div>
-                <CardTitle className="text-white">{STEPS[currentStep - 1].title}</CardTitle>
-                <CardDescription className="text-slate-400">
-                  {STEPS[currentStep - 1].description}
-                </CardDescription>
+      {/* Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-4 py-5 md:py-8">
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl md:rounded-2xl overflow-hidden">
+            {/* Card Header - Hidden on mobile since we have the sticky header */}
+            <div className="hidden md:block p-6 border-b border-slate-800">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center">
+                  <StepIcon className="w-6 h-6 text-amber-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">{STEPS[currentStep - 1].title}</h2>
+                  <p className="text-slate-400">
+                    {STEPS[currentStep - 1].description}
+                  </p>
+                </div>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
+            <div className="p-4 md:p-6 space-y-5">
             {/* Step 1: Diagnóstico Comercial Real */}
             {currentStep === 1 && (
               <>
@@ -717,56 +749,53 @@ const PortalPlanningWizard = () => {
                 </div>
 
                 {formData.annual_revenue_goal && (
-                  <div className="bg-slate-800/50 rounded-lg p-6 mt-6">
-                    <h4 className="text-white font-medium mb-4">Cálculos Automáticos</h4>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="bg-slate-900/50 rounded-lg p-4">
-                        <p className="text-slate-400 text-sm mb-1">Meta Mensal</p>
-                        <p className="text-2xl font-bold text-white">
-                          R$ {calculations.monthlyGoal.toLocaleString('pt-BR')}
+                  <div className="bg-slate-800/50 rounded-xl p-4 md:p-6 mt-4">
+                    <h4 className="text-white font-medium mb-4 text-sm md:text-base">Cálculos Automáticos</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+                      <div className="bg-slate-900/50 rounded-lg p-3">
+                        <p className="text-slate-400 text-xs mb-1">Meta Mensal</p>
+                        <p className="text-base md:text-xl font-bold text-white">
+                          R$ {(calculations.monthlyGoal / 1000).toFixed(0)}k
                         </p>
                       </div>
-                      <div className="bg-slate-900/50 rounded-lg p-4">
-                        <p className="text-slate-400 text-sm mb-1">Vendas/mês necessárias</p>
-                        <p className="text-2xl font-bold text-white">{calculations.salesNeeded}</p>
+                      <div className="bg-slate-900/50 rounded-lg p-3">
+                        <p className="text-slate-400 text-xs mb-1">Vendas/mês</p>
+                        <p className="text-base md:text-xl font-bold text-white">{calculations.salesNeeded}</p>
                       </div>
-                      <div className="bg-slate-900/50 rounded-lg p-4">
-                        <p className="text-slate-400 text-sm mb-1">Propostas/mês necessárias</p>
-                        <p className="text-2xl font-bold text-white">{proposalsNeeded || "-"}</p>
+                      <div className="bg-slate-900/50 rounded-lg p-3">
+                        <p className="text-slate-400 text-xs mb-1">Propostas/mês</p>
+                        <p className="text-base md:text-xl font-bold text-white">{proposalsNeeded || "-"}</p>
                       </div>
-                      <div className="bg-slate-900/50 rounded-lg p-4">
-                        <p className="text-slate-400 text-sm mb-1">Leads/mês necessários</p>
-                        <p className="text-2xl font-bold text-white">{leadsNeeded || "-"}</p>
+                      <div className="bg-slate-900/50 rounded-lg p-3">
+                        <p className="text-slate-400 text-xs mb-1">Leads/mês</p>
+                        <p className="text-base md:text-xl font-bold text-white">{leadsNeeded || "-"}</p>
                       </div>
                     </div>
 
                     {/* Comparativo Atual x Necessário */}
-                    <div className="mt-6 border-t border-slate-700 pt-6">
-                      <h5 className="text-white font-medium mb-4">Comparativo: Atual x Necessário</h5>
-                      <div className="space-y-4">
+                    <div className="mt-5 border-t border-slate-700 pt-5">
+                      <h5 className="text-white font-medium mb-3 text-sm">Atual x Necessário</h5>
+                      <div className="space-y-2">
                         {[
-                          { label: "Leads/mês", current: calculations.currentLeadsPerMonth, needed: leadsNeeded },
-                          { label: "Propostas/mês", current: calculations.currentProposalsPerMonth, needed: proposalsNeeded },
-                          { label: "Vendas/mês", current: calculations.currentSalesPerMonth, needed: calculations.salesNeeded },
+                          { label: "Leads", current: calculations.currentLeadsPerMonth, needed: leadsNeeded },
+                          { label: "Propostas", current: calculations.currentProposalsPerMonth, needed: proposalsNeeded },
+                          { label: "Vendas", current: calculations.currentSalesPerMonth, needed: calculations.salesNeeded },
                         ].map((item) => {
                           const status = getGapStatus(item.current, item.needed);
                           return (
-                            <div key={item.label} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg">
-                              <span className="text-slate-300">{item.label}</span>
-                              <div className="flex items-center gap-4">
-                                <span className="text-slate-400">Atual: <strong className="text-white">{item.current}</strong></span>
+                            <div key={item.label} className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-900/50 rounded-lg">
+                              <span className="text-slate-300 text-sm">{item.label}</span>
+                              <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm">
+                                <span className="text-slate-500">{item.current}</span>
                                 <span className="text-slate-600">→</span>
-                                <span className="text-slate-400">Necessário: <strong className="text-white">{item.needed || "-"}</strong></span>
+                                <span className="text-white font-medium">{item.needed || "-"}</span>
                                 {item.needed > 0 && (
-                                  <Badge className={
+                                  <Badge className={`text-xs px-1.5 py-0.5 ${
                                     status === "ok" ? "bg-green-500/20 text-green-400 border-green-500/30" :
                                     status === "attention" ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" :
                                     "bg-red-500/20 text-red-400 border-red-500/30"
-                                  }>
-                                    {status === "ok" && <CheckCircle2 className="w-3 h-3 mr-1" />}
-                                    {status === "attention" && <AlertCircle className="w-3 h-3 mr-1" />}
-                                    {status === "critical" && <AlertTriangle className="w-3 h-3 mr-1" />}
-                                    {status === "ok" ? "OK" : status === "attention" ? "Atenção" : "Gap Crítico"}
+                                  }`}>
+                                    {status === "ok" ? "OK" : status === "attention" ? "⚠️" : "❌"}
                                   </Badge>
                                 )}
                               </div>
@@ -990,7 +1019,7 @@ const PortalPlanningWizard = () => {
                             }}
                             className="bg-slate-800/50 border-slate-700 text-white text-sm"
                           />
-                          <div className="grid grid-cols-4 gap-2">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                             <Input
                               placeholder="Unidade *"
                               value={kr.unit}
@@ -999,7 +1028,7 @@ const PortalPlanningWizard = () => {
                                 newObjs[objIndex].key_results[krIndex].unit = e.target.value;
                                 setFormData(prev => ({ ...prev, objectives: newObjs }));
                               }}
-                              className="bg-slate-800/50 border-slate-700 text-white text-sm"
+                              className="bg-slate-800/50 border-slate-700 text-white text-sm h-10"
                             />
                             <Input
                               placeholder="Meta *"
@@ -1009,7 +1038,7 @@ const PortalPlanningWizard = () => {
                                 newObjs[objIndex].key_results[krIndex].target = e.target.value;
                                 setFormData(prev => ({ ...prev, objectives: newObjs }));
                               }}
-                              className="bg-slate-800/50 border-slate-700 text-white text-sm"
+                              className="bg-slate-800/50 border-slate-700 text-white text-sm h-10"
                             />
                             <Input
                               placeholder="Baseline"
@@ -1019,7 +1048,7 @@ const PortalPlanningWizard = () => {
                                 newObjs[objIndex].key_results[krIndex].baseline = e.target.value;
                                 setFormData(prev => ({ ...prev, objectives: newObjs }));
                               }}
-                              className="bg-slate-800/50 border-slate-700 text-white text-sm"
+                              className="bg-slate-800/50 border-slate-700 text-white text-sm h-10"
                             />
                             <Input
                               placeholder="Dono *"
@@ -1029,7 +1058,7 @@ const PortalPlanningWizard = () => {
                                 newObjs[objIndex].key_results[krIndex].owner = e.target.value;
                                 setFormData(prev => ({ ...prev, objectives: newObjs }));
                               }}
-                              className="bg-slate-800/50 border-slate-700 text-white text-sm"
+                              className="bg-slate-800/50 border-slate-700 text-white text-sm h-10"
                             />
                           </div>
                         </div>
@@ -1117,9 +1146,9 @@ const PortalPlanningWizard = () => {
                           };
 
                           return (
-                            <div key={krIndex} className="bg-slate-800/30 rounded-lg p-4 mb-3 ml-8 border-l-2 border-blue-500/30">
-                              <p className="text-sm text-slate-400 mb-3">
-                                KR: <span className="text-white">{kr.title || `KR ${krIndex + 1}`}</span>
+                            <div key={krIndex} className="bg-slate-800/30 rounded-lg p-3 md:p-4 mb-3 ml-3 md:ml-8 border-l-2 border-blue-500/30">
+                              <p className="text-xs md:text-sm text-slate-400 mb-3">
+                                KR: <span className="text-white truncate">{kr.title || `KR ${krIndex + 1}`}</span>
                               </p>
                               <div className="grid md:grid-cols-2 gap-3">
                                 <div className="md:col-span-2 space-y-1">
@@ -1338,28 +1367,32 @@ const PortalPlanningWizard = () => {
                 </div>
               </>
             )}
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {/* Navigation */}
-        <div className="flex items-center justify-between mt-6">
+      {/* Fixed Bottom Navigation - Mobile optimized */}
+      <div className="fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-lg border-t border-slate-800 safe-bottom z-40">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <Button
             variant="outline"
             onClick={prevStep}
             disabled={currentStep === 1}
-            className="border-slate-700 text-slate-300"
+            className="flex-1 md:flex-none border-slate-700 text-slate-300 h-11"
           >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Anterior
+            <ChevronLeft className="w-4 h-4 mr-1 md:mr-2" />
+            <span className="hidden sm:inline">Anterior</span>
           </Button>
 
-          <div className="flex items-center gap-2">
+          {/* Step indicator - mobile only */}
+          <div className="flex items-center gap-1 md:hidden">
             {STEPS.map((s) => (
               <div
                 key={s.step}
-                className={`w-2 h-2 rounded-full transition-all ${
+                className={`w-1.5 h-1.5 rounded-full transition-all ${
                   s.step === currentStep
-                    ? "bg-amber-500 w-4"
+                    ? "bg-amber-500 w-3"
                     : s.step < currentStep
                     ? "bg-amber-500/50"
                     : "bg-slate-700"
@@ -1371,13 +1404,25 @@ const PortalPlanningWizard = () => {
           {currentStep < 8 ? (
             <Button
               onClick={nextStep}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950"
+              className="flex-1 md:flex-none bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold h-11"
             >
-              Próximo
-              <ChevronRight className="w-4 h-4 ml-2" />
+              <span>Próximo</span>
+              <ChevronRight className="w-4 h-4 ml-1 md:ml-2" />
             </Button>
           ) : (
-            <div className="w-24" /> // Spacer
+            <Button
+              onClick={publishPlan}
+              disabled={saving}
+              className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white font-semibold h-11"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+              )}
+              <span className="hidden sm:inline">Publicar</span>
+              <span className="sm:hidden">Publicar</span>
+            </Button>
           )}
         </div>
       </div>
