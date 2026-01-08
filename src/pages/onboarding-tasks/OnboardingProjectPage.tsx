@@ -54,7 +54,7 @@ import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
 import { GeneratePDFTasksDialog } from "@/components/onboarding-tasks/GeneratePDFTasksDialog";
-import { Settings, Sparkles, Building2, Wand2, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp } from "lucide-react";
+import { Settings, Sparkles, Building2, Wand2, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp, BarChart3 as PanelIcon, Columns3 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { ChurnReasonDialog } from "@/components/onboarding-tasks/ChurnReasonDialog";
@@ -64,6 +64,8 @@ import { RealtimeNotifications } from "@/components/onboarding-tasks/RealtimeNot
 import { TasksGameTrailView } from "@/components/onboarding-tasks/TasksGameTrailView";
 import { TasksListView } from "@/components/onboarding-tasks/TasksListView";
 import { TasksScheduleView } from "@/components/onboarding-tasks/TasksScheduleView";
+import { TasksPanelView } from "@/components/onboarding-tasks/TasksPanelView";
+import { TasksKanbanView } from "@/components/onboarding-tasks/TasksKanbanView";
 import { NPSHistoryPanel } from "@/components/onboarding-tasks/NPSHistoryPanel";
 import { ProjectUrgentTasks } from "@/components/onboarding-tasks/ProjectUrgentTasks";
 import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
@@ -164,7 +166,7 @@ const OnboardingProjectPage = () => {
   const [isStaffAdmin, setIsStaffAdmin] = useState(false);
   const [showGenerateTasksDialog, setShowGenerateTasksDialog] = useState(false);
   const [showPDFTasksDialog, setShowPDFTasksDialog] = useState(false);
-  const [tasksViewMode, setTasksViewMode] = useState<"trail" | "list" | "schedule">("trail");
+  const [tasksViewMode, setTasksViewMode] = useState<"trail" | "list" | "schedule" | "panel" | "kanban">("trail");
   const [staffList, setStaffList] = useState<{ id: string; name: string; role: string }[]>([]);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
   const [showChurnDialog, setShowChurnDialog] = useState(false);
@@ -1183,7 +1185,7 @@ const OnboardingProjectPage = () => {
               </div>
               
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                   <Button
                     variant={tasksViewMode === "trail" ? "default" : "outline"}
                     size="sm"
@@ -1207,6 +1209,22 @@ const OnboardingProjectPage = () => {
                   >
                     <CalendarDays className="h-4 w-4 mr-2" />
                     Cronograma
+                  </Button>
+                  <Button
+                    variant={tasksViewMode === "panel" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTasksViewMode("panel")}
+                  >
+                    <PanelIcon className="h-4 w-4 mr-2" />
+                    Painel
+                  </Button>
+                  <Button
+                    variant={tasksViewMode === "kanban" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTasksViewMode("kanban")}
+                  >
+                    <Columns3 className="h-4 w-4 mr-2" />
+                    Kanban
                   </Button>
                 </div>
                 {canAddTasks && (
@@ -1246,6 +1264,18 @@ const OnboardingProjectPage = () => {
                 onTaskAdded={fetchProjectData}
                 singleProjectId={projectId}
                 staffList={staffList}
+              />
+            ) : tasksViewMode === "panel" ? (
+              <TasksPanelView
+                phases={sortedPhases}
+                tasks={filteredTasks}
+                onTaskClick={setSelectedTask}
+              />
+            ) : tasksViewMode === "kanban" ? (
+              <TasksKanbanView
+                tasks={filteredTasks}
+                onTaskClick={setSelectedTask}
+                onStatusChange={handleStatusChange}
               />
             ) : (
               <TasksListView
