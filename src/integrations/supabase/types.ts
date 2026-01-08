@@ -1845,7 +1845,9 @@ export type Database = {
           level_name: string
           level_order: number
           month_year: string
+          salesperson_id: string | null
           target_value: number
+          unit_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1856,7 +1858,9 @@ export type Database = {
           level_name?: string
           level_order?: number
           month_year: string
+          salesperson_id?: string | null
           target_value?: number
+          unit_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1867,7 +1871,9 @@ export type Database = {
           level_name?: string
           level_order?: number
           month_year?: string
+          salesperson_id?: string | null
           target_value?: number
+          unit_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1883,6 +1889,20 @@ export type Database = {
             columns: ["kpi_id"]
             isOneToOne: false
             referencedRelation: "company_kpis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_monthly_targets_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "company_salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_monthly_targets_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "company_units"
             referencedColumns: ["id"]
           },
         ]
