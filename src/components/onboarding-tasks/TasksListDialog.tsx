@@ -21,7 +21,8 @@ import {
   ChevronRight,
   CheckCircle2,
   Circle,
-  Loader2
+  Loader2,
+  User
 } from "lucide-react";
 
 interface TaskWithDetails {
@@ -34,6 +35,7 @@ interface TaskWithDetails {
   project_name: string;
   company_id: string | null;
   company_name: string | null;
+  consultant_name: string | null;
 }
 
 interface TasksListDialogProps {
@@ -147,7 +149,8 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
             onboarding_company_id,
             onboarding_companies (
               id,
-              name
+              name,
+              consultant_id
             )
           )
         `
@@ -167,17 +170,41 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
 
       if (error) throw error;
 
-      const formattedTasks: TaskWithDetails[] = (tasksData || []).map((task: any) => ({
-        id: task.id,
-        title: task.title,
-        status: task.status,
-        priority: task.priority,
-        due_date: task.due_date,
-        project_id: task.project_id,
-        project_name: task.onboarding_projects?.product_name || "Projeto",
-        company_id: task.onboarding_projects?.onboarding_company_id || null,
-        company_name: task.onboarding_projects?.onboarding_companies?.name || null,
-      }));
+      // Collect all consultant IDs to fetch their names
+      const consultantIds = [...new Set(
+        (tasksData || [])
+          .map((t: any) => t.onboarding_projects?.onboarding_companies?.consultant_id)
+          .filter(Boolean)
+      )];
+
+      let consultantsMap: Record<string, string> = {};
+      if (consultantIds.length > 0) {
+        const { data: consultants } = await supabase
+          .from("onboarding_staff")
+          .select("id, name")
+          .in("id", consultantIds);
+        
+        consultantsMap = (consultants || []).reduce((acc, c) => {
+          acc[c.id] = c.name;
+          return acc;
+        }, {} as Record<string, string>);
+      }
+
+      const formattedTasks: TaskWithDetails[] = (tasksData || []).map((task: any) => {
+        const consultantId = task.onboarding_projects?.onboarding_companies?.consultant_id;
+        return {
+          id: task.id,
+          title: task.title,
+          status: task.status,
+          priority: task.priority,
+          due_date: task.due_date,
+          project_id: task.project_id,
+          project_name: task.onboarding_projects?.product_name || "Projeto",
+          company_id: task.onboarding_projects?.onboarding_company_id || null,
+          company_name: task.onboarding_projects?.onboarding_companies?.name || null,
+          consultant_name: consultantId ? consultantsMap[consultantId] || null : null,
+        };
+      });
 
       setTasks(formattedTasks);
     } catch (error) {
@@ -214,7 +241,8 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
               onboarding_company_id,
               onboarding_companies (
                 id,
-                name
+                name,
+                consultant_id
               )
             )
           `
@@ -224,17 +252,41 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
 
         if (error) throw error;
 
-        const formattedTasks: TaskWithDetails[] = (tasksData || []).map((task: any) => ({
-          id: task.id,
-          title: task.title,
-          status: task.status,
-          priority: task.priority,
-          due_date: task.due_date,
-          project_id: task.project_id,
-          project_name: task.onboarding_projects?.product_name || "Projeto",
-          company_id: task.onboarding_projects?.onboarding_company_id || null,
-          company_name: task.onboarding_projects?.onboarding_companies?.name || null,
-        }));
+        // Collect consultant IDs
+        const batchConsultantIds = [...new Set(
+          (tasksData || [])
+            .map((t: any) => t.onboarding_projects?.onboarding_companies?.consultant_id)
+            .filter(Boolean)
+        )];
+
+        let batchConsultantsMap: Record<string, string> = {};
+        if (batchConsultantIds.length > 0) {
+          const { data: consultants } = await supabase
+            .from("onboarding_staff")
+            .select("id, name")
+            .in("id", batchConsultantIds);
+          
+          batchConsultantsMap = (consultants || []).reduce((acc, c) => {
+            acc[c.id] = c.name;
+            return acc;
+          }, {} as Record<string, string>);
+        }
+
+        const formattedTasks: TaskWithDetails[] = (tasksData || []).map((task: any) => {
+          const consultantId = task.onboarding_projects?.onboarding_companies?.consultant_id;
+          return {
+            id: task.id,
+            title: task.title,
+            status: task.status,
+            priority: task.priority,
+            due_date: task.due_date,
+            project_id: task.project_id,
+            project_name: task.onboarding_projects?.product_name || "Projeto",
+            company_id: task.onboarding_projects?.onboarding_company_id || null,
+            company_name: task.onboarding_projects?.onboarding_companies?.name || null,
+            consultant_name: consultantId ? batchConsultantsMap[consultantId] || null : null,
+          };
+        });
 
         allFormattedTasks = allFormattedTasks.concat(formattedTasks);
       }
@@ -286,7 +338,8 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
             onboarding_company_id,
             onboarding_companies (
               id,
-              name
+              name,
+              consultant_id
             )
           )
         `
@@ -298,17 +351,41 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
 
       if (error) throw error;
 
-      const formattedTasks: TaskWithDetails[] = (tasksData || []).map((task: any) => ({
-        id: task.id,
-        title: task.title,
-        status: task.status,
-        priority: task.priority,
-        due_date: task.due_date,
-        project_id: task.project_id,
-        project_name: task.onboarding_projects?.product_name || "Projeto",
-        company_id: task.onboarding_projects?.onboarding_company_id || null,
-        company_name: task.onboarding_projects?.onboarding_companies?.name || null,
-      }));
+      // Collect consultant IDs
+      const consultantIds = [...new Set(
+        (tasksData || [])
+          .map((t: any) => t.onboarding_projects?.onboarding_companies?.consultant_id)
+          .filter(Boolean)
+      )];
+
+      let consultantsMap: Record<string, string> = {};
+      if (consultantIds.length > 0) {
+        const { data: consultants } = await supabase
+          .from("onboarding_staff")
+          .select("id, name")
+          .in("id", consultantIds);
+        
+        consultantsMap = (consultants || []).reduce((acc, c) => {
+          acc[c.id] = c.name;
+          return acc;
+        }, {} as Record<string, string>);
+      }
+
+      const formattedTasks: TaskWithDetails[] = (tasksData || []).map((task: any) => {
+        const consultantId = task.onboarding_projects?.onboarding_companies?.consultant_id;
+        return {
+          id: task.id,
+          title: task.title,
+          status: task.status,
+          priority: task.priority,
+          due_date: task.due_date,
+          project_id: task.project_id,
+          project_name: task.onboarding_projects?.product_name || "Projeto",
+          company_id: task.onboarding_projects?.onboarding_company_id || null,
+          company_name: task.onboarding_projects?.onboarding_companies?.name || null,
+          consultant_name: consultantId ? consultantsMap[consultantId] || null : null,
+        };
+      });
 
       setTasks(formattedTasks);
     } catch (error) {
@@ -429,7 +506,7 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
                         {getPriorityBadge(task.priority)}
                       </div>
                       
-                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
                         {task.company_name && (
                           <div className="flex items-center gap-1">
                             <Building2 className="h-3 w-3" />
@@ -444,6 +521,12 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
                           <div className={`flex items-center gap-1 ${type === "overdue" ? "text-red-500" : ""}`}>
                             <Calendar className="h-3 w-3" />
                             <span>{format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR })}</span>
+                          </div>
+                        )}
+                        {task.consultant_name && (
+                          <div className="flex items-center gap-1 text-primary">
+                            <User className="h-3 w-3" />
+                            <span>{task.consultant_name}</span>
                           </div>
                         )}
                       </div>
