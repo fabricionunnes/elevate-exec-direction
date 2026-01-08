@@ -373,17 +373,36 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
       // Mark associated task as completed if meeting has a link
       if (meetingToFinalize.meeting_link) {
-        const { error: taskError } = await supabase
+        // First get the task to log history properly
+        const { data: taskToUpdate } = await supabase
           .from("onboarding_tasks")
-          .update({
-            status: "completed",
-            completed_at: new Date().toISOString(),
-          })
+          .select("id, status")
           .eq("project_id", projectId)
-          .eq("meeting_link", meetingToFinalize.meeting_link);
+          .eq("meeting_link", meetingToFinalize.meeting_link)
+          .maybeSingle();
 
-        if (taskError) {
-          console.error("Error updating task status:", taskError);
+        if (taskToUpdate && taskToUpdate.status !== "completed") {
+          const { error: taskError } = await supabase
+            .from("onboarding_tasks")
+            .update({
+              status: "completed",
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", taskToUpdate.id);
+
+          if (taskError) {
+            console.error("Error updating task status:", taskError);
+          } else {
+            // Log task history
+            await supabase.from("onboarding_task_history").insert({
+              task_id: taskToUpdate.id,
+              staff_id: currentStaffId,
+              action: "status_change",
+              field_changed: "status",
+              old_value: taskToUpdate.status === "pending" ? "Pendente" : "Em Progresso",
+              new_value: "Concluída",
+            });
+          }
         }
       }
 
