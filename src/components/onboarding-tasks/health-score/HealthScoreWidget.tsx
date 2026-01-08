@@ -4,6 +4,7 @@ import { useHealthScore, getRiskLevelInfo, getTrendInfo } from "@/hooks/useHealt
 import { Heart, TrendingUp, TrendingDown, Minus, RefreshCw, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "react-router-dom";
 
 interface HealthScoreWidgetProps {
   projectId: string;
@@ -93,7 +94,10 @@ export const HealthScoreWidget = ({ projectId, onViewDetails, compact = false }:
 
   if (compact) {
     return (
-      <Card className={cn("border-2 h-full", riskInfo?.border)}>
+      <Card 
+        className={cn("border-2 h-full cursor-pointer hover:shadow-md transition-shadow", riskInfo?.border)}
+        onClick={onViewDetails}
+      >
         <CardContent className="p-4 h-full flex flex-col justify-center">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
@@ -104,7 +108,10 @@ export const HealthScoreWidget = ({ projectId, onViewDetails, compact = false }:
               variant="ghost"
               size="icon"
               className="h-6 w-6"
-              onClick={calculateScore}
+              onClick={(e) => {
+                e.stopPropagation();
+                calculateScore();
+              }}
               disabled={calculating}
               title="Recalcular"
             >
