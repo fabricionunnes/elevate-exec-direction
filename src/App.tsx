@@ -77,6 +77,7 @@ import KickoffFormPage from "./pages/onboarding-tasks/KickoffFormPage";
 import OnboardingRenewalsPage from "./pages/onboarding-tasks/OnboardingRenewalsPage";
 import OnboardingActivityHistoryPage from "./pages/onboarding-tasks/OnboardingActivityHistoryPage";
 import OnboardingCompaniesReportPage from "./pages/onboarding-tasks/OnboardingCompaniesReportPage";
+import OnboardingResultsPage from "./pages/onboarding-tasks/OnboardingResultsPage";
 import KPIEntryPage from "./pages/onboarding-tasks/KPIEntryPage";
 import NPSSurveyPage from "./pages/NPSSurveyPage";
 import CSATSurveyPage from "./pages/CSATSurveyPage";
@@ -167,6 +168,7 @@ const App = () => (
               <Route path="/onboarding-tasks/renewals" element={<OnboardingRenewalsPage />} />
               <Route path="/onboarding-tasks/activity-history" element={<OnboardingActivityHistoryPage />} />
               <Route path="/onboarding-tasks/companies-report" element={<OnboardingCompaniesReportPage />} />
+              <Route path="/onboarding-tasks/results" element={<OnboardingResultsPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
             </Route>
             

@@ -19,7 +19,6 @@ import { PendingMeetingsAlert } from "@/components/onboarding-tasks/PendingMeeti
 import { AnnouncementDialog } from "@/components/onboarding-tasks/AnnouncementDialog";
 import { NPSGlobalDialog } from "@/components/onboarding-tasks/NPSGlobalDialog";
 import { CSATGlobalDialog } from "@/components/onboarding-tasks/CSATGlobalDialog";
-import { ResultsGlobalDialog } from "@/components/onboarding-tasks/ResultsGlobalDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -121,7 +120,6 @@ const OnboardingTasksPage = () => {
   // NPS and CSAT global dialogs
   const [showNPSGlobalDialog, setShowNPSGlobalDialog] = useState(false);
   const [showCSATGlobalDialog, setShowCSATGlobalDialog] = useState(false);
-  const [showResultsGlobalDialog, setShowResultsGlobalDialog] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -928,7 +926,7 @@ const OnboardingTasksPage = () => {
                         <MessageSquareHeart className="h-4 w-4 mr-2" />
                         Painel CSAT
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setShowResultsGlobalDialog(true)}>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/results")}>
                         <BarChart3 className="h-4 w-4 mr-2" />
                         Resultados
                       </DropdownMenuItem>
@@ -1042,7 +1040,7 @@ const OnboardingTasksPage = () => {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => setShowResultsGlobalDialog(true)}
+                  onClick={() => navigate("/onboarding-tasks/results")}
                   className="gap-2"
                 >
                   <BarChart3 className="h-4 w-4" />
@@ -1494,12 +1492,6 @@ const OnboardingTasksPage = () => {
       <CSATGlobalDialog
         open={showCSATGlobalDialog}
         onOpenChange={setShowCSATGlobalDialog}
-      />
-
-      {/* Results Global Dialog */}
-      <ResultsGlobalDialog
-        open={showResultsGlobalDialog}
-        onOpenChange={setShowResultsGlobalDialog}
       />
     </div>
   );
