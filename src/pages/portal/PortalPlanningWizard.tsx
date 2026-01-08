@@ -7,22 +7,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
 import { 
   ChevronLeft, 
   ChevronRight, 
   Save, 
   CheckCircle2,
   Target,
-  Compass,
+  Calculator,
+  AlertTriangle,
+  Users,
   Flag,
-  Rocket,
   Calendar,
-  Play,
-  FileCheck,
-  Loader2
+  RotateCcw,
+  Shield,
+  Loader2,
+  TrendingUp,
+  TrendingDown,
+  AlertCircle,
+  Plus,
+  Trash2
 } from "lucide-react";
 import { toast } from "sonner";
-
 
 interface PortalUser {
   id: string;
@@ -51,13 +58,28 @@ interface Plan {
 }
 
 const STEPS = [
-  { step: 1, title: "Contexto e Diagnóstico", icon: Target, description: "Fotografia atual do negócio" },
-  { step: 2, title: "Direção", icon: Compass, description: "Visão e North Star Metric" },
-  { step: 3, title: "OKRs", icon: Flag, description: "Objetivos e Resultados-Chave" },
-  { step: 4, title: "Iniciativas", icon: Rocket, description: "Ações estratégicas" },
-  { step: 5, title: "Rocks Trimestrais", icon: Calendar, description: "Prioridades Q1-Q4" },
-  { step: 6, title: "Plano de Execução", icon: Play, description: "Cadência e riscos" },
-  { step: 7, title: "Publicar", icon: FileCheck, description: "Finalizar plano" },
+  { step: 1, title: "Diagnóstico Comercial", icon: Target, description: "Fotografia real do comercial" },
+  { step: 2, title: "Meta 2026", icon: Calculator, description: "Faturamento e cálculos" },
+  { step: 3, title: "Gargalo Principal", icon: AlertTriangle, description: "Onde está travando" },
+  { step: 4, title: "Estrutura Necessária", icon: Users, description: "Time e gestão" },
+  { step: 5, title: "OKRs Comerciais", icon: Flag, description: "Objetivos e resultados" },
+  { step: 6, title: "Plano 90 Dias", icon: Calendar, description: "Execução prioritária" },
+  { step: 7, title: "Rotina de Gestão", icon: RotateCcw, description: "Cadência operacional" },
+  { step: 8, title: "Governança", icon: Shield, description: "Responsabilidades" },
+];
+
+const BOTTLENECK_OPTIONS = [
+  { value: "leads", label: "Geração de Leads", description: "Falta demanda qualificada" },
+  { value: "conversion", label: "Conversão", description: "Leads não viram clientes" },
+  { value: "team", label: "Time Comercial", description: "Falta gente ou qualificação" },
+  { value: "management", label: "Gestão / Cobrança", description: "Falta acompanhamento" },
+  { value: "process", label: "Processo / CRM", description: "Falta estrutura e controle" },
+];
+
+const OWNER_ROLE_OPTIONS = [
+  { value: "operational", label: "Operacional", description: "Vendo e faço gestão" },
+  { value: "manager", label: "Gestor", description: "Faço gestão, não vendo" },
+  { value: "strategic", label: "Estratégico", description: "Só decisões macro" },
 ];
 
 const PortalPlanningWizard = () => {
@@ -72,54 +94,64 @@ const PortalPlanningWizard = () => {
   
   // Form data for all steps
   const [formData, setFormData] = useState<Record<string, any>>({
-    // Step 1 - Context
-    segment: "",
-    avg_ticket: "",
-    channels: "",
-    team_size: "",
-    delivery_capacity: "",
-    margin: "",
-    constraints: "",
-    current_revenue: "",
-    current_margin: "",
-    cac: "",
-    ltv: "",
+    // Step 1 - Diagnóstico Comercial
     leads_month: "",
-    conversion: "",
-    nps: "",
+    proposals_month: "",
+    sales_month: "",
+    avg_ticket: "",
+    sales_cycle_days: "",
+    salespeople_count: "",
+    has_sales_manager: "",
+    sales_responsible_name: "",
     
-    // Step 2 - Direction
-    vision: "",
-    theme: "",
-    north_star_name: "",
-    north_star_definition: "",
-    north_star_unit: "",
-    north_star_target: "",
+    // Step 2 - Meta 2026
+    annual_revenue_goal: "",
+    target_avg_ticket: "",
     
-    // Step 3 - OKRs (handled separately)
+    // Step 3 - Gargalo
+    main_bottleneck: "",
+    bottleneck_reason: "",
+    
+    // Step 4 - Estrutura
+    ideal_salespeople_count: "",
+    owner_role: "",
+    needs_sales_management: "",
+    needs_process_crm: "",
+    
+    // Step 5 - OKRs
     objectives: [] as Array<{
+      id?: string;
       title: string;
       description: string;
       key_results: Array<{
+        id?: string;
         title: string;
         unit: string;
         target: string;
         baseline: string;
+        owner: string;
       }>;
     }>,
     
-    // Step 5 - Rocks
-    q1_rocks: "",
-    q2_rocks: "",
-    q3_rocks: "",
-    q4_rocks: "",
+    // Step 6 - Plano 90 dias (ações por KR)
+    execution_actions: [] as Array<{
+      kr_title: string;
+      action: string;
+      responsible: string;
+      deadline: string;
+      success_metric: string;
+    }>,
     
-    // Step 6 - Execution
-    weekly_cadence: "",
-    monthly_review: "",
-    quarterly_review: "",
-    risks: "",
-    mitigations: "",
+    // Step 7 - Rotina
+    has_weekly_meeting: "",
+    weekly_meeting_owner: "",
+    tracked_indicators: [] as string[],
+    review_frequency: "",
+    
+    // Step 8 - Governança
+    commercial_owner: "",
+    action_if_not_meet_60_days: "",
+    first_action_after_planning: "",
   });
 
   useEffect(() => {
@@ -145,29 +177,6 @@ const PortalPlanningWizard = () => {
       if (data.context_data && typeof data.context_data === 'object') {
         setFormData(prev => ({ ...prev, ...(data.context_data as Record<string, any>) }));
       }
-      if (data.theme) {
-        setFormData(prev => ({ ...prev, theme: data.theme }));
-      }
-      if (data.vision) {
-        setFormData(prev => ({ ...prev, vision: data.vision }));
-      }
-
-      // Load north star
-      const { data: northStar } = await supabase
-        .from("portal_north_stars")
-        .select("*")
-        .eq("plan_id", planId)
-        .single();
-
-      if (northStar) {
-        setFormData(prev => ({
-          ...prev,
-          north_star_name: northStar.name || "",
-          north_star_definition: northStar.definition || "",
-          north_star_unit: northStar.unit || "",
-          north_star_target: northStar.annual_target?.toString() || "",
-        }));
-      }
 
       // Load objectives
       const { data: objectives } = await supabase
@@ -189,6 +198,7 @@ const PortalPlanningWizard = () => {
               unit: kr.unit || "",
               target: kr.target?.toString() || "",
               baseline: kr.baseline?.toString() || "",
+              owner: kr.owner || "",
             })),
           })),
         }));
@@ -209,13 +219,11 @@ const PortalPlanningWizard = () => {
       if (!planId) return;
       
       try {
-        const { theme, vision, objectives, ...contextData } = data;
+        const { objectives, ...contextData } = data;
         
         await supabase
           .from("portal_plans")
           .update({
-            theme: theme || null,
-            vision: vision || null,
             context_data: contextData,
             current_step: Math.max(step, plan?.current_step || 1),
           })
@@ -228,7 +236,7 @@ const PortalPlanningWizard = () => {
     [planId, plan?.current_step]
   );
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | string[]) => {
     const newData = { ...formData, [field]: value };
     setFormData(newData);
     debouncedSave(newData, currentStep);
@@ -239,44 +247,19 @@ const PortalPlanningWizard = () => {
     setSaving(true);
 
     try {
-      const { theme, vision, objectives, ...contextData } = formData;
+      const { objectives, ...contextData } = formData;
 
-      // Save plan
+      // Save plan context
       await supabase
         .from("portal_plans")
         .update({
-          theme: theme || null,
-          vision: vision || null,
           context_data: contextData,
           current_step: currentStep,
         })
         .eq("id", planId);
 
-      // Save north star (step 2)
-      if (currentStep === 2 && formData.north_star_name) {
-        const { data: existingNS } = await supabase
-          .from("portal_north_stars")
-          .select("id")
-          .eq("plan_id", planId)
-          .single();
-
-        const northStarData = {
-          plan_id: planId,
-          name: formData.north_star_name,
-          definition: formData.north_star_definition,
-          unit: formData.north_star_unit,
-          annual_target: formData.north_star_target ? parseFloat(formData.north_star_target) : null,
-        };
-
-        if (existingNS) {
-          await supabase.from("portal_north_stars").update(northStarData).eq("id", existingNS.id);
-        } else {
-          await supabase.from("portal_north_stars").insert(northStarData);
-        }
-      }
-
-      // Save objectives (step 3)
-      if (currentStep === 3) {
+      // Save objectives (step 5)
+      if (currentStep === 5) {
         for (const obj of formData.objectives) {
           if (!obj.title.trim()) continue;
 
@@ -334,9 +317,67 @@ const PortalPlanningWizard = () => {
     }
   };
 
+  // Validações por etapa
+  const validateStep = (step: number): { valid: boolean; message?: string } => {
+    switch (step) {
+      case 1:
+        if (!formData.leads_month || !formData.proposals_month || !formData.sales_month || 
+            !formData.avg_ticket || !formData.salespeople_count) {
+          return { valid: false, message: "Preencha todos os campos obrigatórios do diagnóstico" };
+        }
+        return { valid: true };
+      case 2:
+        if (!formData.annual_revenue_goal) {
+          return { valid: false, message: "Defina a meta anual de faturamento" };
+        }
+        return { valid: true };
+      case 3:
+        if (!formData.main_bottleneck) {
+          return { valid: false, message: "Selecione o gargalo principal" };
+        }
+        return { valid: true };
+      case 5:
+        if (formData.objectives.length === 0) {
+          return { valid: false, message: "Adicione pelo menos 1 objetivo" };
+        }
+        if (formData.objectives.length > 3) {
+          return { valid: false, message: "Máximo de 3 objetivos permitido" };
+        }
+        for (const obj of formData.objectives) {
+          if (obj.key_results.length < 2 || obj.key_results.length > 3) {
+            return { valid: false, message: "Cada objetivo deve ter de 2 a 3 Key Results" };
+          }
+          for (const kr of obj.key_results) {
+            if (!kr.unit || !kr.target || !kr.owner) {
+              return { valid: false, message: "Cada KR deve ter unidade, meta e dono" };
+            }
+          }
+        }
+        return { valid: true };
+      case 7:
+        if (!formData.has_weekly_meeting || !formData.review_frequency) {
+          return { valid: false, message: "Defina a rotina de gestão" };
+        }
+        return { valid: true };
+      case 8:
+        if (!formData.commercial_owner || !formData.first_action_after_planning) {
+          return { valid: false, message: "Preencha os campos de governança" };
+        }
+        return { valid: true };
+      default:
+        return { valid: true };
+    }
+  };
+
   const nextStep = async () => {
+    const validation = validateStep(currentStep);
+    if (!validation.valid) {
+      toast.error(validation.message);
+      return;
+    }
+    
     await saveStep();
-    if (currentStep < 7) {
+    if (currentStep < 8) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -348,16 +389,24 @@ const PortalPlanningWizard = () => {
   };
 
   const publishPlan = async () => {
+    const validation = validateStep(currentStep);
+    if (!validation.valid) {
+      toast.error(validation.message);
+      return;
+    }
+
     if (!planId) return;
     setSaving(true);
 
     try {
+      await saveStep();
+      
       await supabase
         .from("portal_plans")
         .update({
           status: "published",
           published_at: new Date().toISOString(),
-          current_step: 7,
+          current_step: 8,
         })
         .eq("id", planId);
 
@@ -372,19 +421,86 @@ const PortalPlanningWizard = () => {
   };
 
   const addObjective = () => {
+    if (formData.objectives.length >= 3) {
+      toast.error("Máximo de 3 objetivos");
+      return;
+    }
     setFormData(prev => ({
       ...prev,
       objectives: [
         ...prev.objectives,
-        { title: "", description: "", key_results: [{ title: "", unit: "", target: "", baseline: "" }] }
+        { 
+          title: "", 
+          description: "", 
+          key_results: [
+            { title: "", unit: "", target: "", baseline: "", owner: "" },
+            { title: "", unit: "", target: "", baseline: "", owner: "" }
+          ] 
+        }
       ],
     }));
   };
 
+  const removeObjective = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      objectives: prev.objectives.filter((_: any, i: number) => i !== index),
+    }));
+  };
+
   const addKeyResult = (objIndex: number) => {
+    if (formData.objectives[objIndex].key_results.length >= 3) {
+      toast.error("Máximo de 3 Key Results por objetivo");
+      return;
+    }
     const newObjectives = [...formData.objectives];
-    newObjectives[objIndex].key_results.push({ title: "", unit: "", target: "", baseline: "" });
+    newObjectives[objIndex].key_results.push({ title: "", unit: "", target: "", baseline: "", owner: "" });
     setFormData(prev => ({ ...prev, objectives: newObjectives }));
+  };
+
+  const removeKeyResult = (objIndex: number, krIndex: number) => {
+    if (formData.objectives[objIndex].key_results.length <= 2) {
+      toast.error("Mínimo de 2 Key Results por objetivo");
+      return;
+    }
+    const newObjectives = [...formData.objectives];
+    newObjectives[objIndex].key_results = newObjectives[objIndex].key_results.filter((_: any, i: number) => i !== krIndex);
+    setFormData(prev => ({ ...prev, objectives: newObjectives }));
+  };
+
+  // Cálculos automáticos da Etapa 2
+  const calculations = {
+    monthlyGoal: formData.annual_revenue_goal ? parseFloat(formData.annual_revenue_goal) / 12 : 0,
+    salesNeeded: formData.annual_revenue_goal && formData.target_avg_ticket 
+      ? Math.ceil((parseFloat(formData.annual_revenue_goal) / 12) / parseFloat(formData.target_avg_ticket))
+      : (formData.annual_revenue_goal && formData.avg_ticket 
+          ? Math.ceil((parseFloat(formData.annual_revenue_goal) / 12) / parseFloat(formData.avg_ticket))
+          : 0),
+    currentSalesPerMonth: parseFloat(formData.sales_month) || 0,
+    currentLeadsPerMonth: parseFloat(formData.leads_month) || 0,
+    currentProposalsPerMonth: parseFloat(formData.proposals_month) || 0,
+    conversionLeadToProposal: formData.leads_month && formData.proposals_month
+      ? ((parseFloat(formData.proposals_month) / parseFloat(formData.leads_month)) * 100).toFixed(1)
+      : 0,
+    conversionProposalToSale: formData.proposals_month && formData.sales_month
+      ? ((parseFloat(formData.sales_month) / parseFloat(formData.proposals_month)) * 100).toFixed(1)
+      : 0,
+  };
+
+  const proposalsNeeded = calculations.conversionProposalToSale && calculations.salesNeeded
+    ? Math.ceil(calculations.salesNeeded / (parseFloat(calculations.conversionProposalToSale as string) / 100))
+    : 0;
+  
+  const leadsNeeded = calculations.conversionLeadToProposal && proposalsNeeded
+    ? Math.ceil(proposalsNeeded / (parseFloat(calculations.conversionLeadToProposal as string) / 100))
+    : 0;
+
+  const getGapStatus = (current: number, needed: number) => {
+    if (needed === 0) return "neutral";
+    const ratio = current / needed;
+    if (ratio >= 0.9) return "ok";
+    if (ratio >= 0.6) return "attention";
+    return "critical";
   };
 
   if (loading) {
@@ -395,7 +511,7 @@ const PortalPlanningWizard = () => {
     );
   }
 
-  const progress = Math.round((currentStep / 7) * 100);
+  const progress = Math.round((currentStep / 8) * 100);
   const StepIcon = STEPS[currentStep - 1].icon;
 
   return (
@@ -405,9 +521,9 @@ const PortalPlanningWizard = () => {
         <div className="max-w-5xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-lg font-bold text-white">Planejamento 2026</h1>
+              <h1 className="text-lg font-bold text-white">Planejamento Comercial 2026</h1>
               <p className="text-sm text-slate-400">
-                Etapa {currentStep} de 7: {STEPS[currentStep - 1].title}
+                Etapa {currentStep} de 8: {STEPS[currentStep - 1].title}
               </p>
             </div>
             <Button
@@ -446,234 +562,388 @@ const PortalPlanningWizard = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Step 1: Context */}
+            {/* Step 1: Diagnóstico Comercial Real */}
             {currentStep === 1 && (
               <>
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-6">
+                  <p className="text-amber-300 text-sm">
+                    <strong>Importante:</strong> Preencha com números reais, não estimativas. 
+                    Se não souber exatamente, levante os dados antes de continuar.
+                  </p>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-slate-300">Segmento de Atuação</Label>
+                    <Label className="text-slate-300">Leads/mês atual *</Label>
                     <Input
-                      placeholder="Ex: SaaS B2B, E-commerce, Serviços"
-                      value={formData.segment}
-                      onChange={(e) => handleInputChange("segment", e.target.value)}
+                      type="number"
+                      placeholder="Ex: 150"
+                      value={formData.leads_month}
+                      onChange={(e) => handleInputChange("leads_month", e.target.value)}
                       className="bg-slate-800/50 border-slate-700 text-white"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-slate-300">Ticket Médio (R$)</Label>
+                    <Label className="text-slate-300">Propostas/mês atual *</Label>
                     <Input
+                      type="number"
+                      placeholder="Ex: 30"
+                      value={formData.proposals_month}
+                      onChange={(e) => handleInputChange("proposals_month", e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Vendas/mês atual *</Label>
+                    <Input
+                      type="number"
+                      placeholder="Ex: 10"
+                      value={formData.sales_month}
+                      onChange={(e) => handleInputChange("sales_month", e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Ticket Médio Real (R$) *</Label>
+                    <Input
+                      type="number"
                       placeholder="Ex: 5000"
                       value={formData.avg_ticket}
                       onChange={(e) => handleInputChange("avg_ticket", e.target.value)}
                       className="bg-slate-800/50 border-slate-700 text-white"
                     />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Canais de Venda</Label>
-                  <Input
-                    placeholder="Ex: Inside Sales, Field Sales, E-commerce"
-                    value={formData.channels}
-                    onChange={(e) => handleInputChange("channels", e.target.value)}
-                    className="bg-slate-800/50 border-slate-700 text-white"
-                  />
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-slate-300">Tamanho do Time</Label>
+                    <Label className="text-slate-300">Ciclo Médio de Vendas (dias)</Label>
                     <Input
-                      placeholder="Ex: 15 pessoas"
-                      value={formData.team_size}
-                      onChange={(e) => handleInputChange("team_size", e.target.value)}
-                      className="bg-slate-800/50 border-slate-700 text-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">Capacidade de Entrega</Label>
-                    <Input
-                      placeholder="Ex: 50 clientes/mês"
-                      value={formData.delivery_capacity}
-                      onChange={(e) => handleInputChange("delivery_capacity", e.target.value)}
-                      className="bg-slate-800/50 border-slate-700 text-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">Margem (%)</Label>
-                    <Input
-                      placeholder="Ex: 30%"
-                      value={formData.margin}
-                      onChange={(e) => handleInputChange("margin", e.target.value)}
+                      type="number"
+                      placeholder="Ex: 30"
+                      value={formData.sales_cycle_days}
+                      onChange={(e) => handleInputChange("sales_cycle_days", e.target.value)}
                       className="bg-slate-800/50 border-slate-700 text-white"
                     />
                   </div>
                 </div>
 
                 <div className="border-t border-slate-800 pt-6">
-                  <h3 className="text-white font-medium mb-4">📊 Fotografia Atual (Números)</h3>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">Receita Mensal (R$)</Label>
-                      <Input
-                        placeholder="500.000"
-                        value={formData.current_revenue}
-                        onChange={(e) => handleInputChange("current_revenue", e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">CAC (R$)</Label>
-                      <Input
-                        placeholder="1.000"
-                        value={formData.cac}
-                        onChange={(e) => handleInputChange("cac", e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">LTV (R$)</Label>
-                      <Input
-                        placeholder="15.000"
-                        value={formData.ltv}
-                        onChange={(e) => handleInputChange("ltv", e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">Leads/Mês</Label>
-                      <Input
-                        placeholder="300"
-                        value={formData.leads_month}
-                        onChange={(e) => handleInputChange("leads_month", e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">Conversão (%)</Label>
-                      <Input
-                        placeholder="5%"
-                        value={formData.conversion}
-                        onChange={(e) => handleInputChange("conversion", e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">NPS</Label>
-                      <Input
-                        placeholder="45"
-                        value={formData.nps}
-                        onChange={(e) => handleInputChange("nps", e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Restrições e Limitações</Label>
-                  <Textarea
-                    placeholder="Descreva limitações de orçamento, time, tecnologia, mercado..."
-                    value={formData.constraints}
-                    onChange={(e) => handleInputChange("constraints", e.target.value)}
-                    className="bg-slate-800/50 border-slate-700 text-white min-h-[100px]"
-                  />
-                </div>
-              </>
-            )}
-
-            {/* Step 2: Direction */}
-            {currentStep === 2 && (
-              <>
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Visão para 2026</Label>
-                  <Textarea
-                    placeholder="Como você quer que sua empresa esteja ao final de 2026?"
-                    value={formData.vision}
-                    onChange={(e) => handleInputChange("vision", e.target.value)}
-                    className="bg-slate-800/50 border-slate-700 text-white min-h-[100px]"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Tema do Ano (1 frase)</Label>
-                  <Input
-                    placeholder='Ex: "O ano da escala", "Consolidar e crescer 3x"'
-                    value={formData.theme}
-                    onChange={(e) => handleInputChange("theme", e.target.value)}
-                    className="bg-slate-800/50 border-slate-700 text-white"
-                  />
-                </div>
-
-                <div className="border-t border-slate-800 pt-6">
-                  <h3 className="text-white font-medium mb-4">🎯 North Star Metric</h3>
-                  <p className="text-slate-400 text-sm mb-4">
-                    A métrica única que, se crescer, significa que tudo está funcionando.
-                  </p>
-                  
+                  <h3 className="text-white font-medium mb-4">Estrutura Atual</h3>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-slate-300">Nome da Métrica</Label>
+                      <Label className="text-slate-300">Quantidade de Vendedores *</Label>
                       <Input
-                        placeholder="Ex: MRR, Clientes Ativos, NPS"
-                        value={formData.north_star_name}
-                        onChange={(e) => handleInputChange("north_star_name", e.target.value)}
+                        type="number"
+                        placeholder="Ex: 3"
+                        value={formData.salespeople_count}
+                        onChange={(e) => handleInputChange("salespeople_count", e.target.value)}
                         className="bg-slate-800/50 border-slate-700 text-white"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-slate-300">Unidade</Label>
-                      <Input
-                        placeholder="Ex: R$, unidades, %"
-                        value={formData.north_star_unit}
-                        onChange={(e) => handleInputChange("north_star_unit", e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white"
-                      />
+                      <Label className="text-slate-300">Existe Gestor Comercial?</Label>
+                      <RadioGroup
+                        value={formData.has_sales_manager}
+                        onValueChange={(value) => handleInputChange("has_sales_manager", value)}
+                        className="flex gap-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="yes" id="manager-yes" />
+                          <Label htmlFor="manager-yes" className="text-slate-300">Sim</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="no" id="manager-no" />
+                          <Label htmlFor="manager-no" className="text-slate-300">Não</Label>
+                        </div>
+                      </RadioGroup>
                     </div>
                   </div>
-
-                  <div className="space-y-2 mt-4">
-                    <Label className="text-slate-300">Definição</Label>
-                    <Textarea
-                      placeholder="Explique como essa métrica é calculada e por que ela importa"
-                      value={formData.north_star_definition}
-                      onChange={(e) => handleInputChange("north_star_definition", e.target.value)}
+                  <div className="mt-4 space-y-2">
+                    <Label className="text-slate-300">Quem responde pelo comercial? (Nome)</Label>
+                    <Input
+                      placeholder="Nome do responsável"
+                      value={formData.sales_responsible_name}
+                      onChange={(e) => handleInputChange("sales_responsible_name", e.target.value)}
                       className="bg-slate-800/50 border-slate-700 text-white"
                     />
                   </div>
+                </div>
 
-                  <div className="space-y-2 mt-4">
-                    <Label className="text-slate-300">Meta Anual</Label>
+                {/* Resumo calculado */}
+                {formData.leads_month && formData.proposals_month && formData.sales_month && (
+                  <div className="bg-slate-800/50 rounded-lg p-4 mt-6">
+                    <h4 className="text-white font-medium mb-3">Taxas Calculadas</h4>
+                    <div className="grid md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-slate-400">Lead → Proposta:</span>
+                        <span className="text-white ml-2 font-medium">{calculations.conversionLeadToProposal}%</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Proposta → Venda:</span>
+                        <span className="text-white ml-2 font-medium">{calculations.conversionProposalToSale}%</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Step 2: Meta Comercial 2026 */}
+            {currentStep === 2 && (
+              <>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Meta Anual de Faturamento (R$) *</Label>
                     <Input
-                      placeholder="Ex: 1.000.000"
-                      value={formData.north_star_target}
-                      onChange={(e) => handleInputChange("north_star_target", e.target.value)}
+                      type="number"
+                      placeholder="Ex: 1200000"
+                      value={formData.annual_revenue_goal}
+                      onChange={(e) => handleInputChange("annual_revenue_goal", e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white text-lg"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Ticket Médio Desejado (R$)</Label>
+                    <Input
+                      type="number"
+                      placeholder={formData.avg_ticket || "Usar ticket atual"}
+                      value={formData.target_avg_ticket}
+                      onChange={(e) => handleInputChange("target_avg_ticket", e.target.value)}
                       className="bg-slate-800/50 border-slate-700 text-white"
                     />
+                    <p className="text-xs text-slate-500">Deixe vazio para usar o ticket atual</p>
+                  </div>
+                </div>
+
+                {formData.annual_revenue_goal && (
+                  <div className="bg-slate-800/50 rounded-lg p-6 mt-6">
+                    <h4 className="text-white font-medium mb-4">Cálculos Automáticos</h4>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="bg-slate-900/50 rounded-lg p-4">
+                        <p className="text-slate-400 text-sm mb-1">Meta Mensal</p>
+                        <p className="text-2xl font-bold text-white">
+                          R$ {calculations.monthlyGoal.toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                      <div className="bg-slate-900/50 rounded-lg p-4">
+                        <p className="text-slate-400 text-sm mb-1">Vendas/mês necessárias</p>
+                        <p className="text-2xl font-bold text-white">{calculations.salesNeeded}</p>
+                      </div>
+                      <div className="bg-slate-900/50 rounded-lg p-4">
+                        <p className="text-slate-400 text-sm mb-1">Propostas/mês necessárias</p>
+                        <p className="text-2xl font-bold text-white">{proposalsNeeded || "-"}</p>
+                      </div>
+                      <div className="bg-slate-900/50 rounded-lg p-4">
+                        <p className="text-slate-400 text-sm mb-1">Leads/mês necessários</p>
+                        <p className="text-2xl font-bold text-white">{leadsNeeded || "-"}</p>
+                      </div>
+                    </div>
+
+                    {/* Comparativo Atual x Necessário */}
+                    <div className="mt-6 border-t border-slate-700 pt-6">
+                      <h5 className="text-white font-medium mb-4">Comparativo: Atual x Necessário</h5>
+                      <div className="space-y-4">
+                        {[
+                          { label: "Leads/mês", current: calculations.currentLeadsPerMonth, needed: leadsNeeded },
+                          { label: "Propostas/mês", current: calculations.currentProposalsPerMonth, needed: proposalsNeeded },
+                          { label: "Vendas/mês", current: calculations.currentSalesPerMonth, needed: calculations.salesNeeded },
+                        ].map((item) => {
+                          const status = getGapStatus(item.current, item.needed);
+                          return (
+                            <div key={item.label} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg">
+                              <span className="text-slate-300">{item.label}</span>
+                              <div className="flex items-center gap-4">
+                                <span className="text-slate-400">Atual: <strong className="text-white">{item.current}</strong></span>
+                                <span className="text-slate-600">→</span>
+                                <span className="text-slate-400">Necessário: <strong className="text-white">{item.needed || "-"}</strong></span>
+                                {item.needed > 0 && (
+                                  <Badge className={
+                                    status === "ok" ? "bg-green-500/20 text-green-400 border-green-500/30" :
+                                    status === "attention" ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" :
+                                    "bg-red-500/20 text-red-400 border-red-500/30"
+                                  }>
+                                    {status === "ok" && <CheckCircle2 className="w-3 h-3 mr-1" />}
+                                    {status === "attention" && <AlertCircle className="w-3 h-3 mr-1" />}
+                                    {status === "critical" && <AlertTriangle className="w-3 h-3 mr-1" />}
+                                    {status === "ok" ? "OK" : status === "attention" ? "Atenção" : "Gap Crítico"}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Step 3: Gargalo Principal */}
+            {currentStep === 3 && (
+              <>
+                <div className="space-y-4">
+                  <Label className="text-slate-300 text-lg">Onde está o maior gargalo hoje? *</Label>
+                  <RadioGroup
+                    value={formData.main_bottleneck}
+                    onValueChange={(value) => handleInputChange("main_bottleneck", value)}
+                    className="grid gap-3"
+                  >
+                    {BOTTLENECK_OPTIONS.map((option) => (
+                      <div 
+                        key={option.value}
+                        className={`flex items-start space-x-3 p-4 rounded-lg border cursor-pointer transition-all ${
+                          formData.main_bottleneck === option.value 
+                            ? "border-amber-500 bg-amber-500/10" 
+                            : "border-slate-700 bg-slate-800/30 hover:border-slate-600"
+                        }`}
+                        onClick={() => handleInputChange("main_bottleneck", option.value)}
+                      >
+                        <RadioGroupItem value={option.value} id={option.value} className="mt-1" />
+                        <div>
+                          <Label htmlFor={option.value} className="text-white font-medium cursor-pointer">
+                            {option.label}
+                          </Label>
+                          <p className="text-sm text-slate-400 mt-1">{option.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-2 mt-6">
+                  <Label className="text-slate-300">Por que esse é o gargalo?</Label>
+                  <Textarea
+                    placeholder="Explique com detalhes o que está travando..."
+                    value={formData.bottleneck_reason}
+                    onChange={(e) => handleInputChange("bottleneck_reason", e.target.value)}
+                    className="bg-slate-800/50 border-slate-700 text-white min-h-[120px]"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Step 4: Estrutura Comercial Necessária */}
+            {currentStep === 4 && (
+              <>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Quantidade ideal de vendedores para a meta</Label>
+                    <Input
+                      type="number"
+                      placeholder="Ex: 5"
+                      value={formData.ideal_salespeople_count}
+                      onChange={(e) => handleInputChange("ideal_salespeople_count", e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white"
+                    />
+                    {formData.salespeople_count && formData.ideal_salespeople_count && (
+                      <p className="text-xs text-slate-400">
+                        Atual: {formData.salespeople_count} vendedores | 
+                        Gap: {parseInt(formData.ideal_salespeople_count) - parseInt(formData.salespeople_count)} pessoa(s)
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4 mt-6">
+                  <Label className="text-slate-300 text-lg">Papel do dono no comercial</Label>
+                  <RadioGroup
+                    value={formData.owner_role}
+                    onValueChange={(value) => handleInputChange("owner_role", value)}
+                    className="grid md:grid-cols-3 gap-3"
+                  >
+                    {OWNER_ROLE_OPTIONS.map((option) => (
+                      <div 
+                        key={option.value}
+                        className={`flex flex-col p-4 rounded-lg border cursor-pointer transition-all text-center ${
+                          formData.owner_role === option.value 
+                            ? "border-amber-500 bg-amber-500/10" 
+                            : "border-slate-700 bg-slate-800/30 hover:border-slate-600"
+                        }`}
+                        onClick={() => handleInputChange("owner_role", option.value)}
+                      >
+                        <RadioGroupItem value={option.value} id={option.value} className="sr-only" />
+                        <Label htmlFor={option.value} className="text-white font-medium cursor-pointer">
+                          {option.label}
+                        </Label>
+                        <p className="text-xs text-slate-400 mt-1">{option.description}</p>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6 mt-6">
+                  <div className="space-y-3">
+                    <Label className="text-slate-300">Precisa de gestão comercial dedicada?</Label>
+                    <RadioGroup
+                      value={formData.needs_sales_management}
+                      onValueChange={(value) => handleInputChange("needs_sales_management", value)}
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="needs-mgmt-yes" />
+                        <Label htmlFor="needs-mgmt-yes" className="text-slate-300">Sim</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="needs-mgmt-no" />
+                        <Label htmlFor="needs-mgmt-no" className="text-slate-300">Não</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-slate-300">Precisa de processo/CRM estruturado?</Label>
+                    <RadioGroup
+                      value={formData.needs_process_crm}
+                      onValueChange={(value) => handleInputChange("needs_process_crm", value)}
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="needs-crm-yes" />
+                        <Label htmlFor="needs-crm-yes" className="text-slate-300">Sim</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="needs-crm-no" />
+                        <Label htmlFor="needs-crm-no" className="text-slate-300">Não</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
                 </div>
               </>
             )}
 
-            {/* Step 3: OKRs */}
-            {currentStep === 3 && (
+            {/* Step 5: OKRs Comerciais */}
+            {currentStep === 5 && (
               <>
-                <p className="text-slate-400 text-sm mb-4">
-                  Defina 3 a 5 objetivos para 2026, cada um com 2 a 4 resultados-chave mensuráveis.
-                </p>
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-6">
+                  <p className="text-amber-300 text-sm">
+                    <strong>Regras:</strong> Máximo de 3 Objetivos. Cada Objetivo com 2 a 3 Key Results. 
+                    Cada KR deve ter unidade de medida, meta clara e dono responsável.
+                  </p>
+                </div>
 
                 {formData.objectives.map((obj: any, objIndex: number) => (
-                  <div key={objIndex} className="border border-slate-700 rounded-lg p-4 space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="w-8 h-8 bg-amber-500 text-slate-950 rounded-full flex items-center justify-center font-bold text-sm">
-                        O{objIndex + 1}
-                      </span>
-                      <span className="text-white font-medium">Objetivo {objIndex + 1}</span>
+                  <div key={objIndex} className="border border-slate-700 rounded-lg p-4 space-y-4 mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 h-8 bg-amber-500 text-slate-950 rounded-full flex items-center justify-center font-bold text-sm">
+                          O{objIndex + 1}
+                        </span>
+                        <span className="text-white font-medium">Objetivo {objIndex + 1}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeObjective(objIndex)}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
 
                     <div className="space-y-2">
                       <Input
-                        placeholder="Título do objetivo (inspiracional, qualitativo)"
+                        placeholder="Título do objetivo (inspiracional)"
                         value={obj.title}
                         onChange={(e) => {
                           const newObjs = [...formData.objectives];
@@ -695,251 +965,419 @@ const PortalPlanningWizard = () => {
                       />
                     </div>
 
-                    <div className="pl-4 border-l-2 border-slate-700 space-y-3">
+                    <div className="pl-4 border-l-2 border-amber-500/30 space-y-3">
                       <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">Key Results</p>
                       {obj.key_results.map((kr: any, krIndex: number) => (
-                        <div key={krIndex} className="grid grid-cols-4 gap-2">
-                          <div className="col-span-2">
+                        <div key={krIndex} className="bg-slate-800/30 rounded-lg p-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-500">KR {krIndex + 1}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeKeyResult(objIndex, krIndex)}
+                              className="h-6 w-6 p-0 text-slate-500 hover:text-red-400"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          <Input
+                            placeholder="Resultado-chave mensurável"
+                            value={kr.title}
+                            onChange={(e) => {
+                              const newObjs = [...formData.objectives];
+                              newObjs[objIndex].key_results[krIndex].title = e.target.value;
+                              setFormData(prev => ({ ...prev, objectives: newObjs }));
+                            }}
+                            className="bg-slate-800/50 border-slate-700 text-white text-sm"
+                          />
+                          <div className="grid grid-cols-4 gap-2">
                             <Input
-                              placeholder="KR: resultado mensurável"
-                              value={kr.title}
+                              placeholder="Unidade *"
+                              value={kr.unit}
                               onChange={(e) => {
                                 const newObjs = [...formData.objectives];
-                                newObjs[objIndex].key_results[krIndex].title = e.target.value;
+                                newObjs[objIndex].key_results[krIndex].unit = e.target.value;
+                                setFormData(prev => ({ ...prev, objectives: newObjs }));
+                              }}
+                              className="bg-slate-800/50 border-slate-700 text-white text-sm"
+                            />
+                            <Input
+                              placeholder="Meta *"
+                              value={kr.target}
+                              onChange={(e) => {
+                                const newObjs = [...formData.objectives];
+                                newObjs[objIndex].key_results[krIndex].target = e.target.value;
+                                setFormData(prev => ({ ...prev, objectives: newObjs }));
+                              }}
+                              className="bg-slate-800/50 border-slate-700 text-white text-sm"
+                            />
+                            <Input
+                              placeholder="Baseline"
+                              value={kr.baseline}
+                              onChange={(e) => {
+                                const newObjs = [...formData.objectives];
+                                newObjs[objIndex].key_results[krIndex].baseline = e.target.value;
+                                setFormData(prev => ({ ...prev, objectives: newObjs }));
+                              }}
+                              className="bg-slate-800/50 border-slate-700 text-white text-sm"
+                            />
+                            <Input
+                              placeholder="Dono *"
+                              value={kr.owner}
+                              onChange={(e) => {
+                                const newObjs = [...formData.objectives];
+                                newObjs[objIndex].key_results[krIndex].owner = e.target.value;
                                 setFormData(prev => ({ ...prev, objectives: newObjs }));
                               }}
                               className="bg-slate-800/50 border-slate-700 text-white text-sm"
                             />
                           </div>
-                          <Input
-                            placeholder="Meta"
-                            value={kr.target}
-                            onChange={(e) => {
-                              const newObjs = [...formData.objectives];
-                              newObjs[objIndex].key_results[krIndex].target = e.target.value;
-                              setFormData(prev => ({ ...prev, objectives: newObjs }));
-                            }}
-                            className="bg-slate-800/50 border-slate-700 text-white text-sm"
-                          />
-                          <Input
-                            placeholder="Baseline"
-                            value={kr.baseline}
-                            onChange={(e) => {
-                              const newObjs = [...formData.objectives];
-                              newObjs[objIndex].key_results[krIndex].baseline = e.target.value;
-                              setFormData(prev => ({ ...prev, objectives: newObjs }));
-                            }}
-                            className="bg-slate-800/50 border-slate-700 text-white text-sm"
-                          />
                         </div>
                       ))}
+                      {obj.key_results.length < 3 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => addKeyResult(objIndex)}
+                          className="text-amber-400 hover:text-amber-300"
+                        >
+                          <Plus className="w-4 h-4 mr-1" /> Adicionar Key Result
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {formData.objectives.length < 3 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addObjective}
+                    className="w-full border-dashed border-slate-600 text-slate-400 hover:text-white"
+                  >
+                    <Plus className="w-4 h-4 mr-2" /> Adicionar Objetivo ({formData.objectives.length}/3)
+                  </Button>
+                )}
+              </>
+            )}
+
+            {/* Step 6: Plano de Execução 90 Dias */}
+            {currentStep === 6 && (
+              <>
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
+                  <p className="text-blue-300 text-sm">
+                    Para cada Key Result, defina a ação prioritária dos próximos 90 dias.
+                  </p>
+                </div>
+
+                {formData.objectives.length === 0 ? (
+                  <div className="text-center py-8">
+                    <AlertCircle className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                    <p className="text-slate-400">Nenhum OKR definido ainda.</p>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setCurrentStep(5)}
+                      className="mt-4 border-slate-700 text-slate-300"
+                    >
+                      Voltar para OKRs
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {formData.objectives.map((obj: any, objIndex: number) => (
+                      <div key={objIndex}>
+                        <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                          <span className="w-6 h-6 bg-amber-500 text-slate-950 rounded-full flex items-center justify-center font-bold text-xs">
+                            O{objIndex + 1}
+                          </span>
+                          {obj.title || `Objetivo ${objIndex + 1}`}
+                        </h4>
+                        {obj.key_results.map((kr: any, krIndex: number) => {
+                          const actionIndex = formData.execution_actions?.findIndex(
+                            (a: any) => a.kr_title === kr.title
+                          );
+                          const action = actionIndex >= 0 ? formData.execution_actions[actionIndex] : {
+                            kr_title: kr.title,
+                            action: "",
+                            responsible: kr.owner || "",
+                            deadline: "",
+                            success_metric: ""
+                          };
+                          
+                          const updateAction = (field: string, value: string) => {
+                            const newActions = [...(formData.execution_actions || [])];
+                            const existingIndex = newActions.findIndex(a => a.kr_title === kr.title);
+                            if (existingIndex >= 0) {
+                              newActions[existingIndex] = { ...newActions[existingIndex], [field]: value };
+                            } else {
+                              newActions.push({ ...action, kr_title: kr.title, [field]: value });
+                            }
+                            handleInputChange("execution_actions", newActions as any);
+                          };
+
+                          return (
+                            <div key={krIndex} className="bg-slate-800/30 rounded-lg p-4 mb-3 ml-8 border-l-2 border-blue-500/30">
+                              <p className="text-sm text-slate-400 mb-3">
+                                KR: <span className="text-white">{kr.title || `KR ${krIndex + 1}`}</span>
+                              </p>
+                              <div className="grid md:grid-cols-2 gap-3">
+                                <div className="md:col-span-2 space-y-1">
+                                  <Label className="text-xs text-slate-500">Ação Prioritária</Label>
+                                  <Input
+                                    placeholder="O que fazer nos próximos 90 dias?"
+                                    value={action.action}
+                                    onChange={(e) => updateAction("action", e.target.value)}
+                                    className="bg-slate-800/50 border-slate-700 text-white text-sm"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-slate-500">Responsável</Label>
+                                  <Input
+                                    placeholder="Quem faz?"
+                                    value={action.responsible}
+                                    onChange={(e) => updateAction("responsible", e.target.value)}
+                                    className="bg-slate-800/50 border-slate-700 text-white text-sm"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-slate-500">Prazo</Label>
+                                  <Input
+                                    type="date"
+                                    value={action.deadline}
+                                    onChange={(e) => updateAction("deadline", e.target.value)}
+                                    className="bg-slate-800/50 border-slate-700 text-white text-sm"
+                                  />
+                                </div>
+                                <div className="md:col-span-2 space-y-1">
+                                  <Label className="text-xs text-slate-500">Métrica de Sucesso</Label>
+                                  <Input
+                                    placeholder="Como saber que funcionou?"
+                                    value={action.success_metric}
+                                    onChange={(e) => updateAction("success_metric", e.target.value)}
+                                    className="bg-slate-800/50 border-slate-700 text-white text-sm"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Step 7: Rotina de Gestão */}
+            {currentStep === 7 && (
+              <>
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    <Label className="text-slate-300">Existe reunião semanal de vendas? *</Label>
+                    <RadioGroup
+                      value={formData.has_weekly_meeting}
+                      onValueChange={(value) => handleInputChange("has_weekly_meeting", value)}
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="weekly-yes" />
+                        <Label htmlFor="weekly-yes" className="text-slate-300">Sim</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="weekly-no" />
+                        <Label htmlFor="weekly-no" className="text-slate-300">Não, vamos implementar</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Quem puxa os números?</Label>
+                    <Input
+                      placeholder="Nome do responsável pela reunião"
+                      value={formData.weekly_meeting_owner}
+                      onChange={(e) => handleInputChange("weekly_meeting_owner", e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-slate-300">Indicadores analisados na reunião</Label>
+                    <div className="grid md:grid-cols-2 gap-2">
+                      {["Leads gerados", "Propostas enviadas", "Vendas fechadas", "Ticket médio", "Conversão", "Pipeline", "Meta vs Realizado", "Forecast"].map((indicator) => (
+                        <label 
+                          key={indicator}
+                          className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
+                            (formData.tracked_indicators || []).includes(indicator)
+                              ? "border-amber-500 bg-amber-500/10"
+                              : "border-slate-700 bg-slate-800/30 hover:border-slate-600"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={(formData.tracked_indicators || []).includes(indicator)}
+                            onChange={(e) => {
+                              const current = formData.tracked_indicators || [];
+                              if (e.target.checked) {
+                                handleInputChange("tracked_indicators", [...current, indicator]);
+                              } else {
+                                handleInputChange("tracked_indicators", current.filter((i: string) => i !== indicator));
+                              }
+                            }}
+                            className="sr-only"
+                          />
+                          <span className={`text-sm ${
+                            (formData.tracked_indicators || []).includes(indicator) ? "text-amber-300" : "text-slate-300"
+                          }`}>
+                            {indicator}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-slate-300">Frequência de revisão do plano *</Label>
+                    <RadioGroup
+                      value={formData.review_frequency}
+                      onValueChange={(value) => handleInputChange("review_frequency", value)}
+                      className="flex flex-wrap gap-4"
+                    >
+                      {[
+                        { value: "weekly", label: "Semanal" },
+                        { value: "biweekly", label: "Quinzenal" },
+                        { value: "monthly", label: "Mensal" },
+                      ].map((option) => (
+                        <div key={option.value} className="flex items-center space-x-2">
+                          <RadioGroupItem value={option.value} id={`freq-${option.value}`} />
+                          <Label htmlFor={`freq-${option.value}`} className="text-slate-300">{option.label}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Step 8: Governança */}
+            {currentStep === 8 && (
+              <>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Dono final do resultado comercial *</Label>
+                    <Input
+                      placeholder="Nome do responsável máximo"
+                      value={formData.commercial_owner}
+                      onChange={(e) => handleInputChange("commercial_owner", e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">O que muda se não bater meta em 60 dias?</Label>
+                    <Textarea
+                      placeholder="Descreva as consequências e ações de contingência..."
+                      value={formData.action_if_not_meet_60_days}
+                      onChange={(e) => handleInputChange("action_if_not_meet_60_days", e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white min-h-[100px]"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Primeira ação após o planejamento *</Label>
+                    <Textarea
+                      placeholder="O que você vai fazer amanhã para começar a executar?"
+                      value={formData.first_action_after_planning}
+                      onChange={(e) => handleInputChange("first_action_after_planning", e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white min-h-[80px]"
+                    />
+                  </div>
+
+                  {/* Resumo final */}
+                  <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-6 mt-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <CheckCircle2 className="w-6 h-6 text-green-400" />
+                      <h4 className="text-white font-medium">Resumo do Planejamento</h4>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-slate-400">Meta anual:</span>
+                        <span className="text-white ml-2">R$ {parseFloat(formData.annual_revenue_goal || 0).toLocaleString('pt-BR')}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Objetivos:</span>
+                        <span className="text-white ml-2">{formData.objectives?.length || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Gargalo principal:</span>
+                        <span className="text-white ml-2">
+                          {BOTTLENECK_OPTIONS.find(b => b.value === formData.main_bottleneck)?.label || "-"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Dono do resultado:</span>
+                        <span className="text-white ml-2">{formData.commercial_owner || "-"}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-6 pt-4 border-t border-green-500/20">
                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => addKeyResult(objIndex)}
-                        className="text-amber-400 hover:text-amber-300"
+                        onClick={publishPlan}
+                        disabled={saving}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
                       >
-                        + Adicionar Key Result
+                        {saving ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                        )}
+                        Publicar Planejamento 2026
                       </Button>
                     </div>
                   </div>
-                ))}
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addObjective}
-                  className="w-full border-dashed border-slate-600 text-slate-400 hover:text-white"
-                >
-                  + Adicionar Objetivo
-                </Button>
-              </>
-            )}
-
-            {/* Step 4: Initiatives - simplified for now */}
-            {currentStep === 4 && (
-              <div className="text-center py-12">
-                <Rocket className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-                <h3 className="text-white font-medium mb-2">Iniciativas</h3>
-                <p className="text-slate-400 text-sm mb-4">
-                  As iniciativas serão cadastradas após publicar o plano, vinculadas a cada Key Result.
-                </p>
-                <Button variant="outline" onClick={nextStep} className="border-slate-700 text-slate-300">
-                  Continuar para Rocks
-                </Button>
-              </div>
-            )}
-
-            {/* Step 5: Quarterly Rocks */}
-            {currentStep === 5 && (
-              <>
-                <p className="text-slate-400 text-sm mb-4">
-                  Defina as prioridades (Rocks) para cada trimestre de 2026.
-                </p>
-
-                {["Q1", "Q2", "Q3", "Q4"].map((quarter, index) => (
-                  <div key={quarter} className="space-y-2">
-                    <Label className="text-slate-300 flex items-center gap-2">
-                      <span className="w-8 h-8 bg-amber-500/10 text-amber-400 rounded flex items-center justify-center text-sm font-bold">
-                        {quarter}
-                      </span>
-                      {quarter} - {["Jan-Mar", "Abr-Jun", "Jul-Set", "Out-Dez"][index]}
-                    </Label>
-                    <Textarea
-                      placeholder={`Principais prioridades e metas do ${quarter}...`}
-                      value={formData[`q${index + 1}_rocks`]}
-                      onChange={(e) => handleInputChange(`q${index + 1}_rocks`, e.target.value)}
-                      className="bg-slate-800/50 border-slate-700 text-white"
-                      rows={3}
-                    />
-                  </div>
-                ))}
-              </>
-            )}
-
-            {/* Step 6: Execution Plan */}
-            {currentStep === 6 && (
-              <>
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Cadência Semanal</Label>
-                  <Textarea
-                    placeholder="Qual a rotina de check-in semanal? Quem participa? Quando?"
-                    value={formData.weekly_cadence}
-                    onChange={(e) => handleInputChange("weekly_cadence", e.target.value)}
-                    className="bg-slate-800/50 border-slate-700 text-white"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Revisão Mensal</Label>
-                  <Textarea
-                    placeholder="Como será a revisão mensal de progresso?"
-                    value={formData.monthly_review}
-                    onChange={(e) => handleInputChange("monthly_review", e.target.value)}
-                    className="bg-slate-800/50 border-slate-700 text-white"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Revisão Trimestral</Label>
-                  <Textarea
-                    placeholder="Como será a revisão trimestral? Ajustes de plano?"
-                    value={formData.quarterly_review}
-                    onChange={(e) => handleInputChange("quarterly_review", e.target.value)}
-                    className="bg-slate-800/50 border-slate-700 text-white"
-                  />
-                </div>
-
-                <div className="border-t border-slate-800 pt-6">
-                  <h3 className="text-white font-medium mb-4">⚠️ Riscos e Mitigação</h3>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">Principais Riscos</Label>
-                      <Textarea
-                        placeholder="Liste os principais riscos que podem impedir a execução do plano"
-                        value={formData.risks}
-                        onChange={(e) => handleInputChange("risks", e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">Plano de Mitigação</Label>
-                      <Textarea
-                        placeholder="Como você vai mitigar cada risco identificado?"
-                        value={formData.mitigations}
-                        onChange={(e) => handleInputChange("mitigations", e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white"
-                      />
-                    </div>
-                  </div>
                 </div>
               </>
-            )}
-
-            {/* Step 7: Publish */}
-            {currentStep === 7 && (
-              <div className="text-center py-8">
-                <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <CheckCircle2 className="w-10 h-10 text-green-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-2">Pronto para publicar!</h3>
-                <p className="text-slate-400 mb-8 max-w-md mx-auto">
-                  Ao publicar, seu plano será travado como versão oficial. 
-                  Você poderá criar novas versões ao longo do ano.
-                </p>
-
-                <div className="bg-slate-800/50 rounded-lg p-6 text-left max-w-lg mx-auto mb-8">
-                  <h4 className="text-white font-medium mb-3">Resumo do Plano</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Tema:</span>
-                      <span className="text-white">{formData.theme || "Não definido"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">North Star:</span>
-                      <span className="text-white">{formData.north_star_name || "Não definido"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Objetivos:</span>
-                      <span className="text-white">{formData.objectives.filter((o: any) => o.title).length}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={publishPlan}
-                  disabled={saving}
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-8"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                  Publicar Plano 2026
-                </Button>
-              </div>
             )}
           </CardContent>
         </Card>
-      </div>
 
-      {/* Navigation Footer */}
-      <div className="fixed bottom-0 left-0 right-0 lg:left-64 bg-slate-950 border-t border-slate-800 p-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+        {/* Navigation */}
+        <div className="flex items-center justify-between mt-6">
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={prevStep}
             disabled={currentStep === 1}
-            className="text-slate-400 hover:text-white"
+            className="border-slate-700 text-slate-300"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Anterior
           </Button>
 
-          <div className="flex items-center gap-1">
-            {STEPS.map((step) => (
-              <button
-                key={step.step}
-                onClick={() => setCurrentStep(step.step)}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  currentStep === step.step
-                    ? "bg-amber-500"
-                    : currentStep > step.step
-                    ? "bg-green-500"
+          <div className="flex items-center gap-2">
+            {STEPS.map((s) => (
+              <div
+                key={s.step}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  s.step === currentStep
+                    ? "bg-amber-500 w-4"
+                    : s.step < currentStep
+                    ? "bg-amber-500/50"
                     : "bg-slate-700"
                 }`}
               />
             ))}
           </div>
 
-          {currentStep < 7 ? (
+          {currentStep < 8 ? (
             <Button
               onClick={nextStep}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold"
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950"
             >
               Próximo
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
-            <div />
+            <div className="w-24" /> // Spacer
           )}
         </div>
       </div>
