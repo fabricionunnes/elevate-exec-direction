@@ -28,13 +28,13 @@ const OnboardingPage = () => {
       {/* Header */}
       <header className="relative border-b border-border/40 bg-card/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-            <Button variant="ghost" size="icon" className="absolute left-4 top-4" asChild>
+          <div className="flex items-center gap-4 md:gap-6">
+            <Button variant="ghost" size="icon" asChild>
               <Link to="/onboarding-tasks">
                 <ArrowLeft className="h-5 w-5" />
               </Link>
             </Button>
-            <div className="relative">
+            <div className="relative shrink-0">
               <div className="p-5 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-xl shadow-primary/20">
                 <GraduationCap className="h-10 w-10 text-white" />
               </div>
@@ -43,10 +43,10 @@ const OnboardingPage = () => {
               </div>
             </div>
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">
+              <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2">
                 Onboarding de Serviços
               </h1>
-              <p className="text-muted-foreground text-lg">
+              <p className="text-muted-foreground text-sm md:text-lg">
                 Apresentações interativas para o time de Customer Success
               </p>
             </div>
