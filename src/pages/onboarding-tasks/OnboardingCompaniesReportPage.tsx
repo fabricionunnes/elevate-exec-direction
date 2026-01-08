@@ -278,7 +278,7 @@ export default function OnboardingCompaniesReportPage() {
     });
 
     return result;
-  }, [companies, searchTerm, filterConsultant, filterStatus, sortField, sortDirection]);
+  }, [companies, searchTerm, filterConsultant, filterStatus, filterPaymentMethod, sortField, sortDirection]);
 
   // Summary metrics
   const summaryMetrics = useMemo(() => {
