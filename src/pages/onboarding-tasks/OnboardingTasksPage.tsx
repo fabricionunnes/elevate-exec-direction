@@ -632,8 +632,8 @@ const OnboardingTasksPage = () => {
         const today = startOfDay(new Date());
         
         if (activeMetricFilter.type === "contracts" && activeMetricFilter.value === "ending") {
-          // Contratos recorrentes não vencem (renovam automaticamente)
-          if (company.payment_method === "monthly") {
+          // Contratos recorrentes e empresas encerradas não aparecem
+          if (company.payment_method === "monthly" || company.status === "inactive" || company.status === "closed") {
             matchesMetricFilter = false;
           } else if (!company.contract_end_date) {
             matchesMetricFilter = false;
@@ -642,8 +642,8 @@ const OnboardingTasksPage = () => {
             matchesMetricFilter = isWithinInterval(endDate, { start: dateRange.start, end: dateRange.end });
           }
         } else if (activeMetricFilter.type === "contracts" && activeMetricFilter.value === "expired") {
-          // Contratos recorrentes não vencem (renovam automaticamente)
-          if (company.payment_method === "monthly") {
+          // Contratos recorrentes e empresas encerradas não aparecem
+          if (company.payment_method === "monthly" || company.status === "inactive" || company.status === "closed") {
             matchesMetricFilter = false;
           } else if (!company.contract_end_date) {
             matchesMetricFilter = false;
