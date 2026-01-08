@@ -47,9 +47,10 @@ interface KPI {
 interface KPIConfigurationTabProps {
   companyId: string;
   isAdmin: boolean;
+  isClient?: boolean;
 }
 
-export const KPIConfigurationTab = ({ companyId, isAdmin }: KPIConfigurationTabProps) => {
+export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KPIConfigurationTabProps) => {
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -349,6 +350,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin }: KPIConfigurationTabP
           resetForm();
           setShowDialog(true);
         }}
+        isClient={isClient}
       />
 
       {kpis.length === 0 ? (
