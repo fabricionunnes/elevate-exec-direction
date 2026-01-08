@@ -20,11 +20,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, FunnelChart, Funnel, LabelList, Cell } from "recharts";
 import { format, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter } from "lucide-react";
 import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidget";
 import { GamificationDashboardWidget } from "../gamification/GamificationDashboardWidget";
 import { SalesHistoryDialog } from "./SalesHistoryDialog";
@@ -458,6 +458,73 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
     };
   };
 
+  // Build dynamic sales funnel based on available KPIs
+  const getSalesFunnelData = () => {
+    const filteredEntries = getFilteredEntries();
+    
+    // Pattern matching for common funnel stages - ordered by typical funnel position
+    const funnelPatterns = [
+      { patterns: ['prospecção', 'prospeccao', 'prospecting', 'cold call', 'abordagem'], label: 'Prospecção', order: 1 },
+      { patterns: ['lead', 'leads', 'oportunidade', 'oportunidades', 'contato', 'contatos'], label: 'Leads', order: 2 },
+      { patterns: ['ligação', 'ligacao', 'ligações', 'ligacoes', 'call', 'calls', 'telefone'], label: 'Ligações', order: 3 },
+      { patterns: ['atendimento', 'atendimentos'], label: 'Atendimentos', order: 4 },
+      { patterns: ['reunião', 'reuniao', 'reuniões', 'reunioes', 'meeting', 'meetings', 'visita', 'visitas'], label: 'Reuniões/Visitas', order: 5 },
+      { patterns: ['proposta', 'propostas', 'orçamento', 'orcamento', 'cotação', 'cotacao'], label: 'Propostas', order: 6 },
+      { patterns: ['negociação', 'negociacao', 'follow', 'followup', 'follow-up'], label: 'Negociação', order: 7 },
+      { patterns: ['venda', 'vendas', 'fechamento', 'fechamentos', 'closed', 'won', 'ganho'], label: 'Vendas', order: 8 },
+    ];
+
+    // Find which KPIs match each funnel stage
+    const matchedStages: Array<{ label: string; order: number; value: number; kpiName: string }> = [];
+
+    funnelPatterns.forEach(stage => {
+      const matchingKpi = kpis.find(kpi => 
+        stage.patterns.some(pattern => kpi.name.toLowerCase().includes(pattern.toLowerCase()))
+      );
+      
+      if (matchingKpi) {
+        const total = filteredEntries
+          .filter(e => e.kpi_id === matchingKpi.id)
+          .reduce((sum, e) => sum + e.value, 0);
+        
+        if (total > 0) {
+          matchedStages.push({
+            label: stage.label,
+            order: stage.order,
+            value: total,
+            kpiName: matchingKpi.name,
+          });
+        }
+      }
+    });
+
+    // Sort by order and ensure we have at least 2 stages for a funnel
+    const sortedStages = matchedStages.sort((a, b) => a.order - b.order);
+    
+    if (sortedStages.length < 2) return { data: [], hasData: false };
+
+    // Calculate conversion rates between stages
+    const funnelData = sortedStages.map((stage, index) => {
+      const prevValue = index > 0 ? sortedStages[index - 1].value : stage.value;
+      const conversionRate = prevValue > 0 ? (stage.value / prevValue) * 100 : 0;
+      
+      return {
+        name: stage.label,
+        value: stage.value,
+        fill: `hsl(${220 - (index * 25)} 70% ${55 + (index * 5)}%)`,
+        conversionRate: index > 0 ? conversionRate : 100,
+        kpiName: stage.kpiName,
+      };
+    });
+
+    // Calculate overall conversion (first to last)
+    const overallConversion = sortedStages.length >= 2 && sortedStages[0].value > 0
+      ? (sortedStages[sortedStages.length - 1].value / sortedStages[0].value) * 100
+      : 0;
+
+    return { data: funnelData, hasData: true, overallConversion };
+  };
+
   if (loading) {
     return <div className="flex justify-center p-8">Carregando...</div>;
   }
@@ -476,6 +543,7 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
   const dailyData = getDailyChartData();
   const rankingData = getRankingData();
   const targetVsRealized = getTargetVsRealizedData();
+  const salesFunnel = getSalesFunnelData();
   const selectedKpiData = selectedKpi !== "all" ? kpis.find(k => k.id === selectedKpi) : null;
   const calculatedMetrics = getCalculatedMetrics();
 
@@ -679,6 +747,92 @@ export const KPIDashboardTab = ({ companyId, projectId }: KPIDashboardTabProps) 
         </Card>
       )}
 
+      {/* Sales Funnel Chart */}
+      {salesFunnel.hasData && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Funil de Vendas
+              </CardTitle>
+              {salesFunnel.overallConversion !== undefined && (
+                <Badge variant="outline" className="gap-1">
+                  Conversão Geral: {salesFunnel.overallConversion.toFixed(1)}%
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Funnel Chart */}
+              <ResponsiveContainer width="100%" height={300}>
+                <FunnelChart>
+                  <Tooltip 
+                    formatter={(value: number, name: string, props: any) => [
+                      `${value.toLocaleString("pt-BR")} (${props.payload.conversionRate.toFixed(1)}%)`,
+                      props.payload.kpiName || name
+                    ]}
+                  />
+                  <Funnel
+                    dataKey="value"
+                    data={salesFunnel.data}
+                    isAnimationActive
+                  >
+                    {salesFunnel.data.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                    <LabelList 
+                      position="right" 
+                      dataKey="name" 
+                      fill="#666" 
+                      stroke="none"
+                    />
+                    <LabelList 
+                      position="center" 
+                      dataKey="value" 
+                      fill="#fff" 
+                      stroke="none"
+                      formatter={(value: number) => value.toLocaleString("pt-BR")}
+                    />
+                  </Funnel>
+                </FunnelChart>
+              </ResponsiveContainer>
+              
+              {/* Conversion Rates Detail */}
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm text-muted-foreground">Taxas de Conversão</h4>
+                {salesFunnel.data.map((stage, index) => (
+                  <div key={stage.name} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: stage.fill }}
+                      />
+                      <div>
+                        <p className="font-medium text-sm">{stage.name}</p>
+                        <p className="text-xs text-muted-foreground">{stage.kpiName}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold">{stage.value.toLocaleString("pt-BR")}</p>
+                      {index > 0 && (
+                        <p className={`text-xs ${
+                          stage.conversionRate >= 50 ? 'text-green-600' :
+                          stage.conversionRate >= 20 ? 'text-amber-600' :
+                          'text-destructive'
+                        }`}>
+                          {stage.conversionRate.toFixed(1)}% do anterior
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* KPI Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
