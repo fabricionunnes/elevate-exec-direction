@@ -91,6 +91,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(false);
+  const [projectConsultantUserId, setProjectConsultantUserId] = useState<string | null>(null);
   
   // Finalize meeting dialog
   const [meetingToFinalize, setMeetingToFinalize] = useState<MeetingNote | null>(null);
@@ -143,9 +144,54 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     await Promise.all([
       fetchCurrentStaff(),
       fetchMeetings(),
-      syncCalendarEvents(),
+      fetchProjectConsultant(),
     ]);
+    // Sync calendar after we know the consultant
+    await syncCalendarEvents();
     setLoading(false);
+  };
+
+  const fetchProjectConsultant = async () => {
+    try {
+      // Get the project's consultant
+      const { data: project } = await supabase
+        .from("onboarding_projects")
+        .select("consultant_id, onboarding_company_id")
+        .eq("id", projectId)
+        .single();
+
+      if (!project) return;
+
+      let consultantStaffId = project.consultant_id;
+
+      // If no project-level consultant, check company-level
+      if (!consultantStaffId && project.onboarding_company_id) {
+        const { data: company } = await supabase
+          .from("onboarding_companies")
+          .select("consultant_id")
+          .eq("id", project.onboarding_company_id)
+          .single();
+        
+        if (company?.consultant_id) {
+          consultantStaffId = company.consultant_id;
+        }
+      }
+
+      if (!consultantStaffId) return;
+
+      // Get the user_id for this consultant
+      const { data: consultant } = await supabase
+        .from("onboarding_staff")
+        .select("user_id")
+        .eq("id", consultantStaffId)
+        .single();
+
+      if (consultant?.user_id) {
+        setProjectConsultantUserId(consultant.user_id);
+      }
+    } catch (error) {
+      console.error("Error fetching project consultant:", error);
+    }
   };
 
   const fetchCurrentStaff = async () => {
@@ -196,8 +242,14 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
   const syncCalendarEvents = async () => {
     try {
+      // Use the project's consultant calendar if available, otherwise current user's
+      const targetUserId = projectConsultantUserId || undefined;
+      const checkConnectionUrl = targetUserId 
+        ? `google-calendar?action=check-connection&target_user_id=${targetUserId}`
+        : "google-calendar?action=check-connection";
+
       // Check if calendar is connected
-      const { data: connectionData } = await supabase.functions.invoke("google-calendar?action=check-connection", {
+      const { data: connectionData } = await supabase.functions.invoke(checkConnectionUrl, {
         body: {},
       });
 
@@ -208,8 +260,12 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
       setCalendarConnected(true);
 
-      // Fetch events from Google Calendar
-      const { data } = await supabase.functions.invoke("google-calendar?action=events", {
+      // Fetch events from Google Calendar (using consultant's calendar)
+      const eventsUrl = targetUserId 
+        ? `google-calendar?action=events&target_user_id=${targetUserId}`
+        : "google-calendar?action=events";
+
+      const { data } = await supabase.functions.invoke(eventsUrl, {
         body: {},
       });
 
@@ -280,7 +336,13 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await supabase.functions.invoke("google-calendar?action=sync-recordings", {
+      // Use consultant's calendar for recordings sync
+      const targetUserId = projectConsultantUserId || undefined;
+      const syncUrl = targetUserId
+        ? `google-calendar?action=sync-recordings&target_user_id=${targetUserId}`
+        : "google-calendar?action=sync-recordings";
+
+      const response = await supabase.functions.invoke(syncUrl, {
         body: { projectId },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
