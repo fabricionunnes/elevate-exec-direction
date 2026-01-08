@@ -220,7 +220,7 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
             >
               <div 
                 className={`
-                  relative overflow-hidden rounded-2xl border-2 transition-all duration-300 cursor-pointer
+                  relative overflow-hidden rounded-2xl border-2 transition-all duration-300
                   ${isCompleted 
                     ? "bg-gradient-to-br from-emerald-500/10 to-green-500/5 border-emerald-500/50" 
                     : isActive
@@ -228,15 +228,17 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                     : "bg-card/50 border-border hover:border-border/80"
                   }
                 `}
-                onClick={() => setExpandedPhase(isExpanded ? null : phase.name)}
               >
                 {/* Active phase glow */}
                 {isActive && (
                   <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5`} />
                 )}
 
-                {/* Phase Header */}
-                <div className="relative p-4 md:p-5">
+                {/* Phase Header - clickable to expand/collapse */}
+                <div 
+                  className="relative p-4 md:p-5 cursor-pointer"
+                  onClick={() => setExpandedPhase(isExpanded ? null : phase.name)}
+                >
                   <div className="flex items-center gap-4">
                     {/* Phase Icon Badge */}
                     <div className="relative">
