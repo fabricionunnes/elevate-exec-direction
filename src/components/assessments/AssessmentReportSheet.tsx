@@ -15,7 +15,11 @@ import {
   BarChart3,
   User,
   Filter,
+  MessageSquare,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
+import { climateSections, climateQuestions } from "@/data/climateQuestions";
 import {
   ResponsiveContainer,
   RadarChart,
@@ -80,6 +84,36 @@ interface Evaluation360 {
   completed_at: string | null;
 }
 
+interface ClimateResponse {
+  id: string;
+  participant_id: string;
+  respondent_name: string;
+  company_satisfaction: number | null;
+  organizational_culture: number | null;
+  feels_valued: string | null;
+  communication_with_superiors: number | null;
+  superior_interest_development: number | null;
+  feels_supported: number | null;
+  has_growth_opportunities: boolean | null;
+  receives_feedback: string | null;
+  training_rating: number | null;
+  company_values_balance: boolean | null;
+  company_offers_wellness: boolean | null;
+  manages_responsibilities: boolean | null;
+  feels_valued_for_work: boolean | null;
+  adequate_recognition: boolean | null;
+  rewards_rating: number | null;
+  feels_comfortable_safe: boolean | null;
+  good_coworker_relationship: boolean | null;
+  diversity_inclusion: number | null;
+  what_company_does_well: string | null;
+  what_company_should_improve: string | null;
+  enjoys_working_score: number | null;
+  would_recommend_score: number | null;
+  open_feedback: string | null;
+  completed_at: string;
+}
+
 const DISC_COLORS: Record<string, string> = {
   D: "#ef4444",
   I: "#f59e0b",
@@ -97,6 +131,7 @@ export function AssessmentReportSheet({
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [discResponses, setDiscResponses] = useState<DISCResponse[]>([]);
   const [evaluations360, setEvaluations360] = useState<Evaluation360[]>([]);
+  const [climateResponses, setClimateResponses] = useState<ClimateResponse[]>([]);
   const [selectedParticipantId, setSelectedParticipantId] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("overview");
 
@@ -109,7 +144,7 @@ export function AssessmentReportSheet({
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [participantsRes, discRes, eval360Res] = await Promise.all([
+      const [participantsRes, discRes, eval360Res, climateRes] = await Promise.all([
         supabase
           .from("assessment_participants")
           .select("id, name, role, department")
@@ -124,11 +159,16 @@ export function AssessmentReportSheet({
           .select("*")
           .eq("cycle_id", cycleId)
           .eq("is_completed", true),
+        supabase
+          .from("climate_survey_responses")
+          .select("*")
+          .eq("cycle_id", cycleId),
       ]);
 
       setParticipants(participantsRes.data || []);
       setDiscResponses(discRes.data || []);
       setEvaluations360(eval360Res.data || []);
+      setClimateResponses(climateRes.data || []);
     } catch (error) {
       console.error("Error fetching report data:", error);
     } finally {
@@ -146,6 +186,11 @@ export function AssessmentReportSheet({
     if (selectedParticipantId === "all") return evaluations360;
     return evaluations360.filter(e => e.evaluated_id === selectedParticipantId);
   }, [evaluations360, selectedParticipantId]);
+
+  const filteredClimateResponses = useMemo(() => {
+    if (selectedParticipantId === "all") return climateResponses;
+    return climateResponses.filter(r => r.participant_id === selectedParticipantId);
+  }, [climateResponses, selectedParticipantId]);
 
   const selectedParticipant = useMemo(() => {
     if (selectedParticipantId === "all") return null;
@@ -187,11 +232,46 @@ export function AssessmentReportSheet({
 
   const radarData = useMemo(() => calculate360Averages(filteredEvaluations), [filteredEvaluations]);
 
+  // Calculate climate score from climate_survey_responses
+  const climateScore = useMemo(() => {
+    if (filteredClimateResponses.length === 0) return null;
+    
+    let totalScore = 0;
+    let count = 0;
+    
+    filteredClimateResponses.forEach(response => {
+      // Scale questions (0-5 or 1-5)
+      const scaleFields = [
+        response.company_satisfaction,
+        response.organizational_culture,
+        response.communication_with_superiors,
+        response.superior_interest_development,
+        response.feels_supported,
+        response.training_rating,
+        response.rewards_rating,
+        response.diversity_inclusion,
+        response.enjoys_working_score,
+        response.would_recommend_score,
+      ];
+      
+      scaleFields.forEach(val => {
+        if (val !== null && val !== undefined) {
+          totalScore += val;
+          count++;
+        }
+      });
+    });
+    
+    return count > 0 ? totalScore / count : null;
+  }, [filteredClimateResponses]);
+
   const overallClimate = useMemo(() => {
+    // Use climate survey data if available, otherwise fall back to 360 averages
+    if (climateScore !== null) return climateScore;
     if (!radarData) return 0;
     const total = radarData.reduce((acc, item) => acc + item.value, 0);
     return total / radarData.length;
-  }, [radarData]);
+  }, [climateScore, radarData]);
 
   const getClimateLabel = (score: number) => {
     if (score >= 4.5) return { label: "Excelente", color: "text-green-500", bg: "bg-green-500/10" };
@@ -679,8 +759,9 @@ export function AssessmentReportSheet({
 
                   {/* Climate Tab */}
                   <TabsContent value="climate" className="space-y-4 mt-4">
-                    {overallClimate > 0 ? (
+                    {filteredClimateResponses.length > 0 ? (
                       <>
+                        {/* Overall Score */}
                         <Card className={getClimateLabel(overallClimate).bg}>
                           <CardContent className="py-8 text-center">
                             <div className={cn("inline-block p-6 rounded-full mb-4", getClimateLabel(overallClimate).bg)}>
@@ -692,9 +773,130 @@ export function AssessmentReportSheet({
                             <Badge className={cn("text-base px-4 py-1", getClimateLabel(overallClimate).bg, getClimateLabel(overallClimate).color)}>
                               {getClimateLabel(overallClimate).label}
                             </Badge>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Baseado em {filteredClimateResponses.length} resposta(s) da pesquisa de clima
+                            </p>
                           </CardContent>
                         </Card>
 
+                        {/* Climate Metrics by Section */}
+                        {climateSections.map(section => {
+                          const sectionQuestions = climateQuestions.filter(q => q.section === section.id);
+                          
+                          return (
+                            <Card key={section.id}>
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center gap-2">
+                                  <span>{section.icon}</span>
+                                  {section.name}
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                {sectionQuestions.map(question => {
+                                  // Get all responses for this question
+                                  const responses = filteredClimateResponses.map(r => {
+                                    const key = question.id as keyof ClimateResponse;
+                                    return r[key];
+                                  }).filter(v => v !== null && v !== undefined);
+                                  
+                                  if (responses.length === 0) return null;
+                                  
+                                  // Handle different question types
+                                  if (question.type === 'text') {
+                                    return (
+                                      <div key={question.id} className="space-y-2">
+                                        <p className="text-xs font-medium text-muted-foreground">{question.question}</p>
+                                        {responses.map((response, idx) => (
+                                          <div key={idx} className="p-2 bg-muted/50 rounded text-xs">
+                                            <MessageSquare className="h-3 w-3 inline mr-1 text-muted-foreground" />
+                                            "{response}"
+                                          </div>
+                                        ))}
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  if (question.type === 'boolean') {
+                                    const yesCount = responses.filter(r => r === true).length;
+                                    const noCount = responses.filter(r => r === false).length;
+                                    const yesPercent = (yesCount / responses.length) * 100;
+                                    
+                                    return (
+                                      <div key={question.id} className="space-y-1">
+                                        <p className="text-xs font-medium text-muted-foreground">{question.question}</p>
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                                            <div 
+                                              className="h-full bg-green-500"
+                                              style={{ width: `${yesPercent}%` }}
+                                            />
+                                          </div>
+                                          <div className="flex items-center gap-3 text-xs">
+                                            <span className="flex items-center gap-1 text-green-600">
+                                              <ThumbsUp className="h-3 w-3" /> {yesCount}
+                                            </span>
+                                            <span className="flex items-center gap-1 text-red-500">
+                                              <ThumbsDown className="h-3 w-3" /> {noCount}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  if (question.type === 'options') {
+                                    const optionCounts: Record<string, number> = {};
+                                    responses.forEach(r => {
+                                      const val = String(r);
+                                      optionCounts[val] = (optionCounts[val] || 0) + 1;
+                                    });
+                                    
+                                    return (
+                                      <div key={question.id} className="space-y-1">
+                                        <p className="text-xs font-medium text-muted-foreground">{question.question}</p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {question.options?.map(opt => {
+                                            const count = optionCounts[opt.value] || 0;
+                                            return (
+                                              <Badge key={opt.value} variant={count > 0 ? "default" : "outline"} className="text-xs">
+                                                {opt.label}: {count}
+                                              </Badge>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  // Scale questions (scale_1_5 or scale_0_5)
+                                  const numericResponses = responses.map(r => Number(r)).filter(n => !isNaN(n));
+                                  const avg = numericResponses.length > 0 
+                                    ? numericResponses.reduce((a, b) => a + b, 0) / numericResponses.length
+                                    : 0;
+                                  
+                                  return (
+                                    <div key={question.id} className="space-y-1">
+                                      <p className="text-xs font-medium text-muted-foreground">{question.question}</p>
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                                          <div 
+                                            className={cn("h-full transition-all", getClimateLabel(avg).color.replace('text-', 'bg-'))}
+                                            style={{ width: `${(avg / 5) * 100}%` }}
+                                          />
+                                        </div>
+                                        <span className={cn("text-sm font-medium min-w-[40px] text-right", getClimateLabel(avg).color)}>
+                                          {avg.toFixed(1)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+
+                        {/* Interpretation Card */}
                         <Card>
                           <CardHeader className="pb-2">
                             <CardTitle className="text-sm">Interpretação do Resultado</CardTitle>
@@ -722,8 +924,28 @@ export function AssessmentReportSheet({
                             </div>
                           </CardContent>
                         </Card>
+                      </>
+                    ) : overallClimate > 0 ? (
+                      // Fallback to 360 data if no climate survey responses
+                      <>
+                        <Card className={getClimateLabel(overallClimate).bg}>
+                          <CardContent className="py-8 text-center">
+                            <div className={cn("inline-block p-6 rounded-full mb-4", getClimateLabel(overallClimate).bg)}>
+                              <p className={cn("text-5xl font-bold", getClimateLabel(overallClimate).color)}>
+                                {overallClimate.toFixed(2)}
+                              </p>
+                              <p className="text-muted-foreground text-sm">/5.00</p>
+                            </div>
+                            <Badge className={cn("text-base px-4 py-1", getClimateLabel(overallClimate).bg, getClimateLabel(overallClimate).color)}>
+                              {getClimateLabel(overallClimate).label}
+                            </Badge>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Baseado nas avaliações 360°
+                            </p>
+                          </CardContent>
+                        </Card>
 
-                        {/* Competencies breakdown */}
+                        {/* Competencies breakdown from 360 */}
                         {radarData && (
                           <Card>
                             <CardHeader className="pb-2">
@@ -755,7 +977,7 @@ export function AssessmentReportSheet({
                         <CardContent className="py-8 text-center">
                           <Star className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                           <p className="text-sm text-muted-foreground">
-                            Aguardando avaliações 360° para calcular o clima organizacional
+                            Nenhuma resposta da pesquisa de clima registrada
                           </p>
                         </CardContent>
                       </Card>
