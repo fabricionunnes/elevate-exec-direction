@@ -940,8 +940,8 @@ const OnboardingTasksPage = () => {
                       </DropdownMenuItem>
                     </>
                   )}
-                  {/* Resultados for consultants in mobile menu */}
-                  {currentUserRole === "consultant" && (
+                  {/* Resultados for CS and consultants in mobile menu */}
+                  {(currentUserRole === "cs" || currentUserRole === "consultant") && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/results")}>
                       <BarChart3 className="h-4 w-4 mr-2" />
                       Resultados
