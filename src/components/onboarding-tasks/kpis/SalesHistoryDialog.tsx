@@ -223,31 +223,33 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          <History className="h-4 w-4" />
-          Histórico de Vendas
+        <Button variant="outline" className="gap-2 text-xs sm:text-sm h-8 sm:h-10 px-2 sm:px-4">
+          <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <span className="hidden sm:inline">Histórico de Vendas</span>
+          <span className="sm:hidden">Histórico</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto p-3 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" />
-            Histórico de Vendas (Meses Anteriores)
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <History className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="hidden sm:inline">Histórico de Vendas (Meses Anteriores)</span>
+            <span className="sm:hidden">Histórico de Vendas</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Form */}
-          <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+          <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 border rounded-lg bg-muted/30">
             {/* Row 1: Mês, Ano, Período */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
               <div>
-                <Label className="text-xs text-muted-foreground">Mês *</Label>
+                <Label className="text-[10px] sm:text-xs text-muted-foreground">Mês *</Label>
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1 h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue placeholder="Mês" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background">
                     {MONTHS.map((month) => (
                       <SelectItem key={month.value} value={month.value}>
                         {month.label}
@@ -257,12 +259,12 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
                 </Select>
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Ano *</Label>
+                <Label className="text-[10px] sm:text-xs text-muted-foreground">Ano *</Label>
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1 h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue placeholder="Ano" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background">
                     {getYearOptions().map((year) => (
                       <SelectItem key={year.value} value={year.value}>
                         {year.label}
@@ -271,16 +273,16 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex flex-col justify-end">
-                <Label className="text-xs text-muted-foreground mb-1">Período</Label>
-                <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-background">
+              <div className="flex flex-col justify-end col-span-2 sm:col-span-1">
+                <Label className="text-[10px] sm:text-xs text-muted-foreground mb-1">Período</Label>
+                <div className="flex items-center gap-2 h-8 sm:h-10 px-2 sm:px-3 border rounded-md bg-background">
                   <Switch
                     id="isPreUnv"
                     checked={isPreUnv}
                     onCheckedChange={setIsPreUnv}
-                    className="scale-90"
+                    className="scale-75 sm:scale-90"
                   />
-                  <Label htmlFor="isPreUnv" className="text-sm cursor-pointer">
+                  <Label htmlFor="isPreUnv" className="text-xs sm:text-sm cursor-pointer whitespace-nowrap">
                     {isPreUnv ? "Antes UNV" : "Depois UNV"}
                   </Label>
                 </div>
@@ -288,40 +290,40 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
             </div>
 
             {/* Row 2: Valores */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               <div>
-                <Label className="text-xs text-muted-foreground">Faturamento (R$) *</Label>
+                <Label className="text-[10px] sm:text-xs text-muted-foreground">Faturamento (R$) *</Label>
                 <Input
                   type="number"
                   value={revenue}
                   onChange={(e) => setRevenue(e.target.value)}
                   placeholder="0,00"
-                  className="mt-1"
+                  className="mt-1 h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Meta (R$)</Label>
+                <Label className="text-[10px] sm:text-xs text-muted-foreground">Meta (R$)</Label>
                 <Input
                   type="number"
                   value={targetRevenue}
                   onChange={(e) => setTargetRevenue(e.target.value)}
                   placeholder="Opcional"
-                  className="mt-1"
+                  className="mt-1 h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Qtd. Vendas</Label>
+                <Label className="text-[10px] sm:text-xs text-muted-foreground">Qtd. Vendas</Label>
                 <Input
                   type="number"
                   value={salesCount}
                   onChange={(e) => setSalesCount(e.target.value)}
                   placeholder="0"
-                  className="mt-1"
+                  className="mt-1 h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
               <div className="flex items-end">
-                <Button onClick={handleSubmit} disabled={saving} className="w-full gap-2">
-                  <Plus className="h-4 w-4" />
+                <Button onClick={handleSubmit} disabled={saving} className="w-full gap-1.5 sm:gap-2 h-8 sm:h-10 text-xs sm:text-sm">
+                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   {editingId ? "Atualizar" : "Adicionar"}
                 </Button>
               </div>
@@ -329,12 +331,12 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
 
             {/* Row 3: Observações */}
             <div>
-              <Label className="text-xs text-muted-foreground">Observações</Label>
+              <Label className="text-[10px] sm:text-xs text-muted-foreground">Observações</Label>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Notas sobre este período..."
-                className="mt-1"
+                placeholder="Notas..."
+                className="mt-1 text-xs sm:text-sm"
                 rows={2}
               />
             </div>
@@ -356,16 +358,16 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
               Nenhum histórico cadastrado. Adicione dados de meses anteriores para comparação.
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-hidden overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="font-semibold">Mês/Ano</TableHead>
-                    <TableHead className="font-semibold">Realizado</TableHead>
-                    <TableHead className="font-semibold">Meta</TableHead>
-                    <TableHead className="font-semibold">Vendas</TableHead>
-                    <TableHead className="font-semibold">Período</TableHead>
-                    <TableHead className="w-20">Ações</TableHead>
+                    <TableHead className="font-semibold text-xs sm:text-sm whitespace-nowrap">Mês</TableHead>
+                    <TableHead className="font-semibold text-xs sm:text-sm whitespace-nowrap">Realizado</TableHead>
+                    <TableHead className="font-semibold text-xs sm:text-sm whitespace-nowrap hidden sm:table-cell">Meta</TableHead>
+                    <TableHead className="font-semibold text-xs sm:text-sm whitespace-nowrap hidden md:table-cell">Vendas</TableHead>
+                    <TableHead className="font-semibold text-xs sm:text-sm whitespace-nowrap hidden sm:table-cell">Período</TableHead>
+                    <TableHead className="w-16 sm:w-20">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -376,18 +378,32 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
                     
                     return (
                       <TableRow key={entry.id}>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium text-xs sm:text-sm py-2 sm:py-4">
                           {format(new Date(entry.month_year), "MMM/yy", { locale: ptBR })}
                         </TableCell>
-                        <TableCell className="font-medium text-green-600">
-                          {formatCurrency(entry.revenue)}
+                        <TableCell className="font-medium text-green-600 text-xs sm:text-sm py-2 sm:py-4">
+                          <div className="flex flex-col">
+                            <span>{formatCurrency(entry.revenue)}</span>
+                            {/* Show meta % on mobile inline */}
+                            {atingimento && (
+                              <span className={`text-[10px] sm:hidden ${
+                                parseFloat(atingimento) >= 100 
+                                  ? 'text-green-600' 
+                                  : parseFloat(atingimento) >= 80 
+                                  ? 'text-amber-600' 
+                                  : 'text-red-600'
+                              }`}>
+                                Meta: {atingimento}%
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell py-2 sm:py-4">
                           {entry.target_revenue ? (
                             <div className="flex flex-col">
-                              <span>{formatCurrency(entry.target_revenue)}</span>
+                              <span className="text-xs sm:text-sm">{formatCurrency(entry.target_revenue)}</span>
                               {atingimento && (
-                                <span className={`text-xs ${
+                                <span className={`text-[10px] sm:text-xs ${
                                   parseFloat(atingimento) >= 100 
                                     ? 'text-green-600' 
                                     : parseFloat(atingimento) >= 80 
@@ -399,12 +415,12 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
                               )}
                             </div>
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="text-muted-foreground text-xs sm:text-sm">—</span>
                           )}
                         </TableCell>
-                        <TableCell>{entry.sales_count ?? "—"}</TableCell>
-                        <TableCell>
-                          <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
+                        <TableCell className="hidden md:table-cell text-xs sm:text-sm py-2 sm:py-4">{entry.sales_count ?? "—"}</TableCell>
+                        <TableCell className="hidden sm:table-cell py-2 sm:py-4">
+                          <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded whitespace-nowrap ${
                             entry.is_pre_unv 
                               ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" 
                               : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
@@ -412,21 +428,23 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
                             {entry.is_pre_unv ? "Antes" : "Depois"}
                           </span>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
+                        <TableCell className="py-2 sm:py-4">
+                          <div className="flex gap-0.5 sm:gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-7 w-7 sm:h-8 sm:w-8"
                               onClick={() => handleEdit(entry)}
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-7 w-7 sm:h-8 sm:w-8"
                               onClick={() => handleDelete(entry.id)}
                             >
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-destructive" />
                             </Button>
                           </div>
                         </TableCell>

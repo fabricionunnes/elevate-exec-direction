@@ -655,98 +655,100 @@ export default function OnboardingCompaniesReportPage() {
 
         {/* Table */}
         <Card>
-          <ScrollArea className="h-[calc(100vh-480px)] min-h-[400px]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("name")}
-                  >
-                    <div className="flex items-center">
-                      Empresa
-                      <SortIcon field="name" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("consultant_name")}
-                  >
-                    <div className="flex items-center">
-                      Consultor
-                      <SortIcon field="consultant_name" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("contract_start_date")}
-                  >
-                    <div className="flex items-center">
-                      Data Início
-                      <SortIcon field="contract_start_date" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("contract_end_date")}
-                  >
-                    <div className="flex items-center">
-                      Data Término
-                      <SortIcon field="contract_end_date" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 text-right"
-                    onClick={() => handleSort("contract_months")}
-                  >
-                    <div className="flex items-center justify-end">
-                      Prazo (meses)
-                      <SortIcon field="contract_months" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 text-right"
-                    onClick={() => handleSort("total_paid")}
-                  >
-                    <div className="flex items-center justify-end">
-                      Valor Total
-                      <SortIcon field="total_paid" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 text-right"
-                    onClick={() => handleSort("avg_ticket")}
-                  >
-                    <div className="flex items-center justify-end">
-                      Ticket Médio
-                      <SortIcon field="avg_ticket" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("status")}
-                  >
-                    <div className="flex items-center">
-                      Status
-                      <SortIcon field="status" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("payment_method")}
-                  >
-                    <div className="flex items-center">
-                      Pagamento
-                      <SortIcon field="payment_method" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
+          <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-480px)] min-h-[300px] sm:min-h-[400px]">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
+                      onClick={() => handleSort("name")}
+                    >
+                      <div className="flex items-center">
+                        Empresa
+                        <SortIcon field="name" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap hidden sm:table-cell"
+                      onClick={() => handleSort("consultant_name")}
+                    >
+                      <div className="flex items-center">
+                        Consultor
+                        <SortIcon field="consultant_name" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap hidden md:table-cell"
+                      onClick={() => handleSort("contract_start_date")}
+                    >
+                      <div className="flex items-center">
+                        Início
+                        <SortIcon field="contract_start_date" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap hidden sm:table-cell"
+                      onClick={() => handleSort("contract_end_date")}
+                    >
+                      <div className="flex items-center">
+                        Término
+                        <SortIcon field="contract_end_date" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap hidden lg:table-cell"
+                      onClick={() => handleSort("contract_months")}
+                    >
+                      <div className="flex items-center justify-end">
+                        Meses
+                        <SortIcon field="contract_months" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap"
+                      onClick={() => handleSort("total_paid")}
+                    >
+                      <div className="flex items-center justify-end">
+                        <span className="hidden sm:inline">Valor Total</span>
+                        <span className="sm:hidden">Total</span>
+                        <SortIcon field="total_paid" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap hidden md:table-cell"
+                      onClick={() => handleSort("avg_ticket")}
+                    >
+                      <div className="flex items-center justify-end">
+                        Ticket
+                        <SortIcon field="avg_ticket" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
+                      onClick={() => handleSort("status")}
+                    >
+                      <div className="flex items-center">
+                        Status
+                        <SortIcon field="status" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap hidden lg:table-cell"
+                      onClick={() => handleSort("payment_method")}
+                    >
+                      <div className="flex items-center">
+                        Pgto
+                        <SortIcon field="payment_method" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-10 sm:w-12"></TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {filteredCompanies.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-6 sm:py-8 text-muted-foreground text-xs sm:text-sm">
                       Nenhuma empresa encontrada
                     </TableCell>
                   </TableRow>
@@ -757,35 +759,41 @@ export default function OnboardingCompaniesReportPage() {
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => navigate(`/onboarding-tasks/companies/${company.id}`)}
                     >
-                      <TableCell className="font-medium">{company.name}</TableCell>
-                      <TableCell>{company.consultant_name || "—"}</TableCell>
-                      <TableCell>{formatDate(company.contract_start_date)}</TableCell>
-                      <TableCell>{company.payment_method === "monthly" ? "—" : formatDate(company.contract_end_date)}</TableCell>
-                      <TableCell className="text-right">{company.contract_months}</TableCell>
-                      <TableCell className="text-right font-medium text-green-500">
+                      <TableCell className="font-medium text-xs sm:text-sm py-2 sm:py-4">
+                        <div className="flex flex-col">
+                          <span className="truncate max-w-[120px] sm:max-w-none">{company.name}</span>
+                          {/* Show consultant on mobile inline */}
+                          <span className="text-[10px] text-muted-foreground sm:hidden">{company.consultant_name || "—"}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-xs sm:text-sm py-2 sm:py-4">{company.consultant_name || "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell text-xs sm:text-sm py-2 sm:py-4">{formatDate(company.contract_start_date)}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-xs sm:text-sm py-2 sm:py-4">{company.payment_method === "monthly" ? "—" : formatDate(company.contract_end_date)}</TableCell>
+                      <TableCell className="text-right hidden lg:table-cell text-xs sm:text-sm py-2 sm:py-4">{company.contract_months}</TableCell>
+                      <TableCell className="text-right font-medium text-green-500 text-xs sm:text-sm py-2 sm:py-4">
                         {formatCurrency(company.total_paid)}
                       </TableCell>
-                      <TableCell className="text-right text-blue-500">
+                      <TableCell className="text-right text-blue-500 hidden md:table-cell text-xs sm:text-sm py-2 sm:py-4">
                         {formatCurrency(company.avg_ticket)}/mês
                       </TableCell>
-                      <TableCell>{getStatusBadge(company.status)}</TableCell>
-                      <TableCell>
+                      <TableCell className="py-2 sm:py-4">{getStatusBadge(company.status)}</TableCell>
+                      <TableCell className="hidden lg:table-cell py-2 sm:py-4">
                         {company.payment_method === "card" ? (
-                          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">Cartão</Badge>
+                          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-[10px] sm:text-xs">Cartão</Badge>
                         ) : company.payment_method === "monthly" ? (
-                          <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">Recorrência</Badge>
+                          <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-[10px] sm:text-xs">Recorrência</Badge>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-2 sm:py-4">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-7 w-7 sm:h-8 sm:w-8"
                           onClick={(e) => openEditDialog(company, e)}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -793,33 +801,35 @@ export default function OnboardingCompaniesReportPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </ScrollArea>
         </Card>
       </div>
 
       {/* Edit Contract Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] sm:max-w-md p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Editar Contrato</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-base sm:text-lg">Editar Contrato</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               {editingCompany?.name}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Data de Início</Label>
+          <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="startDate" className="text-xs sm:text-sm">Data de Início</Label>
               <Input
                 id="startDate"
                 type="date"
                 value={editStartDate}
                 onChange={(e) => setEditStartDate(e.target.value)}
+                className="h-9 sm:h-10 text-sm"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="duration">Prazo (meses)</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="duration" className="text-xs sm:text-sm">Prazo (meses)</Label>
               <Input
                 id="duration"
                 type="number"
@@ -827,14 +837,15 @@ export default function OnboardingCompaniesReportPage() {
                 value={editDurationMonths}
                 onChange={(e) => setEditDurationMonths(parseInt(e.target.value) || 0)}
                 placeholder="0 = mensal/sem prazo"
+                className="h-9 sm:h-10 text-sm"
               />
-              <p className="text-xs text-muted-foreground">
-                Use 0 para contratos mensais (sem data de término)
+              <p className="text-[10px] sm:text-xs text-muted-foreground">
+                Use 0 para contratos mensais (sem término)
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="value">Valor do Contrato (R$)</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="value" className="text-xs sm:text-sm">Valor do Contrato (R$)</Label>
               <Input
                 id="value"
                 type="number"
@@ -842,22 +853,23 @@ export default function OnboardingCompaniesReportPage() {
                 step={0.01}
                 value={editContractValue}
                 onChange={(e) => setEditContractValue(parseFloat(e.target.value) || 0)}
+                className="h-9 sm:h-10 text-sm"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] sm:text-xs text-muted-foreground">
                 {editDurationMonths > 0 
-                  ? "Valor TOTAL do contrato (será dividido pelo prazo)"
+                  ? "Valor TOTAL (será dividido pelo prazo)"
                   : "Valor MENSAL do contrato"
                 }
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="paymentMethod" className="text-xs sm:text-sm">Forma de Pagamento</Label>
               <Select value={editPaymentMethod} onValueChange={setEditPaymentMethod}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9 sm:h-10 text-sm">
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background">
                   <SelectItem value="card">Cartão (pagamento único)</SelectItem>
                   <SelectItem value="monthly">Recorrência mensal</SelectItem>
                 </SelectContent>
@@ -865,11 +877,11 @@ export default function OnboardingCompaniesReportPage() {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)} size="sm" className="h-9">
               Cancelar
             </Button>
-            <Button onClick={handleSaveEdit} disabled={saving}>
+            <Button onClick={handleSaveEdit} disabled={saving} size="sm" className="h-9">
               {saving ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
