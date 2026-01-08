@@ -115,6 +115,7 @@ const DashboardMetrics = ({
   const [npsResponses, setNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
   const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
   const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number }[]>([]);
+  const [contractRenewals, setContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
   const [tasksDialogType, setTasksDialogType] = useState<"overdue" | "today" | "status">("overdue");
@@ -154,19 +155,22 @@ const DashboardMetrics = ({
         setInternalTasks(allTasksData);
       }
 
-      const [npsResult, kpisResult, entriesResult] = await Promise.all([
+      const [npsResult, kpisResult, entriesResult, renewalsResult] = await Promise.all([
         supabase.from("onboarding_nps_responses").select("id, project_id, score, feedback, what_can_improve, would_recommend_why, respondent_name, respondent_email, created_at").order("created_at", { ascending: false }),
         supabase.from("company_kpis").select("id, company_id, kpi_type, periodicity, target_value").eq("is_active", true),
         supabase.from("kpi_entries").select("company_id, kpi_id, value, entry_date"),
+        supabase.from("onboarding_contract_renewals").select("company_id, renewal_date"),
       ]);
 
       if (npsResult.error) throw npsResult.error;
       if (kpisResult.error) throw kpisResult.error;
       if (entriesResult.error) throw entriesResult.error;
+      if (renewalsResult.error) throw renewalsResult.error;
 
       setNpsResponses(npsResult.data || []);
       setCompanyKpis(kpisResult.data || []);
       setKpiEntries(entriesResult.data || []);
+      setContractRenewals((renewalsResult.data as any) || []);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -245,6 +249,33 @@ const DashboardMetrics = ({
     return { activeCompanies, contractsEndingInPeriod, expiredContracts };
   }, [filteredCompanies, dateRange, projects]);
 
+  const renewalMetrics = useMemo(() => {
+    const start = dateRange.start;
+    const end = dateRange.end;
+
+    // Base: empresas que têm contrato com término (não-recorrente) no período
+    const eligibleCompanyIds = new Set(
+      filteredCompanies
+        .filter(c => c.payment_method !== "monthly" && c.contract_end_date && isWithinInterval(new Date(c.contract_end_date), { start, end }))
+        .map(c => c.id)
+    );
+
+    const renewalsInPeriod = contractRenewals.filter(r => {
+      if (!eligibleCompanyIds.has(r.company_id)) return false;
+      const d = new Date(r.renewal_date.substring(0, 10) + "T12:00:00");
+      return isWithinInterval(d, { start, end });
+    });
+
+    const renewedCompanyIds = new Set(renewalsInPeriod.map(r => r.company_id));
+
+    const renewalsCount = renewalsInPeriod.length;
+    const renewedClientsCount = renewedCompanyIds.size;
+    const eligibleCount = eligibleCompanyIds.size;
+    const renewedPercent = eligibleCount > 0 ? Math.round((renewedClientsCount / eligibleCount) * 100) : 0;
+
+    return { renewalsCount, renewedClientsCount, renewedPercent };
+  }, [contractRenewals, dateRange, filteredCompanies]);
+
   const churnMetrics = useMemo(() => {
     const getClosedDate = (p: Project) => {
       const churnDateStr = p.churn_date || p.updated_at;
@@ -309,42 +340,47 @@ const DashboardMetrics = ({
 
   const ltvMetrics = useMemo(() => {
     const today = new Date();
-    
-    // Tempo médio: calcular tempo real de permanência de cada empresa
-    const companiesWithContractStart = filteredCompanies.filter(c => c.contract_start_date);
-    const companiesWithLifetime = companiesWithContractStart.map(company => {
-      const startDate = new Date(company.contract_start_date!);
-      let endDate: Date;
-      
-      // Se empresa está encerrada/inativa, usa a data de encerramento
-      if (company.status === "closed" || company.status === "inactive") {
-        endDate = company.status_changed_at ? new Date(company.status_changed_at) : today;
-      } else {
-        // Se empresa está ativa, calcula até hoje
-        endDate = today;
-      }
-      
-      const lifetimeMonths = Math.max(0, differenceInMonths(endDate, startDate));
-      return { lifetimeMonths, contractValue: company.contract_value };
-    });
-    
-    const totalCompaniesWithStart = companiesWithLifetime.length;
-    const averageLifetimeMonths = totalCompaniesWithStart > 0 
-      ? Math.round((companiesWithLifetime.reduce((sum, c) => sum + c.lifetimeMonths, 0) / totalCompaniesWithStart) * 10) / 10 
+
+    const parseDateOnlySafe = (value: string | null): Date | null => {
+      if (!value) return null;
+      const dateOnly = value.substring(0, 10);
+      const d = new Date(dateOnly + "T12:00:00");
+      return isNaN(d.getTime()) ? null : d;
+    };
+
+    // Tempo médio: calcular tempo real de permanência por empresa
+    const companiesWithContractStart = filteredCompanies
+      .map(c => ({ company: c, start: parseDateOnlySafe(c.contract_start_date) }))
+      .filter(x => x.start);
+
+    const lifetimes = companiesWithContractStart
+      .map(({ company, start }) => {
+        const end = (company.status === "closed" || company.status === "inactive")
+          ? parseDateOnlySafe(company.status_changed_at) || today
+          : today;
+
+        const lifetimeMonths = Math.max(0, differenceInMonths(end, start as Date));
+        return lifetimeMonths;
+      })
+      // Evita que datas claramente erradas distorçam o dashboard
+      .filter(m => m >= 0 && m <= 180);
+
+    const averageLifetimeMonths = lifetimes.length > 0
+      ? Math.round((lifetimes.reduce((sum, m) => sum + m, 0) / lifetimes.length) * 10) / 10
       : 0;
-    
+
     // Ticket médio: somente empresas com valor de contrato
     const companiesWithValue = filteredCompanies.filter(c => c.contract_value && c.contract_value > 0);
     const totalContractValue = companiesWithValue.reduce((sum, c) => sum + (c.contract_value || 0), 0);
     const averageTicket = companiesWithValue.length > 0
       ? Math.round(totalContractValue / companiesWithValue.length)
       : 0;
-    
+
     // LTV = Ticket Médio Mensal × Tempo Médio de Permanência (em meses)
     const ltv = Math.round(averageTicket * averageLifetimeMonths);
-    
+
     return { averageLifetimeMonths, ltv };
-  }, [filteredCompanies, projects, dateRange]);
+  }, [filteredCompanies]);
 
   const npsMetrics = useMemo(() => {
     const filteredProjectIds = new Set(projects.map(p => p.id));
@@ -622,12 +658,13 @@ const DashboardMetrics = ({
         </TabsList>
 
         <TabsContent value="empresas" className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-1.5 sm:gap-2">
             <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "all") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "all")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold">{filteredCompanies.length}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Total</p></CardContent></Card>
             <Card className={cn("cursor-pointer", isCardActive("status", "notice_period") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("status", "notice_period")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-orange-500">{projectMetrics.noticePeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Aviso</p></CardContent></Card>
             <Card className={cn("cursor-pointer", isCardActive("status", "closed") && "ring-2 ring-red-600")} onClick={() => handleCardClick("status", "closed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-600">{churnMetrics.closedCompaniesInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Encerradas</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "ending") && "ring-2 ring-purple-500")} onClick={() => handleCardClick("contracts", "ending")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-purple-500">{companyMetrics.contractsEndingInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencendo</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "expired") && "ring-2 ring-rose-500")} onClick={() => handleCardClick("contracts", "expired")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-rose-500">{companyMetrics.expiredContracts}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencidos</p></CardContent></Card>
+            <Card className="hidden sm:block"><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-emerald-500">{renewalMetrics.renewedPercent}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Renovados ({renewalMetrics.renewalsCount})</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden lg:block", isCardActive("status", "reactivated") && "ring-2 ring-cyan-500")} onClick={() => handleCardClick("status", "reactivated")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-cyan-500">{projectMetrics.reactivatedInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Revertidos</p></CardContent></Card>
             <Card className="hidden lg:block"><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{churnMetrics.churnRate}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Churn</p></CardContent></Card>
           </div>
