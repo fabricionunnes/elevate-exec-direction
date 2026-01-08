@@ -29,9 +29,14 @@ import {
   RefreshCw,
   X,
   FileText,
+  TrendingUp,
+  Activity,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, isToday, isYesterday, parseISO, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ActivityItem {
   id: string;
@@ -62,11 +67,16 @@ interface AdminActivityHistoryProps {
   className?: string;
 }
 
+interface GroupedActivities {
+  [date: string]: ActivityItem[];
+}
+
 export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [staffMembers, setStaffMembers] = useState<Staff[]>([]);
+  const [showFilters, setShowFilters] = useState(true);
   
   // Filters
   const [dateFrom, setDateFrom] = useState<string>("");
@@ -250,7 +260,6 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
           const consultant = project?.consultant as any;
           const cs = project?.cs as any;
           
-          // Associate NPS with both consultant and CS
           const staffName = consultant?.name || cs?.name || null;
           const staffId = project?.consultant_id || project?.cs_id || null;
           
@@ -298,7 +307,6 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
           const project = item.project as any;
           const company = project?.company as any;
           
-          // Add target set event if exists
           if (item.target_set_at && item.sales_target) {
             allActivities.push({
               id: `goal_target_${item.id}`,
@@ -320,7 +328,6 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
             });
           }
           
-          // Add result set event if exists
           if (item.result_set_at && item.sales_result !== null) {
             allActivities.push({
               id: `goal_result_${item.id}`,
@@ -345,7 +352,6 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
         }
       }
 
-      // Sort all activities by date descending
       allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       
       setActivities(allActivities);
@@ -390,7 +396,6 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
 
   const filteredActivities = useMemo(() => {
     return activities.filter((activity) => {
-      // Date filter (date-only to avoid timezone issues)
       if (dateFrom || dateTo) {
         const activityDateOnly = activity.date?.substring(0, 10);
         if (!activityDateOnly) return false;
@@ -399,17 +404,14 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
         if (dateTo && activityDateOnly > dateTo) return false;
       }
 
-      // Company filter
       if (selectedCompany !== "all" && activity.companyId !== selectedCompany) {
         return false;
       }
 
-      // Staff filter (dropdown)
       if (selectedStaff !== "all" && activity.staffId !== selectedStaff) {
         return false;
       }
 
-      // Staff name search filter (text search)
       if (staffNameSearch.trim()) {
         const searchLower = staffNameSearch.toLowerCase().trim();
         if (!activity.staffName?.toLowerCase().includes(searchLower)) {
@@ -417,7 +419,6 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
         }
       }
 
-      // Type filter
       if (selectedType !== "all" && activity.type !== selectedType) {
         return false;
       }
@@ -425,6 +426,41 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
       return true;
     });
   }, [activities, dateFrom, dateTo, selectedCompany, selectedStaff, selectedType, staffNameSearch]);
+
+  // Group activities by date
+  const groupedActivities = useMemo(() => {
+    const groups: GroupedActivities = {};
+    
+    filteredActivities.forEach((activity) => {
+      const dateKey = activity.date.substring(0, 10);
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(activity);
+    });
+    
+    return groups;
+  }, [filteredActivities]);
+
+  // Stats summary
+  const stats = useMemo(() => {
+    const todayStr = new Date().toISOString().substring(0, 10);
+    const todayActivities = filteredActivities.filter(a => a.date.substring(0, 10) === todayStr);
+    
+    const byType = {
+      task_history: filteredActivities.filter(a => a.type === "task_history").length,
+      meeting: filteredActivities.filter(a => a.type === "meeting").length,
+      support: filteredActivities.filter(a => a.type === "support").length,
+      nps: filteredActivities.filter(a => a.type === "nps").length,
+      goal: filteredActivities.filter(a => a.type === "goal").length,
+    };
+    
+    return {
+      total: filteredActivities.length,
+      today: todayActivities.length,
+      byType,
+    };
+  }, [filteredActivities]);
 
   const clearFilters = () => {
     setDateFrom("");
@@ -435,214 +471,435 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
     setStaffNameSearch("");
   };
 
+  const hasActiveFilters = dateFrom || dateTo || selectedCompany !== "all" || selectedStaff !== "all" || selectedType !== "all" || staffNameSearch.trim();
+
   const getActivityIcon = (type: string, action: string) => {
+    const iconClass = "h-5 w-5";
     switch (type) {
       case "task_history":
-        if (action === "status_change") return <CheckCircle className="h-4 w-4 text-green-500" />;
-        if (action === "comment") return <MessageSquare className="h-4 w-4 text-blue-500" />;
-        if (action === "create") return <Plus className="h-4 w-4 text-purple-500" />;
-        return <Edit className="h-4 w-4 text-amber-500" />;
+        if (action === "status_change") return <CheckCircle className={`${iconClass} text-emerald-500`} />;
+        if (action === "comment") return <MessageSquare className={`${iconClass} text-blue-500`} />;
+        if (action === "create") return <Plus className={`${iconClass} text-violet-500`} />;
+        return <Edit className={`${iconClass} text-amber-500`} />;
       case "meeting":
-        return <Calendar className="h-4 w-4 text-indigo-500" />;
+        return <Calendar className={`${iconClass} text-indigo-500`} />;
       case "support":
-        return <Headphones className="h-4 w-4 text-pink-500" />;
+        return <Headphones className={`${iconClass} text-rose-500`} />;
       case "nps":
-        return <Star className="h-4 w-4 text-yellow-500" />;
+        return <Star className={`${iconClass} text-yellow-500`} />;
       case "goal":
-        return <Target className="h-4 w-4 text-emerald-500" />;
+        return <Target className={`${iconClass} text-teal-500`} />;
       default:
-        return <FileText className="h-4 w-4 text-muted-foreground" />;
+        return <FileText className={`${iconClass} text-muted-foreground`} />;
+    }
+  };
+
+  const getActivityBgColor = (type: string, action: string) => {
+    switch (type) {
+      case "task_history":
+        if (action === "status_change") return "bg-emerald-500/10 border-emerald-500/20";
+        if (action === "comment") return "bg-blue-500/10 border-blue-500/20";
+        if (action === "create") return "bg-violet-500/10 border-violet-500/20";
+        return "bg-amber-500/10 border-amber-500/20";
+      case "meeting":
+        return "bg-indigo-500/10 border-indigo-500/20";
+      case "support":
+        return "bg-rose-500/10 border-rose-500/20";
+      case "nps":
+        return "bg-yellow-500/10 border-yellow-500/20";
+      case "goal":
+        return "bg-teal-500/10 border-teal-500/20";
+      default:
+        return "bg-muted/50 border-border";
     }
   };
 
   const getTypeBadge = (type: string) => {
+    const baseClass = "text-xs font-medium px-2.5 py-1 rounded-full";
     switch (type) {
       case "task_history":
-        return <Badge variant="outline" className="text-xs">Tarefa</Badge>;
+        return <span className={`${baseClass} bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300`}>Tarefa</span>;
       case "meeting":
-        return <Badge variant="outline" className="text-xs bg-indigo-500/10 text-indigo-600 border-indigo-200">Reunião</Badge>;
+        return <span className={`${baseClass} bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300`}>Reunião</span>;
       case "support":
-        return <Badge variant="outline" className="text-xs bg-pink-500/10 text-pink-600 border-pink-200">Suporte</Badge>;
+        return <span className={`${baseClass} bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300`}>Suporte</span>;
       case "nps":
-        return <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-600 border-yellow-200">NPS</Badge>;
+        return <span className={`${baseClass} bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300`}>NPS</span>;
       case "goal":
-        return <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-200">Meta</Badge>;
+        return <span className={`${baseClass} bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300`}>Meta</span>;
       default:
-        return <Badge variant="outline" className="text-xs">Outro</Badge>;
+        return <span className={`${baseClass} bg-muted text-muted-foreground`}>Outro</span>;
     }
+  };
+
+  const getDateLabel = (dateStr: string) => {
+    const date = parseISO(dateStr);
+    if (isToday(date)) return "Hoje";
+    if (isYesterday(date)) return "Ontem";
+    return format(date, "EEEE, dd 'de' MMMM", { locale: ptBR });
+  };
+
+  const getNPSColor = (score: number) => {
+    if (score >= 9) return "text-emerald-500";
+    if (score >= 7) return "text-amber-500";
+    return "text-red-500";
   };
 
   if (loading) {
     return (
-      <Card className={className}>
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </CardContent>
-      </Card>
+      <div className={`space-y-4 ${className}`}>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-24 bg-muted/50 rounded-xl animate-pulse" />
+          ))}
+        </div>
+        <div className="h-[600px] bg-muted/30 rounded-xl animate-pulse" />
+      </div>
     );
   }
 
   return (
-    <Card className={className}>
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Histórico de Atividades
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">{filteredActivities.length} registros</Badge>
-            <Button variant="outline" size="sm" onClick={fetchActivities}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
+    <div className={`space-y-6 ${className}`}>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border-0 shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-700 shadow-sm">
+                  <Activity className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.total}</p>
+                  <p className="text-xs text-muted-foreground">Total</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-      <CardContent className="space-y-4">
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3 p-4 bg-muted/50 rounded-lg">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Filtros:</span>
-          </div>
-          
-          <div className="flex flex-wrap gap-3 flex-1">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 border-0 shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-white dark:bg-emerald-800 shadow-sm">
+                  <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{stats.today}</p>
+                  <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">Hoje</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900 border-0 shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-white dark:bg-indigo-800 shadow-sm">
+                  <Calendar className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">{stats.byType.meeting}</p>
+                  <p className="text-xs text-indigo-600/80 dark:text-indigo-400/80">Reuniões</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          <Card className="bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-950 dark:to-rose-900 border-0 shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-white dark:bg-rose-800 shadow-sm">
+                  <Headphones className="h-5 w-5 text-rose-600 dark:text-rose-300" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-rose-700 dark:text-rose-300">{stats.byType.support}</p>
+                  <p className="text-xs text-rose-600/80 dark:text-rose-400/80">Suportes</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900 border-0 shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-white dark:bg-yellow-800 shadow-sm">
+                  <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-300" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{stats.byType.nps}</p>
+                  <p className="text-xs text-yellow-600/80 dark:text-yellow-400/80">NPS</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Main Content Card */}
+      <Card className="border-0 shadow-xl bg-gradient-to-b from-background to-muted/20">
+        <CardHeader className="pb-4 border-b">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Clock className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <span className="text-lg">Histórico de Atividades</span>
+                <p className="text-sm font-normal text-muted-foreground mt-0.5">
+                  Acompanhe todas as ações da equipe em tempo real
+                </p>
+              </div>
+            </CardTitle>
             <div className="flex items-center gap-2">
-              <Label className="text-xs text-muted-foreground whitespace-nowrap">De:</Label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="h-8 w-36 text-sm"
-              />
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Label className="text-xs text-muted-foreground whitespace-nowrap">Até:</Label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="h-8 w-36 text-sm"
-              />
-            </div>
-
-            <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-              <SelectTrigger className="h-8 w-[180px] text-sm">
-                <Building2 className="h-3 w-3 mr-1" />
-                <SelectValue placeholder="Empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas empresas</SelectItem>
-                {companies.map((company) => (
-                  <SelectItem key={company.id} value={company.id}>
-                    {company.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <div className="flex items-center gap-2">
-              <Label className="text-xs text-muted-foreground whitespace-nowrap">Usuário:</Label>
-              <Input
-                type="text"
-                placeholder="Buscar por nome..."
-                value={staffNameSearch}
-                onChange={(e) => setStaffNameSearch(e.target.value)}
-                className="h-8 w-40 text-sm"
-              />
-            </div>
-
-            <Select value={selectedStaff} onValueChange={setSelectedStaff}>
-              <SelectTrigger className="h-8 w-[180px] text-sm">
-                <User className="h-3 w-3 mr-1" />
-                <SelectValue placeholder="Usuário" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos usuários</SelectItem>
-                {staffMembers.map((staff) => (
-                  <SelectItem key={staff.id} value={staff.id}>
-                    {staff.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="h-8 w-[150px] text-sm">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos tipos</SelectItem>
-                <SelectItem value="task_history">Tarefas</SelectItem>
-                <SelectItem value="meeting">Reuniões</SelectItem>
-                <SelectItem value="support">Suporte</SelectItem>
-                <SelectItem value="nps">NPS</SelectItem>
-                <SelectItem value="goal">Metas</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {(dateFrom || dateTo || selectedCompany !== "all" || selectedStaff !== "all" || selectedType !== "all" || staffNameSearch.trim()) && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8">
-                <X className="h-3 w-3 mr-1" />
-                Limpar
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowFilters(!showFilters)}
+                className="gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                Filtros
+                {showFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Activity List */}
-        <ScrollArea className="h-[600px]">
-          {filteredActivities.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              Nenhuma atividade encontrada com os filtros selecionados
+              <Button variant="outline" size="sm" onClick={fetchActivities} className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Atualizar
+              </Button>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredActivities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-shrink-0 mt-0.5">
-                    {getActivityIcon(activity.type, activity.action)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {getTypeBadge(activity.type)}
-                      {activity.staffName && (
-                        <span className="text-sm font-medium">{activity.staffName}</span>
-                      )}
-                      {activity.companyName && (
-                        <Badge variant="secondary" className="text-xs">
-                          <Building2 className="h-3 w-3 mr-1" />
-                          {activity.companyName}
-                        </Badge>
-                      )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-6 space-y-4">
+          {/* Filters */}
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="p-4 bg-muted/30 rounded-xl border border-border/50 space-y-4">
+                  <div className="flex flex-wrap gap-4">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Período:</Label>
+                      <Input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                        className="h-9 w-36 text-sm bg-background"
+                      />
+                      <span className="text-muted-foreground">—</span>
+                      <Input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                        className="h-9 w-36 text-sm bg-background"
+                      />
                     </div>
-                    <p className="text-sm mt-1">{activity.description}</p>
-                    {activity.details?.taskTitle && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Tarefa: {activity.details.taskTitle}
-                      </p>
+
+                    <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                      <SelectTrigger className="h-9 w-[200px] text-sm bg-background">
+                        <Building2 className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                        <SelectValue placeholder="Empresa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas empresas</SelectItem>
+                        {companies.map((company) => (
+                          <SelectItem key={company.id} value={company.id}>
+                            {company.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="text"
+                        placeholder="Buscar usuário..."
+                        value={staffNameSearch}
+                        onChange={(e) => setStaffNameSearch(e.target.value)}
+                        className="h-9 w-44 text-sm bg-background"
+                      />
+                    </div>
+
+                    <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+                      <SelectTrigger className="h-9 w-[180px] text-sm bg-background">
+                        <User className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                        <SelectValue placeholder="Usuário" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos usuários</SelectItem>
+                        {staffMembers.map((staff) => (
+                          <SelectItem key={staff.id} value={staff.id}>
+                            {staff.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={selectedType} onValueChange={setSelectedType}>
+                      <SelectTrigger className="h-9 w-[150px] text-sm bg-background">
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos tipos</SelectItem>
+                        <SelectItem value="task_history">Tarefas</SelectItem>
+                        <SelectItem value="meeting">Reuniões</SelectItem>
+                        <SelectItem value="support">Suporte</SelectItem>
+                        <SelectItem value="nps">NPS</SelectItem>
+                        <SelectItem value="goal">Metas</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {hasActiveFilters && (
+                      <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 gap-2 text-destructive hover:text-destructive">
+                        <X className="h-3.5 w-3.5" />
+                        Limpar filtros
+                      </Button>
                     )}
-                    {activity.type === "nps" && activity.details?.feedback && (
-                      <p className="text-xs text-muted-foreground mt-1 italic">
-                        "{activity.details.feedback}"
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {format(new Date(activity.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
-      </CardContent>
-    </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Activity List - Grouped by Date */}
+          <ScrollArea className="h-[600px] pr-4">
+            {filteredActivities.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="p-4 rounded-full bg-muted/50 mb-4">
+                  <Activity className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="font-medium text-lg">Nenhuma atividade encontrada</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Ajuste os filtros para ver mais resultados
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {Object.entries(groupedActivities).map(([dateKey, dayActivities], groupIndex) => (
+                  <motion.div
+                    key={dateKey}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: groupIndex * 0.05 }}
+                  >
+                    {/* Date Header */}
+                    <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm py-2 mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-border" />
+                        <span className="text-sm font-medium text-muted-foreground capitalize px-3 py-1 bg-muted/50 rounded-full">
+                          {getDateLabel(dateKey)}
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          {dayActivities.length}
+                        </Badge>
+                        <div className="h-px flex-1 bg-border" />
+                      </div>
+                    </div>
+
+                    {/* Activities for this date */}
+                    <div className="space-y-2">
+                      {dayActivities.map((activity, index) => (
+                        <motion.div
+                          key={activity.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.02 }}
+                          className={`relative flex gap-4 p-4 rounded-xl border transition-all duration-200 hover:shadow-md ${getActivityBgColor(activity.type, activity.action)}`}
+                        >
+                          {/* Icon */}
+                          <div className="flex-shrink-0">
+                            <div className="p-2 rounded-lg bg-background shadow-sm">
+                              {getActivityIcon(activity.type, activity.action)}
+                            </div>
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                                  {getTypeBadge(activity.type)}
+                                  {activity.staffName && (
+                                    <span className="text-sm font-semibold">{activity.staffName}</span>
+                                  )}
+                                  {activity.companyName && (
+                                    <Badge variant="outline" className="text-xs font-normal gap-1">
+                                      <Building2 className="h-3 w-3" />
+                                      {activity.companyName}
+                                    </Badge>
+                                  )}
+                                </div>
+                                
+                                <p className="text-sm text-foreground/90">{activity.description}</p>
+                                
+                                {activity.details?.taskTitle && (
+                                  <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5">
+                                    <FileText className="h-3 w-3" />
+                                    {activity.details.taskTitle}
+                                  </p>
+                                )}
+
+                                {activity.type === "nps" && activity.details?.score !== undefined && (
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <span className={`text-2xl font-bold ${getNPSColor(activity.details.score)}`}>
+                                      {activity.details.score}
+                                    </span>
+                                    {activity.details.feedback && (
+                                      <p className="text-xs text-muted-foreground italic line-clamp-2">
+                                        "{activity.details.feedback}"
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {format(new Date(activity.date), "HH:mm", { locale: ptBR })}
+                              </span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
