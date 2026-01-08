@@ -40,10 +40,12 @@ interface NPSHistoryPanelProps {
 
 export function NPSHistoryPanel({ projectId, currentNps, userRole }: NPSHistoryPanelProps) {
   const [responses, setResponses] = useState<NPSResponse[]>([]);
+  const [csatStats, setCsatStats] = useState<{ average: number | null; total: number }>({ average: null, total: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchResponses();
+    fetchCSATStats();
   }, [projectId]);
 
   const fetchResponses = async () => {
@@ -60,6 +62,22 @@ export function NPSHistoryPanel({ projectId, currentNps, userRole }: NPSHistoryP
       console.error('Error fetching NPS responses:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCSATStats = async () => {
+    try {
+      const { data } = await supabase
+        .from('csat_responses')
+        .select('score')
+        .eq('project_id', projectId);
+
+      if (data && data.length > 0) {
+        const avg = data.reduce((sum, r) => sum + r.score, 0) / data.length;
+        setCsatStats({ average: avg, total: data.length });
+      }
+    } catch (error) {
+      console.error('Error fetching CSAT stats:', error);
     }
   };
 
@@ -144,7 +162,7 @@ export function NPSHistoryPanel({ projectId, currentNps, userRole }: NPSHistoryP
       )}
 
       {/* NPS Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
@@ -176,7 +194,7 @@ export function NPSHistoryPanel({ projectId, currentNps, userRole }: NPSHistoryP
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-1">Média Histórica</p>
+              <p className="text-sm text-muted-foreground mb-1">Média NPS</p>
               <span className="text-3xl font-bold text-primary">
                 {averageNps || '--'}
               </span>
@@ -187,7 +205,21 @@ export function NPSHistoryPanel({ projectId, currentNps, userRole }: NPSHistoryP
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-1">Total de Respostas</p>
+              <p className="text-sm text-muted-foreground mb-1">CSAT Médio</p>
+              <span className="text-3xl font-bold text-yellow-500">
+                {csatStats.average ? csatStats.average.toFixed(1) : '--'}
+              </span>
+              {csatStats.total > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">{csatStats.total} respostas</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-1">Total NPS</p>
               <span className="text-3xl font-bold text-primary">
                 {responses.length}
               </span>

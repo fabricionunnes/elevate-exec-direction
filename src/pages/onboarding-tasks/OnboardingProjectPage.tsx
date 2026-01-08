@@ -74,7 +74,8 @@ import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistor
 import { MeetingHistoryPanel } from "@/components/onboarding-tasks/MeetingHistoryPanel";
 import { AssessmentsPanel } from "@/components/assessments/AssessmentsPanel";
 import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
-import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink } from "lucide-react";
+import { CSATConfigPanel } from "@/components/onboarding-tasks/CSATConfigPanel";
+import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
 interface OnboardingTask {
@@ -1170,6 +1171,10 @@ const OnboardingProjectPage = () => {
                 <Brain className="h-4 w-4" />
                 <span className="hidden sm:inline">Avaliações</span>
               </TabsTrigger>
+              <TabsTrigger value="csat" className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted">
+                <Star className="h-4 w-4" />
+                <span className="hidden sm:inline">CSAT</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -1345,6 +1350,13 @@ const OnboardingProjectPage = () => {
 
           <TabsContent value="meetings">
             <MeetingHistoryPanel projectId={projectId!} />
+          </TabsContent>
+
+          <TabsContent value="csat">
+            <CSATConfigPanel
+              projectId={projectId!}
+              userRole={isAdmin ? 'admin' : currentUserRole as 'cs' | 'consultant' | undefined}
+            />
           </TabsContent>
 
           <TabsContent value="assessments">
