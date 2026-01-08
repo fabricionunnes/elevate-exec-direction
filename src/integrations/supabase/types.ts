@@ -2325,13 +2325,16 @@ export type Database = {
           created_by: string | null
           id: string
           new_end_date: string
+          new_start_date: string | null
           new_term_months: number | null
           new_value: number
           notes: string | null
           previous_end_date: string | null
+          previous_start_date: string | null
           previous_term_months: number | null
           previous_value: number | null
           renewal_date: string | null
+          status: string | null
         }
         Insert: {
           company_id: string
@@ -2339,13 +2342,16 @@ export type Database = {
           created_by?: string | null
           id?: string
           new_end_date: string
+          new_start_date?: string | null
           new_term_months?: number | null
           new_value: number
           notes?: string | null
           previous_end_date?: string | null
+          previous_start_date?: string | null
           previous_term_months?: number | null
           previous_value?: number | null
           renewal_date?: string | null
+          status?: string | null
         }
         Update: {
           company_id?: string
@@ -2353,13 +2359,16 @@ export type Database = {
           created_by?: string | null
           id?: string
           new_end_date?: string
+          new_start_date?: string | null
           new_term_months?: number | null
           new_value?: number
           notes?: string | null
           previous_end_date?: string | null
+          previous_start_date?: string | null
           previous_term_months?: number | null
           previous_value?: number | null
           renewal_date?: string | null
+          status?: string | null
         }
         Relationships: [
           {
