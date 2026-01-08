@@ -242,13 +242,18 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
   const syncCalendarEvents = async () => {
     try {
-      // Use the project's consultant calendar if available, otherwise current user's
-      const targetUserId = projectConsultantUserId || undefined;
-      const checkConnectionUrl = targetUserId 
-        ? `google-calendar?action=check-connection&target_user_id=${targetUserId}`
-        : "google-calendar?action=check-connection";
+      // IMPORTANT: Only sync the consultant's calendar, never admin/CS calendars
+      // If there's no consultant assigned, don't sync at all
+      if (!projectConsultantUserId) {
+        console.log("No consultant assigned to project, skipping calendar sync");
+        setCalendarConnected(false);
+        return;
+      }
 
-      // Check if calendar is connected
+      const targetUserId = projectConsultantUserId;
+      const checkConnectionUrl = `google-calendar?action=check-connection&target_user_id=${targetUserId}`;
+
+      // Check if consultant's calendar is connected
       const { data: connectionData } = await supabase.functions.invoke(checkConnectionUrl, {
         body: {},
       });
@@ -260,10 +265,8 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
       setCalendarConnected(true);
 
-      // Fetch events from Google Calendar (using consultant's calendar)
-      const eventsUrl = targetUserId 
-        ? `google-calendar?action=events&target_user_id=${targetUserId}`
-        : "google-calendar?action=events";
+      // Fetch events from consultant's Google Calendar only
+      const eventsUrl = `google-calendar?action=events&target_user_id=${targetUserId}`;
 
       const { data } = await supabase.functions.invoke(eventsUrl, {
         body: {},
@@ -336,11 +339,14 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // Use consultant's calendar for recordings sync
-      const targetUserId = projectConsultantUserId || undefined;
-      const syncUrl = targetUserId
-        ? `google-calendar?action=sync-recordings&target_user_id=${targetUserId}`
-        : "google-calendar?action=sync-recordings";
+      // IMPORTANT: Only sync recordings from consultant's calendar
+      // If there's no consultant assigned, don't sync recordings
+      if (!projectConsultantUserId) {
+        console.log("No consultant assigned to project, skipping recordings sync");
+        return;
+      }
+
+      const syncUrl = `google-calendar?action=sync-recordings&target_user_id=${projectConsultantUserId}`;
 
       const response = await supabase.functions.invoke(syncUrl, {
         body: { projectId },
