@@ -3049,6 +3049,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           crm_link: string | null
+          crm_login: string | null
+          crm_password: string | null
           cs_id: string | null
           current_blockers: string | null
           current_nps: number | null
@@ -3081,6 +3083,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           crm_link?: string | null
+          crm_login?: string | null
+          crm_password?: string | null
           cs_id?: string | null
           current_blockers?: string | null
           current_nps?: number | null
@@ -3113,6 +3117,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           crm_link?: string | null
+          crm_login?: string | null
+          crm_password?: string | null
           cs_id?: string | null
           current_blockers?: string | null
           current_nps?: number | null
