@@ -1836,6 +1836,51 @@ export type Database = {
           },
         ]
       }
+      kpi_monthly_targets: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          kpi_id: string
+          month_year: string
+          target_value: number
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          kpi_id: string
+          month_year: string
+          target_value?: number
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          kpi_id?: string
+          month_year?: string
+          target_value?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_monthly_targets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_monthly_targets_kpi_id_fkey"
+            columns: ["kpi_id"]
+            isOneToOne: false
+            referencedRelation: "company_kpis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mastermind_applications: {
         Row: {
           agrees_confidentiality: boolean

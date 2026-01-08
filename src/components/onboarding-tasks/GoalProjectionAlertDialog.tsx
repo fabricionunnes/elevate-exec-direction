@@ -82,6 +82,7 @@ export const GoalProjectionAlertDialog = ({
       }
 
       const companyId = project.onboarding_company_id;
+      const currentMonthYear = format(today, "yyyy-MM");
 
       // Check if ANY KPI has a target value set (not just monetary)
       const { data: allKpis } = await supabase
@@ -90,14 +91,35 @@ export const GoalProjectionAlertDialog = ({
         .eq("company_id", companyId)
         .eq("is_active", true);
 
-      // If any KPI has a target_value > 0, consider that a goal exists
-      const hasGoal = allKpis && allKpis.length > 0 && allKpis.some(k => k.target_value > 0);
+      // Also check for monthly targets for the current month
+      const { data: monthlyTargets } = await supabase
+        .from("kpi_monthly_targets")
+        .select("kpi_id, target_value")
+        .eq("company_id", companyId)
+        .eq("month_year", currentMonthYear);
+
+      // Build a map of monthly targets for quick lookup
+      const monthlyTargetMap: Record<string, number> = {};
+      (monthlyTargets || []).forEach((mt: any) => {
+        monthlyTargetMap[mt.kpi_id] = mt.target_value;
+      });
+
+      // Check if any KPI has a target (either monthly or default)
+      const hasGoal = allKpis && allKpis.length > 0 && allKpis.some(k => {
+        const monthlyTarget = monthlyTargetMap[k.id];
+        const effectiveTarget = monthlyTarget !== undefined ? monthlyTarget : k.target_value;
+        return effectiveTarget > 0;
+      });
       
       // Get monetary KPIs for projection calculation
       const monetaryKpis = allKpis?.filter(k => k.kpi_type === "currency") || [];
       
-      // Calculate total target from monetary KPIs for projection display
-      const salesTarget = monetaryKpis.reduce((sum, kpi) => sum + (kpi.target_value || 0), 0);
+      // Calculate total target from monetary KPIs (use monthly target if exists, else default)
+      const salesTarget = monetaryKpis.reduce((sum, kpi) => {
+        const monthlyTarget = monthlyTargetMap[kpi.id];
+        const effectiveTarget = monthlyTarget !== undefined ? monthlyTarget : kpi.target_value;
+        return sum + (effectiveTarget || 0);
+      }, 0);
 
       // Get current month entries for monetary KPIs
       const monthStart = format(startOfMonth(today), "yyyy-MM-dd");

@@ -29,7 +29,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar } from "lucide-react";
+import { KPIMonthlyTargetsDialog } from "./KPIMonthlyTargetsDialog";
 
 interface KPI {
   id: string;
@@ -52,6 +53,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin }: KPIConfigurationTabP
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
+  const [showMonthlyTargets, setShowMonthlyTargets] = useState(false);
   const [editingKpi, setEditingKpi] = useState<KPI | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -232,14 +234,21 @@ export const KPIConfigurationTab = ({ companyId, isAdmin }: KPIConfigurationTabP
             Configure os indicadores que serão acompanhados para esta empresa
           </p>
         </div>
-        {isAdmin && (
-          <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo KPI
-              </Button>
-            </DialogTrigger>
+        <div className="flex gap-2">
+          {isAdmin && (
+            <Button variant="outline" onClick={() => setShowMonthlyTargets(true)}>
+              <Calendar className="h-4 w-4 mr-2" />
+              Metas Mensais
+            </Button>
+          )}
+          {isAdmin && (
+            <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) resetForm(); }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo KPI
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>{editingKpi ? "Editar KPI" : "Novo KPI"}</DialogTitle>
@@ -326,7 +335,16 @@ export const KPIConfigurationTab = ({ companyId, isAdmin }: KPIConfigurationTabP
             </DialogContent>
           </Dialog>
         )}
+        </div>
       </div>
+
+      <KPIMonthlyTargetsDialog
+        open={showMonthlyTargets}
+        onOpenChange={setShowMonthlyTargets}
+        companyId={companyId}
+        kpis={kpis}
+        onSaved={() => fetchKpis()}
+      />
 
       {kpis.length === 0 ? (
         <Card>
