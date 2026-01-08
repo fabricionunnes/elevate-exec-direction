@@ -646,8 +646,10 @@ export default function OnboardingRenewalsPage() {
     // Exclude inactive companies
     if (company.status === "inactive") return false;
 
-    // Recurrence = no contract_end_date (same logic as companies report)
-    // These contracts renew automatically, no manual renewal needed
+    // Exclude recurring billing (same logic as dashboard)
+    if (company.payment_method === "monthly") return false;
+
+    // Exclude companies without contract_end_date
     if (!company.contract_end_date) return false;
 
     const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -685,7 +687,7 @@ export default function OnboardingRenewalsPage() {
   // Count pending from previous periods
   const pendingFromPastCount = companies.filter(c => {
     if (c.status === "inactive") return false;
-    // Recurrence = no contract_end_date, skip
+    if (c.payment_method === "monthly") return false;
     if (!c.contract_end_date) return false;
     const endDate = parseISO(c.contract_end_date);
     return isBefore(endDate, currentPeriodRange.start);
