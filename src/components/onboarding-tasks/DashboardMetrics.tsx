@@ -21,7 +21,8 @@ import {
   Percent,
   FileWarning,
   DollarSign,
-  Calendar
+  Calendar,
+  HeartPulse
 } from "lucide-react";
 import { format, isBefore, startOfDay, isWithinInterval, eachDayOfInterval, parseISO, eachMonthOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -118,6 +119,7 @@ const DashboardMetrics = ({
   const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
   const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number }[]>([]);
   const [contractRenewals, setContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
+  const [healthScores, setHealthScores] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
   const [tasksDialogType, setTasksDialogType] = useState<"overdue" | "today" | "status">("overdue");
@@ -157,22 +159,25 @@ const DashboardMetrics = ({
         setInternalTasks(allTasksData);
       }
 
-      const [npsResult, kpisResult, entriesResult, renewalsResult] = await Promise.all([
+      const [npsResult, kpisResult, entriesResult, renewalsResult, healthResult] = await Promise.all([
         supabase.from("onboarding_nps_responses").select("id, project_id, score, feedback, what_can_improve, would_recommend_why, respondent_name, respondent_email, created_at").order("created_at", { ascending: false }),
         supabase.from("company_kpis").select("id, company_id, kpi_type, periodicity, target_value").eq("is_active", true),
         supabase.from("kpi_entries").select("company_id, kpi_id, value, entry_date"),
         supabase.from("onboarding_contract_renewals").select("company_id, renewal_date"),
+        supabase.from("client_health_scores").select("project_id, total_score, risk_level"),
       ]);
 
       if (npsResult.error) throw npsResult.error;
       if (kpisResult.error) throw kpisResult.error;
       if (entriesResult.error) throw entriesResult.error;
       if (renewalsResult.error) throw renewalsResult.error;
+      if (healthResult.error) throw healthResult.error;
 
       setNpsResponses(npsResult.data || []);
       setCompanyKpis(kpisResult.data || []);
       setKpiEntries(entriesResult.data || []);
       setContractRenewals((renewalsResult.data as any) || []);
+      setHealthScores(healthResult.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -406,6 +411,23 @@ const DashboardMetrics = ({
     return { averageNps, promoters, detractors, neutrals, totalResponses, respondedCount, notRespondedCount, responseRate, totalProjects: totalFilteredProjects };
   }, [projects, npsResponses]);
 
+  const healthMetrics = useMemo(() => {
+    const filteredProjectIds = new Set(projects.map(p => p.id));
+    const filteredScores = healthScores.filter(h => filteredProjectIds.has(h.project_id));
+    
+    if (filteredScores.length === 0) {
+      return { averageScore: null, critical: 0, warning: 0, healthy: 0, excellent: 0, totalWithScore: 0 };
+    }
+    
+    const averageScore = Math.round(filteredScores.reduce((sum, h) => sum + h.total_score, 0) / filteredScores.length);
+    const critical = filteredScores.filter(h => h.risk_level === "critical").length;
+    const warning = filteredScores.filter(h => h.risk_level === "warning" || h.risk_level === "high").length;
+    const healthy = filteredScores.filter(h => h.risk_level === "healthy" || h.risk_level === "medium").length;
+    const excellent = filteredScores.filter(h => h.risk_level === "excellent" || h.risk_level === "low").length;
+    
+    return { averageScore, critical, warning, healthy, excellent, totalWithScore: filteredScores.length };
+  }, [projects, healthScores]);
+
   const goalsMetrics = useMemo(() => {
     const periodMonth = dateRange.start.getMonth() + 1;
     const periodYear = dateRange.start.getFullYear();
@@ -556,7 +578,7 @@ const DashboardMetrics = ({
   return (
     <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
       {/* Summary Row - Always Visible - Mobile Optimized */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
         <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "active") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "active")}>
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
@@ -624,6 +646,34 @@ const DashboardMetrics = ({
                   {npsMetrics.averageNps ?? "—"}
                 </p>
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate">NPS</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hidden sm:block">
+          <CardContent className="p-2 sm:p-3">
+            <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
+              <div className={cn("h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center shrink-0", 
+                healthMetrics.averageScore === null ? "bg-gray-400/10" : 
+                healthMetrics.averageScore >= 80 ? "bg-green-500/10" : 
+                healthMetrics.averageScore >= 60 ? "bg-yellow-500/10" : 
+                healthMetrics.averageScore >= 40 ? "bg-orange-500/10" : "bg-red-500/10")}>
+                <HeartPulse className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", 
+                  healthMetrics.averageScore === null ? "text-gray-400" : 
+                  healthMetrics.averageScore >= 80 ? "text-green-500" : 
+                  healthMetrics.averageScore >= 60 ? "text-yellow-500" : 
+                  healthMetrics.averageScore >= 40 ? "text-orange-500" : "text-red-500")} />
+              </div>
+              <div className="text-center sm:text-left min-w-0">
+                <p className={cn("text-base sm:text-lg font-bold leading-none", 
+                  healthMetrics.averageScore === null ? "text-muted-foreground" : 
+                  healthMetrics.averageScore >= 80 ? "text-green-500" : 
+                  healthMetrics.averageScore >= 60 ? "text-yellow-500" : 
+                  healthMetrics.averageScore >= 40 ? "text-orange-500" : "text-red-500")}>
+                  {healthMetrics.averageScore ?? "—"}
+                </p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate">Saúde</p>
               </div>
             </div>
           </CardContent>
