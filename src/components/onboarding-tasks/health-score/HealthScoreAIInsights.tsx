@@ -23,31 +23,68 @@ export const HealthScoreAIInsights = ({ projectId }: HealthScoreAIInsightsProps)
     setInsights("");
 
     try {
-      const response = await supabase.functions.invoke("health-analysis", {
-        body: { projectId },
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/health-analysis`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.access_token}`,
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ projectId }),
+        }
+      );
 
-      if (response.error) {
-        throw new Error(response.error.message);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Erro ao gerar análise");
+      }
+
+      if (!response.body) {
+        throw new Error("Resposta sem corpo");
       }
 
       // Handle streaming response
-      const reader = response.data.getReader();
+      const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullContent = "";
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
           if (line.startsWith("data: ")) {
-            const data = line.slice(6);
+            const data = line.slice(6).trim();
             if (data === "[DONE]") continue;
 
+            try {
+              const parsed = JSON.parse(data);
+              const content = parsed.choices?.[0]?.delta?.content || "";
+              fullContent += content;
+              setInsights(fullContent);
+            } catch (e) {
+              // Skip invalid JSON
+            }
+          }
+        }
+      }
+
+      // Process remaining buffer
+      if (buffer.trim()) {
+        const lines = buffer.split("\n");
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6).trim();
+            if (data === "[DONE]") continue;
             try {
               const parsed = JSON.parse(data);
               const content = parsed.choices?.[0]?.delta?.content || "";
