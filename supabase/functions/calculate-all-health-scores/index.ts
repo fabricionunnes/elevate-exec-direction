@@ -271,9 +271,9 @@ async function calculateProjectHealthScore(
       (trendScore * weights.trend_weight) / 100
   );
 
-  // Apply cancellation penalty
+  // Apply cancellation penalty - heavy penalty for signaled cancellations
   if (isCancellationStatus) {
-    totalScore = Math.max(0, totalScore - 30);
+    totalScore = Math.max(0, totalScore - 50);
   }
 
   // Determine risk level
