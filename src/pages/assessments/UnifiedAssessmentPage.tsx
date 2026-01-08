@@ -283,12 +283,15 @@ export default function UnifiedAssessmentPage() {
       }
     }
 
-    // Validate required climate questions
-    const requiredClimateQuestions = climateQuestions.filter(q => q.required);
-    for (const q of requiredClimateQuestions) {
-      if (climateAnswers[q.id] === undefined) {
-        toast.error("Por favor, responda todas as perguntas obrigatórias da pesquisa de clima");
-        return;
+    // Validate required climate questions only if climate step was shown
+    const hasClimateAnswers = Object.keys(climateAnswers).length > 0;
+    if (hasClimateAnswers) {
+      const requiredClimateQuestions = climateQuestions.filter(q => q.required);
+      for (const q of requiredClimateQuestions) {
+        if (climateAnswers[q.id] === undefined) {
+          toast.error("Por favor, responda todas as perguntas obrigatórias da pesquisa de clima");
+          return;
+        }
       }
     }
 
@@ -365,38 +368,41 @@ export default function UnifiedAssessmentPage() {
         if (error360) throw error360;
       }
 
-      // Save climate survey response
-      const { error: climateError } = await supabase.from("climate_survey_responses").insert({
-        cycle_id: cycleId,
-        participant_id: participant.id,
-        respondent_name: respondentName.trim(),
-        respondent_email: respondentEmail.trim() || null,
-        company_satisfaction: climateAnswers.company_satisfaction as number || null,
-        organizational_culture: climateAnswers.organizational_culture as number || null,
-        feels_valued: climateAnswers.feels_valued as string || null,
-        communication_with_superiors: climateAnswers.communication_with_superiors as number || null,
-        superior_interest_development: climateAnswers.superior_interest_development as number || null,
-        feels_supported: climateAnswers.feels_supported as number || null,
-        has_growth_opportunities: climateAnswers.has_growth_opportunities as boolean || null,
-        receives_feedback: climateAnswers.receives_feedback as string || null,
-        training_rating: climateAnswers.training_rating as number || null,
-        company_values_balance: climateAnswers.company_values_balance as boolean || null,
-        company_offers_wellness: climateAnswers.company_offers_wellness as boolean || null,
-        manages_responsibilities: climateAnswers.manages_responsibilities as boolean || null,
-        feels_valued_for_work: climateAnswers.feels_valued_for_work as boolean || null,
-        adequate_recognition: climateAnswers.adequate_recognition as boolean || null,
-        rewards_rating: climateAnswers.rewards_rating as number || null,
-        feels_comfortable_safe: climateAnswers.feels_comfortable_safe as boolean || null,
-        good_coworker_relationship: climateAnswers.good_coworker_relationship as boolean || null,
-        diversity_inclusion: climateAnswers.diversity_inclusion as number || null,
-        what_company_does_well: climateAnswers.what_company_does_well as string || null,
-        what_company_should_improve: climateAnswers.what_company_should_improve as string || null,
-        enjoys_working_score: climateAnswers.enjoys_working_score as number || null,
-        would_recommend_score: climateAnswers.would_recommend_score as number || null,
-        open_feedback: climateAnswers.open_feedback as string || null,
-      });
+      // Save climate survey response only if there are answers
+      const hasClimateAnswers = Object.keys(climateAnswers).length > 0;
+      if (hasClimateAnswers) {
+        const { error: climateError } = await supabase.from("climate_survey_responses").insert({
+          cycle_id: cycleId,
+          participant_id: participant.id,
+          respondent_name: respondentName.trim(),
+          respondent_email: respondentEmail.trim() || null,
+          company_satisfaction: climateAnswers.company_satisfaction as number || null,
+          organizational_culture: climateAnswers.organizational_culture as number || null,
+          feels_valued: climateAnswers.feels_valued as string || null,
+          communication_with_superiors: climateAnswers.communication_with_superiors as number || null,
+          superior_interest_development: climateAnswers.superior_interest_development as number || null,
+          feels_supported: climateAnswers.feels_supported as number || null,
+          has_growth_opportunities: climateAnswers.has_growth_opportunities as boolean || null,
+          receives_feedback: climateAnswers.receives_feedback as string || null,
+          training_rating: climateAnswers.training_rating as number || null,
+          company_values_balance: climateAnswers.company_values_balance as boolean || null,
+          company_offers_wellness: climateAnswers.company_offers_wellness as boolean || null,
+          manages_responsibilities: climateAnswers.manages_responsibilities as boolean || null,
+          feels_valued_for_work: climateAnswers.feels_valued_for_work as boolean || null,
+          adequate_recognition: climateAnswers.adequate_recognition as boolean || null,
+          rewards_rating: climateAnswers.rewards_rating as number || null,
+          feels_comfortable_safe: climateAnswers.feels_comfortable_safe as boolean || null,
+          good_coworker_relationship: climateAnswers.good_coworker_relationship as boolean || null,
+          diversity_inclusion: climateAnswers.diversity_inclusion as number || null,
+          what_company_does_well: climateAnswers.what_company_does_well as string || null,
+          what_company_should_improve: climateAnswers.what_company_should_improve as string || null,
+          enjoys_working_score: climateAnswers.enjoys_working_score as number || null,
+          would_recommend_score: climateAnswers.would_recommend_score as number || null,
+          open_feedback: climateAnswers.open_feedback as string || null,
+        });
 
-      if (climateError) throw climateError;
+        if (climateError) throw climateError;
+      }
 
       setStep("success");
       toast.success("Avaliação enviada com sucesso!");
