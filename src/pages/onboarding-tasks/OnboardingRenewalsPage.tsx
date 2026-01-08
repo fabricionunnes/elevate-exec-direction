@@ -646,13 +646,10 @@ export default function OnboardingRenewalsPage() {
     // Exclude inactive companies
     if (company.status === "inactive") return false;
 
-    // Exclude recurring billing (payment method monthly)
-    if (company.payment_method === "monthly") return false;
+    // Only show contracts paid by card (same source of truth as Relatório de Empresas)
+    if (company.payment_method !== "card") return false;
 
-    // Exclude monthly plans (automatic renewal, no manual intervention needed)
-    if (company.renewal_plan_type === "monthly") return false;
-
-    // Exclude companies without contract_end_date
+    // Only companies with a defined contract end date require renewal
     if (!company.contract_end_date) return false;
 
     const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -670,16 +667,16 @@ export default function OnboardingRenewalsPage() {
     const matchesPeriod = endsInSelectedPeriod || isPendingFromPast;
 
     if (!matchesPeriod) return false;
-    
+
     // Status filter
     if (filterStatus === "all") return matchesSearch;
-    
+
     const status = getContractStatus(company.contract_end_date);
     if (filterStatus === "expired") return matchesSearch && status.label === "Vencido";
     if (filterStatus === "soon") return matchesSearch && (status.label === "Vence em breve" || status.label === "Atenção");
     if (filterStatus === "active") return matchesSearch && status.label === "Ativo";
     if (filterStatus === "no_date") return matchesSearch && status.label === "Sem data";
-    
+
     return matchesSearch;
   }).sort((a, b) => {
     const statusA = getContractStatus(a.contract_end_date);
@@ -690,8 +687,7 @@ export default function OnboardingRenewalsPage() {
   // Count pending from previous periods
   const pendingFromPastCount = companies.filter(c => {
     if (c.status === "inactive") return false;
-    if (c.payment_method === "monthly") return false;
-    if (c.renewal_plan_type === "monthly") return false;
+    if (c.payment_method !== "card") return false;
     if (!c.contract_end_date) return false;
     const endDate = parseISO(c.contract_end_date);
     return isBefore(endDate, currentPeriodRange.start);
