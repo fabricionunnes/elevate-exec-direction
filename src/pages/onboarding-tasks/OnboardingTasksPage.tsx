@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3 } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart } from "lucide-react";
+import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
@@ -113,6 +114,7 @@ const OnboardingTasksPage = () => {
   const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null; churn_date: string | null }[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
+  const [healthScoresByProject, setHealthScoresByProject] = useState<Map<string, { total_score: number; risk_level: string }>>(new Map());
   
   // Announcement dialog state
   const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
@@ -138,6 +140,7 @@ const OnboardingTasksPage = () => {
           fetchFiltersData(),
           fetchNpsResponses(),
           fetchMonthlyGoals(),
+          fetchHealthScores(),
         ]);
         
         // Then fetch tasks and companies (companies now depends on tasks)
@@ -205,6 +208,27 @@ const OnboardingTasksPage = () => {
       setMonthlyGoals(data || []);
     } catch (error) {
       console.error("Error fetching monthly goals:", error);
+    }
+  };
+
+  const fetchHealthScores = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("client_health_scores")
+        .select("project_id, total_score, risk_level");
+
+      if (error) throw error;
+      
+      const scoresMap = new Map<string, { total_score: number; risk_level: string }>();
+      (data || []).forEach(score => {
+        scoresMap.set(score.project_id, {
+          total_score: score.total_score,
+          risk_level: score.risk_level || "unknown"
+        });
+      });
+      setHealthScoresByProject(scoresMap);
+    } catch (error) {
+      console.error("Error fetching health scores:", error);
     }
   };
 
@@ -1276,7 +1300,29 @@ const OnboardingTasksPage = () => {
               )}
             </div>
 
-            {paginatedCompanies.map((company) => (
+            {paginatedCompanies.map((company) => {
+              // Calculate company health score (average of all projects)
+              const companyHealthData = (() => {
+                const projectScores = (company.projects || [])
+                  .map(p => healthScoresByProject.get(p.id))
+                  .filter(Boolean) as { total_score: number; risk_level: string }[];
+                
+                if (projectScores.length === 0) return null;
+                
+                const avgScore = Math.round(
+                  projectScores.reduce((sum, s) => sum + s.total_score, 0) / projectScores.length
+                );
+                
+                // Determine overall risk level based on average score
+                let riskLevel = "healthy";
+                if (avgScore < 40) riskLevel = "critical";
+                else if (avgScore < 60) riskLevel = "at_risk";
+                else if (avgScore < 75) riskLevel = "attention";
+                
+                return { avgScore, riskLevel, riskInfo: getRiskLevelInfo(riskLevel) };
+              })();
+
+              return (
               <div key={company.id}>
                 {/* Company Card - Mobile Optimized */}
                 <Card
@@ -1307,14 +1353,29 @@ const OnboardingTasksPage = () => {
                               </>
                             ) : null}
                           </div>
-                          {/* Mobile: Show CS/Consultant inline */}
-                          <div className="flex sm:hidden flex-wrap gap-x-2 text-[10px] text-muted-foreground mt-1">
+                          {/* Mobile: Show CS/Consultant and Health inline */}
+                          <div className="flex sm:hidden flex-wrap items-center gap-x-2 text-[10px] text-muted-foreground mt-1">
                             <span>CS: {company.cs?.name || "—"}</span>
                             <span>Cons: {company.consultant?.name || "—"}</span>
+                            {companyHealthData && (
+                              <span className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${companyHealthData.riskInfo.bg}`}>
+                                <Heart className={`h-2.5 w-2.5 ${companyHealthData.riskInfo.color}`} />
+                                <span className={`font-semibold ${companyHealthData.riskInfo.color}`}>{companyHealthData.avgScore}</span>
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                        {/* Health Score Indicator */}
+                        {companyHealthData && (
+                          <div className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full ${companyHealthData.riskInfo.bg}`}>
+                            <Heart className={`h-3.5 w-3.5 ${companyHealthData.riskInfo.color}`} />
+                            <span className={`text-sm font-semibold ${companyHealthData.riskInfo.color}`}>
+                              {companyHealthData.avgScore}
+                            </span>
+                          </div>
+                        )}
                         {/* Desktop: Show CS/Consultant */}
                         <div className="hidden sm:block text-right text-sm">
                           <div className="text-muted-foreground">CS: {company.cs?.name || "—"}</div>
@@ -1440,7 +1501,8 @@ const OnboardingTasksPage = () => {
                   </div>
                 )}
               </div>
-            ))}
+            )})}
+
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
