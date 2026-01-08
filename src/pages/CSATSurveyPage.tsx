@@ -10,22 +10,12 @@ import { Star, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
-interface SurveyData {
+interface MeetingData {
   id: string;
+  meeting_title: string | null;
+  meeting_date: string | null;
   project_id: string;
-  meeting_id: string;
-  status: string;
-  config: {
-    main_question: string;
-    open_question: string;
-    scale_min: number;
-    scale_max: number;
-  };
-  meeting: {
-    meeting_title: string | null;
-    meeting_date: string | null;
-  };
-  project: {
+  project?: {
     product_name: string;
     company_name: string | null;
   };
@@ -33,83 +23,71 @@ interface SurveyData {
 
 const CSATSurveyPage = () => {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const meetingId = searchParams.get('meeting');
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [survey, setSurvey] = useState<SurveyData | null>(null);
+  const [meeting, setMeeting] = useState<MeetingData | null>(null);
   
   const [score, setScore] = useState<number | null>(null);
   const [feedback, setFeedback] = useState('');
   const [respondentName, setRespondentName] = useState('');
 
   useEffect(() => {
-    if (token) {
-      fetchSurvey();
+    if (meetingId) {
+      fetchMeeting();
     } else {
-      setError('Token de pesquisa não encontrado');
+      setError('Link de pesquisa inválido');
       setLoading(false);
     }
-  }, [token]);
+  }, [meetingId]);
 
-  const fetchSurvey = async () => {
+  const fetchMeeting = async () => {
     try {
-      // First, get the survey by token
-      const { data: surveyData, error: surveyError } = await supabase
-        .from('csat_surveys')
-        .select(`
-          id,
-          project_id,
-          meeting_id,
-          status,
-          meeting:onboarding_meeting_notes(meeting_title, meeting_date)
-        `)
-        .eq('access_token', token)
+      // Fetch meeting data
+      const { data: meetingData, error: meetingError } = await supabase
+        .from('onboarding_meeting_notes')
+        .select('id, meeting_title, meeting_date, project_id')
+        .eq('id', meetingId)
         .single();
 
-      if (surveyError || !surveyData) {
+      if (meetingError || !meetingData) {
         setError('Pesquisa não encontrada ou link inválido');
         setLoading(false);
         return;
       }
 
       // Check if already responded
-      if (surveyData.status === 'responded') {
+      const { data: existingResponse } = await supabase
+        .from('csat_responses')
+        .select('id')
+        .eq('meeting_id', meetingId)
+        .maybeSingle();
+
+      if (existingResponse) {
         setError('Esta pesquisa já foi respondida');
         setLoading(false);
         return;
       }
 
-      // Get project and config data
+      // Fetch project data
       const { data: projectData } = await supabase
         .from('onboarding_projects')
         .select('product_name, onboarding_company:onboarding_companies(name)')
-        .eq('id', surveyData.project_id)
+        .eq('id', meetingData.project_id)
         .single();
 
-      const { data: configData } = await supabase
-        .from('csat_configs')
-        .select('main_question, open_question, scale_min, scale_max')
-        .eq('project_id', surveyData.project_id)
-        .single();
-
-      setSurvey({
-        ...surveyData,
-        config: configData || {
-          main_question: 'De 1 a 5, o quanto você ficou satisfeito com a reunião de hoje?',
-          open_question: 'O que podemos melhorar?',
-          scale_min: 1,
-          scale_max: 5,
-        },
+      setMeeting({
+        ...meetingData,
         project: {
           product_name: projectData?.product_name || '',
-          company_name: projectData?.onboarding_company?.name || null,
+          company_name: (projectData?.onboarding_company as any)?.name || null,
         },
       });
     } catch (err) {
-      console.error('Error fetching survey:', err);
+      console.error('Error fetching meeting:', err);
       setError('Erro ao carregar pesquisa');
     } finally {
       setLoading(false);
@@ -117,7 +95,7 @@ const CSATSurveyPage = () => {
   };
 
   const handleSubmit = async () => {
-    if (score === null || !survey) {
+    if (score === null || !meeting) {
       toast.error('Por favor, selecione uma nota');
       return;
     }
@@ -127,16 +105,15 @@ const CSATSurveyPage = () => {
       const { error: insertError } = await supabase
         .from('csat_responses')
         .insert({
-          survey_id: survey.id,
-          project_id: survey.project_id,
-          meeting_id: survey.meeting_id,
+          meeting_id: meeting.id,
+          project_id: meeting.project_id,
+          survey_id: meeting.id, // Using meeting_id as survey_id for simplicity
           score,
           feedback: feedback || null,
           respondent_name: respondentName || null,
         });
 
       if (insertError) {
-        // Check for unique constraint violation
         if (insertError.code === '23505') {
           setError('Esta pesquisa já foi respondida');
           return;
@@ -233,14 +210,14 @@ const CSATSurveyPage = () => {
           <CardHeader className="text-center pb-2">
             <div className="flex items-center justify-center gap-2 mb-3">
               <Star className="h-6 w-6 text-yellow-500" />
-              <span className="text-xl font-semibold">Pesquisa CSAT</span>
+              <span className="text-xl font-semibold">Pesquisa de Satisfação</span>
             </div>
             <CardTitle className="text-lg">
-              {survey?.project.company_name || survey?.project.product_name}
+              {meeting?.project?.company_name || meeting?.project?.product_name}
             </CardTitle>
-            {survey?.meeting?.meeting_title && (
+            {meeting?.meeting_title && (
               <CardDescription>
-                Reunião: {survey.meeting.meeting_title}
+                Reunião: {meeting.meeting_title}
               </CardDescription>
             )}
           </CardHeader>
@@ -249,7 +226,7 @@ const CSATSurveyPage = () => {
             {/* Main Question */}
             <div className="space-y-4">
               <Label className="text-base font-medium block text-center">
-                {survey?.config.main_question}
+                De 1 a 5, o quanto você ficou satisfeito com a reunião de hoje?
               </Label>
 
               {/* Score Selection */}
@@ -285,18 +262,16 @@ const CSATSurveyPage = () => {
             </div>
 
             {/* Open Question */}
-            {survey?.config.open_question && (
-              <div className="space-y-2">
-                <Label htmlFor="feedback">{survey.config.open_question}</Label>
-                <Textarea
-                  id="feedback"
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                  placeholder="Seu feedback nos ajuda a melhorar..."
-                  rows={3}
-                />
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="feedback">O que podemos melhorar?</Label>
+              <Textarea
+                id="feedback"
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                placeholder="Seu feedback nos ajuda a melhorar..."
+                rows={3}
+              />
+            </div>
 
             {/* Respondent Name */}
             <div className="space-y-2">
