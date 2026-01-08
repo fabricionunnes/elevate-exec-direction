@@ -85,6 +85,7 @@ import DISCAssessmentPage from "./pages/assessments/DISCAssessmentPage";
 import Assessment360Page from "./pages/assessments/Assessment360Page";
 import AssessmentReportsPage from "./pages/assessments/AssessmentReportsPage";
 import UnifiedAssessmentPage from "./pages/assessments/UnifiedAssessmentPage";
+import HealthScorePage from "./pages/onboarding-tasks/HealthScorePage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
 // Loading fallback component
@@ -170,6 +171,7 @@ const App = () => (
               <Route path="/onboarding-tasks/companies-report" element={<OnboardingCompaniesReportPage />} />
               <Route path="/onboarding-tasks/results" element={<OnboardingResultsPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
+              <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
             </Route>
             
             <Route path="/onboarding-client/:projectId" element={<ClientOnboardingPage />} />
