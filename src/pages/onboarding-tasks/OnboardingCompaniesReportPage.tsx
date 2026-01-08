@@ -682,7 +682,7 @@ export default function OnboardingCompaniesReportPage() {
                       <TableCell className="font-medium">{company.name}</TableCell>
                       <TableCell>{company.consultant_name || "—"}</TableCell>
                       <TableCell>{formatDate(company.contract_start_date)}</TableCell>
-                      <TableCell>{formatDate(company.contract_end_date)}</TableCell>
+                      <TableCell>{company.payment_method === "monthly" ? "—" : formatDate(company.contract_end_date)}</TableCell>
                       <TableCell className="text-right">{company.contract_months}</TableCell>
                       <TableCell className="text-right font-medium text-green-500">
                         {formatCurrency(company.total_paid)}
