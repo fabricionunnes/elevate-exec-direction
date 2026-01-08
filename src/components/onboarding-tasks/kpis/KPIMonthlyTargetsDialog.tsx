@@ -274,6 +274,7 @@ export const KPIMonthlyTargetsDialog = ({
       return;
     }
 
+    // Check if already active with this name
     if (targetLevels.some((l) => l.name.toLowerCase() === newLevelName.trim().toLowerCase())) {
       toast.error("Já existe uma meta com este nome");
       return;
@@ -281,6 +282,34 @@ export const KPIMonthlyTargetsDialog = ({
 
     try {
       const nextOrder = targetLevels.length + 1;
+      
+      // First, try to reactivate an existing inactive level with this name
+      const { data: existingLevel, error: fetchError } = await supabase
+        .from("kpi_target_levels")
+        .select("*")
+        .eq("company_id", companyId)
+        .ilike("name", newLevelName.trim())
+        .eq("is_active", false)
+        .single();
+
+      if (existingLevel && !fetchError) {
+        // Reactivate the existing level
+        const { data: reactivated, error: updateError } = await supabase
+          .from("kpi_target_levels")
+          .update({ is_active: true, sort_order: nextOrder })
+          .eq("id", existingLevel.id)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+
+        setTargetLevels([...targetLevels, reactivated as TargetLevel]);
+        setNewLevelName("");
+        toast.success(`Nível "${newLevelName}" reativado`);
+        return;
+      }
+
+      // Otherwise, create a new level
       const { data, error } = await supabase
         .from("kpi_target_levels")
         .insert({
