@@ -83,6 +83,7 @@ export default function OnboardingCompaniesReportPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterConsultant, setFilterConsultant] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState<string>("all");
 
   // Sorting
   const [sortField, setSortField] = useState<SortField>("total_paid");
@@ -245,6 +246,15 @@ export default function OnboardingCompaniesReportPage() {
     // Filter by status
     if (filterStatus !== "all") {
       result = result.filter(c => c.status === filterStatus);
+    }
+
+    // Filter by payment method
+    if (filterPaymentMethod !== "all") {
+      if (filterPaymentMethod === "none") {
+        result = result.filter(c => !c.payment_method);
+      } else {
+        result = result.filter(c => c.payment_method === filterPaymentMethod);
+      }
     }
 
     // Sort
@@ -549,6 +559,19 @@ export default function OnboardingCompaniesReportPage() {
                     <SelectItem value="active">Ativo</SelectItem>
                     <SelectItem value="closed">Encerrado</SelectItem>
                     <SelectItem value="notice_period">Em Aviso</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-full sm:w-44">
+                <Select value={filterPaymentMethod} onValueChange={setFilterPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pagamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos pagamentos</SelectItem>
+                    <SelectItem value="card">Cartão</SelectItem>
+                    <SelectItem value="monthly">Recorrência</SelectItem>
+                    <SelectItem value="none">Não informado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
