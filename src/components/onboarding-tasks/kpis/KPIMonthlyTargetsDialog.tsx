@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Save, Calendar, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
+import { Save, Calendar, ChevronLeft, ChevronRight, Copy, Check, Plus } from "lucide-react";
 import { format, addMonths, subMonths, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -43,6 +43,7 @@ interface KPIMonthlyTargetsDialogProps {
   companyId: string;
   kpis: KPI[];
   onSaved?: () => void;
+  onAddKPI?: () => void;
 }
 
 export const KPIMonthlyTargetsDialog = ({
@@ -51,6 +52,7 @@ export const KPIMonthlyTargetsDialog = ({
   companyId,
   kpis,
   onSaved,
+  onAddKPI,
 }: KPIMonthlyTargetsDialogProps) => {
   const [selectedDate, setSelectedDate] = useState(startOfMonth(new Date()));
   const [targets, setTargets] = useState<Record<string, number>>({});
@@ -245,8 +247,14 @@ export const KPIMonthlyTargetsDialog = ({
               Carregando...
             </div>
           ) : activeKpis.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhum KPI ativo configurado.
+            <div className="text-center py-8 text-muted-foreground space-y-3">
+              <p>Nenhum KPI ativo configurado.</p>
+              {onAddKPI && (
+                <Button variant="outline" onClick={onAddKPI}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Primeiro KPI
+                </Button>
+              )}
             </div>
           ) : (
             <Table>
@@ -300,14 +308,24 @@ export const KPIMonthlyTargetsDialog = ({
             </Table>
           )}
 
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={saving || loading}>
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? "Salvando..." : "Salvar Metas do Mês"}
-            </Button>
+          <div className="flex justify-between gap-2 pt-4 border-t">
+            <div>
+              {onAddKPI && activeKpis.length > 0 && (
+                <Button variant="ghost" onClick={onAddKPI}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo KPI
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} disabled={saving || loading}>
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? "Salvando..." : "Salvar Metas do Mês"}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
