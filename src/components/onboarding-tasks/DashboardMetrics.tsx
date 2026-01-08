@@ -76,6 +76,7 @@ interface Company {
   contract_value: number | null;
   status_changed_at?: string | null;
   created_at: string;
+  payment_method?: string | null;
 }
 
 interface DashboardMetricsProps {
@@ -238,8 +239,9 @@ const DashboardMetrics = ({
     const today = startOfDay(new Date());
     const companiesWithActiveProjects = new Set(projects.filter(p => p.status === "active").map(p => p.onboarding_company_id).filter(Boolean));
     const activeCompanies = filteredCompanies.filter(c => c.status === "active" && companiesWithActiveProjects.has(c.id)).length;
-    const contractsEndingInPeriod = filteredCompanies.filter(c => c.contract_end_date && isWithinInterval(new Date(c.contract_end_date), { start: dateRange.start, end: dateRange.end })).length;
-    const expiredContracts = filteredCompanies.filter(c => c.contract_end_date && isBefore(new Date(c.contract_end_date), today)).length;
+    // Excluir empresas com pagamento recorrente (monthly) do cálculo de contratos vencendo/vencidos
+    const contractsEndingInPeriod = filteredCompanies.filter(c => c.payment_method !== "monthly" && c.contract_end_date && isWithinInterval(new Date(c.contract_end_date), { start: dateRange.start, end: dateRange.end })).length;
+    const expiredContracts = filteredCompanies.filter(c => c.payment_method !== "monthly" && c.contract_end_date && isBefore(new Date(c.contract_end_date), today)).length;
     return { activeCompanies, contractsEndingInPeriod, expiredContracts };
   }, [filteredCompanies, dateRange, projects]);
 
