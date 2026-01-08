@@ -71,11 +71,23 @@ interface KPIDashboardTabProps {
   canDeleteEntries?: boolean; // Admin or CS only
 }
 
+// Raw monthly targets storage (all scopes: company, unit, salesperson)
+interface MonthlyTarget {
+  id: string;
+  kpi_id: string;
+  level_name: string;
+  level_order: number;
+  target_value: number;
+  unit_id: string | null;
+  salesperson_id: string | null;
+}
+
 export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false }: KPIDashboardTabProps) => {
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [allMonthlyTargets, setAllMonthlyTargets] = useState<MonthlyTarget[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
     start: format(startOfMonth(new Date()), "yyyy-MM-dd"),
@@ -130,9 +142,15 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       if (entriesRes.error) throw entriesRes.error;
       if (unitsRes.error) throw unitsRes.error;
 
-      // Build map of monthly targets with all levels: { kpi_id: { level_name: value } }
+      // Store all monthly targets for later filtering by unit/salesperson
+      setAllMonthlyTargets((monthlyTargetsRes.data || []) as MonthlyTarget[]);
+
+      // Build initial map of monthly targets (company-level only, no unit/salesperson filter)
+      const companyLevelTargets = (monthlyTargetsRes.data || []).filter(
+        (mt: any) => mt.unit_id === null && mt.salesperson_id === null
+      );
       const monthlyTargetMap: Record<string, Record<string, number>> = {};
-      (monthlyTargetsRes.data || []).forEach((mt: any) => {
+      companyLevelTargets.forEach((mt: any) => {
         if (!monthlyTargetMap[mt.kpi_id]) {
           monthlyTargetMap[mt.kpi_id] = {};
         }
@@ -163,6 +181,50 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to get targets based on current filter (unit or salesperson)
+  const getFilteredTargetsForKpi = (kpiId: string): Record<string, number> => {
+    // Priority: salesperson > unit > company
+    let relevantTargets: MonthlyTarget[] = [];
+    
+    if (selectedSalesperson !== "all") {
+      // Get salesperson-specific targets
+      relevantTargets = allMonthlyTargets.filter(
+        mt => mt.kpi_id === kpiId && mt.salesperson_id === selectedSalesperson
+      );
+    }
+    
+    if (relevantTargets.length === 0 && selectedUnit !== "all") {
+      // Get unit-specific targets
+      relevantTargets = allMonthlyTargets.filter(
+        mt => mt.kpi_id === kpiId && mt.unit_id === selectedUnit && mt.salesperson_id === null
+      );
+    }
+    
+    if (relevantTargets.length === 0) {
+      // Fallback to company-level targets
+      relevantTargets = allMonthlyTargets.filter(
+        mt => mt.kpi_id === kpiId && mt.unit_id === null && mt.salesperson_id === null
+      );
+    }
+    
+    // Build map from relevant targets
+    const result: Record<string, number> = {};
+    relevantTargets.forEach(mt => {
+      result[mt.level_name] = mt.target_value;
+    });
+    
+    return result;
+  };
+
+  // Get effective target value for a KPI based on filters
+  const getEffectiveTargetForKpi = (kpi: KPI): number => {
+    const filteredTargets = getFilteredTargetsForKpi(kpi.id);
+    if (Object.keys(filteredTargets).length > 0) {
+      return filteredTargets["Meta"] ?? Object.values(filteredTargets)[0];
+    }
+    return kpi.effective_target ?? kpi.target_value;
   };
 
   const formatValue = (value: number, type: string) => {
@@ -202,8 +264,8 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     const endDate = new Date(dateRange.end);
     const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     
-    // Use effective_target (monthly target or default)
-    const baseTarget = kpi.effective_target ?? kpi.target_value;
+    // Use filtered target based on selected unit/salesperson
+    const baseTarget = getEffectiveTargetForKpi(kpi);
     let targetForPeriod = baseTarget;
     if (kpi.periodicity === "daily") {
       targetForPeriod = baseTarget * daysDiff;
@@ -243,8 +305,8 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       const kpiEntries = monthEntries.filter(e => e.kpi_id === kpi.id);
       const kpiTotal = kpiEntries.reduce((sum, e) => sum + e.value, 0);
       
-      // Use effective_target (monthly target or default)
-      const baseTarget = kpi.effective_target ?? kpi.target_value;
+      // Use filtered target based on selected unit/salesperson
+      const baseTarget = getEffectiveTargetForKpi(kpi);
       let monthlyTarget = baseTarget;
       if (kpi.periodicity === "daily") {
         monthlyTarget = baseTarget * daysInMonth;
@@ -333,11 +395,18 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     const sortedDates = Object.keys(groupedByDate).sort();
     if (sortedDates.length === 0) return { data: [], targetLevels: [] };
 
-    // Calculate target levels - aggregate all monetary KPI targets
+    // Calculate target levels - aggregate all monetary KPI targets using filtered targets
     let targetLevelsMap: Record<string, number> = {};
     
     monetaryKpis.forEach(kpi => {
-      if (kpi.monthly_targets && Object.keys(kpi.monthly_targets).length > 0) {
+      // Get targets based on current unit/salesperson filter
+      const filteredTargets = getFilteredTargetsForKpi(kpi.id);
+      
+      if (Object.keys(filteredTargets).length > 0) {
+        Object.entries(filteredTargets).forEach(([levelName, value]) => {
+          targetLevelsMap[levelName] = (targetLevelsMap[levelName] || 0) + value;
+        });
+      } else if (kpi.monthly_targets && Object.keys(kpi.monthly_targets).length > 0) {
         Object.entries(kpi.monthly_targets).forEach(([levelName, value]) => {
           targetLevelsMap[levelName] = (targetLevelsMap[levelName] || 0) + value;
         });
