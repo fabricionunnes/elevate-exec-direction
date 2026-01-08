@@ -145,14 +145,14 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     await Promise.all([
       fetchCurrentStaff(),
       fetchMeetings(),
-      fetchProjectConsultant(),
     ]);
-    // Sync calendar after we know the consultant
-    await syncCalendarEvents();
+    // Fetch consultant info and then sync calendar with the returned values
+    const consultantInfo = await fetchProjectConsultant();
+    await syncCalendarEvents(consultantInfo?.consultantUserId, consultantInfo?.companyName);
     setLoading(false);
   };
 
-  const fetchProjectConsultant = async () => {
+  const fetchProjectConsultant = async (): Promise<{ consultantUserId: string | null; companyName: string | null }> => {
     try {
       // Get the project's consultant and company info
       const { data: project } = await supabase
@@ -161,9 +161,10 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
         .eq("id", projectId)
         .single();
 
-      if (!project) return;
+      if (!project) return { consultantUserId: null, companyName: null };
 
       let consultantStaffId = project.consultant_id;
+      let fetchedCompanyName: string | null = null;
 
       // Get company name for filtering calendar events
       if (project.onboarding_company_id) {
@@ -174,6 +175,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
           .single();
         
         if (company?.name) {
+          fetchedCompanyName = company.name;
           setCompanyName(company.name);
         }
         
@@ -183,7 +185,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
         }
       }
 
-      if (!consultantStaffId) return;
+      if (!consultantStaffId) return { consultantUserId: null, companyName: fetchedCompanyName };
 
       // Get the user_id for this consultant
       const { data: consultant } = await supabase
@@ -194,9 +196,13 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
       if (consultant?.user_id) {
         setProjectConsultantUserId(consultant.user_id);
+        return { consultantUserId: consultant.user_id, companyName: fetchedCompanyName };
       }
+      
+      return { consultantUserId: null, companyName: fetchedCompanyName };
     } catch (error) {
       console.error("Error fetching project consultant:", error);
+      return { consultantUserId: null, companyName: null };
     }
   };
 
@@ -246,17 +252,20 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     }
   };
 
-  const syncCalendarEvents = async () => {
+  const syncCalendarEvents = async (consultantUserId?: string | null, clientCompanyName?: string | null) => {
     try {
+      // Use passed values or fall back to state
+      const targetUserId = consultantUserId ?? projectConsultantUserId;
+      const targetCompanyName = clientCompanyName ?? companyName;
+
       // IMPORTANT: Only sync the consultant's calendar, never admin/CS calendars
       // If there's no consultant assigned, don't sync at all
-      if (!projectConsultantUserId) {
+      if (!targetUserId) {
         console.log("No consultant assigned to project, skipping calendar sync");
         setCalendarConnected(false);
         return;
       }
 
-      const targetUserId = projectConsultantUserId;
       const checkConnectionUrl = `google-calendar?action=check-connection&target_user_id=${targetUserId}`;
 
       // Check if consultant's calendar is connected
@@ -280,7 +289,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
       if (data?.events) {
         // Filter events to only include meetings for this specific client
-        const filteredEvents = filterEventsForClient(data.events);
+        const filteredEvents = filterEventsForClient(data.events, targetCompanyName);
         setCalendarEvents(filteredEvents);
         
         // Auto-create meeting entries for past events that don't exist yet
@@ -292,13 +301,14 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   };
 
   // Filter calendar events to only include those related to this client
-  const filterEventsForClient = (events: CalendarEvent[]): CalendarEvent[] => {
-    if (!companyName) {
+  const filterEventsForClient = (events: CalendarEvent[], clientName?: string | null): CalendarEvent[] => {
+    const nameToUse = clientName ?? companyName;
+    if (!nameToUse) {
       console.log("No company name available, cannot filter events");
       return [];
     }
 
-    const normalizedCompanyName = companyName.toLowerCase().trim();
+    const normalizedCompanyName = nameToUse.toLowerCase().trim();
     
     return events.filter(event => {
       const title = (event.title || "").toLowerCase();
