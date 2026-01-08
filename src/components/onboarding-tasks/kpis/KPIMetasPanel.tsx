@@ -118,7 +118,7 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false }
         </TabsContent>
 
         <TabsContent value="salespeople" className="mt-6">
-          <SalespeopleTab companyId={companyId} isAdmin={isAdmin} />
+          <SalespeopleTab companyId={companyId} isAdmin={canAccessAllTabs} />
         </TabsContent>
 
         <TabsContent value="gamification" className="mt-6">
