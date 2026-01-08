@@ -1158,6 +1158,7 @@ const OnboardingTasksPage = () => {
           allTasks={allTasks}
           onDataRefresh={refreshData}
           currentStaffUserId={currentUserId}
+          selectedConsultantStaffId={filterConsultant !== "all" ? filterConsultant : undefined}
           onActiveTabChange={setActiveDashboardTab}
           staffRole={currentUserRole}
         />
