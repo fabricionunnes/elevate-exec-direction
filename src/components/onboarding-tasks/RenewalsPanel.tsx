@@ -235,6 +235,9 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
     return companies.filter(company => {
       if (!company.contract_end_date) return false;
       
+      // Exclude 1-month contracts - they stay active until manually closed
+      if (company.contract_months <= 1) return false;
+      
       const endDate = parseISO(company.contract_end_date);
       
       // Check if contract ends in selected month
