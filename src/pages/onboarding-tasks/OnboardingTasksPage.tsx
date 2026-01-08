@@ -74,6 +74,7 @@ interface Company {
   contract_start_date: string | null;
   contract_end_date: string | null;
   contract_value: number | null;
+  payment_method?: string | null;
   status_changed_at?: string | null;
   created_at: string;
   projects?: OnboardingProject[];
@@ -631,16 +632,20 @@ const OnboardingTasksPage = () => {
         const today = startOfDay(new Date());
         
         if (activeMetricFilter.type === "contracts" && activeMetricFilter.value === "ending") {
-          // Filter companies with contracts ending in the selected period
-          if (!company.contract_end_date) {
+          // Contratos recorrentes não vencem (renovam automaticamente)
+          if (company.payment_method === "monthly") {
+            matchesMetricFilter = false;
+          } else if (!company.contract_end_date) {
             matchesMetricFilter = false;
           } else {
             const endDate = new Date(company.contract_end_date);
             matchesMetricFilter = isWithinInterval(endDate, { start: dateRange.start, end: dateRange.end });
           }
         } else if (activeMetricFilter.type === "contracts" && activeMetricFilter.value === "expired") {
-          // Filter companies with expired contracts (end date before today)
-          if (!company.contract_end_date) {
+          // Contratos recorrentes não vencem (renovam automaticamente)
+          if (company.payment_method === "monthly") {
+            matchesMetricFilter = false;
+          } else if (!company.contract_end_date) {
             matchesMetricFilter = false;
           } else {
             const endDate = new Date(company.contract_end_date);
