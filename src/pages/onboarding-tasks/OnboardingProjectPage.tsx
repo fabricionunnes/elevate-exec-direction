@@ -1169,23 +1169,29 @@ const OnboardingProjectPage = () => {
           )}
         </div>
 
-        {/* Progress */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Progresso da Jornada</span>
-              <span className="font-medium">
-                {completedTasks}/{totalTasks} tarefas concluídas ({totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0}%)
-              </span>
-            </div>
-            <div className="w-full bg-muted rounded-full h-3">
-              <div
-                className="bg-primary h-3 rounded-full transition-all"
-                style={{ width: `${totalTasks ? (completedTasks / totalTasks) * 100 : 0}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Progress and Health Score */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          {/* Progress */}
+          <Card className="lg:col-span-2">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-muted-foreground">Progresso da Jornada</span>
+                <span className="font-medium">
+                  {completedTasks}/{totalTasks} tarefas concluídas ({totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0}%)
+                </span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-3">
+                <div
+                  className="bg-primary h-3 rounded-full transition-all"
+                  style={{ width: `${totalTasks ? (completedTasks / totalTasks) * 100 : 0}%` }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Health Score Widget */}
+          <HealthScoreWidget projectId={projectId!} compact />
+        </div>
 
         {/* Urgent Tasks Highlight */}
         <ProjectUrgentTasks tasks={tasks} onTaskClick={setSelectedTask} />
