@@ -118,13 +118,22 @@ export const useHealthScore = (projectId: string | undefined) => {
       // Get project and company info
       const { data: project } = await supabase
         .from("onboarding_projects")
-        .select("id, onboarding_company_id, current_nps")
+        .select("id, onboarding_company_id, current_nps, status")
         .eq("id", projectId)
         .single();
 
       if (!project) throw new Error("Project not found");
 
       const companyId = project.onboarding_company_id;
+      const projectStatus = project.status;
+
+      // Check if project has cancellation-related status (impacts score negatively)
+      const isCancellationStatus = [
+        "cancellation_requested", 
+        "notice_period",
+        "sinalizou_cancelamento",
+        "cumprindo_aviso"
+      ].includes(projectStatus?.toLowerCase() || "");
 
       // 1. SATISFACTION SCORE (CSAT + NPS)
       let satisfactionScore = 50; // Base
@@ -288,7 +297,7 @@ export const useHealthScore = (projectId: string | undefined) => {
       }
 
       // Calculate weighted total
-      const totalScore = Math.round(
+      let totalScore = Math.round(
         (satisfactionScore * weights.satisfaction_weight / 100) +
         (goalsScore * weights.goals_weight / 100) +
         (commercialScore * weights.commercial_weight / 100) +
@@ -297,11 +306,22 @@ export const useHealthScore = (projectId: string | undefined) => {
         (trendScore * weights.trend_weight / 100)
       );
 
+      // Apply cancellation penalty (reduces score significantly)
+      if (isCancellationStatus) {
+        totalScore = Math.max(0, totalScore - 30); // -30 points penalty
+      }
+
       // Determine risk level
       let riskLevel = "healthy";
-      if (totalScore < 40) riskLevel = "critical";
-      else if (totalScore < 60) riskLevel = "at_risk";
-      else if (totalScore < 80) riskLevel = "attention";
+      if (isCancellationStatus) {
+        riskLevel = "critical"; // Always critical if cancellation requested
+      } else if (totalScore < 40) {
+        riskLevel = "critical";
+      } else if (totalScore < 60) {
+        riskLevel = "at_risk";
+      } else if (totalScore < 80) {
+        riskLevel = "attention";
+      }
 
       // Save score
       const { data: existingScore } = await supabase
