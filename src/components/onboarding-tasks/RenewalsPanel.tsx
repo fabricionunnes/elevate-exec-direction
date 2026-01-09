@@ -75,6 +75,7 @@ interface CompanyForRenewal {
   status: string;
   renewal_status: string | null;
   renewal_notes: string | null;
+  renewal_meeting_date: string | null;
   // Calculated
   contract_months: number;
   monthly_value: number;
@@ -101,6 +102,7 @@ interface RenewalHistory {
 const RENEWAL_STATUS_OPTIONS = [
   { value: "pendente", label: "Pendente", color: "bg-yellow-500", textColor: "text-yellow-400", bgColor: "bg-yellow-500/20", borderColor: "border-yellow-500/30" },
   { value: "em_negociacao", label: "Em negociação", color: "bg-blue-500", textColor: "text-blue-400", bgColor: "bg-blue-500/20", borderColor: "border-blue-500/30" },
+  { value: "reuniao_agendada", label: "Reunião Agendada", color: "bg-purple-500", textColor: "text-purple-400", bgColor: "bg-purple-500/20", borderColor: "border-purple-500/30" },
   { value: "renovado", label: "Renovado", color: "bg-green-500", textColor: "text-green-400", bgColor: "bg-green-500/20", borderColor: "border-green-500/30" },
   { value: "nao_renovado", label: "Não renovado", color: "bg-red-500", textColor: "text-red-400", bgColor: "bg-red-500/20", borderColor: "border-red-500/30" },
   { value: "cancelado", label: "Cancelado", color: "bg-red-600", textColor: "text-red-400", bgColor: "bg-red-500/20", borderColor: "border-red-500/30" },
@@ -134,6 +136,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
   const [newStartDate, setNewStartDate] = useState<string>("");
   const [renewalNotes, setRenewalNotes] = useState<string>("");
   const [renewalStatus, setRenewalStatus] = useState<string>("pendente");
+  const [renewalMeetingDate, setRenewalMeetingDate] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   // History dialog
@@ -164,6 +167,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
         status,
         renewal_status,
         renewal_notes,
+        renewal_meeting_date,
         consultant:consultant_id(name)
       `)
       .eq("payment_method", "card")
@@ -199,6 +203,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
           status: company.status || "active",
           renewal_status: company.renewal_status,
           renewal_notes: company.renewal_notes,
+          renewal_meeting_date: company.renewal_meeting_date,
           contract_months: contractMonths,
           monthly_value: monthlyValue,
         };
@@ -303,11 +308,24 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
     }
   };
 
-  const getStatusBadge = (status: string | null) => {
+  const getStatusBadge = (status: string | null, meetingDate?: string | null) => {
     const statusOption = RENEWAL_STATUS_OPTIONS.find(s => s.value === (status || "pendente"));
     if (!statusOption) {
       return <Badge variant="secondary">Pendente</Badge>;
     }
+    
+    // Show meeting date for scheduled meetings
+    if (status === "reuniao_agendada" && meetingDate) {
+      return (
+        <div className="flex flex-col gap-1">
+          <Badge className={`${statusOption.bgColor} ${statusOption.textColor} ${statusOption.borderColor}`}>
+            {statusOption.label}
+          </Badge>
+          <span className="text-xs text-purple-500">{formatDate(meetingDate)}</span>
+        </div>
+      );
+    }
+    
     return (
       <Badge className={`${statusOption.bgColor} ${statusOption.textColor} ${statusOption.borderColor}`}>
         {statusOption.label}
@@ -331,6 +349,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
     
     setRenewalNotes(company.renewal_notes || "");
     setRenewalStatus(company.renewal_status || "pendente");
+    setRenewalMeetingDate(company.renewal_meeting_date || "");
     setRenewDialogOpen(true);
   };
 
@@ -369,12 +388,13 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
     setSaving(true);
     
     try {
-      // Only update renewal status and notes - no contract changes
+      // Only update renewal status, notes and meeting date - no contract changes
       const { error: updateError } = await supabase
         .from("onboarding_companies")
         .update({
           renewal_status: renewalStatus,
           renewal_notes: renewalNotes || null,
+          renewal_meeting_date: renewalStatus === "reuniao_agendada" ? renewalMeetingDate || null : null,
         })
         .eq("id", selectedCompany.id);
         
@@ -642,7 +662,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
                           <TableCell className="text-right text-green-500 font-medium">
                             {formatCurrency(company.contract_value || 0)}
                           </TableCell>
-                          <TableCell>{getStatusBadge(company.renewal_status)}</TableCell>
+                          <TableCell>{getStatusBadge(company.renewal_status, company.renewal_meeting_date)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               <Button
@@ -807,6 +827,25 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Meeting Date - shows when status is reuniao_agendada */}
+              {renewalStatus === "reuniao_agendada" && (
+                <div className="space-y-2 p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                  <Label htmlFor="meetingDate" className="text-purple-600 dark:text-purple-400 font-medium">
+                    Data da Reunião Agendada *
+                  </Label>
+                  <Input
+                    id="meetingDate"
+                    type="date"
+                    value={renewalMeetingDate}
+                    onChange={(e) => setRenewalMeetingDate(e.target.value)}
+                    className="border-purple-500/30"
+                  />
+                  {!renewalMeetingDate && (
+                    <p className="text-xs text-purple-500">Informe a data da reunião agendada</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

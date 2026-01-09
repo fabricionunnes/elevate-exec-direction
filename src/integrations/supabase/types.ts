@@ -3522,6 +3522,7 @@ export type Database = {
           payment_method: string | null
           phone: string | null
           quarterly_goals: Json | null
+          renewal_meeting_date: string | null
           renewal_notes: string | null
           renewal_plan_type: string | null
           renewal_status: string | null
@@ -3578,6 +3579,7 @@ export type Database = {
           payment_method?: string | null
           phone?: string | null
           quarterly_goals?: Json | null
+          renewal_meeting_date?: string | null
           renewal_notes?: string | null
           renewal_plan_type?: string | null
           renewal_status?: string | null
@@ -3634,6 +3636,7 @@ export type Database = {
           payment_method?: string | null
           phone?: string | null
           quarterly_goals?: Json | null
+          renewal_meeting_date?: string | null
           renewal_notes?: string | null
           renewal_plan_type?: string | null
           renewal_status?: string | null
