@@ -470,9 +470,10 @@ const DashboardMetrics = ({
     const currentDay = isCurrentMonth ? today.getDate() : daysInMonth;
     const timeElapsedPercent = currentDay / daysInMonth;
 
-    // Get company IDs from filtered projects
+    // Get company IDs from filtered projects (use filteredCompanies which already excludes inactive/closed)
+    const activeCompanyIds = new Set(filteredCompanies.map(c => c.id));
     const filteredCompanyIds = new Set(
-      projects.map(getProjectCompanyId).filter(Boolean) as string[]
+      projects.map(getProjectCompanyId).filter(id => id && activeCompanyIds.has(id)) as string[]
     );
 
     // Filter entries for the period
@@ -538,7 +539,7 @@ const DashboardMetrics = ({
     const goalRate = totalWithGoals > 0 ? Math.round((meetingGoal / totalWithGoals) * 100) : 0;
 
     return { totalWithGoals, meetingGoal, above70, between50And70, below50, noGoalCount, goalRate };
-  }, [projects, companyKpis, kpiEntries, dateRange]);
+  }, [projects, companyKpis, kpiEntries, dateRange, filteredCompanies]);
 
   const handleCardClick = (filterType: string, filterValue: string) => {
     if (activeMetricFilter?.type === filterType && activeMetricFilter?.value === filterValue) {
