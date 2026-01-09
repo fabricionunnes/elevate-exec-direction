@@ -185,17 +185,17 @@ Deno.serve(async (req) => {
         .eq("integration_type", "conta_azul");
 
       try {
-        // Sync customers
-        const customersResult = await syncCustomers(supabase, accessToken);
-        console.log("Customers synced:", customersResult);
+        // Sync pessoas (customers)
+        const pessoasResult = await syncCustomers(supabase, accessToken);
+        console.log("Pessoas synced:", pessoasResult);
 
-        // Sync sales/receivables
-        const salesResult = await syncSales(supabase, accessToken);
-        console.log("Sales synced:", salesResult);
+        // Sync receivables (contas a receber)
+        const receivablesResult = await syncReceivables(supabase, accessToken);
+        console.log("Receivables synced:", receivablesResult);
 
-        // Sync purchases/payables  
-        const purchasesResult = await syncPurchases(supabase, accessToken);
-        console.log("Purchases synced:", purchasesResult);
+        // Sync payables (contas a pagar)
+        const payablesResult = await syncPayables(supabase, accessToken);
+        console.log("Payables synced:", payablesResult);
 
         await supabase
           .from("financial_integrations")
@@ -209,9 +209,9 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: true, 
-            customers: customersResult,
-            sales: salesResult,
-            purchases: purchasesResult
+            pessoas: pessoasResult,
+            receivables: receivablesResult,
+            payables: payablesResult
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -268,107 +268,164 @@ async function refreshToken(clientId: string, clientSecret: string, refreshToken
 }
 
 async function syncCustomers(supabase: any, accessToken: string) {
-  console.log("Fetching customers from Conta Azul API v2...");
-  const response = await fetch("https://api-v2.contaazul.com/v1/customers?size=100", {
+  console.log("Fetching pessoas from Conta Azul API v2...");
+  const response = await fetch("https://api-v2.contaazul.com/v1/pessoas?pagina=1&tamanho_pagina=100", {
     headers: { 
       "Authorization": `Bearer ${accessToken}`,
       "Accept": "application/json"
     }
   });
 
-  console.log("Customers response status:", response.status);
+  console.log("Pessoas response status:", response.status);
   
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Customers error:", errorText);
-    throw new Error(`Failed to fetch customers: ${response.status}`);
-  }
-
-  const customers = await response.json();
-  let synced = 0;
-
-  for (const customer of customers) {
-    console.log("Customer:", customer.name);
-    synced++;
-  }
-
-  return { total: customers.length, synced };
-}
-
-async function syncSales(supabase: any, accessToken: string) {
-  console.log("Fetching sales from Conta Azul API v2...");
-  const response = await fetch("https://api-v2.contaazul.com/v1/sales?size=100", {
-    headers: { 
-      "Authorization": `Bearer ${accessToken}`,
-      "Accept": "application/json"
-    }
-  });
-
-  console.log("Sales response status:", response.status);
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Sales error:", errorText);
-    // Sales API might not be available, don't throw
-    console.log("Sales API returned error, skipping...");
+    console.error("Pessoas error:", errorText);
+    // Don't throw, just log - pessoas might not have data
+    console.log("Pessoas API returned error, skipping...");
     return { total: 0, synced: 0 };
   }
 
-  const salesData = await response.json();
-  // API may return array directly or wrapped in items
-  const sales = Array.isArray(salesData) ? salesData : (salesData.items || []);
+  const data = await response.json();
+  const pessoas = data.itens || [];
   let synced = 0;
 
-  for (const sale of sales) {
-    // Create receivable from sale
+  for (const pessoa of pessoas) {
+    console.log("Pessoa:", pessoa.nome);
+    synced++;
+  }
+
+  return { total: pessoas.length, synced };
+}
+
+async function syncReceivables(supabase: any, accessToken: string) {
+  console.log("Fetching contas a receber from Conta Azul API v2...");
+  
+  // Get dates for last 12 months range
+  const today = new Date();
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const oneYearAhead = new Date();
+  oneYearAhead.setFullYear(oneYearAhead.getFullYear() + 1);
+  
+  const dateFrom = oneYearAgo.toISOString().split('T')[0];
+  const dateTo = oneYearAhead.toISOString().split('T')[0];
+  
+  const url = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/contas-a-receber/buscar?pagina=1&tamanho_pagina=100&data_vencimento_de=${dateFrom}&data_vencimento_ate=${dateTo}`;
+  
+  console.log("Receivables URL:", url);
+  
+  const response = await fetch(url, {
+    headers: { 
+      "Authorization": `Bearer ${accessToken}`,
+      "Accept": "application/json"
+    }
+  });
+
+  console.log("Receivables response status:", response.status);
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Receivables error:", errorText);
+    console.log("Receivables API returned error, skipping...");
+    return { total: 0, synced: 0 };
+  }
+
+  const data = await response.json();
+  const receivables = data.itens || [];
+  let synced = 0;
+
+  console.log("Found receivables:", receivables.length);
+
+  for (const item of receivables) {
+    // Map status from Conta Azul to our system
+    let status = "pending";
+    if (item.status === "RECEBIDO" || item.status === "RECEBIDO_PARCIAL") {
+      status = "paid";
+    } else if (item.status === "ATRASADO") {
+      status = "overdue";
+    } else if (item.status === "PERDIDO" || item.status === "RENEGOCIADO") {
+      status = "cancelled";
+    }
+
     await supabase.from("financial_receivables").upsert({
-      conta_azul_id: sale.id,
-      description: sale.notes || `Venda #${sale.number || sale.id}`,
-      amount: sale.total || sale.value || 0,
-      due_date: sale.due_date || sale.emission || new Date().toISOString().split('T')[0],
-      status: sale.status === "COMMITTED" ? "pending" : "paid",
+      conta_azul_id: item.id || item.id_parcela,
+      description: item.descricao || `Recebível Conta Azul`,
+      amount: item.valor_bruto || item.valor || 0,
+      due_date: item.data_vencimento || new Date().toISOString().split('T')[0],
+      status: status,
+      paid_amount: item.valor_pago || null,
+      paid_date: item.data_pagamento || null,
       company_id: null,
       is_recurring: false
     }, { onConflict: "conta_azul_id" });
     synced++;
   }
 
-  return { total: sales.length, synced };
+  return { total: receivables.length, synced };
 }
 
-async function syncPurchases(supabase: any, accessToken: string) {
-  console.log("Fetching purchases from Conta Azul API v2...");
-  const response = await fetch("https://api-v2.contaazul.com/v1/purchases?size=100", {
+async function syncPayables(supabase: any, accessToken: string) {
+  console.log("Fetching contas a pagar from Conta Azul API v2...");
+  
+  // Get dates for last 12 months range
+  const today = new Date();
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const oneYearAhead = new Date();
+  oneYearAhead.setFullYear(oneYearAhead.getFullYear() + 1);
+  
+  const dateFrom = oneYearAgo.toISOString().split('T')[0];
+  const dateTo = oneYearAhead.toISOString().split('T')[0];
+  
+  const url = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar?pagina=1&tamanho_pagina=100&data_vencimento_de=${dateFrom}&data_vencimento_ate=${dateTo}`;
+  
+  console.log("Payables URL:", url);
+  
+  const response = await fetch(url, {
     headers: { 
       "Authorization": `Bearer ${accessToken}`,
       "Accept": "application/json"
     }
   });
 
-  console.log("Purchases response status:", response.status);
+  console.log("Payables response status:", response.status);
   
   if (!response.ok) {
-    // Purchases API might not be available in all plans
     const errorText = await response.text();
-    console.log("Purchases API returned error:", errorText);
+    console.log("Payables API returned error:", errorText);
     return { total: 0, synced: 0 };
   }
 
-  const purchasesData = await response.json();
-  const purchases = Array.isArray(purchasesData) ? purchasesData : (purchasesData.items || []);
+  const data = await response.json();
+  const payables = data.itens || [];
   let synced = 0;
 
-  for (const purchase of purchases) {
+  console.log("Found payables:", payables.length);
+
+  for (const item of payables) {
+    // Map status from Conta Azul to our system
+    let status = "pending";
+    if (item.status === "RECEBIDO" || item.status === "PAGO" || item.status === "RECEBIDO_PARCIAL") {
+      status = "paid";
+    } else if (item.status === "ATRASADO") {
+      status = "overdue";
+    } else if (item.status === "PERDIDO" || item.status === "RENEGOCIADO") {
+      status = "cancelled";
+    }
+
     await supabase.from("financial_payables").upsert({
-      conta_azul_id: purchase.id,
-      description: purchase.notes || `Compra #${purchase.number || purchase.id}`,
-      supplier_name: purchase.supplier?.name || "Fornecedor",
-      amount: purchase.total || purchase.value || 0,
-      due_date: purchase.due_date || purchase.emission || new Date().toISOString().split('T')[0],
-      status: purchase.status === "COMMITTED" ? "pending" : "paid"
+      conta_azul_id: item.id || item.id_parcela,
+      description: item.descricao || `Pagável Conta Azul`,
+      supplier_name: item.contato_nome || "Fornecedor",
+      amount: item.valor_bruto || item.valor || 0,
+      due_date: item.data_vencimento || new Date().toISOString().split('T')[0],
+      status: status,
+      paid_amount: item.valor_pago || null,
+      paid_date: item.data_pagamento || null
     }, { onConflict: "conta_azul_id" });
     synced++;
   }
 
-  return { total: purchases.length, synced };
+  return { total: payables.length, synced };
 }
