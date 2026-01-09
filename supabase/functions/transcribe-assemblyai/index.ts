@@ -75,14 +75,18 @@ serve(async (req) => {
         transcriptResult = pollData;
         break;
       } else if (pollData.status === 'error') {
-        throw new Error(`Transcription failed: ${pollData.error}`);
+        // Check for common Google Drive issues
+        if (pollData.error?.includes('text/html') || pollData.error?.includes('HTML document')) {
+          throw new Error('O Google Drive bloqueou o acesso ao arquivo. Para arquivos grandes, o Google mostra uma página de confirmação de vírus que impede o download direto. Use a opção "Colar Transcrição" ou hospede o arquivo em outro serviço (Dropbox, servidor próprio, etc.).');
+        }
+        throw new Error(`Falha na transcrição: ${pollData.error}`);
       }
 
       attempts++;
     }
 
     if (!transcriptResult) {
-      throw new Error('Transcription timeout - file too large or processing too slow');
+      throw new Error('Tempo limite excedido - arquivo muito grande ou processamento muito lento');
     }
 
     // Format the transcription with speaker labels if available
