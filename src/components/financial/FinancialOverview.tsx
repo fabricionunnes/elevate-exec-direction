@@ -14,7 +14,8 @@ import {
   RefreshCw,
   Building2,
   FileText,
-  Loader2
+  Loader2,
+  PieChart as PieChartIcon
 } from "lucide-react";
 import {
   AreaChart,
@@ -23,10 +24,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
+  ResponsiveContainer
 } from "recharts";
 import { toast } from "sonner";
 
@@ -170,24 +168,30 @@ export function FinancialOverview() {
         projectedCash90
       });
 
-      // Generate chart data (placeholder - will use real data with Conta Azul)
+      // Generate chart data from real receivables/payables grouped by month
       const chartData = [];
       for (let i = 5; i >= 0; i--) {
         const month = subMonths(new Date(), i);
+        const monthStr = format(month, "yyyy-MM");
+        
+        const monthReceived = receivables?.filter(r => 
+          r.status === "paid" && r.due_date?.startsWith(monthStr)
+        ).reduce((sum, r) => sum + (Number(r.paid_amount || r.amount) || 0), 0) || 0;
+        
+        const monthPaid = payables?.filter(p => 
+          p.status === "paid" && p.due_date?.startsWith(monthStr)
+        ).reduce((sum, p) => sum + (Number(p.paid_amount || p.amount) || 0), 0) || 0;
+        
         chartData.push({
           month: format(month, "MMM", { locale: ptBR }),
-          receitas: Math.random() * 50000 + 30000,
-          despesas: Math.random() * 30000 + 15000
+          receitas: monthReceived,
+          despesas: monthPaid
         });
       }
       setRevenueData(chartData);
 
-      // Category distribution (placeholder)
-      setCategoryData([
-        { name: "Mensalidades", value: 65, color: "#10b981" },
-        { name: "Consultorias", value: 20, color: "#3b82f6" },
-        { name: "Projetos", value: 15, color: "#8b5cf6" }
-      ]);
+      // Category distribution - empty until Conta Azul integration
+      setCategoryData([]);
 
     } catch (error) {
       console.error("Error loading financial data:", error);
@@ -408,41 +412,10 @@ export function FinancialOverview() {
             <CardTitle className="text-lg">Receitas por Categoria</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value: number) => `${value}%`}
-                    contentStyle={{ 
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))"
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex flex-wrap justify-center gap-4 mt-4">
-                {categoryData.map((cat) => (
-                  <div key={cat.name} className="flex items-center gap-2">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: cat.color }}
-                    />
-                    <span className="text-sm">{cat.name}</span>
-                  </div>
-                ))}
+            <div className="h-[300px] flex items-center justify-center">
+              <div className="text-center text-muted-foreground">
+                <PieChartIcon className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                <p className="text-sm">Disponível com integração Conta Azul</p>
               </div>
             </div>
           </CardContent>
