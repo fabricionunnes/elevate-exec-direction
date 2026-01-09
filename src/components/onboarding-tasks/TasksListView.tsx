@@ -107,27 +107,27 @@ export const TasksListView = ({
   const overallProgress = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Progress Summary */}
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-5 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border"
+        className="p-3 sm:p-5 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border"
       >
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2 sm:mb-3">
           <div>
-            <h3 className="font-semibold text-lg">Progresso Geral</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="font-semibold text-base sm:text-lg">Progresso Geral</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               {completedTasks} de {totalTasks} tarefas concluídas
             </p>
           </div>
-          <div className="text-3xl font-bold text-primary">{overallProgress}%</div>
+          <div className="text-2xl sm:text-3xl font-bold text-primary">{overallProgress}%</div>
         </div>
-        <Progress value={overallProgress} className="h-2" />
+        <Progress value={overallProgress} className="h-1.5 sm:h-2" />
       </motion.div>
 
       {/* Phases List */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {phases.map((phase, phaseIndex) => {
           const isExpanded = expandedPhases.has(phase.name);
           const phaseProgress = phase.tasks.length 
@@ -142,44 +142,44 @@ export const TasksListView = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: phaseIndex * 0.05 }}
-              className={`rounded-xl border overflow-hidden bg-card border-l-4 ${phaseColor.border}`}
+              className={`rounded-lg sm:rounded-xl border overflow-hidden bg-card border-l-4 ${phaseColor.border}`}
             >
               {/* Phase Header */}
               <button
                 onClick={() => togglePhase(phase.name)}
                 className={`
-                  w-full p-4 flex items-center justify-between text-left
+                  w-full p-3 sm:p-4 flex items-center justify-between text-left
                   transition-colors duration-200 bg-gradient-to-r ${phaseColor.bg}
                   ${isCompleted ? 'opacity-80' : ''}
                 `}
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2.5 sm:gap-4">
                   {/* Phase Number */}
                   <div className={`
-                    w-10 h-10 rounded-full flex items-center justify-center font-bold text-white
+                    w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-white text-sm sm:text-base
                     ${isCompleted 
                       ? 'bg-green-500' 
                       : phaseColor.badge
                     }
                   `}>
                     {isCompleted ? (
-                      <CheckCircle2 className="h-5 w-5" />
+                      <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
                     ) : (
                       phaseIndex + 1
                     )}
                   </div>
 
-                  <div>
-                    <h4 className="font-semibold text-lg">{phase.name}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {phase.completedCount}/{phase.tasks.length} tarefas • {phaseProgress}%
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-semibold text-sm sm:text-lg truncate">{phase.name}</h4>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      {phase.completedCount}/{phase.tasks.length} • {phaseProgress}%
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <div className="w-24 hidden sm:block">
-                    <Progress value={phaseProgress} className="h-2" />
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <div className="w-16 sm:w-24 hidden sm:block">
+                    <Progress value={phaseProgress} className="h-1.5 sm:h-2" />
                   </div>
                   <motion.div
                     animate={{ rotate: isExpanded ? 180 : 0 }}
@@ -200,7 +200,7 @@ export const TasksListView = ({
                     transition={{ duration: 0.2 }}
                     className="border-t bg-background/50"
                   >
-                    <div className="p-2 space-y-2">
+                    <div className="p-1.5 sm:p-2 space-y-1.5 sm:space-y-2">
                       {phase.tasks.map((task, taskIndex) => {
                         const dueStatus = getTaskDueStatus(task.due_date, task.status);
                         const responsibleName = task.responsible_staff?.name || task.assignee?.name;
@@ -213,7 +213,7 @@ export const TasksListView = ({
                             transition={{ delay: taskIndex * 0.02 }}
                             onClick={() => onTaskClick(task)}
                             className={`
-                              flex items-center gap-3 p-3 rounded-lg cursor-pointer
+                              flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg cursor-pointer
                               transition-all duration-200 group border
                               ${task.status === "completed" 
                                 ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50' 
@@ -256,41 +256,41 @@ export const TasksListView = ({
 
                             {/* Task Content */}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className={`font-medium ${task.status === "completed" ? 'line-through text-muted-foreground' : ''}`}>
+                              <div className="flex items-center gap-1.5 sm:gap-2">
+                                <p className={`font-medium text-xs sm:text-sm ${task.status === "completed" ? 'line-through text-muted-foreground' : ''}`}>
                                   {task.title}
                                 </p>
                                 {task.is_internal && (
-                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-0.5 shrink-0">
-                                    <EyeOff className="h-2.5 w-2.5" />
+                                  <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0 gap-0.5 shrink-0">
+                                    <EyeOff className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
                                   </Badge>
                                 )}
                               </div>
                               {task.description && (
-                                <p className="text-sm text-muted-foreground truncate mt-0.5">
+                                <p className="text-[10px] sm:text-sm text-muted-foreground truncate mt-0.5 hidden sm:block">
                                   {task.description}
                                 </p>
                               )}
                             </div>
 
                             {/* Task Meta - Right side */}
-                            <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                               {/* Priority */}
                               {task.priority === "high" && (
-                                <Badge className="bg-red-500 hover:bg-red-600 text-white text-[10px] px-1.5">
+                                <Badge className="bg-red-500 hover:bg-red-600 text-white text-[8px] sm:text-[10px] px-1 sm:px-1.5">
                                   Alta
                                 </Badge>
                               )}
                               {task.priority === "medium" && (
-                                <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white text-[10px] px-1.5 hidden sm:inline-flex">
+                                <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white text-[8px] sm:text-[10px] px-1 sm:px-1.5 hidden sm:inline-flex">
                                   Média
                                 </Badge>
                               )}
 
                               {/* Recurrence */}
                               {task.recurrence && (
-                                <Badge variant="outline" className="text-[10px] gap-0.5 hidden sm:flex border-primary/30">
-                                  <RefreshCw className="h-2.5 w-2.5" />
+                                <Badge variant="outline" className="text-[8px] sm:text-[10px] gap-0.5 hidden lg:flex border-primary/30">
+                                  <RefreshCw className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
                                   {task.recurrence}
                                 </Badge>
                               )}
@@ -298,7 +298,7 @@ export const TasksListView = ({
                               {/* Due Date */}
                               {task.due_date && (
                                 <div className={`
-                                  flex items-center gap-1 text-xs px-2 py-1 rounded-md
+                                  flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md
                                   ${dueStatus === "overdue" && task.status !== "completed"
                                     ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-medium'
                                     : dueStatus === "today" && task.status !== "completed"
@@ -306,11 +306,8 @@ export const TasksListView = ({
                                       : 'bg-muted text-muted-foreground'
                                   }
                                 `}>
-                                  <Calendar className="h-3 w-3" />
-                                  <span className="hidden sm:inline">
-                                    {format(new Date(task.due_date), "dd/MM/yyyy")}
-                                  </span>
-                                  <span className="sm:hidden">
+                                  <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                  <span>
                                     {format(new Date(task.due_date), "dd/MM")}
                                   </span>
                                 </div>
@@ -318,9 +315,9 @@ export const TasksListView = ({
 
                               {/* Responsible */}
                               {responsibleName && (
-                                <div className="hidden lg:flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-1 rounded-md">
-                                  <User className="h-3 w-3" />
-                                  <span className="max-w-[100px] truncate">{responsibleName}</span>
+                                <div className="hidden lg:flex items-center gap-1 text-[10px] sm:text-xs bg-primary/10 text-primary px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md">
+                                  <User className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                  <span className="max-w-[80px] sm:max-w-[100px] truncate">{responsibleName}</span>
                                 </div>
                               )}
                             </div>
@@ -332,7 +329,7 @@ export const TasksListView = ({
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="h-7 w-7 sm:h-8 sm:w-8 opacity-0 group-hover:opacity-100 transition-opacity"
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     <MoreHorizontal className="h-4 w-4" />

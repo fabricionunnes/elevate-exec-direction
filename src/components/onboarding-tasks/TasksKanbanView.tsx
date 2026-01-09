@@ -211,7 +211,7 @@ export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange }: TasksKan
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 h-full">
       {COLUMNS.map(column => {
         const columnTasks = tasksByStatus[column.id];
         const Icon = column.icon;
@@ -229,34 +229,34 @@ export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange }: TasksKan
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, column.id)}
           >
-            <CardHeader className={`py-3 ${column.headerBg}`}>
+            <CardHeader className={`py-2 sm:py-3 px-2 sm:px-4 ${column.headerBg}`}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className={`p-1.5 rounded-md ${column.color}`}>
-                    <Icon className="h-4 w-4 text-white" />
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <div className={`p-1 sm:p-1.5 rounded-md ${column.color}`}>
+                    <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
                   </div>
-                  <CardTitle className="text-sm font-semibold">
+                  <CardTitle className="text-xs sm:text-sm font-semibold">
                     {column.title}
                   </CardTitle>
                 </div>
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2">
                   {columnTasks.length}
                 </Badge>
               </div>
             </CardHeader>
             
-            <CardContent className="flex-1 p-2 overflow-hidden">
-              <ScrollArea className="h-[calc(100vh-380px)] pr-2">
+            <CardContent className="flex-1 p-1.5 sm:p-2 overflow-hidden">
+              <ScrollArea className="h-[200px] sm:h-[calc(100vh-380px)] pr-1 sm:pr-2">
                 <AnimatePresence mode="popLayout">
-                  <div className="space-y-2">
+                  <div className="space-y-1.5 sm:space-y-2">
                     {columnTasks.map(task => (
                       <TaskCard key={task.id} task={task} />
                     ))}
                     
                     {columnTasks.length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground text-sm">
-                        <div className={`mx-auto w-12 h-12 rounded-full ${column.headerBg} flex items-center justify-center mb-2`}>
-                          <Icon className="h-6 w-6 text-muted-foreground" />
+                      <div className="text-center py-6 sm:py-8 text-muted-foreground text-xs sm:text-sm">
+                        <div className={`mx-auto w-10 h-10 sm:w-12 sm:h-12 rounded-full ${column.headerBg} flex items-center justify-center mb-2`}>
+                          <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                         </div>
                         Nenhuma tarefa
                       </div>

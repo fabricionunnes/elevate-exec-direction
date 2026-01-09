@@ -223,39 +223,40 @@ export const HealthScoreDetailPanel = ({ projectId, isAdmin = false }: HealthSco
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header with main score */}
-      <div className="flex items-start gap-6">
+      <div className="flex flex-col lg:flex-row items-stretch gap-4 sm:gap-6">
         <Card className={cn("flex-1 border-2", riskInfo?.border)}>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Score de Saúde</p>
-                <div className={cn("text-6xl font-bold", getScoreColor(score.total_score))}>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1">Score de Saúde</p>
+                <div className={cn("text-4xl sm:text-6xl font-bold", getScoreColor(score.total_score))}>
                   {score.total_score}
                 </div>
-                <div className="text-sm text-muted-foreground">de 100 pontos</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">de 100 pontos</div>
               </div>
-              <div className="text-right space-y-2">
-                <Badge variant="outline" className={cn("text-sm", riskInfo?.bg, riskInfo?.color)}>
+              <div className="text-right space-y-1.5 sm:space-y-2">
+                <Badge variant="outline" className={cn("text-xs sm:text-sm", riskInfo?.bg, riskInfo?.color)}>
                   {riskInfo?.label}
                 </Badge>
-                <div className="flex items-center gap-2 justify-end">
+                <div className="flex items-center gap-1.5 sm:gap-2 justify-end">
                   <TrendIcon />
-                  <span className={cn("text-sm", trendInfo?.color)}>{trendInfo?.label}</span>
+                  <span className={cn("text-xs sm:text-sm", trendInfo?.color)}>{trendInfo?.label}</span>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={calculateScore}
                   disabled={calculating}
+                  className="h-8 text-xs sm:text-sm"
                 >
                   {calculating ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
                   ) : (
                     <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Recalcular
+                      <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Recalcular</span>
                     </>
                   )}
                 </Button>
@@ -266,19 +267,19 @@ export const HealthScoreDetailPanel = ({ projectId, isAdmin = false }: HealthSco
 
         {/* Alerts */}
         {alerts.length > 0 && (
-          <Card className="w-80 border-orange-200 bg-orange-50/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm text-orange-700">
-                <AlertTriangle className="h-4 w-4" />
+          <Card className="lg:w-80 border-orange-200 bg-orange-50/50">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="flex items-center gap-2 text-xs sm:text-sm text-orange-700">
+                <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 Alertas
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-2 px-3 sm:px-6">
               {alerts.map((alert, idx) => (
                 <div
                   key={idx}
                   className={cn(
-                    "text-sm px-3 py-2 rounded",
+                    "text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 sm:py-2 rounded",
                     alert.type === "critical" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"
                   )}
                 >
@@ -291,47 +292,54 @@ export const HealthScoreDetailPanel = ({ projectId, isAdmin = false }: HealthSco
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="overview" className="gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Visão Geral
-          </TabsTrigger>
-          <TabsTrigger value="insights" className="gap-2">
-            <Sparkles className="h-4 w-4" />
-            Insights IA
-          </TabsTrigger>
-          <TabsTrigger value="history" className="gap-2">
-            <Activity className="h-4 w-4" />
-            Histórico
-          </TabsTrigger>
-          <TabsTrigger value="observations" className="gap-2">
-            <MessageSquare className="h-4 w-4" />
-            Observações
-          </TabsTrigger>
-          {isAdmin && (
-            <TabsTrigger value="settings" className="gap-2">
-              <Settings className="h-4 w-4" />
-              Configurações
+        <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0 pb-1">
+          <TabsList className="h-auto w-max sm:w-full inline-flex sm:flex flex-nowrap sm:flex-wrap justify-start gap-1 bg-transparent p-0">
+            <TabsTrigger value="overview" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+              <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Visão Geral</span>
+              <span className="sm:hidden">Geral</span>
             </TabsTrigger>
-          )}
-        </TabsList>
+            <TabsTrigger value="insights" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+              <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Insights IA</span>
+              <span className="sm:hidden">IA</span>
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+              <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Histórico</span>
+              <span className="sm:hidden">Hist.</span>
+            </TabsTrigger>
+            <TabsTrigger value="observations" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+              <MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Observações</span>
+              <span className="sm:hidden">Obs.</span>
+            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="settings" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Configurações</span>
+                <span className="sm:hidden">Config</span>
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
 
-        <TabsContent value="insights">
+        <TabsContent value="insights" className="mt-4 sm:mt-6">
           <HealthScoreAIInsights projectId={projectId} />
         </TabsContent>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
+        <TabsContent value="overview" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
+          <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
             {/* Radar Chart */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Pilares do Score</CardTitle>
+              <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+                <CardTitle className="text-xs sm:text-sm">Pilares do Score</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+              <CardContent className="px-2 sm:px-6">
+                <ResponsiveContainer width="100%" height={250}>
                   <RadarChart data={pillarData}>
                     <PolarGrid />
-                    <PolarAngleAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <PolarAngleAxis dataKey="name" tick={{ fontSize: 10 }} />
                     <PolarRadiusAxis angle={30} domain={[0, 100]} />
                     <Radar
                       name="Score"
@@ -347,26 +355,27 @@ export const HealthScoreDetailPanel = ({ projectId, isAdmin = false }: HealthSco
 
             {/* Pillar details */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Detalhes por Pilar</CardTitle>
+              <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+                <CardTitle className="text-xs sm:text-sm">Detalhes por Pilar</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6">
                 {[
-                  { icon: Heart, label: "Satisfação (CSAT/NPS)", value: score.satisfaction_score, weight: weights.satisfaction_weight },
-                  { icon: Target, label: "Entrega de Metas", value: score.goals_score, weight: weights.goals_weight },
-                  { icon: TrendingUp, label: "Performance Comercial", value: score.commercial_score, weight: weights.commercial_weight },
-                  { icon: Users, label: "Engajamento", value: score.engagement_score, weight: weights.engagement_weight },
-                  { icon: Headphones, label: "Suporte", value: score.support_score, weight: weights.support_weight },
-                  { icon: Activity, label: "Tendência", value: score.trend_score, weight: weights.trend_weight },
+                  { icon: Heart, label: "Satisfação", fullLabel: "Satisfação (CSAT/NPS)", value: score.satisfaction_score, weight: weights.satisfaction_weight },
+                  { icon: Target, label: "Metas", fullLabel: "Entrega de Metas", value: score.goals_score, weight: weights.goals_weight },
+                  { icon: TrendingUp, label: "Comercial", fullLabel: "Performance Comercial", value: score.commercial_score, weight: weights.commercial_weight },
+                  { icon: Users, label: "Engajamento", fullLabel: "Engajamento", value: score.engagement_score, weight: weights.engagement_weight },
+                  { icon: Headphones, label: "Suporte", fullLabel: "Suporte", value: score.support_score, weight: weights.support_weight },
+                  { icon: Activity, label: "Tendência", fullLabel: "Tendência", value: score.trend_score, weight: weights.trend_weight },
                 ].map((pillar, idx) => (
-                  <div key={idx} className="flex items-center gap-3">
-                    <pillar.icon className="h-4 w-4 text-muted-foreground" />
-                    <div className="flex-1">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>{pillar.label}</span>
+                  <div key={idx} className="flex items-center gap-2 sm:gap-3">
+                    <pillar.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between text-xs sm:text-sm mb-1">
+                        <span className="sm:hidden">{pillar.label}</span>
+                        <span className="hidden sm:inline">{pillar.fullLabel}</span>
                         <span className={getScoreColor(pillar.value)}>{pillar.value}</span>
                       </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-1.5 sm:h-2 bg-muted rounded-full overflow-hidden">
                         <div
                           className={cn(
                             "h-full rounded-full transition-all",
@@ -377,7 +386,7 @@ export const HealthScoreDetailPanel = ({ projectId, isAdmin = false }: HealthSco
                           style={{ width: `${pillar.value}%` }}
                         />
                       </div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                      <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">
                         Peso: {pillar.weight}%
                       </div>
                     </div>
