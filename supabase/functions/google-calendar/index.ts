@@ -1130,6 +1130,88 @@ Deno.serve(async (req) => {
         }
       };
 
+      // Fetch embedded video captions/transcripts from Google Meet recordings
+      const getVideoTranscript = async (videoFileId: string): Promise<string | null> => {
+        try {
+          // First, try to get captions associated with the video file
+          // Google Meet recordings store transcripts as caption tracks
+          const captionsUrl = `https://www.googleapis.com/drive/v3/files/${videoFileId}?fields=videoMediaMetadata,capabilities&supportsAllDrives=true`;
+          const metaResponse = await fetch(captionsUrl, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+
+          if (!metaResponse.ok) {
+            console.log(`Could not fetch video metadata for captions: ${metaResponse.status}`);
+          }
+
+          // Try to find transcript file that matches the video name pattern
+          // Meet recordings: "Meeting Name - Date Time - Recording"  
+          // Meet transcripts: "Meeting Name - Date Time - Transcript"
+          const videoMetaUrl = `https://www.googleapis.com/drive/v3/files/${videoFileId}?fields=name,parents&supportsAllDrives=true`;
+          const videoMeta = await fetch(videoMetaUrl, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+
+          if (!videoMeta.ok) {
+            console.log(`Could not get video file name: ${videoMeta.status}`);
+            return null;
+          }
+
+          const videoData = await videoMeta.json();
+          const videoName = videoData.name || "";
+          
+          // Extract the base name (before "- Recording" or similar)
+          // Pattern: "Company Name - 2026/01/07 10:30 GMT-03:00 - Recording"
+          const baseName = videoName.replace(/\s*-\s*(Recording|Gravação).*$/i, '');
+          
+          if (!baseName) {
+            console.log(`Could not extract base name from: ${videoName}`);
+            return null;
+          }
+
+          console.log(`Looking for transcript matching video: "${baseName}"`);
+
+          // Search for transcript file with matching base name
+          const transcriptSearchQuery = `name contains 'Transcript' or name contains 'Transcrição'`;
+          const searchUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(transcriptSearchQuery)}&fields=files(id,name,mimeType,createdTime)&pageSize=100&supportsAllDrives=true&includeItemsFromAllDrives=true`;
+          
+          const searchResponse = await fetch(searchUrl, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+
+          if (!searchResponse.ok) {
+            console.log(`Transcript search failed: ${searchResponse.status}`);
+            return null;
+          }
+
+          const searchData = await searchResponse.json();
+          const transcriptFiles = searchData.files || [];
+
+          // Find a transcript that matches the video's base name
+          const matchingTranscript = transcriptFiles.find((t: { name: string; id: string }) => {
+            const transcriptBase = t.name.replace(/\s*-\s*(Transcript|Transcrição).*$/i, '');
+            return transcriptBase.toLowerCase() === baseName.toLowerCase() ||
+                   t.name.toLowerCase().includes(baseName.toLowerCase().substring(0, 30));
+          });
+
+          if (matchingTranscript) {
+            console.log(`Found matching transcript: "${matchingTranscript.name}" (${matchingTranscript.id})`);
+            
+            // Download the transcript content
+            const content = await downloadTranscript(matchingTranscript.id, matchingTranscript.mimeType || 'text/vtt');
+            if (content && content.length > 50) {
+              return content;
+            }
+          }
+
+          console.log(`No matching transcript found for video: ${baseName}`);
+          return null;
+        } catch (error) {
+          console.error(`Error fetching video transcript:`, error);
+          return null;
+        }
+      };
+
       // Match files with meetings by date (with 1 day tolerance for timezone differences)
       for (const meeting of meetingsToSync) {
         const meetingDate = new Date(meeting.meeting_date);
@@ -1177,7 +1259,7 @@ Deno.serve(async (req) => {
 
         // Try to match transcript if transcript column is empty
         if (!meeting.transcript) {
-          // First, try to find transcript file in Drive
+          // First, try to find transcript file in Drive (separate .vtt/.sbv files)
           const matchingTranscript = transcripts.find((t: { createdTime: string; name: string }) => {
             const tDate = new Date(t.createdTime);
             const tDateStr = tDate.toISOString().split('T')[0];
@@ -1194,6 +1276,8 @@ Deno.serve(async (req) => {
             return false;
           });
 
+          let transcriptSaved = false;
+
           if (matchingTranscript) {
             const transcriptText = await downloadTranscript(matchingTranscript.id, matchingTranscript.mimeType);
             
@@ -1205,34 +1289,59 @@ Deno.serve(async (req) => {
 
               if (!updateError) {
                 syncedTranscripts++;
-                console.log(`✓ Matched Drive transcript for meeting: ${meeting.meeting_title}`);
+                transcriptSaved = true;
+                console.log(`✓ Matched Drive transcript file for meeting: ${meeting.meeting_title}`);
               }
             }
-          } else {
-            // No Drive transcript found - try AI transcription if recording link exists
-            const recordingLink = meeting.recording_link;
-            
-            if (recordingLink) {
-              console.log(`No Drive transcript found, attempting AI transcription for: ${meeting.meeting_title}`);
-              
-              try {
-                const transcriptResult = await transcribeRecordingWithAI(recordingLink, accessToken, supabase);
-                
-                if (transcriptResult && transcriptResult.length > 50) {
-                  const { error: updateError } = await supabase
-                    .from("onboarding_meeting_notes")
-                    .update({ transcript: transcriptResult })
-                    .eq("id", meeting.id);
+          }
 
-                  if (!updateError) {
-                    syncedTranscripts++;
-                    console.log(`✓ AI transcription completed for meeting: ${meeting.meeting_title}`);
-                  }
+          // If no separate transcript file found, try to get the embedded video transcript
+          if (!transcriptSaved && meeting.recording_link) {
+            // Extract file ID from recording link
+            const fileIdMatch = meeting.recording_link.match(/\/d\/([^\/]+)/);
+            
+            if (fileIdMatch) {
+              const videoFileId = fileIdMatch[1];
+              console.log(`Trying to get embedded transcript for video: ${videoFileId}`);
+              
+              const embeddedTranscript = await getVideoTranscript(videoFileId);
+              
+              if (embeddedTranscript && embeddedTranscript.length > 50) {
+                const { error: updateError } = await supabase
+                  .from("onboarding_meeting_notes")
+                  .update({ transcript: embeddedTranscript })
+                  .eq("id", meeting.id);
+
+                if (!updateError) {
+                  syncedTranscripts++;
+                  transcriptSaved = true;
+                  console.log(`✓ Got embedded video transcript for meeting: ${meeting.meeting_title}`);
                 }
-              } catch (transcribeError) {
-                console.error(`AI transcription failed for ${meeting.meeting_title}:`, transcribeError);
-                // Continue with next meeting, don't fail the whole sync
               }
+            }
+          }
+
+          // Last resort: try AI transcription
+          if (!transcriptSaved && meeting.recording_link) {
+            console.log(`No Drive transcript found, attempting AI transcription for: ${meeting.meeting_title}`);
+            
+            try {
+              const transcriptResult = await transcribeRecordingWithAI(meeting.recording_link, accessToken, supabase);
+              
+              if (transcriptResult && transcriptResult.length > 50) {
+                const { error: updateError } = await supabase
+                  .from("onboarding_meeting_notes")
+                  .update({ transcript: transcriptResult })
+                  .eq("id", meeting.id);
+
+                if (!updateError) {
+                  syncedTranscripts++;
+                  console.log(`✓ AI transcription completed for meeting: ${meeting.meeting_title}`);
+                }
+              }
+            } catch (transcribeError) {
+              console.error(`AI transcription failed for ${meeting.meeting_title}:`, transcribeError);
+              // Continue with next meeting, don't fail the whole sync
             }
           }
         }
