@@ -17,8 +17,9 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const action = url.searchParams.get("action");
+    // Get action from request body
+    const body = await req.json().catch(() => ({}));
+    const action = body.action;
 
     console.log("Google Drive OAuth - Action:", action);
 
@@ -30,7 +31,7 @@ serve(async (req) => {
 
     // Action: Get authorization URL
     if (action === "auth_url") {
-      const { projectId, redirectUri } = await req.json();
+      const { projectId, redirectUri } = body;
       
       if (!projectId || !redirectUri) {
         throw new Error("projectId and redirectUri are required");
@@ -60,7 +61,7 @@ serve(async (req) => {
 
     // Action: Exchange code for tokens
     if (action === "exchange") {
-      const { code, redirectUri, projectId } = await req.json();
+      const { code, redirectUri, projectId } = body;
 
       if (!code || !redirectUri || !projectId) {
         throw new Error("code, redirectUri and projectId are required");
@@ -116,7 +117,7 @@ serve(async (req) => {
 
     // Action: Refresh token
     if (action === "refresh") {
-      const { projectId } = await req.json();
+      const { projectId } = body;
 
       if (!projectId) {
         throw new Error("projectId is required");
@@ -180,7 +181,7 @@ serve(async (req) => {
 
     // Action: Check connection status
     if (action === "status") {
-      const { projectId } = await req.json();
+      const { projectId } = body;
 
       if (!projectId) {
         throw new Error("projectId is required");
@@ -211,7 +212,7 @@ serve(async (req) => {
 
     // Action: Disconnect
     if (action === "disconnect") {
-      const { projectId } = await req.json();
+      const { projectId } = body;
 
       if (!projectId) {
         throw new Error("projectId is required");
