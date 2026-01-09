@@ -763,19 +763,21 @@ export default function OnboardingCompaniesReportPage() {
                     <Heart className="h-4 w-4 text-red-500" fill="currentColor" />
                     <Label className="text-sm font-medium">Filtrar por Saúde</Label>
                   </div>
-                  {(filterHealthMin > 0 || filterHealthMax < 100) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setFilterHealthMin(0);
-                        setFilterHealthMax(100);
-                      }}
-                      className="text-muted-foreground text-xs h-7"
-                    >
-                      Limpar filtro
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {(filterHealthMin > 0 || filterHealthMax < 100) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setFilterHealthMin(0);
+                          setFilterHealthMax(100);
+                        }}
+                        className="text-muted-foreground text-xs h-7"
+                      >
+                        Limpar filtro
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2 min-w-[80px]">
@@ -805,6 +807,36 @@ export default function OnboardingCompaniesReportPage() {
                   <span className="text-orange-500">Alto (40-59)</span>
                   <span className="text-yellow-500">Médio (60-79)</span>
                   <span className="text-green-500">Saudável (80-100)</span>
+                </div>
+                {/* Sort by health score buttons */}
+                <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                  <Label className="text-xs text-muted-foreground">Ordenar por saúde:</Label>
+                  <div className="flex gap-1">
+                    <Button
+                      variant={sortField === "health_score" && sortDirection === "asc" ? "default" : "outline"}
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => {
+                        setSortField("health_score");
+                        setSortDirection("asc");
+                      }}
+                    >
+                      <ArrowUp className="h-3 w-3" />
+                      0 → 100
+                    </Button>
+                    <Button
+                      variant={sortField === "health_score" && sortDirection === "desc" ? "default" : "outline"}
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => {
+                        setSortField("health_score");
+                        setSortDirection("desc");
+                      }}
+                    >
+                      <ArrowDown className="h-3 w-3" />
+                      100 → 0
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
