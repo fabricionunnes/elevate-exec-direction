@@ -74,12 +74,12 @@ interface Company {
 }
 
 const RENEWAL_STATUS_OPTIONS = [
-  { value: "renovado", label: "Renovado", color: "bg-green-500" },
-  { value: "encerrado", label: "Encerrado", color: "bg-red-500" },
-  { value: "em_negociacao", label: "Em negociação", color: "bg-yellow-500" },
-  { value: "reuniao_agendada", label: "Reunião Agendada", color: "bg-purple-500" },
-  { value: "vai_renovar", label: "Vai renovar", color: "bg-blue-500" },
-  { value: "falta_pagar", label: "Falta pagar", color: "bg-orange-500" },
+  { value: "renovado", label: "Renovado", color: "bg-emerald-500", bgLight: "bg-emerald-50 dark:bg-emerald-950", textColor: "text-emerald-700 dark:text-emerald-300", icon: "✅" },
+  { value: "encerrado", label: "Encerrado", color: "bg-rose-500", bgLight: "bg-rose-50 dark:bg-rose-950", textColor: "text-rose-700 dark:text-rose-300", icon: "❌" },
+  { value: "em_negociacao", label: "Em negociação", color: "bg-amber-500", bgLight: "bg-amber-50 dark:bg-amber-950", textColor: "text-amber-700 dark:text-amber-300", icon: "🤝" },
+  { value: "reuniao_agendada", label: "Agendado", color: "bg-violet-500", bgLight: "bg-violet-50 dark:bg-violet-950", textColor: "text-violet-700 dark:text-violet-300", icon: "📅" },
+  { value: "vai_renovar", label: "Vai renovar", color: "bg-sky-500", bgLight: "bg-sky-50 dark:bg-sky-950", textColor: "text-sky-700 dark:text-sky-300", icon: "👍" },
+  { value: "falta_pagar", label: "Falta pagar", color: "bg-orange-500", bgLight: "bg-orange-50 dark:bg-orange-950", textColor: "text-orange-700 dark:text-orange-300", icon: "💰" },
 ];
 
 const PLAN_TYPE_OPTIONS = [
@@ -783,57 +783,67 @@ export default function OnboardingRenewalsPage() {
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card>
+          <Card className="border-l-4 border-l-slate-500 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <Building2 className="h-8 w-8 text-muted-foreground" />
+                <div className="p-2 rounded-full bg-slate-200 dark:bg-slate-700">
+                  <Building2 className="h-6 w-6 text-slate-600 dark:text-slate-300" />
+                </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total</p>
-                  <p className="text-2xl font-bold">{stats.total}</p>
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total</p>
+                  <p className="text-3xl font-bold text-slate-700 dark:text-slate-200">{stats.total}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-l-4 border-l-rose-500 bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-950 dark:to-rose-900">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <AlertTriangle className="h-8 w-8 text-destructive" />
+                <div className="p-2 rounded-full bg-rose-200 dark:bg-rose-800">
+                  <AlertTriangle className="h-6 w-6 text-rose-600 dark:text-rose-300" />
+                </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Vencidos</p>
-                  <p className="text-2xl font-bold text-destructive">{stats.expired}</p>
+                  <p className="text-xs font-medium text-rose-500 uppercase tracking-wide">Vencidos</p>
+                  <p className="text-3xl font-bold text-rose-600 dark:text-rose-400">{stats.expired}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <Clock className="h-8 w-8 text-yellow-500" />
+                <div className="p-2 rounded-full bg-amber-200 dark:bg-amber-800">
+                  <Clock className="h-6 w-6 text-amber-600 dark:text-amber-300" />
+                </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Vencendo</p>
-                  <p className="text-2xl font-bold text-yellow-500">{stats.soon}</p>
+                  <p className="text-xs font-medium text-amber-500 uppercase tracking-wide">Vencendo</p>
+                  <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{stats.soon}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-l-4 border-l-emerald-500 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <CheckCircle className="h-8 w-8 text-green-500" />
+                <div className="p-2 rounded-full bg-emerald-200 dark:bg-emerald-800">
+                  <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-300" />
+                </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Ativos</p>
-                  <p className="text-2xl font-bold text-green-500">{stats.active}</p>
+                  <p className="text-xs font-medium text-emerald-500 uppercase tracking-wide">Ativos</p>
+                  <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{stats.active}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-l-4 border-l-cyan-500 bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <DollarSign className="h-8 w-8 text-primary" />
+                <div className="p-2 rounded-full bg-cyan-200 dark:bg-cyan-800">
+                  <DollarSign className="h-6 w-6 text-cyan-600 dark:text-cyan-300" />
+                </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Valor Total</p>
-                  <p className="text-lg font-bold">{formatCurrency(stats.totalValue)}</p>
+                  <p className="text-xs font-medium text-cyan-500 uppercase tracking-wide">Valor Total</p>
+                  <p className="text-xl font-bold text-cyan-600 dark:text-cyan-400">{formatCurrency(stats.totalValue)}</p>
                 </div>
               </div>
             </CardContent>
@@ -932,29 +942,39 @@ export default function OnboardingRenewalsPage() {
               <div className="min-w-[900px]">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-[220px] font-semibold">Empresa</TableHead>
-                      <TableHead className="w-[120px] font-semibold">Valor</TableHead>
-                      <TableHead className="w-[110px] font-semibold">Plano</TableHead>
-                      <TableHead className="w-[100px] font-semibold">Término</TableHead>
-                      <TableHead className="w-[120px] font-semibold">Contrato</TableHead>
-                      <TableHead className="w-[180px] font-semibold">Status Renovação</TableHead>
-                      <TableHead className="w-[50px] font-semibold">Obs</TableHead>
-                      <TableHead className="w-[100px] text-right font-semibold">Ações</TableHead>
+                    <TableRow className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 border-b-2 border-primary/20">
+                      <TableHead className="w-[220px] font-bold text-slate-700 dark:text-slate-200">🏢 Empresa</TableHead>
+                      <TableHead className="w-[120px] font-bold text-slate-700 dark:text-slate-200">💵 Valor</TableHead>
+                      <TableHead className="w-[110px] font-bold text-slate-700 dark:text-slate-200">📋 Plano</TableHead>
+                      <TableHead className="w-[100px] font-bold text-slate-700 dark:text-slate-200">📆 Término</TableHead>
+                      <TableHead className="w-[120px] font-bold text-slate-700 dark:text-slate-200">📊 Contrato</TableHead>
+                      <TableHead className="w-[180px] font-bold text-slate-700 dark:text-slate-200">🔄 Status</TableHead>
+                      <TableHead className="w-[50px] font-bold text-slate-700 dark:text-slate-200">💬</TableHead>
+                      <TableHead className="w-[100px] text-right font-bold text-slate-700 dark:text-slate-200">⚡ Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCompanies.map((company) => {
+                    {filteredCompanies.map((company, index) => {
                       const status = getContractStatus(company.contract_end_date);
                       const renewalStatusOption = RENEWAL_STATUS_OPTIONS.find(s => s.value === company.renewal_status);
                       const planOption = PLAN_TYPE_OPTIONS.find(p => p.value === company.renewal_plan_type);
 
+                      // Row background based on status
+                      const getRowBg = () => {
+                        if (status.label === "Vencido") return "bg-rose-50/50 dark:bg-rose-950/30 hover:bg-rose-100/70 dark:hover:bg-rose-950/50";
+                        if (status.label === "Vence em breve") return "bg-amber-50/50 dark:bg-amber-950/30 hover:bg-amber-100/70 dark:hover:bg-amber-950/50";
+                        if (status.label === "Atenção") return "bg-orange-50/50 dark:bg-orange-950/30 hover:bg-orange-100/70 dark:hover:bg-orange-950/50";
+                        return index % 2 === 0 ? "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800" : "bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700";
+                      };
+
                       return (
-                        <TableRow key={company.id} className="hover:bg-muted/30">
+                        <TableRow key={company.id} className={`${getRowBg()} transition-colors border-b border-slate-200 dark:border-slate-700`}>
                           <TableCell className="py-3">
                             <div className="flex items-center gap-2">
-                              <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              <span className="font-medium text-sm" title={company.name}>
+                              <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10">
+                                <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
+                              </div>
+                              <span className="font-semibold text-sm text-slate-800 dark:text-slate-100" title={company.name}>
                                 {company.name}
                               </span>
                             </div>
@@ -969,11 +989,11 @@ export default function OnboardingRenewalsPage() {
                                   "contract_value",
                                   e.target.value ? parseFloat(e.target.value) : null
                                 )}
-                                className="w-full h-8 text-sm"
+                                className="w-full h-8 text-sm font-medium border-emerald-200 focus:border-emerald-500"
                                 placeholder="Valor"
                               />
                             ) : (
-                              <span className="text-green-600 font-medium text-sm">
+                              <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">
                                 {formatCurrency(company.contract_value)}
                               </span>
                             )}
@@ -984,7 +1004,7 @@ export default function OnboardingRenewalsPage() {
                                 value={company.renewal_plan_type || "monthly"}
                                 onValueChange={(v) => handlePlanTypeChange(company.id, v)}
                               >
-                                <SelectTrigger className="w-full h-8 text-sm">
+                                <SelectTrigger className="w-full h-8 text-sm bg-white dark:bg-slate-800">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-popover z-50">
@@ -996,22 +1016,44 @@ export default function OnboardingRenewalsPage() {
                                 </SelectContent>
                               </Select>
                             ) : (
-                              <span className="text-sm">{planOption?.label || "Mensal"}</span>
+                              <Badge variant="secondary" className="font-medium">{planOption?.label || "Mensal"}</Badge>
                             )}
                           </TableCell>
                           <TableCell className="py-3">
                             {company.renewal_plan_type === "monthly" ? (
-                              <span className="text-muted-foreground text-xs">Recorrente</span>
+                              <Badge variant="outline" className="text-xs text-indigo-600 dark:text-indigo-400 border-indigo-300">🔁 Recorrente</Badge>
                             ) : company.contract_end_date ? (
-                              <span className="text-sm">{format(parseISO(company.contract_end_date), "dd/MM/yyyy")}</span>
+                              <span className="text-sm font-medium">{format(parseISO(company.contract_end_date), "dd/MM/yyyy")}</span>
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )}
                           </TableCell>
                           <TableCell className="py-3">
-                            <Badge variant={status.color} className="text-xs whitespace-nowrap">
-                              {status.label}
-                            </Badge>
+                            {status.label === "Vencido" && (
+                              <Badge className="bg-gradient-to-r from-rose-500 to-red-600 text-white border-0 shadow-sm">
+                                🚨 {status.label}
+                              </Badge>
+                            )}
+                            {status.label === "Vence em breve" && (
+                              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-sm">
+                                ⚠️ {status.label}
+                              </Badge>
+                            )}
+                            {status.label === "Atenção" && (
+                              <Badge className="bg-gradient-to-r from-yellow-400 to-amber-500 text-white border-0 shadow-sm">
+                                👀 {status.label}
+                              </Badge>
+                            )}
+                            {status.label === "Ativo" && (
+                              <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 shadow-sm">
+                                ✅ {status.label}
+                              </Badge>
+                            )}
+                            {status.label === "Sem data" && (
+                              <Badge variant="secondary" className="text-slate-500">
+                                ❓ {status.label}
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="py-3">
                             {isAdmin ? (
@@ -1020,43 +1062,47 @@ export default function OnboardingRenewalsPage() {
                                   value={company.renewal_status || "em_negociacao"}
                                   onValueChange={(v) => handleRenewalStatusChange(company.id, v)}
                                 >
-                                  <SelectTrigger className="w-full h-9 text-sm">
+                                  <SelectTrigger className={`w-full h-9 text-sm font-medium border-2 ${
+                                    RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.bgLight || "bg-slate-50"
+                                  } ${
+                                    RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.textColor || "text-slate-700"
+                                  }`}>
                                     <div className="flex items-center gap-2">
-                                      <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                                        RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.color || "bg-gray-400"
-                                      }`} />
-                                      <span className="truncate text-sm">
+                                      <span className="text-base">
+                                        {RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.icon || "🔄"}
+                                      </span>
+                                      <span className="truncate text-sm font-semibold">
                                         {RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.label || "Em negociação"}
                                       </span>
                                     </div>
                                   </SelectTrigger>
-                                  <SelectContent className="bg-popover z-50 min-w-[180px]">
+                                  <SelectContent className="bg-popover z-50 min-w-[200px] border-2">
                                     {RENEWAL_STATUS_OPTIONS.map(opt => (
-                                      <SelectItem key={opt.value} value={opt.value}>
+                                      <SelectItem key={opt.value} value={opt.value} className={`${opt.bgLight} ${opt.textColor} font-medium my-0.5 rounded-md`}>
                                         <div className="flex items-center gap-2">
-                                          <div className={`w-3 h-3 rounded-full flex-shrink-0 ${opt.color}`} />
-                                          <span>{opt.label}</span>
+                                          <span className="text-base">{opt.icon}</span>
+                                          <span className="font-semibold">{opt.label}</span>
                                         </div>
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
                                 {company.renewal_status === "reuniao_agendada" && company.renewal_meeting_date && (
-                                  <span className="text-xs text-purple-500 font-medium pl-1">
+                                  <Badge variant="outline" className="text-xs text-violet-600 dark:text-violet-400 border-violet-300 dark:border-violet-600 bg-violet-50 dark:bg-violet-950 w-fit">
                                     📅 {format(parseISO(company.renewal_meeting_date), "dd/MM/yyyy")}
-                                  </span>
+                                  </Badge>
                                 )}
                               </div>
                             ) : (
                               <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-3 h-3 rounded-full flex-shrink-0 ${renewalStatusOption?.color || "bg-gray-400"}`} />
-                                  <span className="text-sm">{renewalStatusOption?.label || "Em negociação"}</span>
-                                </div>
+                                <Badge className={`${renewalStatusOption?.bgLight || "bg-slate-100"} ${renewalStatusOption?.textColor || "text-slate-700"} border-0 font-medium`}>
+                                  <span className="mr-1">{renewalStatusOption?.icon || "🔄"}</span>
+                                  {renewalStatusOption?.label || "Em negociação"}
+                                </Badge>
                                 {company.renewal_status === "reuniao_agendada" && company.renewal_meeting_date && (
-                                  <span className="text-xs text-purple-500 font-medium pl-5">
+                                  <Badge variant="outline" className="text-xs text-violet-600 dark:text-violet-400 border-violet-300 w-fit">
                                     📅 {format(parseISO(company.renewal_meeting_date), "dd/MM/yyyy")}
-                                  </span>
+                                  </Badge>
                                 )}
                               </div>
                             )}
