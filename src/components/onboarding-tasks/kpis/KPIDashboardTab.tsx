@@ -68,7 +68,8 @@ interface Unit {
 interface KPIDashboardTabProps {
   companyId: string;
   projectId?: string;
-  canDeleteEntries?: boolean; // Admin or CS only
+  canDeleteEntries?: boolean; // Admin, CS, or consultant
+  canEditSalesHistory?: boolean; // Admin, CS, consultant, or client
 }
 
 // Raw monthly targets storage (all scopes: company, unit, salesperson)
@@ -82,7 +83,7 @@ interface MonthlyTarget {
   salesperson_id: string | null;
 }
 
-export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false }: KPIDashboardTabProps) => {
+export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false, canEditSalesHistory = false }: KPIDashboardTabProps) => {
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -724,6 +725,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
                 companyId={companyId} 
                 contractStartDate={contractStartDate}
                 onDataChange={() => setSalesHistoryRefreshKey(prev => prev + 1)}
+                canEdit={canEditSalesHistory}
               />
               <KPIEntriesHistoryDialog 
                 companyId={companyId}
