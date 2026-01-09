@@ -67,58 +67,68 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header with public link */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">Metas & KPIs</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-lg sm:text-xl font-semibold">Metas & KPIs</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Configure e acompanhe os indicadores de performance
           </p>
         </div>
-        <Button variant="outline" onClick={copyPublicLink} className="gap-2">
-          <Link className="h-4 w-4" />
-          Copiar Link de Lançamento
+        <Button variant="outline" size="sm" onClick={copyPublicLink} className="gap-2 w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm">
+          <Link className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <span className="sm:hidden">Copiar Link</span>
+          <span className="hidden sm:inline">Copiar Link de Lançamento</span>
         </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="dashboard" className="gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Dashboard
-          </TabsTrigger>
-          {canAccessAllTabs && (
-            <TabsTrigger value="analysis" className="gap-2">
-              <Sparkles className="h-4 w-4" />
-              Análise IA
+        <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0 pb-1">
+          <TabsList className="h-auto w-max sm:w-full inline-flex sm:flex flex-nowrap sm:flex-wrap justify-start gap-1 bg-transparent p-0">
+            <TabsTrigger value="dashboard" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+              <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Dashboard</span>
+              <span className="sm:hidden">Dash</span>
             </TabsTrigger>
-          )}
-          {canAccessAllTabs && (
-            <TabsTrigger value="units" className="gap-2">
-              <Building2 className="h-4 w-4" />
-              Unidades
+            {canAccessAllTabs && (
+              <TabsTrigger value="analysis" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Análise IA</span>
+                <span className="sm:hidden">IA</span>
+              </TabsTrigger>
+            )}
+            {canAccessAllTabs && (
+              <TabsTrigger value="units" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Unidades</span>
+                <span className="sm:hidden">Und.</span>
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="salespeople" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+              <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Vendedores</span>
+              <span className="sm:hidden">Vend.</span>
             </TabsTrigger>
-          )}
-          <TabsTrigger value="salespeople" className="gap-2">
-            <Users className="h-4 w-4" />
-            Vendedores
-          </TabsTrigger>
-          <TabsTrigger value="gamification" className="gap-2">
-            <Gamepad2 className="h-4 w-4" />
-            Gamificação
-          </TabsTrigger>
-          <TabsTrigger value="endomarketing" className="gap-2">
-            <Trophy className="h-4 w-4" />
-            Endomarketing
-          </TabsTrigger>
-          {canAccessAllTabs && (
-            <TabsTrigger value="config" className="gap-2">
-              <Settings className="h-4 w-4" />
-              Configuração
+            <TabsTrigger value="gamification" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+              <Gamepad2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Gamificação</span>
+              <span className="sm:hidden">Game</span>
             </TabsTrigger>
-          )}
-        </TabsList>
+            <TabsTrigger value="endomarketing" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+              <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Endomarketing</span>
+              <span className="sm:hidden">Endo</span>
+            </TabsTrigger>
+            {canAccessAllTabs && (
+              <TabsTrigger value="config" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Configuração</span>
+                <span className="sm:hidden">Config</span>
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
 
         <TabsContent value="dashboard" className="mt-6">
           <KPIDashboardTab companyId={companyId} projectId={projectId} canDeleteEntries={canAccessAllTabs} />

@@ -338,30 +338,32 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header com botões de ação */}
       {canEdit && (
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           {isEditing ? (
             <>
-              <Button variant="outline" onClick={handleCancel} disabled={saving}>
-                <X className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving} className="h-8 sm:h-9 text-xs sm:text-sm">
+                <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                 Cancelar
               </Button>
-              <Button onClick={handleSave} disabled={saving}>
-                <Save className="h-4 w-4 mr-2" />
+              <Button size="sm" onClick={handleSave} disabled={saving} className="h-8 sm:h-9 text-xs sm:text-sm">
+                <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                 {saving ? "Salvando..." : "Salvar"}
               </Button>
             </>
           ) : (
             <>
-              <Button variant="outline" onClick={() => setShowKickoffForm(true)}>
-                <ClipboardList className="h-4 w-4 mr-2" />
-                Formulário de Kickoff
+              <Button variant="outline" size="sm" onClick={() => setShowKickoffForm(true)} className="h-8 sm:h-9 text-xs sm:text-sm">
+                <ClipboardList className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Formulário de Kickoff</span>
+                <span className="sm:hidden ml-1.5">Kickoff</span>
               </Button>
-              <Button variant="outline" onClick={() => setIsEditing(true)}>
-                <Pencil className="h-4 w-4 mr-2" />
-                Editar Briefing
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="h-8 sm:h-9 text-xs sm:text-sm">
+                <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Editar Briefing</span>
+                <span className="sm:hidden ml-1.5">Editar</span>
               </Button>
             </>
           )}
@@ -378,14 +380,14 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
 
       {/* Informações Básicas */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
+        <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Building2 className="h-4 w-4 sm:h-5 sm:w-5" />
             Informações da Empresa
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {renderField("Nome da Empresa", company.name, "name")}
             {renderField("CNPJ", company.cnpj, "cnpj")}
             <div>
@@ -438,12 +440,12 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
             </div>
           </div>
 
-          <Separator />
+          <Separator className="my-3 sm:my-4" />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {renderField("Website", company.website, "website")}
             <div>
-              <label className="text-sm text-muted-foreground">Telefone</label>
+              <label className="text-xs sm:text-sm text-muted-foreground">Telefone</label>
               {isEditing ? (
                 <Input
                   value={(formData.phone as string) || ""}
