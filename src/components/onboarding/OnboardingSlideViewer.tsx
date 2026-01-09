@@ -267,11 +267,9 @@ export const OnboardingSlideViewer = ({ onboarding }: OnboardingSlideViewerProps
               variant="ghost"
               size="sm"
               className="hover:bg-primary/10 transition-colors h-8 w-8 p-0"
-              asChild
+              onClick={() => navigate("/onboarding-tasks")}
             >
-              <Link to="/onboarding">
-                <Home className="h-4 w-4" />
-              </Link>
+              <Home className="h-4 w-4" />
             </Button>
             <div>
               <h1 className="font-bold text-base bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text flex items-center gap-2">
