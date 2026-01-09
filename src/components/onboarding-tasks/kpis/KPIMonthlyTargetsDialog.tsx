@@ -712,7 +712,7 @@ export const KPIMonthlyTargetsDialog = ({
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o vendedor" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-60">
                       {filteredSalespeople.map((sp) => (
                         <SelectItem key={sp.id} value={sp.id}>
                           {sp.name}
