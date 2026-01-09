@@ -92,6 +92,8 @@ export default function OnboardingCompaniesReportPage() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isCS, setIsCS] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -143,14 +145,17 @@ export default function OnboardingCompaniesReportPage() {
       return;
     }
 
-    if (staffData.role !== "admin") {
-      toast.error("Acesso restrito a administradores");
+    // Allow admin and cs to access this page
+    if (staffData.role !== "admin" && staffData.role !== "cs") {
+      toast.error("Acesso restrito");
       navigate("/onboarding-tasks");
       return;
     }
 
     setStaffId(staffData.id);
-    setIsAdmin(true);
+    setUserRole(staffData.role);
+    setIsAdmin(staffData.role === "admin");
+    setIsCS(staffData.role === "cs");
     fetchData();
   };
 
@@ -594,57 +599,62 @@ export default function OnboardingCompaniesReportPage() {
         />
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardHeader className="pb-2 pt-4 px-4">
-              <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
-                <DollarSign className="h-4 w-4 text-green-500" />
-                Valor Total Pago
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <p className="text-xl sm:text-2xl font-bold text-green-500">
-                {formatCurrency(summaryMetrics.totalLTV)}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Soma dos pagamentos
-              </p>
-            </CardContent>
-          </Card>
+        <div className={`grid gap-4 mb-6 ${isCS ? "grid-cols-2" : "grid-cols-2 md:grid-cols-4"}`}>
+          {/* Hide financial cards for CS */}
+          {!isCS && (
+            <>
+              <Card>
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
+                    <DollarSign className="h-4 w-4 text-green-500" />
+                    Valor Total Pago
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <p className="text-xl sm:text-2xl font-bold text-green-500">
+                    {formatCurrency(summaryMetrics.totalLTV)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Soma dos pagamentos
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="pb-2 pt-4 px-4">
-              <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
-                <TrendingUp className="h-4 w-4 text-blue-500" />
-                Ticket Médio
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <p className="text-xl sm:text-2xl font-bold text-blue-500">
-                {formatCurrency(summaryMetrics.avgTicketGeneral)}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Por mês (ponderado)
-              </p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
+                    <TrendingUp className="h-4 w-4 text-blue-500" />
+                    Ticket Médio
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <p className="text-xl sm:text-2xl font-bold text-blue-500">
+                    {formatCurrency(summaryMetrics.avgTicketGeneral)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Por mês (ponderado)
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="pb-2 pt-4 px-4">
-              <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
-                <Clock className="h-4 w-4 text-purple-500" />
-                Valor Mensal Total
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <p className="text-xl sm:text-2xl font-bold text-purple-500">
-                {formatCurrency(summaryMetrics.totalContractValue)}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Soma dos contratos
-              </p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
+                    <Clock className="h-4 w-4 text-purple-500" />
+                    Valor Mensal Total
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <p className="text-xl sm:text-2xl font-bold text-purple-500">
+                    {formatCurrency(summaryMetrics.totalContractValue)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Soma dos contratos
+                  </p>
+                </CardContent>
+              </Card>
+            </>
+          )}
 
           <Card>
             <CardHeader className="pb-2 pt-4 px-4">
@@ -900,24 +910,29 @@ export default function OnboardingCompaniesReportPage() {
                         <SortIcon field="contract_months" />
                       </div>
                     </TableHead>
-                    <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap"
-                      onClick={() => handleSort("total_paid")}
-                    >
-                      <div className="flex items-center justify-end">
-                        Valor Total
-                        <SortIcon field="total_paid" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap"
-                      onClick={() => handleSort("avg_ticket")}
-                    >
-                      <div className="flex items-center justify-end">
-                        Ticket
-                        <SortIcon field="avg_ticket" />
-                      </div>
-                    </TableHead>
+                    {/* Hide financial columns for CS */}
+                    {!isCS && (
+                      <>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap"
+                          onClick={() => handleSort("total_paid")}
+                        >
+                          <div className="flex items-center justify-end">
+                            Valor Total
+                            <SortIcon field="total_paid" />
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap"
+                          onClick={() => handleSort("avg_ticket")}
+                        >
+                          <div className="flex items-center justify-end">
+                            Ticket
+                            <SortIcon field="avg_ticket" />
+                          </div>
+                        </TableHead>
+                      </>
+                    )}
                     <TableHead 
                       className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
                       onClick={() => handleSort("status")}
@@ -953,7 +968,7 @@ export default function OnboardingCompaniesReportPage() {
                 <TableBody>
                   {filteredCompanies.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="text-center py-8 text-muted-foreground text-xs sm:text-sm">
+                      <TableCell colSpan={isCS ? 9 : 11} className="text-center py-8 text-muted-foreground text-xs sm:text-sm">
                         Nenhuma empresa encontrada
                       </TableCell>
                     </TableRow>
@@ -997,12 +1012,17 @@ export default function OnboardingCompaniesReportPage() {
                         <TableCell className="text-xs sm:text-sm py-3">{formatDate(company.contract_start_date)}</TableCell>
                         <TableCell className="text-xs sm:text-sm py-3">{company.payment_method === "monthly" ? "—" : formatDate(company.contract_end_date)}</TableCell>
                         <TableCell className="text-right text-xs sm:text-sm py-3">{company.contract_months}</TableCell>
-                        <TableCell className="text-right font-medium text-green-500 text-xs sm:text-sm py-3">
-                          {formatCurrency(company.total_paid)}
-                        </TableCell>
-                        <TableCell className="text-right text-blue-500 text-xs sm:text-sm py-3">
-                          {formatCurrency(company.avg_ticket)}/mês
-                        </TableCell>
+                        {/* Hide financial cells for CS */}
+                        {!isCS && (
+                          <>
+                            <TableCell className="text-right font-medium text-green-500 text-xs sm:text-sm py-3">
+                              {formatCurrency(company.total_paid)}
+                            </TableCell>
+                            <TableCell className="text-right text-blue-500 text-xs sm:text-sm py-3">
+                              {formatCurrency(company.avg_ticket)}/mês
+                            </TableCell>
+                          </>
+                        )}
                         <TableCell className="py-3">{getStatusBadge(company.status)}</TableCell>
                         <TableCell className="py-3">
                           {company.health_score !== null ? (
@@ -1038,16 +1058,20 @@ export default function OnboardingCompaniesReportPage() {
                             <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="py-3">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => openEditDialog(company, e)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
+                        {/* Hide edit button for CS */}
+                        {isAdmin && (
+                          <TableCell className="py-3">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => openEditDialog(company, e)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        )}
+                        {isCS && <TableCell className="py-3" />}
                       </TableRow>
                     ))
                   )}

@@ -121,6 +121,8 @@ export default function OnboardingRenewalsPage() {
   const [renewals, setRenewals] = useState<Renewal[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isCS, setIsCS] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(null);
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -254,15 +256,17 @@ export default function OnboardingRenewalsPage() {
       return;
     }
 
-    // Only admins can access this page
-    if (staff.role !== "admin") {
-      toast.error("Acesso restrito a administradores");
+    // Allow admin and cs to access this page
+    if (staff.role !== "admin" && staff.role !== "cs") {
+      toast.error("Acesso restrito");
       navigate("/onboarding-tasks");
       return;
     }
 
     setStaffId(staff.id);
-    setIsAdmin(true);
+    setUserRole(staff.role);
+    setIsAdmin(staff.role === "admin");
+    setIsCS(staff.role === "cs");
     fetchData();
   };
 
@@ -782,7 +786,7 @@ export default function OnboardingRenewalsPage() {
 
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className={`grid gap-4 ${isCS ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-5"}`}>
           <Card className="border-l-4 border-l-slate-500 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -835,19 +839,22 @@ export default function OnboardingRenewalsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-l-4 border-l-cyan-500 bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-cyan-200 dark:bg-cyan-800">
-                  <DollarSign className="h-6 w-6 text-cyan-600 dark:text-cyan-300" />
+          {/* Hide value card for CS */}
+          {!isCS && (
+            <Card className="border-l-4 border-l-cyan-500 bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-cyan-200 dark:bg-cyan-800">
+                    <DollarSign className="h-6 w-6 text-cyan-600 dark:text-cyan-300" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-cyan-500 uppercase tracking-wide">Valor Total</p>
+                    <p className="text-xl font-bold text-cyan-600 dark:text-cyan-400">{formatCurrency(stats.totalValue)}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-cyan-500 uppercase tracking-wide">Valor Total</p>
-                  <p className="text-xl font-bold text-cyan-600 dark:text-cyan-400">{formatCurrency(stats.totalValue)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Filters */}
@@ -944,7 +951,8 @@ export default function OnboardingRenewalsPage() {
                   <TableHeader>
                     <TableRow className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 border-b-2 border-primary/20">
                       <TableHead className="w-[220px] font-bold text-slate-700 dark:text-slate-200">🏢 Empresa</TableHead>
-                      <TableHead className="w-[120px] font-bold text-slate-700 dark:text-slate-200">💵 Valor</TableHead>
+                      {/* Hide value column for CS */}
+                      {!isCS && <TableHead className="w-[120px] font-bold text-slate-700 dark:text-slate-200">💵 Valor</TableHead>}
                       <TableHead className="w-[110px] font-bold text-slate-700 dark:text-slate-200">📋 Plano</TableHead>
                       <TableHead className="w-[100px] font-bold text-slate-700 dark:text-slate-200">📆 Término</TableHead>
                       <TableHead className="w-[120px] font-bold text-slate-700 dark:text-slate-200">📊 Contrato</TableHead>
@@ -979,25 +987,28 @@ export default function OnboardingRenewalsPage() {
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell className="py-3">
-                            {isAdmin ? (
-                              <Input
-                                type="number"
-                                value={company.contract_value || ""}
-                                onChange={(e) => handleUpdateContract(
-                                  company.id,
-                                  "contract_value",
-                                  e.target.value ? parseFloat(e.target.value) : null
-                                )}
-                                className="w-full h-8 text-sm font-medium border-emerald-200 focus:border-emerald-500"
-                                placeholder="Valor"
-                              />
-                            ) : (
-                              <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">
-                                {formatCurrency(company.contract_value)}
-                              </span>
-                            )}
-                          </TableCell>
+                          {/* Hide value cell for CS */}
+                          {!isCS && (
+                            <TableCell className="py-3">
+                              {isAdmin ? (
+                                <Input
+                                  type="number"
+                                  value={company.contract_value || ""}
+                                  onChange={(e) => handleUpdateContract(
+                                    company.id,
+                                    "contract_value",
+                                    e.target.value ? parseFloat(e.target.value) : null
+                                  )}
+                                  className="w-full h-8 text-sm font-medium border-emerald-200 focus:border-emerald-500"
+                                  placeholder="Valor"
+                                />
+                              ) : (
+                                <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">
+                                  {formatCurrency(company.contract_value)}
+                                </span>
+                              )}
+                            </TableCell>
+                          )}
                           <TableCell className="py-3">
                             {isAdmin ? (
                               <Select
@@ -1163,7 +1174,7 @@ export default function OnboardingRenewalsPage() {
                   })}
                   {filteredCompanies.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={isCS ? 7 : 8} className="text-center py-8 text-muted-foreground">
                         Nenhuma empresa encontrada
                       </TableCell>
                     </TableRow>
@@ -1190,7 +1201,8 @@ export default function OnboardingRenewalsPage() {
                   <TableRow>
                     <TableHead>Empresa</TableHead>
                     <TableHead>Segmento</TableHead>
-                    <TableHead>Último Valor</TableHead>
+                    {/* Hide value column for CS */}
+                    {!isCS && <TableHead>Último Valor</TableHead>}
                     <TableHead>Data de Encerramento</TableHead>
                     <TableHead>Observações</TableHead>
                   </TableRow>
@@ -1206,9 +1218,12 @@ export default function OnboardingRenewalsPage() {
                         <TableCell className="text-muted-foreground">
                           {company.segment || "-"}
                         </TableCell>
-                        <TableCell>
-                          {formatCurrency(company.contract_value)}
-                        </TableCell>
+                        {/* Hide value cell for CS */}
+                        {!isCS && (
+                          <TableCell>
+                            {formatCurrency(company.contract_value)}
+                          </TableCell>
+                        )}
                         <TableCell>
                           {isAdmin ? (
                             <Input
@@ -1260,7 +1275,7 @@ export default function OnboardingRenewalsPage() {
                     ))}
                   {companies.filter(c => c.status === "inactive").length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={isCS ? 4 : 5} className="text-center py-8 text-muted-foreground">
                         Nenhuma empresa encerrada
                       </TableCell>
                     </TableRow>
