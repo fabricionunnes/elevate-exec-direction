@@ -5,8 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CONTA_AZUL_AUTH_URL = "https://api.contaazul.com/auth/authorize";
-const CONTA_AZUL_TOKEN_URL = "https://api.contaazul.com/oauth2/token";
+const CONTA_AZUL_AUTH_URL = "https://auth.contaazul.com/login";
+const CONTA_AZUL_TOKEN_URL = "https://auth.contaazul.com/oauth2/token";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -82,7 +82,8 @@ Deno.serve(async (req) => {
         is_active: false
       }, { onConflict: "integration_type" });
 
-      const authUrl = `${CONTA_AZUL_AUTH_URL}?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=sales&state=${state}`;
+      const scope = "openid+profile+aws.cognito.signin.user.admin";
+      const authUrl = `${CONTA_AZUL_AUTH_URL}?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&state=${state}`;
       
       return new Response(
         JSON.stringify({ authUrl }),

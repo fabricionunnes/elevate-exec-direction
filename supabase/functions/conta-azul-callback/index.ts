@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const CONTA_AZUL_TOKEN_URL = "https://api.contaazul.com/oauth2/token";
+const CONTA_AZUL_TOKEN_URL = "https://auth.contaazul.com/oauth2/token";
 
 Deno.serve(async (req) => {
   try {
