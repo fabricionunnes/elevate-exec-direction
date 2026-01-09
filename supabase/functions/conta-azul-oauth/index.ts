@@ -275,42 +275,95 @@ async function refreshToken(clientId: string, clientSecret: string, refreshToken
 async function syncSales(supabase: any, accessToken: string) {
   console.log("Fetching vendas from Conta Azul API v2...");
 
-  const today = new Date();
-  const fiveYearsAgo = new Date();
-  fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
-  const fiveYearsAhead = new Date();
-  fiveYearsAhead.setFullYear(fiveYearsAhead.getFullYear() + 5);
+  // Try multiple endpoints for sales/vendas
+  const endpoints = [
+    "https://api-v2.contaazul.com/v1/vendas?pagina=1&tamanho_pagina=100",
+    "https://api-v2.contaazul.com/v1/sales?pagina=1&tamanho_pagina=100",
+    "https://api-v2.contaazul.com/v1/notas-fiscais?pagina=1&tamanho_pagina=100"
+  ];
 
-  const dateFrom = fiveYearsAgo.toISOString().split("T")[0];
-  const dateTo = fiveYearsAhead.toISOString().split("T")[0];
+  for (const url of endpoints) {
+    console.log("Trying sales endpoint:", url);
+    
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    });
 
-  const url = `https://api-v2.contaazul.com/v1/venda/busca?pagina=1&tamanho_pagina=100&data_inicio=${dateFrom}&data_fim=${dateTo}`;
-  console.log("Sales URL:", url);
+    console.log(`Sales endpoint ${url} status:`, response.status);
+    
+    if (response.ok) {
+      const rawText = await response.text();
+      console.log("Sales raw response (first 1000 chars):", rawText.substring(0, 1000));
+      
+      try {
+        const data = JSON.parse(rawText);
+        console.log("Sales response keys:", Object.keys(data));
+        console.log("Sales total items:", data.total || data.itens_totais || data.total_items || "N/A");
+        
+        const sales = data.itens || data.items || data.content || data.data || [];
+        if (sales.length > 0) {
+          console.log("Found sales:", sales.length);
+          console.log("First sale sample:", JSON.stringify(sales[0]).substring(0, 500));
+          
+          let synced = 0;
+          for (const sale of sales) {
+            const saleDate = sale.data || sale.data_venda || sale.created_at || new Date().toISOString().split("T")[0];
+            const referenceMonth = typeof saleDate === "string" && saleDate.length >= 7 ? saleDate.slice(0, 7) : null;
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json",
-    },
-  });
+            const situacaoNome = (sale.situacao?.nome || sale.status || "").toString().toLowerCase();
+            const status = situacaoNome.includes("cancel") ? "cancelled" : "pending";
 
-  console.log("Sales response status:", response.status);
+            const result = await supabase
+              .from("financial_receivables")
+              .upsert(
+                {
+                  conta_azul_id: sale.id,
+                  description: `Venda #${sale.numero ?? sale.id_legado ?? sale.id ?? ""} - ${sale.cliente?.nome ?? sale.customer_name ?? "Cliente"}`.trim(),
+                  amount: Number(sale.total || sale.valor || sale.amount || 0),
+                  due_date: saleDate,
+                  status,
+                  paid_amount: null,
+                  paid_date: null,
+                  company_id: null,
+                  contract_id: null,
+                  category_id: null,
+                  is_recurring: false,
+                  payment_method: null,
+                  payment_link: null,
+                  reference_month: referenceMonth,
+                  notes: null,
+                },
+                { onConflict: "conta_azul_id" }
+              );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Sales error:", errorText);
-    console.log("Sales API returned error, skipping...");
-    return { total: 0, synced: 0 };
+            if (result.error) {
+              console.error("Error upserting sale as receivable:", result.error);
+            } else {
+              synced++;
+            }
+          }
+          return { total: sales.length, synced };
+        }
+      } catch (parseError) {
+        console.log("Failed to parse response as JSON");
+      }
+    } else {
+      const errorText = await response.text();
+      console.log(`Endpoint ${url} error:`, errorText.substring(0, 300));
+    }
   }
 
-  const data = await response.json();
-  const sales = data.itens || data.items || [];
+  console.log("No sales data found from any endpoint");
+  return { total: 0, synced: 0 };
+}
+
+async function syncSalesOld(supabase: any, accessToken: string) {
+  // Keep old function for reference but don't use
+  const sales: any[] = [];
   let synced = 0;
-
-  console.log("Found sales:", sales.length);
-  if (sales.length > 0) {
-    console.log("First sale sample:", JSON.stringify(sales[0]).substring(0, 500));
-  }
 
   for (const sale of sales) {
     const saleDate = sale.data || sale.data_venda || new Date().toISOString().split("T")[0];
@@ -353,34 +406,51 @@ async function syncSales(supabase: any, accessToken: string) {
 }
 
 async function syncCustomers(supabase: any, accessToken: string) {
-  console.log("Fetching pessoas from Conta Azul API v2...");
-  const response = await fetch("https://api-v2.contaazul.com/v1/pessoas?pagina=1&tamanho_pagina=100", {
-    headers: {
-      "Authorization": `Bearer ${accessToken}`,
-      "Accept": "application/json",
-    },
-  });
+  console.log("Fetching customers from Conta Azul API v2...");
+  
+  // Try multiple endpoints
+  const endpoints = [
+    "https://api-v2.contaazul.com/v1/customers?pagina=1&tamanho_pagina=100",
+    "https://api-v2.contaazul.com/v1/clientes?pagina=1&tamanho_pagina=100",
+    "https://api-v2.contaazul.com/v1/pessoas?pagina=1&tamanho_pagina=100"
+  ];
 
-  console.log("Pessoas response status:", response.status);
+  for (const url of endpoints) {
+    console.log("Trying customers endpoint:", url);
+    
+    const response = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Accept": "application/json",
+      },
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Pessoas error:", errorText);
-    // Don't throw, just log - pessoas might not have data
-    console.log("Pessoas API returned error, skipping...");
-    return { total: 0, synced: 0 };
+    console.log(`Customers endpoint ${url} status:`, response.status);
+
+    if (response.ok) {
+      const rawText = await response.text();
+      console.log("Customers raw response (first 1000 chars):", rawText.substring(0, 1000));
+      
+      try {
+        const data = JSON.parse(rawText);
+        console.log("Customers response keys:", Object.keys(data));
+        
+        const customers = data.itens || data.items || data.content || data.data || [];
+        if (customers.length > 0) {
+          console.log("Found customers:", customers.length);
+          return { total: customers.length, synced: customers.length };
+        }
+      } catch (parseError) {
+        console.log("Failed to parse customers response as JSON");
+      }
+    } else {
+      const errorText = await response.text();
+      console.log(`Endpoint ${url} error:`, errorText.substring(0, 300));
+    }
   }
 
-  const data = await response.json();
-  const pessoas = data.itens || [];
-  let synced = 0;
-
-  for (const pessoa of pessoas) {
-    console.log("Pessoa:", pessoa.nome);
-    synced++;
-  }
-
-  return { total: pessoas.length, synced };
+  console.log("No customers found from any endpoint");
+  return { total: 0, synced: 0 };
 }
 
 async function syncReceivables(supabase: any, accessToken: string) {
