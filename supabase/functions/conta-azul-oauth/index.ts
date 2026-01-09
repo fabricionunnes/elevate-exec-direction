@@ -144,7 +144,6 @@ Deno.serve(async (req) => {
 
       const config = integration.config as any;
       let accessToken = config?.access_token;
-      let companyId: string | null = config?.company_id || null;
 
       // Check if token needs refresh
       if (config?.expires_at && new Date(config.expires_at) < new Date()) {
@@ -179,23 +178,6 @@ Deno.serve(async (req) => {
           .eq("integration_type", "conta_azul");
       }
 
-      // Ensure we have a companyId (Conta Azul requires it for most APIs)
-      if (!companyId) {
-        console.log("No companyId stored, fetching companies...");
-        companyId = await fetchDefaultCompanyId(accessToken);
-        console.log("Using companyId:", companyId);
-
-        await supabase
-          .from("financial_integrations")
-          .update({
-            config: {
-              ...config,
-              company_id: companyId,
-            },
-          })
-          .eq("integration_type", "conta_azul");
-      }
-
       // Update sync status
       await supabase
         .from("financial_integrations")
@@ -204,15 +186,15 @@ Deno.serve(async (req) => {
 
       try {
         // Sync pessoas (customers)
-        const pessoasResult = await syncCustomers(supabase, accessToken, companyId);
+        const pessoasResult = await syncCustomers(supabase, accessToken);
         console.log("Pessoas synced:", pessoasResult);
 
         // Sync receivables (contas a receber)
-        const receivablesResult = await syncReceivables(supabase, accessToken, companyId);
+        const receivablesResult = await syncReceivables(supabase, accessToken);
         console.log("Receivables synced:", receivablesResult);
 
         // Sync payables (contas a pagar)
-        const payablesResult = await syncPayables(supabase, accessToken, companyId);
+        const payablesResult = await syncPayables(supabase, accessToken);
         console.log("Payables synced:", payablesResult);
 
         await supabase
@@ -285,47 +267,17 @@ async function refreshToken(clientId: string, clientSecret: string, refreshToken
   return await response.json();
 }
 
-async function fetchDefaultCompanyId(accessToken: string): Promise<string> {
-  const url = "https://api-v2.contaazul.com/v1/empresas?pagina=1&tamanho_pagina=100";
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Failed to fetch companies:", response.status, errorText);
-    throw new Error("Failed to fetch companies from Conta Azul");
-  }
-
-  const data = await response.json();
-  const companies = data.itens || data.items || [];
-  const first = companies[0];
-  const companyId = first?.id || first?.uuid || first?.empresa_id;
-
-  if (!companyId) {
-    console.error("Companies response sample:", JSON.stringify(first || data).substring(0, 800));
-    throw new Error("No companyId found in Conta Azul companies response");
-  }
-
-  return companyId;
-}
-
-
-async function syncCustomers(supabase: any, accessToken: string, companyId: string) {
+async function syncCustomers(supabase: any, accessToken: string) {
   console.log("Fetching pessoas from Conta Azul API v2...");
   const response = await fetch("https://api-v2.contaazul.com/v1/pessoas?pagina=1&tamanho_pagina=100", {
     headers: {
       "Authorization": `Bearer ${accessToken}`,
       "Accept": "application/json",
-      "X-ContaAzul-CompanyId": companyId,
     },
   });
 
   console.log("Pessoas response status:", response.status);
-  
+
   if (!response.ok) {
     const errorText = await response.text();
     console.error("Pessoas error:", errorText);
@@ -346,7 +298,7 @@ async function syncCustomers(supabase: any, accessToken: string, companyId: stri
   return { total: pessoas.length, synced };
 }
 
-async function syncReceivables(supabase: any, accessToken: string, companyId: string) {
+async function syncReceivables(supabase: any, accessToken: string) {
   console.log("Fetching contas a receber from Conta Azul API v2...");
 
   // Get dates for a very wide range (5 years ago to 5 years ahead)
@@ -367,7 +319,6 @@ async function syncReceivables(supabase: any, accessToken: string, companyId: st
     headers: {
       "Authorization": `Bearer ${accessToken}`,
       "Accept": "application/json",
-      "X-ContaAzul-CompanyId": companyId,
     },
   });
 
@@ -428,7 +379,7 @@ async function syncReceivables(supabase: any, accessToken: string, companyId: st
   return { total: receivables.length, synced };
 }
 
-async function syncPayables(supabase: any, accessToken: string, companyId: string) {
+async function syncPayables(supabase: any, accessToken: string) {
   console.log("Fetching contas a pagar from Conta Azul API v2...");
 
   // Get dates for a very wide range (5 years ago to 5 years ahead)
@@ -449,7 +400,6 @@ async function syncPayables(supabase: any, accessToken: string, companyId: strin
     headers: {
       "Authorization": `Bearer ${accessToken}`,
       "Accept": "application/json",
-      "X-ContaAzul-CompanyId": companyId,
     },
   });
 
