@@ -425,8 +425,9 @@ Deno.serve(async (req) => {
                 title: taskTitle,
                 description: taskDescription,
                 priority: "medium",
-                status: "pending",
+                status: "completed",
                 due_date: new Date(refreshedMeeting.meeting_date).toISOString().split('T')[0],
+                completed_at: new Date().toISOString(),
                 responsible_staff_id: responsibleStaffId,
                 tags: ["transcrição", "reunião"],
                 sort_order: 0
