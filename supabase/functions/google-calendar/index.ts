@@ -821,10 +821,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Get meetings without recording links OR without notes (transcripts)
+      // Get meetings without recording links OR without transcripts (using new transcript column)
       const { data: meetingsToSync } = await supabase
         .from("onboarding_meeting_notes")
-        .select("id, meeting_title, meeting_date, subject, recording_link, notes")
+        .select("id, meeting_title, meeting_date, subject, recording_link, transcript")
         .eq("project_id", projectId);
 
       if (!meetingsToSync || meetingsToSync.length === 0) {
@@ -989,9 +989,8 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Try to match transcript if notes are empty or very short
-        const hasTranscript = meeting.notes && meeting.notes.length > 100;
-        if (!hasTranscript) {
+        // Try to match transcript if transcript column is empty
+        if (!meeting.transcript) {
           const matchingTranscript = transcripts.find((t: { createdTime: string; name: string }) => {
             const tDate = new Date(t.createdTime);
             const tDateStr = tDate.toISOString().split('T')[0];
@@ -1009,7 +1008,7 @@ Deno.serve(async (req) => {
             if (transcriptText && transcriptText.length > 50) {
               const { error: updateError } = await supabase
                 .from("onboarding_meeting_notes")
-                .update({ notes: transcriptText })
+                .update({ transcript: transcriptText })
                 .eq("id", meeting.id);
 
               if (!updateError) {

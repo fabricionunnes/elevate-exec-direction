@@ -3123,6 +3123,7 @@ export type Database = {
           recording_link: string | null
           staff_id: string | null
           subject: string
+          transcript: string | null
           updated_at: string
         }
         Insert: {
@@ -3139,6 +3140,7 @@ export type Database = {
           recording_link?: string | null
           staff_id?: string | null
           subject: string
+          transcript?: string | null
           updated_at?: string
         }
         Update: {
@@ -3155,6 +3157,7 @@ export type Database = {
           recording_link?: string | null
           staff_id?: string | null
           subject?: string
+          transcript?: string | null
           updated_at?: string
         }
         Relationships: [
