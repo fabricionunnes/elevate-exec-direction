@@ -144,6 +144,11 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
   const [companyHistory, setCompanyHistory] = useState<RenewalHistory[]>([]);
   const [historyCompanyName, setHistoryCompanyName] = useState("");
 
+  // Meeting date dialog (for inline status change)
+  const [meetingDateDialogOpen, setMeetingDateDialogOpen] = useState(false);
+  const [meetingDateCompanyId, setMeetingDateCompanyId] = useState<string | null>(null);
+  const [meetingDateValue, setMeetingDateValue] = useState<string>("");
+
   useEffect(() => {
     if (open) {
       fetchData();
@@ -418,11 +423,9 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
     try {
       // If status is "reuniao_agendada", we need to open a date picker dialog
       if (newStatus === "reuniao_agendada") {
-        const company = companies.find(c => c.id === companyId);
-        if (company) {
-          openRenewalDialog(company);
-          setRenewalStatus("reuniao_agendada");
-        }
+        setMeetingDateCompanyId(companyId);
+        setMeetingDateValue("");
+        setMeetingDateDialogOpen(true);
         return;
       }
 
@@ -441,6 +444,35 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error("Erro ao atualizar status");
+    }
+  };
+
+  // Save meeting date from the dedicated dialog
+  const handleSaveMeetingDate = async () => {
+    if (!meetingDateCompanyId || !meetingDateValue) {
+      toast.error("Selecione a data da reunião");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("onboarding_companies")
+        .update({
+          renewal_status: "reuniao_agendada",
+          renewal_meeting_date: meetingDateValue,
+        })
+        .eq("id", meetingDateCompanyId);
+        
+      if (error) throw error;
+
+      toast.success("Reunião agendada com sucesso");
+      setMeetingDateDialogOpen(false);
+      setMeetingDateCompanyId(null);
+      setMeetingDateValue("");
+      fetchData();
+    } catch (error) {
+      console.error("Error saving meeting date:", error);
+      toast.error("Erro ao salvar data da reunião");
     }
   };
 
@@ -983,6 +1015,45 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
               </div>
             )}
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Meeting Date Dialog */}
+      <Dialog open={meetingDateDialogOpen} onOpenChange={setMeetingDateDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Agendar Reunião</DialogTitle>
+            <DialogDescription>
+              Selecione a data da reunião de renovação
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="meeting-date">Data da Reunião</Label>
+              <Input
+                id="meeting-date"
+                type="date"
+                value={meetingDateValue}
+                onChange={(e) => setMeetingDateValue(e.target.value)}
+                className="w-full"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setMeetingDateDialogOpen(false);
+                setMeetingDateCompanyId(null);
+                setMeetingDateValue("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveMeetingDate} disabled={!meetingDateValue}>
+              Confirmar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
