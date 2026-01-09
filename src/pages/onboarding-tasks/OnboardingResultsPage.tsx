@@ -136,20 +136,20 @@ const OnboardingResultsPage = () => {
       setServices(servicesRes.data || []);
       setProjects(projectsRes.data || []);
       
-      // Fetch companies with goals - separate query to get distinct company_ids
-      const { data: goalsData } = await supabase
-        .from("kpi_monthly_targets")
+      // Fetch companies with ANY KPI configured (not just monthly targets with value > 0)
+      const { data: kpisData } = await supabase
+        .from("company_kpis")
         .select("company_id")
-        .gt("target_value", 0);
+        .eq("is_active", true);
       
-      // Create set of company IDs that have goals
+      // Create set of company IDs that have any KPI configured
       const companyIdsWithGoals = new Set<string>();
-      (goalsData || []).forEach(g => {
-        if (g.company_id) companyIdsWithGoals.add(g.company_id);
+      (kpisData || []).forEach(k => {
+        if (k.company_id) companyIdsWithGoals.add(k.company_id);
       });
       setCompaniesWithGoals(companyIdsWithGoals);
       
-      console.log("Companies with goals:", Array.from(companyIdsWithGoals));
+      console.log("Companies with KPIs configured:", Array.from(companyIdsWithGoals));
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Erro ao carregar dados");
