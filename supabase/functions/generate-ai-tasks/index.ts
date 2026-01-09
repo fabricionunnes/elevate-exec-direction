@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     // Fetch meeting notes (O que foi tratado nas reuniões)
     const { data: meetingNotes } = await supabase
       .from("onboarding_meeting_notes")
-      .select("meeting_title, meeting_date, notes, attendees, transcript")
+      .select("meeting_title, meeting_date, notes, attendees, transcript, manual_transcript")
       .eq("project_id", projectId)
       .eq("is_finalized", true)
       .order("meeting_date", { ascending: false })
@@ -109,13 +109,17 @@ Público-alvo: ${company.target_audience || "Não informado"}
       : "Sem templates de referência";
 
     // Meeting notes context (very important for understanding what was discussed)
+    // Include transcript and manual_transcript content
     const meetingsContext = meetingNotes && meetingNotes.length > 0
       ? meetingNotes.map(m => {
           const date = new Date(m.meeting_date).toLocaleDateString('pt-BR');
+          const transcriptText = m.transcript || m.manual_transcript || null;
           return `### Reunião ${date}: ${m.meeting_title || 'Sem título'}
 Participantes: ${m.attendees || 'N/A'}
 O que foi tratado:
-${m.notes?.substring(0, 500) || 'Sem notas'}${m.notes && m.notes.length > 500 ? '...' : ''}`;
+${m.notes?.substring(0, 500) || 'Sem notas'}${m.notes && m.notes.length > 500 ? '...' : ''}
+${transcriptText ? `Transcrição:
+${transcriptText.substring(0, 2000)}${transcriptText.length > 2000 ? '...' : ''}` : ''}`;
         }).join("\n\n")
       : "Nenhuma reunião registrada";
 
