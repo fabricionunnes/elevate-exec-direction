@@ -1046,7 +1046,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                          {transcribing ? "Transcrevendo..." : "Transcrever"}
                        </Button>
                      </div>
-                   ) : isAdmin ? (
+                   ) : (isAdmin || isCS || currentStaffId) ? (
                      <div className="flex flex-col gap-2">
                        {!isEditingRecordingLink ? (
                          <div className="flex items-center gap-3">
@@ -1072,6 +1072,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                              value={recordingLinkDraft}
                              onChange={(e) => setRecordingLinkDraft(e.target.value)}
                              placeholder="Cole aqui o link da gravação (Drive)"
+                             autoFocus
                            />
                            <div className="flex gap-2">
                              <Button
