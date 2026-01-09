@@ -265,10 +265,11 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     }
   };
 
-  // Filter entries based on selected unit
+  // Filter entries based on selected unit and salesperson
   const getFilteredEntries = () => {
     return entries.filter(e => {
       if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
+      if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
       return true;
     });
   };
@@ -309,13 +310,15 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     const daysRemaining = daysInMonth - currentDay;
     const timeProgress = currentDay / daysInMonth;
 
-    // Get entries for current month only, filtered by unit
+    // Get entries for current month only, filtered by unit and salesperson
     const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
     const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
     const allMonthEntries = entries.filter(e => e.entry_date >= monthStart && e.entry_date <= monthEnd);
-    const monthEntries = selectedUnit !== "all" 
-      ? allMonthEntries.filter(e => e.unit_id === selectedUnit)
-      : allMonthEntries;
+    const monthEntries = allMonthEntries.filter(e => {
+      if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
+      if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
+      return true;
+    });
 
     // Sum all entries and targets for monetary KPIs (main revenue KPIs)
     let totalRealized = 0;
@@ -395,10 +398,11 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     const monetaryKpis = kpis.filter(k => k.kpi_type === "monetary");
     const monetaryKpiIds = monetaryKpis.map(k => k.id);
     
-    // Filter entries to only include monetary KPIs and apply unit filter
+    // Filter entries to only include monetary KPIs and apply unit/salesperson filter
     const filteredEntries = entries.filter(e => {
       if (!monetaryKpiIds.includes(e.kpi_id)) return false;
       if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
+      if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
       return true;
     });
 
