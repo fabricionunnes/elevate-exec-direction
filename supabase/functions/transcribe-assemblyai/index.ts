@@ -100,10 +100,10 @@ async function getGoogleDriveDownloadUrl(fileId: string, accessToken: string): P
   return `UPLOAD_NEEDED:${fileId}`;
 }
 
-// Upload file directly to AssemblyAI
+// Upload file directly to AssemblyAI (streaming to avoid memory blowups)
 async function uploadToAssemblyAI(fileId: string, accessToken: string, assemblyApiKey: string): Promise<string> {
   console.log('Downloading file from Google Drive...');
-  
+
   const downloadResponse = await fetch(
     `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
     {
@@ -117,17 +117,23 @@ async function uploadToAssemblyAI(fileId: string, accessToken: string, assemblyA
     throw new Error('Falha ao baixar arquivo do Google Drive');
   }
 
-  const audioData = await downloadResponse.arrayBuffer();
-  console.log('Downloaded', audioData.byteLength, 'bytes');
+  if (!downloadResponse.body) {
+    throw new Error('Falha ao baixar arquivo do Google Drive (stream indisponível)');
+  }
 
-  console.log('Uploading to AssemblyAI...');
+  const contentLength = downloadResponse.headers.get('content-length');
+  console.log('Streaming upload to AssemblyAI...', contentLength ? `(${contentLength} bytes)` : '(unknown size)');
+
+  const uploadHeaders: Record<string, string> = {
+    'Authorization': assemblyApiKey,
+    'Content-Type': 'application/octet-stream',
+  };
+  if (contentLength) uploadHeaders['Content-Length'] = contentLength;
+
   const uploadResponse = await fetch('https://api.assemblyai.com/v2/upload', {
     method: 'POST',
-    headers: {
-      'Authorization': assemblyApiKey,
-      'Content-Type': 'application/octet-stream',
-    },
-    body: audioData,
+    headers: uploadHeaders,
+    body: downloadResponse.body,
   });
 
   if (!uploadResponse.ok) {
@@ -137,7 +143,7 @@ async function uploadToAssemblyAI(fileId: string, accessToken: string, assemblyA
   }
 
   const uploadData = await uploadResponse.json();
-  console.log('Upload complete, URL:', uploadData.upload_url);
+  console.log('Upload complete');
   return uploadData.upload_url;
 }
 
