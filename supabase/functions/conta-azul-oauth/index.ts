@@ -189,29 +189,34 @@ Deno.serve(async (req) => {
         const pessoasResult = await syncCustomers(supabase, accessToken);
         console.log("Pessoas synced:", pessoasResult);
 
-        // Sync receivables (contas a receber)
-        const receivablesResult = await syncReceivables(supabase, accessToken);
-        console.log("Receivables synced:", receivablesResult);
+        // Sync vendas (sales) -> stored in financial_receivables
+        const salesResult = await syncSales(supabase, accessToken);
+        console.log("Sales synced:", salesResult);
 
-        // Sync payables (contas a pagar)
-        const payablesResult = await syncPayables(supabase, accessToken);
-        console.log("Payables synced:", payablesResult);
+        // Sync compras/despesas (payables) -> stored in financial_payables
+        const purchasesResult = await syncPayables(supabase, accessToken);
+        console.log("Purchases synced:", purchasesResult);
 
         await supabase
           .from("financial_integrations")
-          .update({ 
+          .update({
             sync_status: "synced",
             last_sync_at: new Date().toISOString(),
-            sync_error: null
+            sync_error: null,
           })
           .eq("integration_type", "conta_azul");
 
         return new Response(
-          JSON.stringify({ 
-            success: true, 
+          JSON.stringify({
+            success: true,
+            // new, UI-friendly keys
+            sales: salesResult,
+            purchases: purchasesResult,
+
+            // legacy keys (kept for compatibility)
             pessoas: pessoasResult,
-            receivables: receivablesResult,
-            payables: payablesResult
+            receivables: salesResult,
+            payables: purchasesResult,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -265,6 +270,86 @@ async function refreshToken(clientId: string, clientSecret: string, refreshToken
   }
 
   return await response.json();
+}
+
+async function syncSales(supabase: any, accessToken: string) {
+  console.log("Fetching vendas from Conta Azul API v2...");
+
+  const today = new Date();
+  const fiveYearsAgo = new Date();
+  fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+  const fiveYearsAhead = new Date();
+  fiveYearsAhead.setFullYear(fiveYearsAhead.getFullYear() + 5);
+
+  const dateFrom = fiveYearsAgo.toISOString().split("T")[0];
+  const dateTo = fiveYearsAhead.toISOString().split("T")[0];
+
+  const url = `https://api-v2.contaazul.com/v1/venda/busca?pagina=1&tamanho_pagina=100&data_inicio=${dateFrom}&data_fim=${dateTo}`;
+  console.log("Sales URL:", url);
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+
+  console.log("Sales response status:", response.status);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Sales error:", errorText);
+    console.log("Sales API returned error, skipping...");
+    return { total: 0, synced: 0 };
+  }
+
+  const data = await response.json();
+  const sales = data.itens || data.items || [];
+  let synced = 0;
+
+  console.log("Found sales:", sales.length);
+  if (sales.length > 0) {
+    console.log("First sale sample:", JSON.stringify(sales[0]).substring(0, 500));
+  }
+
+  for (const sale of sales) {
+    const saleDate = sale.data || sale.data_venda || new Date().toISOString().split("T")[0];
+    const referenceMonth = typeof saleDate === "string" && saleDate.length >= 7 ? saleDate.slice(0, 7) : null;
+
+    const situacaoNome = (sale.situacao?.nome || "").toString().toLowerCase();
+    const status = situacaoNome.includes("cancel") ? "cancelled" : "pending";
+
+    const result = await supabase
+      .from("financial_receivables")
+      .upsert(
+        {
+          conta_azul_id: sale.id,
+          description: `Venda #${sale.numero ?? sale.id_legado ?? ""} - ${sale.cliente?.nome ?? "Cliente"}`.trim(),
+          amount: Number(sale.total) || 0,
+          due_date: saleDate,
+          status,
+          paid_amount: null,
+          paid_date: null,
+          company_id: null,
+          contract_id: null,
+          category_id: null,
+          is_recurring: false,
+          payment_method: null,
+          payment_link: null,
+          reference_month: referenceMonth,
+          notes: null,
+        },
+        { onConflict: "conta_azul_id" }
+      );
+
+    if (result.error) {
+      console.error("Error upserting sale as receivable:", result.error);
+    } else {
+      synced++;
+    }
+  }
+
+  return { total: sales.length, synced };
 }
 
 async function syncCustomers(supabase: any, accessToken: string) {
