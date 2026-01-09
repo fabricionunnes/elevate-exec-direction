@@ -164,6 +164,14 @@ serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(20);
 
+    // 15. Meeting notes (O que foi tratado nas reuniões)
+    const { data: meetingNotes } = await supabase
+      .from("onboarding_meeting_notes")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("meeting_date", { ascending: false })
+      .limit(30);
+
     // Build comprehensive context
     const completedTasks = tasks?.filter(t => t.status === "completed") || [];
     const inProgressTasks = tasks?.filter(t => t.status === "in_progress") || [];
@@ -340,6 +348,22 @@ ${notifications.slice(0, 10).map(n => {
 `
       : "";
 
+    // Meetings context (critical for understanding what was discussed)
+    const meetingsContext = meetingNotes && meetingNotes.length > 0
+      ? `
+## REUNIÕES REALIZADAS (O que foi tratado)
+${meetingNotes.filter(m => m.is_finalized && m.notes).map(m => {
+  const date = new Date(m.meeting_date).toLocaleDateString('pt-BR');
+  return `### ${m.meeting_title || 'Reunião'} - ${date}
+**Participantes:** ${m.attendees || 'Não informados'}
+**Notas/Discussão:**
+${m.notes}
+${m.transcript ? `\n**Transcrição disponível:** Sim (${m.transcript.length} caracteres)` : ''}
+`;
+}).join("\n---\n")}
+`
+      : "## REUNIÕES\nNenhuma reunião finalizada com notas";
+
     const contextPrompt = `
 Você é um assistente de IA especializado em consultoria comercial e onboarding de clientes da UNV.
 Você tem acesso COMPLETO a todas as informações deste projeto e empresa. Use essas informações para responder perguntas de forma precisa e útil.
@@ -442,9 +466,7 @@ ${historyContext}
 ## ATUALIZAÇÕES RECENTES (Comentários)
 ${comments?.slice(0, 15).map(c => `- [${new Date(c.created_at).toLocaleDateString('pt-BR')}] ${c.user?.name || 'Usuário'} em "${c.task?.title}": ${c.content.substring(0, 150)}...`).join("\n") || "Nenhum comentário recente"}
 
-${ticketsContext}
-
-${notificationsContext}
+${meetingsContext}
 
 ## DOCUMENTOS ANEXADOS
 ${documents?.map(d => `- ${d.file_name} (${d.category || 'geral'}) - ${d.description || 'sem descrição'} [${new Date(d.created_at).toLocaleDateString('pt-BR')}]`).join("\n") || "Nenhum documento"}

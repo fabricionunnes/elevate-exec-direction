@@ -75,6 +75,15 @@ Deno.serve(async (req) => {
       console.error("Error fetching templates:", templatesError);
     }
 
+    // Fetch meeting notes (O que foi tratado nas reuniões)
+    const { data: meetingNotes } = await supabase
+      .from("onboarding_meeting_notes")
+      .select("meeting_title, meeting_date, notes, attendees, transcript")
+      .eq("project_id", projectId)
+      .eq("is_finalized", true)
+      .order("meeting_date", { ascending: false })
+      .limit(15);
+
     // Build context for AI
     const company = project.onboarding_company as any;
     const companyContext = company ? `
@@ -98,6 +107,17 @@ Público-alvo: ${company.target_audience || "Não informado"}
     const templatesContext = templates && templates.length > 0
       ? templates.slice(0, 40).map(t => `- [${t.phase || "Geral"}] ${t.title}`).join("\n")
       : "Sem templates de referência";
+
+    // Meeting notes context (very important for understanding what was discussed)
+    const meetingsContext = meetingNotes && meetingNotes.length > 0
+      ? meetingNotes.map(m => {
+          const date = new Date(m.meeting_date).toLocaleDateString('pt-BR');
+          return `### Reunião ${date}: ${m.meeting_title || 'Sem título'}
+Participantes: ${m.attendees || 'N/A'}
+O que foi tratado:
+${m.notes?.substring(0, 500) || 'Sem notas'}${m.notes && m.notes.length > 500 ? '...' : ''}`;
+        }).join("\n\n")
+      : "Nenhuma reunião registrada";
 
     const userSuggestionContext = userSuggestion 
       ? `\nSOLICITAÇÃO DO CONSULTOR:\n"${userSuggestion}"\n\nIMPORTANTE: Priorize a solicitação acima na geração das tarefas. Crie tarefas específicas para atender o que foi pedido.`
@@ -140,6 +160,9 @@ ${pendingTasksContext}
 
 TEMPLATES DE REFERÊNCIA DO SERVIÇO:
 ${templatesContext}
+
+REUNIÕES REALIZADAS (O QUE FOI TRATADO - MUITO IMPORTANTE PARA CONTEXTO):
+${meetingsContext}
 
 INSTRUÇÕES:
 1. ${userSuggestion ? "Foque principalmente na solicitação do consultor acima" : "Analise o contexto do cliente, tarefas já realizadas e resultados obtidos"}
