@@ -1082,27 +1082,36 @@ Deno.serve(async (req) => {
       let syncedRecordings = 0;
       let syncedTranscripts = 0;
 
-      // Helper to parse VTT/SRT content to plain text
+      // Helper to parse VTT/SRT/Chat content to plain text
       const parseSubtitleToText = (content: string, mimeType: string): string => {
         const lines = content.split('\n');
         const textLines: string[] = [];
         
         for (const line of lines) {
-          const trimmed = line.trim();
-          // Skip empty lines, timestamps, and metadata
+          let trimmed = line.trim();
+          // Skip empty lines and metadata
           if (!trimmed) continue;
           if (trimmed === 'WEBVTT') continue;
           if (/^\d+$/.test(trimmed)) continue; // SRT sequence numbers
-          if (/-->/.test(trimmed)) continue; // Timestamp lines
+          if (/-->/.test(trimmed)) continue; // VTT timestamp lines (00:00:01.000 --> 00:00:05.000)
           if (/^NOTE/.test(trimmed)) continue; // VTT notes
           if (/^STYLE/.test(trimmed)) continue;
           if (/^Kind:/.test(trimmed)) continue;
           if (/^Language:/.test(trimmed)) continue;
           
+          // Remove inline timestamps from Google Meet chat format (00:04:23.451,00:04:26.451 or 00:04:23)
+          trimmed = trimmed.replace(/^\d{2}:\d{2}:\d{2}(\.\d+)?(,\d{2}:\d{2}:\d{2}(\.\d+)?)?\s*/g, '');
+          trimmed = trimmed.replace(/^\d{2}:\d{2}(:\d{2})?\s*/g, ''); // Also match MM:SS format
+          
           // Clean HTML tags if any
-          const cleanLine = trimmed.replace(/<[^>]*>/g, '');
-          if (cleanLine) {
-            textLines.push(cleanLine);
+          trimmed = trimmed.replace(/<[^>]*>/g, '');
+          
+          // Skip promotional/extension messages
+          if (trimmed.toLowerCase().includes('tactiq.io')) continue;
+          if (trimmed.toLowerCase().includes('transcrevendo esta chamada')) continue;
+          
+          if (trimmed) {
+            textLines.push(trimmed);
           }
         }
         
