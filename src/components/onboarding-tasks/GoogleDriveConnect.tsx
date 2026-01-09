@@ -41,14 +41,22 @@ export function GoogleDriveConnect({ projectId, documentsLink, onConnectionChang
       if (code && state) {
         try {
           const stateData = JSON.parse(atob(state));
-          if (stateData.projectId === projectId) {
+          const savedProjectId = localStorage.getItem("google_drive_oauth_project");
+          const savedRedirectUri = localStorage.getItem("google_drive_oauth_redirect");
+          
+          // Check if this callback is for current project OR the saved project
+          const targetProjectId = stateData.projectId || savedProjectId;
+          
+          if (targetProjectId === projectId) {
             setIsConnecting(true);
+            
+            const redirectUri = stateData.redirectUri || savedRedirectUri || "https://universidadedevendas.com.br/";
             
             const { data, error } = await supabase.functions.invoke("google-drive-oauth", {
               body: {
                 action: "exchange",
                 code,
-                redirectUri: stateData.redirectUri,
+                redirectUri,
                 projectId,
               },
             });
@@ -60,6 +68,10 @@ export function GoogleDriveConnect({ projectId, documentsLink, onConnectionChang
               setIsConnected(true);
               setIsExpired(false);
               onConnectionChange?.();
+              
+              // Clean up localStorage
+              localStorage.removeItem("google_drive_oauth_project");
+              localStorage.removeItem("google_drive_oauth_redirect");
             }
 
             // Clean up URL
@@ -106,8 +118,9 @@ export function GoogleDriveConnect({ projectId, documentsLink, onConnectionChang
 
     setIsConnecting(true);
     try {
-      // Build redirect URI (current page without query params)
-      const redirectUri = `${window.location.origin}${window.location.pathname}`;
+      // Build redirect URI - use production domain or clean origin
+      // Google OAuth requires EXACT match, so we use just the origin with trailing slash
+      const redirectUri = "https://universidadedevendas.com.br/";
 
       const { data, error } = await supabase.functions.invoke("google-drive-oauth", {
         body: {
@@ -118,6 +131,10 @@ export function GoogleDriveConnect({ projectId, documentsLink, onConnectionChang
       });
 
       if (error) throw error;
+
+      // Store projectId in localStorage so we can recover it after redirect
+      localStorage.setItem("google_drive_oauth_project", projectId);
+      localStorage.setItem("google_drive_oauth_redirect", redirectUri);
 
       // Redirect to Google OAuth
       window.location.href = data.authUrl;
