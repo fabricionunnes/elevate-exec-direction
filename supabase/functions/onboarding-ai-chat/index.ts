@@ -98,13 +98,73 @@ serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(30);
 
-    // 6. Documents
+    // 6. Documents (metadata)
     const { data: documents } = await supabase
       .from("onboarding_documents")
       .select("*")
       .eq("company_id", companyId)
       .order("created_at", { ascending: false })
       .limit(30);
+
+    // 6b. Fetch text content from readable documents (PDFs, text files)
+    console.log("Fetching document contents...");
+    const readableDocuments: { name: string; category: string; content: string }[] = [];
+    
+    if (documents && documents.length > 0) {
+      // Filter for text-readable documents (prioritize recent ones)
+      const textDocs = documents
+        .filter(d => {
+          const type = d.file_type?.toLowerCase() || '';
+          const name = d.file_name?.toLowerCase() || '';
+          return type.includes('text') || 
+                 type.includes('pdf') || 
+                 name.endsWith('.txt') || 
+                 name.endsWith('.md') ||
+                 name.endsWith('.csv');
+        })
+        .slice(0, 5); // Limit to 5 most recent readable docs
+      
+      for (const doc of textDocs) {
+        try {
+          const { data: fileData, error: downloadError } = await supabase.storage
+            .from("onboarding-documents")
+            .download(doc.file_path);
+          
+          if (downloadError) {
+            console.error(`Error downloading ${doc.file_name}:`, downloadError);
+            continue;
+          }
+          
+          let textContent = "";
+          
+          // For text files, read directly
+          if (doc.file_type?.includes('text') || 
+              doc.file_name?.endsWith('.txt') || 
+              doc.file_name?.endsWith('.md') ||
+              doc.file_name?.endsWith('.csv')) {
+            textContent = await fileData.text();
+          } 
+          // For PDFs, we'll extract what we can (basic text extraction)
+          else if (doc.file_type?.includes('pdf')) {
+            // PDF text extraction is complex - we'll note that it's a PDF
+            // and include metadata. Full PDF parsing would require a library.
+            textContent = `[Documento PDF - ${doc.description || 'sem descrição'}]`;
+          }
+          
+          if (textContent && textContent.length > 0) {
+            readableDocuments.push({
+              name: doc.file_name,
+              category: doc.category || 'geral',
+              content: textContent.substring(0, 5000) // Limit per doc
+            });
+          }
+        } catch (docError) {
+          console.error(`Error processing ${doc.file_name}:`, docError);
+        }
+      }
+    }
+    
+    console.log(`Loaded content from ${readableDocuments.length} documents`);
 
     // 7. Project variables
     const productVariables = project?.product_variables || {};
@@ -473,6 +533,17 @@ ${meetingsContext}
 
 ## DOCUMENTOS ANEXADOS
 ${documents?.map(d => `- ${d.file_name} (${d.category || 'geral'}) - ${d.description || 'sem descrição'} [${new Date(d.created_at).toLocaleDateString('pt-BR')}]`).join("\n") || "Nenhum documento"}
+
+${readableDocuments.length > 0 ? `
+## CONTEÚDO DOS DOCUMENTOS
+Os seguintes documentos foram lidos e seu conteúdo está disponível para consulta:
+
+${readableDocuments.map(d => `### 📄 ${d.name} (${d.category})
+\`\`\`
+${d.content}
+\`\`\`
+`).join("\n")}
+` : ''}
 
 ## VARIÁVEIS DO PROJETO
 ${Object.keys(productVariables).length > 0 ? JSON.stringify(productVariables, null, 2) : "Nenhuma variável definida"}
