@@ -470,11 +470,8 @@ const DashboardMetrics = ({
     const currentDay = isCurrentMonth ? today.getDate() : daysInMonth;
     const timeElapsedPercent = currentDay / daysInMonth;
 
-    // Get company IDs from filtered projects (use filteredCompanies which already excludes inactive/closed)
-    const activeCompanyIds = new Set(filteredCompanies.map(c => c.id));
-    const filteredCompanyIds = new Set(
-      projects.map(getProjectCompanyId).filter(id => id && activeCompanyIds.has(id)) as string[]
-    );
+    // Use all active companies (filteredCompanies already excludes inactive/closed)
+    const filteredCompanyIds = new Set(filteredCompanies.map(c => c.id));
 
     // Filter entries for the period
     const monthStart = `${periodYear}-${String(periodMonth).padStart(2, '0')}-01`;
@@ -542,7 +539,8 @@ const DashboardMetrics = ({
     const between50And70 = companiesWithGoals.filter(([_, m]) => m.projectionPercent >= 50 && m.projectionPercent < 70).length;
     const below50 = companiesWithGoals.filter(([_, m]) => m.projectionPercent < 50).length;
     
-    const totalWithGoals = companiesWithGoals.length;
+    // Total with goals = companies that have ANY KPI configured
+    const totalWithGoals = Array.from(filteredCompanyIds).filter(id => id && companiesWithAnyKpiIds.has(id)).length;
     const goalRate = totalWithGoals > 0 ? Math.round((meetingGoal / totalWithGoals) * 100) : 0;
 
     return { totalWithGoals, meetingGoal, above70, between50And70, below50, noGoalCount, goalRate };
@@ -859,7 +857,7 @@ const DashboardMetrics = ({
             <Card className={cn("cursor-pointer", isCardActive("goals", "between50and70") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("goals", "between50and70")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-amber-500">{goalsMetrics.between50And70}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">50-69%</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "below50") && "ring-2 ring-red-500")} onClick={() => handleCardClick("goals", "below50")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{goalsMetrics.below50}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">&lt;50%</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "noGoal") && "ring-2 ring-gray-500")} onClick={() => handleCardClick("goals", "noGoal")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-gray-500">{goalsMetrics.noGoalCount}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Sem Meta</p></CardContent></Card>
-            <Card className="hidden lg:block"><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold">{goalsMetrics.totalWithGoals}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Com Meta</p></CardContent></Card>
+            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "hasGoal") && "ring-2 ring-primary")} onClick={() => handleCardClick("goals", "hasGoal")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold">{goalsMetrics.totalWithGoals}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Com Meta</p></CardContent></Card>
           </div>
         </TabsContent>
 

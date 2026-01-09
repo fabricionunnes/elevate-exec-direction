@@ -117,6 +117,7 @@ const OnboardingTasksPage = () => {
   const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null; company_id: string | null; churn_date: string | null }[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
+  const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string }[]>([]);
   const [healthScoresByProject, setHealthScoresByProject] = useState<Map<string, { total_score: number; risk_level: string }>>(new Map());
   
   // Announcement dialog state
@@ -144,6 +145,7 @@ const OnboardingTasksPage = () => {
           fetchNpsResponses(),
           fetchMonthlyGoals(),
           fetchHealthScores(),
+          fetchCompanyKpis(),
         ]);
         
         // Then fetch tasks and companies (companies now depends on tasks)
@@ -211,6 +213,20 @@ const OnboardingTasksPage = () => {
       setMonthlyGoals(data || []);
     } catch (error) {
       console.error("Error fetching monthly goals:", error);
+    }
+  };
+
+  const fetchCompanyKpis = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("company_kpis")
+        .select("id, company_id")
+        .eq("is_active", true);
+
+      if (error) throw error;
+      setCompanyKpis(data || []);
+    } catch (error) {
+      console.error("Error fetching company KPIs:", error);
     }
   };
 
@@ -646,6 +662,11 @@ const OnboardingTasksPage = () => {
     };
   }, [monthlyGoals, dateRange, allProjects, filterConsultant, filterService, filterStatus, companies]);
 
+  // Companies with any KPI configured (used for "Com Meta" and "Sem Meta" filters)
+  const companiesWithKpis = useMemo(() => {
+    return new Set(companyKpis.map(k => k.company_id));
+  }, [companyKpis]);
+
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
       // Hide inactive and closed companies entirely from dashboard
@@ -740,8 +761,14 @@ const OnboardingTasksPage = () => {
             return isWithinInterval(updatedAt, { start: dateRange.start, end: dateRange.end });
           }) ?? false;
         } else if (activeMetricFilter.type === "goals") {
-          // Filter by goal projection ranges
-          if (activeMetricFilter.value === "meeting") {
+          // Filter by goal projection ranges or by company KPI status
+          if (activeMetricFilter.value === "hasGoal") {
+            // Company has any KPI configured
+            matchesMetricFilter = companiesWithKpis.has(company.id);
+          } else if (activeMetricFilter.value === "noGoal") {
+            // Company has NO KPI configured
+            matchesMetricFilter = !companiesWithKpis.has(company.id);
+          } else if (activeMetricFilter.value === "meeting") {
             matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.meetingGoal.has(p.id)) ?? false;
           } else if (activeMetricFilter.value === "100plus") {
             matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.meetingGoal.has(p.id)) ?? false;
@@ -751,8 +778,6 @@ const OnboardingTasksPage = () => {
             matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.between50And70.has(p.id)) ?? false;
           } else if (activeMetricFilter.value === "below50") {
             matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.below50.has(p.id)) ?? false;
-          } else if (activeMetricFilter.value === "noGoal") {
-            matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.noGoal.has(p.id)) ?? false;
           }
         }
       }
@@ -762,7 +787,7 @@ const OnboardingTasksPage = () => {
     
     // Sort alphabetically
     return filtered.sort((a, b) => a.name.localeCompare(b.name));
-  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, projectsGoalRanges, currentUserRole, currentStaffId, allTasks]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, projectsGoalRanges, currentUserRole, currentStaffId, allTasks, companiesWithKpis]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
