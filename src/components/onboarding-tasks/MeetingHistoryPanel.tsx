@@ -58,6 +58,7 @@ interface MeetingNote {
   meeting_date: string;
   subject: string;
   notes: string | null;
+  transcript: string | null;
   attendees: string | null;
   meeting_link: string | null;
   recording_link: string | null;
@@ -1328,6 +1329,19 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                   <p className="text-sm whitespace-pre-wrap">{selectedMeeting.notes}</p>
                 </div>
               </div>
+
+              {/* Transcript - separate field */}
+              {selectedMeeting.transcript && (
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5" />
+                    Transcrição
+                  </span>
+                  <div className="mt-2 p-4 bg-muted/30 border rounded-lg max-h-[300px] overflow-y-auto">
+                    <p className="text-sm whitespace-pre-wrap">{selectedMeeting.transcript}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Manual Transcription Paste */}
               {isPastingTranscription && (isAdmin || isCS || currentStaffId) && (
