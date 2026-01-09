@@ -647,22 +647,6 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
       return;
     }
 
-    // Check if link is a Google Drive link and convert to direct download
-    let audioUrl = meeting.recording_link;
-    
-    // Convert Google Drive sharing link to direct download link
-    const driveMatch = audioUrl.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-    if (driveMatch) {
-      const fileId = driveMatch[1];
-      audioUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-    }
-    
-    // Also handle open?id= format
-    const driveOpenMatch = audioUrl.match(/drive\.google\.com\/open\?id=([^&]+)/);
-    if (driveOpenMatch) {
-      audioUrl = `https://drive.google.com/uc?export=download&id=${driveOpenMatch[1]}`;
-    }
-
     setTranscribing(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -674,7 +658,10 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
       toast.info("Iniciando transcrição com AssemblyAI... Isso pode levar vários minutos para arquivos grandes.", { duration: 10000 });
 
       const response = await supabase.functions.invoke("transcribe-assemblyai", {
-        body: { audioUrl },
+        body: { 
+          audioUrl: meeting.recording_link,
+          staffId: currentStaffId 
+        },
       });
 
       if (response.error) {
