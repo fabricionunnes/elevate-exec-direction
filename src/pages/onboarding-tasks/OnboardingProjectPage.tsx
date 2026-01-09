@@ -78,6 +78,7 @@ import { CSATConfigPanel } from "@/components/onboarding-tasks/CSATConfigPanel";
 import { HealthScoreWidget } from "@/components/onboarding-tasks/health-score/HealthScoreWidget";
 import { HealthScoreDetailPanel } from "@/components/onboarding-tasks/health-score/HealthScoreDetailPanel";
 import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star, Heart } from "lucide-react";
+import { GoogleDriveConnect } from "@/components/onboarding-tasks/GoogleDriveConnect";
 import { Label } from "@/components/ui/label";
 import { Ticket } from "lucide-react";
 
@@ -1140,6 +1141,14 @@ const OnboardingProjectPage = () => {
                       <Pencil className="h-3 w-3" />
                     </Button>
                   )}
+                  {/* Google Drive Connect */}
+                  <GoogleDriveConnect
+                    projectId={projectId!}
+                    documentsLink={project.documents_link}
+                    onConnectionChange={() => {
+                      // Optionally refresh project data
+                    }}
+                  />
                 </div>
               ) : currentUserRole && currentUserRole !== "client" && (
                 <Button 
