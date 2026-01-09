@@ -88,6 +88,8 @@ Deno.serve(async (req) => {
 
     let totalRecordingsSynced = 0;
     let totalTranscriptsSynced = 0;
+    let totalMeetingsFinalized = 0;
+    let totalTasksCreated = 0;
     let projectsProcessed = 0;
 
     // Helper to parse VTT/SRT content to plain text
@@ -167,10 +169,10 @@ Deno.serve(async (req) => {
           .eq("user_id", consultant.user_id);
       }
 
-      // Get meetings without recordings or transcripts
+      // Get meetings (including is_finalized status)
       const { data: meetings } = await supabase
         .from("onboarding_meeting_notes")
-        .select("id, meeting_title, meeting_date, subject, recording_link, transcript")
+        .select("id, meeting_title, meeting_date, subject, recording_link, transcript, is_finalized, notes, project_id")
         .eq("project_id", project.id);
 
       if (!meetings || meetings.length === 0) {
@@ -346,12 +348,104 @@ Deno.serve(async (req) => {
             }
           }
         }
+        // After processing transcript, auto-finalize meeting if has recording but not finalized
+        const currentRecordingLink = meeting.recording_link;
+        const currentTranscript = meeting.transcript;
+        
+        // Refresh meeting data to get latest state
+        const { data: refreshedMeeting } = await supabase
+          .from("onboarding_meeting_notes")
+          .select("id, meeting_title, meeting_date, subject, recording_link, transcript, is_finalized, notes, project_id")
+          .eq("id", meeting.id)
+          .single();
+
+        if (refreshedMeeting && refreshedMeeting.recording_link && !refreshedMeeting.is_finalized) {
+          console.log(`Auto-finalizing meeting: ${refreshedMeeting.meeting_title || refreshedMeeting.subject}`);
+          
+          // Auto-finalize the meeting
+          const autoNotes = refreshedMeeting.notes || `Reunião finalizada automaticamente pelo sistema.\n\nGravação disponível: ${refreshedMeeting.recording_link}`;
+          
+          const { error: finalizeError } = await supabase
+            .from("onboarding_meeting_notes")
+            .update({ 
+              is_finalized: true,
+              notes: autoNotes
+            })
+            .eq("id", refreshedMeeting.id);
+
+          if (!finalizeError) {
+            totalMeetingsFinalized++;
+            console.log(`✓ Meeting auto-finalized: ${refreshedMeeting.meeting_title || refreshedMeeting.subject}`);
+          }
+        }
+
+        // If meeting has transcript, create a task with the transcript
+        if (refreshedMeeting && refreshedMeeting.transcript && refreshedMeeting.transcript.length > 50) {
+          // Check if task already exists for this meeting
+          const meetingTitle = refreshedMeeting.meeting_title || refreshedMeeting.subject || "Reunião";
+          const taskTitle = `📝 Transcrição: ${meetingTitle}`;
+          
+          const { data: existingTask } = await supabase
+            .from("onboarding_tasks")
+            .select("id")
+            .eq("project_id", refreshedMeeting.project_id)
+            .ilike("title", `%Transcrição: ${meetingTitle}%`)
+            .limit(1);
+
+          if (!existingTask || existingTask.length === 0) {
+            // Get company info for responsible staff
+            const { data: projectData } = await supabase
+              .from("onboarding_projects")
+              .select("onboarding_company_id")
+              .eq("id", refreshedMeeting.project_id)
+              .single();
+
+            let responsibleStaffId = null;
+            if (projectData?.onboarding_company_id) {
+              const { data: companyData } = await supabase
+                .from("onboarding_companies")
+                .select("consultant_id, cs_id")
+                .eq("id", projectData.onboarding_company_id)
+                .single();
+              
+              responsibleStaffId = companyData?.consultant_id || companyData?.cs_id;
+            }
+
+            // Truncate transcript if too long for description
+            const truncatedTranscript = refreshedMeeting.transcript.length > 5000 
+              ? refreshedMeeting.transcript.substring(0, 5000) + "\n\n... [transcrição truncada]"
+              : refreshedMeeting.transcript;
+
+            const taskDescription = `## Transcrição da Reunião\n\n**Data:** ${new Date(refreshedMeeting.meeting_date).toLocaleDateString('pt-BR')}\n**Assunto:** ${meetingTitle}\n\n---\n\n${truncatedTranscript}`;
+
+            const { error: taskError } = await supabase
+              .from("onboarding_tasks")
+              .insert({
+                project_id: refreshedMeeting.project_id,
+                title: taskTitle,
+                description: taskDescription,
+                priority: "medium",
+                status: "pending",
+                due_date: new Date(refreshedMeeting.meeting_date).toISOString().split('T')[0],
+                responsible_staff_id: responsibleStaffId,
+                tags: ["transcrição", "reunião"],
+                sort_order: 0
+              });
+
+            if (!taskError) {
+              totalTasksCreated++;
+              console.log(`✓ Task created for meeting transcript: ${meetingTitle}`);
+            } else {
+              console.error(`Error creating task for meeting ${refreshedMeeting.id}:`, taskError);
+            }
+          }
+        }
       }
 
       projectsProcessed++;
     }
 
-    console.log(`Sync complete: ${totalRecordingsSynced} recordings, ${totalTranscriptsSynced} transcripts across ${projectsProcessed} projects`);
+    console.log(`Sync complete: ${totalRecordingsSynced} recordings, ${totalTranscriptsSynced} transcripts, ${totalMeetingsFinalized} meetings finalized, ${totalTasksCreated} tasks created across ${projectsProcessed} projects`);
 
     return new Response(
       JSON.stringify({
@@ -359,6 +453,8 @@ Deno.serve(async (req) => {
         projectsProcessed,
         recordingsSynced: totalRecordingsSynced,
         transcriptsSynced: totalTranscriptsSynced,
+        meetingsFinalized: totalMeetingsFinalized,
+        tasksCreated: totalTasksCreated,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
