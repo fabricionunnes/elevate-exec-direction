@@ -834,9 +834,10 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Search for recordings AND transcripts
-      const recordingsQuery = "mimeType='video/mp4' and (name contains 'Meet Recording' or name contains 'Gravação')";
-      const transcriptQuery = "(mimeType='text/vtt' or mimeType='text/plain' or mimeType='application/x-subrip') and (name contains 'transcript' or name contains 'transcrição' or name contains 'Transcript')";
+      // Search for recordings AND transcripts - more flexible query
+      // Recordings: any mp4 files in Meet Recordings folder
+      const recordingsQuery = "mimeType='video/mp4'";
+      const transcriptQuery = "mimeType='text/vtt' or mimeType='text/plain' or mimeType='application/x-subrip' or mimeType='text/srt'";
       
       const combinedQuery = `(${recordingsQuery}) or (${transcriptQuery})`;
       const driveUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(combinedQuery)}&fields=files(id,name,createdTime,webViewLink,mimeType)&orderBy=createdTime desc&pageSize=200`;
@@ -901,10 +902,18 @@ Deno.serve(async (req) => {
       // Separate recordings and transcripts
       const recordings = allFiles.filter((f: { mimeType: string }) => f.mimeType === 'video/mp4');
       const transcripts = allFiles.filter((f: { mimeType: string }) => 
-        f.mimeType === 'text/vtt' || f.mimeType === 'text/plain' || f.mimeType === 'application/x-subrip'
+        f.mimeType === 'text/vtt' || f.mimeType === 'text/plain' || f.mimeType === 'application/x-subrip' || f.mimeType === 'text/srt'
       );
 
       console.log(`Found ${recordings.length} recordings and ${transcripts.length} transcripts`);
+      
+      // Log first few files for debugging
+      if (recordings.length > 0) {
+        console.log("Sample recordings:", recordings.slice(0, 3).map((r: { name: string; createdTime: string }) => ({ name: r.name, date: r.createdTime })));
+      }
+      if (transcripts.length > 0) {
+        console.log("Sample transcripts:", transcripts.slice(0, 3).map((t: { name: string; createdTime: string }) => ({ name: t.name, date: t.createdTime })));
+      }
 
       let syncedRecordings = 0;
       let syncedTranscripts = 0;
@@ -957,11 +966,18 @@ Deno.serve(async (req) => {
         }
       };
 
-      // Match files with meetings by date
+      // Match files with meetings by date (with 1 day tolerance for timezone differences)
       for (const meeting of meetingsToSync) {
         const meetingDate = new Date(meeting.meeting_date);
         const meetingDateStr = meetingDate.toISOString().split('T')[0];
-        const titleWords = (meeting.meeting_title || meeting.subject || "").toLowerCase().split(" ").filter((w: string) => w.length > 3);
+        const prevDayStr = new Date(meetingDate.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const nextDayStr = new Date(meetingDate.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        const titleWords = (meeting.meeting_title || meeting.subject || "").toLowerCase()
+          .split(/[\s\-_]+/)
+          .filter((w: string) => w.length > 2);
+
+        console.log(`Checking meeting: "${meeting.meeting_title}" on ${meetingDateStr}, keywords: [${titleWords.join(', ')}]`);
 
         // Try to match recording if not already linked
         if (!meeting.recording_link) {
@@ -969,9 +985,15 @@ Deno.serve(async (req) => {
             const recDate = new Date(rec.createdTime);
             const recDateStr = recDate.toISOString().split('T')[0];
             
-            if (recDateStr === meetingDateStr) {
+            // Accept same day, previous day, or next day
+            const dateMatch = recDateStr === meetingDateStr || recDateStr === prevDayStr || recDateStr === nextDayStr;
+            
+            if (dateMatch) {
               const recName = rec.name.toLowerCase();
-              return titleWords.some((word: string) => recName.includes(word)) || titleWords.length === 0;
+              // More flexible matching: check if any keyword is in the file name
+              const keywordMatch = titleWords.length === 0 || titleWords.some((word: string) => recName.includes(word));
+              console.log(`  Recording candidate: "${rec.name}" (${recDateStr}) - dateMatch: ${dateMatch}, keywordMatch: ${keywordMatch}`);
+              return keywordMatch;
             }
             return false;
           });
@@ -984,7 +1006,7 @@ Deno.serve(async (req) => {
 
             if (!updateError) {
               syncedRecordings++;
-              console.log(`Matched recording for meeting: ${meeting.meeting_title}`);
+              console.log(`✓ Matched recording for meeting: ${meeting.meeting_title}`);
             }
           }
         }
@@ -995,9 +1017,14 @@ Deno.serve(async (req) => {
             const tDate = new Date(t.createdTime);
             const tDateStr = tDate.toISOString().split('T')[0];
             
-            if (tDateStr === meetingDateStr) {
+            // Accept same day, previous day, or next day
+            const dateMatch = tDateStr === meetingDateStr || tDateStr === prevDayStr || tDateStr === nextDayStr;
+            
+            if (dateMatch) {
               const tName = t.name.toLowerCase();
-              return titleWords.some((word: string) => tName.includes(word)) || titleWords.length === 0;
+              const keywordMatch = titleWords.length === 0 || titleWords.some((word: string) => tName.includes(word));
+              console.log(`  Transcript candidate: "${t.name}" (${tDateStr}) - dateMatch: ${dateMatch}, keywordMatch: ${keywordMatch}`);
+              return keywordMatch;
             }
             return false;
           });
@@ -1013,7 +1040,7 @@ Deno.serve(async (req) => {
 
               if (!updateError) {
                 syncedTranscripts++;
-                console.log(`Matched transcript for meeting: ${meeting.meeting_title}`);
+                console.log(`✓ Matched transcript for meeting: ${meeting.meeting_title}`);
               }
             }
           }
