@@ -268,11 +268,19 @@ async function refreshToken(clientId: string, clientSecret: string, refreshToken
 }
 
 async function syncCustomers(supabase: any, accessToken: string) {
-  const response = await fetch("https://api.contaazul.com/v1/customers", {
-    headers: { "Authorization": `Bearer ${accessToken}` }
+  console.log("Fetching customers from Conta Azul API v2...");
+  const response = await fetch("https://api-v2.contaazul.com/v1/customers?size=100", {
+    headers: { 
+      "Authorization": `Bearer ${accessToken}`,
+      "Accept": "application/json"
+    }
   });
 
+  console.log("Customers response status:", response.status);
+  
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Customers error:", errorText);
     throw new Error(`Failed to fetch customers: ${response.status}`);
   }
 
@@ -280,7 +288,6 @@ async function syncCustomers(supabase: any, accessToken: string) {
   let synced = 0;
 
   for (const customer of customers) {
-    // Map to our companies table or a separate sync table
     console.log("Customer:", customer.name);
     synced++;
   }
@@ -289,26 +296,38 @@ async function syncCustomers(supabase: any, accessToken: string) {
 }
 
 async function syncSales(supabase: any, accessToken: string) {
-  const response = await fetch("https://api.contaazul.com/v1/sales", {
-    headers: { "Authorization": `Bearer ${accessToken}` }
+  console.log("Fetching sales from Conta Azul API v2...");
+  const response = await fetch("https://api-v2.contaazul.com/v1/sales?size=100", {
+    headers: { 
+      "Authorization": `Bearer ${accessToken}`,
+      "Accept": "application/json"
+    }
   });
 
+  console.log("Sales response status:", response.status);
+  
   if (!response.ok) {
-    throw new Error(`Failed to fetch sales: ${response.status}`);
+    const errorText = await response.text();
+    console.error("Sales error:", errorText);
+    // Sales API might not be available, don't throw
+    console.log("Sales API returned error, skipping...");
+    return { total: 0, synced: 0 };
   }
 
-  const sales = await response.json();
+  const salesData = await response.json();
+  // API may return array directly or wrapped in items
+  const sales = Array.isArray(salesData) ? salesData : (salesData.items || []);
   let synced = 0;
 
   for (const sale of sales) {
     // Create receivable from sale
     await supabase.from("financial_receivables").upsert({
       conta_azul_id: sale.id,
-      description: sale.notes || `Venda #${sale.number}`,
-      amount: sale.total,
-      due_date: sale.due_date || sale.emission,
+      description: sale.notes || `Venda #${sale.number || sale.id}`,
+      amount: sale.total || sale.value || 0,
+      due_date: sale.due_date || sale.emission || new Date().toISOString().split('T')[0],
       status: sale.status === "COMMITTED" ? "pending" : "paid",
-      company_id: null, // Could map via customer
+      company_id: null,
       is_recurring: false
     }, { onConflict: "conta_azul_id" });
     synced++;
@@ -318,26 +337,34 @@ async function syncSales(supabase: any, accessToken: string) {
 }
 
 async function syncPurchases(supabase: any, accessToken: string) {
-  const response = await fetch("https://api.contaazul.com/v1/purchases", {
-    headers: { "Authorization": `Bearer ${accessToken}` }
+  console.log("Fetching purchases from Conta Azul API v2...");
+  const response = await fetch("https://api-v2.contaazul.com/v1/purchases?size=100", {
+    headers: { 
+      "Authorization": `Bearer ${accessToken}`,
+      "Accept": "application/json"
+    }
   });
 
+  console.log("Purchases response status:", response.status);
+  
   if (!response.ok) {
     // Purchases API might not be available in all plans
-    console.log("Purchases API not available or error");
+    const errorText = await response.text();
+    console.log("Purchases API returned error:", errorText);
     return { total: 0, synced: 0 };
   }
 
-  const purchases = await response.json();
+  const purchasesData = await response.json();
+  const purchases = Array.isArray(purchasesData) ? purchasesData : (purchasesData.items || []);
   let synced = 0;
 
   for (const purchase of purchases) {
     await supabase.from("financial_payables").upsert({
       conta_azul_id: purchase.id,
-      description: purchase.notes || `Compra #${purchase.number}`,
+      description: purchase.notes || `Compra #${purchase.number || purchase.id}`,
       supplier_name: purchase.supplier?.name || "Fornecedor",
-      amount: purchase.total,
-      due_date: purchase.due_date || purchase.emission,
+      amount: purchase.total || purchase.value || 0,
+      due_date: purchase.due_date || purchase.emission || new Date().toISOString().split('T')[0],
       status: purchase.status === "COMMITTED" ? "pending" : "paid"
     }, { onConflict: "conta_azul_id" });
     synced++;
