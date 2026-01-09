@@ -28,6 +28,8 @@ import {
   Calculator,
   Instagram,
   ExternalLink,
+  History,
+  TrendingUp,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -117,6 +119,12 @@ interface CACFormData {
   submitted_at: string;
 }
 
+interface SalesHistoryData {
+  month_year: string;
+  revenue: number;
+  sales_count: number | null;
+}
+
 interface CompanyBriefingPanelProps {
   companyId: string;
   projectId?: string;
@@ -129,6 +137,7 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
   const canEdit = isStaffAdmin || userRole === "admin" || userRole === "cs";
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [cacForms, setCacForms] = useState<CACFormData[]>([]);
+  const [salesHistory, setSalesHistory] = useState<SalesHistoryData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -138,6 +147,7 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
   useEffect(() => {
     if (companyId) {
       fetchCompanyData();
+      fetchSalesHistory();
     } else {
       setLoading(false);
     }
@@ -145,6 +155,22 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
       fetchCACForms();
     }
   }, [companyId, projectId]);
+
+  const fetchSalesHistory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("company_sales_history")
+        .select("month_year, revenue, sales_count")
+        .eq("company_id", companyId)
+        .eq("is_pre_unv", true)
+        .order("month_year", { ascending: false });
+
+      if (error) throw error;
+      setSalesHistory(data || []);
+    } catch (error) {
+      console.error("Error fetching sales history:", error);
+    }
+  };
 
   const fetchCompanyData = async () => {
     try {
@@ -760,6 +786,70 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
           )}
         </CardContent>
       </Card>
+
+      {/* Histórico de Vendas (Pré-UNV) */}
+      {salesHistory.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Histórico de Vendas (Pré-UNV)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 font-medium">Mês/Ano</th>
+                    <th className="text-right p-3 font-medium">Faturamento</th>
+                    <th className="text-right p-3 font-medium">Qtd. Vendas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {salesHistory.map((entry) => {
+                    const date = new Date(entry.month_year + "T12:00:00");
+                    const monthLabel = format(date, "MMM/yyyy", { locale: ptBR });
+                    return (
+                      <tr key={entry.month_year} className="border-b">
+                        <td className="p-3 font-medium capitalize">{monthLabel}</td>
+                        <td className="p-3 text-right">
+                          {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(entry.revenue)}
+                        </td>
+                        <td className="p-3 text-right">{entry.sales_count || "-"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="bg-muted/30">
+                  <tr>
+                    <td className="p-3 font-semibold">Total</td>
+                    <td className="p-3 text-right font-semibold">
+                      {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+                        salesHistory.reduce((sum, e) => sum + e.revenue, 0)
+                      )}
+                    </td>
+                    <td className="p-3 text-right font-semibold">
+                      {salesHistory.reduce((sum, e) => sum + (e.sales_count || 0), 0) || "-"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-medium text-muted-foreground">Média Mensal</td>
+                    <td className="p-3 text-right font-medium text-muted-foreground">
+                      {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+                        salesHistory.reduce((sum, e) => sum + e.revenue, 0) / salesHistory.length
+                      )}
+                    </td>
+                    <td className="p-3 text-right font-medium text-muted-foreground">
+                      {Math.round(salesHistory.reduce((sum, e) => sum + (e.sales_count || 0), 0) / salesHistory.length) || "-"}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Informações de Contrato */}
       <Card>
