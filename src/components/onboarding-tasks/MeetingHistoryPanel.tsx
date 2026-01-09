@@ -1322,6 +1322,41 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                  })()}
               </div>
 
+              {/* Transcript (highlighted, separate from notes) */}
+              <div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5" />
+                    Transcrição
+                  </span>
+
+                  {(isAdmin || isCS || currentStaffId) && !isPastingTranscription && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => {
+                        setIsPastingTranscription(true);
+                        setManualTranscriptionDraft("");
+                      }}
+                    >
+                      <ClipboardPaste className="h-3.5 w-3.5" />
+                      Colar aqui
+                    </Button>
+                  )}
+                </div>
+
+                <div className="mt-2 p-4 bg-muted/30 border rounded-lg max-h-[300px] overflow-y-auto">
+                  {selectedMeeting.transcript ? (
+                    <p className="text-sm whitespace-pre-wrap">{selectedMeeting.transcript}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Ainda não disponível. Quando a sincronização encontrar a transcrição, ela vai aparecer aqui (separada de “O que foi tratado”).
+                    </p>
+                  )}
+                </div>
+              </div>
+
               {/* Notes */}
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">O que foi tratado</span>
@@ -1329,19 +1364,6 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                   <p className="text-sm whitespace-pre-wrap">{selectedMeeting.notes}</p>
                 </div>
               </div>
-
-              {/* Transcript - separate field */}
-              {selectedMeeting.transcript && (
-                <div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5" />
-                    Transcrição
-                  </span>
-                  <div className="mt-2 p-4 bg-muted/30 border rounded-lg max-h-[300px] overflow-y-auto">
-                    <p className="text-sm whitespace-pre-wrap">{selectedMeeting.transcript}</p>
-                  </div>
-                </div>
-              )}
 
               {/* Manual Transcription Paste */}
               {isPastingTranscription && (isAdmin || isCS || currentStaffId) && (
