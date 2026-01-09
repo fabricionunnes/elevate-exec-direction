@@ -1000,11 +1000,17 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
           </DialogHeader>
 
           {selectedMeeting && (
-            <div className="space-y-4" onMouseDown={() => {
-              // Close inline editors when interacting elsewhere
-              if (isEditingRecordingLink) setIsEditingRecordingLink(false);
-              if (isEditingMeetingLink) setIsEditingMeetingLink(false);
-            }}>
+            <div
+              className="space-y-4"
+              onMouseDown={(e) => {
+                const target = e.target as HTMLElement | null;
+                // Don't close editors when interacting with them (e.g., clicking "Salvar")
+                if (target?.closest?.('[data-inline-editor="true"]')) return;
+
+                if (isEditingRecordingLink) setIsEditingRecordingLink(false);
+                if (isEditingMeetingLink) setIsEditingMeetingLink(false);
+              }}
+            >
               {/* Header Info */}
               <div className="bg-muted/50 rounded-lg p-4 space-y-3">
                 <div>
@@ -1066,7 +1072,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                          </Button>
                        </div>
                      ) : (
-                       <div className="flex flex-col sm:flex-row gap-2 w-full">
+                       <div className="flex flex-col sm:flex-row gap-2 w-full" data-inline-editor="true">
                          <Input
                            value={meetingLinkDraft}
                            onChange={(e) => setMeetingLinkDraft(e.target.value)}
@@ -1109,13 +1115,14 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                          <PlayCircle className="h-3.5 w-3.5" />
                          Ver Gravação
                        </Button>
-                       <Button
-                         variant="outline"
-                         size="sm"
-                         className="gap-2"
-                         onClick={() => handleTranscribe(selectedMeeting)}
-                         disabled={transcribing}
-                       >
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => handleTranscribe(selectedMeeting)}
+                          disabled={transcribing}
+                          data-inline-editor="true"
+                        >
                          {transcribing ? (
                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
                          ) : (
@@ -1144,37 +1151,37 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                              Inserir link
                            </Button>
                          </div>
-                       ) : (
-                         <div className="flex flex-col sm:flex-row gap-2">
-                           <Input
-                             value={recordingLinkDraft}
-                             onChange={(e) => setRecordingLinkDraft(e.target.value)}
-                             placeholder="Cole aqui o link da gravação (Drive)"
-                             autoFocus
-                           />
-                           <div className="flex gap-2">
-                             <Button
-                               size="sm"
-                               onClick={handleSaveRecordingLink}
-                               disabled={savingRecordingLink}
-                             >
-                               {savingRecordingLink ? (
-                                 <Loader2 className="h-4 w-4 animate-spin" />
-                               ) : (
-                                 "Salvar"
-                               )}
-                             </Button>
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={() => setIsEditingRecordingLink(false)}
-                               disabled={savingRecordingLink}
-                             >
-                               Cancelar
-                             </Button>
-                           </div>
-                         </div>
-                       )}
+                        ) : (
+                          <div className="flex flex-col sm:flex-row gap-2" data-inline-editor="true">
+                            <Input
+                              value={recordingLinkDraft}
+                              onChange={(e) => setRecordingLinkDraft(e.target.value)}
+                              placeholder="Cole aqui o link da gravação (Drive)"
+                              autoFocus
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={handleSaveRecordingLink}
+                                disabled={savingRecordingLink}
+                              >
+                                {savingRecordingLink ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  "Salvar"
+                                )}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsEditingRecordingLink(false)}
+                                disabled={savingRecordingLink}
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                        <p className="text-xs text-muted-foreground">
                          Dica: a sincronização automática depende da API do Drive; enquanto isso, você pode colar o link manualmente.
                        </p>
