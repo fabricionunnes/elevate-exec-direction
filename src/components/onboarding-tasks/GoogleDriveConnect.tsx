@@ -255,9 +255,9 @@ export function GoogleDriveConnect({ projectId, documentsLink, onConnectionChang
 
             {/* Documents link info */}
             {documentsLink && (
-              <div className="p-3 bg-muted/50 rounded-lg space-y-1">
+              <div className="p-3 bg-muted rounded-lg space-y-1 border">
                 <span className="text-xs text-muted-foreground">Pasta vinculada:</span>
-                <p className="text-sm truncate">{documentsLink}</p>
+                <p className="text-sm truncate text-foreground">{documentsLink}</p>
               </div>
             )}
 
