@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { format, differenceInMonths, parseISO, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -47,12 +48,20 @@ import {
   ArrowDown,
   Pencil,
   RotateCw,
+  Heart,
 } from "lucide-react";
 import RenewalsPanel from "@/components/onboarding-tasks/RenewalsPanel";
+import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 
 interface Staff {
   id: string;
   name: string;
+}
+
+interface HealthScore {
+  project_id: string;
+  total_score: number;
+  risk_level: string;
 }
 
 interface CompanyReport {
@@ -69,9 +78,12 @@ interface CompanyReport {
   total_paid: number;
   contract_months: number;
   avg_ticket: number;
+  // Health score
+  health_score: number | null;
+  health_risk: string | null;
 }
 
-type SortField = "name" | "consultant_name" | "contract_start_date" | "contract_end_date" | "contract_months" | "total_paid" | "avg_ticket" | "status" | "payment_method";
+type SortField = "name" | "consultant_name" | "contract_start_date" | "contract_end_date" | "contract_months" | "total_paid" | "avg_ticket" | "status" | "payment_method" | "health_score";
 type SortDirection = "asc" | "desc";
 
 export default function OnboardingCompaniesReportPage() {
@@ -88,9 +100,11 @@ export default function OnboardingCompaniesReportPage() {
   const [filterPaymentMethod, setFilterPaymentMethod] = useState<string>("all");
   const [filterEndDateFrom, setFilterEndDateFrom] = useState<string>("");
   const [filterEndDateTo, setFilterEndDateTo] = useState<string>("");
+  const [filterHealthMin, setFilterHealthMin] = useState<number>(0);
+  const [filterHealthMax, setFilterHealthMax] = useState<number>(100);
 
-  // Sorting - default to contract_end_date ascending (earliest first)
-  const [sortField, setSortField] = useState<SortField>("contract_end_date");
+  // Sorting - default to health_score ascending (worst first)
+  const [sortField, setSortField] = useState<SortField>("health_score");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   // Edit dialog state
@@ -167,7 +181,11 @@ export default function OnboardingCompaniesReportPage() {
         contract_value,
         payment_method,
         status,
-        consultant:consultant_id(name)
+        consultant:consultant_id(name),
+        onboarding_projects(
+          id,
+          client_health_scores(total_score, risk_level)
+        )
       `)
       .order("name");
 
@@ -217,6 +235,25 @@ export default function OnboardingCompaniesReportPage() {
       // Average ticket = monthly value
       const avgTicket = monthlyValue;
 
+      // Get health score from projects
+      let healthScore: number | null = null;
+      let healthRisk: string | null = null;
+      
+      if (company.onboarding_projects && company.onboarding_projects.length > 0) {
+        const projectsWithScores = company.onboarding_projects.filter(
+          (p: any) => p.client_health_scores && p.client_health_scores.length > 0
+        );
+        if (projectsWithScores.length > 0) {
+          // Average health score across all projects
+          const totalScore = projectsWithScores.reduce((sum: number, p: any) => {
+            return sum + (p.client_health_scores[0]?.total_score || 0);
+          }, 0);
+          healthScore = Math.round(totalScore / projectsWithScores.length);
+          // Use the risk level of the first project (or worst)
+          healthRisk = projectsWithScores[0].client_health_scores[0]?.risk_level || null;
+        }
+      }
+
       return {
         id: company.id,
         name: company.name,
@@ -230,6 +267,8 @@ export default function OnboardingCompaniesReportPage() {
         total_paid: totalPaid,
         contract_months: contractMonths,
         avg_ticket: avgTicket,
+        health_score: healthScore,
+        health_risk: healthRisk,
       };
     });
 
@@ -280,14 +319,28 @@ export default function OnboardingCompaniesReportPage() {
       });
     }
 
+    // Filter by health score range
+    if (filterHealthMin > 0 || filterHealthMax < 100) {
+      result = result.filter(c => {
+        if (c.health_score === null) return filterHealthMin === 0;
+        return c.health_score >= filterHealthMin && c.health_score <= filterHealthMax;
+      });
+    }
+
     // Sort
     result.sort((a, b) => {
       let aVal: any = a[sortField];
       let bVal: any = b[sortField];
 
-      // Handle nulls
-      if (aVal === null || aVal === undefined) aVal = sortField === "name" || sortField === "consultant_name" ? "" : 0;
-      if (bVal === null || bVal === undefined) bVal = sortField === "name" || sortField === "consultant_name" ? "" : 0;
+      // Handle nulls - for health score, nulls go to the end
+      if (sortField === "health_score") {
+        if (aVal === null && bVal === null) return 0;
+        if (aVal === null) return 1;
+        if (bVal === null) return -1;
+      } else {
+        if (aVal === null || aVal === undefined) aVal = sortField === "name" || sortField === "consultant_name" ? "" : 0;
+        if (bVal === null || bVal === undefined) bVal = sortField === "name" || sortField === "consultant_name" ? "" : 0;
+      }
 
       // String comparison
       if (typeof aVal === "string" && typeof bVal === "string") {
@@ -301,7 +354,7 @@ export default function OnboardingCompaniesReportPage() {
     });
 
     return result;
-  }, [companies, searchTerm, filterConsultant, filterStatus, filterPaymentMethod, filterEndDateFrom, filterEndDateTo, sortField, sortDirection]);
+  }, [companies, searchTerm, filterConsultant, filterStatus, filterPaymentMethod, filterEndDateFrom, filterEndDateTo, filterHealthMin, filterHealthMax, sortField, sortDirection]);
 
   // Summary metrics
   const summaryMetrics = useMemo(() => {
@@ -649,6 +702,48 @@ export default function OnboardingCompaniesReportPage() {
                   </Button>
                 )}
               </div>
+              {/* Health score filter */}
+              <div className="flex flex-col sm:flex-row gap-4 items-center">
+                <div className="flex items-center gap-2">
+                  <Heart className="h-4 w-4 text-red-500" />
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Saúde:</Label>
+                </div>
+                <div className="flex-1 max-w-md">
+                  <Slider
+                    value={[filterHealthMin, filterHealthMax]}
+                    onValueChange={(value) => {
+                      setFilterHealthMin(value[0]);
+                      setFilterHealthMax(value[1]);
+                    }}
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className={`font-medium ${filterHealthMin < 40 ? "text-red-500" : filterHealthMin < 60 ? "text-orange-500" : filterHealthMin < 80 ? "text-yellow-500" : "text-green-500"}`}>
+                    {filterHealthMin}
+                  </span>
+                  <span>-</span>
+                  <span className={`font-medium ${filterHealthMax < 40 ? "text-red-500" : filterHealthMax < 60 ? "text-orange-500" : filterHealthMax < 80 ? "text-yellow-500" : "text-green-500"}`}>
+                    {filterHealthMax}
+                  </span>
+                </div>
+                {(filterHealthMin > 0 || filterHealthMax < 100) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setFilterHealthMin(0);
+                      setFilterHealthMax(100);
+                    }}
+                    className="text-muted-foreground text-xs"
+                  >
+                    Limpar
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -734,6 +829,16 @@ export default function OnboardingCompaniesReportPage() {
                       </div>
                     </TableHead>
                     <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
+                      onClick={() => handleSort("health_score")}
+                    >
+                      <div className="flex items-center">
+                        <Heart className="h-3 w-3 mr-1" />
+                        Saúde
+                        <SortIcon field="health_score" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
                       className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap hidden lg:table-cell"
                       onClick={() => handleSort("payment_method")}
                     >
@@ -748,7 +853,7 @@ export default function OnboardingCompaniesReportPage() {
               <TableBody>
                 {filteredCompanies.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-6 sm:py-8 text-muted-foreground text-xs sm:text-sm">
+                    <TableCell colSpan={11} className="text-center py-6 sm:py-8 text-muted-foreground text-xs sm:text-sm">
                       Nenhuma empresa encontrada
                     </TableCell>
                   </TableRow>
@@ -777,6 +882,31 @@ export default function OnboardingCompaniesReportPage() {
                         {formatCurrency(company.avg_ticket)}/mês
                       </TableCell>
                       <TableCell className="py-2 sm:py-4">{getStatusBadge(company.status)}</TableCell>
+                      <TableCell className="py-2 sm:py-4">
+                        {company.health_score !== null ? (
+                          <div className="flex items-center gap-1.5">
+                            <Heart 
+                              className={`h-3.5 w-3.5 ${
+                                company.health_score >= 80 ? "text-green-500" :
+                                company.health_score >= 60 ? "text-yellow-500" :
+                                company.health_score >= 40 ? "text-orange-500" :
+                                "text-red-500"
+                              }`}
+                              fill="currentColor"
+                            />
+                            <span className={`text-xs font-medium ${
+                              company.health_score >= 80 ? "text-green-500" :
+                              company.health_score >= 60 ? "text-yellow-500" :
+                              company.health_score >= 40 ? "text-orange-500" :
+                              "text-red-500"
+                            }`}>
+                              {company.health_score}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="hidden lg:table-cell py-2 sm:py-4">
                         {company.payment_method === "card" ? (
                           <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-[10px] sm:text-xs">Cartão</Badge>

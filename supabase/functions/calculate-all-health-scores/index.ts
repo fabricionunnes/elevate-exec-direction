@@ -272,9 +272,34 @@ async function calculateProjectHealthScore(
       (trendScore * weights.trend_weight) / 100
   );
 
-  // Apply cancellation penalty - heavy penalty for signaled cancellations
+  // Apply bonuses
+  // Bonus for meeting goals (if goalsScore >= 80, add +10)
+  if (goalsScore >= 80) {
+    totalScore = Math.min(100, totalScore + 10);
+  }
+
+  // Check for recent renewal (within last 90 days) - add +20 bonus
+  if (companyId) {
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    
+    const { data: companyData } = await supabase
+      .from("onboarding_companies")
+      .select("renewed_at")
+      .eq("id", companyId)
+      .single();
+    
+    if (companyData?.renewed_at) {
+      const renewedAt = new Date(companyData.renewed_at);
+      if (renewedAt >= ninetyDaysAgo) {
+        totalScore = Math.min(100, totalScore + 20);
+      }
+    }
+  }
+
+  // Apply cancellation penalty (reduces score)
   if (isCancellationStatus) {
-    totalScore = Math.max(0, totalScore - 50);
+    totalScore = Math.max(0, totalScore - 30);
   }
 
   // Determine risk level

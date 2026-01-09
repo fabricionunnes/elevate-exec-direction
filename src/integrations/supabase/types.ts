@@ -3525,6 +3525,7 @@ export type Database = {
           renewal_notes: string | null
           renewal_plan_type: string | null
           renewal_status: string | null
+          renewed_at: string | null
           sales_team_size: string | null
           segment: string | null
           stakeholders: Json | null
@@ -3580,6 +3581,7 @@ export type Database = {
           renewal_notes?: string | null
           renewal_plan_type?: string | null
           renewal_status?: string | null
+          renewed_at?: string | null
           sales_team_size?: string | null
           segment?: string | null
           stakeholders?: Json | null
@@ -3635,6 +3637,7 @@ export type Database = {
           renewal_notes?: string | null
           renewal_plan_type?: string | null
           renewal_status?: string | null
+          renewed_at?: string | null
           sales_team_size?: string | null
           segment?: string | null
           stakeholders?: Json | null

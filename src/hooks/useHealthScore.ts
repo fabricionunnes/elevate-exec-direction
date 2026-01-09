@@ -307,9 +307,15 @@ export const useHealthScore = (projectId: string | undefined) => {
         (trendScore * weights.trend_weight / 100)
       );
 
-      // Apply cancellation penalty (reduces score significantly)
+      // Apply bonuses
+      // Bonus for meeting goals (if goalsScore >= 80, add +10)
+      if (goalsScore >= 80) {
+        totalScore = Math.min(100, totalScore + 10);
+      }
+
+      // Apply cancellation penalty (reduces score)
       if (isCancellationStatus) {
-        totalScore = Math.max(0, totalScore - 50); // -50 points penalty
+        totalScore = Math.max(0, totalScore - 30); // -30 points penalty
       }
 
       // Determine risk level
