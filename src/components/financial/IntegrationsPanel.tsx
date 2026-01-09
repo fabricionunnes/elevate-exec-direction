@@ -118,10 +118,13 @@ export function IntegrationsPanel() {
     setIsSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke("conta-azul-oauth?action=sync");
-      
+
       if (error) throw error;
-      
-      toast.success(`Sincronização concluída! ${data?.sales?.synced || 0} vendas, ${data?.purchases?.synced || 0} compras`);
+
+      const salesSynced = data?.sales?.synced ?? data?.receivables?.synced ?? 0;
+      const purchasesSynced = data?.purchases?.synced ?? data?.payables?.synced ?? 0;
+
+      toast.success(`Sincronização concluída! ${salesSynced} vendas, ${purchasesSynced} compras`);
       loadStatus();
     } catch (error: any) {
       console.error("Error syncing:", error);
