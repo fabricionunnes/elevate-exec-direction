@@ -116,12 +116,16 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     recordingLink: "",
   });
 
-  // Manual recording link edit (fallback when automatic sync isn't available)
+  // Manual meeting/recording link edit (fallback when automatic sync isn't available)
+  const [isEditingMeetingLink, setIsEditingMeetingLink] = useState(false);
+  const [meetingLinkDraft, setMeetingLinkDraft] = useState("");
+
   const [isEditingRecordingLink, setIsEditingRecordingLink] = useState(false);
   const [recordingLinkDraft, setRecordingLinkDraft] = useState("");
   
   // Transcription state
   const [transcribing, setTranscribing] = useState(false);
+  const [savingMeetingLink, setSavingMeetingLink] = useState(false);
   const [savingRecordingLink, setSavingRecordingLink] = useState(false);
   
   // Schedule meeting dialog
@@ -564,6 +568,29 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     }
   };
 
+  const handleSaveMeetingLink = async () => {
+    if (!selectedMeeting) return;
+    setSavingMeetingLink(true);
+    try {
+      const nextLink = meetingLinkDraft.trim();
+      const { error } = await supabase
+        .from("onboarding_meeting_notes")
+        .update({ meeting_link: nextLink ? nextLink : null })
+        .eq("id", selectedMeeting.id);
+
+      if (error) throw error;
+
+      toast.success("Link da reunião atualizado");
+      setIsEditingMeetingLink(false);
+      await fetchMeetings();
+    } catch (e) {
+      console.error("Error saving meeting link:", e);
+      toast.error("Não foi possível salvar o link da reunião");
+    } finally {
+      setSavingMeetingLink(false);
+    }
+  };
+
   const handleSaveRecordingLink = async () => {
     if (!selectedMeeting) return;
     setSavingRecordingLink(true);
@@ -974,8 +1001,9 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
           {selectedMeeting && (
             <div className="space-y-4" onMouseDown={() => {
-              // Close inline editor when changing meetings
+              // Close inline editors when interacting elsewhere
               if (isEditingRecordingLink) setIsEditingRecordingLink(false);
+              if (isEditingMeetingLink) setIsEditingMeetingLink(false);
             }}>
               {/* Header Info */}
               <div className="bg-muted/50 rounded-lg p-4 space-y-3">
@@ -1008,7 +1036,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                   </div>
                 )}
                  <div className="flex flex-wrap gap-2">
-                   {selectedMeeting.meeting_link && (
+                   {selectedMeeting.meeting_link ? (
                      <Button
                        variant="outline"
                        size="sm"
@@ -1018,7 +1046,57 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                        <ExternalLink className="h-3.5 w-3.5" />
                        Link da reunião
                      </Button>
-                   )}
+                   ) : (isAdmin || isCS || currentStaffId) ? (
+                     !isEditingMeetingLink ? (
+                       <div className="flex items-center gap-3">
+                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                           <ExternalLink className="h-3.5 w-3.5" />
+                           <span>Link da reunião não vinculado</span>
+                         </div>
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           className="gap-2"
+                           onClick={() => {
+                             setIsEditingMeetingLink(true);
+                             setMeetingLinkDraft("");
+                           }}
+                         >
+                           Inserir link
+                         </Button>
+                       </div>
+                     ) : (
+                       <div className="flex flex-col sm:flex-row gap-2 w-full">
+                         <Input
+                           value={meetingLinkDraft}
+                           onChange={(e) => setMeetingLinkDraft(e.target.value)}
+                           placeholder="Cole aqui o link da reunião (Google Meet)"
+                           autoFocus
+                         />
+                         <div className="flex gap-2">
+                           <Button
+                             size="sm"
+                             onClick={handleSaveMeetingLink}
+                             disabled={savingMeetingLink}
+                           >
+                             {savingMeetingLink ? (
+                               <Loader2 className="h-4 w-4 animate-spin" />
+                             ) : (
+                               "Salvar"
+                             )}
+                           </Button>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => setIsEditingMeetingLink(false)}
+                             disabled={savingMeetingLink}
+                           >
+                             Cancelar
+                           </Button>
+                         </div>
+                       </div>
+                     )
+                   ) : null}
 
                    {selectedMeeting.recording_link ? (
                      <div className="flex gap-2">
