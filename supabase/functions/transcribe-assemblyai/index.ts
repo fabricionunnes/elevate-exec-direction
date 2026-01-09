@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // Refresh Google access token if expired
-async function refreshGoogleToken(supabase: any, staffId: string, refreshToken: string): Promise<string | null> {
+async function refreshGoogleToken(supabase: any, userId: string, refreshToken: string): Promise<string | null> {
   const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
   const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
   
@@ -34,18 +34,16 @@ async function refreshGoogleToken(supabase: any, staffId: string, refreshToken: 
     }
 
     const data = await response.json();
+    const expiresAt = new Date(Date.now() + (data.expires_in * 1000)).toISOString();
     
-    // Update stored token
+    // Update stored token in user_google_tokens
     await supabase
-      .from('onboarding_staff')
+      .from('user_google_tokens')
       .update({
-        google_calendar_tokens: {
-          access_token: data.access_token,
-          refresh_token: refreshToken,
-          expires_at: Date.now() + (data.expires_in * 1000),
-        }
+        access_token: data.access_token,
+        token_expires_at: expiresAt,
       })
-      .eq('id', staffId);
+      .eq('user_id', userId);
 
     return data.access_token;
   } catch (error) {
@@ -175,21 +173,32 @@ serve(async (req) => {
     if (fileId && staffId) {
       console.log('Google Drive file detected, ID:', fileId);
       
-      // Get staff's Google tokens
+      // Get staff's user_id first
       const { data: staff } = await supabase
         .from('onboarding_staff')
-        .select('google_calendar_tokens')
+        .select('user_id')
         .eq('id', staffId)
         .single();
 
-      if (staff?.google_calendar_tokens) {
-        const tokens = staff.google_calendar_tokens as any;
-        let accessToken = tokens.access_token;
+      if (!staff?.user_id) {
+        throw new Error('Staff não encontrado.');
+      }
+
+      // Get Google tokens from user_google_tokens table
+      const { data: tokenData } = await supabase
+        .from('user_google_tokens')
+        .select('access_token, refresh_token, token_expires_at')
+        .eq('user_id', staff.user_id)
+        .single();
+
+      if (tokenData) {
+        let accessToken = tokenData.access_token;
 
         // Check if token is expired
-        if (tokens.expires_at && tokens.expires_at < Date.now()) {
+        const expiresAt = new Date(tokenData.token_expires_at).getTime();
+        if (expiresAt < Date.now()) {
           console.log('Token expired, refreshing...');
-          accessToken = await refreshGoogleToken(supabase, staffId, tokens.refresh_token);
+          accessToken = await refreshGoogleToken(supabase, staff.user_id, tokenData.refresh_token);
         }
 
         if (accessToken) {
