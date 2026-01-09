@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
+import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   TrendingUp,
-  TrendingDown,
   DollarSign,
   ArrowDownCircle,
   ArrowUpCircle,
@@ -15,7 +13,6 @@ import {
   Calendar,
   RefreshCw,
   Building2,
-  Users,
   FileText,
   Loader2
 } from "lucide-react";
@@ -27,8 +24,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell
@@ -43,10 +38,8 @@ interface FinancialSummary {
   overdueReceivables: number;
   overduePayables: number;
   mrr: number;
-  nexusMrr: number;
   totalCash: number;
   activeContracts: number;
-  activeNexusClients: number;
   projectedCash30: number;
   projectedCash90: number;
 }
@@ -61,10 +54,8 @@ export function FinancialOverview() {
     overdueReceivables: 0,
     overduePayables: 0,
     mrr: 0,
-    nexusMrr: 0,
     totalCash: 0,
     activeContracts: 0,
-    activeNexusClients: 0,
     projectedCash30: 0,
     projectedCash90: 0
   });
@@ -78,7 +69,6 @@ export function FinancialOverview() {
   const loadFinancialData = async () => {
     setIsLoading(true);
     try {
-      const currentMonth = format(new Date(), "yyyy-MM");
       const today = format(new Date(), "yyyy-MM-dd");
 
       // Load receivables summary
@@ -99,16 +89,10 @@ export function FinancialOverview() {
         .select("current_balance")
         .eq("is_active", true);
 
-      // Load active contracts from financial_contracts
+      // Load active contracts
       const { data: contracts } = await supabase
         .from("financial_contracts")
         .select("contract_value, billing_cycle")
-        .eq("status", "active");
-
-      // Load active clients from Nexus (onboarding_companies)
-      const { data: nexusClients } = await supabase
-        .from("onboarding_companies")
-        .select("id, name, contract_value, status")
         .eq("status", "active");
 
       // Calculate summary
@@ -146,10 +130,6 @@ export function FinancialOverview() {
 
       const totalCash = banks?.reduce((sum, b) => sum + (Number(b.current_balance) || 0), 0) || 0;
       const activeContracts = contracts?.length || 0;
-      const activeNexusClients = nexusClients?.length || 0;
-
-      // Calculate MRR from Nexus clients
-      const nexusMrr = nexusClients?.reduce((sum, c) => sum + (Number(c.contract_value) || 0), 0) || 0;
 
       // Calculate MRR
       let mrr = 0;
@@ -171,11 +151,8 @@ export function FinancialOverview() {
         }
       });
 
-      // Use the higher MRR (financial contracts or Nexus clients)
-      const effectiveMrr = Math.max(mrr, nexusMrr);
-
       // Projected cash
-      const monthlyNet = effectiveMrr - (totalPayables / 6); // Simplified projection
+      const monthlyNet = mrr - (totalPayables / 6);
       const projectedCash30 = totalCash + monthlyNet;
       const projectedCash90 = totalCash + monthlyNet * 3;
 
@@ -187,15 +164,13 @@ export function FinancialOverview() {
         overdueReceivables,
         overduePayables,
         mrr,
-        nexusMrr,
         totalCash,
         activeContracts,
-        activeNexusClients,
         projectedCash30,
         projectedCash90
       });
 
-      // Generate chart data (mock for now, will use snapshots)
+      // Generate chart data (placeholder - will use real data with Conta Azul)
       const chartData = [];
       for (let i = 5; i >= 0; i--) {
         const month = subMonths(new Date(), i);
@@ -207,7 +182,7 @@ export function FinancialOverview() {
       }
       setRevenueData(chartData);
 
-      // Category distribution
+      // Category distribution (placeholder)
       setCategoryData([
         { name: "Mensalidades", value: 65, color: "#10b981" },
         { name: "Consultorias", value: 20, color: "#3b82f6" },
@@ -265,16 +240,11 @@ export function FinancialOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">
-              {formatCurrency(Math.max(summary.mrr, summary.nexusMrr))}
+              {formatCurrency(summary.mrr)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              ARR: {formatCurrency(Math.max(summary.mrr, summary.nexusMrr) * 12)}
+              ARR: {formatCurrency(summary.mrr * 12)}
             </p>
-            {summary.nexusMrr > summary.mrr && (
-              <p className="text-xs text-blue-500 mt-1">
-                {summary.activeNexusClients} clientes Nexus
-              </p>
-            )}
           </CardContent>
         </Card>
 
@@ -291,7 +261,7 @@ export function FinancialOverview() {
               {formatCurrency(summary.totalCash)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {summary.activeContracts} contratos | {summary.activeNexusClients} clientes Nexus
+              {summary.activeContracts} contratos ativos
             </p>
           </CardContent>
         </Card>
@@ -499,8 +469,8 @@ export function FinancialOverview() {
               Novo Contrato
             </Button>
             <Button variant="outline" size="sm">
-              <Users className="h-4 w-4 mr-2" />
-              Importar do Nexus
+              <DollarSign className="h-4 w-4 mr-2" />
+              Registrar Movimentação
             </Button>
           </div>
         </CardContent>
