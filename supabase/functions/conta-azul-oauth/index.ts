@@ -45,18 +45,36 @@ Deno.serve(async (req) => {
 
     // ACTION: Get OAuth authorization URL
     if (action === "get-auth-url") {
+      // Get return URL from request body or headers
+      let returnUrl = "";
+      try {
+        const body = await req.json();
+        returnUrl = body?.returnUrl || "";
+      } catch {
+        // No body, try headers
+        returnUrl = req.headers.get("origin") || req.headers.get("referer") || "";
+      }
+      
+      // Clean up return URL
+      if (returnUrl) {
+        try {
+          const urlObj = new URL(returnUrl);
+          returnUrl = urlObj.origin;
+        } catch {
+          returnUrl = "";
+        }
+      }
+      
       const redirectUri = `${supabaseUrl}/functions/v1/conta-azul-callback`;
       const state = crypto.randomUUID();
       
-      // Store state for validation
-      if (userId) {
-        await supabase.from("financial_integrations").upsert({
-          integration_type: "conta_azul",
-          config: { oauth_state: state },
-          sync_status: "pending_auth",
-          is_active: false
-        }, { onConflict: "integration_type" });
-      }
+      // Store state and return URL for callback
+      await supabase.from("financial_integrations").upsert({
+        integration_type: "conta_azul",
+        config: { oauth_state: state, return_url: returnUrl },
+        sync_status: "pending_auth",
+        is_active: false
+      }, { onConflict: "integration_type" });
 
       const authUrl = `${CONTA_AZUL_AUTH_URL}?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=sales&state=${state}`;
       

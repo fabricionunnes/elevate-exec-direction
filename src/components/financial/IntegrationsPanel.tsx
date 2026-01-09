@@ -67,12 +67,31 @@ export function IntegrationsPanel() {
   const handleConnect = async () => {
     setIsConnecting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("conta-azul-oauth?action=get-auth-url");
+      // Capture current URL to return after OAuth
+      const returnUrl = window.location.origin;
+      
+      const { data, error } = await supabase.functions.invoke("conta-azul-oauth", {
+        body: { action: "get-auth-url", returnUrl }
+      });
       
       if (error) throw error;
       
       if (data?.authUrl) {
-        window.location.href = data.authUrl;
+        // Try to navigate in the top window (works in iframes)
+        try {
+          if (window.top && window.top !== window) {
+            window.top.location.href = data.authUrl;
+          } else {
+            window.location.href = data.authUrl;
+          }
+        } catch {
+          // If blocked by sandbox, open in new tab
+          const newWindow = window.open(data.authUrl, "_blank", "noopener,noreferrer");
+          if (!newWindow) {
+            toast.error("Permita pop-ups para continuar com a conexão");
+            setIsConnecting(false);
+          }
+        }
       }
     } catch (error: any) {
       console.error("Error getting auth URL:", error);

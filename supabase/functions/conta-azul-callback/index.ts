@@ -16,17 +16,7 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Handle error from Conta Azul
-    if (error) {
-      console.error("OAuth error:", error);
-      return redirectToApp("error=auth_denied");
-    }
-
-    if (!code) {
-      return redirectToApp("error=no_code");
-    }
-
-    // Validate state
+    // First, get integration config to retrieve return URL
     const { data: integration } = await supabase
       .from("financial_integrations")
       .select("config")
@@ -34,9 +24,22 @@ Deno.serve(async (req) => {
       .single();
 
     const storedState = (integration?.config as any)?.oauth_state;
+    const returnUrl = (integration?.config as any)?.return_url || "";
+
+    // Handle error from Conta Azul
+    if (error) {
+      console.error("OAuth error:", error);
+      return redirectToApp("error=auth_denied", returnUrl);
+    }
+
+    if (!code) {
+      return redirectToApp("error=no_code", returnUrl);
+    }
+
+    // Validate state
     if (state && storedState && state !== storedState) {
       console.error("State mismatch");
-      return redirectToApp("error=invalid_state");
+      return redirectToApp("error=invalid_state", returnUrl);
     }
 
     // Exchange code for tokens
@@ -58,13 +61,13 @@ Deno.serve(async (req) => {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error("Token exchange failed:", errorText);
-      return redirectToApp("error=token_failed");
+      return redirectToApp("error=token_failed", returnUrl);
     }
 
     const tokens = await tokenResponse.json();
     console.log("Tokens received successfully");
 
-    // Store tokens
+    // Store tokens (preserve return_url is not needed anymore after successful auth)
     await supabase.from("financial_integrations").upsert({
       integration_type: "conta_azul",
       is_active: true,
@@ -77,7 +80,7 @@ Deno.serve(async (req) => {
       last_sync_at: null
     }, { onConflict: "integration_type" });
 
-    return redirectToApp("success=true");
+    return redirectToApp("success=true", returnUrl);
 
   } catch (err: any) {
     console.error("Callback error:", err);
@@ -85,17 +88,23 @@ Deno.serve(async (req) => {
   }
 });
 
-function redirectToApp(params: string) {
-  // Redirect back to the financial module
-  const appUrl = `${Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".lovable.app")}/#/onboarding-tasks/financeiro?tab=integracoes&${params}`;
+function redirectToApp(params: string, returnUrl?: string) {
+  // Use the stored return URL if available
+  let targetUrl: string;
   
-  // Fallback - just redirect to origin
-  const fallbackUrl = `https://czmyjgdixwhpfasfugkm.lovable.app/#/onboarding-tasks/financeiro?tab=integracoes&${params}`;
+  if (returnUrl) {
+    targetUrl = `${returnUrl}/#/onboarding-tasks/financeiro?tab=integracoes&${params}`;
+  } else {
+    // Fallback to a safe default
+    targetUrl = `https://czmyjgdixwhpfasfugkm.lovable.app/#/onboarding-tasks/financeiro?tab=integracoes&${params}`;
+  }
+  
+  console.log("Redirecting to:", targetUrl);
   
   return new Response(null, {
     status: 302,
     headers: {
-      "Location": fallbackUrl
+      "Location": targetUrl
     }
   });
 }
