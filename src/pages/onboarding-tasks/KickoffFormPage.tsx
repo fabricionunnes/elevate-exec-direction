@@ -21,13 +21,24 @@ import {
   BarChart3,
   Compass,
   Flag,
+  History,
+  Plus,
+  Trash2,
 } from "lucide-react";
+import { format, subMonths } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface QuarterlyGoals {
   q1: { pessimista: string; realista: string; otimista: string };
   q2: { pessimista: string; realista: string; otimista: string };
   q3: { pessimista: string; realista: string; otimista: string };
   q4: { pessimista: string; realista: string; otimista: string };
+}
+
+interface SalesHistoryEntry {
+  month_year: string;
+  revenue: number;
+  sales_count: number | null;
 }
 
 interface KickoffFormData {
@@ -75,8 +86,21 @@ const STEPS = [
   { id: 2, title: "Análise SWOT", icon: Compass },
   { id: 3, title: "Checklist & OKRs", icon: Target },
   { id: 4, title: "Metas Trimestrais", icon: TrendingUp },
-  { id: 5, title: "Expectativas", icon: Flag },
+  { id: 5, title: "Histórico de Vendas", icon: History },
+  { id: 6, title: "Expectativas", icon: Flag },
 ];
+
+// Generate last 12 months for sales history
+const generateLast12Months = (): SalesHistoryEntry[] => {
+  const months: SalesHistoryEntry[] = [];
+  const now = new Date();
+  for (let i = 1; i <= 12; i++) {
+    const date = subMonths(now, i);
+    const monthYear = format(date, "yyyy-MM-01");
+    months.push({ month_year: monthYear, revenue: 0, sales_count: null });
+  }
+  return months;
+};
 
 const initialFormData: KickoffFormData = {
   main_challenges: "",
@@ -118,12 +142,47 @@ const KickoffFormPage = () => {
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [companyName, setCompanyName] = useState("");
+  const [salesHistory, setSalesHistory] = useState<SalesHistoryEntry[]>(generateLast12Months());
 
   useEffect(() => {
     if (companyId) {
       fetchCompanyData();
+      fetchExistingSalesHistory();
     }
   }, [companyId]);
+
+  const fetchExistingSalesHistory = async () => {
+    if (!companyId) return;
+    try {
+      const { data, error } = await supabase
+        .from("company_sales_history")
+        .select("month_year, revenue, sales_count")
+        .eq("company_id", companyId)
+        .eq("is_pre_unv", true)
+        .order("month_year", { ascending: false });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        // Merge with existing months template
+        const template = generateLast12Months();
+        const merged = template.map(month => {
+          const existing = data.find(d => d.month_year === month.month_year);
+          if (existing) {
+            return {
+              month_year: month.month_year,
+              revenue: existing.revenue || 0,
+              sales_count: existing.sales_count,
+            };
+          }
+          return month;
+        });
+        setSalesHistory(merged);
+      }
+    } catch (error) {
+      console.error("Error fetching sales history:", error);
+    }
+  };
 
   const fetchCompanyData = async () => {
     if (!companyId) return;
@@ -198,11 +257,18 @@ const KickoffFormPage = () => {
     }));
   };
 
+  const updateSalesHistory = (index: number, field: keyof SalesHistoryEntry, value: any) => {
+    setSalesHistory(prev => prev.map((entry, i) => 
+      i === index ? { ...entry, [field]: value } : entry
+    ));
+  };
+
   const handleSubmit = async () => {
     if (!companyId) return;
     
     setSaving(true);
     try {
+      // Save company data
       const { error } = await supabase
         .from("onboarding_companies")
         .update({
@@ -234,6 +300,34 @@ const KickoffFormPage = () => {
         .eq("id", companyId);
 
       if (error) throw error;
+
+      // Save sales history - only entries with revenue > 0
+      const salesEntries = salesHistory.filter(e => e.revenue > 0);
+      if (salesEntries.length > 0) {
+        // Delete existing pre-UNV entries first
+        await supabase
+          .from("company_sales_history")
+          .delete()
+          .eq("company_id", companyId)
+          .eq("is_pre_unv", true);
+
+        // Insert new entries
+        const { error: salesError } = await supabase
+          .from("company_sales_history")
+          .insert(
+            salesEntries.map(entry => ({
+              company_id: companyId,
+              month_year: entry.month_year,
+              revenue: entry.revenue,
+              sales_count: entry.sales_count,
+              is_pre_unv: true,
+            }))
+          );
+
+        if (salesError) {
+          console.error("Error saving sales history:", salesError);
+        }
+      }
 
       setSubmitted(true);
       toast.success("Formulário enviado com sucesso!");
@@ -679,6 +773,69 @@ const KickoffFormPage = () => {
         );
 
       case 5:
+        const formatMonthLabel = (dateStr: string) => {
+          const date = new Date(dateStr + "T12:00:00");
+          return format(date, "MMM/yyyy", { locale: ptBR });
+        };
+
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold">Histórico de Vendas</h3>
+              <p className="text-sm text-muted-foreground">
+                Informe o faturamento dos últimos 12 meses (antes da UNV)
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 font-medium">Mês/Ano</th>
+                    <th className="text-right p-3 font-medium">Faturamento (R$)</th>
+                    <th className="text-right p-3 font-medium">Qtd. Vendas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {salesHistory.map((entry, index) => (
+                    <tr key={entry.month_year} className="border-b hover:bg-muted/30">
+                      <td className="p-3 font-medium capitalize">
+                        {formatMonthLabel(entry.month_year)}
+                      </td>
+                      <td className="p-3">
+                        <Input
+                          type="number"
+                          value={entry.revenue || ""}
+                          onChange={(e) => updateSalesHistory(index, "revenue", parseFloat(e.target.value) || 0)}
+                          placeholder="0,00"
+                          className="text-right"
+                          min={0}
+                          step={0.01}
+                        />
+                      </td>
+                      <td className="p-3">
+                        <Input
+                          type="number"
+                          value={entry.sales_count || ""}
+                          onChange={(e) => updateSalesHistory(index, "sales_count", parseInt(e.target.value) || null)}
+                          placeholder="Opcional"
+                          className="text-right"
+                          min={0}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              Preencha apenas os meses que tiver informação. Campos vazios serão ignorados.
+            </p>
+          </div>
+        );
+
+      case 6:
         return (
           <div className="space-y-6">
             <div className="text-center mb-4">
