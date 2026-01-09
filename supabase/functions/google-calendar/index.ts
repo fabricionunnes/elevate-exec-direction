@@ -21,6 +21,143 @@ interface CalendarEvent {
   htmlLink: string;
 }
 
+// Helper function to transcribe recording using AssemblyAI
+async function transcribeRecordingWithAI(
+  recordingUrl: string, 
+  googleAccessToken: string,
+  supabase: any
+): Promise<string | null> {
+  const ASSEMBLYAI_API_KEY = Deno.env.get("ASSEMBLYAI_API_KEY");
+  
+  if (!ASSEMBLYAI_API_KEY) {
+    console.log("AssemblyAI API key not configured, skipping AI transcription");
+    return null;
+  }
+
+  // Extract file ID from Google Drive URL
+  const fileIdMatch = recordingUrl.match(/\/d\/([^\/]+)/);
+  if (!fileIdMatch) {
+    console.log("Could not extract file ID from URL:", recordingUrl);
+    return null;
+  }
+
+  const fileId = fileIdMatch[1];
+  console.log(`Starting AI transcription for file: ${fileId}`);
+
+  try {
+    // Get file metadata to check size
+    const metadataResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,size&supportsAllDrives=true`,
+      { headers: { Authorization: `Bearer ${googleAccessToken}` } }
+    );
+
+    if (!metadataResponse.ok) {
+      console.error("Failed to get file metadata:", metadataResponse.status);
+      return null;
+    }
+
+    const metadata = await metadataResponse.json();
+    const fileSize = parseInt(metadata.size || "0", 10);
+    const maxSize = 100 * 1024 * 1024; // 100MB limit for AssemblyAI streaming
+
+    if (fileSize > maxSize) {
+      console.log(`File too large for AI transcription: ${Math.round(fileSize / 1024 / 1024)}MB`);
+      return null;
+    }
+
+    // Get direct download URL for AssemblyAI
+    const linkResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=webContentLink&supportsAllDrives=true`,
+      { headers: { Authorization: `Bearer ${googleAccessToken}` } }
+    );
+
+    if (!linkResponse.ok) {
+      console.error("Failed to get download link:", linkResponse.status);
+      return null;
+    }
+
+    const linkData = await linkResponse.json();
+    const downloadUrl = linkData.webContentLink;
+
+    if (!downloadUrl) {
+      console.log("No webContentLink available for this file");
+      return null;
+    }
+
+    // Submit to AssemblyAI for transcription
+    console.log("Submitting to AssemblyAI...");
+    
+    const submitResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
+      method: "POST",
+      headers: {
+        "Authorization": ASSEMBLYAI_API_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        audio_url: downloadUrl,
+        language_code: "pt",
+        speaker_labels: true,
+      }),
+    });
+
+    if (!submitResponse.ok) {
+      const errorText = await submitResponse.text();
+      console.error("AssemblyAI submit error:", errorText);
+      return null;
+    }
+
+    const submitData = await submitResponse.json();
+    const transcriptId = submitData.id;
+    console.log(`AssemblyAI transcript ID: ${transcriptId}`);
+
+    // Poll for completion (max 5 minutes)
+    const maxWaitTime = 5 * 60 * 1000; // 5 minutes
+    const pollInterval = 5000; // 5 seconds
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWaitTime) {
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+
+      const statusResponse = await fetch(
+        `https://api.assemblyai.com/v2/transcript/${transcriptId}`,
+        { headers: { "Authorization": ASSEMBLYAI_API_KEY } }
+      );
+
+      if (!statusResponse.ok) {
+        console.error("AssemblyAI status check failed");
+        return null;
+      }
+
+      const statusData = await statusResponse.json();
+      
+      if (statusData.status === "completed") {
+        console.log("AssemblyAI transcription completed");
+        
+        // Format with speaker labels if available
+        if (statusData.utterances && statusData.utterances.length > 0) {
+          return statusData.utterances
+            .map((u: { speaker: string; text: string }) => `**Speaker ${u.speaker}:** ${u.text}`)
+            .join("\n\n");
+        }
+        
+        return statusData.text || null;
+      } else if (statusData.status === "error") {
+        console.error("AssemblyAI transcription error:", statusData.error);
+        return null;
+      }
+      
+      console.log(`AssemblyAI status: ${statusData.status}, waiting...`);
+    }
+
+    console.log("AssemblyAI transcription timed out");
+    return null;
+
+  } catch (error) {
+    console.error("AI transcription error:", error);
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -1013,6 +1150,7 @@ Deno.serve(async (req) => {
 
         // Try to match transcript if transcript column is empty
         if (!meeting.transcript) {
+          // First, try to find transcript file in Drive
           const matchingTranscript = transcripts.find((t: { createdTime: string; name: string }) => {
             const tDate = new Date(t.createdTime);
             const tDateStr = tDate.toISOString().split('T')[0];
@@ -1040,7 +1178,33 @@ Deno.serve(async (req) => {
 
               if (!updateError) {
                 syncedTranscripts++;
-                console.log(`✓ Matched transcript for meeting: ${meeting.meeting_title}`);
+                console.log(`✓ Matched Drive transcript for meeting: ${meeting.meeting_title}`);
+              }
+            }
+          } else {
+            // No Drive transcript found - try AI transcription if recording link exists
+            const recordingLink = meeting.recording_link;
+            
+            if (recordingLink) {
+              console.log(`No Drive transcript found, attempting AI transcription for: ${meeting.meeting_title}`);
+              
+              try {
+                const transcriptResult = await transcribeRecordingWithAI(recordingLink, accessToken, supabase);
+                
+                if (transcriptResult && transcriptResult.length > 50) {
+                  const { error: updateError } = await supabase
+                    .from("onboarding_meeting_notes")
+                    .update({ transcript: transcriptResult })
+                    .eq("id", meeting.id);
+
+                  if (!updateError) {
+                    syncedTranscripts++;
+                    console.log(`✓ AI transcription completed for meeting: ${meeting.meeting_title}`);
+                  }
+                }
+              } catch (transcribeError) {
+                console.error(`AI transcription failed for ${meeting.meeting_title}:`, transcribeError);
+                // Continue with next meeting, don't fail the whole sync
               }
             }
           }
