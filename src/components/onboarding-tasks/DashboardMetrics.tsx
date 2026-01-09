@@ -65,6 +65,8 @@ interface Project {
   reactivated_at?: string | null;
   current_nps?: number | null;
   onboarding_company_id?: string | null;
+  // Some records use company_id instead of onboarding_company_id
+  company_id?: string | null;
   churn_date?: string | null;
 }
 
@@ -261,12 +263,22 @@ const DashboardMetrics = ({
     return { activeProjects, cancellationSignaled, noticePeriod, closedProjects, churnSignaled: cancellationSignaled + noticePeriod, reactivatedInPeriod };
   }, [projects, dateRange]);
 
-  const filteredCompanyIds = useMemo(() => new Set(projects.filter(p => p.onboarding_company_id).map(p => p.onboarding_company_id)), [projects]);
+  const getProjectCompanyId = (p: Project) => p.onboarding_company_id ?? p.company_id ?? null;
+
+  const filteredCompanyIds = useMemo(
+    () => new Set(projects.map(getProjectCompanyId).filter(Boolean) as string[]),
+    [projects]
+  );
   const filteredCompanies = useMemo(() => companies.filter(c => filteredCompanyIds.has(c.id)), [companies, filteredCompanyIds]);
 
   const companyMetrics = useMemo(() => {
     const today = startOfDay(new Date());
-    const companiesWithActiveProjects = new Set(projects.filter(p => p.status === "active").map(p => p.onboarding_company_id).filter(Boolean));
+    const companiesWithActiveProjects = new Set(
+      projects
+        .filter(p => p.status === "active")
+        .map(getProjectCompanyId)
+        .filter(Boolean) as string[]
+    );
     const activeCompanies = filteredCompanies.filter(c => c.status === "active" && companiesWithActiveProjects.has(c.id)).length;
     // Excluir: empresas com pagamento recorrente (monthly) e empresas inativas/encerradas
     const activeNonRecurringCompanies = filteredCompanies.filter(c => 
@@ -328,8 +340,8 @@ const DashboardMetrics = ({
     const closedCompanyIds = new Set(
       projects
         .filter(p => (p.status === "closed" || p.status === "completed") && isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end }))
-        .map(p => p.onboarding_company_id)
-        .filter(Boolean)
+        .map(getProjectCompanyId)
+        .filter(Boolean) as string[]
     );
     const closedCompaniesInPeriod = closedCompanyIds.size;
 
@@ -463,9 +475,7 @@ const DashboardMetrics = ({
 
     // Get company IDs from filtered projects
     const filteredCompanyIds = new Set(
-      projects
-        .filter(p => p.onboarding_company_id)
-        .map(p => p.onboarding_company_id)
+      projects.map(getProjectCompanyId).filter(Boolean) as string[]
     );
 
     // Filter entries for the period
@@ -567,8 +577,9 @@ const DashboardMetrics = ({
 
   const getCompanyName = (projectId: string) => {
     const project = projects.find(p => p.id === projectId);
-    if (!project?.onboarding_company_id) return "Empresa não encontrada";
-    const company = companies.find(c => c.id === project.onboarding_company_id);
+    const companyId = project ? getProjectCompanyId(project) : null;
+    if (!companyId) return "Empresa não encontrada";
+    const company = companies.find(c => c.id === companyId);
     return company?.name || "Empresa não encontrada";
   };
 
