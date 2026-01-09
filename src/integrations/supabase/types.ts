@@ -1352,6 +1352,673 @@ export type Database = {
           },
         ]
       }
+      financial_bank_accounts: {
+        Row: {
+          account_number: string | null
+          account_type: string | null
+          agency: string | null
+          bank_name: string
+          created_at: string
+          current_balance: number | null
+          id: string
+          initial_balance: number | null
+          is_active: boolean | null
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string | null
+          account_type?: string | null
+          agency?: string | null
+          bank_name: string
+          created_at?: string
+          current_balance?: number | null
+          id?: string
+          initial_balance?: number | null
+          is_active?: boolean | null
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string | null
+          account_type?: string | null
+          agency?: string | null
+          bank_name?: string
+          created_at?: string
+          current_balance?: number | null
+          id?: string
+          initial_balance?: number | null
+          is_active?: boolean | null
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      financial_budgets: {
+        Row: {
+          actual_amount: number | null
+          category_id: string | null
+          category_name: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          planned_amount: number
+          reference_month: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          actual_amount?: number | null
+          category_id?: string | null
+          category_name?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          planned_amount?: number
+          reference_month: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          actual_amount?: number | null
+          category_id?: string | null
+          category_name?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          planned_amount?: number
+          reference_month?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          parent_id: string | null
+          sort_order: number | null
+          type: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          parent_id?: string | null
+          sort_order?: number | null
+          type: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          parent_id?: string | null
+          sort_order?: number | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_cfo_insights: {
+        Row: {
+          category: string | null
+          created_at: string
+          data: Json | null
+          description: string
+          expires_at: string | null
+          id: string
+          insight_type: string
+          is_dismissed: boolean | null
+          is_read: boolean | null
+          severity: string | null
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          data?: Json | null
+          description: string
+          expires_at?: string | null
+          id?: string
+          insight_type: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          severity?: string | null
+          title: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          data?: Json | null
+          description?: string
+          expires_at?: string | null
+          id?: string
+          insight_type?: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          severity?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      financial_contracts: {
+        Row: {
+          billing_cycle: string | null
+          company_id: string | null
+          conta_azul_id: string | null
+          contract_name: string
+          contract_type: string | null
+          contract_value: number
+          created_at: string
+          end_date: string | null
+          id: string
+          notes: string | null
+          payment_day: number | null
+          payment_method: string | null
+          project_id: string | null
+          start_date: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          billing_cycle?: string | null
+          company_id?: string | null
+          conta_azul_id?: string | null
+          contract_name: string
+          contract_type?: string | null
+          contract_value: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          payment_day?: number | null
+          payment_method?: string | null
+          project_id?: string | null
+          start_date: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          billing_cycle?: string | null
+          company_id?: string | null
+          conta_azul_id?: string | null
+          contract_name?: string
+          contract_type?: string | null
+          contract_value?: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          payment_day?: number | null
+          payment_method?: string | null
+          project_id?: string | null
+          start_date?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_contracts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_integrations: {
+        Row: {
+          config: Json | null
+          created_at: string
+          id: string
+          integration_type: string
+          is_active: boolean | null
+          last_sync_at: string | null
+          sync_error: string | null
+          sync_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          integration_type: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          sync_error?: string | null
+          sync_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          integration_type?: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          sync_error?: string | null
+          sync_status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      financial_payables: {
+        Row: {
+          amount: number
+          bank_account_id: string | null
+          category_id: string | null
+          conta_azul_id: string | null
+          cost_center: string | null
+          created_at: string
+          description: string
+          due_date: string
+          id: string
+          installment_number: number | null
+          is_recurring: boolean | null
+          notes: string | null
+          paid_amount: number | null
+          paid_date: string | null
+          payment_method: string | null
+          recurrence_type: string | null
+          reference_month: string | null
+          status: string | null
+          supplier_name: string
+          total_installments: number | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          bank_account_id?: string | null
+          category_id?: string | null
+          conta_azul_id?: string | null
+          cost_center?: string | null
+          created_at?: string
+          description: string
+          due_date: string
+          id?: string
+          installment_number?: number | null
+          is_recurring?: boolean | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_date?: string | null
+          payment_method?: string | null
+          recurrence_type?: string | null
+          reference_month?: string | null
+          status?: string | null
+          supplier_name: string
+          total_installments?: number | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string | null
+          category_id?: string | null
+          conta_azul_id?: string | null
+          cost_center?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string
+          id?: string
+          installment_number?: number | null
+          is_recurring?: boolean | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_date?: string | null
+          payment_method?: string | null
+          recurrence_type?: string | null
+          reference_month?: string | null
+          status?: string | null
+          supplier_name?: string
+          total_installments?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_payables_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_payables_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_payments: {
+        Row: {
+          amount: number
+          bank_account_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string | null
+          reference_id: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          bank_account_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          payment_date: string
+          payment_method?: string | null
+          reference_id: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          reference_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_payments_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_receivables: {
+        Row: {
+          amount: number
+          bank_account_id: string | null
+          category_id: string | null
+          company_id: string | null
+          conta_azul_id: string | null
+          contract_id: string | null
+          created_at: string
+          description: string
+          due_date: string
+          id: string
+          is_recurring: boolean | null
+          notes: string | null
+          paid_amount: number | null
+          paid_date: string | null
+          payment_link: string | null
+          payment_method: string | null
+          reference_month: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          bank_account_id?: string | null
+          category_id?: string | null
+          company_id?: string | null
+          conta_azul_id?: string | null
+          contract_id?: string | null
+          created_at?: string
+          description: string
+          due_date: string
+          id?: string
+          is_recurring?: boolean | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_date?: string | null
+          payment_link?: string | null
+          payment_method?: string | null
+          reference_month?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string | null
+          category_id?: string | null
+          company_id?: string | null
+          conta_azul_id?: string | null
+          contract_id?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string
+          id?: string
+          is_recurring?: boolean | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_date?: string | null
+          payment_link?: string | null
+          payment_method?: string | null
+          reference_month?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_receivables_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_receivables_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_receivables_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_receivables_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "financial_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_snapshots: {
+        Row: {
+          active_contracts: number | null
+          arr: number | null
+          avg_ticket: number | null
+          churned_contracts: number | null
+          created_at: string
+          ebitda: number | null
+          fixed_costs: number | null
+          gross_profit: number | null
+          id: string
+          mrr: number | null
+          net_profit: number | null
+          new_contracts: number | null
+          payables_pending: number | null
+          period_type: string
+          receivables_pending: number | null
+          reference_month: string | null
+          snapshot_date: string
+          total_cash: number | null
+          total_costs: number | null
+          total_expenses: number | null
+          total_revenue: number | null
+          variable_costs: number | null
+        }
+        Insert: {
+          active_contracts?: number | null
+          arr?: number | null
+          avg_ticket?: number | null
+          churned_contracts?: number | null
+          created_at?: string
+          ebitda?: number | null
+          fixed_costs?: number | null
+          gross_profit?: number | null
+          id?: string
+          mrr?: number | null
+          net_profit?: number | null
+          new_contracts?: number | null
+          payables_pending?: number | null
+          period_type: string
+          receivables_pending?: number | null
+          reference_month?: string | null
+          snapshot_date: string
+          total_cash?: number | null
+          total_costs?: number | null
+          total_expenses?: number | null
+          total_revenue?: number | null
+          variable_costs?: number | null
+        }
+        Update: {
+          active_contracts?: number | null
+          arr?: number | null
+          avg_ticket?: number | null
+          churned_contracts?: number | null
+          created_at?: string
+          ebitda?: number | null
+          fixed_costs?: number | null
+          gross_profit?: number | null
+          id?: string
+          mrr?: number | null
+          net_profit?: number | null
+          new_contracts?: number | null
+          payables_pending?: number | null
+          period_type?: string
+          receivables_pending?: number | null
+          reference_month?: string | null
+          snapshot_date?: string
+          total_cash?: number | null
+          total_costs?: number | null
+          total_expenses?: number | null
+          total_revenue?: number | null
+          variable_costs?: number | null
+        }
+        Relationships: []
+      }
+      financial_transactions: {
+        Row: {
+          amount: number
+          balance_after: number | null
+          bank_account_id: string | null
+          category_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_reconciled: boolean | null
+          notes: string | null
+          payable_id: string | null
+          receivable_id: string | null
+          transaction_date: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          balance_after?: number | null
+          bank_account_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_reconciled?: boolean | null
+          notes?: string | null
+          payable_id?: string | null
+          receivable_id?: string | null
+          transaction_date: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number | null
+          bank_account_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_reconciled?: boolean | null
+          notes?: string | null
+          payable_id?: string | null
+          receivable_id?: string | null
+          transaction_date?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_payable_id_fkey"
+            columns: ["payable_id"]
+            isOneToOne: false
+            referencedRelation: "financial_payables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_receivable_id_fkey"
+            columns: ["receivable_id"]
+            isOneToOne: false
+            referencedRelation: "financial_receivables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gamification_badges: {
         Row: {
           condition_kpi_id: string | null
@@ -5230,6 +5897,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_financial_admin: { Args: never; Returns: boolean }
       is_onboarding_admin: { Args: never; Returns: boolean }
       is_onboarding_assigned_staff: {
         Args: { check_project_id: string }
