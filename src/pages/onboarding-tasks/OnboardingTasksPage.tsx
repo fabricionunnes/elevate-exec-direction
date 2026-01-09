@@ -56,6 +56,8 @@ interface OnboardingProject {
   created_at: string;
   updated_at: string;
   onboarding_company_id: string | null;
+  // Some records use company_id instead of onboarding_company_id
+  company_id?: string | null;
   consultant_id: string | null;
   cs_id: string | null;
   current_nps?: number | null;
@@ -111,7 +113,7 @@ const OnboardingTasksPage = () => {
     end: endOfMonth(new Date()),
   }));
   const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null; completed_at: string | null }[]>([]);
-  const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null; churn_date: string | null }[]>([]);
+  const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null; company_id: string | null; churn_date: string | null }[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
   const [healthScoresByProject, setHealthScoresByProject] = useState<Map<string, { total_score: number; risk_level: string }>>(new Map());
@@ -330,9 +332,11 @@ const OnboardingTasksPage = () => {
       });
 
       // Group projects by company
+      const getProjectCompanyId = (p: any) => p.onboarding_company_id ?? p.company_id ?? null;
+
       const companiesWithProjects = companiesData.map((company) => {
         const companyProjects = projectsWithCounts.filter(
-          (p) => p.onboarding_company_id === company.id
+          (p) => getProjectCompanyId(p) === company.id
         );
         const totalTasks = companyProjects.reduce((acc, p) => acc + (p.tasks_count || 0), 0);
         const completedTasks = companyProjects.reduce((acc, p) => acc + (p.completed_count || 0), 0);
@@ -356,6 +360,7 @@ const OnboardingTasksPage = () => {
         consultant_id: p.consultant_id,
         reactivated_at: p.reactivated_at,
         onboarding_company_id: p.onboarding_company_id,
+        company_id: p.company_id,
         churn_date: p.churn_date,
       })));
 
@@ -375,6 +380,9 @@ const OnboardingTasksPage = () => {
   // Calculate overdue and today tasks for dashboard (respects consultant/service/status filters)
   // IMPORTANT: Only consider ACTIVE projects for dashboard metrics
   // For consultants: also exclude projects from inactive companies
+  const getProjectCompanyId = (p: { onboarding_company_id: string | null; company_id: string | null }) =>
+    p.onboarding_company_id ?? p.company_id ?? null;
+
   const activeProjects = useMemo(() => {
     const active = allProjects.filter(p => p.status === "active");
     
@@ -383,7 +391,10 @@ const OnboardingTasksPage = () => {
       const activeCompanyIds = new Set(
         companies.filter(c => c.status !== "inactive").map(c => c.id)
       );
-      return active.filter(p => !p.onboarding_company_id || activeCompanyIds.has(p.onboarding_company_id));
+      return active.filter(p => {
+        const companyId = getProjectCompanyId(p);
+        return !companyId || activeCompanyIds.has(companyId);
+      });
     }
     
     return active;
