@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -7,6 +7,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -22,7 +29,8 @@ import {
   CheckCircle2,
   Circle,
   Loader2,
-  User
+  User,
+  Filter
 } from "lucide-react";
 
 interface TaskWithDetails {
@@ -52,6 +60,28 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
   const [tasks, setTasks] = useState<TaskWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
+  const [consultantFilter, setConsultantFilter] = useState<string>("all");
+
+  // Extract unique consultants from tasks for the filter
+  const uniqueConsultants = useMemo(() => {
+    const consultants = tasks
+      .map(t => t.consultant_name)
+      .filter((name): name is string => !!name);
+    return [...new Set(consultants)].sort();
+  }, [tasks]);
+
+  // Apply consultant filter to tasks
+  const filteredTasks = useMemo(() => {
+    if (consultantFilter === "all") return tasks;
+    return tasks.filter(t => t.consultant_name === consultantFilter);
+  }, [tasks, consultantFilter]);
+
+  // Reset filter when dialog opens/closes
+  useEffect(() => {
+    if (!open) {
+      setConsultantFilter("all");
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -448,33 +478,63 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
             )}
             {title}
             <Badge variant="outline" className="ml-2">
-              {type === "status" ? tasks.length : taskIds.length} {((type === "status" ? tasks.length : taskIds.length) === 1) ? "tarefa" : "tarefas"}
+              {filteredTasks.length} {filteredTasks.length === 1 ? "tarefa" : "tarefas"}
             </Badge>
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="h-[60vh] pr-4">
+        {/* Consultant Filter */}
+        {uniqueConsultants.length > 0 && (
+          <div className="flex items-center gap-2 px-1">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={consultantFilter} onValueChange={setConsultantFilter}>
+              <SelectTrigger className="w-[200px] h-8 text-sm">
+                <SelectValue placeholder="Filtrar por consultor" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                <SelectItem value="all">Todos os consultores</SelectItem>
+                {uniqueConsultants.map(name => (
+                  <SelectItem key={name} value={name}>
+                    <div className="flex items-center gap-2">
+                      <User className="h-3 w-3" />
+                      {name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {consultantFilter !== "all" && (
+              <Badge variant="secondary" className="text-xs">
+                {filteredTasks.length} de {tasks.length}
+              </Badge>
+            )}
+          </div>
+        )}
+
+        <ScrollArea className="h-[55vh] pr-4">
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-20 w-full" />
               ))}
             </div>
-          ) : tasks.length === 0 ? (
+          ) : filteredTasks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <CheckCircle2 className="h-12 w-12 mb-4 text-green-500" />
               <p className="font-medium">Nenhuma tarefa encontrada</p>
               <p className="text-sm">
-                {type === "overdue"
-                  ? "Não há tarefas atrasadas no momento"
-                  : type === "today"
-                    ? "Não há tarefas para hoje"
-                    : "Não há tarefas para este filtro"}
+                {consultantFilter !== "all" 
+                  ? "Nenhuma tarefa para este consultor"
+                  : type === "overdue"
+                    ? "Não há tarefas atrasadas no momento"
+                    : type === "today"
+                      ? "Não há tarefas para hoje"
+                      : "Não há tarefas para este filtro"}
               </p>
             </div>
           ) : (
             <div className="space-y-2">
-              {tasks.map((task) => (
+              {filteredTasks.map((task) => (
                 <div
                   key={task.id}
                   onClick={() => handleTaskClick(task)}
