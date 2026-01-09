@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Settings, Users, BarChart3, Link, Copy, Sparkles, Building2, Trophy, Gamepad2 } from "lucide-react";
+import { Settings, Users, BarChart3, Link, Sparkles, Building2, Trophy, Gamepad2, ChevronDown, Megaphone } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { KPIConfigurationTab } from "./KPIConfigurationTab";
 import { SalespeopleTab } from "./SalespeopleTab";
@@ -13,17 +13,23 @@ import { KPIAnalysisTab } from "./KPIAnalysisTab";
 import { UnitsTab } from "./UnitsTab";
 import { EndomarketingPanel } from "../endomarketing/EndomarketingPanel";
 import { GamificationPanel } from "../gamification/GamificationPanel";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 interface KPIMetasPanelProps {
   companyId: string;
   isAdmin: boolean;
   projectId?: string;
-  isStaff?: boolean; // All staff (admin, cs, consultant) can edit
+  isStaff?: boolean;
   defaultTab?: string;
 }
 
 export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, defaultTab }: KPIMetasPanelProps) => {
-  // Staff can access all tabs - use isStaff for tab visibility, isAdmin for specific admin-only features
   const canAccessAllTabs = isStaff || isAdmin;
   const [activeTab, setActiveTab] = useState(defaultTab || "dashboard");
   const [companyName, setCompanyName] = useState("");
@@ -56,6 +62,10 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, 
     toast.success("Link copiado! Compartilhe com os vendedores.");
   };
 
+  // Check if current tab is within a submenu
+  const isEndomarketingActive = activeTab === "gamification" || activeTab === "campaigns";
+  const isConfigActive = activeTab === "units" || activeTab === "salespeople" || activeTab === "config";
+
   if (!companyId) {
     return (
       <Card>
@@ -86,11 +96,14 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0 pb-1">
           <TabsList className="h-auto w-max sm:w-full inline-flex sm:flex flex-nowrap sm:flex-wrap justify-start gap-1 bg-transparent p-0">
+            {/* Dashboard */}
             <TabsTrigger value="dashboard" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
               <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Dashboard</span>
               <span className="sm:hidden">Dash</span>
             </TabsTrigger>
+
+            {/* Análise IA */}
             {canAccessAllTabs && (
               <TabsTrigger value="analysis" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
                 <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -98,38 +111,104 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, 
                 <span className="sm:hidden">IA</span>
               </TabsTrigger>
             )}
+
+            {/* Endomarketing Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className={cn(
+                    "inline-flex items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md whitespace-nowrap transition-colors",
+                    isEndomarketingActive
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-muted/80 text-foreground"
+                  )}
+                >
+                  <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Endomarketing</span>
+                  <span className="sm:hidden">Endo</span>
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem
+                  onClick={() => setActiveTab("gamification")}
+                  className={cn(
+                    "gap-2 cursor-pointer",
+                    activeTab === "gamification" && "bg-accent"
+                  )}
+                >
+                  <Gamepad2 className="h-4 w-4" />
+                  Gamificação
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setActiveTab("campaigns")}
+                  className={cn(
+                    "gap-2 cursor-pointer",
+                    activeTab === "campaigns" && "bg-accent"
+                  )}
+                >
+                  <Megaphone className="h-4 w-4" />
+                  Campanhas
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Configuração Dropdown */}
             {canAccessAllTabs && (
-              <TabsTrigger value="units" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
-                <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Unidades</span>
-                <span className="sm:hidden">Und.</span>
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="salespeople" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
-              <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Vendedores</span>
-              <span className="sm:hidden">Vend.</span>
-            </TabsTrigger>
-            <TabsTrigger value="gamification" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
-              <Gamepad2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Gamificação</span>
-              <span className="sm:hidden">Game</span>
-            </TabsTrigger>
-            <TabsTrigger value="endomarketing" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
-              <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Endomarketing</span>
-              <span className="sm:hidden">Endo</span>
-            </TabsTrigger>
-            {canAccessAllTabs && (
-              <TabsTrigger value="config" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
-                <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Configuração</span>
-                <span className="sm:hidden">Config</span>
-              </TabsTrigger>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md whitespace-nowrap transition-colors",
+                      isConfigActive
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted hover:bg-muted/80 text-foreground"
+                    )}
+                  >
+                    <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Configuração</span>
+                    <span className="sm:hidden">Config</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem
+                    onClick={() => setActiveTab("units")}
+                    className={cn(
+                      "gap-2 cursor-pointer",
+                      activeTab === "units" && "bg-accent"
+                    )}
+                  >
+                    <Building2 className="h-4 w-4" />
+                    Unidades
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setActiveTab("salespeople")}
+                    className={cn(
+                      "gap-2 cursor-pointer",
+                      activeTab === "salespeople" && "bg-accent"
+                    )}
+                  >
+                    <Users className="h-4 w-4" />
+                    Vendedores
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setActiveTab("config")}
+                    className={cn(
+                      "gap-2 cursor-pointer",
+                      activeTab === "config" && "bg-accent"
+                    )}
+                  >
+                    <Settings className="h-4 w-4" />
+                    Configuração de KPIs
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </TabsList>
         </div>
 
+        {/* Tab Contents */}
         <TabsContent value="dashboard" className="mt-6">
           <KPIDashboardTab 
             companyId={companyId} 
@@ -137,10 +216,6 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, 
             canDeleteEntries={canAccessAllTabs} 
             canEditSalesHistory={true} 
           />
-        </TabsContent>
-
-        <TabsContent value="salespeople" className="mt-6">
-          <SalespeopleTab companyId={companyId} isAdmin={true} />
         </TabsContent>
 
         <TabsContent value="gamification" className="mt-6">
@@ -151,12 +226,16 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, 
           />
         </TabsContent>
 
-        <TabsContent value="endomarketing" className="mt-6">
+        <TabsContent value="campaigns" className="mt-6">
           <EndomarketingPanel
             companyId={companyId}
             projectId={projectId || ""}
             isAdmin={true}
           />
+        </TabsContent>
+
+        <TabsContent value="salespeople" className="mt-6">
+          <SalespeopleTab companyId={companyId} isAdmin={true} />
         </TabsContent>
 
         {canAccessAllTabs && (
