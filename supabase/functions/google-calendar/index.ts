@@ -1288,19 +1288,29 @@ Deno.serve(async (req) => {
           let transcriptSaved = false;
 
           if (matchingTranscript) {
+            console.log(`Downloading transcript: ${matchingTranscript.name} (${matchingTranscript.id})`);
             const transcriptText = await downloadTranscript(matchingTranscript.id, matchingTranscript.mimeType);
             
+            console.log(`Downloaded transcript length: ${transcriptText?.length || 0} chars`);
+            
             if (transcriptText && transcriptText.length > 50) {
-              const { error: updateError } = await supabase
+              console.log(`Saving transcript to meeting ${meeting.id}...`);
+              const { error: updateError, data: updateData } = await supabase
                 .from("onboarding_meeting_notes")
                 .update({ transcript: transcriptText })
-                .eq("id", meeting.id);
+                .eq("id", meeting.id)
+                .select("id, transcript");
 
-              if (!updateError) {
+              if (updateError) {
+                console.error(`Error saving transcript: ${JSON.stringify(updateError)}`);
+              } else {
                 syncedTranscripts++;
                 transcriptSaved = true;
                 console.log(`✓ Matched Drive transcript file for meeting: ${meeting.meeting_title}`);
+                console.log(`Saved transcript preview: ${transcriptText.substring(0, 100)}...`);
               }
+            } else {
+              console.log(`Transcript too short (${transcriptText?.length || 0} chars), skipping`);
             }
           }
 
