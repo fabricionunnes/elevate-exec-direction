@@ -164,7 +164,54 @@ serve(async (req) => {
       }
     }
     
-    console.log(`Loaded content from ${readableDocuments.length} documents`);
+    console.log(`Loaded content from ${readableDocuments.length} Supabase documents`);
+
+    // 6c. Fetch documents from Google Drive (if connected)
+    console.log("Checking for Google Drive documents...");
+    let driveDocuments: { name: string; content: string; type: string }[] = [];
+    
+    if (project?.documents_link) {
+      try {
+        // Check if Drive is connected
+        const { data: driveToken } = await supabase
+          .from("google_drive_tokens")
+          .select("expires_at")
+          .eq("project_id", projectId)
+          .single();
+        
+        if (driveToken) {
+          // Call the google-drive-files function to get document content
+          const driveResponse = await fetch(
+            `${supabaseUrl}/functions/v1/google-drive-files`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${supabaseKey}`,
+              },
+              body: JSON.stringify({
+                projectId,
+                action: "context"
+              }),
+            }
+          );
+          
+          if (driveResponse.ok) {
+            const driveData = await driveResponse.json();
+            if (driveData.documents && driveData.documents.length > 0) {
+              driveDocuments = driveData.documents;
+              console.log(`Loaded content from ${driveDocuments.length} Google Drive documents`);
+            }
+          } else {
+            console.log("Failed to fetch Drive documents:", await driveResponse.text());
+          }
+        } else {
+          console.log("Google Drive not connected for this project");
+        }
+      } catch (driveError) {
+        console.error("Error fetching Drive documents:", driveError);
+      }
+    }
 
     // 7. Project variables
     const productVariables = project?.product_variables || {};
@@ -535,10 +582,21 @@ ${meetingsContext}
 ${documents?.map(d => `- ${d.file_name} (${d.category || 'geral'}) - ${d.description || 'sem descrição'} [${new Date(d.created_at).toLocaleDateString('pt-BR')}]`).join("\n") || "Nenhum documento"}
 
 ${readableDocuments.length > 0 ? `
-## CONTEÚDO DOS DOCUMENTOS
+## CONTEÚDO DOS DOCUMENTOS (Upload no Projeto)
 Os seguintes documentos foram lidos e seu conteúdo está disponível para consulta:
 
 ${readableDocuments.map(d => `### 📄 ${d.name} (${d.category})
+\`\`\`
+${d.content}
+\`\`\`
+`).join("\n")}
+` : ''}
+
+${driveDocuments.length > 0 ? `
+## DOCUMENTOS DO GOOGLE DRIVE
+Os seguintes documentos foram lidos da pasta Google Drive vinculada ao projeto:
+
+${driveDocuments.map(d => `### 📄 ${d.name} (${d.type})
 \`\`\`
 ${d.content}
 \`\`\`
