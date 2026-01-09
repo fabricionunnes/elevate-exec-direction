@@ -991,8 +991,8 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
       {/* Meeting Detail Dialog */}
       <Dialog open={!!selectedMeeting} onOpenChange={(open) => !open && setSelectedMeeting(null)}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
               Detalhes da Reunião
@@ -1000,6 +1000,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
           </DialogHeader>
 
           {selectedMeeting && (
+            <ScrollArea className="flex-1 pr-4">
             <div
               className="space-y-4"
               onMouseDown={(e) => {
@@ -1254,6 +1255,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                 </div>
               )}
             </div>
+            </ScrollArea>
           )}
         </DialogContent>
       </Dialog>
