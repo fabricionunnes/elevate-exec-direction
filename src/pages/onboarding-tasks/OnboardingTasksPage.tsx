@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator } from "lucide-react";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
@@ -98,6 +98,7 @@ const OnboardingTasksPage = () => {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   
   // Filter states
   const [filterConsultant, setFilterConsultant] = useState<string>("all");
@@ -239,6 +240,7 @@ const OnboardingTasksPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setCurrentUserId(user.id);
+        setCurrentUserEmail(user.email || null);
         const { data: staffMember } = await supabase
           .from("onboarding_staff")
           .select("id, role")
@@ -973,6 +975,12 @@ const OnboardingTasksPage = () => {
                         <BarChart3 className="h-4 w-4 mr-2" />
                         Resultados
                       </DropdownMenuItem>
+                      {currentUserEmail === "fabricio@universidadevendas.com.br" && (
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
+                          <Calculator className="h-4 w-4 mr-2" />
+                          Módulo Financeiro
+                        </DropdownMenuItem>
+                      )}
                     </>
                   )}
                   {/* Resultados for CS and consultants in mobile menu */}
@@ -1158,6 +1166,12 @@ const OnboardingTasksPage = () => {
                         <FileBarChart className="h-4 w-4 mr-2" />
                         Relatório de Empresas
                       </DropdownMenuItem>
+                      {currentUserEmail === "fabricio@universidadevendas.com.br" && (
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
+                          <Calculator className="h-4 w-4 mr-2" />
+                          Módulo Financeiro
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => setShowAnnouncementDialog(true)}>
                         <Megaphone className="h-4 w-4 mr-2" />
