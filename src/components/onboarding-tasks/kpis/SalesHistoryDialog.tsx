@@ -70,9 +70,10 @@ interface SalesHistoryDialogProps {
   companyId: string;
   contractStartDate?: string | null;
   onDataChange?: () => void;
+  canEdit?: boolean; // Allow editing/deleting entries
 }
 
-export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange }: SalesHistoryDialogProps) => {
+export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange, canEdit = false }: SalesHistoryDialogProps) => {
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<SalesHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -239,7 +240,8 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
         </DialogHeader>
 
         <div className="space-y-4 sm:space-y-6">
-          {/* Form */}
+          {/* Form - only show if canEdit */}
+          {canEdit && (
           <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 border rounded-lg bg-muted/30">
             {/* Row 1: Mês, Ano, Período */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
@@ -349,6 +351,7 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
               </div>
             )}
           </div>
+          )}
 
           {/* Table */}
           {loading ? (
@@ -367,7 +370,7 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
                     <TableHead className="font-semibold text-xs sm:text-sm whitespace-nowrap hidden sm:table-cell">Meta</TableHead>
                     <TableHead className="font-semibold text-xs sm:text-sm whitespace-nowrap hidden md:table-cell">Vendas</TableHead>
                     <TableHead className="font-semibold text-xs sm:text-sm whitespace-nowrap hidden sm:table-cell">Período</TableHead>
-                    <TableHead className="w-16 sm:w-20">Ações</TableHead>
+                    {canEdit && <TableHead className="w-16 sm:w-20">Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -428,6 +431,7 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
                             {entry.is_pre_unv ? "Antes" : "Depois"}
                           </span>
                         </TableCell>
+                        {canEdit && (
                         <TableCell className="py-2 sm:py-4">
                           <div className="flex gap-0.5 sm:gap-1">
                             <Button
@@ -448,6 +452,7 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange 
                             </Button>
                           </div>
                         </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}

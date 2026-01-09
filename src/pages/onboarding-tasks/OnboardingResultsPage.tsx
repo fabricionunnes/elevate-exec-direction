@@ -320,6 +320,7 @@ const OnboardingResultsPage = () => {
               companyId={selectedCompanyId} 
               projectId={getProjectForCompany(selectedCompanyId)?.id}
               canDeleteEntries={currentStaff.role === "admin" || currentStaff.role === "cs" || currentStaff.role === "consultant"}
+              canEditSalesHistory={currentStaff.role === "admin" || currentStaff.role === "cs" || currentStaff.role === "consultant"}
             />
           </div>
         ) : (
