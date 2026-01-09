@@ -273,13 +273,10 @@ const DashboardMetrics = ({
 
   const companyMetrics = useMemo(() => {
     const today = startOfDay(new Date());
-    const companiesWithActiveProjects = new Set(
-      projects
-        .filter(p => p.status === "active")
-        .map(getProjectCompanyId)
-        .filter(Boolean) as string[]
-    );
-    const activeCompanies = filteredCompanies.filter(c => c.status === "active" && companiesWithActiveProjects.has(c.id)).length;
+
+    // "Ativas" is based on company status (portfolio), not on having an active project.
+    const activeCompanies = filteredCompanies.filter(c => c.status === "active").length;
+
     // Excluir: empresas com pagamento recorrente (monthly) e empresas inativas/encerradas
     const activeNonRecurringCompanies = filteredCompanies.filter(c => 
       c.payment_method !== "monthly" && 
@@ -289,7 +286,7 @@ const DashboardMetrics = ({
     const contractsEndingInPeriod = activeNonRecurringCompanies.filter(c => c.contract_end_date && isWithinInterval(new Date(c.contract_end_date), { start: dateRange.start, end: dateRange.end })).length;
     const expiredContracts = activeNonRecurringCompanies.filter(c => c.contract_end_date && isBefore(new Date(c.contract_end_date), today)).length;
     return { activeCompanies, contractsEndingInPeriod, expiredContracts };
-  }, [filteredCompanies, dateRange, projects]);
+  }, [filteredCompanies, dateRange]);
 
   const renewalMetrics = useMemo(() => {
     const start = dateRange.start;
