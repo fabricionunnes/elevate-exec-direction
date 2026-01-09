@@ -730,6 +730,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
               <KPIEntriesHistoryDialog 
                 companyId={companyId}
                 canDelete={canDeleteEntries}
+                canEdit={canEditSalesHistory}
                 onEntryDeleted={fetchData}
               />
             </div>
