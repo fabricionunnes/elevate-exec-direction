@@ -40,7 +40,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { History, Trash2, DollarSign, Hash, Percent } from "lucide-react";
+import { History, Trash2, DollarSign, Hash, Percent, Pencil } from "lucide-react";
 
 interface KPI {
   id: string;
@@ -65,13 +65,15 @@ interface Entry {
 
 interface KPIEntriesHistoryDialogProps {
   companyId: string;
-  canDelete: boolean; // Admin or CS only
+  canDelete?: boolean; // Admin, CS, or consultant
+  canEdit?: boolean; // Admin, CS, consultant, or client
   onEntryDeleted?: () => void;
 }
 
 export const KPIEntriesHistoryDialog = ({ 
   companyId, 
-  canDelete,
+  canDelete = false,
+  canEdit = false,
   onEntryDeleted
 }: KPIEntriesHistoryDialogProps) => {
   const [open, setOpen] = useState(false);
@@ -87,6 +89,13 @@ export const KPIEntriesHistoryDialog = ({
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<Entry | null>(null);
+  
+  // Edit state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [entryToEdit, setEntryToEdit] = useState<Entry | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [editObservations, setEditObservations] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -153,6 +162,51 @@ export const KPIEntriesHistoryDialog = ({
     } catch (error) {
       console.error("Error deleting entry:", error);
       toast.error("Erro ao excluir lançamento");
+    }
+  };
+
+  const handleEdit = (entry: Entry) => {
+    setEntryToEdit(entry);
+    setEditValue(entry.value.toString());
+    setEditObservations(entry.observations || "");
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!entryToEdit) return;
+    
+    const newValue = parseFloat(editValue);
+    if (isNaN(newValue)) {
+      toast.error("Valor inválido");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("kpi_entries")
+        .update({ 
+          value: newValue,
+          observations: editObservations || null
+        })
+        .eq("id", entryToEdit.id);
+
+      if (error) throw error;
+
+      toast.success("Lançamento atualizado com sucesso");
+      setEntries(prev => prev.map(e => 
+        e.id === entryToEdit.id 
+          ? { ...e, value: newValue, observations: editObservations || null }
+          : e
+      ));
+      setEditDialogOpen(false);
+      setEntryToEdit(null);
+      onEntryDeleted?.(); // Refresh parent data
+    } catch (error) {
+      console.error("Error updating entry:", error);
+      toast.error("Erro ao atualizar lançamento");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -296,7 +350,7 @@ export const KPIEntriesHistoryDialog = ({
                       <TableHead>KPI</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
                       <TableHead>Observações</TableHead>
-                      {canDelete && <TableHead className="w-[60px]"></TableHead>}
+                      {(canEdit || canDelete) && <TableHead className="w-[100px]">Ações</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -322,19 +376,33 @@ export const KPIEntriesHistoryDialog = ({
                           <TableCell className="max-w-[150px] truncate text-muted-foreground">
                             {entry.observations || "-"}
                           </TableCell>
-                          {canDelete && (
+                          {(canEdit || canDelete) && (
                             <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => {
-                                  setEntryToDelete(entry);
-                                  setDeleteDialogOpen(true);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex gap-1">
+                                {canEdit && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleEdit(entry)}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {canDelete && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => {
+                                      setEntryToDelete(entry);
+                                      setDeleteDialogOpen(true);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
                             </TableCell>
                           )}
                         </TableRow>
@@ -373,6 +441,54 @@ export const KPIEntriesHistoryDialog = ({
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Dialog */}
+      <AlertDialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Editar Lançamento</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                {entryToEdit && (
+                  <div className="mt-2 p-3 bg-muted rounded-md mb-4">
+                    <p><strong>Data:</strong> {format(new Date(entryToEdit.entry_date), "dd/MM/yyyy")}</p>
+                    <p><strong>Vendedor:</strong> {getSalespersonById(entryToEdit.salesperson_id)?.name}</p>
+                    <p><strong>KPI:</strong> {getKpiById(entryToEdit.kpi_id)?.name}</p>
+                  </div>
+                )}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Valor</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      placeholder="Digite o novo valor"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Observações</Label>
+                    <Input
+                      value={editObservations}
+                      onChange={(e) => setEditObservations(e.target.value)}
+                      placeholder="Observações (opcional)"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveEdit} disabled={saving}>
+              {saving ? "Salvando..." : "Salvar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
