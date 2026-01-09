@@ -573,12 +573,18 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     setSavingMeetingLink(true);
     try {
       const nextLink = meetingLinkDraft.trim();
+      const normalized = nextLink ? nextLink : null;
+
       const { error } = await supabase
         .from("onboarding_meeting_notes")
-        .update({ meeting_link: nextLink ? nextLink : null })
+        .update({ meeting_link: normalized })
         .eq("id", selectedMeeting.id);
 
       if (error) throw error;
+
+      // Update local UI immediately (selectedMeeting is not updated by fetchMeetings)
+      setSelectedMeeting((prev) => (prev ? { ...prev, meeting_link: normalized } : prev));
+      setMeetings((prev) => prev.map((m) => (m.id === selectedMeeting.id ? { ...m, meeting_link: normalized } : m)));
 
       toast.success("Link da reunião atualizado");
       setIsEditingMeetingLink(false);
@@ -596,12 +602,18 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     setSavingRecordingLink(true);
     try {
       const nextLink = recordingLinkDraft.trim();
+      const normalized = nextLink ? nextLink : null;
+
       const { error } = await supabase
         .from("onboarding_meeting_notes")
-        .update({ recording_link: nextLink ? nextLink : null })
+        .update({ recording_link: normalized })
         .eq("id", selectedMeeting.id);
 
       if (error) throw error;
+
+      // Update local UI immediately (selectedMeeting is not updated by fetchMeetings)
+      setSelectedMeeting((prev) => (prev ? { ...prev, recording_link: normalized } : prev));
+      setMeetings((prev) => prev.map((m) => (m.id === selectedMeeting.id ? { ...m, recording_link: normalized } : m)));
 
       toast.success("Link da gravação atualizado");
       setIsEditingRecordingLink(false);
