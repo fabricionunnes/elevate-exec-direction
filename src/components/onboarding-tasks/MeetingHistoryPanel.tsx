@@ -46,7 +46,8 @@ import {
   FileAudio,
   Plus,
   Copy,
-  MessageSquareHeart
+  MessageSquareHeart,
+  ClipboardPaste
 } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { ScheduleMeetingDialog } from "./ScheduleMeetingDialog";
@@ -127,6 +128,11 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   const [transcribing, setTranscribing] = useState(false);
   const [savingMeetingLink, setSavingMeetingLink] = useState(false);
   const [savingRecordingLink, setSavingRecordingLink] = useState(false);
+  
+  // Manual transcription paste
+  const [isPastingTranscription, setIsPastingTranscription] = useState(false);
+  const [manualTranscriptionDraft, setManualTranscriptionDraft] = useState("");
+  const [savingManualTranscription, setSavingManualTranscription] = useState(false);
   
   // Schedule meeting dialog
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
@@ -678,6 +684,40 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     }
   };
 
+  const handleSaveManualTranscription = async () => {
+    if (!selectedMeeting || !manualTranscriptionDraft.trim()) {
+      toast.error("Cole a transcrição no campo de texto");
+      return;
+    }
+
+    setSavingManualTranscription(true);
+    try {
+      const existingNotes = selectedMeeting.notes || "";
+      const separator = existingNotes ? "\n\n---\n\n" : "";
+      const newNotes = existingNotes + separator + "## Transcrição Manual\n\n" + manualTranscriptionDraft.trim();
+
+      const { error } = await supabase
+        .from("onboarding_meeting_notes")
+        .update({ notes: newNotes })
+        .eq("id", selectedMeeting.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setSelectedMeeting(prev => prev ? { ...prev, notes: newNotes } : prev);
+      setMeetings(prev => prev.map(m => m.id === selectedMeeting.id ? { ...m, notes: newNotes } : m));
+
+      toast.success("Transcrição adicionada às notas!");
+      setIsPastingTranscription(false);
+      setManualTranscriptionDraft("");
+    } catch (error) {
+      console.error("Error saving manual transcription:", error);
+      toast.error("Erro ao salvar transcrição");
+    } finally {
+      setSavingManualTranscription(false);
+    }
+  };
+
   // Separate meetings into pending and finalized
   const pendingMeetings = meetings.filter(m => !m.is_finalized);
   const finalizedMeetings = meetings.filter(m => m.is_finalized);
@@ -1118,32 +1158,44 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                    ) : null}
 
                    {selectedMeeting.recording_link ? (
-                     <div className="flex gap-2">
-                       <Button
-                         variant="default"
-                         size="sm"
-                         className="gap-2"
-                         onClick={() => window.open(selectedMeeting.recording_link!, "_blank")}
-                       >
-                         <PlayCircle className="h-3.5 w-3.5" />
-                         Ver Gravação
-                       </Button>
+                      <div className="flex flex-wrap gap-2">
                         <Button
-                          variant="outline"
+                          variant="default"
                           size="sm"
                           className="gap-2"
-                          onClick={() => handleTranscribe(selectedMeeting)}
-                          disabled={transcribing}
-                          data-inline-editor="true"
+                          onClick={() => window.open(selectedMeeting.recording_link!, "_blank")}
                         >
-                         {transcribing ? (
-                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                         ) : (
-                           <FileAudio className="h-3.5 w-3.5" />
-                         )}
-                         {transcribing ? "Transcrevendo..." : "Transcrever"}
-                       </Button>
-                     </div>
+                          <PlayCircle className="h-3.5 w-3.5" />
+                          Ver Gravação
+                        </Button>
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           className="gap-2"
+                           onClick={() => handleTranscribe(selectedMeeting)}
+                           disabled={transcribing}
+                           data-inline-editor="true"
+                         >
+                          {transcribing ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <FileAudio className="h-3.5 w-3.5" />
+                          )}
+                          {transcribing ? "Transcrevendo..." : "Transcrever"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => {
+                            setIsPastingTranscription(true);
+                            setManualTranscriptionDraft("");
+                          }}
+                        >
+                          <ClipboardPaste className="h-3.5 w-3.5" />
+                          Colar Transcrição
+                        </Button>
+                      </div>
                    ) : (isAdmin || isCS || currentStaffId) ? (
                      <div className="flex flex-col gap-2">
                        {!isEditingRecordingLink ? (
@@ -1249,6 +1301,53 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                   <p className="text-sm whitespace-pre-wrap">{selectedMeeting.notes}</p>
                 </div>
               </div>
+
+              {/* Manual Transcription Paste */}
+              {isPastingTranscription && (isAdmin || isCS || currentStaffId) && (
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/30" data-inline-editor="true">
+                  <div className="flex items-center gap-2">
+                    <ClipboardPaste className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Colar Transcrição Manual</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Para arquivos de gravação grandes (&gt;25MB), use uma ferramenta externa de transcrição e cole o resultado aqui.
+                  </p>
+                  <Textarea
+                    value={manualTranscriptionDraft}
+                    onChange={(e) => setManualTranscriptionDraft(e.target.value)}
+                    placeholder="Cole aqui a transcrição da reunião..."
+                    rows={6}
+                    className="resize-none"
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsPastingTranscription(false);
+                        setManualTranscriptionDraft("");
+                      }}
+                      disabled={savingManualTranscription}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSaveManualTranscription}
+                      disabled={savingManualTranscription || !manualTranscriptionDraft.trim()}
+                    >
+                      {savingManualTranscription ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        "Salvar Transcrição"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {/* Actions - only Admin can delete */}
               {isAdmin && (

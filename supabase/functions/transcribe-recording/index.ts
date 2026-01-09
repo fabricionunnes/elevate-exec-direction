@@ -6,11 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Maximum file size per chunk for ElevenLabs (20MB to stay under 25MB limit)
-const MAX_CHUNK_SIZE = 20 * 1024 * 1024;
-// Maximum total file size we'll attempt to process (500MB)
-const MAX_TOTAL_SIZE = 500 * 1024 * 1024;
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -68,12 +63,15 @@ serve(async (req) => {
       );
     }
 
-    // Determine whose Google token to use for Drive access
+    // Determine whose Google token to use for Drive access:
+    // Priority: 1) Project consultant (owner of recordings), 2) Current user
     let targetUserId = user.id;
     
+    // Get project consultant's user_id if available
     const project = meeting.project as { consultant_id?: string; onboarding_company_id?: string } | null;
     let consultantStaffId = project?.consultant_id;
     
+    // If no project-level consultant, try company-level
     if (!consultantStaffId && project?.onboarding_company_id) {
       const { data: company } = await supabase
         .from("onboarding_companies")
@@ -86,6 +84,7 @@ serve(async (req) => {
       }
     }
     
+    // Get consultant's user_id
     if (consultantStaffId) {
       const { data: consultant } = await supabase
         .from("onboarding_staff")
@@ -99,7 +98,7 @@ serve(async (req) => {
       }
     }
 
-    // Get Google token for Drive access
+    // Get Google token for Drive access (from consultant or current user)
     let activeToken: { access_token: string; refresh_token: string | null; user_id: string } | null = null;
     
     const { data: googleToken } = await supabase
@@ -115,6 +114,7 @@ serve(async (req) => {
         user_id: googleToken.user_id || targetUserId,
       };
     } else if (targetUserId !== user.id) {
+      // Fallback: try current user's token if consultant doesn't have one
       console.log("Consultant token not found, falling back to current user's token");
       const { data: fallbackToken } = await supabase
         .from("user_google_tokens")
@@ -138,6 +138,7 @@ serve(async (req) => {
       );
     }
     
+    // Store the token owner's user_id for potential refresh
     const tokenOwnerId = activeToken.user_id;
 
     // Extract file ID from Google Drive URL
@@ -177,20 +178,23 @@ serve(async (req) => {
       mimeType = metadata.mimeType || "video/mp4";
       fileName = metadata.name || "recording";
       
-      // Check maximum total size
-      if (fileSize > MAX_TOTAL_SIZE) {
+      // Limit due to backend function runtime/memory constraints
+      const maxFileSize = 25 * 1024 * 1024; // 25MB
+      if (fileSize > maxFileSize) {
         const fileSizeMB = Math.round(fileSize / 1024 / 1024);
-        console.error(`File too large: ${fileSize} bytes (max: ${MAX_TOTAL_SIZE})`);
+        console.error(`File too large: ${fileSize} bytes (max: ${maxFileSize})`);
         return new Response(
           JSON.stringify({
-            error: `O arquivo de gravação é muito grande (${fileSizeMB}MB). O limite máximo é 500MB.\n\nRecomendamos:\n\n• Exportar/baixar apenas o áudio (MP3)\n• Comprimir ou dividir a gravação em partes menores\n• Usar uma ferramenta externa de transcrição e colar o texto nas notas`,
+            error:
+              `O arquivo de gravação é muito grande (${fileSizeMB}MB). O limite para transcrição automática é de 25MB.\n\nPara arquivos maiores, use o botão "Colar Transcrição" no painel de reunião para adicionar a transcrição manualmente.`,
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      console.log(`File size: ${Math.round(fileSize / 1024 / 1024)}MB`);
-      
+      console.log(
+        `File size: ${Math.round(fileSize / 1024 / 1024)}MB - proceeding with download...`
+      );
       if (metadata.capabilities?.canDownload === false) {
         return new Response(
           JSON.stringify({ error: "Você não tem permissão para baixar este arquivo. Verifique as configurações de compartilhamento no Google Drive." }),
@@ -199,204 +203,127 @@ serve(async (req) => {
       }
     }
 
-    // Refresh token helper function
-    const refreshAccessToken = async (): Promise<string | null> => {
-      if (!activeToken?.refresh_token) return null;
-      
-      const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
-      const clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
-      
-      const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          client_id: clientId!,
-          client_secret: clientSecret!,
-          refresh_token: activeToken.refresh_token,
-          grant_type: "refresh_token",
-        }),
-      });
-
-      if (refreshResponse.ok) {
-        const tokenData = await refreshResponse.json();
-        await supabase
-          .from("user_google_tokens")
-          .update({ access_token: tokenData.access_token })
-          .eq("user_id", tokenOwnerId);
-        activeToken.access_token = tokenData.access_token;
-        return tokenData.access_token;
+    console.log("Starting file download...");
+    
+    // Try to download file from Google Drive
+    let driveResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
+      {
+        headers: {
+          Authorization: `Bearer ${activeToken.access_token}`,
+        },
       }
-      return null;
-    };
+    );
 
-    // Download file with retry on 401
-    const downloadFile = async (): Promise<ArrayBuffer> => {
-      let driveResponse = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
+    // If 403, try webContentLink approach
+    if (driveResponse.status === 403) {
+      console.log("Got 403, trying webContentLink approach...");
+      
+      const linkResponse = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?fields=webContentLink&supportsAllDrives=true`,
         {
           headers: {
-            Authorization: `Bearer ${activeToken!.access_token}`,
+            Authorization: `Bearer ${activeToken.access_token}`,
           },
         }
       );
-
-      // Try webContentLink if 403
-      if (driveResponse.status === 403) {
-        console.log("Got 403, trying webContentLink approach...");
-        const linkResponse = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${fileId}?fields=webContentLink&supportsAllDrives=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${activeToken!.access_token}`,
-            },
-          }
-        );
+      
+      if (linkResponse.ok) {
+        const linkData = await linkResponse.json();
+        console.log("File links:", JSON.stringify(linkData, null, 2));
         
-        if (linkResponse.ok) {
-          const linkData = await linkResponse.json();
-          if (linkData.webContentLink) {
-            driveResponse = await fetch(linkData.webContentLink, {
-              headers: {
-                Authorization: `Bearer ${activeToken!.access_token}`,
-              },
-              redirect: "follow",
-            });
-          }
+        if (linkData.webContentLink) {
+          driveResponse = await fetch(linkData.webContentLink, {
+            headers: {
+              Authorization: `Bearer ${activeToken.access_token}`,
+            },
+            redirect: "follow",
+          });
         }
       }
+    }
 
-      // Refresh token if expired
-      if (driveResponse.status === 401) {
+    if (!driveResponse.ok) {
+      // Try to refresh token if expired
+      if (driveResponse.status === 401 && activeToken.refresh_token) {
         console.log("Token expired, attempting refresh...");
-        const newToken = await refreshAccessToken();
-        if (newToken) {
+        
+        const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
+        const clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+        
+        const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: clientId!,
+            client_secret: clientSecret!,
+            refresh_token: activeToken.refresh_token,
+            grant_type: "refresh_token",
+          }),
+        });
+
+        if (refreshResponse.ok) {
+          const tokenData = await refreshResponse.json();
+          
+          // Update stored token using the token owner's ID
+          await supabase
+            .from("user_google_tokens")
+            .update({ access_token: tokenData.access_token })
+            .eq("user_id", tokenOwnerId);
+          
+          // Update activeToken for subsequent use
+          activeToken.access_token = tokenData.access_token;
+
+          // Retry download with new token
           driveResponse = await fetch(
             `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
             {
               headers: {
-                Authorization: `Bearer ${newToken}`,
+                Authorization: `Bearer ${tokenData.access_token}`,
               },
             }
           );
-        }
-      }
 
-      if (!driveResponse.ok) {
-        throw new Error(`Failed to download file: ${driveResponse.status}`);
-      }
-
-      return await driveResponse.arrayBuffer();
-    };
-
-    console.log("Starting file download...");
-    let fileBuffer: ArrayBuffer;
-    
-    try {
-      fileBuffer = await downloadFile();
-      console.log(`Downloaded ${fileBuffer.byteLength} bytes`);
-    } catch (error) {
-      console.error("Download error:", error);
-      return new Response(
-        JSON.stringify({ 
-          error: "Não foi possível baixar o arquivo do Google Drive. Isso pode acontecer se a gravação do Meet ainda não estiver disponível ou se você não tem permissão de download. Aguarde alguns minutos e tente novamente." 
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Process file - either as single chunk or multiple chunks
-    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
-    if (!ELEVENLABS_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "ELEVENLABS_API_KEY not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    let transcription = "";
-    
-    if (fileBuffer.byteLength <= MAX_CHUNK_SIZE) {
-      // Single chunk processing
-      console.log("Processing as single chunk...");
-      transcription = await transcribeChunk(new Uint8Array(fileBuffer), fileName, mimeType, ELEVENLABS_API_KEY);
-    } else {
-      // Multi-chunk processing
-      const numChunks = Math.ceil(fileBuffer.byteLength / MAX_CHUNK_SIZE);
-      console.log(`File is ${Math.round(fileBuffer.byteLength / 1024 / 1024)}MB - splitting into ${numChunks} chunks for processing...`);
-      
-      const transcriptions: string[] = [];
-      
-      for (let i = 0; i < numChunks; i++) {
-        const start = i * MAX_CHUNK_SIZE;
-        const end = Math.min(start + MAX_CHUNK_SIZE, fileBuffer.byteLength);
-        const chunk = new Uint8Array(fileBuffer.slice(start, end));
-        
-        console.log(`Processing chunk ${i + 1}/${numChunks} (${Math.round(chunk.byteLength / 1024 / 1024)}MB)...`);
-        
-        try {
-          const chunkTranscription = await transcribeChunk(
-            chunk, 
-            `${fileName}_part${i + 1}`, 
-            mimeType, 
-            ELEVENLABS_API_KEY
-          );
-          
-          if (chunkTranscription) {
-            transcriptions.push(chunkTranscription);
+          if (!driveResponse.ok) {
+            console.error("Failed to download file after token refresh:", driveResponse.status);
+            return new Response(
+              JSON.stringify({ error: "Não foi possível baixar o arquivo do Google Drive. Verifique suas permissões." }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
           }
-        } catch (error) {
-          console.error(`Error processing chunk ${i + 1}:`, error);
-          // Continue with other chunks even if one fails
         }
-      }
-      
-      if (transcriptions.length === 0) {
+      } else {
+        console.error("Failed to download file from Drive:", driveResponse.status);
+        const errorText = await driveResponse.text();
+        console.error("Drive error:", errorText);
+        
         return new Response(
-          JSON.stringify({ error: "Não foi possível transcrever nenhuma parte do arquivo." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ 
+            error: "Não foi possível baixar o arquivo do Google Drive. Isso pode acontecer se a gravação do Meet ainda não estiver disponível ou se você não tem permissão de download. Aguarde alguns minutos e tente novamente." 
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
-      // Combine all transcriptions
-      transcription = transcriptions.join("\n\n---\n\n");
-      console.log(`Successfully transcribed ${transcriptions.length}/${numChunks} chunks`);
     }
 
-    if (!transcription) {
+    if (!driveResponse.body) {
+      console.error("Drive response has no body stream");
       return new Response(
-        JSON.stringify({ error: "Não foi possível gerar a transcrição. O formato do áudio pode não ser suportado." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log("Transcription generated successfully");
-
-    // Update meeting notes
-    const existingNotes = meeting.notes || "";
-    const separator = existingNotes ? "\n\n---\n\n" : "";
-    const newNotes = existingNotes + separator + "## Transcrição Automática (ElevenLabs)\n\n" + transcription;
-
-    const { error: updateError } = await supabase
-      .from("onboarding_meeting_notes")
-      .update({ notes: newNotes })
-      .eq("id", meeting.id);
-
-    if (updateError) {
-      console.error("Error updating meeting notes:", updateError);
-      return new Response(
-        JSON.stringify({ error: "Transcrição gerada mas erro ao salvar. Tente novamente." }),
+        JSON.stringify({ error: "Não foi possível ler o arquivo de gravação." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        transcription,
-        message: "Transcrição adicionada às notas da reunião",
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.log(`Streaming download to ElevenLabs (${Math.round(fileSize / 1024 / 1024)}MB)...`);
+
+    return await processDriveStreamWithElevenLabs({
+      driveStream: driveResponse.body,
+      meeting,
+      supabase,
+      fileName,
+      mimeType,
+      fileSize,
+    });
 
   } catch (error) {
     console.error("Transcription error:", error);
@@ -407,60 +334,161 @@ serve(async (req) => {
   }
 });
 
-async function transcribeChunk(
-  audioData: Uint8Array,
-  fileName: string,
-  mimeType: string,
-  apiKey: string
-): Promise<string> {
-  const formData = new FormData();
-  // Create a new ArrayBuffer copy to satisfy TypeScript's type requirements
-  const buffer = new ArrayBuffer(audioData.byteLength);
-  new Uint8Array(buffer).set(audioData);
-  const blob = new Blob([buffer], { type: mimeType });
-  formData.append("file", blob, fileName);
-  formData.append("language_code", "por");
-  formData.append("diarize", "true");
-  formData.append("tag_audio_events", "true");
+type ElevenLabsStreamInput = {
+  driveStream: ReadableStream<Uint8Array>;
+  meeting: any;
+  supabase: any;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+};
 
-  console.log(`Sending ${Math.round(audioData.byteLength / 1024 / 1024)}MB to ElevenLabs...`);
+async function processDriveStreamWithElevenLabs(input: ElevenLabsStreamInput) {
+  const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
+  if (!ELEVENLABS_API_KEY) {
+    return new Response(
+      JSON.stringify({ error: "ELEVENLABS_API_KEY not configured" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
 
-  const response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
-    method: "POST",
-    headers: {
-      "xi-api-key": apiKey,
+  console.log(`Processing audio with ElevenLabs STT via stream (${input.fileSize} bytes)...`);
+
+  const boundary = `----lovable-elevenlabs-${crypto.randomUUID()}`;
+  const encoder = new TextEncoder();
+
+  const fieldPart = (name: string, value: string) =>
+    `--${boundary}\r\n` +
+    `Content-Disposition: form-data; name="${name}"\r\n\r\n` +
+    `${value}\r\n`;
+
+  const fileHeader =
+    `--${boundary}\r\n` +
+    `Content-Disposition: form-data; name="file"; filename="${escapeQuotes(input.fileName)}"\r\n` +
+    `Content-Type: ${input.mimeType || "application/octet-stream"}\r\n\r\n`;
+
+  const closing = `\r\n--${boundary}--\r\n`;
+
+  const prefix =
+    fieldPart("model_id", "scribe_v1") +
+    fieldPart("language_code", "por") +
+    fieldPart("diarize", "true") +
+    fieldPart("tag_audio_events", "true") +
+    fileHeader;
+
+  const multipartStream = new ReadableStream<Uint8Array>({
+    start: async (controller) => {
+      try {
+        controller.enqueue(encoder.encode(prefix));
+
+        const reader = input.driveStream.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) controller.enqueue(value);
+        }
+
+        controller.enqueue(encoder.encode(closing));
+        controller.close();
+      } catch (e) {
+        console.error("Error streaming multipart body:", e);
+        controller.error(e);
+      }
     },
-    body: formData,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("ElevenLabs API error:", response.status, errorText);
-    
-    if (response.status === 401) {
-      throw new Error("Chave da API ElevenLabs inválida.");
+  console.log("Sending stream to ElevenLabs Speech-to-Text API...");
+
+  const elevenLabsResponse = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+    method: "POST",
+    headers: {
+      "xi-api-key": ELEVENLABS_API_KEY,
+      "Content-Type": `multipart/form-data; boundary=${boundary}`,
+    },
+    body: multipartStream,
+  });
+
+  if (!elevenLabsResponse.ok) {
+    const errorText = await elevenLabsResponse.text();
+    console.error("ElevenLabs API error:", elevenLabsResponse.status, errorText);
+
+    if (elevenLabsResponse.status === 401) {
+      return new Response(
+        JSON.stringify({ error: "Chave da API ElevenLabs inválida. Verifique a configuração." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
-    if (response.status === 429) {
-      throw new Error("Limite de requisições excedido. Tente novamente em alguns minutos.");
+
+    if (elevenLabsResponse.status === 429) {
+      return new Response(
+        JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
-    throw new Error(`ElevenLabs error: ${response.status}`);
+
+    return new Response(
+      JSON.stringify({ error: "Erro ao processar transcrição com ElevenLabs" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
-  const data = await response.json();
-  console.log("ElevenLabs response received:", JSON.stringify(data).substring(0, 300));
+  const transcriptionData = await elevenLabsResponse.json();
+  console.log(
+    "ElevenLabs response received:",
+    JSON.stringify(transcriptionData).substring(0, 500)
+  );
 
-  let transcription = data.text || "";
+  let transcription = transcriptionData.text || "";
 
-  // Format with speakers if available
-  if (data.words && data.words.length > 0) {
-    const formatted = formatTranscriptionWithSpeakers(data);
-    if (formatted) {
-      transcription = formatted;
+  if (!transcription) {
+    console.error("No transcription in response:", transcriptionData);
+    return new Response(
+      JSON.stringify({ error: "Não foi possível gerar a transcrição. O formato do áudio pode não ser suportado." }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  if (transcriptionData.words && transcriptionData.words.length > 0) {
+    const formattedTranscription = formatTranscriptionWithSpeakers(transcriptionData);
+    if (formattedTranscription) {
+      transcription = formattedTranscription;
     }
   }
 
-  return transcription;
+  console.log("Transcription generated successfully");
+
+  const existingNotes = input.meeting.notes || "";
+  const separator = existingNotes ? "\n\n---\n\n" : "";
+  const newNotes =
+    existingNotes + separator + "## Transcrição Automática (ElevenLabs)\n\n" + transcription;
+
+  const { error: updateError } = await input.supabase
+    .from("onboarding_meeting_notes")
+    .update({ notes: newNotes })
+    .eq("id", input.meeting.id);
+
+  if (updateError) {
+    console.error("Error updating meeting notes:", updateError);
+    return new Response(
+      JSON.stringify({ error: "Transcrição gerada mas erro ao salvar. Tente novamente." }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      transcription,
+      message: "Transcrição adicionada às notas da reunião",
+    }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 }
+
+function escapeQuotes(s: string) {
+  return s.replaceAll("\"", "'");
+}
+
 
 function formatTranscriptionWithSpeakers(data: any): string | null {
   if (!data.words || data.words.length === 0) {
@@ -475,6 +503,7 @@ function formatTranscriptionWithSpeakers(data: any): string | null {
     const speaker = word.speaker || "Participante";
     
     if (speaker !== currentSpeaker) {
+      // Save previous speaker's text
       if (currentText.trim()) {
         result += `**${currentSpeaker}:** ${currentText.trim()}\n\n`;
       }
@@ -485,6 +514,7 @@ function formatTranscriptionWithSpeakers(data: any): string | null {
     }
   }
 
+  // Add last speaker's text
   if (currentText.trim()) {
     result += `**${currentSpeaker}:** ${currentText.trim()}\n\n`;
   }
