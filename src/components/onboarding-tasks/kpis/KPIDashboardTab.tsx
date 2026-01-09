@@ -113,8 +113,8 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     }
 
     try {
-      // Get the current month for monthly targets
-      const currentMonthYear = format(new Date(), "yyyy-MM");
+      // Get the month from the selected date range for monthly targets
+      const selectedMonthYear = format(new Date(dateRange.start), "yyyy-MM");
 
       const [kpisRes, salespeopleRes, entriesRes, unitsRes, companyRes, monthlyTargetsRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
@@ -122,7 +122,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
         supabase.from("kpi_entries").select("*").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end),
         supabase.from("company_units").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("onboarding_companies").select("contract_start_date").eq("id", companyId).single(),
-        supabase.from("kpi_monthly_targets").select("*").eq("company_id", companyId).eq("month_year", currentMonthYear).order("level_order"),
+        supabase.from("kpi_monthly_targets").select("*").eq("company_id", companyId).eq("month_year", selectedMonthYear).order("level_order"),
       ]);
 
       console.log("[KPIDashboardTab] Results:", {
