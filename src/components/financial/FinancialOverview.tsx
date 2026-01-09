@@ -43,8 +43,10 @@ interface FinancialSummary {
   overdueReceivables: number;
   overduePayables: number;
   mrr: number;
+  nexusMrr: number;
   totalCash: number;
   activeContracts: number;
+  activeNexusClients: number;
   projectedCash30: number;
   projectedCash90: number;
 }
@@ -59,8 +61,10 @@ export function FinancialOverview() {
     overdueReceivables: 0,
     overduePayables: 0,
     mrr: 0,
+    nexusMrr: 0,
     totalCash: 0,
     activeContracts: 0,
+    activeNexusClients: 0,
     projectedCash30: 0,
     projectedCash90: 0
   });
@@ -95,10 +99,16 @@ export function FinancialOverview() {
         .select("current_balance")
         .eq("is_active", true);
 
-      // Load active contracts
+      // Load active contracts from financial_contracts
       const { data: contracts } = await supabase
         .from("financial_contracts")
         .select("contract_value, billing_cycle")
+        .eq("status", "active");
+
+      // Load active clients from Nexus (onboarding_companies)
+      const { data: nexusClients } = await supabase
+        .from("onboarding_companies")
+        .select("id, name, contract_value, status")
         .eq("status", "active");
 
       // Calculate summary
@@ -136,6 +146,10 @@ export function FinancialOverview() {
 
       const totalCash = banks?.reduce((sum, b) => sum + (Number(b.current_balance) || 0), 0) || 0;
       const activeContracts = contracts?.length || 0;
+      const activeNexusClients = nexusClients?.length || 0;
+
+      // Calculate MRR from Nexus clients
+      const nexusMrr = nexusClients?.reduce((sum, c) => sum + (Number(c.contract_value) || 0), 0) || 0;
 
       // Calculate MRR
       let mrr = 0;
@@ -157,8 +171,11 @@ export function FinancialOverview() {
         }
       });
 
+      // Use the higher MRR (financial contracts or Nexus clients)
+      const effectiveMrr = Math.max(mrr, nexusMrr);
+
       // Projected cash
-      const monthlyNet = mrr - (totalPayables / 6); // Simplified projection
+      const monthlyNet = effectiveMrr - (totalPayables / 6); // Simplified projection
       const projectedCash30 = totalCash + monthlyNet;
       const projectedCash90 = totalCash + monthlyNet * 3;
 
@@ -170,8 +187,10 @@ export function FinancialOverview() {
         overdueReceivables,
         overduePayables,
         mrr,
+        nexusMrr,
         totalCash,
         activeContracts,
+        activeNexusClients,
         projectedCash30,
         projectedCash90
       });
@@ -246,11 +265,16 @@ export function FinancialOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">
-              {formatCurrency(summary.mrr)}
+              {formatCurrency(Math.max(summary.mrr, summary.nexusMrr))}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              ARR: {formatCurrency(summary.mrr * 12)}
+              ARR: {formatCurrency(Math.max(summary.mrr, summary.nexusMrr) * 12)}
             </p>
+            {summary.nexusMrr > summary.mrr && (
+              <p className="text-xs text-blue-500 mt-1">
+                {summary.activeNexusClients} clientes Nexus
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -267,7 +291,7 @@ export function FinancialOverview() {
               {formatCurrency(summary.totalCash)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {summary.activeContracts} contratos ativos
+              {summary.activeContracts} contratos | {summary.activeNexusClients} clientes Nexus
             </p>
           </CardContent>
         </Card>
