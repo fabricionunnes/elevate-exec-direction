@@ -191,26 +191,26 @@ export const SalesComparisonChart = ({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Summary Cards */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           <Card className="bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900">
-            <CardContent className="pt-4">
-              <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+            <CardContent className="p-2 sm:pt-4 sm:px-4">
+              <p className="text-[10px] sm:text-xs text-orange-600 dark:text-orange-400 font-medium leading-tight">
                 Média Antes da UNV
               </p>
-              <p className="text-lg font-bold text-orange-700 dark:text-orange-300">
+              <p className="text-sm sm:text-lg font-bold text-orange-700 dark:text-orange-300 truncate">
                 {preUnvData.length > 0 ? formatFullCurrency(preUnvAvg) : "—"}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] sm:text-xs text-muted-foreground">
                 {preUnvData.length} mês{preUnvData.length !== 1 ? "es" : ""}
               </p>
             </CardContent>
           </Card>
 
           <Card className="bg-muted/50 flex items-center justify-center">
-            <CardContent className="pt-4 text-center">
-              <ArrowRight className="h-8 w-8 mx-auto text-muted-foreground" />
+            <CardContent className="p-2 sm:pt-4 text-center">
+              <ArrowRight className="h-5 w-5 sm:h-8 sm:w-8 mx-auto text-muted-foreground" />
               {preUnvData.length > 0 && postUnvData.length > 0 && (
-                <p className={`text-sm font-bold mt-1 ${hasGrowth ? "text-green-600" : "text-red-600"}`}>
+                <p className={`text-xs sm:text-sm font-bold mt-1 ${hasGrowth ? "text-green-600" : "text-red-600"}`}>
                   {hasGrowth ? "+" : ""}{formatFullCurrency(postUnvAvg - preUnvAvg)}
                 </p>
               )}
@@ -218,14 +218,14 @@ export const SalesComparisonChart = ({
           </Card>
 
           <Card className="bg-primary/10 border-primary/30">
-            <CardContent className="pt-4">
-              <p className="text-xs text-primary font-medium">
+            <CardContent className="p-2 sm:pt-4 sm:px-4">
+              <p className="text-[10px] sm:text-xs text-primary font-medium leading-tight">
                 Média Depois da UNV
               </p>
-              <p className="text-lg font-bold text-primary">
+              <p className="text-sm sm:text-lg font-bold text-primary truncate">
                 {postUnvData.length > 0 ? formatFullCurrency(postUnvAvg) : "—"}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] sm:text-xs text-muted-foreground">
                 {postUnvData.length} mês{postUnvData.length !== 1 ? "es" : ""}
               </p>
             </CardContent>

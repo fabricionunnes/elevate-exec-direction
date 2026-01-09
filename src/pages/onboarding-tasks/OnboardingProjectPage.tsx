@@ -966,155 +966,22 @@ const OnboardingProjectPage = () => {
         {projectId && <ProjectSupportBanner projectId={projectId} />}
         
         {/* Header */}
-        <div className="flex flex-col gap-4 mb-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
-                <ArrowLeft className="h-5 w-5" />
+        <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start gap-2 sm:gap-4 min-w-0 flex-1">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")} className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
-              <div className="flex flex-col">
+              <div className="flex flex-col min-w-0 flex-1">
                 <NexusHeader />
                 {project.onboarding_company?.name && (
-                  <p className="text-sm text-muted-foreground ml-12 sm:ml-14">{project.onboarding_company.name}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground ml-10 sm:ml-14 truncate">{project.onboarding_company.name}</p>
                 )}
               </div>
-              {project.onboarding_company?.name && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  {project.onboarding_company_id && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-6 px-2 text-xs"
-                      onClick={() => navigate(`/onboarding-tasks/companies/${project.onboarding_company_id}`)}
-                    >
-                      <Building2 className="h-3 w-3 mr-1" />
-                      Ver Empresa
-                    </Button>
-                  )}
-                  {/* CRM Button */}
-                  {project.crm_link ? (
-                    <div className="flex items-center gap-1">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-6 px-2 text-xs"
-                        onClick={() => {
-                          setCrmLinkInput(project.crm_link || "");
-                          setCrmLoginInput(project.crm_login || "");
-                          setCrmPasswordInput(project.crm_password || "");
-                          setCrmDialogMode("view");
-                          setShowCrmDialog(true);
-                        }}
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        CRM
-                      </Button>
-                    </div>
-                  ) : currentUserRole && currentUserRole !== "client" && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-6 px-2 text-xs text-muted-foreground"
-                      onClick={() => {
-                        setCrmLinkInput("");
-                        setCrmLoginInput("");
-                        setCrmPasswordInput("");
-                        setCrmDialogMode("edit");
-                        setShowCrmDialog(true);
-                      }}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      CRM
-                    </Button>
-                  )}
-                  {/* Documentos Button */}
-                  {project.documents_link ? (
-                    <div className="flex items-center gap-1">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-6 px-2 text-xs"
-                        onClick={() => window.open(project.documents_link!, "_blank")}
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        Documentos
-                      </Button>
-                      {currentUserRole && currentUserRole !== "client" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => {
-                            setDocsLinkInput(project.documents_link || "");
-                            setShowDocsDialog(true);
-                          }}
-                          title="Editar link dos documentos"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                  ) : currentUserRole && currentUserRole !== "client" && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-6 px-2 text-xs text-muted-foreground"
-                      onClick={() => {
-                        setDocsLinkInput("");
-                        setShowDocsDialog(true);
-                      }}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Documentos
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-            {/* Desktop Actions */}
-            <div className="hidden sm:flex items-center gap-2">
-              {currentUserRole && currentUserRole !== "client" && (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => setShowPDFTasksDialog(true)}>
-                    <FileUp className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Plano via PDF</span>
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setShowGenerateTasksDialog(true)}>
-                    <Wand2 className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Gerar Tarefas</span>
-                  </Button>
-                </>
-              )}
-              <Button variant="outline" size="sm" onClick={() => setShowUsersDialog(true)}>
-                <Users className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Usuários ({users.length})</span>
-              </Button>
-              {isStaffAdmin && (
-                <Button 
-                  variant="destructive" 
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={handleDeleteProject}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="h-8 w-8"
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  navigate("/onboarding-tasks/login");
-                }}
-                title="Sair"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
             </div>
             
             {/* Mobile Actions Menu */}
-            <div className="flex sm:hidden items-center gap-1">
+            <div className="flex sm:hidden items-center shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon" className="h-8 w-8">
@@ -1154,11 +1021,147 @@ const OnboardingProjectPage = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+            
+            {/* Desktop Actions */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              {currentUserRole && currentUserRole !== "client" && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setShowPDFTasksDialog(true)}>
+                    <FileUp className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Plano via PDF</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowGenerateTasksDialog(true)}>
+                    <Wand2 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Gerar Tarefas</span>
+                  </Button>
+                </>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setShowUsersDialog(true)}>
+                <Users className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Usuários ({users.length})</span>
+              </Button>
+              {isStaffAdmin && (
+                <Button 
+                  variant="destructive" 
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handleDeleteProject}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-8 w-8"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  navigate("/onboarding-tasks/login");
+                }}
+                title="Sair"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
+
+          {/* Action buttons row - mobile optimized */}
+          {project.onboarding_company?.name && (
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap pl-10 sm:pl-14">
+              {project.onboarding_company_id && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 px-2 text-xs"
+                  onClick={() => navigate(`/onboarding-tasks/companies/${project.onboarding_company_id}`)}
+                >
+                  <Building2 className="h-3 w-3 mr-1" />
+                  <span className="hidden xs:inline">Ver </span>Empresa
+                </Button>
+              )}
+              {/* CRM Button */}
+              {project.crm_link ? (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-7 px-2 text-xs"
+                  onClick={() => {
+                    setCrmLinkInput(project.crm_link || "");
+                    setCrmLoginInput(project.crm_login || "");
+                    setCrmPasswordInput(project.crm_password || "");
+                    setCrmDialogMode("view");
+                    setShowCrmDialog(true);
+                  }}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  CRM
+                </Button>
+              ) : currentUserRole && currentUserRole !== "client" && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 px-2 text-xs text-muted-foreground"
+                  onClick={() => {
+                    setCrmLinkInput("");
+                    setCrmLoginInput("");
+                    setCrmPasswordInput("");
+                    setCrmDialogMode("edit");
+                    setShowCrmDialog(true);
+                  }}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  CRM
+                </Button>
+              )}
+              {/* Documentos Button */}
+              {project.documents_link ? (
+                <div className="flex items-center gap-0.5">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 px-2 text-xs"
+                    onClick={() => window.open(project.documents_link!, "_blank")}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    <span className="hidden xs:inline">Documentos</span>
+                    <span className="xs:hidden">Docs</span>
+                  </Button>
+                  {currentUserRole && currentUserRole !== "client" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => {
+                        setDocsLinkInput(project.documents_link || "");
+                        setShowDocsDialog(true);
+                      }}
+                      title="Editar link dos documentos"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              ) : currentUserRole && currentUserRole !== "client" && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 px-2 text-xs text-muted-foreground"
+                  onClick={() => {
+                    setDocsLinkInput("");
+                    setShowDocsDialog(true);
+                  }}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  <span className="hidden xs:inline">Documentos</span>
+                  <span className="xs:hidden">Docs</span>
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Project Settings Row - Only for admin/cs */}
           {(isAdmin || currentUserRole === "cs") && (
-            <div className="flex flex-wrap gap-2 sm:gap-4 pl-0 sm:pl-14 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
+            <div className="flex flex-wrap gap-2 sm:gap-4 pl-10 sm:pl-14 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
               <div className="flex items-center gap-1 sm:gap-2 min-w-fit">
                 <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Status:</span>
                 <Select 

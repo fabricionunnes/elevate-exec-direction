@@ -655,31 +655,33 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     <div className="space-y-6">
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4">
+        <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-4">
             <div className="space-y-1">
-              <Label>Data Inicial</Label>
+              <Label className="text-xs sm:text-sm">Data Inicial</Label>
               <Input
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                className="h-8 sm:h-10 text-xs sm:text-sm"
               />
             </div>
             <div className="space-y-1">
-              <Label>Data Final</Label>
+              <Label className="text-xs sm:text-sm">Data Final</Label>
               <Input
                 type="date"
                 value={dateRange.end}
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                className="h-8 sm:h-10 text-xs sm:text-sm"
               />
             </div>
             <div className="space-y-1">
-              <Label>KPI</Label>
+              <Label className="text-xs sm:text-sm">KPI</Label>
               <Select value={selectedKpi} onValueChange={setSelectedKpi}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background">
                   <SelectItem value="all">Todos os KPIs</SelectItem>
                   {kpis.map(kpi => (
                     <SelectItem key={kpi.id} value={kpi.id}>{kpi.name}</SelectItem>
@@ -689,13 +691,13 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
             </div>
             {units.length > 0 && (
               <div className="space-y-1">
-                <Label>Unidade</Label>
+                <Label className="text-xs sm:text-sm">Unidade</Label>
                 <Select value={selectedUnit} onValueChange={setSelectedUnit}>
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as Unidades</SelectItem>
+                  <SelectContent className="bg-background">
+                    <SelectItem value="all">Todas</SelectItem>
                     {units.map(unit => (
                       <SelectItem key={unit.id} value={unit.id}>{unit.name}</SelectItem>
                     ))}
@@ -704,12 +706,12 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
               </div>
             )}
             <div className="space-y-1">
-              <Label>Vendedor</Label>
+              <Label className="text-xs sm:text-sm">Vendedor</Label>
               <Select value={selectedSalesperson} onValueChange={setSelectedSalesperson}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background">
                   <SelectItem value="all">Todos</SelectItem>
                   {salespeople.map(sp => (
                     <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>
@@ -717,14 +719,12 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-end">
+            <div className="col-span-2 sm:col-span-1 flex items-end gap-2">
               <SalesHistoryDialog 
                 companyId={companyId} 
                 contractStartDate={contractStartDate}
                 onDataChange={() => setSalesHistoryRefreshKey(prev => prev + 1)}
               />
-            </div>
-            <div className="flex items-end">
               <KPIEntriesHistoryDialog 
                 companyId={companyId}
                 canDelete={canDeleteEntries}
