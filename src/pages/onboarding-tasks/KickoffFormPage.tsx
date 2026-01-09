@@ -787,6 +787,21 @@ const KickoffFormPage = () => {
               </p>
             </div>
 
+            {/* Mensagem de importância */}
+            <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+              <div className="flex gap-3">
+                <TrendingUp className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    Por que preencher o histórico? (opcional)
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                    Ao compartilhar seu histórico de vendas, nossa equipe consegue acompanhar melhor sua evolução e entregar resultados mais personalizados nos próximos meses. Isso nos ajuda a entender o ponto de partida e celebrar cada conquista com você!
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
