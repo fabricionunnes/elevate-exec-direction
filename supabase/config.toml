@@ -65,3 +65,9 @@ verify_jwt = false
 
 [functions.check-pending-meetings]
 verify_jwt = false
+
+[functions.conta-azul-oauth]
+verify_jwt = false
+
+[functions.conta-azul-callback]
+verify_jwt = false
