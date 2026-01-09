@@ -65,28 +65,46 @@ async function transcribeRecordingWithAI(
       return null;
     }
 
-    // Get direct download URL for AssemblyAI
-    const linkResponse = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=webContentLink&supportsAllDrives=true`,
+    console.log(`File size: ${Math.round(fileSize / 1024 / 1024)}MB, proceeding with download...`);
+
+    // Download file using authenticated request (not webContentLink which fails for large files)
+    const downloadResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
       { headers: { Authorization: `Bearer ${googleAccessToken}` } }
     );
 
-    if (!linkResponse.ok) {
-      console.error("Failed to get download link:", linkResponse.status);
+    if (!downloadResponse.ok) {
+      console.error("Failed to download file from Drive:", downloadResponse.status);
       return null;
     }
 
-    const linkData = await linkResponse.json();
-    const downloadUrl = linkData.webContentLink;
+    // Get the file as a Blob
+    const fileBlob = await downloadResponse.blob();
+    console.log(`Downloaded file: ${fileBlob.size} bytes, type: ${fileBlob.type}`);
 
-    if (!downloadUrl) {
-      console.log("No webContentLink available for this file");
+    // Upload to AssemblyAI
+    console.log("Uploading to AssemblyAI...");
+    const uploadResponse = await fetch("https://api.assemblyai.com/v2/upload", {
+      method: "POST",
+      headers: {
+        "Authorization": ASSEMBLYAI_API_KEY,
+        "Content-Type": "application/octet-stream",
+      },
+      body: fileBlob,
+    });
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      console.error("AssemblyAI upload error:", errorText);
       return null;
     }
 
-    // Submit to AssemblyAI for transcription
-    console.log("Submitting to AssemblyAI...");
-    
+    const uploadData = await uploadResponse.json();
+    const uploadUrl = uploadData.upload_url;
+    console.log(`File uploaded to AssemblyAI: ${uploadUrl}`);
+
+    // Submit for transcription
+    console.log("Submitting to AssemblyAI for transcription...");
     const submitResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
       method: "POST",
       headers: {
@@ -94,7 +112,7 @@ async function transcribeRecordingWithAI(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        audio_url: downloadUrl,
+        audio_url: uploadUrl,
         language_code: "pt",
         speaker_labels: true,
       }),
@@ -136,7 +154,7 @@ async function transcribeRecordingWithAI(
         // Format with speaker labels if available
         if (statusData.utterances && statusData.utterances.length > 0) {
           return statusData.utterances
-            .map((u: { speaker: string; text: string }) => `**Speaker ${u.speaker}:** ${u.text}`)
+            .map((u: { speaker: string; text: string }) => `**Participante ${u.speaker}:** ${u.text}`)
             .join("\n\n");
         }
         
