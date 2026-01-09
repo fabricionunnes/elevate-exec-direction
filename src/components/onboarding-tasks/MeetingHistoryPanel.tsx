@@ -59,6 +59,7 @@ interface MeetingNote {
   subject: string;
   notes: string | null;
   transcript: string | null;
+  manual_transcript?: string | null;
   attendees: string | null;
   meeting_link: string | null;
   recording_link: string | null;
@@ -1186,45 +1187,97 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                    ) : null}
 
                    {selectedMeeting.recording_link ? (
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => window.open(selectedMeeting.recording_link!, "_blank")}
-                        >
-                          <PlayCircle className="h-3.5 w-3.5" />
-                          Ver Gravação
-                        </Button>
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           className="gap-2"
-                           onClick={() => handleTranscribe(selectedMeeting)}
-                           disabled={transcribing}
-                           data-inline-editor="true"
-                         >
-                          {transcribing ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <FileAudio className="h-3.5 w-3.5" />
+                      <>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => window.open(selectedMeeting.recording_link!, "_blank")}
+                          >
+                            <PlayCircle className="h-3.5 w-3.5" />
+                            Ver Gravação
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => handleTranscribe(selectedMeeting)}
+                            disabled={transcribing}
+                            data-inline-editor="true"
+                          >
+                            {transcribing ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <FileAudio className="h-3.5 w-3.5" />
+                            )}
+                            {transcribing ? "Transcrevendo..." : "Transcrever"}
+                          </Button>
+                          {!isPastingTranscription && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => {
+                                setIsPastingTranscription(true);
+                                setManualTranscriptionDraft("");
+                              }}
+                            >
+                              <ClipboardPaste className="h-3.5 w-3.5" />
+                              Colar Transcrição
+                            </Button>
                           )}
-                          {transcribing ? "Transcrevendo..." : "Transcrever"}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => {
-                            setIsPastingTranscription(true);
-                            setManualTranscriptionDraft("");
-                          }}
-                        >
-                          <ClipboardPaste className="h-3.5 w-3.5" />
-                          Colar Transcrição
-                        </Button>
-                      </div>
-                   ) : (isAdmin || isCS || currentStaffId) ? (
+                        </div>
+                        
+                        {/* Inline Manual Transcription Paste Area */}
+                        {isPastingTranscription && (
+                          <div className="mt-3 space-y-3 p-4 border rounded-lg bg-muted/30" data-inline-editor="true">
+                            <div className="flex items-center gap-2">
+                              <ClipboardPaste className="h-4 w-4 text-primary" />
+                              <span className="text-sm font-medium">Colar Transcrição Manual</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Para arquivos de gravação grandes (&gt;25MB), use uma ferramenta externa de transcrição e cole o resultado aqui.
+                            </p>
+                            <Textarea
+                              value={manualTranscriptionDraft}
+                              onChange={(e) => setManualTranscriptionDraft(e.target.value)}
+                              placeholder="Cole aqui a transcrição da reunião..."
+                              rows={6}
+                              className="resize-none"
+                              autoFocus
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setIsPastingTranscription(false);
+                                  setManualTranscriptionDraft("");
+                                }}
+                                disabled={savingManualTranscription}
+                              >
+                                Cancelar
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={handleSaveManualTranscription}
+                                disabled={savingManualTranscription || !manualTranscriptionDraft.trim()}
+                              >
+                                {savingManualTranscription ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Salvando...
+                                  </>
+                                ) : (
+                                  "Salvar Transcrição"
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (isAdmin || isCS || currentStaffId) ? (
                      <div className="flex flex-col gap-2">
                        {!isEditingRecordingLink ? (
                          <div className="flex items-center gap-3">
@@ -1324,34 +1377,19 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
 
               {/* Transcript (highlighted, separate from notes) */}
               <div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5" />
-                    Transcrição
-                  </span>
-
-                  {(isAdmin || isCS || currentStaffId) && !isPastingTranscription && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => {
-                        setIsPastingTranscription(true);
-                        setManualTranscriptionDraft("");
-                      }}
-                    >
-                      <ClipboardPaste className="h-3.5 w-3.5" />
-                      Colar aqui
-                    </Button>
-                  )}
-                </div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <FileText className="h-3.5 w-3.5" />
+                  Transcrição
+                </span>
 
                 <div className="mt-2 p-4 bg-muted/30 border rounded-lg max-h-[300px] overflow-y-auto">
-                  {selectedMeeting.transcript ? (
-                    <p className="text-sm whitespace-pre-wrap">{selectedMeeting.transcript}</p>
+                  {(selectedMeeting.transcript || selectedMeeting.manual_transcript) ? (
+                    <p className="text-sm whitespace-pre-wrap">
+                      {selectedMeeting.transcript || selectedMeeting.manual_transcript}
+                    </p>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Ainda não disponível. Quando a sincronização encontrar a transcrição, ela vai aparecer aqui (separada de “O que foi tratado”).
+                      Ainda não disponível. Use o botão "Colar Transcrição" acima para adicionar manualmente.
                     </p>
                   )}
                 </div>
@@ -1365,52 +1403,6 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                 </div>
               </div>
 
-              {/* Manual Transcription Paste */}
-              {isPastingTranscription && (isAdmin || isCS || currentStaffId) && (
-                <div className="space-y-3 p-4 border rounded-lg bg-muted/30" data-inline-editor="true">
-                  <div className="flex items-center gap-2">
-                    <ClipboardPaste className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">Colar Transcrição Manual</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Para arquivos de gravação grandes (&gt;25MB), use uma ferramenta externa de transcrição e cole o resultado aqui.
-                  </p>
-                  <Textarea
-                    value={manualTranscriptionDraft}
-                    onChange={(e) => setManualTranscriptionDraft(e.target.value)}
-                    placeholder="Cole aqui a transcrição da reunião..."
-                    rows={6}
-                    className="resize-none"
-                  />
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setIsPastingTranscription(false);
-                        setManualTranscriptionDraft("");
-                      }}
-                      disabled={savingManualTranscription}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleSaveManualTranscription}
-                      disabled={savingManualTranscription || !manualTranscriptionDraft.trim()}
-                    >
-                      {savingManualTranscription ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Salvando...
-                        </>
-                      ) : (
-                        "Salvar Transcrição"
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              )}
 
               {/* Actions - only Admin can delete */}
               {isAdmin && (

@@ -349,20 +349,23 @@ ${notifications.slice(0, 10).map(n => {
       : "";
 
     // Meetings context (critical for understanding what was discussed)
+    // Include FULL transcript and manual_transcript content
     const meetingsContext = meetingNotes && meetingNotes.length > 0
       ? `
-## REUNIÕES REALIZADAS (O que foi tratado)
-${meetingNotes.filter(m => m.is_finalized && m.notes).map(m => {
+## REUNIÕES REALIZADAS (O que foi tratado + Transcrições)
+${meetingNotes.filter(m => m.is_finalized).map(m => {
   const date = new Date(m.meeting_date).toLocaleDateString('pt-BR');
+  const transcriptText = m.transcript || m.manual_transcript || null;
   return `### ${m.meeting_title || 'Reunião'} - ${date}
 **Participantes:** ${m.attendees || 'Não informados'}
-**Notas/Discussão:**
-${m.notes}
-${m.transcript ? `\n**Transcrição disponível:** Sim (${m.transcript.length} caracteres)` : ''}
+${m.notes ? `**O que foi tratado:**
+${m.notes}` : ''}
+${transcriptText ? `**TRANSCRIÇÃO DA REUNIÃO:**
+${transcriptText.substring(0, 8000)}${transcriptText.length > 8000 ? '... [transcrição truncada para contexto]' : ''}` : ''}
 `;
 }).join("\n---\n")}
 `
-      : "## REUNIÕES\nNenhuma reunião finalizada com notas";
+      : "## REUNIÕES\nNenhuma reunião finalizada";
 
     const contextPrompt = `
 Você é um assistente de IA especializado em consultoria comercial e onboarding de clientes da UNV.
