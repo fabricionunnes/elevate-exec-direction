@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ import {
   Activity,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
 } from "lucide-react";
 import { format, isToday, isYesterday, parseISO, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -72,6 +74,7 @@ interface GroupedActivities {
 }
 
 export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) => {
+  const navigate = useNavigate();
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -473,6 +476,36 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
 
   const hasActiveFilters = dateFrom || dateTo || selectedCompany !== "all" || selectedStaff !== "all" || selectedType !== "all" || staffNameSearch.trim();
 
+  // Navigate to activity's project/tab
+  const handleActivityClick = (activity: ActivityItem) => {
+    if (!activity.projectId) return;
+    
+    // Determine which tab or section to open based on activity type
+    let tabParam = "";
+    switch (activity.type) {
+      case "task_history":
+        // Navigate to project, tasks tab is default
+        tabParam = "?tab=jornada";
+        break;
+      case "meeting":
+        tabParam = "?tab=reunioes";
+        break;
+      case "support":
+        tabParam = "?tab=suporte";
+        break;
+      case "nps":
+        tabParam = "?tab=nps";
+        break;
+      case "goal":
+        tabParam = "?tab=kpis";
+        break;
+      default:
+        tabParam = "";
+    }
+    
+    navigate(`/onboarding-tasks/${activity.projectId}${tabParam}`);
+  };
+
   const getActivityIcon = (type: string, action: string) => {
     const iconClass = "h-5 w-5";
     switch (type) {
@@ -835,7 +868,8 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.02 }}
-                          className={`relative flex gap-4 p-4 rounded-xl border transition-all duration-200 hover:shadow-md ${getActivityBgColor(activity.type, activity.action)}`}
+                          onClick={() => handleActivityClick(activity)}
+                          className={`relative flex gap-4 p-4 rounded-xl border transition-all duration-200 hover:shadow-md ${activity.projectId ? 'cursor-pointer hover:scale-[1.01]' : ''} ${getActivityBgColor(activity.type, activity.action)}`}
                         >
                           {/* Icon */}
                           <div className="flex-shrink-0">
@@ -884,9 +918,14 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
                                 )}
                               </div>
 
-                              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                {format(new Date(activity.date), "HH:mm", { locale: ptBR })}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {format(new Date(activity.date), "HH:mm", { locale: ptBR })}
+                                </span>
+                                {activity.projectId && (
+                                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/50" />
+                                )}
+                              </div>
                             </div>
                           </div>
                         </motion.div>
