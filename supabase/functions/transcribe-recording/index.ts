@@ -37,10 +37,10 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get the meeting to verify it exists
+    // Get the meeting to verify it exists and get project info
     const { data: meeting, error: meetingError } = await supabase
       .from("onboarding_meeting_notes")
-      .select("*")
+      .select("*, project:project_id(consultant_id, onboarding_company_id)")
       .eq("id", meetingId)
       .single();
 
@@ -63,19 +63,83 @@ serve(async (req) => {
       );
     }
 
-    // Get Google token for Drive access
+    // Determine whose Google token to use for Drive access:
+    // Priority: 1) Project consultant (owner of recordings), 2) Current user
+    let targetUserId = user.id;
+    
+    // Get project consultant's user_id if available
+    const project = meeting.project as { consultant_id?: string; onboarding_company_id?: string } | null;
+    let consultantStaffId = project?.consultant_id;
+    
+    // If no project-level consultant, try company-level
+    if (!consultantStaffId && project?.onboarding_company_id) {
+      const { data: company } = await supabase
+        .from("onboarding_companies")
+        .select("consultant_id")
+        .eq("id", project.onboarding_company_id)
+        .single();
+      
+      if (company?.consultant_id) {
+        consultantStaffId = company.consultant_id;
+      }
+    }
+    
+    // Get consultant's user_id
+    if (consultantStaffId) {
+      const { data: consultant } = await supabase
+        .from("onboarding_staff")
+        .select("user_id")
+        .eq("id", consultantStaffId)
+        .single();
+      
+      if (consultant?.user_id) {
+        targetUserId = consultant.user_id;
+        console.log(`Using consultant's Google token (user_id: ${targetUserId})`);
+      }
+    }
+
+    // Get Google token for Drive access (from consultant or current user)
+    let activeToken: { access_token: string; refresh_token: string | null; user_id: string } | null = null;
+    
     const { data: googleToken } = await supabase
       .from("user_google_tokens")
-      .select("access_token, refresh_token")
-      .eq("user_id", user.id)
+      .select("access_token, refresh_token, user_id")
+      .eq("user_id", targetUserId)
       .single();
 
-    if (!googleToken?.access_token) {
+    if (googleToken?.access_token) {
+      activeToken = {
+        access_token: googleToken.access_token,
+        refresh_token: googleToken.refresh_token || null,
+        user_id: googleToken.user_id || targetUserId,
+      };
+    } else if (targetUserId !== user.id) {
+      // Fallback: try current user's token if consultant doesn't have one
+      console.log("Consultant token not found, falling back to current user's token");
+      const { data: fallbackToken } = await supabase
+        .from("user_google_tokens")
+        .select("access_token, refresh_token, user_id")
+        .eq("user_id", user.id)
+        .single();
+      
+      if (fallbackToken?.access_token) {
+        activeToken = {
+          access_token: fallbackToken.access_token,
+          refresh_token: fallbackToken.refresh_token || null,
+          user_id: fallbackToken.user_id || user.id,
+        };
+      }
+    }
+
+    if (!activeToken) {
       return new Response(
         JSON.stringify({ error: "Google account not connected. Connect your Google account first." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    // Store the token owner's user_id for potential refresh
+    const tokenOwnerId = activeToken.user_id;
 
     // Extract file ID from Google Drive URL
     const fileIdMatch = recordingUrl.match(/\/d\/([^\/]+)/);
@@ -98,7 +162,7 @@ serve(async (req) => {
       `https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType,size,capabilities&supportsAllDrives=true`,
       {
         headers: {
-          Authorization: `Bearer ${googleToken.access_token}`,
+          Authorization: `Bearer ${activeToken.access_token}`,
         },
       }
     );
@@ -146,7 +210,7 @@ serve(async (req) => {
       `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
       {
         headers: {
-          Authorization: `Bearer ${googleToken.access_token}`,
+          Authorization: `Bearer ${activeToken.access_token}`,
         },
       }
     );
@@ -159,7 +223,7 @@ serve(async (req) => {
         `https://www.googleapis.com/drive/v3/files/${fileId}?fields=webContentLink&supportsAllDrives=true`,
         {
           headers: {
-            Authorization: `Bearer ${googleToken.access_token}`,
+            Authorization: `Bearer ${activeToken.access_token}`,
           },
         }
       );
@@ -171,7 +235,7 @@ serve(async (req) => {
         if (linkData.webContentLink) {
           driveResponse = await fetch(linkData.webContentLink, {
             headers: {
-              Authorization: `Bearer ${googleToken.access_token}`,
+              Authorization: `Bearer ${activeToken.access_token}`,
             },
             redirect: "follow",
           });
@@ -181,7 +245,7 @@ serve(async (req) => {
 
     if (!driveResponse.ok) {
       // Try to refresh token if expired
-      if (driveResponse.status === 401 && googleToken.refresh_token) {
+      if (driveResponse.status === 401 && activeToken.refresh_token) {
         console.log("Token expired, attempting refresh...");
         
         const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
@@ -193,7 +257,7 @@ serve(async (req) => {
           body: new URLSearchParams({
             client_id: clientId!,
             client_secret: clientSecret!,
-            refresh_token: googleToken.refresh_token,
+            refresh_token: activeToken.refresh_token,
             grant_type: "refresh_token",
           }),
         });
@@ -201,11 +265,14 @@ serve(async (req) => {
         if (refreshResponse.ok) {
           const tokenData = await refreshResponse.json();
           
-          // Update stored token
+          // Update stored token using the token owner's ID
           await supabase
             .from("user_google_tokens")
             .update({ access_token: tokenData.access_token })
-            .eq("user_id", user.id);
+            .eq("user_id", tokenOwnerId);
+          
+          // Update activeToken for subsequent use
+          activeToken.access_token = tokenData.access_token;
 
           // Retry download with new token
           driveResponse = await fetch(
@@ -240,8 +307,8 @@ serve(async (req) => {
     }
 
     if (!driveResponse.ok) {
-      // Try to refresh token if expired
-      if (driveResponse.status === 401 && googleToken.refresh_token) {
+      // Try to refresh token if expired (second check block)
+      if (driveResponse.status === 401 && activeToken.refresh_token) {
         console.log("Token expired, attempting refresh...");
 
         const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
@@ -253,7 +320,7 @@ serve(async (req) => {
           body: new URLSearchParams({
             client_id: clientId!,
             client_secret: clientSecret!,
-            refresh_token: googleToken.refresh_token,
+            refresh_token: activeToken.refresh_token,
             grant_type: "refresh_token",
           }),
         });
@@ -261,11 +328,14 @@ serve(async (req) => {
         if (refreshResponse.ok) {
           const tokenData = await refreshResponse.json();
 
-          // Update stored token
+          // Update stored token using the token owner's ID
           await supabase
             .from("user_google_tokens")
             .update({ access_token: tokenData.access_token })
-            .eq("user_id", user.id);
+            .eq("user_id", tokenOwnerId);
+          
+          // Update activeToken for subsequent use
+          activeToken.access_token = tokenData.access_token;
 
           // Retry download with new token
           driveResponse = await fetch(
