@@ -647,6 +647,22 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
       return;
     }
 
+    // Check if link is a Google Drive link and convert to direct download
+    let audioUrl = meeting.recording_link;
+    
+    // Convert Google Drive sharing link to direct download link
+    const driveMatch = audioUrl.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+    if (driveMatch) {
+      const fileId = driveMatch[1];
+      audioUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+    }
+    
+    // Also handle open?id= format
+    const driveOpenMatch = audioUrl.match(/drive\.google\.com\/open\?id=([^&]+)/);
+    if (driveOpenMatch) {
+      audioUrl = `https://drive.google.com/uc?export=download&id=${driveOpenMatch[1]}`;
+    }
+
     setTranscribing(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -655,27 +671,46 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
         return;
       }
 
-      toast.info("Iniciando transcrição... Isso pode levar alguns minutos.");
+      toast.info("Iniciando transcrição com AssemblyAI... Isso pode levar vários minutos para arquivos grandes.", { duration: 10000 });
 
-      const response = await supabase.functions.invoke("transcribe-recording", {
-        body: { 
-          meetingId: meeting.id, 
-          recordingUrl: meeting.recording_link 
-        },
+      const response = await supabase.functions.invoke("transcribe-assemblyai", {
+        body: { audioUrl },
       });
 
       if (response.error) {
         throw new Error(response.error.message || "Erro na transcrição");
       }
 
-      const data = response.data as { success?: boolean; error?: string; message?: string };
+      const data = response.data as { text?: string; error?: string; duration?: number; words?: number };
       
       if (data?.error) {
         throw new Error(data.error);
       }
 
-      toast.success(data?.message || "Transcrição adicionada com sucesso!");
-      await fetchMeetings();
+      if (!data?.text) {
+        throw new Error("Transcrição vazia retornada");
+      }
+
+      // Save transcription to meeting notes
+      const existingNotes = meeting.notes || "";
+      const separator = existingNotes ? "\n\n---\n\n" : "";
+      const durationInfo = data.duration ? ` (${Math.round(data.duration / 60)} minutos)` : "";
+      const newNotes = existingNotes + separator + `## Transcrição Automática${durationInfo}\n\n${data.text}`;
+
+      const { error: updateError } = await supabase
+        .from("onboarding_meeting_notes")
+        .update({ notes: newNotes })
+        .eq("id", meeting.id);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      if (selectedMeeting?.id === meeting.id) {
+        setSelectedMeeting(prev => prev ? { ...prev, notes: newNotes } : prev);
+      }
+      setMeetings(prev => prev.map(m => m.id === meeting.id ? { ...m, notes: newNotes } : m));
+
+      toast.success(`Transcrição concluída! ${data.words ? `${data.words} palavras` : ''}`);
     } catch (error) {
       console.error("Transcription error:", error);
       toast.error(error instanceof Error ? error.message : "Erro ao transcrever gravação");

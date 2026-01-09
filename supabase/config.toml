@@ -32,6 +32,7 @@ verify_jwt = false
 
 [functions.google-calendar]
 verify_jwt = false
+
 [functions.check-notice-periods]
 verify_jwt = false
 
@@ -42,6 +43,9 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.transcribe-recording]
+verify_jwt = true
+
+[functions.transcribe-assemblyai]
 verify_jwt = true
 
 [functions.kpi-analysis]
