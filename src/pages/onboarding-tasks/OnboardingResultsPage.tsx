@@ -319,7 +319,7 @@ const OnboardingResultsPage = () => {
             <KPIDashboardTab 
               companyId={selectedCompanyId} 
               projectId={getProjectForCompany(selectedCompanyId)?.id}
-              canDeleteEntries={currentStaff.role === "admin" || currentStaff.role === "cs"}
+              canDeleteEntries={currentStaff.role === "admin" || currentStaff.role === "cs" || currentStaff.role === "consultant"}
             />
           </div>
         ) : (
