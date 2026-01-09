@@ -182,12 +182,44 @@ export default function OnboardingCompaniesReportPage() {
         payment_method,
         status,
         consultant:consultant_id(name),
-        onboarding_projects(
+        onboarding_projects!inner(
           id,
+          status,
           client_health_scores(total_score, risk_level)
         )
       `)
       .order("name");
+    
+    // Also fetch companies without projects
+    const { data: companiesWithoutProjects } = await supabase
+      .from("onboarding_companies")
+      .select(`
+        id,
+        name,
+        consultant_id,
+        contract_start_date,
+        contract_end_date,
+        contract_value,
+        payment_method,
+        status,
+        consultant:consultant_id(name)
+      `)
+      .order("name");
+    
+    // Merge - companies without projects won't have health scores
+    const allCompaniesMap = new Map<string, any>();
+    
+    // First add all companies (those without projects)
+    (companiesWithoutProjects || []).forEach((c: any) => {
+      allCompaniesMap.set(c.id, { ...c, onboarding_projects: [] });
+    });
+    
+    // Then overlay with companies that have projects (with health scores)
+    (companiesData || []).forEach((c: any) => {
+      allCompaniesMap.set(c.id, c);
+    });
+    
+    const mergedCompanies = Array.from(allCompaniesMap.values());
 
     if (companiesError) {
       console.error("Error fetching companies:", companiesError);
@@ -197,7 +229,7 @@ export default function OnboardingCompaniesReportPage() {
     }
 
     // Process companies and calculate metrics
-    const processedCompanies: CompanyReport[] = (companiesData || []).map((company: any) => {
+    const processedCompanies: CompanyReport[] = mergedCompanies.map((company: any) => {
       const startDate = company.contract_start_date ? parseISO(company.contract_start_date) : null;
       const endDate = company.contract_end_date ? parseISO(company.contract_end_date) : null;
       const now = new Date();
@@ -235,22 +267,44 @@ export default function OnboardingCompaniesReportPage() {
       // Average ticket = monthly value
       const avgTicket = monthlyValue;
 
-      // Get health score from projects
+      // Get health score from projects - only count active projects
       let healthScore: number | null = null;
       let healthRisk: string | null = null;
       
-      if (company.onboarding_projects && company.onboarding_projects.length > 0) {
-        const projectsWithScores = company.onboarding_projects.filter(
-          (p: any) => p.client_health_scores && p.client_health_scores.length > 0
+      const projects = company.onboarding_projects || [];
+      const activeProjects = projects.filter((p: any) => 
+        p.status !== 'completed' && p.status !== 'closed'
+      );
+      
+      if (activeProjects.length > 0) {
+        const projectsWithScores = activeProjects.filter(
+          (p: any) => p.client_health_scores && 
+            (Array.isArray(p.client_health_scores) 
+              ? p.client_health_scores.length > 0 
+              : p.client_health_scores.total_score !== undefined)
         );
+        
         if (projectsWithScores.length > 0) {
-          // Average health score across all projects
+          // Average health score across all active projects with scores
           const totalScore = projectsWithScores.reduce((sum: number, p: any) => {
-            return sum + (p.client_health_scores[0]?.total_score || 0);
+            const score = Array.isArray(p.client_health_scores) 
+              ? p.client_health_scores[0]?.total_score 
+              : p.client_health_scores?.total_score;
+            return sum + (score || 0);
           }, 0);
           healthScore = Math.round(totalScore / projectsWithScores.length);
-          // Use the risk level of the first project (or worst)
-          healthRisk = projectsWithScores[0].client_health_scores[0]?.risk_level || null;
+          
+          // Use the risk level of the worst project
+          const riskLevels = projectsWithScores.map((p: any) => {
+            return Array.isArray(p.client_health_scores) 
+              ? p.client_health_scores[0]?.risk_level 
+              : p.client_health_scores?.risk_level;
+          }).filter(Boolean);
+          
+          const riskPriority = ['critical', 'high', 'medium', 'low'];
+          healthRisk = riskLevels.sort((a: string, b: string) => 
+            riskPriority.indexOf(a) - riskPriority.indexOf(b)
+          )[0] || null;
         }
       }
 
@@ -703,46 +757,55 @@ export default function OnboardingCompaniesReportPage() {
                 )}
               </div>
               {/* Health score filter */}
-              <div className="flex flex-col sm:flex-row gap-4 items-center">
-                <div className="flex items-center gap-2">
-                  <Heart className="h-4 w-4 text-red-500" />
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Saúde:</Label>
+              <div className="flex flex-col gap-3 p-3 bg-muted/30 rounded-lg border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Heart className="h-4 w-4 text-red-500" fill="currentColor" />
+                    <Label className="text-sm font-medium">Filtrar por Saúde</Label>
+                  </div>
+                  {(filterHealthMin > 0 || filterHealthMax < 100) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setFilterHealthMin(0);
+                        setFilterHealthMax(100);
+                      }}
+                      className="text-muted-foreground text-xs h-7"
+                    >
+                      Limpar filtro
+                    </Button>
+                  )}
                 </div>
-                <div className="flex-1 max-w-md">
-                  <Slider
-                    value={[filterHealthMin, filterHealthMax]}
-                    onValueChange={(value) => {
-                      setFilterHealthMin(value[0]);
-                      setFilterHealthMax(value[1]);
-                    }}
-                    min={0}
-                    max={100}
-                    step={5}
-                    className="w-full"
-                  />
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 min-w-[80px]">
+                    <div className={`w-3 h-3 rounded-full ${filterHealthMin < 40 ? "bg-red-500" : filterHealthMin < 60 ? "bg-orange-500" : filterHealthMin < 80 ? "bg-yellow-500" : "bg-green-500"}`} />
+                    <span className="text-sm font-medium">{filterHealthMin}</span>
+                  </div>
+                  <div className="flex-1">
+                    <Slider
+                      value={[filterHealthMin, filterHealthMax]}
+                      onValueChange={(value) => {
+                        setFilterHealthMin(value[0]);
+                        setFilterHealthMax(value[1]);
+                      }}
+                      min={0}
+                      max={100}
+                      step={5}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 min-w-[80px] justify-end">
+                    <span className="text-sm font-medium">{filterHealthMax}</span>
+                    <div className={`w-3 h-3 rounded-full ${filterHealthMax < 40 ? "bg-red-500" : filterHealthMax < 60 ? "bg-orange-500" : filterHealthMax < 80 ? "bg-yellow-500" : "bg-green-500"}`} />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className={`font-medium ${filterHealthMin < 40 ? "text-red-500" : filterHealthMin < 60 ? "text-orange-500" : filterHealthMin < 80 ? "text-yellow-500" : "text-green-500"}`}>
-                    {filterHealthMin}
-                  </span>
-                  <span>-</span>
-                  <span className={`font-medium ${filterHealthMax < 40 ? "text-red-500" : filterHealthMax < 60 ? "text-orange-500" : filterHealthMax < 80 ? "text-yellow-500" : "text-green-500"}`}>
-                    {filterHealthMax}
-                  </span>
+                <div className="flex justify-between text-[10px] text-muted-foreground px-1">
+                  <span className="text-red-500">Crítico (0-39)</span>
+                  <span className="text-orange-500">Alto (40-59)</span>
+                  <span className="text-yellow-500">Médio (60-79)</span>
+                  <span className="text-green-500">Saudável (80-100)</span>
                 </div>
-                {(filterHealthMin > 0 || filterHealthMax < 100) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setFilterHealthMin(0);
-                      setFilterHealthMax(100);
-                    }}
-                    className="text-muted-foreground text-xs"
-                  >
-                    Limpar
-                  </Button>
-                )}
               </div>
             </div>
           </CardContent>
