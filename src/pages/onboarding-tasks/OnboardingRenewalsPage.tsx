@@ -927,130 +927,140 @@ export default function OnboardingRenewalsPage() {
           <CardHeader>
             <CardTitle>Contratos ({filteredCompanies.length})</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <ScrollArea className="h-[600px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Empresa</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead>Plano</TableHead>
-                    <TableHead>Término</TableHead>
-                    <TableHead>Status Contrato</TableHead>
-                    <TableHead>Status Renovação</TableHead>
-                    <TableHead>Obs</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCompanies.map((company) => {
-                    const status = getContractStatus(company.contract_end_date);
-                    const renewalStatusOption = RENEWAL_STATUS_OPTIONS.find(s => s.value === company.renewal_status);
-                    const planOption = PLAN_TYPE_OPTIONS.find(p => p.value === company.renewal_plan_type);
-                    
-                    return (
-                      <TableRow key={company.id}>
-                        <TableCell className="font-medium max-w-[150px] truncate" title={company.name}>
-                          {company.name}
-                        </TableCell>
-                        <TableCell>
-                          {isAdmin ? (
-                            <Input
-                              type="number"
-                              value={company.contract_value || ""}
-                              onChange={(e) => handleUpdateContract(
-                                company.id,
-                                "contract_value",
-                                e.target.value ? parseFloat(e.target.value) : null
-                              )}
-                              className="w-28 h-8"
-                              placeholder="Valor"
-                            />
-                          ) : (
-                            formatCurrency(company.contract_value)
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {isAdmin ? (
-                            <Select
-                              value={company.renewal_plan_type || "monthly"}
-                              onValueChange={(v) => handlePlanTypeChange(company.id, v)}
-                            >
-                              <SelectTrigger className="w-28 h-8">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {PLAN_TYPE_OPTIONS.map(opt => (
-                                  <SelectItem key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            planOption?.label || "Mensal"
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {company.renewal_plan_type === "monthly" ? (
-                            <span className="text-muted-foreground text-sm">Recorrente</span>
-                          ) : company.contract_end_date ? (
-                            format(parseISO(company.contract_end_date), "dd/MM/yyyy")
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={status.color}>{status.label}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          {isAdmin ? (
-                            <div className="flex flex-col gap-1">
+              <div className="min-w-[900px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-[220px] font-semibold">Empresa</TableHead>
+                      <TableHead className="w-[120px] font-semibold">Valor</TableHead>
+                      <TableHead className="w-[110px] font-semibold">Plano</TableHead>
+                      <TableHead className="w-[100px] font-semibold">Término</TableHead>
+                      <TableHead className="w-[120px] font-semibold">Contrato</TableHead>
+                      <TableHead className="w-[180px] font-semibold">Status Renovação</TableHead>
+                      <TableHead className="w-[50px] font-semibold">Obs</TableHead>
+                      <TableHead className="w-[100px] text-right font-semibold">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCompanies.map((company) => {
+                      const status = getContractStatus(company.contract_end_date);
+                      const renewalStatusOption = RENEWAL_STATUS_OPTIONS.find(s => s.value === company.renewal_status);
+                      const planOption = PLAN_TYPE_OPTIONS.find(p => p.value === company.renewal_plan_type);
+
+                      return (
+                        <TableRow key={company.id} className="hover:bg-muted/30">
+                          <TableCell className="py-3">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <span className="font-medium text-sm" title={company.name}>
+                                {company.name}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {isAdmin ? (
+                              <Input
+                                type="number"
+                                value={company.contract_value || ""}
+                                onChange={(e) => handleUpdateContract(
+                                  company.id,
+                                  "contract_value",
+                                  e.target.value ? parseFloat(e.target.value) : null
+                                )}
+                                className="w-full h-8 text-sm"
+                                placeholder="Valor"
+                              />
+                            ) : (
+                              <span className="text-green-600 font-medium text-sm">
+                                {formatCurrency(company.contract_value)}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {isAdmin ? (
                               <Select
-                                value={company.renewal_status || "em_negociacao"}
-                                onValueChange={(v) => handleRenewalStatusChange(company.id, v)}
+                                value={company.renewal_plan_type || "monthly"}
+                                onValueChange={(v) => handlePlanTypeChange(company.id, v)}
                               >
-                                <SelectTrigger className="w-[155px] h-9">
-                                  <div className="flex items-center gap-2">
-                                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                                      RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.color || "bg-gray-400"
-                                    }`} />
-                                    <span className="truncate">
-                                      {RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.label || "Em negociação"}
-                                    </span>
-                                  </div>
+                                <SelectTrigger className="w-full h-8 text-sm">
+                                  <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-popover z-50">
-                                  {RENEWAL_STATUS_OPTIONS.map(opt => (
+                                  {PLAN_TYPE_OPTIONS.map(opt => (
                                     <SelectItem key={opt.value} value={opt.value}>
-                                      <div className="flex items-center gap-2">
-                                        <div className={`w-2.5 h-2.5 rounded-full ${opt.color}`} />
-                                        {opt.label}
-                                      </div>
+                                      {opt.label}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
-                              {company.renewal_status === "reuniao_agendada" && company.renewal_meeting_date && (
-                                <span className="text-xs text-muted-foreground pl-1">
-                                  {format(parseISO(company.renewal_meeting_date), "dd/MM/yyyy")}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-2">
-                                <div className={`w-2.5 h-2.5 rounded-full ${renewalStatusOption?.color || "bg-gray-400"}`} />
-                                {renewalStatusOption?.label || "Em negociação"}
+                            ) : (
+                              <span className="text-sm">{planOption?.label || "Mensal"}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {company.renewal_plan_type === "monthly" ? (
+                              <span className="text-muted-foreground text-xs">Recorrente</span>
+                            ) : company.contract_end_date ? (
+                              <span className="text-sm">{format(parseISO(company.contract_end_date), "dd/MM/yyyy")}</span>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <Badge variant={status.color} className="text-xs whitespace-nowrap">
+                              {status.label}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {isAdmin ? (
+                              <div className="flex flex-col gap-1">
+                                <Select
+                                  value={company.renewal_status || "em_negociacao"}
+                                  onValueChange={(v) => handleRenewalStatusChange(company.id, v)}
+                                >
+                                  <SelectTrigger className="w-full h-9 text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                                        RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.color || "bg-gray-400"
+                                      }`} />
+                                      <span className="truncate text-sm">
+                                        {RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.label || "Em negociação"}
+                                      </span>
+                                    </div>
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-popover z-50 min-w-[180px]">
+                                    {RENEWAL_STATUS_OPTIONS.map(opt => (
+                                      <SelectItem key={opt.value} value={opt.value}>
+                                        <div className="flex items-center gap-2">
+                                          <div className={`w-3 h-3 rounded-full flex-shrink-0 ${opt.color}`} />
+                                          <span>{opt.label}</span>
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {company.renewal_status === "reuniao_agendada" && company.renewal_meeting_date && (
+                                  <span className="text-xs text-purple-500 font-medium pl-1">
+                                    📅 {format(parseISO(company.renewal_meeting_date), "dd/MM/yyyy")}
+                                  </span>
+                                )}
                               </div>
-                              {company.renewal_status === "reuniao_agendada" && company.renewal_meeting_date && (
-                                <span className="text-xs text-muted-foreground pl-4">
-                                  {format(parseISO(company.renewal_meeting_date), "dd/MM/yyyy")}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </TableCell>
+                            ) : (
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-3 h-3 rounded-full flex-shrink-0 ${renewalStatusOption?.color || "bg-gray-400"}`} />
+                                  <span className="text-sm">{renewalStatusOption?.label || "Em negociação"}</span>
+                                </div>
+                                {company.renewal_status === "reuniao_agendada" && company.renewal_meeting_date && (
+                                  <span className="text-xs text-purple-500 font-medium pl-5">
+                                    📅 {format(parseISO(company.renewal_meeting_date), "dd/MM/yyyy")}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </TableCell>
                         <TableCell>
                           <Popover>
                             <PopoverTrigger asChild>
@@ -1114,6 +1124,7 @@ export default function OnboardingRenewalsPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </ScrollArea>
           </CardContent>
         </Card>
