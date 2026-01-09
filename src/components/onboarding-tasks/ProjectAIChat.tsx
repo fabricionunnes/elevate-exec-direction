@@ -9,6 +9,7 @@ import { Send, Bot, User, Loader2, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { GoogleDriveConnect } from "@/components/onboarding-tasks/GoogleDriveConnect";
 
 interface Message {
   id: string;
@@ -22,6 +23,7 @@ interface ProjectAIChatProps {
   companyId: string;
   projectName: string;
   companyName?: string;
+  documentsLink?: string | null;
 }
 
 export const ProjectAIChat = ({
@@ -29,6 +31,7 @@ export const ProjectAIChat = ({
   companyId,
   projectName,
   companyName,
+  documentsLink,
 }: ProjectAIChatProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -217,15 +220,28 @@ export const ProjectAIChat = ({
   return (
     <Card className="flex flex-col h-[600px]">
       <CardHeader className="pb-3 border-b">
-        <div className="flex items-center gap-2">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Sparkles className="h-5 w-5 text-primary" />
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <CardTitle className="text-lg">Assistente IA</CardTitle>
+              <p className="text-sm text-muted-foreground truncate">
+                Pergunte qualquer coisa sobre {companyName || projectName}
+              </p>
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-lg">Assistente IA</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Pergunte qualquer coisa sobre {companyName || projectName}
-            </p>
+
+          {/* Acesso rápido ao Drive (pra não ficar escondido no topo da página) */}
+          <div className="flex items-center gap-2">
+            <GoogleDriveConnect
+              projectId={projectId}
+              documentsLink={documentsLink ?? null}
+              onConnectionChange={() => {
+                // A conexão muda no backend; aqui só garantimos que o botão não some
+              }}
+            />
           </div>
         </div>
       </CardHeader>

@@ -1452,6 +1452,7 @@ const OnboardingProjectPage = () => {
               companyId={project.onboarding_company_id || ""}
               projectName={project.product_name}
               companyName={project.onboarding_company?.name}
+              documentsLink={project.documents_link}
             />
           </TabsContent>
 
