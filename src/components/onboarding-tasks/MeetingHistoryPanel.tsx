@@ -1245,7 +1245,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
               {/* Notes */}
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">O que foi tratado</span>
-                <div className="mt-2 p-4 bg-background border rounded-lg">
+                <div className="mt-2 p-4 bg-background border rounded-lg max-h-[250px] overflow-y-auto">
                   <p className="text-sm whitespace-pre-wrap">{selectedMeeting.notes}</p>
                 </div>
               </div>
