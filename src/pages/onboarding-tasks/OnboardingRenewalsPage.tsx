@@ -69,6 +69,7 @@ interface Company {
   renewal_plan_type: string | null;
   renewal_status: string | null;
   renewal_notes: string | null;
+  renewal_meeting_date?: string | null;
   payment_method?: string | null;
 }
 
@@ -76,6 +77,7 @@ const RENEWAL_STATUS_OPTIONS = [
   { value: "renovado", label: "Renovado", color: "bg-green-500" },
   { value: "encerrado", label: "Encerrado", color: "bg-red-500" },
   { value: "em_negociacao", label: "Em negociação", color: "bg-yellow-500" },
+  { value: "reuniao_agendada", label: "Reunião Agendada", color: "bg-purple-500" },
   { value: "vai_renovar", label: "Vai renovar", color: "bg-blue-500" },
   { value: "falta_pagar", label: "Falta pagar", color: "bg-orange-500" },
 ];
@@ -211,7 +213,12 @@ export default function OnboardingRenewalsPage() {
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companyRenewals, setCompanyRenewals] = useState<Renewal[]>([]);
-  
+
+  // Meeting date dialog (for renewal status: reuniao_agendada)
+  const [meetingDateDialogOpen, setMeetingDateDialogOpen] = useState(false);
+  const [meetingDateCompanyId, setMeetingDateCompanyId] = useState<string | null>(null);
+  const [meetingDateValue, setMeetingDateValue] = useState<string>("");
+
   const [renewForm, setRenewForm] = useState({
     newValue: "",
     termMonths: "12",
@@ -265,7 +272,7 @@ export default function OnboardingRenewalsPage() {
     // Fetch companies with contract info
     const { data: companiesData, error: companiesError } = await supabase
       .from("onboarding_companies")
-      .select("id, name, contract_value, contract_start_date, contract_end_date, status, segment, renewal_plan_type, renewal_status, renewal_notes, payment_method")
+      .select("id, name, contract_value, contract_start_date, contract_end_date, status, segment, renewal_plan_type, renewal_status, renewal_notes, renewal_meeting_date, payment_method")
       .order("contract_end_date", { ascending: true, nullsFirst: false });
 
     if (companiesError) {
@@ -523,9 +530,17 @@ export default function OnboardingRenewalsPage() {
 
   const handleRenewalStatusChange = async (companyId: string, status: string) => {
     if (!isAdmin) return;
-    
+
     const company = companies.find(c => c.id === companyId);
     if (!company) return;
+
+    // If status is "reuniao_agendada", ask for meeting date first
+    if (status === "reuniao_agendada") {
+      setMeetingDateCompanyId(companyId);
+      setMeetingDateValue(company.renewal_meeting_date || "");
+      setMeetingDateDialogOpen(true);
+      return;
+    }
 
     try {
       // If status is "renovado" and there's a value and plan, auto-update
@@ -534,7 +549,7 @@ export default function OnboardingRenewalsPage() {
         if (plan && plan.months) {
           const startDate = new Date();
           const newEndDate = format(addMonths(startDate, plan.months), "yyyy-MM-dd");
-          
+
           // Insert renewal record
           await supabase.from("onboarding_contract_renewals").insert({
             company_id: companyId,
@@ -549,30 +564,32 @@ export default function OnboardingRenewalsPage() {
 
           await supabase
             .from("onboarding_companies")
-            .update({ 
+            .update({
               renewal_status: status,
+              renewal_meeting_date: null,
               contract_start_date: format(startDate, "yyyy-MM-dd"),
-              contract_end_date: newEndDate 
+              contract_end_date: newEndDate
             })
             .eq("id", companyId);
 
-          setCompanies(prev => prev.map(c => 
-            c.id === companyId ? { 
-              ...c, 
-              renewal_status: status, 
+          setCompanies(prev => prev.map(c =>
+            c.id === companyId ? {
+              ...c,
+              renewal_status: status,
+              renewal_meeting_date: null,
               contract_start_date: format(startDate, "yyyy-MM-dd"),
-              contract_end_date: newEndDate 
+              contract_end_date: newEndDate
             } : c
           ));
         } else {
           // Monthly plan - no end date
           await supabase
             .from("onboarding_companies")
-            .update({ renewal_status: status, contract_end_date: null })
+            .update({ renewal_status: status, renewal_meeting_date: null, contract_end_date: null })
             .eq("id", companyId);
 
-          setCompanies(prev => prev.map(c => 
-            c.id === companyId ? { ...c, renewal_status: status, contract_end_date: null } : c
+          setCompanies(prev => prev.map(c =>
+            c.id === companyId ? { ...c, renewal_status: status, renewal_meeting_date: null, contract_end_date: null } : c
           ));
         }
         toast.success("Contrato renovado!");
@@ -585,7 +602,7 @@ export default function OnboardingRenewalsPage() {
         // Update company status to inactive
         await supabase
           .from("onboarding_companies")
-          .update({ status: "inactive", renewal_status: status })
+          .update({ status: "inactive", renewal_status: status, renewal_meeting_date: null })
           .eq("id", companyId);
 
         // Close all active projects for this company
@@ -595,8 +612,8 @@ export default function OnboardingRenewalsPage() {
           .eq("onboarding_company_id", companyId)
           .eq("status", "active");
 
-        setCompanies(prev => prev.map(c => 
-          c.id === companyId ? { ...c, renewal_status: status, status: "inactive" } : c
+        setCompanies(prev => prev.map(c =>
+          c.id === companyId ? { ...c, renewal_status: status, renewal_meeting_date: null, status: "inactive" } : c
         ));
         toast.success("Empresa encerrada e projetos fechados");
         fetchData();
@@ -606,18 +623,51 @@ export default function OnboardingRenewalsPage() {
       // Normal status update
       const { error } = await supabase
         .from("onboarding_companies")
-        .update({ renewal_status: status })
+        .update({ renewal_status: status, renewal_meeting_date: null })
         .eq("id", companyId);
 
       if (error) throw error;
-      
-      setCompanies(prev => prev.map(c => 
-        c.id === companyId ? { ...c, renewal_status: status } : c
+
+      setCompanies(prev => prev.map(c =>
+        c.id === companyId ? { ...c, renewal_status: status, renewal_meeting_date: null } : c
       ));
       toast.success("Status atualizado");
     } catch (error) {
       console.error("Error updating renewal status:", error);
       toast.error("Erro ao atualizar status");
+    }
+  };
+
+  const handleSaveMeetingDate = async () => {
+    if (!meetingDateCompanyId || !meetingDateValue) {
+      toast.error("Selecione a data da reunião");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("onboarding_companies")
+        .update({
+          renewal_status: "reuniao_agendada",
+          renewal_meeting_date: meetingDateValue,
+        })
+        .eq("id", meetingDateCompanyId);
+
+      if (error) throw error;
+
+      setCompanies(prev => prev.map(c =>
+        c.id === meetingDateCompanyId
+          ? { ...c, renewal_status: "reuniao_agendada", renewal_meeting_date: meetingDateValue }
+          : c
+      ));
+
+      toast.success("Reunião agendada");
+      setMeetingDateDialogOpen(false);
+      setMeetingDateCompanyId(null);
+      setMeetingDateValue("");
+    } catch (error) {
+      console.error("Error saving meeting date:", error);
+      toast.error("Erro ao salvar data da reunião");
     }
   };
 
@@ -955,35 +1005,49 @@ export default function OnboardingRenewalsPage() {
                         </TableCell>
                         <TableCell>
                           {isAdmin ? (
-                            <Select
-                              value={company.renewal_status || "em_negociacao"}
-                              onValueChange={(v) => handleRenewalStatusChange(company.id, v)}
-                            >
-                              <SelectTrigger className="w-[155px] h-9">
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                                    RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.color || "bg-gray-400"
-                                  }`} />
-                                  <span className="truncate">
-                                    {RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.label || "Em negociação"}
-                                  </span>
-                                </div>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {RENEWAL_STATUS_OPTIONS.map(opt => (
-                                  <SelectItem key={opt.value} value={opt.value}>
-                                    <div className="flex items-center gap-2">
-                                      <div className={`w-2.5 h-2.5 rounded-full ${opt.color}`} />
-                                      {opt.label}
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <div className="flex flex-col gap-1">
+                              <Select
+                                value={company.renewal_status || "em_negociacao"}
+                                onValueChange={(v) => handleRenewalStatusChange(company.id, v)}
+                              >
+                                <SelectTrigger className="w-[155px] h-9">
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                                      RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.color || "bg-gray-400"
+                                    }`} />
+                                    <span className="truncate">
+                                      {RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "em_negociacao"))?.label || "Em negociação"}
+                                    </span>
+                                  </div>
+                                </SelectTrigger>
+                                <SelectContent className="bg-popover z-50">
+                                  {RENEWAL_STATUS_OPTIONS.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                      <div className="flex items-center gap-2">
+                                        <div className={`w-2.5 h-2.5 rounded-full ${opt.color}`} />
+                                        {opt.label}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {company.renewal_status === "reuniao_agendada" && company.renewal_meeting_date && (
+                                <span className="text-xs text-muted-foreground pl-1">
+                                  {format(parseISO(company.renewal_meeting_date), "dd/MM/yyyy")}
+                                </span>
+                              )}
+                            </div>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <div className={`w-2.5 h-2.5 rounded-full ${renewalStatusOption?.color || "bg-gray-400"}`} />
-                              {renewalStatusOption?.label || "Em negociação"}
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2.5 h-2.5 rounded-full ${renewalStatusOption?.color || "bg-gray-400"}`} />
+                                {renewalStatusOption?.label || "Em negociação"}
+                              </div>
+                              {company.renewal_status === "reuniao_agendada" && company.renewal_meeting_date && (
+                                <span className="text-xs text-muted-foreground pl-4">
+                                  {format(parseISO(company.renewal_meeting_date), "dd/MM/yyyy")}
+                                </span>
+                              )}
                             </div>
                           )}
                         </TableCell>
@@ -1381,6 +1445,46 @@ export default function OnboardingRenewalsPage() {
               </div>
             )}
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Meeting Date Dialog */}
+      <Dialog open={meetingDateDialogOpen} onOpenChange={setMeetingDateDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Agendar Reunião</DialogTitle>
+            <DialogDescription>
+              Selecione a data da reunião para este contrato.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="renewal-meeting-date">Data da reunião</Label>
+              <Input
+                id="renewal-meeting-date"
+                type="date"
+                value={meetingDateValue}
+                onChange={(e) => setMeetingDateValue(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setMeetingDateDialogOpen(false);
+                setMeetingDateCompanyId(null);
+                setMeetingDateValue("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveMeetingDate} disabled={!meetingDateValue}>
+              Confirmar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
