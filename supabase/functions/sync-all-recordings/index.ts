@@ -254,6 +254,96 @@ Deno.serve(async (req) => {
             } catch (err) {
               console.error(`Error downloading transcript for meeting ${meeting.id}:`, err);
             }
+          } else if (meeting.recording_link) {
+            // No Drive transcript found, but has recording - use AssemblyAI
+            try {
+              const assemblyAiKey = Deno.env.get("ASSEMBLYAI_API_KEY");
+              if (assemblyAiKey) {
+                console.log(`Project ${project.id}: Transcribing recording for meeting ${meeting.id} via AssemblyAI`);
+                
+                // Extract file ID from Google Drive link
+                const driveMatch = meeting.recording_link.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (driveMatch) {
+                  const fileId = driveMatch[1];
+                  
+                  // Get file metadata for download URL
+                  const metaUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=webContentLink,size`;
+                  const metaResp = await fetch(metaUrl, {
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                  });
+                  
+                  if (metaResp.ok) {
+                    const meta = await metaResp.json();
+                    const fileSize = parseInt(meta.size || "0");
+                    
+                    // AssemblyAI limit ~100MB for URL submission
+                    if (fileSize <= 100 * 1024 * 1024 && meta.webContentLink) {
+                      // Submit to AssemblyAI
+                      const transcriptResp = await fetch("https://api.assemblyai.com/v2/transcript", {
+                        method: "POST",
+                        headers: {
+                          "Authorization": assemblyAiKey,
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          audio_url: meta.webContentLink,
+                          language_code: "pt",
+                          speaker_labels: true,
+                        }),
+                      });
+                      
+                      if (transcriptResp.ok) {
+                        const transcriptData = await transcriptResp.json();
+                        const transcriptId = transcriptData.id;
+                        
+                        // Poll for completion (max 5 min)
+                        let status = "queued";
+                        let attempts = 0;
+                        let finalTranscript = "";
+                        
+                        while ((status === "queued" || status === "processing") && attempts < 30) {
+                          await new Promise(r => setTimeout(r, 10000)); // 10s intervals
+                          
+                          const pollResp = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
+                            headers: { "Authorization": assemblyAiKey },
+                          });
+                          
+                          if (pollResp.ok) {
+                            const pollData = await pollResp.json();
+                            status = pollData.status;
+                            
+                            if (status === "completed") {
+                              if (pollData.utterances && pollData.utterances.length > 0) {
+                                finalTranscript = pollData.utterances
+                                  .map((u: { speaker: string; text: string }) => `[Participante ${u.speaker}]: ${u.text}`)
+                                  .join('\n\n');
+                              } else {
+                                finalTranscript = pollData.text || "";
+                              }
+                            } else if (status === "error") {
+                              console.error(`AssemblyAI error for meeting ${meeting.id}:`, pollData.error);
+                              break;
+                            }
+                          }
+                          attempts++;
+                        }
+                        
+                        if (finalTranscript && finalTranscript.length > 50) {
+                          await supabase
+                            .from("onboarding_meeting_notes")
+                            .update({ transcript: finalTranscript })
+                            .eq("id", meeting.id);
+                          totalTranscriptsSynced++;
+                          console.log(`Successfully transcribed meeting ${meeting.id} via AssemblyAI`);
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            } catch (err) {
+              console.error(`Error AI-transcribing meeting ${meeting.id}:`, err);
+            }
           }
         }
       }
