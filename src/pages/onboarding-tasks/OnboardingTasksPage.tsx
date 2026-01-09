@@ -885,7 +885,8 @@ const OnboardingTasksPage = () => {
   };
 
   const isAdmin = currentUserRole === "admin";
-  const canCreateCompany = currentUserRole === "admin" || currentUserRole === "cs";
+  const isCS = currentUserRole === "cs";
+  const canCreateCompany = isAdmin || isCS;
 
   if (loading) {
     return (
@@ -1177,17 +1178,19 @@ const OnboardingTasksPage = () => {
                     <Upload className="h-4 w-4 mr-2" />
                     Importar
                   </DropdownMenuItem>
-                  {isAdmin && (
+                  {(isAdmin || isCS) && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/renewals")}>
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Renovações
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/reschedule")}>
-                        <CalendarClock className="h-4 w-4 mr-2" />
-                        Reagendar Tarefas
-                      </DropdownMenuItem>
+                      {isAdmin && (
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/reschedule")}>
+                          <CalendarClock className="h-4 w-4 mr-2" />
+                          Reagendar Tarefas
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/activity-history")}>
                         <History className="h-4 w-4 mr-2" />
                         Histórico de Atividades
@@ -1202,11 +1205,15 @@ const OnboardingTasksPage = () => {
                           Módulo Financeiro
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setShowAnnouncementDialog(true)}>
-                        <Megaphone className="h-4 w-4 mr-2" />
-                        Enviar Comunicado
-                      </DropdownMenuItem>
+                      {isAdmin && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setShowAnnouncementDialog(true)}>
+                            <Megaphone className="h-4 w-4 mr-2" />
+                            Enviar Comunicado
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </>
                   )}
                 </DropdownMenuContent>
