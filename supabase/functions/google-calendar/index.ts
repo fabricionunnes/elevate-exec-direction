@@ -821,23 +821,25 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Get meetings without recording links
-      const { data: meetingsWithoutRecording } = await supabase
+      // Get meetings without recording links OR without notes (transcripts)
+      const { data: meetingsToSync } = await supabase
         .from("onboarding_meeting_notes")
-        .select("id, meeting_title, meeting_date, subject")
-        .eq("project_id", projectId)
-        .is("recording_link", null);
+        .select("id, meeting_title, meeting_date, subject, recording_link, notes")
+        .eq("project_id", projectId);
 
-      if (!meetingsWithoutRecording || meetingsWithoutRecording.length === 0) {
+      if (!meetingsToSync || meetingsToSync.length === 0) {
         return new Response(
-          JSON.stringify({ synced: 0, message: "No meetings need recordings" }),
+          JSON.stringify({ synced: 0, transcriptsSynced: 0, message: "No meetings to sync" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // Search for recordings
-      const searchQuery = "mimeType='video/mp4' and (name contains 'Meet Recording' or name contains 'Gravação')";
-      const driveUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(searchQuery)}&fields=files(id,name,createdTime,webViewLink)&orderBy=createdTime desc&pageSize=100`;
+      // Search for recordings AND transcripts
+      const recordingsQuery = "mimeType='video/mp4' and (name contains 'Meet Recording' or name contains 'Gravação')";
+      const transcriptQuery = "(mimeType='text/vtt' or mimeType='text/plain' or mimeType='application/x-subrip') and (name contains 'transcript' or name contains 'transcrição' or name contains 'Transcript')";
+      
+      const combinedQuery = `(${recordingsQuery}) or (${transcriptQuery})`;
+      const driveUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(combinedQuery)}&fields=files(id,name,createdTime,webViewLink,mimeType)&orderBy=createdTime desc&pageSize=200`;
 
       const driveResponse = await fetch(driveUrl, {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -865,6 +867,7 @@ Deno.serve(async (req) => {
            return new Response(
              JSON.stringify({
                synced: 0,
+               transcriptsSynced: 0,
                needsDriveApi: true,
                message:
                  "A API do Google Drive não está habilitada no seu projeto Google. Ative a Google Drive API e tente novamente.",
@@ -877,6 +880,7 @@ Deno.serve(async (req) => {
            return new Response(
              JSON.stringify({
                synced: 0,
+               transcriptsSynced: 0,
                needsDriveAuth: true,
                message:
                  "Para buscar gravações automaticamente, reconecte sua conta Google com permissão do Drive.",
@@ -886,51 +890,143 @@ Deno.serve(async (req) => {
          }
 
          return new Response(
-           JSON.stringify({ synced: 0, error: "Failed to fetch recordings" }),
+           JSON.stringify({ synced: 0, transcriptsSynced: 0, error: "Failed to fetch recordings" }),
            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
          );
        }
 
       const driveData = await driveResponse.json();
-      const recordings = driveData.files || [];
+      const allFiles = driveData.files || [];
+      
+      // Separate recordings and transcripts
+      const recordings = allFiles.filter((f: { mimeType: string }) => f.mimeType === 'video/mp4');
+      const transcripts = allFiles.filter((f: { mimeType: string }) => 
+        f.mimeType === 'text/vtt' || f.mimeType === 'text/plain' || f.mimeType === 'application/x-subrip'
+      );
 
-      let syncedCount = 0;
+      console.log(`Found ${recordings.length} recordings and ${transcripts.length} transcripts`);
 
-      // Try to match recordings with meetings by date
-      for (const meeting of meetingsWithoutRecording) {
+      let syncedRecordings = 0;
+      let syncedTranscripts = 0;
+
+      // Helper to parse VTT/SRT content to plain text
+      const parseSubtitleToText = (content: string, mimeType: string): string => {
+        const lines = content.split('\n');
+        const textLines: string[] = [];
+        
+        for (const line of lines) {
+          const trimmed = line.trim();
+          // Skip empty lines, timestamps, and metadata
+          if (!trimmed) continue;
+          if (trimmed === 'WEBVTT') continue;
+          if (/^\d+$/.test(trimmed)) continue; // SRT sequence numbers
+          if (/-->/.test(trimmed)) continue; // Timestamp lines
+          if (/^NOTE/.test(trimmed)) continue; // VTT notes
+          if (/^STYLE/.test(trimmed)) continue;
+          if (/^Kind:/.test(trimmed)) continue;
+          if (/^Language:/.test(trimmed)) continue;
+          
+          // Clean HTML tags if any
+          const cleanLine = trimmed.replace(/<[^>]*>/g, '');
+          if (cleanLine) {
+            textLines.push(cleanLine);
+          }
+        }
+        
+        return textLines.join('\n');
+      };
+
+      // Download transcript content
+      const downloadTranscript = async (fileId: string, mimeType: string): Promise<string | null> => {
+        try {
+          const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+          const downloadResponse = await fetch(downloadUrl, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          
+          if (!downloadResponse.ok) {
+            console.error(`Failed to download transcript ${fileId}:`, downloadResponse.status);
+            return null;
+          }
+          
+          const content = await downloadResponse.text();
+          return parseSubtitleToText(content, mimeType);
+        } catch (error) {
+          console.error(`Error downloading transcript ${fileId}:`, error);
+          return null;
+        }
+      };
+
+      // Match files with meetings by date
+      for (const meeting of meetingsToSync) {
         const meetingDate = new Date(meeting.meeting_date);
         const meetingDateStr = meetingDate.toISOString().split('T')[0];
+        const titleWords = (meeting.meeting_title || meeting.subject || "").toLowerCase().split(" ").filter((w: string) => w.length > 3);
 
-        // Find recording from same day
-        const matchingRecording = recordings.find((rec: { createdTime: string; name: string }) => {
-          const recDate = new Date(rec.createdTime);
-          const recDateStr = recDate.toISOString().split('T')[0];
-          
-          // Match by date and optionally by title similarity
-          if (recDateStr === meetingDateStr) {
-            // Check if recording name contains part of meeting title
-            const titleWords = (meeting.meeting_title || meeting.subject || "").toLowerCase().split(" ");
-            const recName = rec.name.toLowerCase();
-            return titleWords.some((word: string) => word.length > 3 && recName.includes(word)) || true; // Fallback to date match
+        // Try to match recording if not already linked
+        if (!meeting.recording_link) {
+          const matchingRecording = recordings.find((rec: { createdTime: string; name: string }) => {
+            const recDate = new Date(rec.createdTime);
+            const recDateStr = recDate.toISOString().split('T')[0];
+            
+            if (recDateStr === meetingDateStr) {
+              const recName = rec.name.toLowerCase();
+              return titleWords.some((word: string) => recName.includes(word)) || titleWords.length === 0;
+            }
+            return false;
+          });
+
+          if (matchingRecording) {
+            const { error: updateError } = await supabase
+              .from("onboarding_meeting_notes")
+              .update({ recording_link: matchingRecording.webViewLink })
+              .eq("id", meeting.id);
+
+            if (!updateError) {
+              syncedRecordings++;
+              console.log(`Matched recording for meeting: ${meeting.meeting_title}`);
+            }
           }
-          return false;
-        });
+        }
 
-        if (matchingRecording) {
-          const { error: updateError } = await supabase
-            .from("onboarding_meeting_notes")
-            .update({ recording_link: matchingRecording.webViewLink })
-            .eq("id", meeting.id);
+        // Try to match transcript if notes are empty or very short
+        const hasTranscript = meeting.notes && meeting.notes.length > 100;
+        if (!hasTranscript) {
+          const matchingTranscript = transcripts.find((t: { createdTime: string; name: string }) => {
+            const tDate = new Date(t.createdTime);
+            const tDateStr = tDate.toISOString().split('T')[0];
+            
+            if (tDateStr === meetingDateStr) {
+              const tName = t.name.toLowerCase();
+              return titleWords.some((word: string) => tName.includes(word)) || titleWords.length === 0;
+            }
+            return false;
+          });
 
-          if (!updateError) {
-            syncedCount++;
-            console.log(`Matched recording for meeting: ${meeting.meeting_title}`);
+          if (matchingTranscript) {
+            const transcriptText = await downloadTranscript(matchingTranscript.id, matchingTranscript.mimeType);
+            
+            if (transcriptText && transcriptText.length > 50) {
+              const { error: updateError } = await supabase
+                .from("onboarding_meeting_notes")
+                .update({ notes: transcriptText })
+                .eq("id", meeting.id);
+
+              if (!updateError) {
+                syncedTranscripts++;
+                console.log(`Matched transcript for meeting: ${meeting.meeting_title}`);
+              }
+            }
           }
         }
       }
 
       return new Response(
-        JSON.stringify({ synced: syncedCount, total: meetingsWithoutRecording.length }),
+        JSON.stringify({ 
+          synced: syncedRecordings, 
+          transcriptsSynced: syncedTranscripts,
+          total: meetingsToSync.length 
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
