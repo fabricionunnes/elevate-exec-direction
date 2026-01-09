@@ -12,9 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    const { companyId, projectId } = await req.json();
+    const { companyId, projectId, startDate, endDate, periodLabel, customPrompt } = await req.json();
 
     console.log("KPI Analysis request for company:", companyId, "project:", projectId);
+    console.log("Period:", startDate, "to", endDate, "label:", periodLabel);
+    if (customPrompt) console.log("Custom prompt:", customPrompt);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -58,15 +60,16 @@ serve(async (req) => {
       .eq("is_active", true)
       .order("name");
 
-    // 5. KPI Entries - last 60 days
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    // 5. KPI Entries - use provided period dates
+    const periodStart = startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const periodEnd = endDate || new Date().toISOString().split('T')[0];
     
     const { data: entries } = await supabase
       .from("kpi_entries")
       .select("*")
       .eq("company_id", companyId)
-      .gte("entry_date", sixtyDaysAgo.toISOString().split('T')[0])
+      .gte("entry_date", periodStart)
+      .lte("entry_date", periodEnd)
       .order("entry_date", { ascending: false });
 
     // 6. Tasks completed
@@ -172,9 +175,20 @@ serve(async (req) => {
       return `- ${monthNames[g.month - 1]}/${g.year}: Meta ${formatCurrency(g.sales_target)} | Resultado ${formatCurrency(g.sales_result)} | Performance: ${perf}%`;
     }).join("\n") || "Nenhum dado de metas registrado";
 
+    // Period label for context
+    const analyzedPeriod = periodLabel || "período selecionado";
+
     // Build the context
     const contextPrompt = `
 Você é um consultor comercial sênior especializado em análise de performance de vendas. Analise os dados a seguir e forneça insights estratégicos e acionáveis.
+
+${customPrompt ? `## SOLICITAÇÃO ESPECIAL DO USUÁRIO
+${customPrompt}
+
+Considere esta solicitação especial ao fazer sua análise.
+
+` : ''}## PERÍODO ANALISADO
+${analyzedPeriod} (${periodStart} a ${periodEnd})
 
 ## DADOS DA EMPRESA
 - Nome: ${company?.name || "N/A"}
@@ -185,7 +199,7 @@ Você é um consultor comercial sênior especializado em análise de performance
 - Ticket Médio: ${company?.average_ticket || "N/A"}
 - Taxa de Conversão: ${company?.conversion_rate || "N/A"}
 
-## KPIs CONFIGURADOS E RESULTADOS (últimos 60 dias)
+## KPIs CONFIGURADOS E RESULTADOS (${analyzedPeriod})
 ${kpiSummaries.map(kpi => `
 ### ${kpi.kpiName} (${kpi.periodicity})
 - Meta: ${kpi.kpiType === 'monetary' ? formatCurrency(kpi.target) : kpi.target}

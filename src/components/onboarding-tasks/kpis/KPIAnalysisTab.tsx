@@ -7,10 +7,10 @@ import { toast } from "sonner";
 import { 
   Sparkles, RefreshCw, Loader2, TrendingUp, Target, Users, Brain, Calendar, 
   Lightbulb, History, ChevronRight, AlertTriangle, CheckCircle2, TrendingDown,
-  MessageSquare, Zap, BarChart3, Trash2
+  MessageSquare, Zap, BarChart3, Trash2, CalendarDays
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { format } from "date-fns";
+import { format, subDays, subWeeks, subMonths, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -27,6 +27,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface KPIAnalysisTabProps {
   companyId: string;
@@ -46,6 +49,8 @@ interface ParsedSection {
   color: string;
 }
 
+type PeriodOption = "last_7_days" | "last_week" | "last_30_days" | "last_month" | "last_60_days" | "custom";
+
 export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) => {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [allAnalyses, setAllAnalyses] = useState<AnalysisResult[]>([]);
@@ -56,6 +61,8 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["resumo", "alertas"]));
   const [isAdmin, setIsAdmin] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>("last_30_days");
+  const [customPrompt, setCustomPrompt] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -174,6 +181,47 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
     });
   };
 
+  const getPeriodDates = (): { startDate: string; endDate: string; periodLabel: string } => {
+    const today = new Date();
+    let startDate: Date;
+    let endDate: Date = today;
+    let periodLabel: string;
+
+    switch (selectedPeriod) {
+      case "last_7_days":
+        startDate = subDays(today, 7);
+        periodLabel = "últimos 7 dias";
+        break;
+      case "last_week":
+        startDate = startOfWeek(subWeeks(today, 1), { weekStartsOn: 1 });
+        endDate = endOfWeek(subWeeks(today, 1), { weekStartsOn: 1 });
+        periodLabel = "semana passada";
+        break;
+      case "last_30_days":
+        startDate = subDays(today, 30);
+        periodLabel = "últimos 30 dias";
+        break;
+      case "last_month":
+        startDate = startOfMonth(subMonths(today, 1));
+        endDate = endOfMonth(subMonths(today, 1));
+        periodLabel = "mês passado";
+        break;
+      case "last_60_days":
+        startDate = subDays(today, 60);
+        periodLabel = "últimos 60 dias";
+        break;
+      default:
+        startDate = subDays(today, 30);
+        periodLabel = "últimos 30 dias";
+    }
+
+    return {
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0],
+      periodLabel,
+    };
+  };
+
   const generateAnalysis = async () => {
     if (!companyId || !projectId) {
       toast.error("Empresa ou projeto não encontrado");
@@ -182,6 +230,8 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
 
     setGenerating(true);
     setStreamedContent("");
+
+    const { startDate, endDate, periodLabel } = getPeriodDates();
 
     try {
       const response = await fetch(
@@ -192,7 +242,14 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ companyId, projectId }),
+          body: JSON.stringify({ 
+            companyId, 
+            projectId,
+            startDate,
+            endDate,
+            periodLabel,
+            customPrompt: customPrompt.trim() || undefined,
+          }),
         }
       );
 
@@ -429,7 +486,7 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
                   <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-primary/10 text-primary">IA</span>
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Avaliação automática dos KPIs com recomendações personalizadas
+                  Analise KPIs por período ou faça perguntas específicas
                 </p>
               </div>
             </div>
@@ -538,6 +595,23 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
                 </div>
               )}
 
+              {/* Period Selector */}
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                <Select value={selectedPeriod} onValueChange={(v) => setSelectedPeriod(v as PeriodOption)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Período" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="last_7_days">Últimos 7 dias</SelectItem>
+                    <SelectItem value="last_week">Semana passada</SelectItem>
+                    <SelectItem value="last_30_days">Últimos 30 dias</SelectItem>
+                    <SelectItem value="last_month">Mês passado</SelectItem>
+                    <SelectItem value="last_60_days">Últimos 60 dias</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button 
                 onClick={generateAnalysis} 
                 disabled={generating}
@@ -557,6 +631,22 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
                 )}
               </Button>
             </div>
+          </div>
+
+          {/* Custom Prompt Input */}
+          <div className="pt-2 border-t">
+            <Label htmlFor="customPrompt" className="text-sm text-muted-foreground flex items-center gap-2 mb-2">
+              <MessageSquare className="h-4 w-4" />
+              Pedido personalizado (opcional)
+            </Label>
+            <Textarea
+              id="customPrompt"
+              placeholder="Ex: Analise como foi a semana passada, foque no vendedor João, quero entender o motivo da queda nas vendas..."
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              className="resize-none h-20"
+              disabled={generating}
+            />
           </div>
         </CardHeader>
       </Card>
