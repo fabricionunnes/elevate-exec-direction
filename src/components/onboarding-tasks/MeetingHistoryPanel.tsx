@@ -444,6 +444,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
       const payload = response.data as
         | {
             synced?: number;
+            transcriptsSynced?: number;
             total?: number;
             needsDriveAuth?: boolean;
             needsDriveApi?: boolean;
@@ -465,15 +466,19 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
       }
 
       const synced = payload?.synced ?? 0;
+      const transcriptsSynced = payload?.transcriptsSynced ?? 0;
       const total = payload?.total ?? 0;
 
-      if (synced > 0) {
-        toast.success(`${synced} gravação(ões) vinculada(s) às reuniões`);
+      if (synced > 0 || transcriptsSynced > 0) {
+        const parts: string[] = [];
+        if (synced > 0) parts.push(`${synced} gravação(ões)`);
+        if (transcriptsSynced > 0) parts.push(`${transcriptsSynced} transcrição(ões)`);
+        toast.success(`${parts.join(" e ")} vinculada(s) às reuniões`);
       } else {
         toast.message(
           total > 0
-            ? "Nenhuma gravação encontrada ainda (pode levar um tempo para aparecer no Drive)."
-            : "Nenhuma reunião pendente de gravação para sincronizar."
+            ? "Nenhuma gravação/transcrição encontrada ainda (pode levar um tempo para aparecer no Drive)."
+            : "Nenhuma reunião pendente para sincronizar."
         );
       }
     } catch (error) {
