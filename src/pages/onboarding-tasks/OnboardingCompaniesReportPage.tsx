@@ -812,12 +812,17 @@ export default function OnboardingCompaniesReportPage() {
         </Card>
 
         {/* Table */}
-        <Card>
-          <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-480px)] min-h-[300px] sm:min-h-[400px]">
+        <Card className="overflow-hidden">
+          {/* Mobile hint for horizontal scrolling */}
+          <div className="sm:hidden px-4 py-2 text-[11px] text-muted-foreground border-b bg-muted/20">
+            Arraste a tabela para o lado para ver todas as colunas →
+          </div>
+
+          <ScrollArea className="h-[calc(100vh-520px)] sm:h-[calc(100vh-480px)] min-h-[320px] sm:min-h-[420px]">
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
+              <Table className="min-w-[1100px]">
+                <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+                  <TableRow className="border-b">
                     <TableHead 
                       className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
                       onClick={() => handleSort("name")}
@@ -828,7 +833,7 @@ export default function OnboardingCompaniesReportPage() {
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap hidden sm:table-cell"
+                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
                       onClick={() => handleSort("consultant_name")}
                     >
                       <div className="flex items-center">
@@ -837,7 +842,7 @@ export default function OnboardingCompaniesReportPage() {
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap hidden md:table-cell"
+                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
                       onClick={() => handleSort("contract_start_date")}
                     >
                       <div className="flex items-center">
@@ -846,7 +851,7 @@ export default function OnboardingCompaniesReportPage() {
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap hidden sm:table-cell"
+                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
                       onClick={() => handleSort("contract_end_date")}
                     >
                       <div className="flex items-center">
@@ -855,7 +860,7 @@ export default function OnboardingCompaniesReportPage() {
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap hidden lg:table-cell"
+                      className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap"
                       onClick={() => handleSort("contract_months")}
                     >
                       <div className="flex items-center justify-end">
@@ -868,13 +873,12 @@ export default function OnboardingCompaniesReportPage() {
                       onClick={() => handleSort("total_paid")}
                     >
                       <div className="flex items-center justify-end">
-                        <span className="hidden sm:inline">Valor Total</span>
-                        <span className="sm:hidden">Total</span>
+                        Valor Total
                         <SortIcon field="total_paid" />
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap hidden md:table-cell"
+                      className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap"
                       onClick={() => handleSort("avg_ticket")}
                     >
                       <div className="flex items-center justify-end">
@@ -902,7 +906,7 @@ export default function OnboardingCompaniesReportPage() {
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap hidden lg:table-cell"
+                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
                       onClick={() => handleSort("payment_method")}
                     >
                       <div className="flex items-center">
@@ -910,90 +914,113 @@ export default function OnboardingCompaniesReportPage() {
                         <SortIcon field="payment_method" />
                       </div>
                     </TableHead>
-                    <TableHead className="w-10 sm:w-12"></TableHead>
+                    <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
-              <TableBody>
-                {filteredCompanies.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={11} className="text-center py-6 sm:py-8 text-muted-foreground text-xs sm:text-sm">
-                      Nenhuma empresa encontrada
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredCompanies.map((company) => (
-                    <TableRow 
-                      key={company.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => navigate(`/onboarding-tasks/companies/${company.id}`)}
-                    >
-                      <TableCell className="font-medium text-xs sm:text-sm py-2 sm:py-4">
-                        <div className="flex flex-col">
-                          <span className="truncate max-w-[120px] sm:max-w-none">{company.name}</span>
-                          {/* Show consultant on mobile inline */}
-                          <span className="text-[10px] text-muted-foreground sm:hidden">{company.consultant_name || "—"}</span>
-                        </div>
+
+                <TableBody>
+                  {filteredCompanies.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={11} className="text-center py-8 text-muted-foreground text-xs sm:text-sm">
+                        Nenhuma empresa encontrada
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell text-xs sm:text-sm py-2 sm:py-4">{company.consultant_name || "—"}</TableCell>
-                      <TableCell className="hidden md:table-cell text-xs sm:text-sm py-2 sm:py-4">{formatDate(company.contract_start_date)}</TableCell>
-                      <TableCell className="hidden sm:table-cell text-xs sm:text-sm py-2 sm:py-4">{company.payment_method === "monthly" ? "—" : formatDate(company.contract_end_date)}</TableCell>
-                      <TableCell className="text-right hidden lg:table-cell text-xs sm:text-sm py-2 sm:py-4">{company.contract_months}</TableCell>
-                      <TableCell className="text-right font-medium text-green-500 text-xs sm:text-sm py-2 sm:py-4">
-                        {formatCurrency(company.total_paid)}
-                      </TableCell>
-                      <TableCell className="text-right text-blue-500 hidden md:table-cell text-xs sm:text-sm py-2 sm:py-4">
-                        {formatCurrency(company.avg_ticket)}/mês
-                      </TableCell>
-                      <TableCell className="py-2 sm:py-4">{getStatusBadge(company.status)}</TableCell>
-                      <TableCell className="py-2 sm:py-4">
-                        {company.health_score !== null ? (
-                          <div className="flex items-center gap-1.5">
-                            <Heart 
-                              className={`h-3.5 w-3.5 ${
+                    </TableRow>
+                  ) : (
+                    filteredCompanies.map((company, idx) => (
+                      <TableRow 
+                        key={company.id}
+                        className={`cursor-pointer ${idx % 2 === 0 ? "bg-muted/10" : "bg-background"} hover:bg-muted/40 transition-colors`}
+                        onClick={() => navigate(`/onboarding-tasks/companies/${company.id}`)}
+                      >
+                        <TableCell className="font-medium text-xs sm:text-sm py-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="truncate max-w-[360px]">{company.name}</span>
+                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                              <span>{company.consultant_name || "—"}</span>
+                              <span>•</span>
+                              <span>{getStatusBadge(company.status)}</span>
+                              <span>•</span>
+                              <span>
+                                {company.health_score !== null ? (
+                                  <span className="inline-flex items-center gap-1">
+                                    <Heart
+                                      className={`h-3 w-3 ${
+                                        company.health_score >= 80 ? "text-green-500" :
+                                        company.health_score >= 60 ? "text-yellow-500" :
+                                        company.health_score >= 40 ? "text-orange-500" :
+                                        "text-red-500"
+                                      }`}
+                                      fill="currentColor"
+                                    />
+                                    <span className="font-medium">{company.health_score}</span>
+                                  </span>
+                                ) : (
+                                  "—"
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs sm:text-sm py-3">{company.consultant_name || "—"}</TableCell>
+                        <TableCell className="text-xs sm:text-sm py-3">{formatDate(company.contract_start_date)}</TableCell>
+                        <TableCell className="text-xs sm:text-sm py-3">{company.payment_method === "monthly" ? "—" : formatDate(company.contract_end_date)}</TableCell>
+                        <TableCell className="text-right text-xs sm:text-sm py-3">{company.contract_months}</TableCell>
+                        <TableCell className="text-right font-medium text-green-500 text-xs sm:text-sm py-3">
+                          {formatCurrency(company.total_paid)}
+                        </TableCell>
+                        <TableCell className="text-right text-blue-500 text-xs sm:text-sm py-3">
+                          {formatCurrency(company.avg_ticket)}/mês
+                        </TableCell>
+                        <TableCell className="py-3">{getStatusBadge(company.status)}</TableCell>
+                        <TableCell className="py-3">
+                          {company.health_score !== null ? (
+                            <div className="flex items-center gap-1.5">
+                              <Heart 
+                                className={`h-3.5 w-3.5 ${
+                                  company.health_score >= 80 ? "text-green-500" :
+                                  company.health_score >= 60 ? "text-yellow-500" :
+                                  company.health_score >= 40 ? "text-orange-500" :
+                                  "text-red-500"
+                                }`}
+                                fill="currentColor"
+                              />
+                              <span className={`text-xs font-medium ${
                                 company.health_score >= 80 ? "text-green-500" :
                                 company.health_score >= 60 ? "text-yellow-500" :
                                 company.health_score >= 40 ? "text-orange-500" :
                                 "text-red-500"
-                              }`}
-                              fill="currentColor"
-                            />
-                            <span className={`text-xs font-medium ${
-                              company.health_score >= 80 ? "text-green-500" :
-                              company.health_score >= 60 ? "text-yellow-500" :
-                              company.health_score >= 40 ? "text-orange-500" :
-                              "text-red-500"
-                            }`}>
-                              {company.health_score}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell py-2 sm:py-4">
-                        {company.payment_method === "card" ? (
-                          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-[10px] sm:text-xs">Cartão</Badge>
-                        ) : company.payment_method === "monthly" ? (
-                          <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-[10px] sm:text-xs">Recorrência</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="py-2 sm:py-4">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 sm:h-8 sm:w-8"
-                          onClick={(e) => openEditDialog(company, e)}
-                        >
-                          <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                              }`}>
+                                {company.health_score}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3">
+                          {company.payment_method === "card" ? (
+                            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-[10px] sm:text-xs">Cartão</Badge>
+                          ) : company.payment_method === "monthly" ? (
+                            <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-[10px] sm:text-xs">Recorrência</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => openEditDialog(company, e)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </ScrollArea>
         </Card>
