@@ -547,10 +547,14 @@ const OnboardingTasksPage = () => {
     const currentDay = isCurrentMonth ? today.getDate() : daysInMonth;
     const timeElapsedPercent = currentDay / daysInMonth;
     
-    // Get company IDs that match the status filter
+    // Get company IDs that match the status filter (exclude inactive/closed companies)
+    const activeCompanyIds = new Set(
+      companies.filter(c => c.status !== "inactive" && c.status !== "closed").map(c => c.id)
+    );
+    
     const statusFilteredCompanyIds = filterStatus === "all" 
-      ? null 
-      : new Set(companies.filter(c => c.status === filterStatus).map(c => c.id));
+      ? activeCompanyIds 
+      : new Set(companies.filter(c => c.status === filterStatus && c.status !== "inactive" && c.status !== "closed").map(c => c.id));
     
     // Build a map of company_id to consultant_id for fallback lookup
     const companyConsultantMap = new Map(
@@ -558,9 +562,16 @@ const OnboardingTasksPage = () => {
     );
     
     // Build set of filtered project IDs based on consultant, service, and status filters
+    // Also exclude projects from inactive/closed companies
     const filteredProjectIdSet = new Set(
       allProjects
         .filter((project) => {
+          // Exclude projects from inactive/closed companies
+          const companyId = project.onboarding_company_id || project.company_id;
+          if (companyId && !activeCompanyIds.has(companyId)) {
+            return false;
+          }
+          
           // Check consultant: project's consultant OR company's consultant
           const companyConsultantId = project.onboarding_company_id 
             ? companyConsultantMap.get(project.onboarding_company_id)
@@ -575,8 +586,8 @@ const OnboardingTasksPage = () => {
             filterService === "all" || 
             project.product_id === filterService;
           
-          const matchesStatus = statusFilteredCompanyIds === null || 
-            (project.onboarding_company_id && statusFilteredCompanyIds.has(project.onboarding_company_id));
+          const matchesStatus = filterStatus === "all" || 
+            (companyId && statusFilteredCompanyIds.has(companyId));
           
           return matchesConsultant && matchesService && matchesStatus;
         })
