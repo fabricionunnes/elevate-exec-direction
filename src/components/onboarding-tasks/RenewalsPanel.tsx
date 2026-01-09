@@ -413,6 +413,37 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
     }
   };
 
+  // Update status directly from table dropdown
+  const handleInlineStatusChange = async (companyId: string, newStatus: string) => {
+    try {
+      // If status is "reuniao_agendada", we need to open a date picker dialog
+      if (newStatus === "reuniao_agendada") {
+        const company = companies.find(c => c.id === companyId);
+        if (company) {
+          openRenewalDialog(company);
+          setRenewalStatus("reuniao_agendada");
+        }
+        return;
+      }
+
+      const { error } = await supabase
+        .from("onboarding_companies")
+        .update({
+          renewal_status: newStatus,
+          renewal_meeting_date: null, // Clear meeting date when changing to non-meeting status
+        })
+        .eq("id", companyId);
+        
+      if (error) throw error;
+
+      toast.success("Status atualizado");
+      fetchData();
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Erro ao atualizar status");
+    }
+  };
+
   // Confirm renewal - updates contract with new values
   const handleConfirmRenewal = async () => {
     if (!selectedCompany || !staffId || !newStartDate) return;
@@ -662,7 +693,41 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
                           <TableCell className="text-right text-green-500 font-medium">
                             {formatCurrency(company.contract_value || 0)}
                           </TableCell>
-                          <TableCell>{getStatusBadge(company.renewal_status, company.renewal_meeting_date)}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <Select
+                                value={company.renewal_status || "pendente"}
+                                onValueChange={(value) => handleInlineStatusChange(company.id, value)}
+                              >
+                                <SelectTrigger className="w-[160px] h-8 text-xs">
+                                  <SelectValue>
+                                    {(() => {
+                                      const statusOption = RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "pendente"));
+                                      return (
+                                        <div className="flex items-center gap-2">
+                                          <div className={`w-2 h-2 rounded-full ${statusOption?.color || 'bg-yellow-500'}`} />
+                                          <span>{statusOption?.label || "Pendente"}</span>
+                                        </div>
+                                      );
+                                    })()}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="bg-popover z-50">
+                                  {RENEWAL_STATUS_OPTIONS.map((s) => (
+                                    <SelectItem key={s.value} value={s.value}>
+                                      <div className="flex items-center gap-2">
+                                        <div className={`w-2 h-2 rounded-full ${s.color}`} />
+                                        <span>{s.label}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {company.renewal_status === "reuniao_agendada" && company.renewal_meeting_date && (
+                                <span className="text-xs text-purple-500 pl-1">{formatDate(company.renewal_meeting_date)}</span>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               <Button
