@@ -144,6 +144,7 @@ Deno.serve(async (req) => {
 
       const config = integration.config as any;
       let accessToken = config?.access_token;
+      let companyId: string | null = config?.company_id || null;
 
       // Check if token needs refresh
       if (config?.expires_at && new Date(config.expires_at) < new Date()) {
@@ -152,19 +153,19 @@ Deno.serve(async (req) => {
         if (refreshResult.error) {
           await supabase
             .from("financial_integrations")
-            .update({ 
+            .update({
               sync_status: "error",
-              sync_error: "Token refresh failed"
+              sync_error: "Token refresh failed",
             })
             .eq("integration_type", "conta_azul");
-          
-          return new Response(
-            JSON.stringify({ error: "Token refresh failed" }),
-            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+
+          return new Response(JSON.stringify({ error: "Token refresh failed" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
         accessToken = refreshResult.access_token;
-        
+
         await supabase
           .from("financial_integrations")
           .update({
@@ -172,8 +173,25 @@ Deno.serve(async (req) => {
               ...config,
               access_token: refreshResult.access_token,
               refresh_token: refreshResult.refresh_token || config.refresh_token,
-              expires_at: new Date(Date.now() + refreshResult.expires_in * 1000).toISOString()
-            }
+              expires_at: new Date(Date.now() + refreshResult.expires_in * 1000).toISOString(),
+            },
+          })
+          .eq("integration_type", "conta_azul");
+      }
+
+      // Ensure we have a companyId (Conta Azul requires it for most APIs)
+      if (!companyId) {
+        console.log("No companyId stored, fetching companies...");
+        companyId = await fetchDefaultCompanyId(accessToken);
+        console.log("Using companyId:", companyId);
+
+        await supabase
+          .from("financial_integrations")
+          .update({
+            config: {
+              ...config,
+              company_id: companyId,
+            },
           })
           .eq("integration_type", "conta_azul");
       }
@@ -186,15 +204,15 @@ Deno.serve(async (req) => {
 
       try {
         // Sync pessoas (customers)
-        const pessoasResult = await syncCustomers(supabase, accessToken);
+        const pessoasResult = await syncCustomers(supabase, accessToken, companyId);
         console.log("Pessoas synced:", pessoasResult);
 
         // Sync receivables (contas a receber)
-        const receivablesResult = await syncReceivables(supabase, accessToken);
+        const receivablesResult = await syncReceivables(supabase, accessToken, companyId);
         console.log("Receivables synced:", receivablesResult);
 
         // Sync payables (contas a pagar)
-        const payablesResult = await syncPayables(supabase, accessToken);
+        const payablesResult = await syncPayables(supabase, accessToken, companyId);
         console.log("Payables synced:", payablesResult);
 
         await supabase
@@ -252,12 +270,12 @@ async function refreshToken(clientId: string, clientSecret: string, refreshToken
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      "Authorization": `Basic ${btoa(`${clientId}:${clientSecret}`)}`
+      "Authorization": `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
     },
     body: new URLSearchParams({
       grant_type: "refresh_token",
-      refresh_token: refreshToken
-    })
+      refresh_token: refreshToken,
+    }),
   });
 
   if (!response.ok) {
@@ -267,13 +285,43 @@ async function refreshToken(clientId: string, clientSecret: string, refreshToken
   return await response.json();
 }
 
-async function syncCustomers(supabase: any, accessToken: string) {
+async function fetchDefaultCompanyId(accessToken: string): Promise<string> {
+  const url = "https://api-v2.contaazul.com/v1/empresas?pagina=1&tamanho_pagina=100";
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Failed to fetch companies:", response.status, errorText);
+    throw new Error("Failed to fetch companies from Conta Azul");
+  }
+
+  const data = await response.json();
+  const companies = data.itens || data.items || [];
+  const first = companies[0];
+  const companyId = first?.id || first?.uuid || first?.empresa_id;
+
+  if (!companyId) {
+    console.error("Companies response sample:", JSON.stringify(first || data).substring(0, 800));
+    throw new Error("No companyId found in Conta Azul companies response");
+  }
+
+  return companyId;
+}
+
+
+async function syncCustomers(supabase: any, accessToken: string, companyId: string) {
   console.log("Fetching pessoas from Conta Azul API v2...");
   const response = await fetch("https://api-v2.contaazul.com/v1/pessoas?pagina=1&tamanho_pagina=100", {
-    headers: { 
+    headers: {
       "Authorization": `Bearer ${accessToken}`,
-      "Accept": "application/json"
-    }
+      "Accept": "application/json",
+      "X-ContaAzul-CompanyId": companyId,
+    },
   });
 
   console.log("Pessoas response status:", response.status);
@@ -298,28 +346,29 @@ async function syncCustomers(supabase: any, accessToken: string) {
   return { total: pessoas.length, synced };
 }
 
-async function syncReceivables(supabase: any, accessToken: string) {
+async function syncReceivables(supabase: any, accessToken: string, companyId: string) {
   console.log("Fetching contas a receber from Conta Azul API v2...");
-  
+
   // Get dates for a very wide range (5 years ago to 5 years ahead)
   const today = new Date();
   const fiveYearsAgo = new Date();
   fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
   const fiveYearsAhead = new Date();
   fiveYearsAhead.setFullYear(fiveYearsAhead.getFullYear() + 5);
-  
+
   const dateFrom = fiveYearsAgo.toISOString().split('T')[0];
   const dateTo = fiveYearsAhead.toISOString().split('T')[0];
-  
+
   const url = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/contas-a-receber/buscar?pagina=1&tamanho_pagina=100&data_vencimento_de=${dateFrom}&data_vencimento_ate=${dateTo}`;
-  
+
   console.log("Receivables URL:", url);
-  
+
   const response = await fetch(url, {
-    headers: { 
+    headers: {
       "Authorization": `Bearer ${accessToken}`,
-      "Accept": "application/json"
-    }
+      "Accept": "application/json",
+      "X-ContaAzul-CompanyId": companyId,
+    },
   });
 
   console.log("Receivables response status:", response.status);
@@ -379,28 +428,29 @@ async function syncReceivables(supabase: any, accessToken: string) {
   return { total: receivables.length, synced };
 }
 
-async function syncPayables(supabase: any, accessToken: string) {
+async function syncPayables(supabase: any, accessToken: string, companyId: string) {
   console.log("Fetching contas a pagar from Conta Azul API v2...");
-  
+
   // Get dates for a very wide range (5 years ago to 5 years ahead)
   const today = new Date();
   const fiveYearsAgo = new Date();
   fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
   const fiveYearsAhead = new Date();
   fiveYearsAhead.setFullYear(fiveYearsAhead.getFullYear() + 5);
-  
+
   const dateFrom = fiveYearsAgo.toISOString().split('T')[0];
   const dateTo = fiveYearsAhead.toISOString().split('T')[0];
-  
+
   const url = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar?pagina=1&tamanho_pagina=100&data_vencimento_de=${dateFrom}&data_vencimento_ate=${dateTo}`;
-  
+
   console.log("Payables URL:", url);
-  
+
   const response = await fetch(url, {
-    headers: { 
+    headers: {
       "Authorization": `Bearer ${accessToken}`,
-      "Accept": "application/json"
-    }
+      "Accept": "application/json",
+      "X-ContaAzul-CompanyId": companyId,
+    },
   });
 
   console.log("Payables response status:", response.status);
