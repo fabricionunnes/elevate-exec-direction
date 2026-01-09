@@ -150,15 +150,24 @@ async function transcribeRecordingWithAI(
       
       if (statusData.status === "completed") {
         console.log("AssemblyAI transcription completed");
+        console.log(`AssemblyAI result - text length: ${statusData.text?.length || 0}, utterances: ${statusData.utterances?.length || 0}`);
         
         // Format with speaker labels if available
         if (statusData.utterances && statusData.utterances.length > 0) {
-          return statusData.utterances
+          const formatted = statusData.utterances
             .map((u: { speaker: string; text: string }) => `**Participante ${u.speaker}:** ${u.text}`)
             .join("\n\n");
+          console.log(`Returning formatted transcript: ${formatted.length} chars`);
+          return formatted;
         }
         
-        return statusData.text || null;
+        if (statusData.text) {
+          console.log(`Returning raw text: ${statusData.text.length} chars`);
+          return statusData.text;
+        }
+        
+        console.log("AssemblyAI returned no text content");
+        return null;
       } else if (statusData.status === "error") {
         console.error("AssemblyAI transcription error:", statusData.error);
         return null;
