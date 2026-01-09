@@ -527,8 +527,15 @@ const DashboardMetrics = ({
 
     // Calculate aggregated metrics
     const companiesWithGoals = Array.from(companyMetricsMap.entries()).filter(([_, m]) => m.target > 0);
-    const companiesWithGoalsIds = new Set(companiesWithGoals.map(([id]) => id));
-    const noGoalCount = Array.from(filteredCompanyIds).filter(id => id && !companiesWithGoalsIds.has(id)).length;
+
+    // A empresa "tem meta" se existir QUALQUER KPI cadastrado para ela (independente do valor/periodicidade/tipo)
+    const companiesWithAnyKpiIds = new Set(
+      companyKpis
+        .filter(k => filteredCompanyIds.has(k.company_id))
+        .map(k => k.company_id)
+    );
+
+    const noGoalCount = Array.from(filteredCompanyIds).filter(id => id && !companiesWithAnyKpiIds.has(id)).length;
     
     const meetingGoal = companiesWithGoals.filter(([_, m]) => m.projectionPercent >= 100).length;
     const above70 = companiesWithGoals.filter(([_, m]) => m.projectionPercent >= 70 && m.projectionPercent < 100).length;
