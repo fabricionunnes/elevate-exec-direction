@@ -388,19 +388,17 @@ const OnboardingTasksPage = () => {
   const activeProjects = useMemo(() => {
     const active = allProjects.filter(p => p.status === "active");
     
-    // For consultants, also filter out projects from inactive companies
-    if (currentUserRole === "consultant") {
-      const activeCompanyIds = new Set(
-        companies.filter(c => c.status !== "inactive").map(c => c.id)
-      );
-      return active.filter(p => {
-        const companyId = getProjectCompanyId(p);
-        return !companyId || activeCompanyIds.has(companyId);
-      });
-    }
+    // Always filter out projects from inactive companies (for all roles)
+    const activeCompanyIds = new Set(
+      companies.filter(c => c.status !== "inactive" && c.status !== "closed").map(c => c.id)
+    );
     
-    return active;
-  }, [allProjects, currentUserRole, companies]);
+    return active.filter(p => {
+      const companyId = getProjectCompanyId(p);
+      // Include projects without company OR projects from active companies
+      return !companyId || activeCompanyIds.has(companyId);
+    });
+  }, [allProjects, companies]);
 
   const filteredProjectIds = useMemo(() => {
     // Start with active projects only
@@ -639,15 +637,15 @@ const OnboardingTasksPage = () => {
 
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
+      // Hide inactive and closed companies entirely from dashboard
+      if (company.status === "inactive" || company.status === "closed") {
+        return false;
+      }
+      
       // For consultants: only show companies where they are the consultant or CS
       if (currentUserRole === "consultant" && currentStaffId) {
         const isMyCompany = company.consultant_id === currentStaffId || company.cs_id === currentStaffId;
         if (!isMyCompany) return false;
-      }
-      
-      // For consultants: hide inactive companies entirely
-      if (currentUserRole === "consultant" && company.status === "inactive") {
-        return false;
       }
       
       // Text search filter
@@ -751,12 +749,8 @@ const OnboardingTasksPage = () => {
       return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
     });
     
-    // Sort: inactive companies appear last (only visible for admin/CS)
-    return filtered.sort((a, b) => {
-      if (a.status === "inactive" && b.status !== "inactive") return 1;
-      if (a.status !== "inactive" && b.status === "inactive") return -1;
-      return a.name.localeCompare(b.name);
-    });
+    // Sort alphabetically
+    return filtered.sort((a, b) => a.name.localeCompare(b.name));
   }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, projectsGoalRanges, currentUserRole, currentStaffId, allTasks]);
 
   // Reset to page 1 when filters change

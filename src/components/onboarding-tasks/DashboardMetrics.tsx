@@ -269,7 +269,7 @@ const DashboardMetrics = ({
     () => new Set(projects.map(getProjectCompanyId).filter(Boolean) as string[]),
     [projects]
   );
-  const filteredCompanies = useMemo(() => companies.filter(c => filteredCompanyIds.has(c.id)), [companies, filteredCompanyIds]);
+  const filteredCompanies = useMemo(() => companies.filter(c => filteredCompanyIds.has(c.id) && c.status !== "inactive" && c.status !== "closed"), [companies, filteredCompanyIds]);
 
   const companyMetrics = useMemo(() => {
     const today = startOfDay(new Date());
