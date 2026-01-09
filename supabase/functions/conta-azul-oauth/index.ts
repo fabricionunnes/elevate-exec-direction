@@ -27,8 +27,19 @@ Deno.serve(async (req) => {
     }
 
     const url = new URL(req.url);
-    const action = url.searchParams.get("action");
-
+    let action = url.searchParams.get("action");
+    let returnUrl = "";
+    
+    // Also check request body for action and returnUrl
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        if (body?.action) action = body.action;
+        if (body?.returnUrl) returnUrl = body.returnUrl;
+      } catch {
+        // No valid JSON body
+      }
+    }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get authorization header for user context
@@ -45,13 +56,8 @@ Deno.serve(async (req) => {
 
     // ACTION: Get OAuth authorization URL
     if (action === "get-auth-url") {
-      // Get return URL from request body or headers
-      let returnUrl = "";
-      try {
-        const body = await req.json();
-        returnUrl = body?.returnUrl || "";
-      } catch {
-        // No body, try headers
+      // Use returnUrl from body (already extracted above), fallback to headers
+      if (!returnUrl) {
         returnUrl = req.headers.get("origin") || req.headers.get("referer") || "";
       }
       
