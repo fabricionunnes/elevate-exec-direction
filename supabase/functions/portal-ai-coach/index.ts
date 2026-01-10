@@ -96,7 +96,7 @@ serve(async (req) => {
     let dataContext = "";
     
     if (planningData) {
-      const { plan, northStar, objectives, keyResults, rocks, checkins } = planningData;
+      const { plan, northStar, objectives, keyResults, rocks, checkins, strategies } = planningData;
       
       if (plan) {
         dataContext += `\n## Plano Estratégico ${plan.year} (v${plan.version})
@@ -113,6 +113,14 @@ serve(async (req) => {
           if (ctx.challenges) dataContext += `- Desafios: ${ctx.challenges}\n`;
           if (ctx.lastYearRevenue) dataContext += `- Faturamento Ano Passado: ${ctx.lastYearRevenue}\n`;
           if (ctx.nextYearGoal) dataContext += `- Meta Próximo Ano: ${ctx.nextYearGoal}\n`;
+          if (ctx.annual_revenue_goal) dataContext += `- Meta Anual: R$ ${Number(ctx.annual_revenue_goal).toLocaleString("pt-BR")}\n`;
+          if (ctx.main_bottleneck) dataContext += `- Gargalo Principal: ${ctx.main_bottleneck}\n`;
+          if (ctx.bottleneck_reason) dataContext += `- Motivo do Gargalo: ${ctx.bottleneck_reason}\n`;
+          if (ctx.leads_month) dataContext += `- Leads/mês: ${ctx.leads_month}\n`;
+          if (ctx.proposals_month) dataContext += `- Propostas/mês: ${ctx.proposals_month}\n`;
+          if (ctx.sales_month) dataContext += `- Vendas/mês: ${ctx.sales_month}\n`;
+          if (ctx.avg_ticket) dataContext += `- Ticket Médio: ${ctx.avg_ticket}\n`;
+          if (ctx.salespeople_count) dataContext += `- Vendedores: ${ctx.salespeople_count}\n`;
         }
       }
       
@@ -163,6 +171,54 @@ serve(async (req) => {
             });
           }
         });
+      }
+
+      // Add strategies context
+      if (strategies && strategies.length > 0) {
+        dataContext += `\n## Estratégias de Execução (${strategies.length} estratégias)\n`;
+        
+        const statusLabels: Record<string, string> = {
+          pending: "Pendente",
+          in_progress: "Em Andamento",
+          completed: "Concluída",
+          cancelled: "Cancelada"
+        };
+        
+        const categoryLabels: Record<string, string> = {
+          geral: "Geral",
+          vendas: "Vendas",
+          marketing: "Marketing",
+          operacoes: "Operações",
+          produto: "Produto",
+          pessoas: "Pessoas",
+          financeiro: "Financeiro",
+          tecnologia: "Tecnologia"
+        };
+        
+        strategies.forEach((strategy: any, i: number) => {
+          dataContext += `\n### Estratégia ${i + 1}: ${strategy.title}
+- Status: ${statusLabels[strategy.status] || strategy.status}
+- Categoria: ${categoryLabels[strategy.category] || strategy.category || "Geral"}
+- Prioridade: ${strategy.priority}
+${strategy.description ? `- Descrição: ${strategy.description}` : ""}
+${strategy.responsible ? `- Responsável: ${strategy.responsible}` : ""}
+${strategy.start_date ? `- Início: ${strategy.start_date}` : ""}
+${strategy.end_date ? `- Fim: ${strategy.end_date}` : ""}
+${strategy.expected_impact ? `- Impacto Esperado: ${strategy.expected_impact}` : ""}
+${strategy.success_metrics ? `- Métricas de Sucesso: ${strategy.success_metrics}` : ""}
+`;
+        });
+        
+        // Summary statistics
+        const pending = strategies.filter((s: any) => s.status === "pending").length;
+        const inProgress = strategies.filter((s: any) => s.status === "in_progress").length;
+        const completed = strategies.filter((s: any) => s.status === "completed").length;
+        
+        dataContext += `\n**Resumo das Estratégias:**
+- Pendentes: ${pending}
+- Em Andamento: ${inProgress}
+- Concluídas: ${completed}
+`;
       }
     }
 

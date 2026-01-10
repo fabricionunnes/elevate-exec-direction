@@ -66,6 +66,7 @@ interface PlanningData {
   keyResults: any[];
   rocks: any[];
   checkins: any[];
+  strategies: any[];
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portal-ai-coach`;
@@ -110,11 +111,13 @@ const PortalCoachPage = () => {
         const [
           { data: northStars },
           { data: objectives },
-          { data: rocks }
+          { data: rocks },
+          { data: strategies }
         ] = await Promise.all([
           supabase.from("portal_north_stars").select("*").eq("plan_id", plan.id),
           supabase.from("portal_objectives").select("*").eq("plan_id", plan.id).order("priority"),
-          supabase.from("portal_rocks").select("*").eq("plan_id", plan.id).order("quarter")
+          supabase.from("portal_rocks").select("*").eq("plan_id", plan.id).order("quarter"),
+          supabase.from("portal_strategies").select("*").eq("plan_id", plan.id).order("priority")
         ]);
 
         // Fetch key results for all objectives
@@ -149,7 +152,8 @@ const PortalCoachPage = () => {
           objectives: objectives || [],
           keyResults,
           rocks: rocks || [],
-          checkins
+          checkins,
+          strategies: strategies || []
         };
 
         setPlanningData(data);
@@ -176,6 +180,8 @@ Sou a **Diretora Estratégica da UNV**. `;
       const progress = data.objectives?.length || 0;
       const krsTotal = data.keyResults?.length || 0;
       const krsOnTrack = data.keyResults?.filter(kr => kr.status === 'on_track').length || 0;
+      const strategiesCount = data.strategies?.length || 0;
+      const strategiesInProgress = data.strategies?.filter(s => s.status === 'in_progress').length || 0;
       
       welcomeMessage += `Vejo que você tem um plano ${planStatus} para ${data.plan.year}.
 
@@ -183,6 +189,7 @@ Sou a **Diretora Estratégica da UNV**. `;
 - ${progress} objetivo(s) definido(s)
 - ${krsTotal} key result(s) sendo acompanhados
 - ${krsOnTrack} no caminho certo
+${strategiesCount > 0 ? `- ${strategiesCount} estratégia(s) cadastrada(s) (${strategiesInProgress} em andamento)` : ''}
 
 Como posso ajudar você hoje?`;
     } else {
