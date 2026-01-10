@@ -13,7 +13,8 @@ import {
   Plus,
   CheckCircle2,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Lightbulb
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -237,6 +238,13 @@ const PortalHomePage = () => {
                   <Button className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold">
                     Continuar Planejamento
                     <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+
+                <Link to={`/portal/app/estrategias/${activePlan.id}`}>
+                  <Button variant="outline" className="w-full mt-2 border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+                    <Lightbulb className="w-4 h-4 mr-2" />
+                    Ver Estratégias
                   </Button>
                 </Link>
               </CardContent>

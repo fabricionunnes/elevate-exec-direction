@@ -27,8 +27,10 @@ import {
   TrendingDown,
   AlertCircle,
   Plus,
-  Trash2
+  Trash2,
+  Lightbulb
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 interface PortalUser {
@@ -488,15 +490,26 @@ const PortalPlanningWizard = () => {
                 </p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={saveStep}
-              disabled={saving}
-              className="h-9 px-3 text-slate-400 hover:text-white"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            </Button>
+            <div className="flex items-center gap-1">
+              <Link to={`/portal/app/estrategias/${planId}`}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 px-3 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                >
+                  <Lightbulb className="w-4 h-4" />
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={saveStep}
+                disabled={saving}
+                className="h-9 px-3 text-slate-400 hover:text-white"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              </Button>
+            </div>
           </div>
           
           {/* Progress bar */}

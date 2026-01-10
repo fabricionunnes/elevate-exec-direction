@@ -54,6 +54,7 @@ import PortalCoachPage from "./pages/portal/PortalCoachPage";
 import PortalExecutionPage from "./pages/portal/PortalExecutionPage";
 import PortalAdminPage from "./pages/portal/PortalAdminPage";
 import PortalPlanVersionPage from "./pages/portal/PortalPlanVersionPage";
+import PortalStrategiesPage from "./pages/portal/PortalStrategiesPage";
 
 // Onboarding pages
 import OnboardingPage from "./pages/OnboardingPage";
@@ -201,6 +202,7 @@ const App = () => (
               <Route path="coach" element={<PortalCoachPage />} />
               <Route path="admin" element={<PortalAdminPage />} />
               <Route path="plano/:planId" element={<PortalPlanVersionPage />} />
+              <Route path="estrategias/:planId" element={<PortalStrategiesPage />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />

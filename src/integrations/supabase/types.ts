@@ -5399,6 +5399,71 @@ export type Database = {
           },
         ]
       }
+      portal_strategies: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          end_date: string | null
+          expected_impact: string | null
+          id: string
+          notes: string | null
+          plan_id: string
+          priority: number | null
+          resources_needed: string | null
+          responsible: string | null
+          start_date: string | null
+          status: string | null
+          success_metrics: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          expected_impact?: string | null
+          id?: string
+          notes?: string | null
+          plan_id: string
+          priority?: number | null
+          resources_needed?: string | null
+          responsible?: string | null
+          start_date?: string | null
+          status?: string | null
+          success_metrics?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          expected_impact?: string | null
+          id?: string
+          notes?: string | null
+          plan_id?: string
+          priority?: number | null
+          resources_needed?: string | null
+          responsible?: string | null
+          start_date?: string | null
+          status?: string | null
+          success_metrics?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_strategies_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "portal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_users: {
         Row: {
           company_id: string | null
