@@ -415,8 +415,8 @@ const PortalPlanningWizard = () => {
   };
 
   const removeKeyResult = (objIndex: number, krIndex: number) => {
-    if (formData.objectives[objIndex].key_results.length <= 2) {
-      toast.error("Mínimo de 2 Key Results por objetivo");
+    if (formData.objectives[objIndex].key_results.length <= 1) {
+      toast.error("Mínimo de 1 Key Result por objetivo");
       return;
     }
     const newObjectives = [...formData.objectives];
