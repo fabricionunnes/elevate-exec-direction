@@ -23,9 +23,16 @@ import {
   Clock,
   XCircle,
   PlayCircle,
-  MoreVertical
+  MoreVertical,
+  Flag,
+  AlertTriangle,
+  TrendingUp,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PortalUser {
   id: string;
@@ -58,6 +65,7 @@ interface PlanData {
   year: number;
   version: number;
   theme: string | null;
+  context_data: any;
   portal_companies: {
     name: string;
   };
@@ -93,6 +101,7 @@ const PortalStrategiesPage = () => {
   const [editingStrategy, setEditingStrategy] = useState<Strategy | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [viewingStrategy, setViewingStrategy] = useState<Strategy | null>(null);
+  const [showPlanContext, setShowPlanContext] = useState(true);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -117,10 +126,10 @@ const PortalStrategiesPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch plan info
+      // Fetch plan info with context_data
       const { data: planData, error: planError } = await supabase
         .from("portal_plans")
-        .select("id, year, version, theme, portal_companies(name)")
+        .select("id, year, version, theme, context_data, portal_companies(name)")
         .eq("id", planId)
         .single();
 
@@ -476,165 +485,320 @@ const PortalStrategiesPage = () => {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-white">
-              {editingStrategy ? "Editar Estratégia" : "Nova Estratégia"}
-            </DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Defina os detalhes da estratégia para seu planejamento
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="bg-slate-900 border-slate-800 max-w-5xl max-h-[90vh] overflow-hidden p-0">
+          <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
+            {/* Plan Context Sidebar */}
+            {plan?.context_data && (
+              <div className="md:w-80 border-b md:border-b-0 md:border-r border-slate-800 bg-slate-950/50">
+                <Collapsible open={showPlanContext} onOpenChange={setShowPlanContext}>
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="w-full flex items-center justify-between px-4 py-3 text-left border-b border-slate-800 rounded-none hover:bg-slate-800/50"
+                    >
+                      <span className="text-sm font-semibold text-amber-400 flex items-center gap-2">
+                        <Flag className="w-4 h-4" />
+                        Resumo do Planejamento
+                      </span>
+                      {showPlanContext ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <ScrollArea className="h-[300px] md:h-[calc(90vh-120px)]">
+                      <div className="p-4 space-y-4">
+                        {/* Meta Anual */}
+                        {plan.context_data.annual_revenue_goal && (
+                          <div className="space-y-1">
+                            <Label className="text-slate-500 text-xs uppercase flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" /> Meta Anual
+                            </Label>
+                            <p className="text-white font-semibold">
+                              R$ {Number(plan.context_data.annual_revenue_goal).toLocaleString("pt-BR")}
+                            </p>
+                            {plan.context_data.target_avg_ticket && (
+                              <p className="text-slate-400 text-xs">
+                                Ticket médio: R$ {Number(plan.context_data.target_avg_ticket).toLocaleString("pt-BR")}
+                              </p>
+                            )}
+                          </div>
+                        )}
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-slate-300">Título *</Label>
-              <Input
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Ex: Expandir para novos mercados"
-                className="bg-slate-800 border-slate-700 text-white"
-              />
-            </div>
+                        {/* Gargalo Principal */}
+                        {plan.context_data.main_bottleneck && (
+                          <div className="space-y-1">
+                            <Label className="text-slate-500 text-xs uppercase flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" /> Gargalo Principal
+                            </Label>
+                            <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+                              {plan.context_data.main_bottleneck === "leads" && "Geração de Leads"}
+                              {plan.context_data.main_bottleneck === "conversion" && "Conversão"}
+                              {plan.context_data.main_bottleneck === "team" && "Time Comercial"}
+                              {plan.context_data.main_bottleneck === "management" && "Gestão / Cobrança"}
+                              {plan.context_data.main_bottleneck === "process" && "Processo / CRM"}
+                            </Badge>
+                            {plan.context_data.bottleneck_reason && (
+                              <p className="text-slate-400 text-xs mt-1">
+                                {plan.context_data.bottleneck_reason}
+                              </p>
+                            )}
+                          </div>
+                        )}
 
-            <div className="space-y-2">
-              <Label className="text-slate-300">Descrição</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Descreva a estratégia em detalhes..."
-                className="bg-slate-800 border-slate-700 text-white min-h-[100px]"
-              />
-            </div>
+                        {/* Diagnóstico Comercial */}
+                        {(plan.context_data.leads_month || plan.context_data.proposals_month || plan.context_data.sales_month) && (
+                          <div className="space-y-1">
+                            <Label className="text-slate-500 text-xs uppercase">Diagnóstico Atual</Label>
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                              {plan.context_data.leads_month && (
+                                <div className="bg-slate-800/50 rounded p-2">
+                                  <p className="text-lg font-bold text-white">{plan.context_data.leads_month}</p>
+                                  <p className="text-xs text-slate-400">Leads/mês</p>
+                                </div>
+                              )}
+                              {plan.context_data.proposals_month && (
+                                <div className="bg-slate-800/50 rounded p-2">
+                                  <p className="text-lg font-bold text-white">{plan.context_data.proposals_month}</p>
+                                  <p className="text-xs text-slate-400">Propostas</p>
+                                </div>
+                              )}
+                              {plan.context_data.sales_month && (
+                                <div className="bg-slate-800/50 rounded p-2">
+                                  <p className="text-lg font-bold text-white">{plan.context_data.sales_month}</p>
+                                  <p className="text-xs text-slate-400">Vendas</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-slate-300">Categoria</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                        {/* Objetivos e KRs */}
+                        {plan.context_data.objectives && plan.context_data.objectives.length > 0 && (
+                          <div className="space-y-2">
+                            <Label className="text-slate-500 text-xs uppercase flex items-center gap-1">
+                              <Target className="w-3 h-3" /> Objetivos & KRs
+                            </Label>
+                            <div className="space-y-3">
+                              {plan.context_data.objectives.map((obj: any, idx: number) => (
+                                <div key={idx} className="bg-slate-800/30 rounded-lg p-3 space-y-2">
+                                  <p className="text-sm font-medium text-white">
+                                    {obj.title || `Objetivo ${idx + 1}`}
+                                  </p>
+                                  {obj.description && (
+                                    <p className="text-xs text-slate-400">{obj.description}</p>
+                                  )}
+                                  {obj.key_results && obj.key_results.length > 0 && (
+                                    <div className="space-y-1 mt-2">
+                                      {obj.key_results.map((kr: any, krIdx: number) => (
+                                        <div key={krIdx} className="flex items-start gap-2 text-xs">
+                                          <CheckCircle2 className="w-3 h-3 text-amber-400 mt-0.5 flex-shrink-0" />
+                                          <span className="text-slate-300">
+                                            {kr.title}
+                                            {kr.target && (
+                                              <span className="text-amber-400 ml-1">
+                                                (Meta: {kr.target} {kr.unit})
+                                              </span>
+                                            )}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Estrutura Necessária */}
+                        {(plan.context_data.ideal_salespeople_count || plan.context_data.needs_sales_management || plan.context_data.needs_process_crm) && (
+                          <div className="space-y-1">
+                            <Label className="text-slate-500 text-xs uppercase">Estrutura</Label>
+                            <div className="space-y-1 text-xs">
+                              {plan.context_data.ideal_salespeople_count && (
+                                <p className="text-slate-300">
+                                  • Vendedores ideais: <span className="text-white">{plan.context_data.ideal_salespeople_count}</span>
+                                </p>
+                              )}
+                              {plan.context_data.needs_sales_management === "yes" && (
+                                <p className="text-slate-300">• Precisa de gestão comercial</p>
+                              )}
+                              {plan.context_data.needs_process_crm === "yes" && (
+                                <p className="text-slate-300">• Precisa estruturar processos/CRM</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            )}
+
+            {/* Form Area */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <DialogHeader className="px-6 py-4 border-b border-slate-800">
+                <DialogTitle className="text-white">
+                  {editingStrategy ? "Editar Estratégia" : "Nova Estratégia"}
+                </DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  {plan?.context_data ? "Use o resumo do planejamento ao lado para criar estratégias alinhadas" : "Defina os detalhes da estratégia para seu planejamento"}
+                </DialogDescription>
+              </DialogHeader>
+
+              <ScrollArea className="flex-1 px-6">
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Título *</Label>
+                    <Input
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      placeholder="Ex: Expandir para novos mercados"
+                      className="bg-slate-800 border-slate-700 text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Descrição</Label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Descreva a estratégia em detalhes..."
+                      className="bg-slate-800 border-slate-700 text-white min-h-[100px]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Categoria</Label>
+                      <Select
+                        value={formData.category}
+                        onValueChange={(value) => setFormData({ ...formData, category: value })}
+                      >
+                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-900 border-slate-800">
+                          {CATEGORIES.map((cat) => (
+                            <SelectItem key={cat.value} value={cat.value} className="text-slate-300">
+                              {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Prioridade</Label>
+                      <Select
+                        value={formData.priority.toString()}
+                        onValueChange={(value) => setFormData({ ...formData, priority: parseInt(value) })}
+                      >
+                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-900 border-slate-800">
+                          {[1, 2, 3, 4, 5].map((p) => (
+                            <SelectItem key={p} value={p.toString()} className="text-slate-300">
+                              {p} - {p === 1 ? "Crítica" : p === 2 ? "Alta" : p === 3 ? "Média" : p === 4 ? "Baixa" : "Opcional"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Responsável</Label>
+                    <Input
+                      value={formData.responsible}
+                      onChange={(e) => setFormData({ ...formData, responsible: e.target.value })}
+                      placeholder="Nome do responsável"
+                      className="bg-slate-800 border-slate-700 text-white"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Data Início</Label>
+                      <Input
+                        type="date"
+                        value={formData.start_date}
+                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                        className="bg-slate-800 border-slate-700 text-white"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Data Fim</Label>
+                      <Input
+                        type="date"
+                        value={formData.end_date}
+                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                        className="bg-slate-800 border-slate-700 text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Impacto Esperado</Label>
+                    <Input
+                      value={formData.expected_impact}
+                      onChange={(e) => setFormData({ ...formData, expected_impact: e.target.value })}
+                      placeholder="Ex: Aumento de 20% no faturamento"
+                      className="bg-slate-800 border-slate-700 text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Recursos Necessários</Label>
+                    <Textarea
+                      value={formData.resources_needed}
+                      onChange={(e) => setFormData({ ...formData, resources_needed: e.target.value })}
+                      placeholder="Liste os recursos necessários..."
+                      className="bg-slate-800 border-slate-700 text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Métricas de Sucesso</Label>
+                    <Input
+                      value={formData.success_metrics}
+                      onChange={(e) => setFormData({ ...formData, success_metrics: e.target.value })}
+                      placeholder="Como medir o sucesso desta estratégia"
+                      className="bg-slate-800 border-slate-700 text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Notas Adicionais</Label>
+                    <Textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Observações ou notas..."
+                      className="bg-slate-800 border-slate-700 text-white"
+                    />
+                  </div>
+                </div>
+              </ScrollArea>
+
+              <DialogFooter className="px-6 py-4 border-t border-slate-800">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setDialogOpen(false)}
+                  className="border-slate-700 text-slate-300"
                 >
-                  <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800">
-                    {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value} className="text-slate-300">
-                        {cat.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-slate-300">Prioridade</Label>
-                <Select
-                  value={formData.priority.toString()}
-                  onValueChange={(value) => setFormData({ ...formData, priority: parseInt(value) })}
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleSave}
+                  className="bg-amber-500 hover:bg-amber-600 text-slate-950"
                 >
-                  <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800">
-                    {[1, 2, 3, 4, 5].map((p) => (
-                      <SelectItem key={p} value={p.toString()} className="text-slate-300">
-                        {p} - {p === 1 ? "Crítica" : p === 2 ? "Alta" : p === 3 ? "Média" : p === 4 ? "Baixa" : "Opcional"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-slate-300">Responsável</Label>
-              <Input
-                value={formData.responsible}
-                onChange={(e) => setFormData({ ...formData, responsible: e.target.value })}
-                placeholder="Nome do responsável"
-                className="bg-slate-800 border-slate-700 text-white"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-slate-300">Data Início</Label>
-                <Input
-                  type="date"
-                  value={formData.start_date}
-                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                  className="bg-slate-800 border-slate-700 text-white"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-slate-300">Data Fim</Label>
-                <Input
-                  type="date"
-                  value={formData.end_date}
-                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                  className="bg-slate-800 border-slate-700 text-white"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-slate-300">Impacto Esperado</Label>
-              <Input
-                value={formData.expected_impact}
-                onChange={(e) => setFormData({ ...formData, expected_impact: e.target.value })}
-                placeholder="Ex: Aumento de 20% no faturamento"
-                className="bg-slate-800 border-slate-700 text-white"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-slate-300">Recursos Necessários</Label>
-              <Textarea
-                value={formData.resources_needed}
-                onChange={(e) => setFormData({ ...formData, resources_needed: e.target.value })}
-                placeholder="Liste os recursos necessários..."
-                className="bg-slate-800 border-slate-700 text-white"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-slate-300">Métricas de Sucesso</Label>
-              <Input
-                value={formData.success_metrics}
-                onChange={(e) => setFormData({ ...formData, success_metrics: e.target.value })}
-                placeholder="Como medir o sucesso desta estratégia"
-                className="bg-slate-800 border-slate-700 text-white"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-slate-300">Notas Adicionais</Label>
-              <Textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Observações ou notas..."
-                className="bg-slate-800 border-slate-700 text-white"
-              />
+                  {editingStrategy ? "Salvar Alterações" : "Adicionar Estratégia"}
+                </Button>
+              </DialogFooter>
             </div>
           </div>
-
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setDialogOpen(false)}
-              className="border-slate-700 text-slate-300"
-            >
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleSave}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950"
-            >
-              {editingStrategy ? "Salvar Alterações" : "Adicionar Estratégia"}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
