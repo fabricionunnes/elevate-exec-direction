@@ -92,6 +92,7 @@ const PortalStrategiesPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStrategy, setEditingStrategy] = useState<Strategy | null>(null);
   const [filter, setFilter] = useState<string>("all");
+  const [viewingStrategy, setViewingStrategy] = useState<Strategy | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -365,7 +366,11 @@ const PortalStrategiesPage = () => {
             const statusConfig = STATUS_CONFIG[strategy.status as keyof typeof STATUS_CONFIG];
 
             return (
-              <Card key={strategy.id} className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-colors">
+              <Card 
+                key={strategy.id} 
+                className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-colors cursor-pointer"
+                onClick={() => setViewingStrategy(strategy)}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -420,7 +425,12 @@ const PortalStrategiesPage = () => {
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-slate-400 hover:text-white"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -625,6 +635,127 @@ const PortalStrategiesPage = () => {
               {editingStrategy ? "Salvar Alterações" : "Adicionar Estratégia"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Strategy Detail Dialog */}
+      <Dialog open={!!viewingStrategy} onOpenChange={(open) => !open && setViewingStrategy(null)}>
+        <DialogContent className="bg-slate-900 border-slate-800 max-w-2xl max-h-[90vh] overflow-y-auto">
+          {viewingStrategy && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <Badge className={STATUS_CONFIG[viewingStrategy.status as keyof typeof STATUS_CONFIG]?.color}>
+                    {(() => {
+                      const StatusIcon = STATUS_CONFIG[viewingStrategy.status as keyof typeof STATUS_CONFIG]?.icon || Clock;
+                      return <StatusIcon className="w-3 h-3 mr-1" />;
+                    })()}
+                    {STATUS_CONFIG[viewingStrategy.status as keyof typeof STATUS_CONFIG]?.label}
+                  </Badge>
+                  <Badge variant="outline" className="border-slate-700 text-slate-400">
+                    {getCategoryLabel(viewingStrategy.category || "geral")}
+                  </Badge>
+                  <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                    Prioridade {viewingStrategy.priority}
+                  </Badge>
+                </div>
+                <DialogTitle className="text-xl text-white">
+                  {viewingStrategy.title}
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                {viewingStrategy.description && (
+                  <div className="space-y-1">
+                    <Label className="text-slate-500 text-xs uppercase">Descrição</Label>
+                    <p className="text-slate-300">{viewingStrategy.description}</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  {viewingStrategy.responsible && (
+                    <div className="space-y-1">
+                      <Label className="text-slate-500 text-xs uppercase flex items-center gap-1">
+                        <User className="w-3 h-3" /> Responsável
+                      </Label>
+                      <p className="text-white">{viewingStrategy.responsible}</p>
+                    </div>
+                  )}
+
+                  {(viewingStrategy.start_date || viewingStrategy.end_date) && (
+                    <div className="space-y-1">
+                      <Label className="text-slate-500 text-xs uppercase flex items-center gap-1">
+                        <Calendar className="w-3 h-3" /> Período
+                      </Label>
+                      <p className="text-white">
+                        {viewingStrategy.start_date && new Date(viewingStrategy.start_date).toLocaleDateString("pt-BR")}
+                        {viewingStrategy.start_date && viewingStrategy.end_date && " → "}
+                        {viewingStrategy.end_date && new Date(viewingStrategy.end_date).toLocaleDateString("pt-BR")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {viewingStrategy.expected_impact && (
+                  <div className="space-y-1">
+                    <Label className="text-slate-500 text-xs uppercase flex items-center gap-1">
+                      <Target className="w-3 h-3" /> Impacto Esperado
+                    </Label>
+                    <p className="text-slate-300">{viewingStrategy.expected_impact}</p>
+                  </div>
+                )}
+
+                {viewingStrategy.resources_needed && (
+                  <div className="space-y-1">
+                    <Label className="text-slate-500 text-xs uppercase">Recursos Necessários</Label>
+                    <p className="text-slate-300 whitespace-pre-wrap">{viewingStrategy.resources_needed}</p>
+                  </div>
+                )}
+
+                {viewingStrategy.success_metrics && (
+                  <div className="space-y-1">
+                    <Label className="text-slate-500 text-xs uppercase">Métricas de Sucesso</Label>
+                    <p className="text-slate-300">{viewingStrategy.success_metrics}</p>
+                  </div>
+                )}
+
+                {viewingStrategy.notes && (
+                  <div className="space-y-1">
+                    <Label className="text-slate-500 text-xs uppercase">Notas</Label>
+                    <p className="text-slate-300 whitespace-pre-wrap">{viewingStrategy.notes}</p>
+                  </div>
+                )}
+
+                <div className="text-xs text-slate-600 pt-2 border-t border-slate-800">
+                  Criado em {new Date(viewingStrategy.created_at).toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric"
+                  })}
+                </div>
+              </div>
+
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setViewingStrategy(null)}
+                  className="border-slate-700 text-slate-300"
+                >
+                  Fechar
+                </Button>
+                <Button 
+                  onClick={() => {
+                    openEditDialog(viewingStrategy);
+                    setViewingStrategy(null);
+                  }}
+                  className="bg-amber-500 hover:bg-amber-600 text-slate-950"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Editar Estratégia
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
