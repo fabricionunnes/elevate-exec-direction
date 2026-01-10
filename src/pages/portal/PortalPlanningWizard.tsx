@@ -317,56 +317,10 @@ const PortalPlanningWizard = () => {
     }
   };
 
-  // Validações por etapa
-  const validateStep = (step: number): { valid: boolean; message?: string } => {
-    switch (step) {
-      case 1:
-        if (!formData.leads_month || !formData.proposals_month || !formData.sales_month || 
-            !formData.avg_ticket || !formData.salespeople_count) {
-          return { valid: false, message: "Preencha todos os campos obrigatórios do diagnóstico" };
-        }
-        return { valid: true };
-      case 2:
-        if (!formData.annual_revenue_goal) {
-          return { valid: false, message: "Defina a meta anual de faturamento" };
-        }
-        return { valid: true };
-      case 3:
-        if (!formData.main_bottleneck) {
-          return { valid: false, message: "Selecione o gargalo principal" };
-        }
-        return { valid: true };
-      case 5:
-        if (formData.objectives.length === 0) {
-          return { valid: false, message: "Adicione pelo menos 1 objetivo" };
-        }
-        if (formData.objectives.length > 3) {
-          return { valid: false, message: "Máximo de 3 objetivos permitido" };
-        }
-        for (const obj of formData.objectives) {
-          if (obj.key_results.length < 2 || obj.key_results.length > 3) {
-            return { valid: false, message: "Cada objetivo deve ter de 2 a 3 Key Results" };
-          }
-          for (const kr of obj.key_results) {
-            if (!kr.unit || !kr.target || !kr.owner) {
-              return { valid: false, message: "Cada KR deve ter unidade, meta e dono" };
-            }
-          }
-        }
-        return { valid: true };
-      case 7:
-        if (!formData.has_weekly_meeting || !formData.review_frequency) {
-          return { valid: false, message: "Defina a rotina de gestão" };
-        }
-        return { valid: true };
-      case 8:
-        if (!formData.commercial_owner || !formData.first_action_after_planning) {
-          return { valid: false, message: "Preencha os campos de governança" };
-        }
-        return { valid: true };
-      default:
-        return { valid: true };
-    }
+  // Validações por etapa - campos não são obrigatórios, apenas salva e avança
+  const validateStep = (_step: number): { valid: boolean; message?: string } => {
+    // Nenhuma validação obrigatória - usuário pode avançar livremente
+    return { valid: true };
   };
 
   const nextStep = async () => {
