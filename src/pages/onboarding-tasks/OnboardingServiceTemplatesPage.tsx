@@ -67,6 +67,8 @@ export default function OnboardingServiceTemplatesPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<TaskTemplate | null>(null);
+  const [editingPhaseOrder, setEditingPhaseOrder] = useState<string | null>(null);
+  const [tempPhaseOrder, setTempPhaseOrder] = useState<number>(1);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -295,6 +297,43 @@ export default function OnboardingServiceTemplatesPage() {
     }
   };
 
+  const handlePhaseOrderClick = (phase: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentOrder = templates.find(t => t.phase === phase)?.phase_order || 1;
+    setTempPhaseOrder(currentOrder);
+    setEditingPhaseOrder(phase);
+  };
+
+  const handlePhaseOrderSave = async (phase: string) => {
+    try {
+      // Update all templates in this phase with the new order
+      const templatesInPhase = templates.filter(t => t.phase === phase);
+      for (const template of templatesInPhase) {
+        const { error } = await supabase
+          .from('onboarding_task_templates')
+          .update({ phase_order: tempPhaseOrder })
+          .eq('id', template.id);
+        
+        if (error) throw error;
+      }
+      
+      toast.success(`Ordem da fase "${phase}" atualizada para ${tempPhaseOrder}`);
+      setEditingPhaseOrder(null);
+      fetchTemplates(service!.id, service!.slug);
+    } catch (error) {
+      console.error('Error updating phase order:', error);
+      toast.error('Erro ao atualizar ordem da fase');
+    }
+  };
+
+  const handlePhaseOrderKeyDown = (e: React.KeyboardEvent, phase: string) => {
+    if (e.key === 'Enter') {
+      handlePhaseOrderSave(phase);
+    } else if (e.key === 'Escape') {
+      setEditingPhaseOrder(null);
+    }
+  };
+
   // Extract unique phases from templates, ordered by phase_order
   const uniquePhases = [...new Set(templates.map(t => t.phase).filter(Boolean))]
     .sort((a, b) => {
@@ -367,12 +406,35 @@ export default function OnboardingServiceTemplatesPage() {
         </div>
 
         <Accordion type="multiple" defaultValue={uniquePhases} className="space-y-4">
-          {uniquePhases.map(phase => (
+          {uniquePhases.map(phase => {
+            const phaseOrder = templates.find(t => t.phase === phase)?.phase_order || 1;
+            return (
             <AccordionItem key={phase} value={phase} className="border rounded-lg px-4">
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-3">
                   <span className="font-semibold">{phase}</span>
-                  <Badge variant="secondary">{groupedTemplates[phase]?.length || 0}</Badge>
+                  {editingPhaseOrder === phase ? (
+                    <Input
+                      type="number"
+                      min={1}
+                      value={tempPhaseOrder}
+                      onChange={e => setTempPhaseOrder(parseInt(e.target.value) || 1)}
+                      onKeyDown={e => handlePhaseOrderKeyDown(e, phase)}
+                      onBlur={() => handlePhaseOrderSave(phase)}
+                      onClick={e => e.stopPropagation()}
+                      className="w-16 h-7 text-center"
+                      autoFocus
+                    />
+                  ) : (
+                    <Badge 
+                      variant="outline" 
+                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                      onClick={(e) => handlePhaseOrderClick(phase, e)}
+                      title="Clique para editar a ordem"
+                    >
+                      {phaseOrder}
+                    </Badge>
+                  )}
                 </div>
               </AccordionTrigger>
               <AccordionContent>
@@ -453,7 +515,8 @@ export default function OnboardingServiceTemplatesPage() {
                 </div>
               </AccordionContent>
             </AccordionItem>
-          ))}
+          )})}
+
 
           {unassignedTemplates.length > 0 && (
             <AccordionItem value="unassigned" className="border rounded-lg px-4">
