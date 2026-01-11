@@ -210,12 +210,13 @@ export const ClientMetricsView = ({ projectId }: ClientMetricsViewProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Sales Comparison Chart - visible to all users */}
+      {/* Sales Comparison Chart - visible to all users, but AI analysis hidden for clients */}
       {companyId && (
         <SalesComparisonChart 
           companyId={companyId}
           projectId={projectId}
           companyName={companyName}
+          showAIAnalysis={false}
         />
       )}
 
