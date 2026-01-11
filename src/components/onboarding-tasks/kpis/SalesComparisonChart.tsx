@@ -41,6 +41,7 @@ interface SalesComparisonChartProps {
   currentMonthRevenue?: number;
   refreshKey?: number;
   companyName?: string;
+  showAIAnalysis?: boolean;
 }
 
 export const SalesComparisonChart = ({ 
@@ -49,7 +50,8 @@ export const SalesComparisonChart = ({
   contractStartDate, 
   currentMonthRevenue = 0,
   refreshKey = 0,
-  companyName = ""
+  companyName = "",
+  showAIAnalysis = true
 }: SalesComparisonChartProps) => {
   const [historyData, setHistoryData] = useState<SalesHistoryEntry[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
@@ -203,12 +205,12 @@ Empresa: "${companyName || 'cliente'}".`;
     }
   };
 
-  // Auto-generate analysis when there's growth
+  // Auto-generate analysis when there's growth (staff only)
   useEffect(() => {
-    if (hasGrowth && preUnvData.length > 0 && postUnvData.length > 0 && !analysisGenerated && !aiLoading) {
+    if (showAIAnalysis && hasGrowth && preUnvData.length > 0 && postUnvData.length > 0 && !analysisGenerated && !aiLoading) {
       generateAIAnalysis();
     }
-  }, [hasGrowth, preUnvData.length, postUnvData.length, analysisGenerated]);
+  }, [showAIAnalysis, hasGrowth, preUnvData.length, postUnvData.length, analysisGenerated]);
 
   if (loading) {
     return null;
@@ -356,8 +358,8 @@ Empresa: "${companyName || 'cliente'}".`;
           </div>
         </div>
 
-        {/* AI Analysis - Only show when there's growth (positioned below the chart) */}
-        {hasGrowth && preUnvData.length > 0 && postUnvData.length > 0 && (
+        {/* AI Analysis - Only show when there's growth and showAIAnalysis is true (staff only) */}
+        {showAIAnalysis && hasGrowth && preUnvData.length > 0 && postUnvData.length > 0 && (
           <Card className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-primary/20">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
@@ -372,7 +374,7 @@ Empresa: "${companyName || 'cliente'}".`;
                       Analisando dados...
                     </div>
                   ) : aiAnalysis ? (
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                       {aiAnalysis}
                     </p>
                   ) : (
