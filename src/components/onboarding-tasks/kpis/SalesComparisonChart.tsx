@@ -203,7 +203,7 @@ Com base nestes dados, escreva uma análise CURTA (máximo 3-4 frases) explicand
 
       if (error) throw error;
       
-      setAiAnalysis(data.message || data.content || "Análise não disponível.");
+      setAiAnalysis(data.response || data.message || data.content || "Análise não disponível.");
       setAnalysisGenerated(true);
     } catch (error) {
       console.error("Error generating AI analysis:", error);
