@@ -62,7 +62,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
     periodicity: "daily" as "daily" | "weekly" | "monthly",
     target_value: 0,
     is_individual: true,
-    is_required: false,
+    is_required: true,
   });
 
   useEffect(() => {
@@ -177,7 +177,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
       periodicity: "daily",
       target_value: 0,
       is_individual: true,
-      is_required: false,
+      is_required: true,
     });
   };
 
