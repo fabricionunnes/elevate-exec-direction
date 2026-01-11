@@ -316,8 +316,51 @@ export default function OnboardingServiceTemplatesPage() {
         
         if (error) throw error;
       }
+
+      // Also update all existing tasks in projects of this service with the same phase
+      // First, get all projects that use this service
+      const { data: projects, error: projectsError } = await supabase
+        .from('onboarding_projects')
+        .select('id')
+        .eq('product_id', service!.id);
+
+      if (projectsError) throw projectsError;
+
+      if (projects && projects.length > 0) {
+        const projectIds = projects.map(p => p.id);
+        
+        // Get all tasks in these projects that have this phase in tags[0]
+        const { data: tasksToUpdate, error: fetchTasksError } = await supabase
+          .from('onboarding_tasks')
+          .select('id, tags')
+          .in('project_id', projectIds)
+          .contains('tags', [phase]);
+
+        if (fetchTasksError) throw fetchTasksError;
+
+        // Update each task's tags[1] with the new phase order
+        let updatedCount = 0;
+        if (tasksToUpdate) {
+          for (const task of tasksToUpdate) {
+            // Only update if tags[0] matches the phase exactly
+            if (task.tags && task.tags[0] === phase) {
+              const newTags = [phase, String(tempPhaseOrder)];
+              const { error: updateError } = await supabase
+                .from('onboarding_tasks')
+                .update({ tags: newTags })
+                .eq('id', task.id);
+              
+              if (updateError) throw updateError;
+              updatedCount++;
+            }
+          }
+        }
+        
+        toast.success(`Ordem da fase "${phase}" atualizada para ${tempPhaseOrder} (${updatedCount} tarefa(s) atualizadas)`);
+      } else {
+        toast.success(`Ordem da fase "${phase}" atualizada para ${tempPhaseOrder}`);
+      }
       
-      toast.success(`Ordem da fase "${phase}" atualizada para ${tempPhaseOrder}`);
       setEditingPhaseOrder(null);
       fetchTemplates(service!.id, service!.slug);
     } catch (error) {
