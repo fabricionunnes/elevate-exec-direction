@@ -10,8 +10,9 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Pencil, Trash2, ListTodo, LogOut, Package, Layers } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, ListTodo, LogOut, Package, Layers, Workflow } from 'lucide-react';
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
+import { ServicePhasesDialog } from '@/components/onboarding-tasks/ServicePhasesDialog';
 
 interface Service {
   id: string;
@@ -36,12 +37,19 @@ export default function OnboardingServicesPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
+  const [phasesDialogOpen, setPhasesDialogOpen] = useState(false);
+  const [selectedServiceForPhases, setSelectedServiceForPhases] = useState<Service | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
     description: '',
     is_active: true
   });
+
+  const openPhasesDialog = (service: Service) => {
+    setSelectedServiceForPhases(service);
+    setPhasesDialogOpen(true);
+  };
 
   useEffect(() => {
     checkAuth();
@@ -283,11 +291,18 @@ export default function OnboardingServicesPage() {
                     {service.description}
                   </p>
                 )}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
+                    onClick={() => openPhasesDialog(service)}
+                  >
+                    <Workflow className="h-4 w-4 mr-2" />
+                    Fases
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => navigate(`/onboarding-tasks/services/${service.slug}/templates`)}
                   >
                     <ListTodo className="h-4 w-4 mr-2" />
@@ -401,6 +416,16 @@ export default function OnboardingServicesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Phases Dialog */}
+      {selectedServiceForPhases && (
+        <ServicePhasesDialog
+          open={phasesDialogOpen}
+          onOpenChange={setPhasesDialogOpen}
+          serviceId={selectedServiceForPhases.id}
+          serviceName={selectedServiceForPhases.name}
+        />
+      )}
     </div>
   );
 }
