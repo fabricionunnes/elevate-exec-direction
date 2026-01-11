@@ -80,6 +80,7 @@ interface Company {
   status_changed_at?: string | null;
   created_at: string;
   payment_method?: string | null;
+  consultant_id?: string | null;
 }
 
 interface DashboardMetricsProps {
@@ -277,6 +278,11 @@ const DashboardMetrics = ({
     // "Ativas" is based on company status (portfolio), not on having an active project.
     const activeCompanies = filteredCompanies.filter(c => c.status === "active").length;
 
+    // Empresas ativas sem consultor atribuído
+    const activeWithoutConsultant = filteredCompanies.filter(c => 
+      c.status === "active" && !c.consultant_id
+    ).length;
+
     // Excluir: empresas com pagamento recorrente (monthly) e empresas inativas/encerradas
     const activeNonRecurringCompanies = filteredCompanies.filter(c => 
       c.payment_method !== "monthly" && 
@@ -285,7 +291,7 @@ const DashboardMetrics = ({
     );
     const contractsEndingInPeriod = activeNonRecurringCompanies.filter(c => c.contract_end_date && isWithinInterval(new Date(c.contract_end_date), { start: dateRange.start, end: dateRange.end })).length;
     const expiredContracts = activeNonRecurringCompanies.filter(c => c.contract_end_date && isBefore(new Date(c.contract_end_date), today)).length;
-    return { activeCompanies, contractsEndingInPeriod, expiredContracts };
+    return { activeCompanies, contractsEndingInPeriod, expiredContracts, activeWithoutConsultant };
   }, [filteredCompanies, dateRange]);
 
   const renewalMetrics = useMemo(() => {
@@ -753,8 +759,9 @@ const DashboardMetrics = ({
         </TabsList>
 
         <TabsContent value="empresas" className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-9 gap-1.5 sm:gap-2">
             <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "all") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "all")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold">{filteredCompanies.length}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Total</p></CardContent></Card>
+            <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("company", "no_consultant") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("company", "no_consultant")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-amber-500">{companyMetrics.activeWithoutConsultant}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Sem Consultor</p></CardContent></Card>
             <Card className={cn("cursor-pointer", isCardActive("status", "notice_period") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("status", "notice_period")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-orange-500">{projectMetrics.noticePeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Aviso</p></CardContent></Card>
             <Card className={cn("cursor-pointer", isCardActive("status", "closed") && "ring-2 ring-red-600")} onClick={() => handleCardClick("status", "closed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-600">{churnMetrics.closedCompaniesInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Encerradas</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "ending") && "ring-2 ring-purple-500")} onClick={() => handleCardClick("contracts", "ending")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-purple-500">{companyMetrics.contractsEndingInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencendo</p></CardContent></Card>

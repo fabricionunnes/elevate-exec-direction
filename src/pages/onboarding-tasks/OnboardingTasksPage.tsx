@@ -779,6 +779,9 @@ const OnboardingTasksPage = () => {
           } else if (activeMetricFilter.value === "below50") {
             matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.below50.has(p.id)) ?? false;
           }
+        } else if (activeMetricFilter.type === "company" && activeMetricFilter.value === "no_consultant") {
+          // Filter active companies without consultant
+          matchesMetricFilter = company.status === "active" && !company.consultant_id;
         }
       }
       
