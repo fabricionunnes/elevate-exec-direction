@@ -310,42 +310,6 @@ Com base nestes dados, escreva uma análise CURTA (máximo 3-4 frases) explicand
           </Card>
         </div>
 
-        {/* AI Analysis - Only show when there's growth */}
-        {hasGrowth && preUnvData.length > 0 && postUnvData.length > 0 && (
-          <Card className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-primary/20">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <p className="text-sm font-medium text-primary">Análise do Crescimento</p>
-                  {aiLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Analisando dados...
-                    </div>
-                  ) : aiAnalysis ? (
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {aiAnalysis}
-                    </p>
-                  ) : (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={generateAIAnalysis}
-                      className="gap-2"
-                    >
-                      <Sparkles className="h-3 w-3" />
-                      Gerar Análise
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Chart */}
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -401,6 +365,42 @@ Com base nestes dados, escreva uma análise CURTA (máximo 3-4 frases) explicand
             <span>Depois da UNV</span>
           </div>
         </div>
+
+        {/* AI Analysis - Only show when there's growth (positioned below the chart) */}
+        {hasGrowth && preUnvData.length > 0 && postUnvData.length > 0 && (
+          <Card className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-primary/20">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <p className="text-sm font-medium text-primary">Análise do Crescimento</p>
+                  {aiLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Analisando dados...
+                    </div>
+                  ) : aiAnalysis ? (
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {aiAnalysis}
+                    </p>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={generateAIAnalysis}
+                      className="gap-2"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Gerar Análise
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </CardContent>
     </Card>
   );
