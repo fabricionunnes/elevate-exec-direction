@@ -898,7 +898,7 @@ const OnboardingProjectPage = () => {
     return acc;
   }, {});
 
-  // Sort phases by the earliest due_date of their tasks, then sort tasks within each phase by due_date
+  // Sort phases by order (from tags[1]), then by earliest due_date as fallback
   const sortedPhases = Object.values(groupedTasks)
     .map(phase => {
       // Calculate the earliest due_date for this phase
@@ -920,7 +920,14 @@ const OnboardingProjectPage = () => {
         }),
       };
     })
-    .sort((a, b) => a.earliestDueDate - b.earliestDueDate);
+    .sort((a, b) => {
+      // First sort by phase order if both have defined orders
+      if (a.order !== undefined && b.order !== undefined && a.order !== b.order) {
+        return a.order - b.order;
+      }
+      // If order is undefined or equal, use earliest due date
+      return a.earliestDueDate - b.earliestDueDate;
+    });
 
   if (loading) {
     return (

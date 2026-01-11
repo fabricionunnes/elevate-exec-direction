@@ -280,15 +280,21 @@ const ClientOnboardingPage = () => {
   // Group tasks into phases using template phases or sort_order ranges
   const phases = useMemo((): TaskPhase[] => {
     // Try to group by template phases first
-    const phaseGroups: Record<string, OnboardingTask[]> = {};
+    const phaseGroups: Record<string, { tasks: OnboardingTask[]; order: number }> = {};
     
     tasks.forEach(task => {
-      // Use tags or a derived phase name
+      // Use tags for phase name and order
       const phaseName = task.tags?.[0] || "Tarefas";
+      const phaseOrder = task.tags?.[1] ? parseInt(task.tags[1]) : 999;
+      
       if (!phaseGroups[phaseName]) {
-        phaseGroups[phaseName] = [];
+        phaseGroups[phaseName] = { tasks: [], order: phaseOrder };
       }
-      phaseGroups[phaseName].push(task);
+      phaseGroups[phaseName].tasks.push(task);
+      // Use the smallest order found for this phase
+      if (phaseOrder < phaseGroups[phaseName].order) {
+        phaseGroups[phaseName].order = phaseOrder;
+      }
     });
 
     // If we only have one phase, split tasks into logical groups
@@ -304,18 +310,20 @@ const ClientOnboardingPage = () => {
         const phaseIndex = Math.min(Math.floor(index / chunkSize), phaseNames.length - 1);
         const phaseName = phaseNames[phaseIndex];
         if (!phaseGroups[phaseName]) {
-          phaseGroups[phaseName] = [];
+          phaseGroups[phaseName] = { tasks: [], order: phaseIndex + 1 };
         }
-        phaseGroups[phaseName].push(task);
+        phaseGroups[phaseName].tasks.push(task);
       });
     }
 
-    return Object.entries(phaseGroups).map(([name, phaseTasks], index) => ({
-      name,
-      order: index,
-      tasks: phaseTasks,
-      completedCount: phaseTasks.filter(t => t.status === "completed").length,
-    }));
+    return Object.entries(phaseGroups)
+      .map(([name, group]) => ({
+        name,
+        order: group.order,
+        tasks: group.tasks,
+        completedCount: group.tasks.filter(t => t.status === "completed").length,
+      }))
+      .sort((a, b) => a.order - b.order);
   }, [tasks]);
 
   const completedTasks = tasks.filter((t) => t.status === "completed").length;
