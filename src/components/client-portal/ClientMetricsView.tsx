@@ -213,7 +213,8 @@ export const ClientMetricsView = ({ projectId }: ClientMetricsViewProps) => {
       {/* Sales Comparison Chart - visible to all users */}
       {companyId && (
         <SalesComparisonChart 
-          companyId={companyId} 
+          companyId={companyId}
+          projectId={projectId}
           companyName={companyName}
         />
       )}

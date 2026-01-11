@@ -36,6 +36,7 @@ interface ChartDataPoint {
 
 interface SalesComparisonChartProps {
   companyId: string;
+  projectId?: string;
   contractStartDate?: string | null;
   currentMonthRevenue?: number;
   refreshKey?: number;
@@ -43,7 +44,8 @@ interface SalesComparisonChartProps {
 }
 
 export const SalesComparisonChart = ({ 
-  companyId, 
+  companyId,
+  projectId,
   contractStartDate, 
   currentMonthRevenue = 0,
   refreshKey = 0,
@@ -152,58 +154,46 @@ export const SalesComparisonChart = ({
 
   const generateAIAnalysis = async () => {
     if (!hasGrowth || postUnvData.length < 1 || preUnvData.length < 1) return;
-    
+    if (!projectId) {
+      setAiAnalysis("Para gerar uma análise conectando tarefas e reuniões ao resultado, preciso do projectId deste acompanhamento.");
+      setAnalysisGenerated(true);
+      return;
+    }
+
     setAiLoading(true);
     try {
-      // Fetch company info and tasks for context
-      const [companyRes, tasksRes] = await Promise.all([
-        supabase
-          .from("onboarding_companies")
-          .select("name, segment, website, company_description, main_challenges, goals_short_term")
-          .eq("id", companyId)
-          .single(),
-        supabase
-          .from("onboarding_tasks")
-          .select("title, status, tags")
-          .eq("status", "completed")
-          .order("updated_at", { ascending: false })
-          .limit(20)
-      ]);
+      const prompt = `Você vai explicar *por que* o faturamento aumentou, conectando evidências do que foi feito (tarefas) e do que foi discutido (reuniões) com o resultado.
 
-      const companyInfo = companyRes.data;
-      const completedTasks = tasksRes.data || [];
-
-      const prompt = `Analise o crescimento de vendas da empresa "${companyName || companyInfo?.name || 'cliente'}" após iniciar o trabalho com a UNV (Universidade de Vendas).
-
-DADOS DE CRESCIMENTO:
-- Média antes da UNV: ${formatFullCurrency(preUnvAvg)} (${preUnvData.length} meses)
-- Média depois da UNV: ${formatFullCurrency(postUnvAvg)} (${postUnvData.length} meses)
+CONTEXTO DO RESULTADO (ANTES vs DEPOIS da UNV):
+- Média antes: ${formatFullCurrency(preUnvAvg)} (${preUnvData.length} meses)
+- Média depois: ${formatFullCurrency(postUnvAvg)} (${postUnvData.length} meses)
 - Crescimento: ${growthPercent.toFixed(1)}%
-- Diferença: ${formatFullCurrency(postUnvAvg - preUnvAvg)} por mês
+- Diferença média: ${formatFullCurrency(postUnvAvg - preUnvAvg)} / mês
 
-SEGMENTO: ${companyInfo?.segment || 'Não informado'}
+INSTRUÇÕES (importante):
+1) Analise as TAREFAS CONCLUÍDAS e as NOTAS/TRANSCRIÇÕES das REUNIÕES do projeto.
+2) Aponte quais pontos do que foi falado (decisões, direcionamentos, correções de rota) e/ou executado nas tarefas *fazem sentido* como causa do aumento.
+3) Cite evidências de forma objetiva (ex.: nome da tarefa, trecho/tema de reunião) e descreva o mecanismo (ex.: melhoria de conversão, aumento de volume, aumento de ticket, melhoria de follow-up).
+4) Se não houver evidência suficiente, diga explicitamente o que está faltando (ex.: reuniões sem notas, tarefas sem descrição/observações) e como registrar melhor.
 
-TAREFAS CONCLUÍDAS RECENTEMENTE (ações realizadas):
-${completedTasks.map(t => `- ${t.title} (${t.tags?.[0] || 'Geral'})`).join('\n')}
+FORMATO:
+- 3 a 6 bullets com “Evidência → Por que impacta o resultado”.
+- Feche com uma conclusão de 1 parágrafo com a hipótese mais provável.
 
-DESCRIÇÃO DA EMPRESA:
-${companyInfo?.company_description || 'Não disponível'}
-
-PRINCIPAIS DESAFIOS:
-${companyInfo?.main_challenges || 'Não disponível'}
-
-Com base nestes dados, escreva uma análise CURTA (máximo 3-4 frases) explicando os principais fatores que contribuíram para o crescimento. Seja específico sobre quais ações provavelmente geraram mais impacto. Use linguagem profissional e positiva. Não mencione que você é uma IA.`;
+Empresa: "${companyName || 'cliente'}".`;
 
       const { data, error } = await supabase.functions.invoke("onboarding-ai-chat", {
         body: {
-          messages: [{ role: "user", content: prompt }],
-          context: { type: "sales_analysis" }
-        }
+          projectId,
+          companyId,
+          message: prompt,
+          history: [],
+        },
       });
 
       if (error) throw error;
-      
-      setAiAnalysis(data.response || data.message || data.content || "Análise não disponível.");
+
+      setAiAnalysis(data?.response || data?.message || data?.content || "Análise não disponível.");
       setAnalysisGenerated(true);
     } catch (error) {
       console.error("Error generating AI analysis:", error);
