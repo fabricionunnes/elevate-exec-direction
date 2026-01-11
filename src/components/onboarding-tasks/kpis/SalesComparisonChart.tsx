@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   BarChart,
   Bar,
@@ -13,7 +14,7 @@ import {
   Legend,
   ReferenceLine,
 } from "recharts";
-import { TrendingUp, TrendingDown, ArrowRight, BarChart3 } from "lucide-react";
+import { TrendingUp, TrendingDown, ArrowRight, BarChart3, Sparkles, Loader2 } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -38,17 +39,22 @@ interface SalesComparisonChartProps {
   contractStartDate?: string | null;
   currentMonthRevenue?: number;
   refreshKey?: number;
+  companyName?: string;
 }
 
 export const SalesComparisonChart = ({ 
   companyId, 
   contractStartDate, 
   currentMonthRevenue = 0,
-  refreshKey = 0 
+  refreshKey = 0,
+  companyName = ""
 }: SalesComparisonChartProps) => {
   const [historyData, setHistoryData] = useState<SalesHistoryEntry[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [analysisGenerated, setAnalysisGenerated] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -100,6 +106,8 @@ export const SalesComparisonChart = ({
       data.sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
 
       setChartData(data);
+      setAiAnalysis(null);
+      setAnalysisGenerated(false);
     } catch (error) {
       console.error("Error fetching sales comparison data:", error);
     } finally {
@@ -141,6 +149,76 @@ export const SalesComparisonChart = ({
     : 0;
 
   const hasGrowth = growthPercent > 0;
+
+  const generateAIAnalysis = async () => {
+    if (!hasGrowth || postUnvData.length < 1 || preUnvData.length < 1) return;
+    
+    setAiLoading(true);
+    try {
+      // Fetch company info and tasks for context
+      const [companyRes, tasksRes] = await Promise.all([
+        supabase
+          .from("onboarding_companies")
+          .select("name, segment, website, company_description, main_challenges, goals_short_term")
+          .eq("id", companyId)
+          .single(),
+        supabase
+          .from("onboarding_tasks")
+          .select("title, status, tags")
+          .eq("status", "completed")
+          .order("updated_at", { ascending: false })
+          .limit(20)
+      ]);
+
+      const companyInfo = companyRes.data;
+      const completedTasks = tasksRes.data || [];
+
+      const prompt = `Analise o crescimento de vendas da empresa "${companyName || companyInfo?.name || 'cliente'}" após iniciar o trabalho com a UNV (Universidade de Vendas).
+
+DADOS DE CRESCIMENTO:
+- Média antes da UNV: ${formatFullCurrency(preUnvAvg)} (${preUnvData.length} meses)
+- Média depois da UNV: ${formatFullCurrency(postUnvAvg)} (${postUnvData.length} meses)
+- Crescimento: ${growthPercent.toFixed(1)}%
+- Diferença: ${formatFullCurrency(postUnvAvg - preUnvAvg)} por mês
+
+SEGMENTO: ${companyInfo?.segment || 'Não informado'}
+
+TAREFAS CONCLUÍDAS RECENTEMENTE (ações realizadas):
+${completedTasks.map(t => `- ${t.title} (${t.tags?.[0] || 'Geral'})`).join('\n')}
+
+DESCRIÇÃO DA EMPRESA:
+${companyInfo?.company_description || 'Não disponível'}
+
+PRINCIPAIS DESAFIOS:
+${companyInfo?.main_challenges || 'Não disponível'}
+
+Com base nestes dados, escreva uma análise CURTA (máximo 3-4 frases) explicando os principais fatores que contribuíram para o crescimento. Seja específico sobre quais ações provavelmente geraram mais impacto. Use linguagem profissional e positiva. Não mencione que você é uma IA.`;
+
+      const { data, error } = await supabase.functions.invoke("onboarding-ai-chat", {
+        body: {
+          messages: [{ role: "user", content: prompt }],
+          context: { type: "sales_analysis" }
+        }
+      });
+
+      if (error) throw error;
+      
+      setAiAnalysis(data.message || data.content || "Análise não disponível.");
+      setAnalysisGenerated(true);
+    } catch (error) {
+      console.error("Error generating AI analysis:", error);
+      setAiAnalysis("Não foi possível gerar a análise no momento.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // Auto-generate analysis when there's growth
+  useEffect(() => {
+    if (hasGrowth && preUnvData.length > 0 && postUnvData.length > 0 && !analysisGenerated && !aiLoading) {
+      generateAIAnalysis();
+    }
+  }, [hasGrowth, preUnvData.length, postUnvData.length, analysisGenerated]);
 
   if (loading) {
     return null;
@@ -231,6 +309,42 @@ export const SalesComparisonChart = ({
             </CardContent>
           </Card>
         </div>
+
+        {/* AI Analysis - Only show when there's growth */}
+        {hasGrowth && preUnvData.length > 0 && postUnvData.length > 0 && (
+          <Card className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-primary/20">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <p className="text-sm font-medium text-primary">Análise do Crescimento</p>
+                  {aiLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Analisando dados...
+                    </div>
+                  ) : aiAnalysis ? (
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {aiAnalysis}
+                    </p>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={generateAIAnalysis}
+                      className="gap-2"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Gerar Análise
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Chart */}
         <div className="h-[300px]">

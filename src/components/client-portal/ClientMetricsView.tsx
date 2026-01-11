@@ -7,6 +7,7 @@ import { Calculator, DollarSign, Target, TrendingUp, Trophy, History, Check, X, 
 import { format, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { SalesComparisonChart } from "@/components/onboarding-tasks/kpis/SalesComparisonChart";
 
 interface CACFormData {
   id: string;
@@ -39,12 +40,28 @@ export const ClientMetricsView = ({ projectId }: ClientMetricsViewProps) => {
   const [saving, setSaving] = useState(false);
   const [addingGoal, setAddingGoal] = useState(false);
   const [newTargetValue, setNewTargetValue] = useState<string>("");
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string>("");
 
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
   const fetchData = async () => {
     try {
+      // First fetch the project to get company_id
+      const { data: projectData, error: projectError } = await supabase
+        .from("onboarding_projects")
+        .select("company_id, onboarding_companies(id, name)")
+        .eq("id", projectId)
+        .single();
+
+      if (projectError) throw projectError;
+      
+      if (projectData?.company_id) {
+        setCompanyId(projectData.company_id);
+        setCompanyName((projectData.onboarding_companies as any)?.name || "");
+      }
+
       const [cacResponse, goalsResponse] = await Promise.all([
         supabase
           .from("onboarding_cac_forms")
@@ -193,6 +210,14 @@ export const ClientMetricsView = ({ projectId }: ClientMetricsViewProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Sales Comparison Chart - visible to all users */}
+      {companyId && (
+        <SalesComparisonChart 
+          companyId={companyId} 
+          companyName={companyName}
+        />
+      )}
+
       {/* Meta do Mês Atual */}
       <Card className="overflow-hidden">
         <CardHeader className="pb-2">
