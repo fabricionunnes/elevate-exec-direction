@@ -828,7 +828,8 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
 
       {/* Sales Comparison Chart - Before vs After UNV */}
       <SalesComparisonChart 
-        companyId={companyId} 
+        companyId={companyId}
+        projectId={projectId}
         contractStartDate={contractStartDate}
         currentMonthRevenue={calculatedMetrics.totalRevenue}
         refreshKey={salesHistoryRefreshKey}
