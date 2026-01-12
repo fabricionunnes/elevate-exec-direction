@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Version tag for debugging deployments
-const EVOLUTION_API_FUNC_VERSION = "2026-01-12-v4-connect-variants";
+const EVOLUTION_API_FUNC_VERSION = "2026-01-12-v5-qr-payload-variants";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -174,15 +174,34 @@ serve(async (req) => {
         const looksLikePhone = typeof number === 'string' && number.replace(/\D/g, '').length >= 10;
         const phoneDigits = typeof number === 'string' ? number.replace(/\D/g, '') : undefined;
 
-        const hasQrPayload = (payload: any) => !!(
-          payload?.code ||
-          payload?.pairingCode ||
-          payload?.base64 ||
-          payload?.qrcode?.base64 ||
-          payload?.qrcode?.code ||
-          payload?.qrCode?.base64 ||
-          payload?.qr?.base64
-        );
+        const hasQrPayload = (payload: any) => {
+          if (!payload) return false;
+
+          const directString = (v: any) => typeof v === 'string' && v.trim().length > 0;
+
+          return !!(
+            // most common
+            payload?.code ||
+            payload?.pairingCode ||
+
+            // base64 wrappers
+            payload?.base64 ||
+            payload?.qrcode?.base64 ||
+            payload?.qrcode?.code ||
+            payload?.qrCode?.base64 ||
+            payload?.qr?.base64 ||
+
+            // some installs return QR directly as string
+            directString(payload?.qr) ||
+            directString(payload?.qrCode) ||
+            directString(payload?.qrcode) ||
+
+            // nested variants we already saw in the wild
+            directString(payload?.qrcode?.qr) ||
+            directString(payload?.qrcode?.image) ||
+            directString(payload?.qr?.image)
+          );
+        };
 
         const qrCountFrom = (payload: any) => payload?.qrcode?.count ?? payload?.count ?? null;
 

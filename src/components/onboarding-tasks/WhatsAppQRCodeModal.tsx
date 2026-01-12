@@ -134,6 +134,11 @@ export const WhatsAppQRCodeModal = ({
       result?.qrcode?.base64 ??
       result?.qrCode?.base64 ??
       result?.qr?.base64 ??
+      result?.qrcode?.qr ??
+      result?.qrcode?.image ??
+      result?.qr?.image ??
+      result?.qrCode ??
+      result?.qr ??
       result?.qrcode ??
       result?.qr_code ??
       null;
@@ -143,7 +148,12 @@ export const WhatsAppQRCodeModal = ({
   };
 
   const extractQrText = (result: any): string | null => {
-    const raw = result?.code ?? result?.qrcode?.code ?? result?.qrCode ?? null;
+    const raw =
+      result?.code ??
+      result?.qrcode?.code ??
+      result?.qrCode?.code ??
+      result?.qr?.code ??
+      null;
     return typeof raw === "string" && raw.trim() ? raw : null;
   };
 
