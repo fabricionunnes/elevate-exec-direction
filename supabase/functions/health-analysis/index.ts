@@ -82,11 +82,18 @@ serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(10);
 
-    // Fetch tasks
+    // Fetch tasks with more details
     const { data: tasks } = await supabase
       .from("onboarding_tasks")
-      .select("title, status, due_date, completed_at, priority")
+      .select("id, title, status, due_date, completed_at, priority, observations, description")
       .eq("project_id", projectId);
+
+    // Fetch task attachments/documents
+    const { data: taskDocuments } = await supabase
+      .from("onboarding_documents")
+      .select("task_id, file_name, file_type, file_size")
+      .eq("project_id", projectId)
+      .not("task_id", "is", null);
 
     // Fetch tickets
     const { data: tickets } = await supabase
@@ -111,6 +118,17 @@ serve(async (req) => {
       .order("meeting_date", { ascending: false })
       .limit(10);
 
+    // Group attachments by task_id
+    const attachmentsByTask: Record<string, Array<{file_name: string, file_type: string}>> = {};
+    taskDocuments?.forEach(doc => {
+      if (doc.task_id) {
+        if (!attachmentsByTask[doc.task_id]) {
+          attachmentsByTask[doc.task_id] = [];
+        }
+        attachmentsByTask[doc.task_id].push({ file_name: doc.file_name, file_type: doc.file_type });
+      }
+    });
+
     // Calculate task statistics
     const taskStats = {
       total: tasks?.length || 0,
@@ -122,6 +140,20 @@ serve(async (req) => {
       ).length || 0,
       pending: tasks?.filter(t => t.status === "pending").length || 0,
     };
+
+    // Build detailed task list with observations and attachments
+    const detailedTasks = tasks?.map(t => {
+      const attachments = attachmentsByTask[t.id] || [];
+      return {
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        due_date: t.due_date,
+        description: t.description,
+        observations: t.observations,
+        attachments: attachments.map(a => `${a.file_name} (${a.file_type})`),
+      };
+    });
 
     // Calculate goal achievement
     const goalAchievement = monthlyGoals?.filter(g => g.sales_target && g.sales_target > 0).map(g => ({
@@ -162,11 +194,20 @@ ${npsResponses?.map(n => `- Score ${n.score}: "${n.justification || 'Sem coment�
 ### CSAT (últimas respostas)
 ${csatResponses?.map(c => `- Score ${c.score}/5: "${c.feedback || 'Sem feedback'}"`).join("\n") || "Sem respostas"}
 
-### Tarefas
+### Tarefas (Resumo)
 - Total: ${taskStats.total}
 - Concluídas: ${taskStats.completed} (${taskStats.total > 0 ? Math.round((taskStats.completed/taskStats.total)*100) : 0}%)
 - Atrasadas: ${taskStats.overdue}
 - Pendentes: ${taskStats.pending}
+
+### Tarefas Detalhadas (com observações e anexos)
+${detailedTasks?.filter(t => t.observations || t.attachments.length > 0 || t.status !== "completed").slice(0, 20).map(t => {
+  let taskInfo = `- **${t.title}** [${t.status}${t.priority ? `, ${t.priority}` : ""}]`;
+  if (t.description) taskInfo += `\n  Descrição: ${t.description.substring(0, 200)}${t.description.length > 200 ? "..." : ""}`;
+  if (t.observations) taskInfo += `\n  Observações: ${t.observations.substring(0, 300)}${t.observations.length > 300 ? "..." : ""}`;
+  if (t.attachments.length > 0) taskInfo += `\n  Anexos: ${t.attachments.join(", ")}`;
+  return taskInfo;
+}).join("\n") || "Sem tarefas com detalhes relevantes"}
 
 ### Tickets de Suporte
 ${tickets?.length ? tickets.map(t => `- [${t.status}] ${t.subject}`).join("\n") : "Sem tickets"}
