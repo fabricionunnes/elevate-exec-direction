@@ -163,7 +163,8 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
         .from("onboarding_meeting_notes")
         .select(`
           *,
-          staff:onboarding_staff(id, name),
+          staff:onboarding_staff!staff_id(id, name),
+          scheduled_by_staff:onboarding_staff!scheduled_by(id, name),
           project:onboarding_projects(
             id, product_name,
             company:onboarding_companies(id, name)
@@ -176,15 +177,20 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
         for (const item of meetings) {
           const project = item.project as any;
           const company = project?.company as any;
+          const scheduledByStaff = item.scheduled_by_staff as any;
+          
+          const description = scheduledByStaff?.name 
+            ? `Reunião agendada por ${scheduledByStaff.name}: ${item.meeting_title}`
+            : `Registrou reunião: ${item.meeting_title}`;
           
           allActivities.push({
             id: `meeting_${item.id}`,
             type: "meeting",
-            action: "meeting_registered",
-            description: `Registrou reunião: ${item.meeting_title}`,
+            action: item.is_finalized ? "meeting_finalized" : "meeting_registered",
+            description,
             date: item.created_at,
-            staffId: item.staff_id,
-            staffName: (item.staff as any)?.name || null,
+            staffId: item.scheduled_by || item.staff_id,
+            staffName: scheduledByStaff?.name || (item.staff as any)?.name || null,
             companyId: company?.id || null,
             companyName: company?.name || null,
             projectId: project?.id || null,
@@ -194,6 +200,8 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
               subject: item.subject,
               meetingDate: item.meeting_date,
               recordingLink: item.recording_link,
+              calendarOwnerName: item.calendar_owner_name,
+              isFinalized: item.is_finalized,
             },
           });
         }
