@@ -29,6 +29,18 @@ serve(async (req) => {
       );
     }
 
+    // IMPORTANT:
+    // Some installs expose the web UI under "/manager" (e.g. http://host:8080/manager),
+    // but the HTTP API base should be http://host:8080.
+    // To avoid misconfiguration breaking everything, normalize the base URL here.
+    const evolutionBaseUrl = EVOLUTION_API_URL
+      .replace(/\/manager\/?$/i, '')
+      .replace(/\/+$/g, '');
+
+    if (evolutionBaseUrl !== EVOLUTION_API_URL) {
+      console.log(`[evolution-api] Normalized EVOLUTION_API_URL from "${EVOLUTION_API_URL}" to "${evolutionBaseUrl}"`);
+    }
+
     // Validate JWT
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -62,7 +74,7 @@ serve(async (req) => {
     };
 
     const fetchEvolutionJson = async (endpoint: string, init?: RequestInit) => {
-      const fullUrl = `${EVOLUTION_API_URL}${endpoint}`;
+      const fullUrl = `${evolutionBaseUrl}${endpoint}`;
       console.log(`[evolution-api] Calling: ${init?.method || 'GET'} ${fullUrl}`);
       
       const res = await fetch(fullUrl, {
@@ -379,7 +391,7 @@ serve(async (req) => {
           );
         }
 
-        const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
+        const response = await fetch(`${evolutionBaseUrl}/message/sendText/${instanceName}`, {
           method: 'POST',
           headers: evolutionHeaders,
           body: JSON.stringify({
@@ -409,7 +421,7 @@ serve(async (req) => {
           );
         }
 
-        const response = await fetch(`${EVOLUTION_API_URL}/message/sendMedia/${instanceName}`, {
+        const response = await fetch(`${evolutionBaseUrl}/message/sendMedia/${instanceName}`, {
           method: 'POST',
           headers: evolutionHeaders,
           body: JSON.stringify({
@@ -441,7 +453,7 @@ serve(async (req) => {
           );
         }
 
-        const response = await fetch(`${EVOLUTION_API_URL}/instance/delete/${instanceName}`, {
+        const response = await fetch(`${evolutionBaseUrl}/instance/delete/${instanceName}`, {
           method: 'DELETE',
           headers: evolutionHeaders,
         });
