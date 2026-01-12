@@ -147,6 +147,75 @@ interface PortalPlanDiagnostic {
     [key: string]: any;
   };
 }
+
+// Mapeamento de gargalos e necessidades para serviços sugeridos
+const getRecommendedServices = (contextData: PortalPlanDiagnostic['context_data']) => {
+  const services: { name: string; reason: string; priority: 'primary' | 'secondary' | 'complementary' }[] = [];
+  
+  const bottleneck = contextData.main_bottleneck;
+  const needsManagement = contextData.needs_sales_management === 'yes';
+  const needsProcess = contextData.needs_process_crm === 'yes';
+  const hasManager = contextData.has_sales_manager === 'yes';
+  const ownerRole = contextData.owner_role;
+  const salespeople = parseInt(contextData.salespeople_count || '0') || 0;
+  
+  // Baseado no gargalo principal
+  if (bottleneck === 'leads') {
+    services.push({ name: 'UNV Ads', reason: 'Gargalo em geração de leads', priority: 'primary' });
+    services.push({ name: 'UNV Social', reason: 'Complementar geração de demanda', priority: 'secondary' });
+  }
+  
+  if (bottleneck === 'conversion') {
+    services.push({ name: 'UNV Sales Acceleration', reason: 'Gargalo em conversão', priority: 'primary' });
+    services.push({ name: 'UNV Sales Ops', reason: 'Treinamento do time para melhorar conversão', priority: 'secondary' });
+  }
+  
+  if (bottleneck === 'team') {
+    services.push({ name: 'UNV Sales Force', reason: 'Gargalo no time comercial', priority: 'primary' });
+    services.push({ name: 'UNV People', reason: 'Gestão e recrutamento de pessoas', priority: 'secondary' });
+  }
+  
+  if (bottleneck === 'management') {
+    if (!hasManager) {
+      services.push({ name: 'Fractional CRO', reason: 'Não tem gestor comercial', priority: 'primary' });
+    }
+    services.push({ name: 'UNV Leadership', reason: 'Gargalo em gestão/cobrança', priority: hasManager ? 'primary' : 'secondary' });
+  }
+  
+  if (bottleneck === 'process') {
+    services.push({ name: 'UNV Control', reason: 'Gargalo em processo/CRM', priority: 'primary' });
+    services.push({ name: 'UNV Sales Ops', reason: 'Padronização de processos', priority: 'secondary' });
+  }
+  
+  // Baseado em necessidades específicas
+  if (needsManagement && !services.some(s => s.name.includes('CRO') || s.name.includes('Leadership'))) {
+    services.push({ name: 'Fractional CRO', reason: 'Precisa de gestão comercial', priority: 'secondary' });
+  }
+  
+  if (needsProcess && !services.some(s => s.name.includes('Control') || s.name.includes('Sales Ops'))) {
+    services.push({ name: 'UNV Control', reason: 'Precisa de processo/CRM', priority: 'secondary' });
+  }
+  
+  // Baseado no papel do dono
+  if (ownerRole === 'operational') {
+    if (!services.some(s => s.name.includes('Sales Force'))) {
+      services.push({ name: 'UNV Sales Force', reason: 'Dono ainda operacional em vendas', priority: 'complementary' });
+    }
+  }
+  
+  // Baseado no tamanho do time
+  if (salespeople >= 5 && !services.some(s => s.name.includes('Sales Ops'))) {
+    services.push({ name: 'UNV Sales Ops', reason: `Time de ${salespeople} vendedores`, priority: 'complementary' });
+  }
+  
+  // Se não tem nenhum serviço sugerido, sugere o básico
+  if (services.length === 0) {
+    services.push({ name: 'UNV Core', reason: 'Estruturação comercial inicial', priority: 'primary' });
+    services.push({ name: 'UNV Growth Room', reason: 'Clareza estratégica', priority: 'secondary' });
+  }
+  
+  return services;
+};
 const revenueLabels: Record<string, string> = {
   "menos-50k": "< R$ 50k",
   "50k-100k": "R$ 50k-100k",
@@ -2097,6 +2166,52 @@ export default function DiagnosticResponsesPage() {
                   </div>
                 </div>
               )}
+
+              {/* Serviços Sugeridos */}
+              {(() => {
+                const recommendedServices = getRecommendedServices(selectedPortalPlan.context_data);
+                if (recommendedServices.length === 0) return null;
+                
+                return (
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      Serviços Sugeridos
+                    </h4>
+                    <div className="space-y-2">
+                      {recommendedServices.map((service, i) => (
+                        <div 
+                          key={i} 
+                          className={cn(
+                            "rounded-lg p-3 border",
+                            service.priority === 'primary' ? "bg-accent/10 border-accent/20" : 
+                            service.priority === 'secondary' ? "bg-blue-500/10 border-blue-500/20" : 
+                            "bg-secondary/50 border-border"
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Badge className={cn(
+                                service.priority === 'primary' ? "bg-accent text-accent-foreground" :
+                                service.priority === 'secondary' ? "bg-blue-500 text-white" :
+                                "bg-secondary"
+                              )}>
+                                {service.name}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {service.priority === 'primary' ? '🔥 Principal' : 
+                                 service.priority === 'secondary' ? 'Secundário' : 
+                                 'Complementar'}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">• {service.reason}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Ações */}
               <div className="flex gap-3 pt-4">
