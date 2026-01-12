@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -118,6 +119,7 @@ const DashboardMetrics = ({
   onActiveTabChange,
   staffRole
 }: DashboardMetricsProps) => {
+  const navigate = useNavigate();
   const [internalTasks, setInternalTasks] = useState<Task[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
   const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
@@ -880,10 +882,19 @@ const DashboardMetrics = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {companiesWithoutPendingTasks.map(company => {
                     const companyProjects = projects.filter(p => getProjectCompanyId(p) === company.id && p.status === "active");
+                    const firstProject = companyProjects[0];
                     return (
                       <div 
                         key={company.id} 
-                        className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                        className={cn(
+                          "flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors",
+                          firstProject && "cursor-pointer"
+                        )}
+                        onClick={() => {
+                          if (firstProject) {
+                            navigate(`/onboarding-tasks/project/${firstProject.id}`);
+                          }
+                        }}
                       >
                         <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
                           <Building2 className="h-4 w-4 text-emerald-500" />
