@@ -4,13 +4,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Settings, Users, BarChart3, Link, Sparkles, Building2, Trophy, Gamepad2, ChevronDown, Megaphone } from "lucide-react";
+import { Settings, Users, BarChart3, Link, Sparkles, Building2, Trophy, Gamepad2, ChevronDown, Megaphone, UsersRound } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { KPIConfigurationTab } from "./KPIConfigurationTab";
 import { SalespeopleTab } from "./SalespeopleTab";
 import { KPIDashboardTab } from "./KPIDashboardTab";
 import { KPIAnalysisTab } from "./KPIAnalysisTab";
 import { UnitsTab } from "./UnitsTab";
+import { TeamsTab } from "./TeamsTab";
 import { EndomarketingPanel } from "../endomarketing/EndomarketingPanel";
 import { GamificationPanel } from "../gamification/GamificationPanel";
 import {
@@ -64,7 +65,7 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, 
 
   // Check if current tab is within a submenu
   const isEndomarketingActive = activeTab === "gamification" || activeTab === "campaigns";
-  const isConfigActive = activeTab === "units" || activeTab === "salespeople" || activeTab === "config";
+  const isConfigActive = activeTab === "units" || activeTab === "teams" || activeTab === "salespeople" || activeTab === "config";
 
   if (!companyId) {
     return (
@@ -183,6 +184,16 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, 
                     Unidades
                   </DropdownMenuItem>
                   <DropdownMenuItem
+                    onClick={() => setActiveTab("teams")}
+                    className={cn(
+                      "gap-2 cursor-pointer",
+                      activeTab === "teams" && "bg-accent"
+                    )}
+                  >
+                    <UsersRound className="h-4 w-4" />
+                    Equipes
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() => setActiveTab("salespeople")}
                     className={cn(
                       "gap-2 cursor-pointer",
@@ -242,6 +253,10 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, 
           <>
             <TabsContent value="units" className="mt-6">
               <UnitsTab companyId={companyId} isAdmin={true} />
+            </TabsContent>
+
+            <TabsContent value="teams" className="mt-6">
+              <TeamsTab companyId={companyId} isAdmin={true} />
             </TabsContent>
 
             <TabsContent value="analysis" className="mt-6">

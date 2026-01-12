@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Save, Calendar, ChevronLeft, ChevronRight, Copy, Check, Plus, Trash2, Settings2, Building2, User } from "lucide-react";
+import { Save, Calendar, ChevronLeft, ChevronRight, Copy, Check, Plus, Trash2, Settings2, Building2, User, UsersRound } from "lucide-react";
 import { format, addMonths, subMonths, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -59,6 +59,13 @@ interface Salesperson {
   id: string;
   name: string;
   unit_id: string | null;
+  team_id: string | null;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  unit_id: string | null;
 }
 
 interface MonthlyTarget {
@@ -69,6 +76,7 @@ interface MonthlyTarget {
   level_name: string;
   level_order: number;
   unit_id?: string | null;
+  team_id?: string | null;
   salesperson_id?: string | null;
 }
 
@@ -82,7 +90,7 @@ interface KPIMonthlyTargetsDialogProps {
   isClient?: boolean;
 }
 
-type TargetScope = "company" | "unit" | "salesperson";
+type TargetScope = "company" | "unit" | "team" | "salesperson";
 
 export const KPIMonthlyTargetsDialog = ({
   open,
@@ -96,12 +104,14 @@ export const KPIMonthlyTargetsDialog = ({
   const [selectedDate, setSelectedDate] = useState(startOfMonth(new Date()));
   const [targetScope, setTargetScope] = useState<TargetScope>("company");
   const [selectedUnitId, setSelectedUnitId] = useState<string>("");
+  const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>("");
   
   // targets: { [kpi_id]: { [level_name]: value } }
   const [targets, setTargets] = useState<Record<string, Record<string, number>>>({});
   const [targetLevels, setTargetLevels] = useState<TargetLevel[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   
   const [loading, setLoading] = useState(false);
@@ -125,11 +135,11 @@ export const KPIMonthlyTargetsDialog = ({
       fetchTargets();
       setCopiedFromPrevious(false);
     }
-  }, [open, monthYear, targetScope, selectedUnitId, selectedSalespersonId]);
+  }, [open, monthYear, targetScope, selectedUnitId, selectedTeamId, selectedSalespersonId]);
 
   const fetchInitialData = async () => {
     try {
-      const [levelsRes, unitsRes, salespeopleRes] = await Promise.all([
+      const [levelsRes, unitsRes, teamsRes, salespeopleRes] = await Promise.all([
         supabase
           .from("kpi_target_levels")
           .select("*")
@@ -138,6 +148,12 @@ export const KPIMonthlyTargetsDialog = ({
           .order("sort_order"),
         supabase
           .from("company_units")
+          .select("*")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name"),
+        supabase
+          .from("company_teams")
           .select("*")
           .eq("company_id", companyId)
           .eq("is_active", true)
@@ -167,11 +183,15 @@ export const KPIMonthlyTargetsDialog = ({
 
       setTargetLevels(levels);
       setUnits(unitsRes.data || []);
+      setTeams(teamsRes.data || []);
       setSalespeople(salespeopleRes.data || []);
       
-      // Set default unit/salesperson if available
+      // Set default unit/team/salesperson if available
       if (unitsRes.data?.length) {
         setSelectedUnitId(unitsRes.data[0].id);
+      }
+      if (teamsRes.data?.length) {
+        setSelectedTeamId(teamsRes.data[0].id);
       }
       if (salespeopleRes.data?.length) {
         setSelectedSalespersonId(salespeopleRes.data[0].id);
@@ -192,9 +212,11 @@ export const KPIMonthlyTargetsDialog = ({
 
       // Filter based on scope
       if (targetScope === "company") {
-        query = query.is("unit_id", null).is("salesperson_id", null);
+        query = query.is("unit_id", null).is("team_id", null).is("salesperson_id", null);
       } else if (targetScope === "unit" && selectedUnitId) {
-        query = query.eq("unit_id", selectedUnitId).is("salesperson_id", null);
+        query = query.eq("unit_id", selectedUnitId).is("team_id", null).is("salesperson_id", null);
+      } else if (targetScope === "team" && selectedTeamId) {
+        query = query.eq("team_id", selectedTeamId).is("salesperson_id", null);
       } else if (targetScope === "salesperson" && selectedSalespersonId) {
         query = query.eq("salesperson_id", selectedSalespersonId);
       }
@@ -230,9 +252,11 @@ export const KPIMonthlyTargetsDialog = ({
 
       // Filter based on scope
       if (targetScope === "company") {
-        query = query.is("unit_id", null).is("salesperson_id", null);
+        query = query.is("unit_id", null).is("team_id", null).is("salesperson_id", null);
       } else if (targetScope === "unit" && selectedUnitId) {
-        query = query.eq("unit_id", selectedUnitId).is("salesperson_id", null);
+        query = query.eq("unit_id", selectedUnitId).is("team_id", null).is("salesperson_id", null);
+      } else if (targetScope === "team" && selectedTeamId) {
+        query = query.eq("team_id", selectedTeamId).is("salesperson_id", null);
       } else if (targetScope === "salesperson" && selectedSalespersonId) {
         query = query.eq("salesperson_id", selectedSalespersonId);
       }
@@ -372,9 +396,11 @@ export const KPIMonthlyTargetsDialog = ({
         .eq("month_year", monthYear);
 
       if (targetScope === "company") {
-        deleteQuery = deleteQuery.is("unit_id", null).is("salesperson_id", null);
+        deleteQuery = deleteQuery.is("unit_id", null).is("team_id", null).is("salesperson_id", null);
       } else if (targetScope === "unit" && selectedUnitId) {
-        deleteQuery = deleteQuery.eq("unit_id", selectedUnitId).is("salesperson_id", null);
+        deleteQuery = deleteQuery.eq("unit_id", selectedUnitId).is("team_id", null).is("salesperson_id", null);
+      } else if (targetScope === "team" && selectedTeamId) {
+        deleteQuery = deleteQuery.eq("team_id", selectedTeamId).is("salesperson_id", null);
       } else if (targetScope === "salesperson" && selectedSalespersonId) {
         deleteQuery = deleteQuery.eq("salesperson_id", selectedSalespersonId);
       }
@@ -400,6 +426,8 @@ export const KPIMonthlyTargetsDialog = ({
             // Add scope-specific fields
             if (targetScope === "unit" && selectedUnitId) {
               insert.unit_id = selectedUnitId;
+            } else if (targetScope === "team" && selectedTeamId) {
+              insert.team_id = selectedTeamId;
             } else if (targetScope === "salesperson" && selectedSalespersonId) {
               insert.salesperson_id = selectedSalespersonId;
             }
@@ -425,6 +453,8 @@ export const KPIMonthlyTargetsDialog = ({
         ? "da empresa" 
         : targetScope === "unit" 
         ? `da unidade ${units.find(u => u.id === selectedUnitId)?.name}`
+        : targetScope === "team"
+        ? `da equipe ${teams.find(t => t.id === selectedTeamId)?.name}`
         : `do vendedor ${salespeople.find(s => s.id === selectedSalespersonId)?.name}`;
 
       toast.success(`Metas ${scopeLabel} de ${monthLabel} salvas!`);
@@ -567,18 +597,22 @@ export const KPIMonthlyTargetsDialog = ({
 
           {/* Scope selector tabs */}
           <Tabs value={targetScope} onValueChange={(v) => setTargetScope(v as TargetScope)}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="company" className="gap-2">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="company" className="gap-1 text-xs sm:text-sm">
                 <Building2 className="h-4 w-4" />
-                Empresa
+                <span className="hidden sm:inline">Empresa</span>
               </TabsTrigger>
-              <TabsTrigger value="unit" disabled={units.length === 0} className="gap-2">
+              <TabsTrigger value="unit" disabled={units.length === 0} className="gap-1 text-xs sm:text-sm">
                 <Building2 className="h-4 w-4" />
-                Por Unidade
+                <span className="hidden sm:inline">Unidade</span>
               </TabsTrigger>
-              <TabsTrigger value="salesperson" disabled={salespeople.length === 0} className="gap-2">
+              <TabsTrigger value="team" disabled={teams.length === 0} className="gap-1 text-xs sm:text-sm">
+                <UsersRound className="h-4 w-4" />
+                <span className="hidden sm:inline">Equipe</span>
+              </TabsTrigger>
+              <TabsTrigger value="salesperson" disabled={salespeople.length === 0} className="gap-1 text-xs sm:text-sm">
                 <User className="h-4 w-4" />
-                Por Vendedor
+                <span className="hidden sm:inline">Vendedor</span>
               </TabsTrigger>
             </TabsList>
 
@@ -704,6 +738,45 @@ export const KPIMonthlyTargetsDialog = ({
               )}
             </TabsContent>
 
+            <TabsContent value="team" className="space-y-4">
+              {/* Team selector */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a equipe" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teams.map((team) => (
+                        <SelectItem key={team.id} value={team.id}>
+                          {team.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyFromPrevious}
+                  disabled={loading || !selectedTeamId}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copiar do Mês Anterior
+                </Button>
+              </div>
+
+              {loading ? (
+                <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+              ) : !selectedTeamId ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Selecione uma equipe para definir metas específicas.
+                </div>
+              ) : (
+                renderTargetsTable()
+              )}
+            </TabsContent>
+
             <TabsContent value="salesperson" className="space-y-4">
               {/* Salesperson selector */}
               <div className="flex items-center gap-4">
@@ -759,7 +832,10 @@ export const KPIMonthlyTargetsDialog = ({
               </Button>
               <Button 
                 onClick={handleSave} 
-                disabled={saving || loading || (targetScope === "unit" && !selectedUnitId) || (targetScope === "salesperson" && !selectedSalespersonId)}
+                disabled={saving || loading || 
+                  (targetScope === "unit" && !selectedUnitId) || 
+                  (targetScope === "team" && !selectedTeamId) || 
+                  (targetScope === "salesperson" && !selectedSalespersonId)}
               >
                 <Save className="h-4 w-4 mr-2" />
                 {saving ? "Salvando..." : "Salvar Metas"}
