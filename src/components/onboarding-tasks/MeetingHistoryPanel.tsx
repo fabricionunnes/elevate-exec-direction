@@ -66,7 +66,14 @@ interface MeetingNote {
   created_at: string;
   is_finalized: boolean;
   google_event_id: string | null;
+  scheduled_by: string | null;
+  calendar_owner_id: string | null;
+  calendar_owner_name: string | null;
   staff?: {
+    id: string;
+    name: string;
+  } | null;
+  scheduled_by_staff?: {
     id: string;
     name: string;
   } | null;
@@ -283,7 +290,11 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
         .from("onboarding_meeting_notes")
         .select(`
           *,
-          staff:staff_id (
+          staff:onboarding_staff!staff_id (
+            id,
+            name
+          ),
+          scheduled_by_staff:onboarding_staff!scheduled_by (
             id,
             name
           )
@@ -842,7 +853,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                             Pendente
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2 flex-wrap">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             {format(new Date(meeting.meeting_date), "dd/MM/yyyy", { locale: ptBR })}
@@ -851,6 +862,17 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                             <Clock className="h-3 w-3" />
                             {format(new Date(meeting.meeting_date), "HH:mm", { locale: ptBR })}
                           </span>
+                          {meeting.scheduled_by_staff && (
+                            <span className="flex items-center gap-1 text-primary">
+                              <User className="h-3 w-3" />
+                              Agendado por: {meeting.scheduled_by_staff.name}
+                            </span>
+                          )}
+                          {meeting.calendar_owner_name && (
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              📅 Agenda: {meeting.calendar_owner_name}
+                            </span>
+                          )}
                         </div>
                         {meeting.meeting_link && (
                           <Button
@@ -925,7 +947,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                               </Badge>
                             )}
                           </div>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2 flex-wrap">
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
                               {format(new Date(meeting.meeting_date), "dd/MM/yyyy", { locale: ptBR })}
@@ -938,6 +960,17 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                               <span className="flex items-center gap-1">
                                 <User className="h-3 w-3" />
                                 {meeting.staff.name}
+                              </span>
+                            )}
+                            {meeting.scheduled_by_staff && (
+                              <span className="flex items-center gap-1 text-primary">
+                                <User className="h-3 w-3" />
+                                Agendado por: {meeting.scheduled_by_staff.name}
+                              </span>
+                            )}
+                            {meeting.calendar_owner_name && (
+                              <span className="flex items-center gap-1">
+                                📅 Agenda: {meeting.calendar_owner_name}
                               </span>
                             )}
                           </div>

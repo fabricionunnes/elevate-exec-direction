@@ -232,11 +232,11 @@ export const ScheduleMeetingDialog = ({
       // Get current staff ID for meeting notes
       const { data: currentStaff } = await supabase
         .from("onboarding_staff")
-        .select("id")
+        .select("id, name")
         .eq("user_id", session.user.id)
         .single();
 
-      // Create meeting notes record
+      // Create meeting notes record with scheduling info
       if (currentStaff) {
         await supabase.from("onboarding_meeting_notes").insert({
           project_id: projectId,
@@ -248,6 +248,9 @@ export const ScheduleMeetingDialog = ({
           notes: "",
           meeting_link: meetingLink,
           is_finalized: false,
+          scheduled_by: currentStaff.id,
+          calendar_owner_id: targetStaff.user_id,
+          calendar_owner_name: targetStaff.name,
         });
       }
 
