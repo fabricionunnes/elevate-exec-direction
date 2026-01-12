@@ -3828,6 +3828,8 @@ export type Database = {
       onboarding_meeting_notes: {
         Row: {
           attendees: string | null
+          calendar_owner_id: string | null
+          calendar_owner_name: string | null
           created_at: string
           google_event_id: string | null
           id: string
@@ -3838,6 +3840,7 @@ export type Database = {
           notes: string | null
           project_id: string
           recording_link: string | null
+          scheduled_by: string | null
           staff_id: string | null
           subject: string
           transcript: string | null
@@ -3845,6 +3848,8 @@ export type Database = {
         }
         Insert: {
           attendees?: string | null
+          calendar_owner_id?: string | null
+          calendar_owner_name?: string | null
           created_at?: string
           google_event_id?: string | null
           id?: string
@@ -3855,6 +3860,7 @@ export type Database = {
           notes?: string | null
           project_id: string
           recording_link?: string | null
+          scheduled_by?: string | null
           staff_id?: string | null
           subject: string
           transcript?: string | null
@@ -3862,6 +3868,8 @@ export type Database = {
         }
         Update: {
           attendees?: string | null
+          calendar_owner_id?: string | null
+          calendar_owner_name?: string | null
           created_at?: string
           google_event_id?: string | null
           id?: string
@@ -3872,6 +3880,7 @@ export type Database = {
           notes?: string | null
           project_id?: string
           recording_link?: string | null
+          scheduled_by?: string | null
           staff_id?: string | null
           subject?: string
           transcript?: string | null
@@ -3883,6 +3892,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_meeting_notes_scheduled_by_fkey"
+            columns: ["scheduled_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
             referencedColumns: ["id"]
           },
           {
