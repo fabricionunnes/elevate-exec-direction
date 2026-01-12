@@ -118,7 +118,7 @@ const OnboardingTasksPage = () => {
   const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null; company_id: string | null; churn_date: string | null }[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
-  const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string }[]>([]);
+  const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; target_value: number }[]>([]);
   const [healthScoresByProject, setHealthScoresByProject] = useState<Map<string, { total_score: number; risk_level: string }>>(new Map());
   
   // Announcement dialog state
@@ -224,7 +224,7 @@ const OnboardingTasksPage = () => {
     try {
       const { data, error } = await supabase
         .from("company_kpis")
-        .select("id, company_id")
+        .select("id, company_id, target_value")
         .eq("is_active", true);
 
       if (error) throw error;
@@ -666,9 +666,9 @@ const OnboardingTasksPage = () => {
     };
   }, [monthlyGoals, dateRange, allProjects, filterConsultant, filterService, filterStatus, companies]);
 
-  // Companies with any KPI configured (used for "Com Meta" and "Sem Meta" filters)
+  // Companies with any KPI configured with target > 0 (used for "Com Meta" and "Sem Meta" filters)
   const companiesWithKpis = useMemo(() => {
-    return new Set(companyKpis.map(k => k.company_id));
+    return new Set(companyKpis.filter(k => k.target_value > 0).map(k => k.company_id));
   }, [companyKpis]);
 
   const filteredCompanies = useMemo(() => {
