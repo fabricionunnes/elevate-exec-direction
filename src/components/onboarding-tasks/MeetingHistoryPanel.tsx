@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -47,7 +48,8 @@ import {
   Plus,
   Copy,
   MessageSquareHeart,
-  ClipboardPaste
+  ClipboardPaste,
+  UserX
 } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { ScheduleMeetingDialog } from "./ScheduleMeetingDialog";
@@ -65,6 +67,7 @@ interface MeetingNote {
   recording_link: string | null;
   created_at: string;
   is_finalized: boolean;
+  is_no_show?: boolean;
   google_event_id: string | null;
   scheduled_by: string | null;
   calendar_owner_id: string | null;
@@ -124,6 +127,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     notes: "",
     attendees: "",
     recordingLink: "",
+    isNoShow: false,
   });
 
   // Manual meeting/recording link edit (fallback when automatic sync isn't available)
@@ -526,20 +530,26 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   const handleFinalizeMeeting = async () => {
     if (!meetingToFinalize) return;
 
-    if (!finalizeForm.notes.trim()) {
+    // If not a no-show, notes are required
+    if (!finalizeForm.isNoShow && !finalizeForm.notes.trim()) {
       toast.error("Descreva o que foi tratado na reunião");
       return;
     }
 
     setFinalizing(true);
     try {
+      const notesValue = finalizeForm.isNoShow 
+        ? (finalizeForm.notes.trim() || "Cliente não compareceu à reunião (No Show)")
+        : finalizeForm.notes.trim();
+
       const { error } = await supabase
         .from("onboarding_meeting_notes")
         .update({
-          notes: finalizeForm.notes.trim(),
+          notes: notesValue,
           attendees: finalizeForm.attendees.trim() || null,
           recording_link: finalizeForm.recordingLink.trim() || null,
           is_finalized: true,
+          is_no_show: finalizeForm.isNoShow,
         })
         .eq("id", meetingToFinalize.id);
 
@@ -580,9 +590,9 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
         }
       }
 
-      toast.success("Reunião finalizada com sucesso!");
+      toast.success(finalizeForm.isNoShow ? "Reunião marcada como No Show!" : "Reunião finalizada com sucesso!");
       setMeetingToFinalize(null);
-      setFinalizeForm({ notes: "", attendees: "", recordingLink: "" });
+      setFinalizeForm({ notes: "", attendees: "", recordingLink: "", isNoShow: false });
       fetchMeetings();
     } catch (error) {
       console.error("Error finalizing meeting:", error);
@@ -656,6 +666,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
       notes: meeting.notes || "",
       attendees: meeting.attendees || "",
       recordingLink: meeting.recording_link || "",
+      isNoShow: false,
     });
   };
 
@@ -971,9 +982,16 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                           </div>
                           {/* Linha separada para quem agendou e status */}
                           <div className="flex items-center gap-3 text-xs mb-2 flex-wrap">
-                            <span className="text-primary font-medium">
-                              Finalizado
-                            </span>
+                            {meeting.is_no_show ? (
+                              <span className="text-destructive font-medium flex items-center gap-1">
+                                <UserX className="h-3 w-3" />
+                                No Show
+                              </span>
+                            ) : (
+                              <span className="text-primary font-medium">
+                                Finalizado
+                              </span>
+                            )}
                             {meeting.scheduled_by_staff && (
                               <span className="text-muted-foreground">
                                 • Agendado por {meeting.scheduled_by_staff.name}
@@ -1063,36 +1081,66 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                 )}
               </div>
 
+              {/* No Show Checkbox */}
+              <div className="flex items-center space-x-3 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+                <Checkbox
+                  id="noShow"
+                  checked={finalizeForm.isNoShow}
+                  onCheckedChange={(checked) => 
+                    setFinalizeForm({ ...finalizeForm, isNoShow: checked === true })
+                  }
+                />
+                <div className="flex-1">
+                  <Label 
+                    htmlFor="noShow" 
+                    className="flex items-center gap-2 cursor-pointer font-medium text-destructive"
+                  >
+                    <UserX className="h-4 w-4" />
+                    Cliente não compareceu (No Show)
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Marque esta opção se o cliente não apareceu para a reunião
+                  </p>
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label>O que foi tratado? *</Label>
+                <Label>{finalizeForm.isNoShow ? "Observações (opcional)" : "O que foi tratado? *"}</Label>
                 <Textarea
-                  placeholder="Descreva os principais pontos discutidos, decisões tomadas, próximos passos..."
+                  placeholder={finalizeForm.isNoShow 
+                    ? "Adicione observações sobre a tentativa de contato..." 
+                    : "Descreva os principais pontos discutidos, decisões tomadas, próximos passos..."
+                  }
                   value={finalizeForm.notes}
                   onChange={(e) => setFinalizeForm({ ...finalizeForm, notes: e.target.value })}
-                  rows={5}
+                  rows={finalizeForm.isNoShow ? 3 : 5}
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Participantes (opcional)</Label>
-                <Input
-                  placeholder="Nomes dos participantes"
-                  value={finalizeForm.attendees}
-                  onChange={(e) => setFinalizeForm({ ...finalizeForm, attendees: e.target.value })}
-                />
-              </div>
+              {!finalizeForm.isNoShow && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Participantes (opcional)</Label>
+                    <Input
+                      placeholder="Nomes dos participantes"
+                      value={finalizeForm.attendees}
+                      onChange={(e) => setFinalizeForm({ ...finalizeForm, attendees: e.target.value })}
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <PlayCircle className="h-4 w-4 text-red-500" />
-                  Link da Gravação (opcional)
-                </Label>
-                <Input
-                  placeholder="https://drive.google.com/file/..."
-                  value={finalizeForm.recordingLink}
-                  onChange={(e) => setFinalizeForm({ ...finalizeForm, recordingLink: e.target.value })}
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <PlayCircle className="h-4 w-4 text-red-500" />
+                      Link da Gravação (opcional)
+                    </Label>
+                    <Input
+                      placeholder="https://drive.google.com/file/..."
+                      value={finalizeForm.recordingLink}
+                      onChange={(e) => setFinalizeForm({ ...finalizeForm, recordingLink: e.target.value })}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           )}
 
