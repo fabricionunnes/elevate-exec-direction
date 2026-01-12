@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Version tag for debugging deployments
-const EVOLUTION_API_FUNC_VERSION = "2026-01-12-v2";
+const EVOLUTION_API_FUNC_VERSION = "2026-01-12-v3-connect-fallback";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -211,22 +211,34 @@ serve(async (req) => {
 
         console.log(`[evolution-api] Connect result - hasQrCode: ${hasQrCode}, qrCount: ${qrCount}`);
 
-        // 4) If no QR and count is 0, try alternative QR endpoint
-        if (!hasQrCode && qrCount === 0) {
-          console.log('[evolution-api] No QR in connect response, trying alternative /instance/qrcode endpoint...');
-          
-          const { res: qrRes, json: qrJson } = await fetchEvolutionJson(
-            `/instance/qrcode/${encodeURIComponent(instanceName)}`,
+        // 4) If count is 0 and we passed a phone number, some Evolution setups only return the
+        // QR/pairing payload when calling /instance/connect/{instance} WITHOUT the `number` param.
+        // So we retry once without number before giving up.
+        if (!hasQrCode && qrCount === 0 && number) {
+          console.log('[evolution-api] No QR in connect response (with number). Retrying /instance/connect without number...');
+
+          const { res: connectNoNumRes, json: connectNoNumJson } = await fetchEvolutionJson(
+            `/instance/connect/${encodeURIComponent(instanceName)}`,
             { method: 'GET' }
           );
 
-          if (qrRes.ok && (qrJson?.code || qrJson?.base64 || qrJson?.pairingCode)) {
-            console.log('[evolution-api] Got QR from alternative endpoint');
+          const noNumHasQr = !!(
+            connectNoNumJson?.code ||
+            connectNoNumJson?.pairingCode ||
+            connectNoNumJson?.base64 ||
+            connectNoNumJson?.qrcode?.base64 ||
+            connectNoNumJson?.qrcode?.code
+          );
+          const noNumCount = connectNoNumJson?.qrcode?.count ?? connectNoNumJson?.count ?? null;
+
+          console.log(`[evolution-api] Connect(no number) result - hasQrCode: ${noNumHasQr}, qrCount: ${noNumCount}`);
+
+          if (connectNoNumRes.ok && (noNumHasQr || noNumCount === 1)) {
             return new Response(
-              JSON.stringify({ 
-                ...qrJson, 
-                _source: 'qrcode-endpoint',
-                _version: EVOLUTION_API_FUNC_VERSION 
+              JSON.stringify({
+                ...connectNoNumJson,
+                _source: 'connect-endpoint-without-number',
+                _version: EVOLUTION_API_FUNC_VERSION,
               }),
               { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
