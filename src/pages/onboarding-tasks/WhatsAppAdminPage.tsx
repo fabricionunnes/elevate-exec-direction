@@ -311,8 +311,14 @@ const WhatsAppAdminPage = () => {
       // Check if qrcode count is 0 - means Evolution needs more time
       const qrCount = result?.qrcode?.count ?? result?.count ?? null;
       if (qrCount === 0) {
+        // Mark as connecting so admin can use Logout/Restart actions if needed
+        await supabase
+          .from("whatsapp_instances")
+          .update({ status: "connecting", qr_code: null })
+          .eq("id", instance.id);
+
         toast.info("QR Code ainda não disponível. Abrindo o modal e tentando automaticamente...");
-        setQrModalInstance({ ...instance, qr_code: null });
+        setQrModalInstance({ ...instance, status: "connecting", qr_code: null });
         return;
       }
 

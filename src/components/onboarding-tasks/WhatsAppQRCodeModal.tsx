@@ -202,6 +202,12 @@ export const WhatsAppQRCodeModal = ({
       // QR not ready yet
       if (qrCount === 0) {
         console.log("[QR Modal] QR not ready yet (count: 0)");
+
+        // Keep DB in a "connecting" state so the admin can use Logout/Restart on the list
+        await supabase
+          .from("whatsapp_instances")
+          .update({ status: "connecting", qr_code: null })
+          .eq("id", instance.id);
       }
 
       return { success: true, qrReady: false };
