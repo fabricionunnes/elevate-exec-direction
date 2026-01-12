@@ -853,7 +853,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                             Pendente
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2 flex-wrap">
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-1 flex-wrap">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             {format(new Date(meeting.meeting_date), "dd/MM/yyyy", { locale: ptBR })}
@@ -862,18 +862,23 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                             <Clock className="h-3 w-3" />
                             {format(new Date(meeting.meeting_date), "HH:mm", { locale: ptBR })}
                           </span>
-                          {meeting.scheduled_by_staff && (
-                            <span className="flex items-center gap-1 text-primary">
+                          {/* Mostrar responsável do projeto OU quem está na agenda */}
+                          {(meeting.calendar_owner_name || meeting.staff?.name) && (
+                            <span className="flex items-center gap-1">
                               <User className="h-3 w-3" />
-                              Agendado por: {meeting.scheduled_by_staff.name}
-                            </span>
-                          )}
-                          {meeting.calendar_owner_name && (
-                            <span className="flex items-center gap-1 text-muted-foreground">
-                              📅 Agenda: {meeting.calendar_owner_name}
+                              {meeting.calendar_owner_name || meeting.staff?.name}
                             </span>
                           )}
                         </div>
+                        {/* Linha separada para quem agendou */}
+                        {meeting.scheduled_by_staff && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                            <span>Agendado por {meeting.scheduled_by_staff.name}</span>
+                            {meeting.calendar_owner_name && (
+                              <span>na agenda de {meeting.calendar_owner_name}</span>
+                            )}
+                          </div>
+                        )}
                         {meeting.meeting_link && (
                           <Button
                             variant="outline"
@@ -947,7 +952,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                               </Badge>
                             )}
                           </div>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2 flex-wrap">
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground mb-1 flex-wrap">
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
                               {format(new Date(meeting.meeting_date), "dd/MM/yyyy", { locale: ptBR })}
@@ -956,21 +961,27 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                               <Clock className="h-3 w-3" />
                               {format(new Date(meeting.meeting_date), "HH:mm", { locale: ptBR })}
                             </span>
-                            {meeting.staff && (
+                            {/* Mostrar responsável do projeto OU quem está na agenda */}
+                            {(meeting.calendar_owner_name || meeting.staff?.name) && (
                               <span className="flex items-center gap-1">
                                 <User className="h-3 w-3" />
-                                {meeting.staff.name}
+                                {meeting.calendar_owner_name || meeting.staff?.name}
                               </span>
                             )}
+                          </div>
+                          {/* Linha separada para quem agendou e status */}
+                          <div className="flex items-center gap-3 text-xs mb-2 flex-wrap">
+                            <span className="text-primary font-medium">
+                              Finalizado
+                            </span>
                             {meeting.scheduled_by_staff && (
-                              <span className="flex items-center gap-1 text-primary">
-                                <User className="h-3 w-3" />
-                                Agendado por: {meeting.scheduled_by_staff.name}
+                              <span className="text-muted-foreground">
+                                • Agendado por {meeting.scheduled_by_staff.name}
                               </span>
                             )}
-                            {meeting.calendar_owner_name && (
-                              <span className="flex items-center gap-1">
-                                📅 Agenda: {meeting.calendar_owner_name}
+                            {meeting.calendar_owner_name && meeting.scheduled_by_staff && (
+                              <span className="text-muted-foreground">
+                                na agenda de {meeting.calendar_owner_name}
                               </span>
                             )}
                           </div>
