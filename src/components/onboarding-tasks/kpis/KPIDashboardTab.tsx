@@ -24,7 +24,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter, UsersRound } from "lucide-react";
 import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidget";
 import { GamificationDashboardWidget } from "../gamification/GamificationDashboardWidget";
 import { SalesHistoryDialog } from "./SalesHistoryDialog";
@@ -48,6 +48,14 @@ interface Salesperson {
   name: string;
   is_active: boolean;
   unit_id: string | null;
+  team_id: string | null;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  unit_id: string | null;
+  is_active: boolean;
 }
 
 interface Entry {
@@ -57,6 +65,7 @@ interface Entry {
   entry_date: string;
   value: number;
   unit_id: string | null;
+  team_id: string | null;
 }
 
 interface Unit {
@@ -80,6 +89,7 @@ interface MonthlyTarget {
   level_order: number;
   target_value: number;
   unit_id: string | null;
+  team_id: string | null;
   salesperson_id: string | null;
 }
 
@@ -88,6 +98,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [allMonthlyTargets, setAllMonthlyTargets] = useState<MonthlyTarget[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
@@ -97,6 +108,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
   const [selectedKpi, setSelectedKpi] = useState<string>("all");
   const [selectedSalesperson, setSelectedSalesperson] = useState<string>("all");
   const [selectedUnit, setSelectedUnit] = useState<string>("all");
+  const [selectedTeam, setSelectedTeam] = useState<string>("all");
   const [salesHistoryRefreshKey, setSalesHistoryRefreshKey] = useState(0);
   const [contractStartDate, setContractStartDate] = useState<string | null>(null);
 
@@ -117,11 +129,12 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       // Get the month from the selected date range for monthly targets
       const selectedMonthYear = format(new Date(dateRange.start), "yyyy-MM");
 
-      const [kpisRes, salespeopleRes, entriesRes, unitsRes, companyRes, monthlyTargetsRes] = await Promise.all([
+      const [kpisRes, salespeopleRes, entriesRes, unitsRes, teamsRes, companyRes, monthlyTargetsRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
         supabase.from("company_salespeople").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("kpi_entries").select("*").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end),
         supabase.from("company_units").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
+        supabase.from("company_teams").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("onboarding_companies").select("contract_start_date").eq("id", companyId).single(),
         supabase.from("kpi_monthly_targets").select("*").eq("company_id", companyId).eq("month_year", selectedMonthYear).order("level_order"),
       ]);
@@ -135,6 +148,8 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
         entriesError: entriesRes.error,
         units: unitsRes.data?.length || 0,
         unitsError: unitsRes.error,
+        teams: teamsRes.data?.length || 0,
+        teamsError: teamsRes.error,
         monthlyTargets: monthlyTargetsRes.data?.length || 0,
       });
 
@@ -142,6 +157,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       if (salespeopleRes.error) throw salespeopleRes.error;
       if (entriesRes.error) throw entriesRes.error;
       if (unitsRes.error) throw unitsRes.error;
+      if (teamsRes.error) throw teamsRes.error;
 
       // Store all monthly targets for later filtering by unit/salesperson
       setAllMonthlyTargets((monthlyTargetsRes.data || []) as MonthlyTarget[]);
@@ -173,6 +189,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       setSalespeople(salespeopleRes.data || []);
       setEntries(entriesRes.data || []);
       setUnits(unitsRes.data || []);
+      setTeams(teamsRes.data || []);
       if (companyRes.data) {
         setContractStartDate(companyRes.data.contract_start_date);
       }
@@ -184,9 +201,9 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     }
   };
 
-  // Helper function to get targets based on current filter (unit or salesperson)
+  // Helper function to get targets based on current filter (unit, team, or salesperson)
   const getFilteredTargetsForKpi = (kpiId: string): Record<string, number> => {
-    // Priority: salesperson > unit > company > sum of units/salespeople
+    // Priority: salesperson > team > unit > company > sum of units/salespeople
     let relevantTargets: MonthlyTarget[] = [];
     
     if (selectedSalesperson !== "all") {
@@ -196,17 +213,24 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       );
     }
     
+    if (relevantTargets.length === 0 && selectedTeam !== "all") {
+      // Get team-specific targets
+      relevantTargets = allMonthlyTargets.filter(
+        mt => mt.kpi_id === kpiId && mt.team_id === selectedTeam && mt.salesperson_id === null
+      );
+    }
+    
     if (relevantTargets.length === 0 && selectedUnit !== "all") {
       // Get unit-specific targets
       relevantTargets = allMonthlyTargets.filter(
-        mt => mt.kpi_id === kpiId && mt.unit_id === selectedUnit && mt.salesperson_id === null
+        mt => mt.kpi_id === kpiId && mt.unit_id === selectedUnit && mt.team_id === null && mt.salesperson_id === null
       );
     }
     
     if (relevantTargets.length === 0) {
       // Try company-level targets first
       relevantTargets = allMonthlyTargets.filter(
-        mt => mt.kpi_id === kpiId && mt.unit_id === null && mt.salesperson_id === null
+        mt => mt.kpi_id === kpiId && mt.unit_id === null && mt.team_id === null && mt.salesperson_id === null
       );
     }
     
@@ -265,10 +289,11 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     }
   };
 
-  // Filter entries based on selected unit and salesperson
+  // Filter entries based on selected unit, team, and salesperson
   const getFilteredEntries = () => {
     return entries.filter(e => {
       if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
+      if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
       if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
       return true;
     });
@@ -316,6 +341,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     const allMonthEntries = entries.filter(e => e.entry_date >= monthStart && e.entry_date <= monthEnd);
     const monthEntries = allMonthEntries.filter(e => {
       if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
+      if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
       if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
       return true;
     });
@@ -373,6 +399,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       if (selectedKpi !== "all" && e.kpi_id !== selectedKpi) return false;
       if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
       if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
+      if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
       return true;
     });
 
@@ -398,10 +425,11 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     const monetaryKpis = kpis.filter(k => k.kpi_type === "monetary");
     const monetaryKpiIds = monetaryKpis.map(k => k.id);
     
-    // Filter entries to only include monetary KPIs and apply unit/salesperson filter
+    // Filter entries to only include monetary KPIs and apply unit/team/salesperson filter
     const filteredEntries = entries.filter(e => {
       if (!monetaryKpiIds.includes(e.kpi_id)) return false;
       if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
+      if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
       if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
       return true;
     });
@@ -707,6 +735,30 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
                       <SelectItem key={unit.id} value={unit.id}>{unit.name}</SelectItem>
                     ))}
                   </SelectContent>
+              </Select>
+            </div>
+            )}
+            {teams.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs sm:text-sm">Equipe</Label>
+                <Select value={selectedTeam} onValueChange={(value) => {
+                  setSelectedTeam(value);
+                  // Reset salesperson when team changes
+                  if (value !== "all") {
+                    setSelectedSalesperson("all");
+                  }
+                }}>
+                  <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    <SelectItem value="all">Todas</SelectItem>
+                    {teams
+                      .filter(t => selectedUnit === "all" || t.unit_id === selectedUnit || t.unit_id === null)
+                      .map(team => (
+                        <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
+                      ))}
+                  </SelectContent>
                 </Select>
               </div>
             )}
@@ -718,9 +770,15 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
                 </SelectTrigger>
                 <SelectContent className="bg-background">
                   <SelectItem value="all">Todos</SelectItem>
-                  {salespeople.map(sp => (
-                    <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>
-                  ))}
+                  {salespeople
+                    .filter(sp => {
+                      if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
+                      if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
+                      return true;
+                    })
+                    .map(sp => (
+                      <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
