@@ -892,7 +892,7 @@ const DashboardMetrics = ({
                         )}
                         onClick={() => {
                           if (firstProject) {
-                            navigate(`/onboarding-tasks/project/${firstProject.id}`);
+                            navigate(`/onboarding-tasks/${firstProject.id}`);
                           }
                         }}
                       >
