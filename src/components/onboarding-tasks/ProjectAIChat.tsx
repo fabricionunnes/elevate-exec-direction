@@ -295,8 +295,26 @@ export const ProjectAIChat = ({
                   }`}
                 >
                   {message.role === "assistant" ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    <div className="prose prose-sm dark:prose-invert max-w-none overflow-x-auto">
+                      <ReactMarkdown
+                        components={{
+                          pre: ({ children }) => (
+                            <pre className="whitespace-pre-wrap break-words overflow-x-auto">{children}</pre>
+                          ),
+                          code: (({ inline, className, children, ...props }: any) => (
+                            <code
+                              className={`${className ?? ""} ${
+                                inline ? "break-words" : "whitespace-pre-wrap break-words"
+                              }`}
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          )) as any,
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
                     </div>
                   ) : (
                     <p>{message.content}</p>
