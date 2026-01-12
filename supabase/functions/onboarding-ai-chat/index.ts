@@ -62,6 +62,24 @@ serve(async (req) => {
       .eq("project_id", projectId)
       .order("sort_order");
 
+    // 3b. Fetch task attachments (documents linked to specific tasks)
+    const { data: taskAttachments } = await supabase
+      .from("onboarding_documents")
+      .select("*")
+      .eq("project_id", projectId)
+      .not("task_id", "is", null);
+    
+    // Group attachments by task_id for easy lookup
+    const attachmentsByTaskId: Record<string, any[]> = {};
+    taskAttachments?.forEach(doc => {
+      if (doc.task_id) {
+        if (!attachmentsByTaskId[doc.task_id]) {
+          attachmentsByTaskId[doc.task_id] = [];
+        }
+        attachmentsByTaskId[doc.task_id].push(doc);
+      }
+    });
+
     // 4. Tickets with replies
     const { data: tickets } = await supabase
       .from("onboarding_tickets")
@@ -108,63 +126,100 @@ serve(async (req) => {
 
     // 6b. Fetch text content from readable documents (PDFs, text files)
     console.log("Fetching document contents...");
-    const readableDocuments: { name: string; category: string; content: string }[] = [];
+    const readableDocuments: { name: string; category: string; content: string; taskTitle?: string }[] = [];
     
+    // Helper function to read file content
+    const readFileContent = async (doc: any, taskTitle?: string): Promise<{ name: string; category: string; content: string; taskTitle?: string } | null> => {
+      try {
+        const fileType = doc.file_type?.toLowerCase() || '';
+        const fileName = doc.file_name?.toLowerCase() || '';
+        
+        // Check if it's a readable text format
+        const isTextFile = fileType.includes('text') || 
+                          fileName.endsWith('.txt') || 
+                          fileName.endsWith('.md') ||
+                          fileName.endsWith('.csv') ||
+                          fileName.endsWith('.json');
+        
+        if (!isTextFile) {
+          // For non-text files (PDFs, images, etc.), return metadata only
+          return {
+            name: doc.file_name,
+            category: doc.category || 'geral',
+            content: `[Arquivo: ${doc.file_name}] ${doc.description || 'Sem descrição'}`,
+            taskTitle
+          };
+        }
+        
+        const { data: fileData, error: downloadError } = await supabase.storage
+          .from("onboarding-documents")
+          .download(doc.file_path);
+        
+        if (downloadError) {
+          console.error(`Error downloading ${doc.file_name}:`, downloadError);
+          return null;
+        }
+        
+        const textContent = await fileData.text();
+        
+        if (textContent && textContent.length > 0) {
+          return {
+            name: doc.file_name,
+            category: doc.category || 'geral',
+            content: textContent.substring(0, 8000), // Limit per doc
+            taskTitle
+          };
+        }
+        return null;
+      } catch (docError) {
+        console.error(`Error processing ${doc.file_name}:`, docError);
+        return null;
+      }
+    };
+    
+    // Process company documents (limit to 5)
     if (documents && documents.length > 0) {
-      // Filter for text-readable documents (prioritize recent ones)
-      const textDocs = documents
-        .filter(d => {
-          const type = d.file_type?.toLowerCase() || '';
-          const name = d.file_name?.toLowerCase() || '';
-          return type.includes('text') || 
-                 type.includes('pdf') || 
-                 name.endsWith('.txt') || 
-                 name.endsWith('.md') ||
-                 name.endsWith('.csv');
-        })
-        .slice(0, 5); // Limit to 5 most recent readable docs
+      const docsToProcess = documents.slice(0, 5);
+      const results = await Promise.all(docsToProcess.map(doc => readFileContent(doc)));
+      results.filter(Boolean).forEach(r => r && readableDocuments.push(r));
+    }
+    
+    // Process task attachments (prioritize recent tasks with attachments)
+    console.log("Fetching task attachment contents...");
+    const taskAttachmentContents: { taskId: string; taskTitle: string; attachments: { name: string; content: string }[] }[] = [];
+    
+    if (taskAttachments && taskAttachments.length > 0) {
+      // Get unique task IDs with attachments
+      const taskIdsWithAttachments = [...new Set(taskAttachments.map(a => a.task_id))].slice(0, 10);
       
-      for (const doc of textDocs) {
-        try {
-          const { data: fileData, error: downloadError } = await supabase.storage
-            .from("onboarding-documents")
-            .download(doc.file_path);
-          
-          if (downloadError) {
-            console.error(`Error downloading ${doc.file_name}:`, downloadError);
-            continue;
-          }
-          
-          let textContent = "";
-          
-          // For text files, read directly
-          if (doc.file_type?.includes('text') || 
-              doc.file_name?.endsWith('.txt') || 
-              doc.file_name?.endsWith('.md') ||
-              doc.file_name?.endsWith('.csv')) {
-            textContent = await fileData.text();
-          } 
-          // For PDFs, we'll extract what we can (basic text extraction)
-          else if (doc.file_type?.includes('pdf')) {
-            // PDF text extraction is complex - we'll note that it's a PDF
-            // and include metadata. Full PDF parsing would require a library.
-            textContent = `[Documento PDF - ${doc.description || 'sem descrição'}]`;
-          }
-          
-          if (textContent && textContent.length > 0) {
-            readableDocuments.push({
-              name: doc.file_name,
-              category: doc.category || 'geral',
-              content: textContent.substring(0, 5000) // Limit per doc
+      for (const taskId of taskIdsWithAttachments) {
+        const task = tasks?.find(t => t.id === taskId);
+        if (!task) continue;
+        
+        const attachmentsForTask = taskAttachments.filter(a => a.task_id === taskId).slice(0, 3);
+        const taskAttachmentResults: { name: string; content: string }[] = [];
+        
+        for (const attachment of attachmentsForTask) {
+          const result = await readFileContent(attachment, task.title);
+          if (result) {
+            taskAttachmentResults.push({
+              name: result.name,
+              content: result.content
             });
           }
-        } catch (docError) {
-          console.error(`Error processing ${doc.file_name}:`, docError);
+        }
+        
+        if (taskAttachmentResults.length > 0) {
+          taskAttachmentContents.push({
+            taskId,
+            taskTitle: task.title,
+            attachments: taskAttachmentResults
+          });
         }
       }
     }
     
-    console.log(`Loaded content from ${readableDocuments.length} Supabase documents`);
+    console.log(`Loaded content from ${readableDocuments.length} Supabase documents and ${taskAttachmentContents.length} tasks with attachments`);
 
     // 6c. Fetch documents from Google Drive (if connected)
     console.log("Checking for Google Drive documents...");
@@ -601,6 +656,18 @@ ${driveDocuments.map(d => `### 📄 ${d.name} (${d.type})
 ${d.content}
 \`\`\`
 `).join("\n")}
+` : ''}
+
+${taskAttachmentContents.length > 0 ? `
+## ANEXOS DE TAREFAS (Arquivos vinculados a tarefas específicas)
+Os seguintes arquivos estão anexados às tarefas e seu conteúdo foi lido:
+
+${taskAttachmentContents.map(t => `### 📎 Tarefa: "${t.taskTitle}"
+${t.attachments.map(a => `#### ${a.name}
+\`\`\`
+${a.content}
+\`\`\`
+`).join("\n")}`).join("\n")}
 ` : ''}
 
 ## VARIÁVEIS DO PROJETO
