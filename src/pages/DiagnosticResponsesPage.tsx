@@ -322,9 +322,9 @@ export default function DiagnosticResponsesPage() {
             status,
             context_data,
             created_at,
-            portal_companies!inner(name),
-            portal_users(name, email)
+            portal_companies!inner(id, name)
           `)
+          .not('context_data', 'eq', '{}')
           .order("created_at", { ascending: false })
       ]);
 
@@ -358,16 +358,31 @@ export default function DiagnosticResponsesPage() {
         console.error("Error fetching portal plans:", portalResult.error);
         setPortalPlans([]);
       } else {
-        const plans: PortalPlanDiagnostic[] = (portalResult.data || []).map((p: any) => ({
-          id: p.id,
-          company_id: p.company_id,
-          company_name: p.portal_companies?.name || "Empresa",
-          user_name: p.portal_users?.[0]?.name || null,
-          user_email: p.portal_users?.[0]?.email || null,
-          plan_status: p.status,
-          plan_created_at: p.created_at,
-          context_data: p.context_data || {},
-        }));
+        // Fetch users for each company
+        const companyIds = [...new Set((portalResult.data || []).map((p: any) => p.company_id))];
+        const { data: usersData } = await supabase
+          .from("portal_users" as any)
+          .select("company_id, name, email")
+          .in("company_id", companyIds);
+        
+        const usersByCompany = (usersData || []).reduce((acc: any, u: any) => {
+          if (!acc[u.company_id]) acc[u.company_id] = u;
+          return acc;
+        }, {});
+        
+        const plans: PortalPlanDiagnostic[] = (portalResult.data || []).map((p: any) => {
+          const user = usersByCompany[p.company_id];
+          return {
+            id: p.id,
+            company_id: p.company_id,
+            company_name: p.portal_companies?.name || "Empresa",
+            user_name: user?.name || null,
+            user_email: user?.email || null,
+            plan_status: p.status,
+            plan_created_at: p.created_at,
+            context_data: p.context_data || {},
+          };
+        });
         setPortalPlans(plans);
       }
     } catch (error) {
