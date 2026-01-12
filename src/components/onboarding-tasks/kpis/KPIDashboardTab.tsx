@@ -1016,6 +1016,36 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
         </Card>
       )}
 
+      {/* Average Ticket Card */}
+      {calculatedMetrics.hasRevenueData && calculatedMetrics.hasSalesData && calculatedMetrics.totalSales > 0 && (
+        <Card className="border-amber-500/50 bg-amber-500/5">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+            <DollarSign className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-amber-600">
+              {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(calculatedMetrics.avgTicket)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Faturamento ÷ Quantidade de Vendas
+            </p>
+            <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Faturamento Total</span>
+                <span className="font-medium">
+                  {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(calculatedMetrics.totalRevenue)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Qtd. Vendas</span>
+                <span className="font-medium">{calculatedMetrics.totalSales.toLocaleString("pt-BR")}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Overall Goal Achievement Card */}
       {kpis.length > 0 && (
         <Card className="border-green-500/50 bg-green-500/5">
