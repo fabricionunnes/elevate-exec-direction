@@ -166,7 +166,7 @@ export const WhatsAppQRCodeModal = ({
     return null;
   };
 
-  const fetchQrCode = useCallback(async (): Promise<{ success: boolean; qrReady: boolean }> => {
+  const fetchQrCode = useCallback(async (): Promise<{ success: boolean; qrReady: boolean; staleInstance?: boolean }> => {
     try {
       const phone = (instance.phone_number || "").trim().replace(/\D/g, "");
 
@@ -184,8 +184,24 @@ export const WhatsAppQRCodeModal = ({
 
       console.log("[QR Modal] Connect result:", result);
 
-      // Check for errors
+      // Check for errors - specifically if instance doesn't exist in Evolution API
       if (result?.error) {
+        // Check if this is a "not found" error
+        const errorMsg = result.error?.toLowerCase() || '';
+        if (errorMsg.includes('não encontrada') || errorMsg.includes('not found')) {
+          // Instance exists in DB but not in Evolution API - clean up
+          console.log("[QR Modal] Instance not found in Evolution API, cleaning up DB record");
+          toast.error("Instância não existe na Evolution API. Removendo registro...");
+          
+          // Delete from database
+          await supabase
+            .from("whatsapp_instances")
+            .delete()
+            .eq("id", instance.id);
+          
+          return { success: false, qrReady: false, staleInstance: true };
+        }
+        
         toast.error(result.error);
         return { success: false, qrReady: false };
       }
@@ -238,6 +254,21 @@ export const WhatsAppQRCodeModal = ({
       return { success: true, qrReady: false };
     } catch (error: any) {
       console.error("[QR Modal] Error fetching QR:", error);
+      
+      // Check if this is a stale instance error
+      const errorMsg = error.message?.toLowerCase() || '';
+      if (errorMsg.includes('não encontrada') || errorMsg.includes('not found')) {
+        console.log("[QR Modal] Instance not found, cleaning up...");
+        toast.error("Instância não existe. Removendo registro obsoleto...");
+        
+        await supabase
+          .from("whatsapp_instances")
+          .delete()
+          .eq("id", instance.id);
+        
+        return { success: false, qrReady: false, staleInstance: true };
+      }
+      
       toast.error(error.message || "Erro ao buscar QR Code");
       return { success: false, qrReady: false };
     }
@@ -266,7 +297,16 @@ export const WhatsAppQRCodeModal = ({
       }
 
       setPollingAttempt(attempt);
-      const { qrReady } = await fetchQrCode();
+      const { qrReady, staleInstance } = await fetchQrCode();
+
+      // If instance was stale, close modal and trigger refresh
+      if (staleInstance) {
+        setIsPolling(false);
+        setLoading(false);
+        toast.info("Registro removido. Crie uma nova instância.");
+        onClose();
+        return;
+      }
 
       if (qrReady) {
         setIsPolling(false);
@@ -280,7 +320,7 @@ export const WhatsAppQRCodeModal = ({
     };
 
     await poll(0);
-  }, [fetchQrCode, connected]);
+  }, [fetchQrCode, connected, onClose]);
 
   const refreshQRCode = async () => {
     if (pollingTimeoutRef.current) {
