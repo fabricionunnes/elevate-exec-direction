@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { RecurrenceSelector } from "./RecurrenceSelector";
 
 interface CalendarEvent {
   id: string;
@@ -63,6 +64,7 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
   const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskProjectId, setNewTaskProjectId] = useState("");
+  const [newTaskRecurrence, setNewTaskRecurrence] = useState<string | null>(null);
   const [addingTask, setAddingTask] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
   
@@ -255,6 +257,7 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
     setSelectedDate(date);
     setNewTaskTitle("");
     setNewTaskProjectId("");
+    setNewTaskRecurrence(null);
     setProjectSearch("");
     setShowAddTaskDialog(true);
   };
@@ -264,22 +267,32 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
 
     setAddingTask(true);
     try {
+      const insertData: any = {
+        title: newTaskTitle.trim(),
+        project_id: newTaskProjectId,
+        due_date: format(selectedDate, "yyyy-MM-dd"),
+        status: "pending",
+        sort_order: 0,
+      };
+
+      // Add recurrence if selected
+      if (newTaskRecurrence) {
+        insertData.recurrence = newTaskRecurrence;
+      }
+
       const { error } = await supabase
         .from("onboarding_tasks")
-        .insert({
-          title: newTaskTitle.trim(),
-          project_id: newTaskProjectId,
-          due_date: format(selectedDate, "yyyy-MM-dd"),
-          status: "pending",
-          sort_order: 0,
-        });
+        .insert(insertData);
 
       if (error) throw error;
 
-      toast.success("Tarefa adicionada com sucesso!");
+      toast.success(newTaskRecurrence 
+        ? "Tarefa recorrente adicionada com sucesso!" 
+        : "Tarefa adicionada com sucesso!");
       setShowAddTaskDialog(false);
       setNewTaskTitle("");
       setNewTaskProjectId("");
+      setNewTaskRecurrence(null);
       onTaskAdded?.();
     } catch (error) {
       console.error("Error adding task:", error);
@@ -846,6 +859,12 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
                 {filteredAvailableProjects.length} projeto(s) disponível(is)
               </p>
             </div>
+
+            {/* Recurrence selector */}
+            <RecurrenceSelector
+              value={newTaskRecurrence}
+              onChange={setNewTaskRecurrence}
+            />
           </div>
 
           <DialogFooter className="flex-shrink-0 border-t pt-4">
