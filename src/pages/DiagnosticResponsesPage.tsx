@@ -36,7 +36,10 @@ import {
   UserCheck,
   Trash2,
   MessageCircle,
-  Download
+  Download,
+  FileText,
+  Target,
+  TrendingUp
 } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -110,6 +113,39 @@ interface ChatAdvisorLead {
   messages: any[];
   recommended_services: any;
   status: string;
+}
+
+interface PortalPlanDiagnostic {
+  id: string;
+  company_id: string;
+  company_name: string;
+  user_name: string | null;
+  user_email: string | null;
+  plan_status: string;
+  plan_created_at: string;
+  context_data: {
+    current_revenue?: string;
+    annual_revenue_goal?: string;
+    avg_ticket?: string;
+    target_avg_ticket?: string;
+    salespeople_count?: string;
+    ideal_salespeople_count?: string;
+    leads_month?: string;
+    proposals_month?: string;
+    sales_month?: string;
+    conversion?: string;
+    sales_cycle_days?: string;
+    main_bottleneck?: string;
+    bottleneck_reason?: string;
+    owner_role?: string;
+    has_sales_manager?: string;
+    needs_process_crm?: string;
+    needs_sales_management?: string;
+    tracked_indicators?: string[];
+    first_action_after_planning?: string;
+    action_if_not_meet_60_days?: string;
+    [key: string]: any;
+  };
 }
 const revenueLabels: Record<string, string> = {
   "menos-50k": "< R$ 50k",
@@ -187,11 +223,13 @@ export default function DiagnosticResponsesPage() {
   const [responses, setResponses] = useState<DiagnosticResponse[]>([]);
   const [closerDiagnostics, setCloserDiagnostics] = useState<CloserDiagnostic[]>([]);
   const [chatLeads, setChatLeads] = useState<ChatAdvisorLead[]>([]);
+  const [portalPlans, setPortalPlans] = useState<PortalPlanDiagnostic[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedResponse, setSelectedResponse] = useState<DiagnosticResponse | null>(null);
   const [selectedCloser, setSelectedCloser] = useState<CloserDiagnostic | null>(null);
   const [selectedChatLead, setSelectedChatLead] = useState<ChatAdvisorLead | null>(null);
+  const [selectedPortalPlan, setSelectedPortalPlan] = useState<PortalPlanDiagnostic | null>(null);
   const [activeTab, setActiveTab] = useState("clients");
   
   // Auth state
@@ -263,7 +301,7 @@ export default function DiagnosticResponsesPage() {
   const fetchResponses = async () => {
     setLoading(true);
     try {
-      const [clientsResult, closersResult, chatResult] = await Promise.all([
+      const [clientsResult, closersResult, chatResult, portalResult] = await Promise.all([
         supabase
           .from("client_diagnostics")
           .select("*")
@@ -275,6 +313,18 @@ export default function DiagnosticResponsesPage() {
         supabase
           .from("chat_advisor_leads" as any)
           .select("*")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("portal_plans" as any)
+          .select(`
+            id,
+            company_id,
+            status,
+            context_data,
+            created_at,
+            portal_companies!inner(name),
+            portal_users(name, email)
+          `)
           .order("created_at", { ascending: false })
       ]);
 
@@ -302,6 +352,23 @@ export default function DiagnosticResponsesPage() {
         setChatLeads([]);
       } else {
         setChatLeads((chatResult.data as unknown as ChatAdvisorLead[]) || []);
+      }
+
+      if (portalResult.error) {
+        console.error("Error fetching portal plans:", portalResult.error);
+        setPortalPlans([]);
+      } else {
+        const plans: PortalPlanDiagnostic[] = (portalResult.data || []).map((p: any) => ({
+          id: p.id,
+          company_id: p.company_id,
+          company_name: p.portal_companies?.name || "Empresa",
+          user_name: p.portal_users?.[0]?.name || null,
+          user_email: p.portal_users?.[0]?.email || null,
+          plan_status: p.status,
+          plan_created_at: p.created_at,
+          context_data: p.context_data || {},
+        }));
+        setPortalPlans(plans);
       }
     } catch (error) {
       toast.error("Erro ao carregar dados");
@@ -642,6 +709,16 @@ export default function DiagnosticResponsesPage() {
     );
   });
 
+  const filteredPortalPlans = portalPlans.filter(r => {
+    if (!search.trim()) return true;
+    const searchLower = search.toLowerCase();
+    return (
+      r.company_name.toLowerCase().includes(searchLower) ||
+      (r.user_name?.toLowerCase().includes(searchLower)) ||
+      (r.user_email?.toLowerCase().includes(searchLower))
+    );
+  });
+
   // Loading state
   if (authLoading) {
     return (
@@ -725,7 +802,7 @@ export default function DiagnosticResponsesPage() {
                 Respostas dos Diagnósticos
               </h1>
               <p className="text-muted-foreground">
-                {responses.length} de clientes • {closerDiagnostics.length} de closers • {chatLeads.length} do chat
+                {responses.length} clientes • {closerDiagnostics.length} closers • {chatLeads.length} chat • {portalPlans.length} planejamentos
               </p>
             </div>
             
@@ -761,6 +838,10 @@ export default function DiagnosticResponsesPage() {
               <TabsTrigger value="chat" className="flex items-center gap-2">
                 <MessageCircle className="h-4 w-4" />
                 Chat IA ({chatLeads.length})
+              </TabsTrigger>
+              <TabsTrigger value="portal" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Planejamento ({portalPlans.length})
               </TabsTrigger>
             </TabsList>
 
@@ -1187,6 +1268,123 @@ export default function DiagnosticResponsesPage() {
                                 </AlertDialogContent>
                               </AlertDialog>
                             </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Portal Plans Tab */}
+            <TabsContent value="portal">
+              {loading ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                </div>
+              ) : filteredPortalPlans.length === 0 ? (
+                <div className="text-center py-20">
+                  <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Nenhum planejamento encontrado</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Empresa</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead>Situação Atual</TableHead>
+                        <TableHead>Diagnóstico</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPortalPlans.map((plan) => (
+                        <TableRow key={plan.id}>
+                          <TableCell className="whitespace-nowrap">
+                            <div className="flex items-center gap-2 text-sm">
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                              {format(new Date(plan.plan_created_at), "dd/MM HH:mm", { locale: ptBR })}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{plan.company_name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {plan.user_name && (
+                                <p className="font-medium text-sm">{plan.user_name}</p>
+                              )}
+                              {plan.user_email && (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Mail className="h-3 w-3" />
+                                  {plan.user_email}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1 text-xs">
+                              {plan.context_data.current_revenue && (
+                                <p><span className="text-muted-foreground">Fat.:</span> R$ {plan.context_data.current_revenue}</p>
+                              )}
+                              {plan.context_data.salespeople_count && (
+                                <p><span className="text-muted-foreground">Vendedores:</span> {plan.context_data.salespeople_count}</p>
+                              )}
+                              {plan.context_data.leads_month && (
+                                <p><span className="text-muted-foreground">Leads/mês:</span> {plan.context_data.leads_month}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {plan.context_data.main_bottleneck && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {plan.context_data.main_bottleneck === 'process' ? 'Processo' : 
+                                   plan.context_data.main_bottleneck === 'leads' ? 'Leads' : 
+                                   plan.context_data.main_bottleneck === 'team' ? 'Time' : 
+                                   plan.context_data.main_bottleneck === 'conversion' ? 'Conversão' : 
+                                   plan.context_data.main_bottleneck}
+                                </Badge>
+                              )}
+                              {plan.context_data.needs_sales_management === 'yes' && (
+                                <Badge variant="outline" className="text-xs block w-fit">
+                                  Precisa de gestão
+                                </Badge>
+                              )}
+                              {plan.context_data.needs_process_crm === 'yes' && (
+                                <Badge variant="outline" className="text-xs block w-fit">
+                                  Precisa de CRM
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={cn(
+                              plan.plan_status === 'published' ? 'bg-emerald-500/20 text-emerald-600' :
+                              plan.plan_status === 'draft' ? 'bg-yellow-500/20 text-yellow-600' :
+                              'bg-secondary'
+                            )}>
+                              {plan.plan_status === 'published' ? 'Publicado' : 
+                               plan.plan_status === 'draft' ? 'Rascunho' : plan.plan_status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setSelectedPortalPlan(plan)}
+                              title="Ver detalhes"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1692,6 +1890,206 @@ export default function DiagnosticResponsesPage() {
               <Button variant="outline" className="w-full" onClick={() => setSelectedChatLead(null)}>
                 Fechar
               </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Detalhes - Portal Plan */}
+      <Dialog open={!!selectedPortalPlan} onOpenChange={() => setSelectedPortalPlan(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <Target className="h-5 w-5 text-accent" />
+              Planejamento: {selectedPortalPlan?.company_name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedPortalPlan && (
+            <div className="space-y-6 mt-4">
+              {/* Info básica */}
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div className="bg-secondary/50 rounded-lg p-4">
+                  <p className="text-xs text-muted-foreground mb-1">Empresa</p>
+                  <p className="font-semibold text-foreground">{selectedPortalPlan.company_name}</p>
+                </div>
+                <div className="bg-secondary/50 rounded-lg p-4">
+                  <p className="text-xs text-muted-foreground mb-1">Responsável</p>
+                  <p className="font-semibold text-foreground">{selectedPortalPlan.user_name || "N/I"}</p>
+                  {selectedPortalPlan.user_email && (
+                    <p className="text-xs text-muted-foreground">{selectedPortalPlan.user_email}</p>
+                  )}
+                </div>
+                <div className="bg-secondary/50 rounded-lg p-4">
+                  <p className="text-xs text-muted-foreground mb-1">Status</p>
+                  <Badge className={cn(
+                    selectedPortalPlan.plan_status === 'published' ? 'bg-emerald-500/20 text-emerald-600' :
+                    selectedPortalPlan.plan_status === 'draft' ? 'bg-yellow-500/20 text-yellow-600' : 'bg-secondary'
+                  )}>
+                    {selectedPortalPlan.plan_status === 'published' ? 'Publicado' : 
+                     selectedPortalPlan.plan_status === 'draft' ? 'Rascunho' : selectedPortalPlan.plan_status}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Situação Atual */}
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Situação Atual
+                </h4>
+                <div className="grid sm:grid-cols-4 gap-3">
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Faturamento Atual</p>
+                    <p className="font-medium text-foreground">
+                      {selectedPortalPlan.context_data.current_revenue ? `R$ ${selectedPortalPlan.context_data.current_revenue}` : "N/I"}
+                    </p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Meta Anual</p>
+                    <p className="font-medium text-foreground">
+                      {selectedPortalPlan.context_data.annual_revenue_goal ? `R$ ${selectedPortalPlan.context_data.annual_revenue_goal}` : "N/I"}
+                    </p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Ticket Médio</p>
+                    <p className="font-medium text-foreground">
+                      {selectedPortalPlan.context_data.avg_ticket ? `R$ ${selectedPortalPlan.context_data.avg_ticket}` : "N/I"}
+                    </p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Ticket Meta</p>
+                    <p className="font-medium text-foreground">
+                      {selectedPortalPlan.context_data.target_avg_ticket ? `R$ ${selectedPortalPlan.context_data.target_avg_ticket}` : "N/I"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Vendas */}
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Indicadores de Vendas
+                </h4>
+                <div className="grid sm:grid-cols-5 gap-3">
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Vendedores</p>
+                    <p className="font-medium text-foreground">{selectedPortalPlan.context_data.salespeople_count || "N/I"}</p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Leads/mês</p>
+                    <p className="font-medium text-foreground">{selectedPortalPlan.context_data.leads_month || "N/I"}</p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Propostas/mês</p>
+                    <p className="font-medium text-foreground">{selectedPortalPlan.context_data.proposals_month || "N/I"}</p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Vendas/mês</p>
+                    <p className="font-medium text-foreground">{selectedPortalPlan.context_data.sales_month || "N/I"}</p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Ciclo (dias)</p>
+                    <p className="font-medium text-foreground">{selectedPortalPlan.context_data.sales_cycle_days || "N/I"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Diagnóstico */}
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-3">Diagnóstico</h4>
+                <div className="space-y-3">
+                  {selectedPortalPlan.context_data.main_bottleneck && (
+                    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                      <p className="text-xs text-muted-foreground mb-1">Principal Gargalo</p>
+                      <Badge variant="secondary" className="mb-2">
+                        {selectedPortalPlan.context_data.main_bottleneck === 'process' ? 'Processo' : 
+                         selectedPortalPlan.context_data.main_bottleneck === 'leads' ? 'Leads' : 
+                         selectedPortalPlan.context_data.main_bottleneck === 'team' ? 'Time' : 
+                         selectedPortalPlan.context_data.main_bottleneck === 'conversion' ? 'Conversão' : 
+                         selectedPortalPlan.context_data.main_bottleneck}
+                      </Badge>
+                      {selectedPortalPlan.context_data.bottleneck_reason && (
+                        <p className="text-sm text-foreground mt-2">{selectedPortalPlan.context_data.bottleneck_reason}</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    <div className="bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Tem gestor comercial?</p>
+                      <Badge variant={selectedPortalPlan.context_data.has_sales_manager === 'yes' ? 'default' : 'outline'}>
+                        {selectedPortalPlan.context_data.has_sales_manager === 'yes' ? 'Sim' : 'Não'}
+                      </Badge>
+                    </div>
+                    <div className="bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Precisa de gestão?</p>
+                      <Badge variant={selectedPortalPlan.context_data.needs_sales_management === 'yes' ? 'destructive' : 'outline'}>
+                        {selectedPortalPlan.context_data.needs_sales_management === 'yes' ? 'Sim' : 'Não'}
+                      </Badge>
+                    </div>
+                    <div className="bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Precisa de CRM/Processo?</p>
+                      <Badge variant={selectedPortalPlan.context_data.needs_process_crm === 'yes' ? 'destructive' : 'outline'}>
+                        {selectedPortalPlan.context_data.needs_process_crm === 'yes' ? 'Sim' : 'Não'}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {selectedPortalPlan.context_data.owner_role && (
+                    <div className="bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Papel do Dono</p>
+                      <p className="font-medium text-foreground">
+                        {selectedPortalPlan.context_data.owner_role === 'operational' ? 'Operacional (vendendo)' :
+                         selectedPortalPlan.context_data.owner_role === 'manager' ? 'Gestor (gerenciando time)' :
+                         selectedPortalPlan.context_data.owner_role === 'strategic' ? 'Estratégico (visão do negócio)' :
+                         selectedPortalPlan.context_data.owner_role}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Próximos Passos */}
+              {(selectedPortalPlan.context_data.first_action_after_planning || selectedPortalPlan.context_data.action_if_not_meet_60_days) && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">Próximos Passos</h4>
+                  <div className="space-y-3">
+                    {selectedPortalPlan.context_data.first_action_after_planning && (
+                      <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
+                        <p className="text-xs text-muted-foreground mb-1">Primeira ação após planejamento</p>
+                        <p className="text-sm text-foreground">{selectedPortalPlan.context_data.first_action_after_planning}</p>
+                      </div>
+                    )}
+                    {selectedPortalPlan.context_data.action_if_not_meet_60_days && (
+                      <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
+                        <p className="text-xs text-muted-foreground mb-1">Se não bater meta em 60 dias</p>
+                        <p className="text-sm text-foreground">{selectedPortalPlan.context_data.action_if_not_meet_60_days}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Indicadores Acompanhados */}
+              {selectedPortalPlan.context_data.tracked_indicators && selectedPortalPlan.context_data.tracked_indicators.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">Indicadores que acompanha</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedPortalPlan.context_data.tracked_indicators.map((indicator, i) => (
+                      <Badge key={i} variant="outline">{indicator}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Ações */}
+              <div className="flex gap-3 pt-4">
+                <Button variant="outline" className="flex-1" onClick={() => setSelectedPortalPlan(null)}>
+                  Fechar
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
