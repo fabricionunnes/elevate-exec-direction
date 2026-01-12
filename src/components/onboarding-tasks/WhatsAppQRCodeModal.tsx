@@ -44,18 +44,28 @@ export const WhatsAppQRCodeModal = ({
   }, [instance.instance_name]);
 
   const callEvolutionAPI = async (action: string, body?: any) => {
-    const response = await supabase.functions.invoke("evolution-api", {
-      body: body || {},
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Não autenticado");
+
+    // Build URL with action query parameter
+    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=${action}`;
+    
+    const response = await fetch(functionUrl, {
+      method: 'POST',
       headers: {
-        "x-action": action,
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
       },
+      body: JSON.stringify(body || {}),
     });
 
-    if (response.error) {
-      throw new Error(response.error.message || "Erro na API");
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
     }
 
-    return response.data;
+    return response.json();
   };
 
   const refreshQRCode = async () => {

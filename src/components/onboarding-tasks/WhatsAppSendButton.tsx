@@ -95,19 +95,28 @@ export const WhatsAppSendButton = ({
       }
 
       // Send via Evolution API
-      const response = await supabase.functions.invoke("evolution-api", {
-        body: {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
+
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`;
+      
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({
           instanceName: instance.instance_name,
           number: cleanPhone,
           text: message,
-        },
-        headers: {
-          "x-action": "send-text",
-        },
+        }),
       });
 
-      if (response.error) {
-        throw new Error(response.error.message);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro' }));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
       }
 
       // Log message
