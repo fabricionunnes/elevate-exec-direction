@@ -1,12 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Version tag for debugging deployments
+const EVOLUTION_API_FUNC_VERSION = "2026-01-12-v2";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
+  console.log(`[evolution-api] Version: ${EVOLUTION_API_FUNC_VERSION}`);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -58,6 +63,8 @@ serve(async (req) => {
 
     const fetchEvolutionJson = async (endpoint: string, init?: RequestInit) => {
       const fullUrl = `${EVOLUTION_API_URL}${endpoint}`;
+      console.log(`[evolution-api] Calling: ${init?.method || 'GET'} ${fullUrl}`);
+      
       const res = await fetch(fullUrl, {
         ...init,
         headers: { ...evolutionHeaders, ...(init?.headers || {}) },
@@ -71,10 +78,19 @@ serve(async (req) => {
         json = { raw: text };
       }
 
-      console.log('Evolution request:', { method: init?.method || 'GET', url: fullUrl, status: res.status });
-      console.log('Evolution response:', json);
+      console.log(`[evolution-api] Response status: ${res.status}`);
+      console.log(`[evolution-api] Response body:`, JSON.stringify(json).substring(0, 500));
 
       return { res, json };
+    };
+
+    // Helper to fetch all instances from Evolution
+    const fetchEvolutionInstances = async () => {
+      const { res, json } = await fetchEvolutionJson('/instance/fetchInstances', { method: 'GET' });
+      if (res.ok && Array.isArray(json)) {
+        return json;
+      }
+      return [];
     };
 
     let body: any = {};
@@ -82,7 +98,7 @@ serve(async (req) => {
       body = await req.json();
     }
 
-    console.log(`Evolution API action: ${action}`, body);
+    console.log(`[evolution-api] Action: ${action}`, JSON.stringify(body).substring(0, 200));
 
     switch (action) {
       case 'create-instance': {
@@ -129,8 +145,7 @@ serve(async (req) => {
       case 'connect':
       case 'qr-code': {
         // Generate and return pairingCode/code for WhatsApp connection.
-        // Accept instanceName from query param OR body.
-        // Optional: accept 'number' (query/body) for setups that require it.
+        // IMPORTANT: We ONLY use instanceName (string), NEVER UUID
         const instanceName = url.searchParams.get('instanceName') || body.instanceName;
         const number = url.searchParams.get('number') || body.number;
 
@@ -141,55 +156,96 @@ serve(async (req) => {
           );
         }
 
+        console.log(`[evolution-api] Connect request - instanceName: "${instanceName}", number: "${number}"`);
+
         const qs = number ? `?number=${encodeURIComponent(number)}` : '';
 
-        // 1) Try connect by instanceName
+        // 1) Try connect by instanceName (NEVER use UUID)
         let { res: connectRes, json: connectJson } = await fetchEvolutionJson(
           `/instance/connect/${encodeURIComponent(instanceName)}${qs}`,
           { method: 'GET' }
         );
 
-        // 2) If 404, the instance might not exist in Evolution or name doesn't match.
-        //    Fetch all instances and try to find by name.
+        // 2) If 404, verify if instance exists in Evolution
         if (connectRes.status === 404) {
-          console.log('Connect returned 404, fetching all instances to resolve name...');
-          const { res: listRes, json: listJson } = await fetchEvolutionJson('/instance/fetchInstances', { method: 'GET' });
+          console.log('[evolution-api] Connect returned 404, fetching all instances...');
+          const allInstances = await fetchEvolutionInstances();
+          const instanceNames = allInstances.map((x: any) => x?.name || x?.instanceName);
+          console.log('[evolution-api] Available instances:', instanceNames);
 
-          if (listRes.ok && Array.isArray(listJson)) {
-            // Evolution API returns: [{ id, name, ... }]
-            const match = listJson.find((x: any) => x?.name === instanceName);
+          const match = allInstances.find((x: any) => 
+            x?.name === instanceName || x?.instanceName === instanceName
+          );
 
-            if (match) {
-              // Instance exists in Evolution with matching name - retry connect
-              console.log('Found instance in Evolution, retrying connect with same name:', match.name);
-              ({ res: connectRes, json: connectJson } = await fetchEvolutionJson(
-                `/instance/connect/${encodeURIComponent(match.name)}${qs}`,
-                { method: 'GET' }
-              ));
-            } else {
-              console.log('Instance not found in Evolution. Available:', listJson.map((x: any) => x?.name));
-              return new Response(
-                JSON.stringify({ 
-                  error: 'Instância não encontrada na Evolution API. Recrie a instância.',
-                  availableInstances: listJson.map((x: any) => x?.name)
-                }),
-                { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-              );
-            }
+          if (!match) {
+            // Instance truly doesn't exist in Evolution
+            return new Response(
+              JSON.stringify({ 
+                error: `Instância "${instanceName}" não encontrada na Evolution API. Apague e recrie a instância.`,
+                availableInstances: instanceNames,
+                tip: 'Verifique se o nome da instância está correto ou crie uma nova instância.'
+              }),
+              { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Found the instance, retry connect with the correct name
+          const matchName = match.name || match.instanceName;
+          console.log(`[evolution-api] Found instance, retrying with name: "${matchName}"`);
+          
+          ({ res: connectRes, json: connectJson } = await fetchEvolutionJson(
+            `/instance/connect/${encodeURIComponent(matchName)}${qs}`,
+            { method: 'GET' }
+          ));
+        }
+
+        // 3) Check for QR code in response
+        const hasQrCode = !!(
+          connectJson?.code || 
+          connectJson?.pairingCode || 
+          connectJson?.base64 || 
+          connectJson?.qrcode?.base64 ||
+          connectJson?.qrcode?.code
+        );
+        const qrCount = connectJson?.qrcode?.count ?? connectJson?.count ?? null;
+
+        console.log(`[evolution-api] Connect result - hasQrCode: ${hasQrCode}, qrCount: ${qrCount}`);
+
+        // 4) If no QR and count is 0, try alternative QR endpoint
+        if (!hasQrCode && qrCount === 0) {
+          console.log('[evolution-api] No QR in connect response, trying alternative /instance/qrcode endpoint...');
+          
+          const { res: qrRes, json: qrJson } = await fetchEvolutionJson(
+            `/instance/qrcode/${encodeURIComponent(instanceName)}`,
+            { method: 'GET' }
+          );
+
+          if (qrRes.ok && (qrJson?.code || qrJson?.base64 || qrJson?.pairingCode)) {
+            console.log('[evolution-api] Got QR from alternative endpoint');
+            return new Response(
+              JSON.stringify({ 
+                ...qrJson, 
+                _source: 'qrcode-endpoint',
+                _version: EVOLUTION_API_FUNC_VERSION 
+              }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
           }
         }
 
-        // 3) If qrcode.count is 0, it means Evolution needs a moment. Return the response as-is.
-        //    The frontend should display "try again" or auto-retry.
+        // 5) Return whatever we got, with version info
         return new Response(
-          JSON.stringify(connectJson),
+          JSON.stringify({ 
+            ...connectJson, 
+            _source: 'connect-endpoint',
+            _version: EVOLUTION_API_FUNC_VERSION 
+          }),
           { status: connectRes.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       case 'status': {
         // Check instance status
-        // Accept instanceName from query param OR body
         const instanceName = url.searchParams.get('instanceName') || body.instanceName;
 
         if (!instanceName) {
@@ -205,7 +261,7 @@ serve(async (req) => {
         );
 
         return new Response(
-          JSON.stringify(json),
+          JSON.stringify({ ...json, _version: EVOLUTION_API_FUNC_VERSION }),
           { status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -242,7 +298,7 @@ serve(async (req) => {
         });
 
         const data = await response.json();
-        console.log('Send text response:', data);
+        console.log('[evolution-api] Send text response:', data);
 
         return new Response(
           JSON.stringify(data),
@@ -274,7 +330,7 @@ serve(async (req) => {
         });
 
         const data = await response.json();
-        console.log('Send media response:', data);
+        console.log('[evolution-api] Send media response:', data);
 
         return new Response(
           JSON.stringify(data),
@@ -299,7 +355,7 @@ serve(async (req) => {
         });
 
         const data = await response.json();
-        console.log('Delete instance response:', data);
+        console.log('[evolution-api] Delete instance response:', data);
 
         return new Response(
           JSON.stringify(data),
@@ -324,7 +380,7 @@ serve(async (req) => {
         });
 
         const data = await response.json();
-        console.log('Logout response:', data);
+        console.log('[evolution-api] Logout response:', data);
 
         return new Response(
           JSON.stringify(data),
@@ -349,7 +405,7 @@ serve(async (req) => {
         });
 
         const data = await response.json();
-        console.log('Restart response:', data);
+        console.log('[evolution-api] Restart response:', data);
 
         return new Response(
           JSON.stringify(data),
@@ -372,15 +428,19 @@ serve(async (req) => {
               'delete-instance',
               'logout',
               'restart'
-            ]
+            ],
+            _version: EVOLUTION_API_FUNC_VERSION
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }
   } catch (error) {
-    console.error('Evolution API error:', error);
+    console.error('[evolution-api] Error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        _version: EVOLUTION_API_FUNC_VERSION
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
