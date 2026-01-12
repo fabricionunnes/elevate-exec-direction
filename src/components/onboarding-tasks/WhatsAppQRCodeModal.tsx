@@ -379,6 +379,53 @@ export const WhatsAppQRCodeModal = ({
     }
   };
 
+  const handleRecreate = async () => {
+    setActionLoading("recreate");
+
+    try {
+      const phone = (instance.phone_number || "").trim().replace(/\D/g, "");
+      if (!phone || phone.length < 12) {
+        toast.error("Número inválido. Salve com DDI (ex: 5511999999999) e recrie a instância.");
+        return;
+      }
+
+      // Try deleting in Evolution (ignore 'not found')
+      try {
+        await callEvolutionAPI("delete-instance", { instanceName: instance.instance_name });
+      } catch (e) {
+        console.log("[QR Modal] delete-instance ignored:", e);
+      }
+
+      // Recreate in Evolution with a fresh token
+      await callEvolutionAPI("create-instance", {
+        instanceName: instance.instance_name,
+        token: `token_${instance.instance_name}_${Date.now()}`,
+        number: phone,
+        qrcode: true,
+        integration: "WHATSAPP-BAILEYS",
+      });
+
+      // Reset DB state
+      await supabase
+        .from("whatsapp_instances")
+        .update({ status: "disconnected", qr_code: null })
+        .eq("id", instance.id);
+
+      toast.success("Instância recriada. Gerando novo QR...");
+      setQrCode(null);
+      setPairingCode(null);
+      setDiagnostic({ source: null, connectionState: null, count: null, attempts: 0 });
+
+      // Give Evolution a moment to boot then poll
+      setTimeout(() => refreshQRCode(), 3000);
+    } catch (error: any) {
+      console.error("[QR Modal] Error recreating:", error);
+      toast.error(error.message || "Erro ao recriar instância");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const checkStatus = async () => {
     if (connected || !mountedRef.current) return;
 
@@ -557,13 +604,15 @@ export const WhatsAppQRCodeModal = ({
                     
                     <Button
                       variant="destructive"
-                      onClick={() => {
-                        onClose();
-                        toast.info("Exclua esta instância e crie uma nova com nome diferente.");
-                      }}
+                      onClick={handleRecreate}
+                      disabled={!!actionLoading}
                       className="gap-2"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      {actionLoading === "recreate" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                       Excluir e Recriar
                     </Button>
                   </div>
