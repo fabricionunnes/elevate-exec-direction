@@ -461,6 +461,20 @@ serve(async (req) => {
         const data = await response.json();
         console.log('[evolution-api] Delete instance response:', data);
 
+        // If instance doesn't exist in Evolution API (404), still return success
+        // This allows cleaning up stale DB records
+        if (response.status === 404) {
+          console.log('[evolution-api] Instance not found in Evolution API, returning success for DB cleanup');
+          return new Response(
+            JSON.stringify({ 
+              status: 'SUCCESS', 
+              message: 'Instance not found in Evolution API (already deleted or never existed)',
+              canDeleteFromDB: true 
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         return new Response(
           JSON.stringify(data),
           { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
