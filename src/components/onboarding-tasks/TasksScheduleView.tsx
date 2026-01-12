@@ -27,6 +27,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameM
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { RecurrenceSelector } from "./RecurrenceSelector";
 
 interface OnboardingTask {
   id: string;
@@ -116,6 +117,7 @@ export const TasksScheduleView = ({
   const [newTaskProjectId, setNewTaskProjectId] = useState(singleProjectId || "");
   const [newTaskResponsibleId, setNewTaskResponsibleId] = useState("");
   const [newTaskPhase, setNewTaskPhase] = useState("");
+  const [newTaskRecurrence, setNewTaskRecurrence] = useState<string | null>(null);
   const [addingTask, setAddingTask] = useState(false);
 
   const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
@@ -186,6 +188,7 @@ export const TasksScheduleView = ({
     setNewTaskProjectId(singleProjectId || "");
     setNewTaskResponsibleId("");
     setNewTaskPhase("");
+    setNewTaskRecurrence(null);
     setShowAddTaskDialog(true);
   };
 
@@ -229,18 +232,26 @@ export const TasksScheduleView = ({
         insertData.tags = [newTaskPhase];
       }
 
+      // Add recurrence if selected
+      if (newTaskRecurrence) {
+        insertData.recurrence = newTaskRecurrence;
+      }
+
       const { error } = await supabase
         .from("onboarding_tasks")
         .insert(insertData);
 
       if (error) throw error;
 
-      toast.success("Tarefa adicionada com sucesso!");
+      toast.success(newTaskRecurrence 
+        ? "Tarefa recorrente adicionada com sucesso!" 
+        : "Tarefa adicionada com sucesso!");
       setShowAddTaskDialog(false);
       setNewTaskTitle("");
       setNewTaskProjectId(singleProjectId || "");
       setNewTaskResponsibleId("");
       setNewTaskPhase("");
+      setNewTaskRecurrence(null);
       onTaskAdded?.();
     } catch (error) {
       console.error("Error adding task:", error);
@@ -785,6 +796,12 @@ export const TasksScheduleView = ({
                 </Select>
               </div>
             )}
+
+            {/* Recurrence selector */}
+            <RecurrenceSelector
+              value={newTaskRecurrence}
+              onChange={setNewTaskRecurrence}
+            />
           </div>
 
           <DialogFooter>
