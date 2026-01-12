@@ -291,8 +291,10 @@ const WhatsAppAdminPage = () => {
 
   const handleConnect = async (instance: WhatsAppInstance) => {
     const phone = (instance.phone_number || "").trim().replace(/\D/g, "");
-    if (!phone) {
-      toast.error("Essa instância está sem número. Crie novamente informando o DDI (ex: 5511999999999).");
+
+    // Require full country code digits (ex: 5511999999999)
+    if (!phone || phone.length < 12) {
+      toast.error("Número inválido. Salve o telefone com DDI (ex: 5511999999999) e recrie a instância.");
       return;
     }
 
@@ -307,7 +309,7 @@ const WhatsAppAdminPage = () => {
       // Check if qrcode count is 0 - means Evolution needs more time
       const qrCount = result?.qrcode?.count ?? result?.count ?? null;
       if (qrCount === 0) {
-        toast.info("QR Code ainda não disponível. Aguarde alguns segundos e clique novamente.");
+        toast.info("QR Code ainda não disponível. Abrindo o modal e tentando automaticamente...");
         setQrModalInstance({ ...instance, qr_code: null });
         return;
       }
@@ -324,7 +326,7 @@ const WhatsAppAdminPage = () => {
           .update({ qr_code: qrPayload, status: "connecting" })
           .eq("id", instance.id);
       } else {
-        toast.info("QR Code ainda não disponível. Aguarde e clique em 'Gerar QR Code'.");
+        toast.info("QR Code ainda não disponível. Abrindo o modal e tentando automaticamente...");
       }
 
       setQrModalInstance({ ...instance, qr_code: qrPayload });
