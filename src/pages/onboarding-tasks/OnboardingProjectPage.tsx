@@ -66,6 +66,7 @@ import { TasksListView } from "@/components/onboarding-tasks/TasksListView";
 import { TasksScheduleView } from "@/components/onboarding-tasks/TasksScheduleView";
 import { TasksPanelView } from "@/components/onboarding-tasks/TasksPanelView";
 import { TasksKanbanView } from "@/components/onboarding-tasks/TasksKanbanView";
+import { AddTaskDialog } from "@/components/onboarding-tasks/AddTaskDialog";
 import { NPSHistoryPanel } from "@/components/onboarding-tasks/NPSHistoryPanel";
 import { ProjectUrgentTasks } from "@/components/onboarding-tasks/ProjectUrgentTasks";
 import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
@@ -202,6 +203,7 @@ const OnboardingProjectPage = () => {
   const [showUsersDialog, setShowUsersDialog] = useState(false);
   const [selectedTask, setSelectedTask] = useState<OnboardingTask | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("kpis");
   const [currentUserRole, setCurrentUserRole] = useState<"admin" | "cs" | "consultant" | "client" | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -468,25 +470,13 @@ const OnboardingProjectPage = () => {
     }
   };
 
-  const handleAddTask = async () => {
-    if (!newTaskTitle.trim()) return;
+  const handleOpenAddTaskDialog = () => {
+    setShowAddTaskDialog(true);
+  };
 
-    try {
-      const maxOrder = Math.max(...tasks.map((t) => t.sort_order), 0);
-      const { error } = await supabase.from("onboarding_tasks").insert({
-        project_id: projectId,
-        title: newTaskTitle.trim(),
-        sort_order: maxOrder + 1,
-      });
-
-      if (error) throw error;
-      setNewTaskTitle("");
-      fetchProjectData();
-      toast.success("Tarefa adicionada");
-    } catch (error: any) {
-      console.error("Error adding task:", error);
-      toast.error("Erro ao adicionar tarefa");
-    }
+  const handleTaskAddedFromDialog = () => {
+    setNewTaskTitle("");
+    fetchProjectData();
   };
 
   const getStatusLabel = (status: string) => {
@@ -1380,10 +1370,12 @@ const OnboardingProjectPage = () => {
                       placeholder="Nova tarefa..."
                       value={newTaskTitle}
                       onChange={(e) => setNewTaskTitle(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
-                      className="flex-1 sm:w-48 md:w-64 h-9 text-sm"
+                      onKeyDown={(e) => e.key === "Enter" && handleOpenAddTaskDialog()}
+                      onFocus={handleOpenAddTaskDialog}
+                      className="flex-1 sm:w-48 md:w-64 h-9 text-sm cursor-pointer"
+                      readOnly
                     />
-                    <Button onClick={handleAddTask} size="sm" className="h-9 w-9 p-0 sm:w-auto sm:px-3">
+                    <Button onClick={handleOpenAddTaskDialog} size="sm" className="h-9 w-9 p-0 sm:w-auto sm:px-3">
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
@@ -1774,6 +1766,17 @@ const OnboardingProjectPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add Task Dialog */}
+      <AddTaskDialog
+        open={showAddTaskDialog}
+        onOpenChange={setShowAddTaskDialog}
+        projectId={projectId!}
+        initialTitle={newTaskTitle}
+        staffList={staffList}
+        onTaskAdded={handleTaskAddedFromDialog}
+        currentSortOrder={Math.max(...tasks.map(t => t.sort_order), 0)}
+      />
     </div>
   );
 };
