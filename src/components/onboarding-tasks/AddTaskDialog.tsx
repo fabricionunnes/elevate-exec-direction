@@ -516,13 +516,14 @@ export const AddTaskDialog = ({
             </div>
           )}
 
-          {/* Recorrência - only for non-meeting tasks */}
-          {!isMeeting && (
+          {/* Recorrência - available for both tasks and meetings */}
+          <div className="space-y-2">
+            <Label>Recorrência</Label>
             <RecurrenceSelector
               value={recurrence}
               onChange={setRecurrence}
             />
-          )}
+          </div>
         </div>
 
         <DialogFooter>
