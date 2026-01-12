@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, CheckCircle2, QrCode } from "lucide-react";
+import QRCode from "qrcode";
 import {
   Dialog,
   DialogContent,
@@ -87,9 +88,30 @@ export const WhatsAppQRCodeModal = ({
     return raw.replace(/^data:image\/(png|jpeg);base64,/, "");
   };
 
+  const extractQrText = (result: any): string | null => {
+    const raw = result?.code ?? result?.qrcode?.code ?? result?.qrCode ?? null;
+    return typeof raw === "string" && raw.trim() ? raw : null;
+  };
+
+  const extractPairingCode = (result: any): string | null => {
+    const raw = result?.pairingCode ?? result?.pairing_code ?? null;
+    return typeof raw === "string" && raw.trim() ? raw : null;
+  };
+
   const extractInstance = (result: any) => result?.instance ?? result;
 
+  const buildQrDataUrl = async (result: any): Promise<string | null> => {
+    const base64 = extractQrBase64(result);
+    if (base64) return `data:image/png;base64,${base64}`;
 
+    const code = extractQrText(result);
+    if (code) {
+      // Evolution v2 normalmente devolve um "code" (texto) que deve ser convertido em QR.
+      return await QRCode.toDataURL(code, { margin: 1, width: 256 });
+    }
+
+    return null;
+  };
   const refreshQRCode = async () => {
     setLoading(true);
     try {
@@ -97,16 +119,23 @@ export const WhatsAppQRCodeModal = ({
         instanceName: instance.instance_name,
       });
 
-      const base64 = extractQrBase64(result);
+      const pairingCode = extractPairingCode(result);
+      const dataUrl = await buildQrDataUrl(result);
 
-      if (base64) {
-        setQrCode(base64);
+      if (dataUrl) {
+        setQrCode(dataUrl);
 
-        // Update in database
+        // Update in database (salva o dataURL, mais robusto que base64 puro)
         await supabase
           .from("whatsapp_instances")
-          .update({ qr_code: base64, status: "connecting" })
+          .update({ qr_code: dataUrl, status: "connecting" })
           .eq("id", instance.id);
+
+        return;
+      }
+
+      if (pairingCode) {
+        toast.error(`Código de pareamento: ${pairingCode}`);
       } else {
         toast.error("QR Code ainda não disponível. Tente novamente em alguns segundos.");
       }
@@ -179,9 +208,9 @@ export const WhatsAppQRCodeModal = ({
           ) : qrCode ? (
             <>
               <div className="border-4 border-green-500 rounded-lg p-2 bg-white">
-                <img 
-                  src={`data:image/png;base64,${qrCode}`} 
-                  alt="QR Code WhatsApp" 
+                <img
+                  src={qrCode.startsWith("data:") ? qrCode : `data:image/png;base64,${qrCode}`}
+                  alt="QR Code WhatsApp"
                   className="w-64 h-64"
                 />
               </div>

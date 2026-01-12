@@ -278,18 +278,21 @@ const WhatsAppAdminPage = () => {
       });
 
       const base64 = extractQrBase64(result);
+      const code = result?.code ?? null;
 
-      // Update QR code in database
-      if (base64) {
+      // Preferimos salvar o que existir: base64 puro OU o texto do QR.
+      const qrPayload = base64 || code;
+
+      if (qrPayload) {
         await supabase
           .from("whatsapp_instances")
-          .update({ qr_code: base64, status: "connecting" })
+          .update({ qr_code: qrPayload, status: "connecting" })
           .eq("id", instance.id);
       } else {
         toast.error("QR Code ainda não disponível. Tente novamente em alguns segundos.");
       }
 
-      setQrModalInstance({ ...instance, qr_code: base64 });
+      setQrModalInstance({ ...instance, qr_code: qrPayload });
     } catch (error: any) {
       console.error("Error connecting:", error);
       toast.error(error.message || "Erro ao conectar");
