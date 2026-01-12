@@ -10,8 +10,21 @@ const corsHeaders = {
 let pdfjsLib: any = null;
 const getPdfjs = async () => {
   if (pdfjsLib) return pdfjsLib;
-  // pdfjs-dist works via esm.sh in Deno runtime
+
+  // pdfjs-dist works via esm.sh in Deno runtime.
+  // IMPORTANT: in non-browser runtimes we must set a workerSrc (or disable workers)
+  // to avoid: "No GlobalWorkerOptions.workerSrc specified."
   pdfjsLib = await import("https://esm.sh/pdfjs-dist@4.10.38/legacy/build/pdf.mjs");
+
+  try {
+    // Provide a worker module URL for pdf.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://esm.sh/pdfjs-dist@4.10.38/legacy/build/pdf.worker.mjs";
+  } catch (e) {
+    // If setting worker fails, we'll rely on disableWorker in getDocument.
+    console.warn("Could not set pdf.js workerSrc; falling back to disableWorker", e);
+  }
+
   return pdfjsLib;
 };
 
@@ -192,7 +205,11 @@ serve(async (req) => {
         const ab = await fileData.arrayBuffer();
         const pdfjs = await getPdfjs();
 
-        const loadingTask = pdfjs.getDocument({ data: new Uint8Array(ab) });
+        // In Deno (edge) runtime, workers can be problematic. Disable worker to be safe.
+        const loadingTask = pdfjs.getDocument({
+          data: new Uint8Array(ab),
+          disableWorker: true,
+        });
         const pdf = await loadingTask.promise;
 
         const maxPages = Math.min(pdf.numPages || 0, 10);
