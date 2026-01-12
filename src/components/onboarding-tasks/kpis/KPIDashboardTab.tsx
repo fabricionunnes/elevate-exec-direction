@@ -1016,6 +1016,91 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
         </Card>
       )}
 
+      {/* Overall Goal Achievement Card */}
+      {kpis.length > 0 && (
+        <Card className="border-green-500/50 bg-green-500/5">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Atingimento de Metas</CardTitle>
+            <Target className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              // Calculate overall achievement across all KPIs
+              let totalRealized = 0;
+              let totalTarget = 0;
+              const kpiDetails: Array<{ name: string; percentage: number; achieved: boolean }> = [];
+              
+              kpis.forEach(kpi => {
+                const summary = getKpiSummary(kpi);
+                if (summary.target > 0) {
+                  totalRealized += summary.total;
+                  totalTarget += summary.target;
+                  kpiDetails.push({
+                    name: kpi.name,
+                    percentage: summary.percentage,
+                    achieved: summary.percentage >= 100,
+                  });
+                }
+              });
+              
+              const overallPercentage = totalTarget > 0 ? (totalRealized / totalTarget) * 100 : 0;
+              const achievedCount = kpiDetails.filter(k => k.achieved).length;
+              
+              return (
+                <>
+                  <div className={`text-3xl font-bold ${
+                    overallPercentage >= 100 ? 'text-green-600' :
+                    overallPercentage >= 70 ? 'text-amber-600' :
+                    'text-destructive'
+                  }`}>
+                    {overallPercentage.toFixed(0)}%
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {achievedCount} de {kpiDetails.length} metas batidas
+                  </p>
+                  
+                  {/* Progress bar */}
+                  <div className="w-full bg-muted rounded-full h-2 mt-3">
+                    <div
+                      className={`h-2 rounded-full transition-all ${
+                        overallPercentage >= 100 ? 'bg-green-500' :
+                        overallPercentage >= 70 ? 'bg-amber-500' :
+                        'bg-destructive'
+                      }`}
+                      style={{ width: `${Math.min(overallPercentage, 100)}%` }}
+                    />
+                  </div>
+                  
+                  {/* Individual KPI mini breakdown */}
+                  <div className="mt-3 space-y-1">
+                    {kpiDetails.slice(0, 4).map((kpi, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground truncate max-w-[60%]">{kpi.name}</span>
+                        <Badge 
+                          variant="outline" 
+                          className={`text-[10px] px-1.5 py-0 ${
+                            kpi.achieved ? 'border-green-500 text-green-600' :
+                            kpi.percentage >= 70 ? 'border-amber-500 text-amber-600' :
+                            'border-destructive text-destructive'
+                          }`}
+                        >
+                          {kpi.percentage.toFixed(0)}%
+                        </Badge>
+                      </div>
+                    ))}
+                    {kpiDetails.length > 4 && (
+                      <p className="text-[10px] text-muted-foreground text-center">
+                        +{kpiDetails.length - 4} KPIs
+                      </p>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      )}
+
       {/* KPI Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {kpis.slice(0, 4).map(kpi => {
