@@ -62,6 +62,8 @@ export const ScheduleMeetingDialog = ({
   const [loadingStaff, setLoadingStaff] = useState(true);
   const [connectedStaff, setConnectedStaff] = useState<StaffWithCalendar[]>([]);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
   
   const [title, setTitle] = useState(defaultTitle);
   const [description, setDescription] = useState(defaultDescription);
@@ -88,6 +90,18 @@ export const ScheduleMeetingDialog = ({
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user?.email) {
       setCurrentUserEmail(session.user.email);
+      
+      // Fetch current user's staff info to get their role
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("id, role")
+        .eq("user_id", session.user.id)
+        .single();
+      
+      if (staffData) {
+        setCurrentUserRole(staffData.role);
+        setCurrentStaffId(staffData.id);
+      }
     }
   };
 
@@ -112,15 +126,34 @@ export const ScheduleMeetingDialog = ({
       const staffWithCalendar = response.data?.staff || [];
       
       // Mark staff with calendar
-      const staffList: StaffWithCalendar[] = staffWithCalendar.map((s: any) => ({
+      let staffList: StaffWithCalendar[] = staffWithCalendar.map((s: any) => ({
         ...s,
         hasCalendar: true,
       }));
 
+      // Get current user's staff info to check role
+      const { data: currentStaffData } = await supabase
+        .from("onboarding_staff")
+        .select("id, role")
+        .eq("user_id", session.user.id)
+        .single();
+
+      // If current user is a consultant, they can only schedule on their own calendar
+      if (currentStaffData?.role === "consultant") {
+        staffList = staffList.filter((s: StaffWithCalendar) => s.id === currentStaffData.id);
+      }
+
       setConnectedStaff(staffList);
 
-      // Auto-select consultant if available and has calendar
-      if (consultantId) {
+      // Auto-select based on role
+      if (currentStaffData?.role === "consultant") {
+        // Consultants can only use their own calendar
+        const ownCalendar = staffList.find((s: StaffWithCalendar) => s.id === currentStaffData.id);
+        if (ownCalendar) {
+          setTargetStaffId(ownCalendar.id);
+        }
+      } else if (consultantId) {
+        // Admin/CS: auto-select consultant if available
         const consultant = staffList.find((s: StaffWithCalendar) => s.id === consultantId);
         if (consultant) {
           setTargetStaffId(consultant.id);
