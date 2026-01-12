@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.google-drive-files]
 verify_jwt = true
+
+[functions.evolution-api]
+verify_jwt = true
