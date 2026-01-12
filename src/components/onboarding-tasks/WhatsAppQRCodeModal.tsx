@@ -43,14 +43,18 @@ export const WhatsAppQRCodeModal = ({
     return () => clearInterval(interval);
   }, [instance.instance_name]);
 
-  const callEvolutionAPI = async (action: string, body?: any, queryParams?: Record<string, string>) => {
+  const callEvolutionAPI = async (
+    action: string,
+    body?: any,
+    queryParams?: Record<string, string>
+  ) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Não autenticado");
 
     // Build URL with action and additional query parameters
     const params = new URLSearchParams({ action, ...queryParams });
     const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?${params.toString()}`;
-    
+
     const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
@@ -69,21 +73,42 @@ export const WhatsAppQRCodeModal = ({
     return response.json();
   };
 
+  const extractQrBase64 = (result: any): string | null => {
+    const raw =
+      result?.base64 ??
+      result?.qrcode?.base64 ??
+      result?.qrCode?.base64 ??
+      result?.qr?.base64 ??
+      result?.qrcode ??
+      result?.qr_code ??
+      null;
+
+    if (!raw || typeof raw !== "string") return null;
+    return raw.replace(/^data:image\/(png|jpeg);base64,/, "");
+  };
+
+  const extractInstance = (result: any) => result?.instance ?? result;
+
+
   const refreshQRCode = async () => {
     setLoading(true);
     try {
-      const result = await callEvolutionAPI("connect", { 
-        instanceName: instance.instance_name 
+      const result = await callEvolutionAPI("connect", {
+        instanceName: instance.instance_name,
       });
-      
-      if (result?.base64) {
-        setQrCode(result.base64);
-        
+
+      const base64 = extractQrBase64(result);
+
+      if (base64) {
+        setQrCode(base64);
+
         // Update in database
         await supabase
           .from("whatsapp_instances")
-          .update({ qr_code: result.base64, status: "connecting" })
+          .update({ qr_code: base64, status: "connecting" })
           .eq("id", instance.id);
+      } else {
+        toast.error("QR Code ainda não disponível. Tente novamente em alguns segundos.");
       }
     } catch (error: any) {
       console.error("Error refreshing QR:", error);
@@ -95,28 +120,31 @@ export const WhatsAppQRCodeModal = ({
 
   const checkStatus = async () => {
     if (connected) return;
-    
+
     setChecking(true);
     try {
-      const result = await callEvolutionAPI("status", {}, { 
-        instanceName: instance.instance_name 
+      const result = await callEvolutionAPI("status", {}, {
+        instanceName: instance.instance_name,
       });
-      
-      if (result?.state === "open") {
+
+      const inst = extractInstance(result);
+      const state = inst?.state;
+
+      if (state === "open") {
         setConnected(true);
-        
+
         // Update database
         await supabase
           .from("whatsapp_instances")
-          .update({ 
-            status: "connected", 
-            phone_number: result?.phoneNumber || null,
-            qr_code: null 
+          .update({
+            status: "connected",
+            phone_number: inst?.phoneNumber || null,
+            qr_code: null,
           })
           .eq("id", instance.id);
-        
+
         toast.success("WhatsApp conectado com sucesso!");
-        
+
         setTimeout(() => {
           onConnected();
         }, 1500);

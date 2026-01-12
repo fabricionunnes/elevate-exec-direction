@@ -182,14 +182,18 @@ const WhatsAppAdminPage = () => {
     }
   };
 
-  const callEvolutionAPI = async (action: string, body?: any, queryParams?: Record<string, string>) => {
+  const callEvolutionAPI = async (
+    action: string,
+    body?: any,
+    queryParams?: Record<string, string>
+  ) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Não autenticado");
 
     // Build URL with action and additional query parameters
     const params = new URLSearchParams({ action, ...queryParams });
     const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?${params.toString()}`;
-    
+
     const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
@@ -207,6 +211,23 @@ const WhatsAppAdminPage = () => {
 
     return response.json();
   };
+
+  const extractQrBase64 = (result: any): string | null => {
+    const raw =
+      result?.base64 ??
+      result?.qrcode?.base64 ??
+      result?.qrCode?.base64 ??
+      result?.qr?.base64 ??
+      result?.qrcode ??
+      result?.qr_code ??
+      null;
+
+    if (!raw || typeof raw !== "string") return null;
+    return raw.replace(/^data:image\/(png|jpeg);base64,/, "");
+  };
+
+  const extractInstance = (result: any) => result?.instance ?? result;
+
 
   const handleCreateInstance = async () => {
     if (!newInstanceName.trim() || !newDisplayName.trim()) {
@@ -252,19 +273,23 @@ const WhatsAppAdminPage = () => {
   const handleConnect = async (instance: WhatsAppInstance) => {
     setActionLoading(instance.id);
     try {
-      const result = await callEvolutionAPI("connect", { 
-        instanceName: instance.instance_name 
+      const result = await callEvolutionAPI("connect", {
+        instanceName: instance.instance_name,
       });
-      
+
+      const base64 = extractQrBase64(result);
+
       // Update QR code in database
-      if (result?.base64) {
+      if (base64) {
         await supabase
           .from("whatsapp_instances")
-          .update({ qr_code: result.base64, status: "connecting" })
+          .update({ qr_code: base64, status: "connecting" })
           .eq("id", instance.id);
+      } else {
+        toast.error("QR Code ainda não disponível. Tente novamente em alguns segundos.");
       }
-      
-      setQrModalInstance({ ...instance, qr_code: result?.base64 || null });
+
+      setQrModalInstance({ ...instance, qr_code: base64 });
     } catch (error: any) {
       console.error("Error connecting:", error);
       toast.error(error.message || "Erro ao conectar");
@@ -276,22 +301,25 @@ const WhatsAppAdminPage = () => {
   const handleCheckStatus = async (instance: WhatsAppInstance) => {
     setActionLoading(instance.id);
     try {
-      const result = await callEvolutionAPI("status", {}, { 
-        instanceName: instance.instance_name 
+      const result = await callEvolutionAPI("status", {}, {
+        instanceName: instance.instance_name,
       });
-      
-      const newStatus = result?.state === "open" ? "connected" : "disconnected";
-      const phoneNumber = result?.phoneNumber || null;
-      
+
+      const inst = extractInstance(result);
+      const state = inst?.state;
+
+      const newStatus = state === "open" ? "connected" : "disconnected";
+      const phoneNumber = inst?.phoneNumber || null;
+
       await supabase
         .from("whatsapp_instances")
-        .update({ 
-          status: newStatus, 
+        .update({
+          status: newStatus,
           phone_number: phoneNumber,
-          qr_code: newStatus === "connected" ? null : instance.qr_code 
+          qr_code: newStatus === "connected" ? null : instance.qr_code,
         })
         .eq("id", instance.id);
-      
+
       toast.success(`Status: ${newStatus === "connected" ? "Conectado" : "Desconectado"}`);
       fetchInstances();
     } catch (error: any) {
@@ -417,11 +445,23 @@ const WhatsAppAdminPage = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "connected":
-        return <Badge className="bg-green-500"><CheckCircle2 className="h-3 w-3 mr-1" />Conectado</Badge>;
+        return (
+          <Badge className="bg-green-500">
+            <CheckCircle2 className="h-3 w-3 mr-1" />Conectado
+          </Badge>
+        );
       case "connecting":
-        return <Badge variant="secondary"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Conectando</Badge>;
+        return (
+          <Badge variant="secondary">
+            <Loader2 className="h-3 w-3 mr-1 animate-spin" />Conectando
+          </Badge>
+        );
       default:
-        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Desconectado</Badge>;
+        return (
+          <Badge variant="destructive">
+            <XCircle className="h-3 w-3 mr-1" />Desconectado
+          </Badge>
+        );
     }
   };
 
