@@ -87,8 +87,14 @@ serve(async (req) => {
     switch (action) {
       case 'create-instance': {
         // Create a new WhatsApp instance
-        const { instanceName, token: instanceToken, number, qrcode = true, integration = 'WHATSAPP-BAILEYS' } = body;
-        
+        const {
+          instanceName,
+          token: instanceToken,
+          number,
+          qrcode = true,
+          integration = 'WHATSAPP-BAILEYS',
+        } = body;
+
         if (!instanceName) {
           return new Response(
             JSON.stringify({ error: 'instanceName is required' }),
@@ -96,9 +102,8 @@ serve(async (req) => {
           );
         }
 
-        const response = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
+        const { res, json } = await fetchEvolutionJson('/instance/create', {
           method: 'POST',
-          headers: evolutionHeaders,
           body: JSON.stringify({
             instanceName,
             token: instanceToken,
@@ -108,12 +113,16 @@ serve(async (req) => {
           }),
         });
 
-        const data = await response.json();
-        console.log('Create instance response:', data);
+        if (!res.ok) {
+          return new Response(
+            JSON.stringify({ error: 'Evolution create-instance failed', status: res.status, details: json }),
+            { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
 
         return new Response(
-          JSON.stringify(data),
-          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify(json),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -169,7 +178,7 @@ serve(async (req) => {
         // Check instance status
         // Accept instanceName from query param OR body
         const instanceName = url.searchParams.get('instanceName') || body.instanceName;
-        
+
         if (!instanceName) {
           return new Response(
             JSON.stringify({ error: 'instanceName is required (query param or body)' }),
@@ -177,33 +186,24 @@ serve(async (req) => {
           );
         }
 
-        const response = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${instanceName}`, {
-          method: 'GET',
-          headers: evolutionHeaders,
-        });
-
-        const data = await response.json();
-        console.log('Status response:', data);
+        const { res, json } = await fetchEvolutionJson(
+          `/instance/connectionState/${encodeURIComponent(instanceName)}`,
+          { method: 'GET' }
+        );
 
         return new Response(
-          JSON.stringify(data),
-          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify(json),
+          { status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       case 'list-instances': {
         // List all instances
-        const response = await fetch(`${EVOLUTION_API_URL}/instance/fetchInstances`, {
-          method: 'GET',
-          headers: evolutionHeaders,
-        });
-
-        const data = await response.json();
-        console.log('List instances response:', data);
+        const { res, json } = await fetchEvolutionJson('/instance/fetchInstances', { method: 'GET' });
 
         return new Response(
-          JSON.stringify(data),
-          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify(json),
+          { status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
