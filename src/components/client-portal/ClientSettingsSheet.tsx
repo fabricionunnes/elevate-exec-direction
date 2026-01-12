@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, Key } from "lucide-react";
+import { AvatarUpload } from "@/components/AvatarUpload";
 
 interface ClientSettingsSheetProps {
   open: boolean;
@@ -20,12 +21,36 @@ export const ClientSettingsSheet = ({
   userName,
   userEmail,
 }: ClientSettingsSheetProps) => {
-  const [currentPassword, setCurrentPassword] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      fetchAvatarUrl();
+    }
+  }, [open]);
+
+  const fetchAvatarUrl = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: onboardingUser } = await supabase
+        .from("onboarding_users")
+        .select("avatar_url")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (onboardingUser) {
+        setAvatarUrl(onboardingUser.avatar_url);
+      }
+    } catch (error) {
+      console.error("Error fetching avatar:", error);
+    }
+  };
 
   const handleChangePassword = async () => {
     if (!newPassword || !confirmPassword) {
@@ -56,7 +81,6 @@ export const ClientSettingsSheet = ({
       }
 
       toast.success("Senha alterada com sucesso!");
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       onOpenChange(false);
@@ -68,14 +92,28 @@ export const ClientSettingsSheet = ({
     }
   };
 
+  const handleAvatarChange = (url: string | null) => {
+    setAvatarUrl(url);
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-auto max-h-[85vh] rounded-t-2xl">
+      <SheetContent side="bottom" className="h-auto max-h-[85vh] rounded-t-2xl overflow-y-auto">
         <SheetHeader className="pb-4">
           <SheetTitle>Configurações</SheetTitle>
         </SheetHeader>
 
         <div className="space-y-6">
+          {/* Avatar Upload */}
+          <div className="flex flex-col items-center py-4 border-b">
+            <AvatarUpload
+              currentAvatarUrl={avatarUrl}
+              userName={userName || "Usuário"}
+              onAvatarChange={handleAvatarChange}
+              size="lg"
+            />
+          </div>
+
           {/* User info */}
           <div className="p-4 bg-muted rounded-lg">
             <p className="font-medium">{userName}</p>

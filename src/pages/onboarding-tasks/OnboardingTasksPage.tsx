@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User } from "lucide-react";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
@@ -20,6 +20,7 @@ import { PendingMeetingsAlert } from "@/components/onboarding-tasks/PendingMeeti
 import { AnnouncementDialog } from "@/components/onboarding-tasks/AnnouncementDialog";
 import { NPSGlobalDialog } from "@/components/onboarding-tasks/NPSGlobalDialog";
 import { CSATGlobalDialog } from "@/components/onboarding-tasks/CSATGlobalDialog";
+import { StaffSettingsSheet } from "@/components/onboarding-tasks/StaffSettingsSheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -133,6 +134,9 @@ const OnboardingTasksPage = () => {
   
   // Active dashboard tab state (hides companies list when on NPS tab)
   const [activeDashboardTab, setActiveDashboardTab] = useState("empresas");
+  
+  // Staff settings sheet state
+  const [showStaffSettings, setShowStaffSettings] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -1028,6 +1032,11 @@ const OnboardingTasksPage = () => {
                       Resultados
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowStaffSettings(true)}>
+                    <User className="h-4 w-4 mr-2" />
+                    Meu Perfil
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -1235,6 +1244,15 @@ const OnboardingTasksPage = () => {
               variant="ghost" 
               size="icon"
               className="h-8 w-8"
+              onClick={() => setShowStaffSettings(true)}
+              title="Meu Perfil"
+            >
+              <User className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-8 w-8"
               onClick={async () => {
                 await supabase.auth.signOut();
                 navigate("/onboarding-tasks/login");
@@ -1244,6 +1262,12 @@ const OnboardingTasksPage = () => {
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
+
+          {/* Staff Settings Sheet */}
+          <StaffSettingsSheet 
+            open={showStaffSettings} 
+            onOpenChange={setShowStaffSettings} 
+          />
 
           {/* Search and Filters - Responsive */}
           <div className="flex flex-col gap-2">

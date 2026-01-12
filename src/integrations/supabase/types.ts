@@ -4425,6 +4425,7 @@ export type Database = {
       }
       onboarding_staff: {
         Row: {
+          avatar_url: string | null
           created_at: string
           email: string
           id: string
@@ -4436,6 +4437,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           email: string
           id?: string
@@ -4447,6 +4449,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           email?: string
           id?: string
@@ -4867,6 +4870,7 @@ export type Database = {
       }
       onboarding_users: {
         Row: {
+          avatar_url: string | null
           created_at: string
           email: string
           id: string
@@ -4879,6 +4883,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           email: string
           id?: string
@@ -4891,6 +4896,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           email?: string
           id?: string
