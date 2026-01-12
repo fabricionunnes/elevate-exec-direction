@@ -43,12 +43,13 @@ export const WhatsAppQRCodeModal = ({
     return () => clearInterval(interval);
   }, [instance.instance_name]);
 
-  const callEvolutionAPI = async (action: string, body?: any) => {
+  const callEvolutionAPI = async (action: string, body?: any, queryParams?: Record<string, string>) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Não autenticado");
 
-    // Build URL with action query parameter
-    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=${action}`;
+    // Build URL with action and additional query parameters
+    const params = new URLSearchParams({ action, ...queryParams });
+    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?${params.toString()}`;
     
     const response = await fetch(functionUrl, {
       method: 'POST',
@@ -97,7 +98,7 @@ export const WhatsAppQRCodeModal = ({
     
     setChecking(true);
     try {
-      const result = await callEvolutionAPI("status", { 
+      const result = await callEvolutionAPI("status", {}, { 
         instanceName: instance.instance_name 
       });
       
