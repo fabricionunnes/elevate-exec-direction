@@ -376,9 +376,9 @@ serve(async (req) => {
       }
 
       case 'logout': {
-        // Logout from an instance
+        // Logout from an instance (endpoint varies by Evolution version)
         const { instanceName } = body;
-        
+
         if (!instanceName) {
           return new Response(
             JSON.stringify({ error: 'instanceName is required' }),
@@ -386,24 +386,33 @@ serve(async (req) => {
           );
         }
 
-        const response = await fetch(`${EVOLUTION_API_URL}/instance/logout/${instanceName}`, {
-          method: 'DELETE',
-          headers: evolutionHeaders,
-        });
+        // Try common variants
+        const attempts: Array<{ endpoint: string; init: RequestInit }> = [
+          { endpoint: `/instance/logout/${encodeURIComponent(instanceName)}`, init: { method: 'DELETE' } },
+          { endpoint: `/instance/logout/${encodeURIComponent(instanceName)}`, init: { method: 'POST' } },
+          { endpoint: `/instance/logout`, init: { method: 'POST', body: JSON.stringify({ instanceName }) } },
+        ];
 
-        const data = await response.json();
+        let last: { res: Response; json: any } | null = null;
+        for (const a of attempts) {
+          last = await fetchEvolutionJson(a.endpoint, a.init);
+          if (last.res.ok) break;
+        }
+
+        const status = last?.res.status ?? 502;
+        const data = last?.json ?? { error: 'No response' };
         console.log('[evolution-api] Logout response:', data);
 
         return new Response(
-          JSON.stringify(data),
-          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ ...data, _version: EVOLUTION_API_FUNC_VERSION }),
+          { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       case 'restart': {
-        // Restart an instance
+        // Restart an instance (endpoint varies by Evolution version)
         const { instanceName } = body;
-        
+
         if (!instanceName) {
           return new Response(
             JSON.stringify({ error: 'instanceName is required' }),
@@ -411,17 +420,25 @@ serve(async (req) => {
           );
         }
 
-        const response = await fetch(`${EVOLUTION_API_URL}/instance/restart/${instanceName}`, {
-          method: 'PUT',
-          headers: evolutionHeaders,
-        });
+        const attempts: Array<{ endpoint: string; init: RequestInit }> = [
+          { endpoint: `/instance/restart/${encodeURIComponent(instanceName)}`, init: { method: 'PUT' } },
+          { endpoint: `/instance/restart/${encodeURIComponent(instanceName)}`, init: { method: 'POST' } },
+          { endpoint: `/instance/restart`, init: { method: 'POST', body: JSON.stringify({ instanceName }) } },
+        ];
 
-        const data = await response.json();
+        let last: { res: Response; json: any } | null = null;
+        for (const a of attempts) {
+          last = await fetchEvolutionJson(a.endpoint, a.init);
+          if (last.res.ok) break;
+        }
+
+        const status = last?.res.status ?? 502;
+        const data = last?.json ?? { error: 'No response' };
         console.log('[evolution-api] Restart response:', data);
 
         return new Response(
-          JSON.stringify(data),
-          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ ...data, _version: EVOLUTION_API_FUNC_VERSION }),
+          { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
