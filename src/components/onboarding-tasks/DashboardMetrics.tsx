@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   CheckCircle2, 
   AlertTriangle, 
-  Building2, 
+  Building2,
+  Package,
   XCircle, 
   CalendarX,
   TrendingUp,
@@ -130,6 +131,7 @@ const DashboardMetrics = ({
   const [tasksDialogStatus, setTasksDialogStatus] = useState<"completed" | "pending" | "in_progress" | null>(null);
   const [npsDetailType, setNpsDetailType] = useState<"promoters" | "detractors" | "neutrals" | "all" | null>(null);
   const [npsDetailPage, setNpsDetailPage] = useState(1);
+  const [showCompaniesWithoutTasks, setShowCompaniesWithoutTasks] = useState(false);
   const npsPerPage = 10;
 
   // Use external tasks if provided, otherwise fetch internally
@@ -236,7 +238,9 @@ const DashboardMetrics = ({
       inProgressIds: inProgressTasks.map(t => t.id),
       totalCompleted: completedTasks.length, 
       completedIds: completedTasks.map(t => t.id),
-      totalTasks: filteredTasks.length 
+      totalTasks: filteredTasks.length,
+      pendingTasks: pendingTasks,
+      inProgressTasks: inProgressTasks
     };
   }, [filteredTasks, overdueTasks, todayTasks]);
 
@@ -271,6 +275,35 @@ const DashboardMetrics = ({
     [projects]
   );
   const filteredCompanies = useMemo(() => companies.filter(c => filteredCompanyIds.has(c.id) && c.status !== "inactive" && c.status !== "closed"), [companies, filteredCompanyIds]);
+
+  // Calculate companies without pending tasks
+  const companiesWithoutPendingTasks = useMemo(() => {
+    // Get all pending/in_progress tasks per project
+    const pendingTasksByProject = new Map<string, number>();
+    [...taskMetrics.pendingTasks, ...taskMetrics.inProgressTasks, ...overdueTasks].forEach(task => {
+      const count = pendingTasksByProject.get(task.project_id) || 0;
+      pendingTasksByProject.set(task.project_id, count + 1);
+    });
+
+    // Get company IDs from projects that have NO pending tasks
+    const companyIdsWithoutTasks = new Set<string>();
+    
+    projects.forEach(project => {
+      if (project.status !== "active") return;
+      const hasPendingTasks = (pendingTasksByProject.get(project.id) || 0) > 0;
+      if (!hasPendingTasks) {
+        const companyId = getProjectCompanyId(project);
+        if (companyId) {
+          companyIdsWithoutTasks.add(companyId);
+        }
+      }
+    });
+
+    // Filter only active companies that have no pending tasks
+    return filteredCompanies.filter(c => 
+      c.status === "active" && companyIdsWithoutTasks.has(c.id)
+    );
+  }, [projects, taskMetrics.pendingTasks, taskMetrics.inProgressTasks, overdueTasks, filteredCompanies]);
 
   const companyMetrics = useMemo(() => {
     const today = startOfDay(new Date());
@@ -815,12 +848,60 @@ const DashboardMetrics = ({
         </TabsContent>
 
         <TabsContent value="tarefas" className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
             <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("today"); setTasksDialogStatus(null); setTasksDialogIds(taskMetrics.todayCompletedIds); setTasksDialogOpen(true); }}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-green-500">{taskMetrics.todayCompleted}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Concl. Hoje</p></CardContent></Card>
             <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("status"); setTasksDialogStatus("completed"); setTasksDialogIds([]); setTasksDialogOpen(true); }}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold">{taskMetrics.totalCompleted}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Total Concl.</p></CardContent></Card>
             <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("status"); setTasksDialogStatus("pending"); setTasksDialogIds([]); setTasksDialogOpen(true); }}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-amber-500">{taskMetrics.totalPending}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Pendentes</p></CardContent></Card>
             <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setTasksDialogType("status"); setTasksDialogStatus("in_progress"); setTasksDialogIds([]); setTasksDialogOpen(true); }}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-blue-500">{taskMetrics.totalInProgress}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Em Progresso</p></CardContent></Card>
+            <Card 
+              className={cn(
+                "cursor-pointer hover:shadow-md transition-all", 
+                showCompaniesWithoutTasks && "ring-2 ring-emerald-500"
+              )} 
+              onClick={() => setShowCompaniesWithoutTasks(!showCompaniesWithoutTasks)}
+            >
+              <CardContent className="p-2 sm:p-3 text-center">
+                <p className="text-lg sm:text-xl font-bold text-emerald-500">{companiesWithoutPendingTasks.length}</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Sem Tarefas</p>
+              </CardContent>
+            </Card>
           </div>
+
+          {/* List of companies without pending tasks */}
+          {showCompaniesWithoutTasks && companiesWithoutPendingTasks.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2 pt-3 px-4">
+                <CardTitle className="text-xs font-medium flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  Empresas sem tarefas pendentes ({companiesWithoutPendingTasks.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {companiesWithoutPendingTasks.map(company => {
+                    const companyProjects = projects.filter(p => getProjectCompanyId(p) === company.id && p.status === "active");
+                    return (
+                      <div 
+                        key={company.id} 
+                        className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                          <Building2 className="h-4 w-4 text-emerald-500" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{company.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {companyProjects.map(p => p.product_name).join(", ") || "Sem projetos ativos"}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
             <Card>
               <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium flex items-center gap-1 sm:gap-1.5"><CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-500" />Concluídas/Dia</CardTitle></CardHeader>
