@@ -566,10 +566,10 @@ const DashboardMetrics = ({
     // Calculate aggregated metrics
     const companiesWithGoals = Array.from(companyMetricsMap.entries()).filter(([_, m]) => m.target > 0);
 
-    // A empresa "tem meta" se existir QUALQUER KPI cadastrado para ela (independente do valor/periodicidade/tipo)
+    // A empresa "tem meta" se existir QUALQUER KPI cadastrado com target_value > 0
     const companiesWithAnyKpiIds = new Set(
       companyKpis
-        .filter(k => filteredCompanyIds.has(k.company_id))
+        .filter(k => filteredCompanyIds.has(k.company_id) && k.target_value > 0)
         .map(k => k.company_id)
     );
 
