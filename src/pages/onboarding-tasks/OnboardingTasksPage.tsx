@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare } from "lucide-react";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
@@ -1009,6 +1009,10 @@ const OnboardingTasksPage = () => {
                         <BarChart3 className="h-4 w-4 mr-2" />
                         Resultados
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        WhatsApp Admin
+                      </DropdownMenuItem>
                       {currentUserEmail === "fabricio@universidadevendas.com.br" && (
                         <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
                           <Calculator className="h-4 w-4 mr-2" />
@@ -1211,6 +1215,10 @@ const OnboardingTasksPage = () => {
                       {isAdmin && (
                         <>
                           <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            WhatsApp Admin
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setShowAnnouncementDialog(true)}>
                             <Megaphone className="h-4 w-4 mr-2" />
                             Enviar Comunicado
