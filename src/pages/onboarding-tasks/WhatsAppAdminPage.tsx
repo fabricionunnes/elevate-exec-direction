@@ -86,7 +86,8 @@ const WhatsAppAdminPage = () => {
   // Form states
   const [newInstanceName, setNewInstanceName] = useState("");
   const [newDisplayName, setNewDisplayName] = useState("");
-  
+  const [newInstancePhone, setNewInstancePhone] = useState("");
+
   // Test message states
   const [testPhone, setTestPhone] = useState("");
   const [testMessage, setTestMessage] = useState("Teste de mensagem via WhatsApp API 🚀");
@@ -235,14 +236,23 @@ const WhatsAppAdminPage = () => {
       return;
     }
 
+    const phone = newInstancePhone.trim().replace(/\D/g, "");
+    if (!phone) {
+      toast.error("Informe o número com DDI (ex: 5511999999999)");
+      return;
+    }
+
     const instanceName = newInstanceName.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
-    
+
     setCreating(true);
     try {
       // Create in Evolution API
-      const result = await callEvolutionAPI("create-instance", { 
+      await callEvolutionAPI("create-instance", {
         instanceName,
         token: `token_${instanceName}_${Date.now()}`,
+        number: phone,
+        qrcode: true,
+        integration: 'WHATSAPP-BAILEYS',
       });
 
       // Save to database
@@ -251,6 +261,7 @@ const WhatsAppAdminPage = () => {
         .insert({
           instance_name: instanceName,
           display_name: newDisplayName.trim(),
+          phone_number: phone,
           status: "disconnected",
           is_default: instances.length === 0,
           created_by: currentStaffId,
@@ -261,6 +272,7 @@ const WhatsAppAdminPage = () => {
       toast.success("Instância criada com sucesso!");
       setNewInstanceName("");
       setNewDisplayName("");
+      setNewInstancePhone("");
       fetchInstances();
     } catch (error: any) {
       console.error("Error creating instance:", error);
@@ -271,11 +283,19 @@ const WhatsAppAdminPage = () => {
   };
 
   const handleConnect = async (instance: WhatsAppInstance) => {
+    const phone = (instance.phone_number || "").trim().replace(/\D/g, "");
+    if (!phone) {
+      toast.error("Essa instância está sem número. Crie novamente informando o DDI (ex: 5511999999999).");
+      return;
+    }
+
     setActionLoading(instance.id);
     try {
-      const result = await callEvolutionAPI("connect", {
-        instanceName: instance.instance_name,
-      });
+      const result = await callEvolutionAPI(
+        "connect",
+        { instanceName: instance.instance_name },
+        { number: phone }
+      );
 
       const base64 = extractQrBase64(result);
       const code = result?.code ?? null;
@@ -520,7 +540,7 @@ const WhatsAppAdminPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-4">
                   <div className="space-y-2">
                     <Label htmlFor="instanceName">Nome Técnico</Label>
                     <Input
@@ -541,6 +561,19 @@ const WhatsAppAdminPage = () => {
                       value={newDisplayName}
                       onChange={(e) => setNewDisplayName(e.target.value)}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="instancePhone">Número (com DDI)</Label>
+                    <Input
+                      id="instancePhone"
+                      placeholder="5511999999999"
+                      inputMode="numeric"
+                      value={newInstancePhone}
+                      onChange={(e) => setNewInstancePhone(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Use só números (ex: 55 + DDD + número)
+                    </p>
                   </div>
                   <div className="flex items-end">
                     <Button onClick={handleCreateInstance} disabled={creating} className="w-full">
