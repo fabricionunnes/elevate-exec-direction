@@ -6054,7 +6054,9 @@ export type Database = {
         Returns: boolean
       }
       is_financial_admin: { Args: never; Returns: boolean }
-      is_onboarding_admin: { Args: never; Returns: boolean }
+      is_onboarding_admin:
+        | { Args: never; Returns: boolean }
+        | { Args: { check_user_id: string }; Returns: boolean }
       is_onboarding_assigned_staff: {
         Args: { check_project_id: string }
         Returns: boolean
