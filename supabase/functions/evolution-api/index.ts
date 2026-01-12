@@ -158,8 +158,14 @@ serve(async (req) => {
           const { res: listRes, json: listJson } = await fetchEvolutionJson('/instance/fetchInstances', { method: 'GET' });
 
           if (listRes.ok && Array.isArray(listJson)) {
-            const match = listJson.find((x: any) => x?.instance?.instanceName === instanceName);
-            const instanceId = match?.instance?.instanceId;
+            // Evolution installations differ:
+            // - v2 docs: [{ instance: { instanceName, instanceId } }]
+            // - some servers: [{ id, name }]
+            const match =
+              listJson.find((x: any) => x?.instance?.instanceName === instanceName) ||
+              listJson.find((x: any) => x?.name === instanceName);
+
+            const instanceId = match?.instance?.instanceId || match?.id;
 
             if (instanceId) {
               console.log('Resolved instanceId for connect fallback:', { instanceName, instanceId });
