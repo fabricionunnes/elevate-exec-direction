@@ -22,7 +22,9 @@ import {
   Loader2, 
   MessageSquare,
   Star,
-  History
+  History,
+  LogOut,
+  RotateCcw
 } from "lucide-react";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { WhatsAppQRCodeModal } from "@/components/onboarding-tasks/WhatsAppQRCodeModal";
@@ -392,6 +394,46 @@ const WhatsAppAdminPage = () => {
     }
   };
 
+  const handleLogout = async (instance: WhatsAppInstance) => {
+    setActionLoading(instance.id);
+    try {
+      await callEvolutionAPI("logout", { instanceName: instance.instance_name });
+      
+      await supabase
+        .from("whatsapp_instances")
+        .update({ status: "disconnected", qr_code: null })
+        .eq("id", instance.id);
+      
+      toast.success("Logout realizado. Agora clique em Conectar para gerar novo QR.");
+      fetchInstances();
+    } catch (error: any) {
+      console.error("Error logging out:", error);
+      toast.error(error.message || "Erro ao fazer logout");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRestart = async (instance: WhatsAppInstance) => {
+    setActionLoading(instance.id);
+    try {
+      await callEvolutionAPI("restart", { instanceName: instance.instance_name });
+      
+      await supabase
+        .from("whatsapp_instances")
+        .update({ status: "disconnected", qr_code: null })
+        .eq("id", instance.id);
+      
+      toast.success("Instância reiniciada. Aguarde alguns segundos e clique em Conectar.");
+      fetchInstances();
+    } catch (error: any) {
+      console.error("Error restarting:", error);
+      toast.error(error.message || "Erro ao reiniciar");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleDeleteInstance = async () => {
     if (!deleteInstance) return;
     
@@ -666,6 +708,7 @@ const WhatsAppAdminPage = () => {
                             size="sm"
                             onClick={() => handleCheckStatus(instance)}
                             disabled={actionLoading === instance.id}
+                            title="Verificar Status"
                           >
                             {actionLoading === instance.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -674,11 +717,42 @@ const WhatsAppAdminPage = () => {
                             )}
                           </Button>
                           
+                          {(instance.status === "connecting" || instance.status === "connected") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleLogout(instance)}
+                              disabled={actionLoading === instance.id}
+                              title="Fazer Logout"
+                            >
+                              {actionLoading === instance.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <LogOut className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRestart(instance)}
+                            disabled={actionLoading === instance.id}
+                            title="Reiniciar Instância"
+                          >
+                            {actionLoading === instance.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RotateCcw className="h-4 w-4" />
+                            )}
+                          </Button>
+                          
                           {!instance.is_default && instance.status === "connected" && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleSetDefault(instance)}
+                              title="Definir como Padrão"
                             >
                               <Star className="h-4 w-4" />
                             </Button>
@@ -689,6 +763,7 @@ const WhatsAppAdminPage = () => {
                             size="sm"
                             onClick={() => setDeleteInstance(instance)}
                             className="text-destructive hover:text-destructive"
+                            title="Excluir Instância"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
