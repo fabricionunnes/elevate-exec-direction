@@ -16,6 +16,7 @@ interface WhatsAppInstance {
   id: string;
   instance_name: string;
   display_name: string;
+  phone_number: string | null;
   qr_code: string | null;
 }
 
@@ -115,9 +116,13 @@ export const WhatsAppQRCodeModal = ({
   const refreshQRCode = async () => {
     setLoading(true);
     try {
-      const result = await callEvolutionAPI("connect", {
-        instanceName: instance.instance_name,
-      });
+      const phone = (instance.phone_number || "").trim().replace(/\D/g, "");
+
+      const result = await callEvolutionAPI(
+        "connect",
+        { instanceName: instance.instance_name },
+        phone ? { number: phone } : undefined
+      );
 
       const pairingCode = extractPairingCode(result);
       const dataUrl = await buildQrDataUrl(result);
