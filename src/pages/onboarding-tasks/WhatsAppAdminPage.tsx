@@ -205,12 +205,19 @@ const WhatsAppAdminPage = () => {
       body: JSON.stringify(body || {}),
     });
 
+    const data = await response.json().catch(() => ({ error: 'Resposta inválida' }));
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
+      // Extract detailed error message from various response formats
+      const errorMsg = 
+        data?.error || 
+        data?.response?.message?.join(', ') || 
+        data?.details?.error ||
+        `HTTP ${response.status}`;
+      throw new Error(errorMsg);
     }
 
-    return response.json();
+    return data;
   };
 
   const extractQrBase64 = (result: any): string | null => {

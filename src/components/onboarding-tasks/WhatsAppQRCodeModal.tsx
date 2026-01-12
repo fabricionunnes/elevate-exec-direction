@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -26,24 +26,55 @@ interface WhatsAppQRCodeModalProps {
   onConnected: () => void;
 }
 
+// Polling intervals with backoff (in ms)
+const POLLING_INTERVALS = [2000, 3000, 4000, 5000, 6000, 7000, 8000];
+const MAX_POLLING_ATTEMPTS = 15;
+const STATUS_CHECK_INTERVAL = 5000;
+
 export const WhatsAppQRCodeModal = ({ 
   instance, 
   onClose, 
   onConnected 
 }: WhatsAppQRCodeModalProps) => {
   const [qrCode, setQrCode] = useState<string | null>(instance.qr_code);
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [pollingAttempt, setPollingAttempt] = useState(0);
+  const [isPolling, setIsPolling] = useState(false);
+  
+  const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
 
+  // Cleanup on unmount
   useEffect(() => {
-    // Check status every 5 seconds
-    const interval = setInterval(() => {
-      checkStatus();
-    }, 5000);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
+      if (statusIntervalRef.current) clearInterval(statusIntervalRef.current);
+    };
+  }, []);
 
-    return () => clearInterval(interval);
-  }, [instance.instance_name]);
+  // Start status checking on mount
+  useEffect(() => {
+    statusIntervalRef.current = setInterval(() => {
+      if (!connected) checkStatus();
+    }, STATUS_CHECK_INTERVAL);
+
+    return () => {
+      if (statusIntervalRef.current) clearInterval(statusIntervalRef.current);
+    };
+  }, [instance.instance_name, connected]);
+
+  // Auto-start QR refresh on mount if no QR code
+  useEffect(() => {
+    if (!qrCode && !loading && !isPolling) {
+      startQrPolling();
+    }
+  }, []);
 
   const callEvolutionAPI = async (
     action: string,
@@ -53,7 +84,6 @@ export const WhatsAppQRCodeModal = ({
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Não autenticado");
 
-    // Build URL with action and additional query parameters
     const params = new URLSearchParams({ action, ...queryParams });
     const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?${params.toString()}`;
 
@@ -67,12 +97,19 @@ export const WhatsAppQRCodeModal = ({
       body: JSON.stringify(body || {}),
     });
 
+    const data = await response.json().catch(() => ({ error: 'Resposta inválida' }));
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
+      // Extract detailed error message
+      const errorMsg = 
+        data?.error || 
+        data?.response?.message?.join(', ') || 
+        data?.details?.error ||
+        `HTTP ${response.status}`;
+      throw new Error(errorMsg);
     }
 
-    return response.json();
+    return data;
   };
 
   const extractQrBase64 = (result: any): string | null => {
@@ -107,14 +144,13 @@ export const WhatsAppQRCodeModal = ({
 
     const code = extractQrText(result);
     if (code) {
-      // Evolution v2 normalmente devolve um "code" (texto) que deve ser convertido em QR.
       return await QRCode.toDataURL(code, { margin: 1, width: 256 });
     }
 
     return null;
   };
-  const refreshQRCode = async () => {
-    setLoading(true);
+
+  const fetchQrCode = useCallback(async (): Promise<{ success: boolean; qrReady: boolean }> => {
     try {
       const phone = (instance.phone_number || "").trim().replace(/\D/g, "");
 
@@ -124,43 +160,99 @@ export const WhatsAppQRCodeModal = ({
         phone ? { number: phone } : undefined
       );
 
-      // Check if qrcode count is 0 - means Evolution needs more time
-      const qrCount = result?.qrcode?.count ?? result?.count ?? null;
-      if (qrCount === 0) {
-        toast.info("QR Code ainda não disponível. Aguarde alguns segundos e tente novamente.");
-        return;
+      console.log("[QR Modal] Connect result:", result);
+
+      // Check for errors
+      if (result?.error) {
+        toast.error(result.error);
+        return { success: false, qrReady: false };
       }
 
-      const pairingCode = extractPairingCode(result);
+      // Check if qrcode count is 0 - means Evolution needs more time
+      const qrCount = result?.qrcode?.count ?? result?.count ?? null;
+      
+      const pairing = extractPairingCode(result);
       const dataUrl = await buildQrDataUrl(result);
 
       if (dataUrl) {
         setQrCode(dataUrl);
+        setPairingCode(pairing);
 
-        // Update in database (salva o dataURL, mais robusto que base64 puro)
+        // Update in database
         await supabase
           .from("whatsapp_instances")
           .update({ qr_code: dataUrl, status: "connecting" })
           .eq("id", instance.id);
 
+        return { success: true, qrReady: true };
+      }
+
+      if (pairing) {
+        setPairingCode(pairing);
+        toast.info(`Código de pareamento: ${pairing}`);
+        return { success: true, qrReady: true };
+      }
+
+      // QR not ready yet
+      if (qrCount === 0) {
+        console.log("[QR Modal] QR not ready yet (count: 0)");
+      }
+
+      return { success: true, qrReady: false };
+    } catch (error: any) {
+      console.error("[QR Modal] Error fetching QR:", error);
+      toast.error(error.message || "Erro ao buscar QR Code");
+      return { success: false, qrReady: false };
+    }
+  }, [instance]);
+
+  const startQrPolling = useCallback(async () => {
+    if (!mountedRef.current) return;
+    
+    setIsPolling(true);
+    setPollingAttempt(0);
+    setLoading(true);
+
+    const poll = async (attempt: number) => {
+      if (!mountedRef.current || connected) {
+        setIsPolling(false);
+        setLoading(false);
         return;
       }
 
-      if (pairingCode) {
-        toast.info(`Código de pareamento: ${pairingCode}`);
-      } else {
-        toast.error("QR Code ainda não disponível. Tente novamente em alguns segundos.");
+      if (attempt >= MAX_POLLING_ATTEMPTS) {
+        setIsPolling(false);
+        setLoading(false);
+        toast.error("QR Code não foi gerado. Clique em 'Tentar novamente'.");
+        return;
       }
-    } catch (error: any) {
-      console.error("Error refreshing QR:", error);
-      toast.error(error.message || "Erro ao atualizar QR Code");
-    } finally {
-      setLoading(false);
+
+      setPollingAttempt(attempt);
+      const { qrReady } = await fetchQrCode();
+
+      if (qrReady) {
+        setIsPolling(false);
+        setLoading(false);
+        return;
+      }
+
+      // Schedule next attempt with backoff
+      const interval = POLLING_INTERVALS[Math.min(attempt, POLLING_INTERVALS.length - 1)];
+      pollingTimeoutRef.current = setTimeout(() => poll(attempt + 1), interval);
+    };
+
+    await poll(0);
+  }, [fetchQrCode, connected]);
+
+  const refreshQRCode = async () => {
+    if (pollingTimeoutRef.current) {
+      clearTimeout(pollingTimeoutRef.current);
     }
+    startQrPolling();
   };
 
   const checkStatus = async () => {
-    if (connected) return;
+    if (connected || !mountedRef.current) return;
 
     setChecking(true);
     try {
@@ -173,6 +265,10 @@ export const WhatsAppQRCodeModal = ({
 
       if (state === "open") {
         setConnected(true);
+
+        // Stop polling
+        if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
+        setIsPolling(false);
 
         // Update database
         await supabase
@@ -192,10 +288,15 @@ export const WhatsAppQRCodeModal = ({
       }
     } catch (error) {
       // Silent fail for status checks
-      console.log("Status check:", error);
+      console.log("[QR Modal] Status check error:", error);
     } finally {
       setChecking(false);
     }
+  };
+
+  const getPollingStatus = () => {
+    if (!isPolling) return null;
+    return `Tentativa ${pollingAttempt + 1}/${MAX_POLLING_ATTEMPTS}...`;
   };
 
   return (
@@ -226,6 +327,13 @@ export const WhatsAppQRCodeModal = ({
                   className="w-64 h-64"
                 />
               </div>
+
+              {pairingCode && (
+                <div className="bg-muted p-3 rounded-lg text-center">
+                  <p className="text-sm text-muted-foreground mb-1">Código de Pareamento:</p>
+                  <p className="text-lg font-mono font-bold">{pairingCode}</p>
+                </div>
+              )}
               
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 {checking ? (
@@ -257,10 +365,17 @@ export const WhatsAppQRCodeModal = ({
           ) : (
             <div className="flex flex-col items-center gap-3 py-8">
               <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-              <p className="text-muted-foreground">Gerando QR Code...</p>
-              <Button onClick={refreshQRCode} disabled={loading}>
-                Gerar QR Code
-              </Button>
+              <p className="text-muted-foreground">
+                {isPolling ? "Gerando QR Code..." : "Aguardando..."}
+              </p>
+              {getPollingStatus() && (
+                <p className="text-xs text-muted-foreground">{getPollingStatus()}</p>
+              )}
+              {!isPolling && (
+                <Button onClick={refreshQRCode} disabled={loading}>
+                  Tentar novamente
+                </Button>
+              )}
             </div>
           )}
         </div>
