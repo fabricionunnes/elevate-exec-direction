@@ -6,6 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Lazy-loaded PDF parser (cached per function instance)
+let pdfjsLib: any = null;
+const getPdfjs = async () => {
+  if (pdfjsLib) return pdfjsLib;
+  // pdfjs-dist works via esm.sh in Deno runtime
+  pdfjsLib = await import("https://esm.sh/pdfjs-dist@4.10.38/legacy/build/pdf.mjs");
+  return pdfjsLib;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -129,51 +138,108 @@ serve(async (req) => {
     const readableDocuments: { name: string; category: string; content: string; taskTitle?: string }[] = [];
     
     // Helper function to read file content
-    const readFileContent = async (doc: any, taskTitle?: string): Promise<{ name: string; category: string; content: string; taskTitle?: string } | null> => {
+    const readFileContent = async (
+      doc: any,
+      taskTitle?: string
+    ): Promise<{ name: string; category: string; content: string; taskTitle?: string } | null> => {
       try {
-        const fileType = doc.file_type?.toLowerCase() || '';
-        const fileName = doc.file_name?.toLowerCase() || '';
-        
-        // Check if it's a readable text format
-        const isTextFile = fileType.includes('text') || 
-                          fileName.endsWith('.txt') || 
-                          fileName.endsWith('.md') ||
-                          fileName.endsWith('.csv') ||
-                          fileName.endsWith('.json');
-        
-        if (!isTextFile) {
-          // For non-text files (PDFs, images, etc.), return metadata only
+        const fileType = doc.file_type?.toLowerCase() || "";
+        const fileName = doc.file_name?.toLowerCase() || "";
+
+        const isTextFile =
+          fileType.includes("text") ||
+          fileName.endsWith(".txt") ||
+          fileName.endsWith(".md") ||
+          fileName.endsWith(".csv") ||
+          fileName.endsWith(".json");
+
+        const isPdf = fileType.includes("pdf") || fileName.endsWith(".pdf");
+
+        // For images/other binaries, return metadata only
+        if (!isTextFile && !isPdf) {
           return {
             name: doc.file_name,
-            category: doc.category || 'geral',
-            content: `[Arquivo: ${doc.file_name}] ${doc.description || 'Sem descrição'}`,
-            taskTitle
+            category: doc.category || "geral",
+            content: `[Arquivo: ${doc.file_name}] ${doc.description || "Sem descrição"}`,
+            taskTitle,
           };
         }
-        
+
         const { data: fileData, error: downloadError } = await supabase.storage
           .from("onboarding-documents")
           .download(doc.file_path);
-        
+
         if (downloadError) {
           console.error(`Error downloading ${doc.file_name}:`, downloadError);
           return null;
         }
-        
-        const textContent = await fileData.text();
-        
-        if (textContent && textContent.length > 0) {
+
+        // Text files: read directly
+        if (isTextFile) {
+          const textContent = await fileData.text();
+          if (textContent && textContent.length > 0) {
+            return {
+              name: doc.file_name,
+              category: doc.category || "geral",
+              content: textContent.substring(0, 8000),
+              taskTitle,
+            };
+          }
+          return null;
+        }
+
+        // PDFs: extract text with pdf.js
+        const ab = await fileData.arrayBuffer();
+        const pdfjs = await getPdfjs();
+
+        const loadingTask = pdfjs.getDocument({ data: new Uint8Array(ab) });
+        const pdf = await loadingTask.promise;
+
+        const maxPages = Math.min(pdf.numPages || 0, 10);
+        let extracted = "";
+
+        for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const tc = await page.getTextContent();
+          const pageText = (tc.items || [])
+            .map((it: any) => (typeof it.str === "string" ? it.str : ""))
+            .filter(Boolean)
+            .join(" ");
+
+          if (pageText.trim()) {
+            extracted += `\n\n[Página ${pageNum}]\n${pageText}`;
+          }
+
+          if (extracted.length > 12000) {
+            extracted = extracted.substring(0, 12000) + "\n... [PDF truncado para contexto]";
+            break;
+          }
+        }
+
+        if (!extracted.trim()) {
           return {
             name: doc.file_name,
-            category: doc.category || 'geral',
-            content: textContent.substring(0, 8000), // Limit per doc
-            taskTitle
+            category: doc.category || "geral",
+            content: `[PDF sem texto extraível] ${doc.description || "Sem descrição"}`,
+            taskTitle,
           };
         }
-        return null;
+
+        return {
+          name: doc.file_name,
+          category: doc.category || "geral",
+          content: `### Conteúdo extraído do PDF\n${extracted.trim()}`,
+          taskTitle,
+        };
       } catch (docError) {
         console.error(`Error processing ${doc.file_name}:`, docError);
-        return null;
+        // Fallback: at least provide metadata so the assistant doesn't claim it can't see anything
+        return {
+          name: doc.file_name,
+          category: doc.category || "geral",
+          content: `[Não foi possível extrair texto do arquivo] ${doc.description || "Sem descrição"}`,
+          taskTitle,
+        };
       }
     };
     
