@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, RefreshCw, Link, Building2 } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Link, Building2, UsersRound } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface Salesperson {
@@ -40,12 +40,20 @@ interface Salesperson {
   access_code: string;
   is_active: boolean;
   unit_id: string | null;
+  team_id: string | null;
 }
 
 interface Unit {
   id: string;
   name: string;
   code: string | null;
+  is_active: boolean;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  unit_id: string | null;
   is_active: boolean;
 }
 
@@ -57,6 +65,7 @@ interface SalespeopleTabProps {
 export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Salesperson | null>(null);
@@ -65,6 +74,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
     email: "",
     phone: "",
     unit_id: "",
+    team_id: "",
   });
 
   useEffect(() => {
@@ -73,7 +83,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
 
   const fetchData = async () => {
     try {
-      const [salespeopleRes, unitsRes] = await Promise.all([
+      const [salespeopleRes, unitsRes, teamsRes] = await Promise.all([
         supabase
           .from("company_salespeople")
           .select("*")
@@ -85,13 +95,21 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
           .eq("company_id", companyId)
           .eq("is_active", true)
           .order("name"),
+        supabase
+          .from("company_teams")
+          .select("*")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name"),
       ]);
 
       if (salespeopleRes.error) throw salespeopleRes.error;
       if (unitsRes.error) throw unitsRes.error;
+      if (teamsRes.error) throw teamsRes.error;
 
       setSalespeople(salespeopleRes.data || []);
       setUnits(unitsRes.data || []);
+      setTeams(teamsRes.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Erro ao carregar dados");
@@ -114,6 +132,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
 
     try {
       const unitId = formData.unit_id || (units.length === 1 ? units[0].id : null);
+      const teamId = formData.team_id || null;
 
       if (editingPerson) {
         const { error } = await supabase
@@ -123,6 +142,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
             email: formData.email || null,
             phone: formData.phone || null,
             unit_id: unitId,
+            team_id: teamId,
           })
           .eq("id", editingPerson.id);
 
@@ -135,6 +155,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
           email: formData.email || null,
           phone: formData.phone || null,
           unit_id: unitId,
+          team_id: teamId,
         });
 
         if (error) throw error;
@@ -214,6 +235,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
       email: "",
       phone: "",
       unit_id: "",
+      team_id: "",
     });
   };
 
@@ -224,6 +246,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
       email: person.email || "",
       phone: person.phone || "",
       unit_id: person.unit_id || "",
+      team_id: person.team_id || "",
     });
     setShowDialog(true);
   };
@@ -233,6 +256,17 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
     const unit = units.find((u) => u.id === unitId);
     return unit ? unit.name : "-";
   };
+
+  const getTeamName = (teamId: string | null) => {
+    if (!teamId) return "-";
+    const team = teams.find((t) => t.id === teamId);
+    return team ? team.name : "-";
+  };
+
+  // Filter teams by selected unit
+  const filteredTeams = formData.unit_id
+    ? teams.filter((t) => !t.unit_id || t.unit_id === formData.unit_id)
+    : teams;
 
   if (loading) {
     return <div className="flex justify-center p-8">Carregando...</div>;
@@ -274,7 +308,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
                     <Label>Unidade *</Label>
                     <Select
                       value={formData.unit_id}
-                      onValueChange={(v) => setFormData({ ...formData, unit_id: v })}
+                      onValueChange={(v) => setFormData({ ...formData, unit_id: v, team_id: "" })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a unidade" />
@@ -283,6 +317,28 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
                         {units.map((unit) => (
                           <SelectItem key={unit.id} value={unit.id}>
                             {unit.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {filteredTeams.length > 0 && (
+                  <div>
+                    <Label>Equipe (opcional)</Label>
+                    <Select
+                      value={formData.team_id}
+                      onValueChange={(v) => setFormData({ ...formData, team_id: v === "none" ? "" : v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a equipe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {filteredTeams.map((team) => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -337,6 +393,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 {units.length > 0 && <TableHead>Unidade</TableHead>}
+                {teams.length > 0 && <TableHead>Equipe</TableHead>}
                 <TableHead>E-mail</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>Código de Acesso</TableHead>
@@ -353,6 +410,14 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
                       <div className="flex items-center gap-1">
                         <Building2 className="h-3 w-3 text-muted-foreground" />
                         <span className="text-sm">{getUnitName(person.unit_id)}</span>
+                      </div>
+                    </TableCell>
+                  )}
+                  {teams.length > 0 && (
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <UsersRound className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-sm">{getTeamName(person.team_id)}</span>
                       </div>
                     </TableCell>
                   )}

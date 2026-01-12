@@ -737,6 +737,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           phone: string | null
+          team_id: string | null
           unit_id: string | null
           updated_at: string | null
         }
@@ -749,6 +750,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           phone?: string | null
+          team_id?: string | null
           unit_id?: string | null
           updated_at?: string | null
         }
@@ -761,6 +763,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           phone?: string | null
+          team_id?: string | null
           unit_id?: string | null
           updated_at?: string | null
         }
@@ -773,7 +776,62 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "company_salespeople_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "company_teams"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "company_salespeople_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "company_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_teams: {
+        Row: {
+          code: string | null
+          company_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          unit_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          code?: string | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          unit_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          unit_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_teams_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_teams_unit_id_fkey"
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "company_units"
@@ -3016,6 +3074,7 @@ export type Database = {
           kpi_id: string
           observations: string | null
           salesperson_id: string
+          team_id: string | null
           unit_id: string | null
           updated_at: string | null
           value: number
@@ -3028,6 +3087,7 @@ export type Database = {
           kpi_id: string
           observations?: string | null
           salesperson_id: string
+          team_id?: string | null
           unit_id?: string | null
           updated_at?: string | null
           value?: number
@@ -3040,6 +3100,7 @@ export type Database = {
           kpi_id?: string
           observations?: string | null
           salesperson_id?: string
+          team_id?: string | null
           unit_id?: string | null
           updated_at?: string | null
           value?: number
@@ -3067,6 +3128,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "kpi_entries_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "company_teams"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "kpi_entries_unit_id_fkey"
             columns: ["unit_id"]
             isOneToOne: false
@@ -3086,6 +3154,7 @@ export type Database = {
           month_year: string
           salesperson_id: string | null
           target_value: number
+          team_id: string | null
           unit_id: string | null
           updated_at: string | null
         }
@@ -3099,6 +3168,7 @@ export type Database = {
           month_year: string
           salesperson_id?: string | null
           target_value?: number
+          team_id?: string | null
           unit_id?: string | null
           updated_at?: string | null
         }
@@ -3112,6 +3182,7 @@ export type Database = {
           month_year?: string
           salesperson_id?: string | null
           target_value?: number
+          team_id?: string | null
           unit_id?: string | null
           updated_at?: string | null
         }
@@ -3135,6 +3206,13 @@ export type Database = {
             columns: ["salesperson_id"]
             isOneToOne: false
             referencedRelation: "company_salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_monthly_targets_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "company_teams"
             referencedColumns: ["id"]
           },
           {
