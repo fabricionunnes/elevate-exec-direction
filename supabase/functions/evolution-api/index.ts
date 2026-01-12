@@ -56,6 +56,27 @@ serve(async (req) => {
       'apikey': EVOLUTION_API_KEY,
     };
 
+    const fetchEvolutionJson = async (endpoint: string, init?: RequestInit) => {
+      const fullUrl = `${EVOLUTION_API_URL}${endpoint}`;
+      const res = await fetch(fullUrl, {
+        ...init,
+        headers: { ...evolutionHeaders, ...(init?.headers || {}) },
+      });
+
+      const text = await res.text();
+      let json: any = null;
+      try {
+        json = text ? JSON.parse(text) : null;
+      } catch {
+        json = { raw: text };
+      }
+
+      console.log('Evolution request:', { method: init?.method || 'GET', url: fullUrl, status: res.status });
+      console.log('Evolution response:', json);
+
+      return { res, json };
+    };
+
     let body: any = {};
     if (req.method === 'POST') {
       body = await req.json();
@@ -96,36 +117,14 @@ serve(async (req) => {
         );
       }
 
-      case 'connect': {
-        // Connect an instance (get QR code)
-        const { instanceName } = body;
-        
-        if (!instanceName) {
-          return new Response(
-            JSON.stringify({ error: 'instanceName is required' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const response = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
-          method: 'GET',
-          headers: evolutionHeaders,
-        });
-
-        const data = await response.json();
-        console.log('Connect instance response:', data);
-
-        return new Response(
-          JSON.stringify(data),
-          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
+      case 'connect':
       case 'qr-code': {
-        // Get QR code for an instance
-        // Accept instanceName from query param OR body
+        // Generate and return pairingCode/code for WhatsApp connection.
+        // Accept instanceName from query param OR body.
+        // Optional: accept 'number' (query/body) for setups that require it.
         const instanceName = url.searchParams.get('instanceName') || body.instanceName;
-        
+        const number = url.searchParams.get('number') || body.number;
+
         if (!instanceName) {
           return new Response(
             JSON.stringify({ error: 'instanceName is required (query param or body)' }),
@@ -133,17 +132,36 @@ serve(async (req) => {
           );
         }
 
-        const response = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
-          method: 'GET',
-          headers: evolutionHeaders,
-        });
+        const doConnect = async (instanceRef: string) => {
+          const qs = number ? `?number=${encodeURIComponent(number)}` : '';
+          return fetchEvolutionJson(`/instance/connect/${encodeURIComponent(instanceRef)}${qs}`, {
+            method: 'GET',
+          });
+        };
 
-        const data = await response.json();
-        console.log('QR code response:', data);
+        // 1) Try by instanceName
+        let { res: connectRes, json: connectJson } = await doConnect(instanceName);
+
+        // If Evolution returns count=0, it often means the instance reference is not what the server expects.
+        // 2) Fallback: resolve instanceId via fetchInstances and try again.
+        const connectCount = typeof connectJson?.count === 'number' ? connectJson.count : null;
+        if ((connectRes.status === 404 || connectCount === 0) && instanceName) {
+          const { res: listRes, json: listJson } = await fetchEvolutionJson('/instance/fetchInstances', { method: 'GET' });
+
+          if (listRes.ok && Array.isArray(listJson)) {
+            const match = listJson.find((x: any) => x?.instance?.instanceName === instanceName);
+            const instanceId = match?.instance?.instanceId;
+
+            if (instanceId) {
+              console.log('Resolved instanceId for connect fallback:', { instanceName, instanceId });
+              ({ res: connectRes, json: connectJson } = await doConnect(instanceId));
+            }
+          }
+        }
 
         return new Response(
-          JSON.stringify(data),
-          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify(connectJson),
+          { status: connectRes.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
