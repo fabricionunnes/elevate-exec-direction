@@ -202,6 +202,26 @@ serve(async (req) => {
         // Others respond with { base64 } / { code } / { pairingCode } directly.
         const attempts: Array<{ name: string; endpoint: string; init?: RequestInit }> = [];
 
+        // Some installs use root connect endpoints (no instanceName in path)
+        // Docs usually: GET /instance/connect/{instanceName}?number=... but we add fallbacks.
+        if (looksLikePhone && phoneDigits) {
+          attempts.push({
+            name: 'connect_root_post_body_instance_number',
+            endpoint: `/instance/connect`,
+            init: { method: 'POST', body: JSON.stringify({ instanceName, number: phoneDigits }) },
+          });
+          attempts.push({
+            name: 'connect_root_get_query_instance_number',
+            endpoint: `/instance/connect?instanceName=${encodeURIComponent(instanceName)}&number=${encodeURIComponent(phoneDigits)}`,
+            init: { method: 'GET' },
+          });
+        }
+        attempts.push({
+          name: 'connect_root_get_query_instance',
+          endpoint: `/instance/connect?instanceName=${encodeURIComponent(instanceName)}`,
+          init: { method: 'GET' },
+        });
+
         // Connect variants (GET/POST, number in query/body)
         if (looksLikePhone && phoneDigits) {
           attempts.push({
