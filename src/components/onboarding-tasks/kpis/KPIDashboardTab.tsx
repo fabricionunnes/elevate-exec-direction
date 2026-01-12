@@ -530,11 +530,13 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     };
 
     // Common KPI patterns - expanded to match more naming conventions
-    const leadsKpi = findKpiByPattern(['lead', 'leads', 'oportunidade', 'oportunidades', 'atendimento', 'atendimentos', 'contato', 'contatos']);
-    const proposalsKpi = findKpiByPattern(['proposta', 'propostas', 'orçamento', 'orcamento']);
+    const leadsKpi = findKpiByPattern(['lead', 'leads', 'oportunidade', 'oportunidades', 'contato', 'contatos']);
+    const serviceKpi = findKpiByPattern(['atendimento', 'atendimentos']);
+    const visitsKpi = findKpiByPattern(['visita', 'visitas']);
+    const meetingsKpi = findKpiByPattern(['reunião', 'reuniao', 'reuniões', 'reunioes', 'call', 'calls', 'ligação', 'ligações']);
+    const proposalsKpi = findKpiByPattern(['proposta', 'propostas', 'orçamento', 'orcamento', 'cotação', 'cotacao']);
     const salesKpi = findKpiByPattern(['venda', 'vendas', 'fechamento', 'fechamentos', 'qtd venda', 'quantidade venda']);
     const revenueKpi = kpis.find(k => k.kpi_type === 'monetary');
-    const meetingsKpi = findKpiByPattern(['reunião', 'reuniao', 'reuniões', 'reunioes', 'call', 'calls', 'ligação', 'ligações']);
 
     // Calculate totals for each found KPI
     const getKpiTotal = (kpi: KPI | undefined) => {
@@ -543,12 +545,58 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     };
 
     const totalLeads = getKpiTotal(leadsKpi);
+    const totalServices = getKpiTotal(serviceKpi);
+    const totalVisits = getKpiTotal(visitsKpi);
+    const totalMeetings = getKpiTotal(meetingsKpi);
     const totalProposals = getKpiTotal(proposalsKpi);
     const totalSales = getKpiTotal(salesKpi);
     const totalRevenue = getKpiTotal(revenueKpi);
-    const totalMeetings = getKpiTotal(meetingsKpi);
 
-    // Calculate conversion rates
+    // Build conversion stages dynamically based on available data
+    // Priority order: Leads → Atendimentos → Visitas/Reuniões → Propostas → Vendas
+    const conversionStages: Array<{ name: string; value: number; kpiName: string | undefined }> = [];
+    
+    if (leadsKpi && totalLeads > 0) {
+      conversionStages.push({ name: 'Leads', value: totalLeads, kpiName: leadsKpi.name });
+    }
+    if (serviceKpi && totalServices > 0) {
+      conversionStages.push({ name: 'Atendimentos', value: totalServices, kpiName: serviceKpi.name });
+    }
+    if (visitsKpi && totalVisits > 0) {
+      conversionStages.push({ name: 'Visitas', value: totalVisits, kpiName: visitsKpi.name });
+    } else if (meetingsKpi && totalMeetings > 0) {
+      conversionStages.push({ name: 'Reuniões', value: totalMeetings, kpiName: meetingsKpi.name });
+    }
+    if (proposalsKpi && totalProposals > 0) {
+      conversionStages.push({ name: 'Propostas', value: totalProposals, kpiName: proposalsKpi.name });
+    }
+    if (salesKpi && totalSales > 0) {
+      conversionStages.push({ name: 'Vendas', value: totalSales, kpiName: salesKpi.name });
+    }
+
+    // Calculate pairwise conversion rates
+    const conversionRates: Array<{ from: string; to: string; rate: number; fromValue: number; toValue: number }> = [];
+    for (let i = 0; i < conversionStages.length - 1; i++) {
+      const from = conversionStages[i];
+      const to = conversionStages[i + 1];
+      if (from.value > 0) {
+        conversionRates.push({
+          from: from.name,
+          to: to.name,
+          rate: (to.value / from.value) * 100,
+          fromValue: from.value,
+          toValue: to.value,
+        });
+      }
+    }
+
+    // Calculate overall conversion (first stage to sales)
+    const firstStage = conversionStages[0];
+    const overallConversion = firstStage && firstStage.value > 0 && totalSales > 0
+      ? (totalSales / firstStage.value) * 100
+      : 0;
+
+    // Legacy rates for backward compatibility
     const leadToProposal = totalLeads > 0 ? (totalProposals / totalLeads) * 100 : 0;
     const proposalToSale = totalProposals > 0 ? (totalSales / totalProposals) * 100 : 0;
     const leadToSale = totalLeads > 0 ? (totalSales / totalLeads) * 100 : 0;
@@ -558,19 +606,27 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
 
     return {
       totalLeads,
+      totalServices,
+      totalVisits,
+      totalMeetings,
       totalProposals,
       totalSales,
       totalRevenue,
-      totalMeetings,
       leadToProposal,
       proposalToSale,
       leadToSale,
+      overallConversion,
       avgTicket,
+      conversionStages,
+      conversionRates,
       hasLeadsData: !!leadsKpi && totalLeads > 0,
+      hasServicesData: !!serviceKpi && totalServices > 0,
+      hasVisitsData: !!visitsKpi && totalVisits > 0,
+      hasMeetingsData: !!meetingsKpi && totalMeetings > 0,
       hasProposalsData: !!proposalsKpi && totalProposals > 0,
       hasSalesData: !!salesKpi && totalSales > 0,
       hasRevenueData: !!revenueKpi && totalRevenue > 0,
-      hasMeetingsData: !!meetingsKpi && totalMeetings > 0,
+      hasAnyConversionData: conversionStages.length >= 2,
     };
   };
 
@@ -893,24 +949,69 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
         refreshKey={salesHistoryRefreshKey}
       />
 
-      {/* Conversion Card - Small */}
-      {calculatedMetrics.hasLeadsData && calculatedMetrics.hasSalesData && (
+      {/* Conversion Card - Detailed */}
+      {calculatedMetrics.hasAnyConversionData && (
         <Card className="border-primary/50 bg-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conversão de Vendas</CardTitle>
+            <CardTitle className="text-sm font-medium">Taxas de Conversão</CardTitle>
             <Percent className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${
-              calculatedMetrics.leadToSale >= 20 ? 'text-green-600' :
-              calculatedMetrics.leadToSale >= 10 ? 'text-amber-600' :
-              'text-destructive'
-            }`}>
-              {calculatedMetrics.leadToSale.toFixed(1)}%
+            {/* Overall conversion */}
+            {calculatedMetrics.overallConversion > 0 && (
+              <div className="mb-4">
+                <div className={`text-2xl font-bold ${
+                  calculatedMetrics.overallConversion >= 20 ? 'text-green-600' :
+                  calculatedMetrics.overallConversion >= 10 ? 'text-amber-600' :
+                  'text-destructive'
+                }`}>
+                  {calculatedMetrics.overallConversion.toFixed(1)}%
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Conversão Geral ({calculatedMetrics.conversionStages[0]?.name} → Vendas)
+                </p>
+              </div>
+            )}
+            
+            {/* Stage-by-stage conversions */}
+            <div className="space-y-2">
+              {calculatedMetrics.conversionRates.map((conv, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2 rounded bg-background/60">
+                  <div className="text-xs">
+                    <span className="font-medium">{conv.from}</span>
+                    <span className="text-muted-foreground mx-1">→</span>
+                    <span className="font-medium">{conv.to}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {conv.toValue.toLocaleString('pt-BR')}/{conv.fromValue.toLocaleString('pt-BR')}
+                    </span>
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs ${
+                        conv.rate >= 50 ? 'border-green-500 text-green-600' :
+                        conv.rate >= 20 ? 'border-amber-500 text-amber-600' :
+                        'border-destructive text-destructive'
+                      }`}
+                    >
+                      {conv.rate.toFixed(1)}%
+                    </Badge>
+                  </div>
+                </div>
+              ))}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {calculatedMetrics.totalSales} vendas de {calculatedMetrics.totalLeads} leads
-            </p>
+            
+            {/* Average ticket if available */}
+            {calculatedMetrics.hasRevenueData && calculatedMetrics.hasSalesData && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Ticket Médio</span>
+                  <span className="font-semibold">
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(calculatedMetrics.avgTicket)}
+                  </span>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
