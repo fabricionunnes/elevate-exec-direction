@@ -123,11 +123,12 @@ serve(async (req) => {
 
       case 'qr-code': {
         // Get QR code for an instance
-        const instanceName = url.searchParams.get('instanceName');
+        // Accept instanceName from query param OR body
+        const instanceName = url.searchParams.get('instanceName') || body.instanceName;
         
         if (!instanceName) {
           return new Response(
-            JSON.stringify({ error: 'instanceName query param is required' }),
+            JSON.stringify({ error: 'instanceName is required (query param or body)' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -148,11 +149,12 @@ serve(async (req) => {
 
       case 'status': {
         // Check instance status
-        const instanceName = url.searchParams.get('instanceName');
+        // Accept instanceName from query param OR body
+        const instanceName = url.searchParams.get('instanceName') || body.instanceName;
         
         if (!instanceName) {
           return new Response(
-            JSON.stringify({ error: 'instanceName query param is required' }),
+            JSON.stringify({ error: 'instanceName is required (query param or body)' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
