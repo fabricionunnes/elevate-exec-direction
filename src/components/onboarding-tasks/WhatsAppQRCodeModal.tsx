@@ -154,10 +154,16 @@ export const WhatsAppQRCodeModal = ({
     try {
       const phone = (instance.phone_number || "").trim().replace(/\D/g, "");
 
+      // Require full country code digits (ex: 5511999999999)
+      if (!phone || phone.length < 12) {
+        toast.error("Número inválido para gerar QR. Salve com DDI (ex: 5511999999999) e recrie a instância.");
+        return { success: false, qrReady: false };
+      }
+
       const result = await callEvolutionAPI(
         "connect",
         { instanceName: instance.instance_name },
-        phone ? { number: phone } : undefined
+        { number: phone }
       );
 
       console.log("[QR Modal] Connect result:", result);
