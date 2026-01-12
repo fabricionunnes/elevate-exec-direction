@@ -324,7 +324,6 @@ export default function DiagnosticResponsesPage() {
             created_at,
             portal_companies!inner(id, name)
           `)
-          .not('context_data', 'eq', '{}')
           .order("created_at", { ascending: false })
       ]);
 
