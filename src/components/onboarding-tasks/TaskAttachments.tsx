@@ -81,7 +81,16 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
           .eq("project_id", projectId)
           .maybeSingle();
 
-        const filePath = `${companyId}/tasks/${taskId}/${Date.now()}_${file.name}`;
+        // Sanitize file name for storage path (remove accents, special chars, spaces)
+        const sanitizeFileName = (name: string) => {
+          return name
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "") // Remove accents
+            .replace(/[^a-zA-Z0-9._-]/g, "_"); // Replace special chars with underscore
+        };
+        
+        const sanitizedName = sanitizeFileName(file.name);
+        const filePath = `${companyId}/tasks/${taskId}/${Date.now()}_${sanitizedName}`;
 
         // Upload to storage
         const { error: uploadError } = await supabase.storage
