@@ -297,6 +297,14 @@ const WhatsAppAdminPage = () => {
         { number: phone }
       );
 
+      // Check if qrcode count is 0 - means Evolution needs more time
+      const qrCount = result?.qrcode?.count ?? result?.count ?? null;
+      if (qrCount === 0) {
+        toast.info("QR Code ainda não disponível. Aguarde alguns segundos e clique novamente.");
+        setQrModalInstance({ ...instance, qr_code: null });
+        return;
+      }
+
       const base64 = extractQrBase64(result);
       const code = result?.code ?? null;
 
@@ -309,7 +317,7 @@ const WhatsAppAdminPage = () => {
           .update({ qr_code: qrPayload, status: "connecting" })
           .eq("id", instance.id);
       } else {
-        toast.error("QR Code ainda não disponível. Tente novamente em alguns segundos.");
+        toast.info("QR Code ainda não disponível. Aguarde e clique em 'Gerar QR Code'.");
       }
 
       setQrModalInstance({ ...instance, qr_code: qrPayload });

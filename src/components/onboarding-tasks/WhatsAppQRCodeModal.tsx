@@ -124,6 +124,13 @@ export const WhatsAppQRCodeModal = ({
         phone ? { number: phone } : undefined
       );
 
+      // Check if qrcode count is 0 - means Evolution needs more time
+      const qrCount = result?.qrcode?.count ?? result?.count ?? null;
+      if (qrCount === 0) {
+        toast.info("QR Code ainda não disponível. Aguarde alguns segundos e tente novamente.");
+        return;
+      }
+
       const pairingCode = extractPairingCode(result);
       const dataUrl = await buildQrDataUrl(result);
 
@@ -140,7 +147,7 @@ export const WhatsAppQRCodeModal = ({
       }
 
       if (pairingCode) {
-        toast.error(`Código de pareamento: ${pairingCode}`);
+        toast.info(`Código de pareamento: ${pairingCode}`);
       } else {
         toast.error("QR Code ainda não disponível. Tente novamente em alguns segundos.");
       }

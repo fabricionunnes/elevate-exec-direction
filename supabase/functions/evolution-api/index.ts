@@ -141,39 +141,46 @@ serve(async (req) => {
           );
         }
 
-        const doConnect = async (instanceRef: string) => {
-          const qs = number ? `?number=${encodeURIComponent(number)}` : '';
-          return fetchEvolutionJson(`/instance/connect/${encodeURIComponent(instanceRef)}${qs}`, {
-            method: 'GET',
-          });
-        };
+        const qs = number ? `?number=${encodeURIComponent(number)}` : '';
 
-        // 1) Try by instanceName
-        let { res: connectRes, json: connectJson } = await doConnect(instanceName);
+        // 1) Try connect by instanceName
+        let { res: connectRes, json: connectJson } = await fetchEvolutionJson(
+          `/instance/connect/${encodeURIComponent(instanceName)}${qs}`,
+          { method: 'GET' }
+        );
 
-        // If Evolution returns count=0, it often means the instance reference is not what the server expects.
-        // 2) Fallback: resolve instanceId via fetchInstances and try again.
-        const connectCount = typeof connectJson?.count === 'number' ? connectJson.count : null;
-        if ((connectRes.status === 404 || connectCount === 0) && instanceName) {
+        // 2) If 404, the instance might not exist in Evolution or name doesn't match.
+        //    Fetch all instances and try to find by name.
+        if (connectRes.status === 404) {
+          console.log('Connect returned 404, fetching all instances to resolve name...');
           const { res: listRes, json: listJson } = await fetchEvolutionJson('/instance/fetchInstances', { method: 'GET' });
 
           if (listRes.ok && Array.isArray(listJson)) {
-            // Evolution installations differ:
-            // - v2 docs: [{ instance: { instanceName, instanceId } }]
-            // - some servers: [{ id, name }]
-            const match =
-              listJson.find((x: any) => x?.instance?.instanceName === instanceName) ||
-              listJson.find((x: any) => x?.name === instanceName);
+            // Evolution API returns: [{ id, name, ... }]
+            const match = listJson.find((x: any) => x?.name === instanceName);
 
-            const instanceId = match?.instance?.instanceId || match?.id;
-
-            if (instanceId) {
-              console.log('Resolved instanceId for connect fallback:', { instanceName, instanceId });
-              ({ res: connectRes, json: connectJson } = await doConnect(instanceId));
+            if (match) {
+              // Instance exists in Evolution with matching name - retry connect
+              console.log('Found instance in Evolution, retrying connect with same name:', match.name);
+              ({ res: connectRes, json: connectJson } = await fetchEvolutionJson(
+                `/instance/connect/${encodeURIComponent(match.name)}${qs}`,
+                { method: 'GET' }
+              ));
+            } else {
+              console.log('Instance not found in Evolution. Available:', listJson.map((x: any) => x?.name));
+              return new Response(
+                JSON.stringify({ 
+                  error: 'Instância não encontrada na Evolution API. Recrie a instância.',
+                  availableInstances: listJson.map((x: any) => x?.name)
+                }),
+                { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
             }
           }
         }
 
+        // 3) If qrcode.count is 0, it means Evolution needs a moment. Return the response as-is.
+        //    The frontend should display "try again" or auto-retry.
         return new Response(
           JSON.stringify(connectJson),
           { status: connectRes.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
