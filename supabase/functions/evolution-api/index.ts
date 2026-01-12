@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Version tag for debugging deployments
-const EVOLUTION_API_FUNC_VERSION = "2026-01-12-v3-connect-fallback";
+const EVOLUTION_API_FUNC_VERSION = "2026-01-12-v4-connect-variants";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -144,7 +144,8 @@ serve(async (req) => {
 
       case 'connect':
       case 'qr-code': {
-        // Generate and return pairingCode/code for WhatsApp connection.
+        // Generate and return QR/pairing payload for WhatsApp connection.
+        // Evolution API endpoints vary by version; we try multiple variants.
         // IMPORTANT: We ONLY use instanceName (string), NEVER UUID
         const instanceName = url.searchParams.get('instanceName') || body.instanceName;
         const number = url.searchParams.get('number') || body.number;
@@ -158,101 +159,154 @@ serve(async (req) => {
 
         console.log(`[evolution-api] Connect request - instanceName: "${instanceName}", number: "${number}"`);
 
-        const qs = number ? `?number=${encodeURIComponent(number)}` : '';
+        const looksLikePhone = typeof number === 'string' && number.replace(/\D/g, '').length >= 10;
+        const phoneDigits = typeof number === 'string' ? number.replace(/\D/g, '') : undefined;
 
-        // 1) Try connect by instanceName (NEVER use UUID)
-        let { res: connectRes, json: connectJson } = await fetchEvolutionJson(
-          `/instance/connect/${encodeURIComponent(instanceName)}${qs}`,
-          { method: 'GET' }
+        const hasQrPayload = (payload: any) => !!(
+          payload?.code ||
+          payload?.pairingCode ||
+          payload?.base64 ||
+          payload?.qrcode?.base64 ||
+          payload?.qrcode?.code ||
+          payload?.qrCode?.base64 ||
+          payload?.qr?.base64
         );
 
-        // 2) If 404, verify if instance exists in Evolution
-        if (connectRes.status === 404) {
-          console.log('[evolution-api] Connect returned 404, fetching all instances...');
-          const allInstances = await fetchEvolutionInstances();
-          const instanceNames = allInstances.map((x: any) => x?.name || x?.instanceName);
-          console.log('[evolution-api] Available instances:', instanceNames);
+        const qrCountFrom = (payload: any) => payload?.qrcode?.count ?? payload?.count ?? null;
 
-          const match = allInstances.find((x: any) => 
-            x?.name === instanceName || x?.instanceName === instanceName
-          );
+        // Some versions respond with { instance: { state }, qrcode: { base64/code } }
+        // Others respond with { base64 } / { code } / { pairingCode } directly.
+        const attempts: Array<{ name: string; endpoint: string; init?: RequestInit }> = [];
 
-          if (!match) {
-            // Instance truly doesn't exist in Evolution
-            return new Response(
-              JSON.stringify({ 
-                error: `Instância "${instanceName}" não encontrada na Evolution API. Apague e recrie a instância.`,
-                availableInstances: instanceNames,
-                tip: 'Verifique se o nome da instância está correto ou crie uma nova instância.'
-              }),
-              { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-
-          // Found the instance, retry connect with the correct name
-          const matchName = match.name || match.instanceName;
-          console.log(`[evolution-api] Found instance, retrying with name: "${matchName}"`);
-          
-          ({ res: connectRes, json: connectJson } = await fetchEvolutionJson(
-            `/instance/connect/${encodeURIComponent(matchName)}${qs}`,
-            { method: 'GET' }
-          ));
+        // Connect variants (GET/POST, number in query/body)
+        if (looksLikePhone && phoneDigits) {
+          attempts.push({
+            name: 'connect_get_query_number',
+            endpoint: `/instance/connect/${encodeURIComponent(instanceName)}?number=${encodeURIComponent(phoneDigits)}`,
+            init: { method: 'GET' },
+          });
+          attempts.push({
+            name: 'connect_post_body_number',
+            endpoint: `/instance/connect/${encodeURIComponent(instanceName)}`,
+            init: { method: 'POST', body: JSON.stringify({ number: phoneDigits }) },
+          });
         }
 
-        // 3) Check for QR code in response
-        const hasQrCode = !!(
-          connectJson?.code || 
-          connectJson?.pairingCode || 
-          connectJson?.base64 || 
-          connectJson?.qrcode?.base64 ||
-          connectJson?.qrcode?.code
-        );
-        const qrCount = connectJson?.qrcode?.count ?? connectJson?.count ?? null;
+        attempts.push({
+          name: 'connect_get_no_number',
+          endpoint: `/instance/connect/${encodeURIComponent(instanceName)}`,
+          init: { method: 'GET' },
+        });
+        attempts.push({
+          name: 'connect_post_empty',
+          endpoint: `/instance/connect/${encodeURIComponent(instanceName)}`,
+          init: { method: 'POST', body: JSON.stringify({}) },
+        });
 
-        console.log(`[evolution-api] Connect result - hasQrCode: ${hasQrCode}, qrCount: ${qrCount}`);
+        // QR-only variants that some Evolution setups expose
+        attempts.push({
+          name: 'qr_instance_qr',
+          endpoint: `/instance/qr/${encodeURIComponent(instanceName)}`,
+          init: { method: 'GET' },
+        });
+        attempts.push({
+          name: 'qr_instance_qrcode',
+          endpoint: `/instance/qrcode/${encodeURIComponent(instanceName)}`,
+          init: { method: 'GET' },
+        });
+        attempts.push({
+          name: 'qr_instance_qrCode',
+          endpoint: `/instance/qrCode/${encodeURIComponent(instanceName)}`,
+          init: { method: 'GET' },
+        });
 
-        // 4) If count is 0 and we passed a phone number, some Evolution setups only return the
-        // QR/pairing payload when calling /instance/connect/{instance} WITHOUT the `number` param.
-        // So we retry once without number before giving up.
-        if (!hasQrCode && qrCount === 0 && number) {
-          console.log('[evolution-api] No QR in connect response (with number). Retrying /instance/connect without number...');
+        let last: { res: Response; json: any; attemptName: string } | null = null;
+        let bestOk: { json: any; attemptName: string } | null = null;
 
-          const { res: connectNoNumRes, json: connectNoNumJson } = await fetchEvolutionJson(
-            `/instance/connect/${encodeURIComponent(instanceName)}`,
-            { method: 'GET' }
-          );
+        for (const a of attempts) {
+          const { res, json } = await fetchEvolutionJson(a.endpoint, a.init);
+          last = { res, json, attemptName: a.name };
 
-          const noNumHasQr = !!(
-            connectNoNumJson?.code ||
-            connectNoNumJson?.pairingCode ||
-            connectNoNumJson?.base64 ||
-            connectNoNumJson?.qrcode?.base64 ||
-            connectNoNumJson?.qrcode?.code
-          );
-          const noNumCount = connectNoNumJson?.qrcode?.count ?? connectNoNumJson?.count ?? null;
+          // if instance not found, try resolving instanceName
+          if (res.status === 404 && a.name.startsWith('connect_')) {
+            console.log('[evolution-api] Connect returned 404, fetching all instances...');
+            const allInstances = await fetchEvolutionInstances();
+            const instanceNames = allInstances.map((x: any) => x?.name || x?.instanceName);
+            console.log('[evolution-api] Available instances:', instanceNames);
 
-          console.log(`[evolution-api] Connect(no number) result - hasQrCode: ${noNumHasQr}, qrCount: ${noNumCount}`);
+            const match = allInstances.find((x: any) => x?.name === instanceName || x?.instanceName === instanceName);
+            if (!match) {
+              return new Response(
+                JSON.stringify({
+                  error: `Instância "${instanceName}" não encontrada na Evolution API. Apague e recrie a instância.`,
+                  availableInstances: instanceNames,
+                  tip: 'Verifique se o nome da instância está correto ou crie uma nova instância.'
+                }),
+                { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
 
-          if (connectNoNumRes.ok && (noNumHasQr || noNumCount === 1)) {
+            const matchName = match.name || match.instanceName;
+            console.log(`[evolution-api] Found instance, retrying with name: "${matchName}"`);
+
+            // Re-run the same attempt but with the resolved name
+            const rerunEndpoint = a.endpoint.replace(
+              `/instance/connect/${encodeURIComponent(instanceName)}`,
+              `/instance/connect/${encodeURIComponent(matchName)}`
+            );
+            const rerun = await fetchEvolutionJson(rerunEndpoint, a.init);
+            last = { res: rerun.res, json: rerun.json, attemptName: `${a.name}_resolved` };
+          }
+
+          const okish = last?.res.ok;
+          const hasQr = hasQrPayload(last?.json);
+          const qrCount = qrCountFrom(last?.json);
+
+          if (okish && !bestOk) bestOk = { json: last!.json, attemptName: last!.attemptName };
+
+          console.log(`[evolution-api] Attempt ${last?.attemptName} -> ok: ${okish}, hasQr: ${hasQr}, count: ${qrCount}`);
+
+          // Success conditions:
+          // - hasQr payload
+          // - or Evolution returns count=1 meaning QR ready (even if fields are nested differently)
+          if (okish && (hasQr || qrCount === 1)) {
             return new Response(
               JSON.stringify({
-                ...connectNoNumJson,
-                _source: 'connect-endpoint-without-number',
+                ...last!.json,
+                _source: last!.attemptName,
                 _version: EVOLUTION_API_FUNC_VERSION,
               }),
               { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
+
+          // If we already got an OK response but no QR, do not allow later 404s to become the final result
+          if (okish) {
+            bestOk = { json: last!.json, attemptName: last!.attemptName };
+          }
         }
 
-        // 5) Return whatever we got, with version info
+        // If we never got a QR payload, return the best OK response (usually {count:0}) with 200
+        if (bestOk) {
+          return new Response(
+            JSON.stringify({
+              ...bestOk.json,
+              _source: bestOk.attemptName,
+              _version: EVOLUTION_API_FUNC_VERSION,
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Otherwise return last error
+        const status = last?.res.status ?? 502;
         return new Response(
-          JSON.stringify({ 
-            ...connectJson, 
-            _source: 'connect-endpoint',
-            _version: EVOLUTION_API_FUNC_VERSION 
+          JSON.stringify({
+            ...(last?.json ?? { error: 'No response' }),
+            _source: last?.attemptName ?? 'none',
+            _version: EVOLUTION_API_FUNC_VERSION,
           }),
-          { status: connectRes.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
