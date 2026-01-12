@@ -174,6 +174,18 @@ serve(async (req) => {
 
         const qrCountFrom = (payload: any) => payload?.qrcode?.count ?? payload?.count ?? null;
 
+        // Helper to rank responses for "best" selection
+        // Priority: hasQr > higher qrCount > uses number param (when provided)
+        const rankResponse = (json: any, attemptName: string): number => {
+          let score = 0;
+          if (hasQrPayload(json)) score += 1000;
+          const count = qrCountFrom(json);
+          if (typeof count === 'number') score += count * 10;
+          // Prefer attempts with number when number was provided
+          if (looksLikePhone && attemptName.includes('number')) score += 5;
+          return score;
+        };
+
         // Some versions respond with { instance: { state }, qrcode: { base64/code } }
         // Others respond with { base64 } / { code } / { pairingCode } directly.
         const attempts: Array<{ name: string; endpoint: string; init?: RequestInit }> = [];
@@ -221,7 +233,7 @@ serve(async (req) => {
         });
 
         let last: { res: Response; json: any; attemptName: string } | null = null;
-        let bestOk: { json: any; attemptName: string } | null = null;
+        let bestOk: { json: any; attemptName: string; score: number } | null = null;
 
         for (const a of attempts) {
           const { res, json } = await fetchEvolutionJson(a.endpoint, a.init);
@@ -261,10 +273,9 @@ serve(async (req) => {
           const okish = last?.res.ok;
           const hasQr = hasQrPayload(last?.json);
           const qrCount = qrCountFrom(last?.json);
+          const score = rankResponse(last!.json, last!.attemptName);
 
-          if (okish && !bestOk) bestOk = { json: last!.json, attemptName: last!.attemptName };
-
-          console.log(`[evolution-api] Attempt ${last?.attemptName} -> ok: ${okish}, hasQr: ${hasQr}, count: ${qrCount}`);
+          console.log(`[evolution-api] Attempt ${last?.attemptName} -> ok: ${okish}, hasQr: ${hasQr}, count: ${qrCount}, score: ${score}`);
 
           // Success conditions:
           // - hasQr payload
@@ -280,18 +291,33 @@ serve(async (req) => {
             );
           }
 
-          // If we already got an OK response but no QR, do not allow later 404s to become the final result
-          if (okish) {
-            bestOk = { json: last!.json, attemptName: last!.attemptName };
+          // Track best OK response by score (not just overwrite)
+          if (okish && (!bestOk || score > bestOk.score)) {
+            bestOk = { json: last!.json, attemptName: last!.attemptName, score };
           }
         }
 
-        // If we never got a QR payload, return the best OK response (usually {count:0}) with 200
+        // If we never got a QR payload, fetch connectionState for diagnostics and return best OK
         if (bestOk) {
+          // Fetch current connectionState to help frontend diagnose
+          let connectionState: any = null;
+          try {
+            const stateResult = await fetchEvolutionJson(
+              `/instance/connectionState/${encodeURIComponent(instanceName)}`,
+              { method: 'GET' }
+            );
+            if (stateResult.res.ok) {
+              connectionState = stateResult.json?.instance ?? stateResult.json;
+            }
+          } catch (e) {
+            console.log('[evolution-api] Failed to fetch connectionState:', e);
+          }
+
           return new Response(
             JSON.stringify({
               ...bestOk.json,
               _source: bestOk.attemptName,
+              _connectionState: connectionState,
               _version: EVOLUTION_API_FUNC_VERSION,
             }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, CheckCircle2, QrCode } from "lucide-react";
+import { Loader2, RefreshCw, CheckCircle2, QrCode, LogOut, RotateCcw, AlertTriangle, Trash2 } from "lucide-react";
 import QRCode from "qrcode";
 import {
   Dialog,
@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface WhatsAppInstance {
   id: string;
@@ -26,10 +27,18 @@ interface WhatsAppQRCodeModalProps {
   onConnected: () => void;
 }
 
+interface DiagnosticInfo {
+  source: string | null;
+  connectionState: string | null;
+  count: number | null;
+  attempts: number;
+}
+
 // Polling intervals with backoff (in ms)
 const POLLING_INTERVALS = [2000, 3000, 4000, 5000, 6000, 7000, 8000];
 const MAX_POLLING_ATTEMPTS = 15;
 const STATUS_CHECK_INTERVAL = 5000;
+const STUCK_THRESHOLD = 6; // After this many attempts with count=0, show recovery options
 
 export const WhatsAppQRCodeModal = ({ 
   instance, 
@@ -43,6 +52,13 @@ export const WhatsAppQRCodeModal = ({
   const [connected, setConnected] = useState(false);
   const [pollingAttempt, setPollingAttempt] = useState(0);
   const [isPolling, setIsPolling] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [diagnostic, setDiagnostic] = useState<DiagnosticInfo>({
+    source: null,
+    connectionState: null,
+    count: null,
+    attempts: 0,
+  });
   
   const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -174,8 +190,17 @@ export const WhatsAppQRCodeModal = ({
         return { success: false, qrReady: false };
       }
 
-      // Check if qrcode count is 0 - means Evolution needs more time
+      // Extract diagnostic info
       const qrCount = result?.qrcode?.count ?? result?.count ?? null;
+      const source = result?._source ?? null;
+      const connState = result?._connectionState?.state ?? null;
+
+      setDiagnostic(prev => ({
+        source,
+        connectionState: connState,
+        count: qrCount,
+        attempts: prev.attempts + 1,
+      }));
       
       const pairing = extractPairingCode(result);
       const dataUrl = await buildQrDataUrl(result);
@@ -224,6 +249,7 @@ export const WhatsAppQRCodeModal = ({
     setIsPolling(true);
     setPollingAttempt(0);
     setLoading(true);
+    setDiagnostic(prev => ({ ...prev, attempts: 0 }));
 
     const poll = async (attempt: number) => {
       if (!mountedRef.current || connected) {
@@ -235,7 +261,7 @@ export const WhatsAppQRCodeModal = ({
       if (attempt >= MAX_POLLING_ATTEMPTS) {
         setIsPolling(false);
         setLoading(false);
-        toast.error("QR Code não foi gerado. Clique em 'Tentar novamente'.");
+        toast.error("QR Code não foi gerado. Tente Logout/Restart ou recrie a instância.");
         return;
       }
 
@@ -263,6 +289,56 @@ export const WhatsAppQRCodeModal = ({
     startQrPolling();
   };
 
+  const handleLogout = async () => {
+    setActionLoading("logout");
+    try {
+      await callEvolutionAPI("logout", { instanceName: instance.instance_name });
+      
+      await supabase
+        .from("whatsapp_instances")
+        .update({ status: "disconnected", qr_code: null })
+        .eq("id", instance.id);
+      
+      toast.success("Logout realizado. Tentando gerar novo QR...");
+      setQrCode(null);
+      setPairingCode(null);
+      setDiagnostic({ source: null, connectionState: null, count: null, attempts: 0 });
+      
+      // Wait a bit then start polling again
+      setTimeout(() => refreshQRCode(), 2000);
+    } catch (error: any) {
+      console.error("Error logging out:", error);
+      toast.error(error.message || "Erro ao fazer logout");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRestart = async () => {
+    setActionLoading("restart");
+    try {
+      await callEvolutionAPI("restart", { instanceName: instance.instance_name });
+      
+      await supabase
+        .from("whatsapp_instances")
+        .update({ status: "disconnected", qr_code: null })
+        .eq("id", instance.id);
+      
+      toast.success("Instância reiniciada. Aguarde e tentando gerar novo QR...");
+      setQrCode(null);
+      setPairingCode(null);
+      setDiagnostic({ source: null, connectionState: null, count: null, attempts: 0 });
+      
+      // Wait longer for restart then start polling
+      setTimeout(() => refreshQRCode(), 5000);
+    } catch (error: any) {
+      console.error("Error restarting:", error);
+      toast.error(error.message || "Erro ao reiniciar");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const checkStatus = async () => {
     if (connected || !mountedRef.current) return;
 
@@ -274,6 +350,9 @@ export const WhatsAppQRCodeModal = ({
 
       const inst = extractInstance(result);
       const state = inst?.state;
+
+      // Update diagnostic
+      setDiagnostic(prev => ({ ...prev, connectionState: state }));
 
       if (state === "open") {
         setConnected(true);
@@ -309,6 +388,19 @@ export const WhatsAppQRCodeModal = ({
   const getPollingStatus = () => {
     if (!isPolling) return null;
     return `Tentativa ${pollingAttempt + 1}/${MAX_POLLING_ATTEMPTS}...`;
+  };
+
+  const isStuck = diagnostic.attempts >= STUCK_THRESHOLD && diagnostic.count === 0 && !qrCode;
+
+  const getDiagnosticMessage = () => {
+    if (!diagnostic.source && !diagnostic.connectionState) return null;
+    
+    const parts: string[] = [];
+    if (diagnostic.source) parts.push(`Fonte: ${diagnostic.source}`);
+    if (diagnostic.connectionState) parts.push(`Estado: ${diagnostic.connectionState}`);
+    if (diagnostic.count !== null) parts.push(`Count: ${diagnostic.count}`);
+    
+    return parts.join(' | ');
   };
 
   return (
@@ -375,18 +467,124 @@ export const WhatsAppQRCodeModal = ({
               </Button>
             </>
           ) : (
-            <div className="flex flex-col items-center gap-3 py-8">
-              <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-              <p className="text-muted-foreground">
-                {isPolling ? "Gerando QR Code..." : "Aguardando..."}
-              </p>
-              {getPollingStatus() && (
-                <p className="text-xs text-muted-foreground">{getPollingStatus()}</p>
-              )}
-              {!isPolling && (
-                <Button onClick={refreshQRCode} disabled={loading}>
-                  Tentar novamente
-                </Button>
+            <div className="flex flex-col items-center gap-3 py-4 w-full">
+              {isStuck ? (
+                <>
+                  <AlertTriangle className="h-12 w-12 text-amber-500" />
+                  <p className="text-amber-600 font-medium text-center">
+                    QR Code não gerado após {diagnostic.attempts} tentativas
+                  </p>
+                  <p className="text-sm text-muted-foreground text-center">
+                    A sessão pode estar travada. Tente as ações abaixo:
+                  </p>
+                  
+                  {getDiagnosticMessage() && (
+                    <Alert className="mt-2">
+                      <AlertDescription className="text-xs font-mono">
+                        {getDiagnosticMessage()}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  <div className="flex flex-col gap-2 w-full mt-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleLogout}
+                      disabled={!!actionLoading}
+                      className="gap-2"
+                    >
+                      {actionLoading === "logout" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <LogOut className="h-4 w-4" />
+                      )}
+                      Logout e Reconectar
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      onClick={handleRestart}
+                      disabled={!!actionLoading}
+                      className="gap-2"
+                    >
+                      {actionLoading === "restart" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4" />
+                      )}
+                      Reiniciar Instância
+                    </Button>
+                    
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        onClose();
+                        toast.info("Exclua esta instância e crie uma nova com nome diferente.");
+                      }}
+                      className="gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Excluir e Recriar
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+                  <p className="text-muted-foreground">
+                    {isPolling ? "Gerando QR Code..." : "Aguardando..."}
+                  </p>
+                  {getPollingStatus() && (
+                    <p className="text-xs text-muted-foreground">{getPollingStatus()}</p>
+                  )}
+                  
+                  {getDiagnosticMessage() && diagnostic.attempts > 2 && (
+                    <Alert className="mt-2">
+                      <AlertDescription className="text-xs font-mono">
+                        {getDiagnosticMessage()}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {!isPolling && (
+                    <Button onClick={refreshQRCode} disabled={loading}>
+                      Tentar novamente
+                    </Button>
+                  )}
+                  
+                  {isPolling && diagnostic.attempts > 3 && (
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleLogout}
+                        disabled={!!actionLoading}
+                        className="gap-1 text-xs"
+                      >
+                        {actionLoading === "logout" ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <LogOut className="h-3 w-3" />
+                        )}
+                        Logout
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRestart}
+                        disabled={!!actionLoading}
+                        className="gap-1 text-xs"
+                      >
+                        {actionLoading === "restart" ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <RotateCcw className="h-3 w-3" />
+                        )}
+                        Restart
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
