@@ -148,6 +148,19 @@ export const AddTaskDialog = ({
     ? staffWithCalendar.filter(s => s.id === currentStaffId)
     : staffWithCalendar;
 
+  // Check if user can select calendar (only CS and Admin)
+  const canSelectCalendar = currentUserRole === "admin" || currentUserRole === "cs";
+
+  // Auto-set calendar for consultants
+  useEffect(() => {
+    if (isMeeting && currentUserRole === "consultant" && currentStaffId && staffWithCalendar.length > 0) {
+      const ownCalendar = staffWithCalendar.find(s => s.id === currentStaffId);
+      if (ownCalendar) {
+        setTargetCalendarStaffId(ownCalendar.id);
+      }
+    }
+  }, [isMeeting, currentUserRole, currentStaffId, staffWithCalendar]);
+
   // Reset form when dialog opens with new initial title
   useEffect(() => {
     if (open) {
@@ -433,27 +446,35 @@ export const AddTaskDialog = ({
                 </div>
               </div>
 
-              {/* Agenda (Calendar) */}
-              <div className="space-y-2">
-                <Label>Agendar na Agenda de *</Label>
-                <Select value={targetCalendarStaffId} onValueChange={setTargetCalendarStaffId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a agenda..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableCalendars.map((staff) => (
-                      <SelectItem key={staff.id} value={staff.id}>
-                        {staff.name} ({staff.role === "admin" ? "Admin" : staff.role === "cs" ? "CS" : "Consultor"})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {availableCalendars.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Nenhum colaborador com calendário conectado
+              {/* Agenda (Calendar) - Only show for Admin and CS */}
+              {canSelectCalendar ? (
+                <div className="space-y-2">
+                  <Label>Agendar na Agenda de *</Label>
+                  <Select value={targetCalendarStaffId} onValueChange={setTargetCalendarStaffId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a agenda..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCalendars.map((staff) => (
+                        <SelectItem key={staff.id} value={staff.id}>
+                          {staff.name} ({staff.role === "admin" ? "Admin" : staff.role === "cs" ? "CS" : "Consultor"})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {availableCalendars.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Nenhum colaborador com calendário conectado
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg bg-muted/50 border">
+                  <p className="text-sm text-muted-foreground">
+                    A reunião será agendada na sua agenda pessoal
                   </p>
-                )}
-              </div>
+                </div>
+              )}
             </>
           )}
 
