@@ -144,26 +144,89 @@ async function calculateProjectHealthScore(
     satisfactionScore = (satisfactionScore + csatScore) / 2;
   }
 
-  // 2. GOALS SCORE
+  // 2. GOALS SCORE (using company_kpis + kpi_entries for projection)
   let goalsScore = 50;
+  let isProjectingToMeetGoal = false;
 
-  const { data: goalsData } = await supabase
-    .from("onboarding_monthly_goals")
-    .select("sales_target, sales_result")
-    .eq("project_id", projectId)
-    .order("year", { ascending: false })
-    .order("month", { ascending: false })
-    .limit(6);
+  if (companyId) {
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+    const currentDay = today.getDate();
+    const timeElapsedPercent = currentDay / daysInMonth;
+    
+    const monthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+    const monthEnd = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${daysInMonth}`;
+    
+    // Get company KPIs
+    const { data: companyKpis } = await supabase
+      .from("company_kpis")
+      .select("id, target_value, kpi_type, periodicity")
+      .eq("company_id", companyId)
+      .eq("is_active", true);
+    
+    if (companyKpis && companyKpis.length > 0) {
+      // Get KPI entries for current month
+      const { data: kpiEntries } = await supabase
+        .from("kpi_entries")
+        .select("kpi_id, value")
+        .eq("company_id", companyId)
+        .gte("entry_date", monthStart)
+        .lte("entry_date", monthEnd);
+      
+      // Calculate monthly target
+      let totalMonthlyTarget = 0;
+      companyKpis.forEach((kpi: any) => {
+        if (kpi.target_value > 0) {
+          if (kpi.periodicity === "daily") {
+            totalMonthlyTarget += kpi.target_value * daysInMonth;
+          } else if (kpi.periodicity === "weekly") {
+            totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
+          } else {
+            totalMonthlyTarget += kpi.target_value;
+          }
+        }
+      });
+      
+      if (totalMonthlyTarget > 0 && kpiEntries) {
+        const totalRealized = kpiEntries.reduce((sum: number, e: any) => sum + (e.value || 0), 0);
+        
+        // Calculate projection percentage
+        const projectionPercent = timeElapsedPercent > 0 
+          ? ((totalRealized / totalMonthlyTarget) / timeElapsedPercent) * 100 
+          : 0;
+        
+        // Convert projection to score (100% projection = 100 score)
+        goalsScore = Math.min(100, Math.max(0, projectionPercent));
+        
+        // Flag if projecting to meet goal
+        isProjectingToMeetGoal = projectionPercent >= 100;
+      }
+    }
+  }
+  
+  // Fallback to legacy monthly_goals if no KPI data
+  if (goalsScore === 50) {
+    const { data: goalsData } = await supabase
+      .from("onboarding_monthly_goals")
+      .select("sales_target, sales_result")
+      .eq("project_id", projectId)
+      .order("year", { ascending: false })
+      .order("month", { ascending: false })
+      .limit(6);
 
-  if (goalsData && goalsData.length > 0) {
-    const goalsWithTargets = goalsData.filter((g: any) => g.sales_target && g.sales_target > 0);
-    if (goalsWithTargets.length > 0) {
-      const avgAchievement =
-        goalsWithTargets.reduce((sum: number, g: any) => {
-          const achievement = ((g.sales_result || 0) / g.sales_target) * 100;
-          return sum + Math.min(100, achievement);
-        }, 0) / goalsWithTargets.length;
-      goalsScore = Math.min(100, avgAchievement);
+    if (goalsData && goalsData.length > 0) {
+      const goalsWithTargets = goalsData.filter((g: any) => g.sales_target && g.sales_target > 0);
+      if (goalsWithTargets.length > 0) {
+        const avgAchievement =
+          goalsWithTargets.reduce((sum: number, g: any) => {
+            const achievement = ((g.sales_result || 0) / g.sales_target) * 100;
+            return sum + Math.min(100, achievement);
+          }, 0) / goalsWithTargets.length;
+        goalsScore = Math.min(100, avgAchievement);
+        isProjectingToMeetGoal = avgAchievement >= 100;
+      }
     }
   }
 
@@ -194,8 +257,9 @@ async function calculateProjectHealthScore(
     }
   }
 
-  // 4. ENGAGEMENT SCORE
+  // 4. ENGAGEMENT SCORE (includes inactivity penalty)
   let engagementScore = 50;
+  let daysSinceLastCompletion = 0;
 
   const { data: tasks } = await supabase
     .from("onboarding_tasks")
@@ -214,6 +278,19 @@ async function calculateProjectHealthScore(
 
     const overdueRate = (overdue / total) * 100;
     engagementScore = Math.min(100, Math.max(0, completionRate - overdueRate));
+    
+    // Calculate days since last task completion
+    const completedTasks = tasks.filter((t: any) => t.status === "completed" && t.completed_at);
+    if (completedTasks.length > 0) {
+      const lastCompletedDate = completedTasks
+        .map((t: any) => new Date(t.completed_at))
+        .sort((a: Date, b: Date) => b.getTime() - a.getTime())[0];
+      
+      daysSinceLastCompletion = Math.floor((today.getTime() - lastCompletedDate.getTime()) / (1000 * 60 * 60 * 24));
+    } else {
+      // No completed tasks ever - consider it as very inactive
+      daysSinceLastCompletion = 30;
+    }
   }
 
   // 5. SUPPORT SCORE
@@ -272,10 +349,31 @@ async function calculateProjectHealthScore(
       (trendScore * weights.trend_weight) / 100
   );
 
-  // Apply bonuses
-  // Bonus for meeting goals (if goalsScore >= 80, add +10)
-  if (goalsScore >= 80) {
+  // Apply bonuses and penalties
+  
+  // BONUS: Projecting to meet goal (+15 points)
+  if (isProjectingToMeetGoal) {
+    totalScore = Math.min(100, totalScore + 15);
+  }
+  
+  // Legacy bonus for meeting goals (if goalsScore >= 80, add +10)
+  if (goalsScore >= 80 && !isProjectingToMeetGoal) {
     totalScore = Math.min(100, totalScore + 10);
+  }
+  
+  // PENALTY: Inactivity - no task completed recently
+  // 7+ days without completion: -5 points
+  // 14+ days without completion: -10 points  
+  // 21+ days without completion: -15 points
+  // 30+ days without completion: -20 points
+  if (daysSinceLastCompletion >= 30) {
+    totalScore = Math.max(0, totalScore - 20);
+  } else if (daysSinceLastCompletion >= 21) {
+    totalScore = Math.max(0, totalScore - 15);
+  } else if (daysSinceLastCompletion >= 14) {
+    totalScore = Math.max(0, totalScore - 10);
+  } else if (daysSinceLastCompletion >= 7) {
+    totalScore = Math.max(0, totalScore - 5);
   }
 
   // Check for recent renewal (within last 90 days) - add +20 bonus
