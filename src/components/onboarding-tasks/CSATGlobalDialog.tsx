@@ -357,20 +357,20 @@ export function CSATGlobalDialog({ open, onOpenChange }: CSATGlobalDialogProps) 
                         {pendingTodayMeetings.map((meeting) => (
                           <div
                             key={meeting.meetingId}
-                            className="flex items-center justify-between gap-4 p-4 bg-muted/50 rounded-lg border border-yellow-500/30"
+                            className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-lg border border-yellow-500/30"
                           >
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium truncate">{meeting.companyName}</span>
-                                <Badge variant="outline" className="text-xs shrink-0">
+                            <div className="flex-1 min-w-0 overflow-hidden">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="font-medium truncate max-w-[200px]">{meeting.companyName}</span>
+                                <Badge variant="outline" className="text-xs truncate max-w-[200px]">
                                   {meeting.productName}
                                 </Badge>
                               </div>
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Calendar className="h-3.5 w-3.5" />
+                                <Calendar className="h-3.5 w-3.5 shrink-0" />
                                 <span className="truncate">{meeting.meetingTitle}</span>
-                                <span>•</span>
-                                <span>{format(new Date(meeting.meetingDate), "HH:mm", { locale: ptBR })}</span>
+                                <span className="shrink-0">•</span>
+                                <span className="shrink-0">{format(new Date(meeting.meetingDate), "HH:mm", { locale: ptBR })}</span>
                               </div>
                             </div>
                             
@@ -381,7 +381,8 @@ export function CSATGlobalDialog({ open, onOpenChange }: CSATGlobalDialogProps) 
                               onClick={() => copyLink(meeting)}
                             >
                               <Copy className="h-3.5 w-3.5" />
-                              Copiar Link
+                              <span className="hidden sm:inline">Copiar Link</span>
+                              <span className="sm:hidden">Copiar</span>
                             </Button>
                           </div>
                         ))}
@@ -400,24 +401,24 @@ export function CSATGlobalDialog({ open, onOpenChange }: CSATGlobalDialogProps) 
                         {respondedTodayMeetings.map((meeting) => (
                           <div
                             key={meeting.meetingId}
-                            className="flex items-center justify-between gap-4 p-4 bg-green-500/10 rounded-lg border border-green-500/30"
+                            className="flex items-center justify-between gap-3 p-3 bg-green-500/10 rounded-lg border border-green-500/30"
                           >
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium truncate">{meeting.companyName}</span>
-                                <Badge variant="outline" className="text-xs shrink-0">
+                            <div className="flex-1 min-w-0 overflow-hidden">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="font-medium truncate max-w-[200px]">{meeting.companyName}</span>
+                                <Badge variant="outline" className="text-xs truncate max-w-[150px]">
                                   {meeting.productName}
                                 </Badge>
-                                <Badge className={`${getScoreColor(meeting.score)} text-xs`}>
+                                <Badge className={`${getScoreColor(meeting.score)} text-xs shrink-0`}>
                                   <Star className="h-3 w-3 mr-1" />
                                   {meeting.score}/5
                                 </Badge>
                               </div>
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Calendar className="h-3.5 w-3.5" />
+                                <Calendar className="h-3.5 w-3.5 shrink-0" />
                                 <span className="truncate">{meeting.meetingTitle}</span>
-                                <span>•</span>
-                                <span>{format(new Date(meeting.meetingDate), "HH:mm", { locale: ptBR })}</span>
+                                <span className="shrink-0">•</span>
+                                <span className="shrink-0">{format(new Date(meeting.meetingDate), "HH:mm", { locale: ptBR })}</span>
                               </div>
                             </div>
                           </div>
