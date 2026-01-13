@@ -845,9 +845,15 @@ const OnboardingTasksPage = () => {
   }, [filteredCompanies, currentPage, companiesPerPage]);
 
   // Filtered projects for dashboard metrics (respects consultant, service, and status filters)
+  // IMPORTANT: Always exclude closed/completed projects from metrics - their tasks are no longer actionable
   const filteredProjects = useMemo(() => {
+    // Always exclude closed/completed projects from metrics
+    const actionableProjects = allProjects.filter(p => 
+      p.status !== "closed" && p.status !== "completed"
+    );
+
     if (filterConsultant === "all" && filterService === "all" && filterStatus === "all") {
-      return allProjects;
+      return actionableProjects;
     }
 
     const responsibleProjectIds =
@@ -871,7 +877,7 @@ const OnboardingTasksPage = () => {
     const projectPortfolioProjectIds =
       filterConsultant === "all"
         ? new Set<string>()
-        : new Set(allProjects.filter((p) => p.consultant_id === filterConsultant).map((p) => p.id));
+        : new Set(actionableProjects.filter((p) => p.consultant_id === filterConsultant).map((p) => p.id));
 
     const consultantProjectIds =
       filterConsultant === "all"
@@ -882,7 +888,7 @@ const OnboardingTasksPage = () => {
             ...projectPortfolioProjectIds,
           ]);
 
-    return allProjects.filter((project) => {
+    return actionableProjects.filter((project) => {
       const matchesConsultant =
         filterConsultant === "all" || (consultantProjectIds?.has(project.id) ?? false);
 
