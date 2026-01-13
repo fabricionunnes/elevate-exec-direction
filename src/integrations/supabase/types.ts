@@ -877,6 +877,510 @@ export type Database = {
           },
         ]
       }
+      crm_activities: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          lead_id: string
+          notes: string | null
+          responsible_staff_id: string | null
+          scheduled_at: string | null
+          status: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_id: string
+          notes?: string | null
+          responsible_staff_id?: string | null
+          scheduled_at?: string | null
+          status?: string | null
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          responsible_staff_id?: string | null
+          scheduled_at?: string | null
+          status?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_activities_responsible_staff_id_fkey"
+            columns: ["responsible_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          lead_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          lead_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          lead_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_attachments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_lead_history: {
+        Row: {
+          action: string
+          created_at: string
+          field_changed: string | null
+          id: string
+          lead_id: string
+          new_value: string | null
+          notes: string | null
+          old_value: string | null
+          staff_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          field_changed?: string | null
+          id?: string
+          lead_id: string
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+          staff_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          field_changed?: string | null
+          id?: string
+          lead_id?: string
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+          staff_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_history_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_lead_tags: {
+        Row: {
+          created_at: string
+          id: string
+          lead_id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_id: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_tags_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "crm_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_leads: {
+        Row: {
+          city: string | null
+          closed_at: string | null
+          company: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          employee_count: string | null
+          entered_pipeline_at: string | null
+          estimated_revenue: string | null
+          fit_score: number | null
+          id: string
+          last_activity_at: string | null
+          loss_reason_id: string | null
+          main_pain: string | null
+          name: string
+          next_activity_at: string | null
+          notes: string | null
+          opportunity_value: number | null
+          origin: string | null
+          owner_staff_id: string | null
+          phone: string | null
+          pipeline_id: string | null
+          probability: number | null
+          role: string | null
+          segment: string | null
+          stage_id: string | null
+          state: string | null
+          team: string | null
+          updated_at: string
+          urgency: string | null
+        }
+        Insert: {
+          city?: string | null
+          closed_at?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          employee_count?: string | null
+          entered_pipeline_at?: string | null
+          estimated_revenue?: string | null
+          fit_score?: number | null
+          id?: string
+          last_activity_at?: string | null
+          loss_reason_id?: string | null
+          main_pain?: string | null
+          name: string
+          next_activity_at?: string | null
+          notes?: string | null
+          opportunity_value?: number | null
+          origin?: string | null
+          owner_staff_id?: string | null
+          phone?: string | null
+          pipeline_id?: string | null
+          probability?: number | null
+          role?: string | null
+          segment?: string | null
+          stage_id?: string | null
+          state?: string | null
+          team?: string | null
+          updated_at?: string
+          urgency?: string | null
+        }
+        Update: {
+          city?: string | null
+          closed_at?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          employee_count?: string | null
+          entered_pipeline_at?: string | null
+          estimated_revenue?: string | null
+          fit_score?: number | null
+          id?: string
+          last_activity_at?: string | null
+          loss_reason_id?: string | null
+          main_pain?: string | null
+          name?: string
+          next_activity_at?: string | null
+          notes?: string | null
+          opportunity_value?: number | null
+          origin?: string | null
+          owner_staff_id?: string | null
+          phone?: string | null
+          pipeline_id?: string | null
+          probability?: number | null
+          role?: string | null
+          segment?: string | null
+          stage_id?: string | null
+          state?: string | null
+          team?: string | null
+          updated_at?: string
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_leads_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_loss_reason_id_fkey"
+            columns: ["loss_reason_id"]
+            isOneToOne: false
+            referencedRelation: "crm_loss_reasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_owner_staff_id_fkey"
+            columns: ["owner_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_loss_reasons: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
+      crm_pipelines: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pipelines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_settings: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_value: Json | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          setting_key: string
+          setting_value?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          setting_key?: string
+          setting_value?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_stages: {
+        Row: {
+          auto_activity_days: number | null
+          auto_activity_type: string | null
+          color: string | null
+          created_at: string
+          final_type: string | null
+          id: string
+          is_final: boolean | null
+          name: string
+          pipeline_id: string
+          required_fields: string[] | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          auto_activity_days?: number | null
+          auto_activity_type?: string | null
+          color?: string | null
+          created_at?: string
+          final_type?: string | null
+          id?: string
+          is_final?: boolean | null
+          name: string
+          pipeline_id: string
+          required_fields?: string[] | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          auto_activity_days?: number | null
+          auto_activity_type?: string | null
+          color?: string | null
+          created_at?: string
+          final_type?: string | null
+          id?: string
+          is_final?: boolean | null
+          name?: string
+          pipeline_id?: string
+          required_fields?: string[] | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_tags: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: []
+      }
       csat_configs: {
         Row: {
           created_at: string
@@ -6259,6 +6763,7 @@ export type Database = {
     }
     Functions: {
       check_notice_period_ending: { Args: never; Returns: undefined }
+      get_current_staff_id: { Args: never; Returns: string }
       get_next_business_day: {
         Args: { days_to_add: number; start_date: string }
         Returns: string
@@ -6267,6 +6772,7 @@ export type Database = {
         Args: { check_user_id: string }
         Returns: string
       }
+      has_crm_access: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -6274,6 +6780,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_crm_admin: { Args: never; Returns: boolean }
       is_financial_admin: { Args: never; Returns: boolean }
       is_onboarding_admin:
         | { Args: never; Returns: boolean }
