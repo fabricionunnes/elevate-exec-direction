@@ -1395,6 +1395,53 @@ export type Database = {
           },
         ]
       }
+      crm_stage_actions: {
+        Row: {
+          activity_description: string | null
+          activity_title: string
+          activity_type: string
+          created_at: string
+          days_offset: number | null
+          id: string
+          is_required: boolean | null
+          sort_order: number | null
+          stage_id: string
+          updated_at: string
+        }
+        Insert: {
+          activity_description?: string | null
+          activity_title: string
+          activity_type: string
+          created_at?: string
+          days_offset?: number | null
+          id?: string
+          is_required?: boolean | null
+          sort_order?: number | null
+          stage_id: string
+          updated_at?: string
+        }
+        Update: {
+          activity_description?: string | null
+          activity_title?: string
+          activity_type?: string
+          created_at?: string
+          days_offset?: number | null
+          id?: string
+          is_required?: boolean | null
+          sort_order?: number | null
+          stage_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_stage_actions_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_stages: {
         Row: {
           auto_activity_days: number | null

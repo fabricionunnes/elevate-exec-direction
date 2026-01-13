@@ -45,8 +45,10 @@ import {
   Edit2,
   Target,
   Folder,
-  Copy
+  Copy,
+  Zap
 } from "lucide-react";
+import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -128,10 +130,12 @@ export const CRMSettingsPage = () => {
   const [editStageOpen, setEditStageOpen] = useState(false);
   const [editOriginGroupOpen, setEditOriginGroupOpen] = useState(false);
   const [editOriginOpen, setEditOriginOpen] = useState(false);
+  const [stageActionsOpen, setStageActionsOpen] = useState(false);
   const [editingPipeline, setEditingPipeline] = useState<Pipeline | null>(null);
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
   const [editingOriginGroup, setEditingOriginGroup] = useState<OriginGroup | null>(null);
   const [editingOrigin, setEditingOrigin] = useState<Origin | null>(null);
+  const [actionsStage, setActionsStage] = useState<Stage | null>(null);
 
   // Form states
   const [newPipelineName, setNewPipelineName] = useState("");
@@ -950,7 +954,20 @@ export const CRMSettingsPage = () => {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        onClick={() => {
+                          setActionsStage(stage);
+                          setStageActionsOpen(true);
+                        }}
+                        title="Configurar ações automáticas"
+                      >
+                        <Zap className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
                         onClick={() => openEditStage(stage)}
+                        title="Editar etapa"
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -959,6 +976,7 @@ export const CRMSettingsPage = () => {
                         size="icon"
                         className="h-8 w-8 text-destructive"
                         onClick={() => setDeleteDialog({ type: "stage", id: stage.id, name: stage.name })}
+                        title="Excluir etapa"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -1477,6 +1495,19 @@ export const CRMSettingsPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Stage Actions Dialog */}
+      {actionsStage && (
+        <StageActionsDialog
+          open={stageActionsOpen}
+          onOpenChange={(open) => {
+            setStageActionsOpen(open);
+            if (!open) setActionsStage(null);
+          }}
+          stageId={actionsStage.id}
+          stageName={actionsStage.name}
+        />
+      )}
     </div>
   );
 };
