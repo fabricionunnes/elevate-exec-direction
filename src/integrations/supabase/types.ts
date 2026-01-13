@@ -1093,6 +1093,7 @@ export type Database = {
           notes: string | null
           opportunity_value: number | null
           origin: string | null
+          origin_id: string | null
           owner_staff_id: string | null
           phone: string | null
           pipeline_id: string | null
@@ -1125,6 +1126,7 @@ export type Database = {
           notes?: string | null
           opportunity_value?: number | null
           origin?: string | null
+          origin_id?: string | null
           owner_staff_id?: string | null
           phone?: string | null
           pipeline_id?: string | null
@@ -1157,6 +1159,7 @@ export type Database = {
           notes?: string | null
           opportunity_value?: number | null
           origin?: string | null
+          origin_id?: string | null
           owner_staff_id?: string | null
           phone?: string | null
           pipeline_id?: string | null
@@ -1182,6 +1185,13 @@ export type Database = {
             columns: ["loss_reason_id"]
             isOneToOne: false
             referencedRelation: "crm_loss_reasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_origin_id_fkey"
+            columns: ["origin_id"]
+            isOneToOne: false
+            referencedRelation: "crm_origins"
             referencedColumns: ["id"]
           },
           {
@@ -1230,6 +1240,87 @@ export type Database = {
           sort_order?: number | null
         }
         Relationships: []
+      }
+      crm_origin_groups: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
+      crm_origins: {
+        Row: {
+          color: string | null
+          created_at: string
+          group_id: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          pipeline_id: string | null
+          sort_order: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          group_id?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          pipeline_id?: string | null
+          sort_order?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          group_id?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          pipeline_id?: string | null
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_origins_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "crm_origin_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_origins_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crm_pipelines: {
         Row: {
