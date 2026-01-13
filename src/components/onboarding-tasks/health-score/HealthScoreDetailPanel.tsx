@@ -44,6 +44,7 @@ import {
 } from "recharts";
 import { Slider } from "@/components/ui/slider";
 import { HealthScoreAIInsights } from "./HealthScoreAIInsights";
+import { HealthScoreHistoryTab } from "./HealthScoreHistoryTab";
 
 interface HealthScoreDetailPanelProps {
   projectId: string;
@@ -397,38 +398,8 @@ export const HealthScoreDetailPanel = ({ projectId, isAdmin = false }: HealthSco
           </div>
         </TabsContent>
 
-        <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Evolução do Score (últimos 30 dias)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {historyData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={historyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="score"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={2}
-                      dot={{ r: 3 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  Sem dados históricos disponíveis
-                </p>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="history" className="mt-4 sm:mt-6">
+          <HealthScoreHistoryTab projectId={projectId} snapshots={snapshots} />
         </TabsContent>
 
         <TabsContent value="observations">
