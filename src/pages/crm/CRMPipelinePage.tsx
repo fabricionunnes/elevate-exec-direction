@@ -22,6 +22,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
+import { createStageActivities } from "@/hooks/useStageActions";
 
 interface Stage {
   id: string;
@@ -153,10 +154,12 @@ export const CRMPipelinePage = () => {
       return;
     }
 
+    const leadId = draggedLead.id;
+
     // Optimistic update
     setLeads(prev =>
       prev.map(l =>
-        l.id === draggedLead.id ? { ...l, stage_id: stageId } : l
+        l.id === leadId ? { ...l, stage_id: stageId } : l
       )
     );
 
@@ -164,9 +167,13 @@ export const CRMPipelinePage = () => {
       const { error } = await supabase
         .from("crm_leads")
         .update({ stage_id: stageId })
-        .eq("id", draggedLead.id);
+        .eq("id", leadId);
 
       if (error) throw error;
+      
+      // Create automatic activities for this stage
+      await createStageActivities(leadId, stageId);
+      
       toast.success("Lead movido com sucesso");
     } catch (error) {
       console.error("Error moving lead:", error);

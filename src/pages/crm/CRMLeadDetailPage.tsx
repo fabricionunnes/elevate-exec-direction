@@ -47,6 +47,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
+import { createStageActivities } from "@/hooks/useStageActions";
 
 interface Lead {
   id: string;
@@ -248,6 +249,9 @@ export const CRMLeadDetailPage = () => {
         .eq("id", lead.id);
 
       if (error) throw error;
+
+      // Create automatic activities for this stage
+      await createStageActivities(lead.id, stageId);
 
       toast.success("Etapa atualizada");
       loadLead();
