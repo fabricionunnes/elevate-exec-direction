@@ -46,31 +46,43 @@ export const CRMLayout = () => {
   useEffect(() => {
     const checkAccess = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
         
-        if (!user) {
+        console.log("[CRM] Auth check - user:", user?.id, "error:", authError?.message);
+        
+        if (authError || !user) {
+          console.log("[CRM] No user found, redirecting to login");
           navigate("/onboarding-tasks/login");
           return;
         }
 
-        const { data: staff } = await supabase
+        const { data: staff, error: staffError } = await supabase
           .from("onboarding_staff")
           .select("id, role, name")
           .eq("user_id", user.id)
           .eq("is_active", true)
           .maybeSingle();
 
-        if (!staff || !CRM_ROLES.includes(staff.role)) {
-          // Não tem acesso ao CRM
+        console.log("[CRM] Staff check - staff:", staff, "error:", staffError?.message);
+
+        if (!staff) {
+          console.log("[CRM] No staff record found for user");
           navigate("/onboarding-tasks");
           return;
         }
 
+        if (!CRM_ROLES.includes(staff.role)) {
+          console.log("[CRM] Staff role", staff.role, "not in CRM_ROLES:", CRM_ROLES);
+          navigate("/onboarding-tasks");
+          return;
+        }
+
+        console.log("[CRM] Access granted for role:", staff.role);
         setHasAccess(true);
         setStaffRole(staff.role);
         setStaffName(staff.name);
       } catch (error) {
-        console.error("Error checking CRM access:", error);
+        console.error("[CRM] Error checking CRM access:", error);
         navigate("/onboarding-tasks/login");
       } finally {
         setIsLoading(false);
