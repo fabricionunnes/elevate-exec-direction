@@ -151,6 +151,9 @@ export default function RescheduleTasks() {
   const [updatedCount, setUpdatedCount] = useState(0);
   const [activeTab, setActiveTab] = useState("reschedule");
 
+  const WEEKEND_PAGE_SIZE = 50;
+  const [weekendVisibleCount, setWeekendVisibleCount] = useState(WEEKEND_PAGE_SIZE);
+
   useEffect(() => {
     fetchProjectsSummary();
   }, []);
@@ -324,6 +327,7 @@ export default function RescheduleTasks() {
 
       setWeekendHolidayTasks(weekendHolidayList);
       setTotalWeekendHolidayTasks(weekendHolidayList.length);
+      setWeekendVisibleCount(WEEKEND_PAGE_SIZE);
 
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -554,7 +558,11 @@ export default function RescheduleTasks() {
           <NexusHeader title="Reagendar Tarefas" />
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={(value) => {
+          setActiveTab(value);
+          if (value === "weekends") setWeekendVisibleCount(WEEKEND_PAGE_SIZE);
+        }}>
+
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="reschedule" className="flex items-center gap-2 text-xs sm:text-sm">
               <Calendar className="h-4 w-4" />
@@ -924,7 +932,7 @@ export default function RescheduleTasks() {
                 </CardHeader>
                 <CardContent>
                   <div className="max-h-96 overflow-y-auto space-y-2">
-                    {weekendHolidayTasks.slice(0, 50).map((task) => {
+                    {weekendHolidayTasks.slice(0, weekendVisibleCount).map((task) => {
                       const taskDate = parseISO(task.due_date);
                       const newDate = getNextBusinessDay(taskDate);
                       const dayName = format(taskDate, 'EEEE', { locale: ptBR });
@@ -952,9 +960,23 @@ export default function RescheduleTasks() {
                         </div>
                       );
                     })}
-                    {weekendHolidayTasks.length > 50 && (
+
+                    {weekendHolidayTasks.length > weekendVisibleCount && (
+                      <div className="pt-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="w-full"
+                          onClick={() => setWeekendVisibleCount((v) => Math.min(weekendHolidayTasks.length, v + WEEKEND_PAGE_SIZE))}
+                        >
+                          Mostrar mais ({weekendHolidayTasks.length - weekendVisibleCount} restantes)
+                        </Button>
+                      </div>
+                    )}
+
+                    {weekendHolidayTasks.length > WEEKEND_PAGE_SIZE && weekendHolidayTasks.length <= weekendVisibleCount && (
                       <div className="text-center text-sm text-muted-foreground py-2">
-                        ... e mais {weekendHolidayTasks.length - 50} tarefas
+                        Todas as {weekendHolidayTasks.length} tarefas estão listadas.
                       </div>
                     )}
                   </div>
