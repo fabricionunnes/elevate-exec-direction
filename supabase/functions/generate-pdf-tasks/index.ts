@@ -65,7 +65,7 @@ serve(async (req) => {
         tags: ['Planejamento'],
         priority: 'high',
         sort_order: sortOrder,
-        status: 'done',
+        status: 'completed',
         is_internal: false,
         completed_at: new Date().toISOString(),
       };
