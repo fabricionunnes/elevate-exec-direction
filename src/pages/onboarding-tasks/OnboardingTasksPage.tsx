@@ -745,9 +745,19 @@ const OnboardingTasksPage = () => {
       
       // Status filter - filter by project (service) status, not company status
       // When filtering via metric cards, also check if status changed in selected period
+      // Special case: "reactivated" is not a project status, but a field (reactivated_at)
       const matchesStatus = 
         filterStatus === "all" || 
-        company.projects?.some(p => p.status === filterStatus);
+        filterStatus === "reactivated" 
+          ? (filterStatus === "all" || company.projects?.some(p => {
+              if (filterStatus === "reactivated") {
+                if (!p.reactivated_at) return false;
+                const reactivatedDate = new Date(p.reactivated_at);
+                return isWithinInterval(reactivatedDate, { start: dateRange.start, end: dateRange.end });
+              }
+              return true;
+            }))
+          : company.projects?.some(p => p.status === filterStatus);
       
       // Metric card filters
       let matchesMetricFilter = true;
