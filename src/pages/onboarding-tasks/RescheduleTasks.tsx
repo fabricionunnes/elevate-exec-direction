@@ -478,30 +478,40 @@ export default function RescheduleTasks() {
     setProgress(0);
     setUpdatedCount(0);
 
-    let processed = 0;
     let updated = 0;
+    const BATCH_SIZE = 50;
 
     try {
-      setCurrentProject("Processando tarefas...");
+      setCurrentProject("Preparando tarefas...");
+      
+      // Group tasks by their new date to batch updates
+      const taskUpdates: { id: string; newDate: string }[] = [];
       
       for (const task of weekendHolidayTasks) {
         const currentDate = parseISO(task.due_date);
         const newDate = getNextBusinessDay(currentDate);
         const newDateStr = format(newDate, 'yyyy-MM-dd');
+        taskUpdates.push({ id: task.id, newDate: newDateStr });
+      }
 
-        const { error: updateError } = await supabase
-          .from('onboarding_tasks')
-          .update({ due_date: newDateStr, updated_at: new Date().toISOString() })
-          .eq('id', task.id);
-
-        if (updateError) {
-          console.error(`Error updating task ${task.id}:`, updateError);
-        } else {
-          updated++;
-        }
-
-        processed++;
-        setProgress((processed / totalWeekendHolidayTasks) * 100);
+      // Process in batches
+      for (let i = 0; i < taskUpdates.length; i += BATCH_SIZE) {
+        const batch = taskUpdates.slice(i, i + BATCH_SIZE);
+        setCurrentProject(`Processando lote ${Math.floor(i / BATCH_SIZE) + 1} de ${Math.ceil(taskUpdates.length / BATCH_SIZE)}...`);
+        
+        // Update each task in the batch (Promise.all for parallelism within batch)
+        const results = await Promise.all(
+          batch.map(async (task) => {
+            const { error } = await supabase
+              .from('onboarding_tasks')
+              .update({ due_date: task.newDate, updated_at: new Date().toISOString() })
+              .eq('id', task.id);
+            return !error;
+          })
+        );
+        
+        updated += results.filter(Boolean).length;
+        setProgress(((i + batch.length) / taskUpdates.length) * 100);
         setUpdatedCount(updated);
       }
 
