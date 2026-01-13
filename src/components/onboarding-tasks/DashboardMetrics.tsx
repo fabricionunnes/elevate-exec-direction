@@ -992,12 +992,48 @@ const DashboardMetrics = ({
 
         <TabsContent value="metas" className="mt-2 sm:mt-3">
           <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 sm:gap-2">
-            <Card className={cn("cursor-pointer", isCardActive("goals", "100plus") && "ring-2 ring-green-500")} onClick={() => handleCardClick("goals", "100plus")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-green-500">{goalsMetrics.meetingGoal}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">≥100%</p></CardContent></Card>
-            <Card className={cn("cursor-pointer", isCardActive("goals", "above70") && "ring-2 ring-blue-500")} onClick={() => handleCardClick("goals", "above70")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-blue-500">{goalsMetrics.above70}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">70-99%</p></CardContent></Card>
-            <Card className={cn("cursor-pointer", isCardActive("goals", "between50and70") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("goals", "between50and70")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-amber-500">{goalsMetrics.between50And70}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">50-69%</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "below50") && "ring-2 ring-red-500")} onClick={() => handleCardClick("goals", "below50")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{goalsMetrics.below50}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">&lt;50%</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "noGoal") && "ring-2 ring-gray-500")} onClick={() => handleCardClick("goals", "noGoal")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-gray-500">{goalsMetrics.noGoalCount}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Sem Meta</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "hasGoal") && "ring-2 ring-primary")} onClick={() => handleCardClick("goals", "hasGoal")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold">{goalsMetrics.totalWithGoals}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Com Meta</p></CardContent></Card>
+            <Card className={cn("cursor-pointer", isCardActive("goals", "100plus") && "ring-2 ring-green-500")} onClick={() => handleCardClick("goals", "100plus")}>
+              <CardContent className="p-2 sm:p-3 text-center">
+                <p className="text-lg sm:text-xl font-bold text-green-500">{goalsMetrics.meetingGoal}</p>
+                <p className="text-[8px] sm:text-[9px] text-green-500/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.meetingGoal / companyMetrics.activeCompanies) * 100) : 0}%</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">≥100%</p>
+              </CardContent>
+            </Card>
+            <Card className={cn("cursor-pointer", isCardActive("goals", "above70") && "ring-2 ring-blue-500")} onClick={() => handleCardClick("goals", "above70")}>
+              <CardContent className="p-2 sm:p-3 text-center">
+                <p className="text-lg sm:text-xl font-bold text-blue-500">{goalsMetrics.above70}</p>
+                <p className="text-[8px] sm:text-[9px] text-blue-500/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.above70 / companyMetrics.activeCompanies) * 100) : 0}%</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">70-99%</p>
+              </CardContent>
+            </Card>
+            <Card className={cn("cursor-pointer", isCardActive("goals", "between50and70") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("goals", "between50and70")}>
+              <CardContent className="p-2 sm:p-3 text-center">
+                <p className="text-lg sm:text-xl font-bold text-amber-500">{goalsMetrics.between50And70}</p>
+                <p className="text-[8px] sm:text-[9px] text-amber-500/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.between50And70 / companyMetrics.activeCompanies) * 100) : 0}%</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">50-69%</p>
+              </CardContent>
+            </Card>
+            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "below50") && "ring-2 ring-red-500")} onClick={() => handleCardClick("goals", "below50")}>
+              <CardContent className="p-2 sm:p-3 text-center">
+                <p className="text-lg sm:text-xl font-bold text-red-500">{goalsMetrics.below50}</p>
+                <p className="text-[8px] sm:text-[9px] text-red-500/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.below50 / companyMetrics.activeCompanies) * 100) : 0}%</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">&lt;50%</p>
+              </CardContent>
+            </Card>
+            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "noGoal") && "ring-2 ring-gray-500")} onClick={() => handleCardClick("goals", "noGoal")}>
+              <CardContent className="p-2 sm:p-3 text-center">
+                <p className="text-lg sm:text-xl font-bold text-gray-500">{goalsMetrics.noGoalCount}</p>
+                <p className="text-[8px] sm:text-[9px] text-gray-500/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.noGoalCount / companyMetrics.activeCompanies) * 100) : 0}%</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Sem Meta</p>
+              </CardContent>
+            </Card>
+            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "hasGoal") && "ring-2 ring-primary")} onClick={() => handleCardClick("goals", "hasGoal")}>
+              <CardContent className="p-2 sm:p-3 text-center">
+                <p className="text-lg sm:text-xl font-bold">{goalsMetrics.totalWithGoals}</p>
+                <p className="text-[8px] sm:text-[9px] text-primary/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.totalWithGoals / companyMetrics.activeCompanies) * 100) : 0}%</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Com Meta</p>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
