@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { TaskAttachments } from "./TaskAttachments";
 import { TaskHistory } from "./TaskHistory";
 import { ScheduleMeetingDialog } from "./ScheduleMeetingDialog";
+import { RecurrenceSelector, getRecurrenceLabel } from "./RecurrenceSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -57,6 +58,7 @@ interface OnboardingTask {
   responsible_staff?: { id: string; name: string } | null;
   is_internal?: boolean;
   meeting_link?: string | null;
+  recurrence?: string | null;
 }
 
 interface OnboardingUser {
@@ -122,6 +124,7 @@ export const TaskDetailsDialog = ({
         observations: task.observations,
         is_internal: task.is_internal ?? false,
         meeting_link: task.meeting_link ?? null,
+        recurrence: task.recurrence ?? null,
       });
     }
   }, [task]);
@@ -433,6 +436,14 @@ export const TaskDetailsDialog = ({
         if (editedTask.meeting_link !== (task.meeting_link ?? null)) {
           updates.meeting_link = editedTask.meeting_link || null;
         }
+        
+        // Save recurrence if changed
+        if (editedTask.recurrence !== (task.recurrence ?? null)) {
+          const oldLabel = getRecurrenceLabel(task.recurrence ?? null) || "Sem recorrência";
+          const newLabel = getRecurrenceLabel(editedTask.recurrence ?? null) || "Sem recorrência";
+          historyPromises.push(logHistory("edit", "recorrência", oldLabel, newLabel));
+          updates.recurrence = editedTask.recurrence || null;
+        }
       }
 
       // Log all history entries
@@ -635,7 +646,15 @@ export const TaskDetailsDialog = ({
               />
             </div>
 
-            {/* Internal task toggle - only for admin/CS */}
+            {/* Recurrence selector - only for staff */}
+            {(isAdmin || isStaffRole) && (
+              <RecurrenceSelector
+                value={editedTask.recurrence ?? null}
+                onChange={(value) => setEditedTask({ ...editedTask, recurrence: value })}
+                disabled={loading}
+              />
+            )}
+
             {(isAdmin || currentUserRole === "cs") && (
               <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
                 <div className="flex items-center gap-3">
