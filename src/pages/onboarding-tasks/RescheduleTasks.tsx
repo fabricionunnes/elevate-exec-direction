@@ -286,24 +286,42 @@ export default function RescheduleTasks() {
       setNoDateProjects(noDateSummaries);
       setTotalNoDateTasks(totalNoDate);
 
-      // Fetch tasks on weekends or holidays - only from active projects
-      const { data: allDatedTasks, error: weekendError } = await supabase
-        .from('onboarding_tasks')
-        .select(`
-          id,
-          due_date,
-          project_id,
-          onboarding_projects!inner(
-            status,
-            product_name,
-            onboarding_companies(name)
-          )
-        `)
-        .not('due_date', 'is', null)
-        .neq('status', 'completed')
-        .eq('onboarding_projects.status', 'active');
+      // Fetch ALL tasks on weekends or holidays - paginated to get more than 1000
+      const PAGE_SIZE = 1000;
+      let allDatedTasks: any[] = [];
+      let page = 0;
+      let hasMore = true;
 
-      if (weekendError) throw weekendError;
+      while (hasMore) {
+        const { data: pageData, error: weekendError } = await supabase
+          .from('onboarding_tasks')
+          .select(`
+            id,
+            due_date,
+            project_id,
+            onboarding_projects!inner(
+              status,
+              product_name,
+              onboarding_companies(name)
+            )
+          `)
+          .not('due_date', 'is', null)
+          .neq('status', 'completed')
+          .eq('onboarding_projects.status', 'active')
+          .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+        if (weekendError) throw weekendError;
+
+        if (pageData && pageData.length > 0) {
+          allDatedTasks = [...allDatedTasks, ...pageData];
+          hasMore = pageData.length === PAGE_SIZE;
+          page++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      console.log(`[RescheduleTasks] Total tasks fetched: ${allDatedTasks.length}`);
 
       const weekendHolidayList: WeekendHolidayTask[] = [];
       allDatedTasks?.forEach((task: any) => {
@@ -324,6 +342,8 @@ export default function RescheduleTasks() {
           });
         }
       });
+
+      console.log(`[RescheduleTasks] Weekend/holiday tasks found: ${weekendHolidayList.length}`);
 
       setWeekendHolidayTasks(weekendHolidayList);
       setTotalWeekendHolidayTasks(weekendHolidayList.length);
