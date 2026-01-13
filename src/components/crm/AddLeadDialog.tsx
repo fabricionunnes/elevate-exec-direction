@@ -35,6 +35,7 @@ const ORIGINS = [
 export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess }: AddLeadDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [stages, setStages] = useState<any[]>([]);
+  const [staffList, setStaffList] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -50,11 +51,13 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess }: Add
     main_pain: "",
     urgency: "medium",
     notes: "",
+    owner_staff_id: "",
   });
 
   useEffect(() => {
     if (pipelineId && open) {
       loadStages();
+      loadStaff();
     }
   }, [pipelineId, open]);
 
@@ -69,6 +72,17 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess }: Add
     if (data && data.length > 0) {
       setFormData(prev => ({ ...prev, stage_id: data[0].id }));
     }
+  };
+
+  const loadStaff = async () => {
+    const { data } = await supabase
+      .from("onboarding_staff")
+      .select("id, name, role")
+      .eq("is_active", true)
+      .in("role", ["admin", "head_comercial", "closer", "sdr"])
+      .order("name");
+    
+    setStaffList(data || []);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -117,7 +131,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess }: Add
           main_pain: formData.main_pain || null,
           urgency: formData.urgency,
           notes: formData.notes || null,
-          owner_staff_id: staff.id,
+          owner_staff_id: formData.owner_staff_id || staff.id,
           created_by: staff.id,
           entered_pipeline_at: new Date().toISOString(),
         });
@@ -142,6 +156,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess }: Add
         main_pain: "",
         urgency: "medium",
         notes: "",
+        owner_staff_id: "",
       });
     } catch (error: any) {
       console.error("Error creating lead:", error);
@@ -294,6 +309,25 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess }: Add
                   <SelectItem value="low">Baixa</SelectItem>
                   <SelectItem value="medium">Média</SelectItem>
                   <SelectItem value="high">Alta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-2">
+              <Label htmlFor="owner">Responsável</Label>
+              <Select
+                value={formData.owner_staff_id}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, owner_staff_id: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  {staffList.map(staff => (
+                    <SelectItem key={staff.id} value={staff.id}>
+                      {staff.name} ({staff.role})
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

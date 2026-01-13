@@ -117,6 +117,7 @@ export const CRMLeadDetailPage = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [lossReasons, setLossReasons] = useState<any[]>([]);
+  const [staffList, setStaffList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -187,6 +188,15 @@ export const CRMLeadDetailPage = () => {
         .order("sort_order");
       setLossReasons(reasonsData || []);
 
+      // Load staff for owner selection
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("id, name, role")
+        .eq("is_active", true)
+        .in("role", ["admin", "head_comercial", "closer", "sdr"])
+        .order("name");
+      setStaffList(staffData || []);
+
     } catch (error) {
       console.error("Error loading lead:", error);
       toast.error("Erro ao carregar lead");
@@ -223,6 +233,7 @@ export const CRMLeadDetailPage = () => {
           urgency: formData.urgency,
           fit_score: formData.fit_score,
           notes: formData.notes,
+          owner_staff_id: formData.owner_staff_id,
         })
         .eq("id", lead.id);
 
@@ -517,6 +528,24 @@ export const CRMLeadDetailPage = () => {
                         onChange={(e) => setFormData(prev => ({ ...prev, probability: parseInt(e.target.value) }))}
                       />
                     </div>
+                    <div className="col-span-2">
+                      <Label>Responsável</Label>
+                      <Select
+                        value={formData.owner_staff_id || ""}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, owner_staff_id: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {staffList.map(staff => (
+                            <SelectItem key={staff.id} value={staff.id}>
+                              {staff.name} ({staff.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div>
                     <Label>Dor Principal</Label>
@@ -568,6 +597,10 @@ export const CRMLeadDetailPage = () => {
                     <div>
                       <p className="text-xs text-muted-foreground">Probabilidade</p>
                       <p className="font-medium">{lead.probability || 0}%</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Responsável</p>
+                      <p className="font-medium">{lead.owner?.name || "-"}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Origem</p>
