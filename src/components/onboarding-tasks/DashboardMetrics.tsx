@@ -127,6 +127,7 @@ const DashboardMetrics = ({
   const [contractRenewals, setContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
   const [healthScores, setHealthScores] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [recalculatingHealth, setRecalculatingHealth] = useState(false);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
   const [tasksDialogType, setTasksDialogType] = useState<"overdue" | "today" | "status">("overdue");
   const [tasksDialogIds, setTasksDialogIds] = useState<string[]>([]);
@@ -204,6 +205,24 @@ const DashboardMetrics = ({
     }
 
     setHealthScores(data || []);
+  };
+
+  const recalculateAllHealthScores = async () => {
+    setRecalculatingHealth(true);
+    try {
+      const { error } = await supabase.functions.invoke('calculate-all-health-scores');
+      if (error) throw error;
+      
+      // Refresh health scores after recalculation
+      await fetchHealthScores();
+      
+      // Also refresh the parent if callback exists
+      onDataRefresh?.();
+    } catch (error) {
+      console.error("Error recalculating health scores:", error);
+    } finally {
+      setRecalculatingHealth(false);
+    }
   };
 
   // When the user changes the company/project filters, refresh health scores so the card doesn't show stale values
@@ -734,7 +753,13 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className="hidden sm:block">
+        <Card 
+          className="hidden sm:block cursor-pointer transition-all hover:shadow-md group relative"
+          onClick={(e) => {
+            // If clicking the recalculate button, don't propagate
+            if ((e.target as HTMLElement).closest('button')) return;
+          }}
+        >
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
               <div className={cn("h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center shrink-0", 
@@ -758,6 +783,18 @@ const DashboardMetrics = ({
                 </p>
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate">Saúde</p>
               </div>
+              {/* Recalculate button - visible on hover */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  recalculateAllHealthScores();
+                }}
+                disabled={recalculatingHealth}
+                className="absolute top-1 right-1 p-1 rounded-full bg-muted hover:bg-muted-foreground/20 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                title="Recalcular saúde de todos os projetos"
+              >
+                <RotateCcw className={cn("h-3 w-3 text-muted-foreground", recalculatingHealth && "animate-spin")} />
+              </button>
             </div>
           </CardContent>
         </Card>
