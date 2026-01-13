@@ -118,7 +118,7 @@ const OnboardingTasksPage = () => {
   const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null; company_id: string | null; churn_date: string | null }[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
-  const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; target_value: number }[]>([]);
+  const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; target_value: number; kpi_type: string; periodicity: string }[]>([]);
   const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
   const [healthScoresByProject, setHealthScoresByProject] = useState<Map<string, { total_score: number; risk_level: string }>>(new Map());
   
@@ -226,7 +226,7 @@ const OnboardingTasksPage = () => {
       const [kpisResult, entriesResult] = await Promise.all([
         supabase
           .from("company_kpis")
-          .select("id, company_id, target_value")
+          .select("id, company_id, target_value, kpi_type, periodicity")
           .eq("is_active", true),
         supabase
           .from("kpi_entries")
@@ -590,9 +590,9 @@ const OnboardingTasksPage = () => {
     const between50And70Ids = new Set<string>(); // 50-69%
     const below50Ids = new Set<string>(); // <50%
     
-    // Companies with any KPI configured with target_value > 0
+    // Companies with monetary KPI configured with target_value > 0 (same logic as DashboardMetrics)
     const companiesWithAnyKpiIds = new Set(
-      companyKpis.filter(k => activeCompanyIds.has(k.company_id) && k.target_value > 0).map(k => k.company_id)
+      companyKpis.filter(k => activeCompanyIds.has(k.company_id) && k.kpi_type === "monetary" && k.target_value > 0).map(k => k.company_id)
     );
     
     // Companies without goals (no KPI configured)
@@ -607,13 +607,22 @@ const OnboardingTasksPage = () => {
     activeCompanyIds.forEach(companyId => {
       if (!companyId) return;
       
-      // Get KPIs for this company (only monetary for main goals tracking)
-      const companyKpisList = companyKpis.filter(k => k.company_id === companyId && k.target_value > 0);
+      // Get KPIs for this company (only monetary for main goals tracking - same as DashboardMetrics)
+      const companyKpisList = companyKpis.filter(k => k.company_id === companyId && k.kpi_type === "monetary");
       
       if (companyKpisList.length === 0) return;
       
-      // Calculate monthly target (simplified - assuming monthly periodicity)
-      let totalMonthlyTarget = companyKpisList.reduce((sum, kpi) => sum + kpi.target_value, 0);
+      // Calculate monthly target (considering periodicity - same as DashboardMetrics)
+      let totalMonthlyTarget = 0;
+      companyKpisList.forEach(kpi => {
+        if (kpi.periodicity === "daily") {
+          totalMonthlyTarget += kpi.target_value * daysInMonth;
+        } else if (kpi.periodicity === "weekly") {
+          totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
+        } else {
+          totalMonthlyTarget += kpi.target_value;
+        }
+      });
       
       // Get entries for this company in the period
       const companyEntries = kpiEntries.filter(e => 
