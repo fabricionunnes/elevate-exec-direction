@@ -163,7 +163,7 @@ export default function RescheduleTasks() {
     try {
       const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
       
-      // Fetch tasks WITH dates - only from active projects
+      // Fetch tasks WITH dates - from actionable projects (active + cancellation_signaled)
       const { data: projectsData, error } = await supabase
         .from('onboarding_tasks')
         .select(`
@@ -177,12 +177,12 @@ export default function RescheduleTasks() {
         `)
         .not('due_date', 'is', null)
         .neq('status', 'completed')
-        .eq('onboarding_projects.status', 'active')
+        .in('onboarding_projects.status', ['active', 'cancellation_signaled'])
         .order('due_date', { ascending: true });
 
       if (error) throw error;
 
-      // Fetch tasks WITHOUT dates - only from active projects
+      // Fetch tasks WITHOUT dates - from actionable projects (active + cancellation_signaled)
       const { data: noDateData, error: noDateError } = await supabase
         .from('onboarding_tasks')
         .select(`
@@ -196,7 +196,7 @@ export default function RescheduleTasks() {
         `)
         .is('due_date', null)
         .neq('status', 'completed')
-        .eq('onboarding_projects.status', 'active');
+        .in('onboarding_projects.status', ['active', 'cancellation_signaled']);
 
       if (noDateError) throw noDateError;
 
@@ -307,7 +307,7 @@ export default function RescheduleTasks() {
           `)
           .not('due_date', 'is', null)
           .neq('status', 'completed')
-          .eq('onboarding_projects.status', 'active')
+          .in('onboarding_projects.status', ['active', 'cancellation_signaled'])
           .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
         if (weekendError) throw weekendError;
