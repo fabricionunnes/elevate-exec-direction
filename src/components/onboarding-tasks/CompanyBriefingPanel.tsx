@@ -240,6 +240,7 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
           phone: formData.phone,
           email: formData.email,
           address: formData.address,
+          instagram: formData.instagram,
           company_description: formData.company_description,
           main_challenges: formData.main_challenges,
           goals_short_term: formData.goals_short_term,
