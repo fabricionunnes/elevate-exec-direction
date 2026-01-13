@@ -542,7 +542,7 @@ const DashboardMetrics = ({
     const monthEnd = `${periodYear}-${String(periodMonth).padStart(2, '0')}-${daysInMonth}`;
     
     // Calculate metrics per company
-    const companyMetricsMap = new Map<string, { target: number; realized: number; projectionPercent: number }>();
+    const companyMetricsMap = new Map<string, { target: number; realized: number; projectionPercent: number; hasEntries: boolean }>();
 
     filteredCompanyIds.forEach(companyId => {
       if (!companyId) return;
@@ -573,6 +573,7 @@ const DashboardMetrics = ({
       );
 
       const totalRealized = companyEntries.reduce((sum, e) => sum + e.value, 0);
+      const hasEntries = companyEntries.length > 0;
       
       // Calculate projection
       const projectionPercent = timeElapsedPercent > 0 && totalMonthlyTarget > 0 
@@ -582,12 +583,20 @@ const DashboardMetrics = ({
       companyMetricsMap.set(companyId, { 
         target: totalMonthlyTarget, 
         realized: totalRealized, 
-        projectionPercent 
+        projectionPercent,
+        hasEntries
       });
     });
 
     // Calculate aggregated metrics
     const companiesWithGoals = Array.from(companyMetricsMap.entries()).filter(([_, m]) => m.target > 0);
+    
+    // Empresas com meta configurada MAS sem lançamentos no mês
+    const companiesWithGoalsNoEntries = companiesWithGoals.filter(([_, m]) => !m.hasEntries);
+    const noEntriesCount = companiesWithGoalsNoEntries.length;
+    
+    // Empresas com meta E com lançamentos (só estas contam nas projeções)
+    const companiesWithEntries = companiesWithGoals.filter(([_, m]) => m.hasEntries);
 
     // A empresa "tem meta" se existir QUALQUER KPI cadastrado com target_value > 0
     const companiesWithAnyKpiIds = new Set(
@@ -598,16 +607,19 @@ const DashboardMetrics = ({
 
     const noGoalCount = Array.from(filteredCompanyIds).filter(id => id && !companiesWithAnyKpiIds.has(id)).length;
     
-    const meetingGoal = companiesWithGoals.filter(([_, m]) => m.projectionPercent >= 100).length;
-    const above70 = companiesWithGoals.filter(([_, m]) => m.projectionPercent >= 70 && m.projectionPercent < 100).length;
-    const between50And70 = companiesWithGoals.filter(([_, m]) => m.projectionPercent >= 50 && m.projectionPercent < 70).length;
-    const below50 = companiesWithGoals.filter(([_, m]) => m.projectionPercent < 50).length;
+    // Projeções são calculadas APENAS para empresas com lançamentos
+    const meetingGoal = companiesWithEntries.filter(([_, m]) => m.projectionPercent >= 100).length;
+    const above70 = companiesWithEntries.filter(([_, m]) => m.projectionPercent >= 70 && m.projectionPercent < 100).length;
+    const between50And70 = companiesWithEntries.filter(([_, m]) => m.projectionPercent >= 50 && m.projectionPercent < 70).length;
+    const below50 = companiesWithEntries.filter(([_, m]) => m.projectionPercent < 50).length;
     
     // Total with goals = companies that have ANY KPI configured
     const totalWithGoals = Array.from(filteredCompanyIds).filter(id => id && companiesWithAnyKpiIds.has(id)).length;
-    const goalRate = totalWithGoals > 0 ? Math.round((meetingGoal / totalWithGoals) * 100) : 0;
+    // Total com lançamentos no mês
+    const totalWithEntries = companiesWithEntries.length;
+    const goalRate = totalWithEntries > 0 ? Math.round((meetingGoal / totalWithEntries) * 100) : 0;
 
-    return { totalWithGoals, meetingGoal, above70, between50And70, below50, noGoalCount, goalRate };
+    return { totalWithGoals, totalWithEntries, meetingGoal, above70, between50And70, below50, noGoalCount, noEntriesCount, goalRate };
   }, [projects, companyKpis, kpiEntries, dateRange, filteredCompanies]);
 
   const handleCardClick = (filterType: string, filterValue: string) => {
@@ -991,7 +1003,7 @@ const DashboardMetrics = ({
         </TabsContent>
 
         <TabsContent value="metas" className="mt-2 sm:mt-3">
-          <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
             <Card className={cn("cursor-pointer", isCardActive("goals", "100plus") && "ring-2 ring-green-500")} onClick={() => handleCardClick("goals", "100plus")}>
               <CardContent className="p-2 sm:p-3 text-center">
                 <p className="text-lg sm:text-xl font-bold text-green-500">{goalsMetrics.meetingGoal}</p>
@@ -1013,25 +1025,32 @@ const DashboardMetrics = ({
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground">50-69%</p>
               </CardContent>
             </Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "below50") && "ring-2 ring-red-500")} onClick={() => handleCardClick("goals", "below50")}>
+            <Card className={cn("cursor-pointer", isCardActive("goals", "below50") && "ring-2 ring-red-500")} onClick={() => handleCardClick("goals", "below50")}>
               <CardContent className="p-2 sm:p-3 text-center">
                 <p className="text-lg sm:text-xl font-bold text-red-500">{goalsMetrics.below50}</p>
                 <p className="text-[8px] sm:text-[9px] text-red-500/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.below50 / companyMetrics.activeCompanies) * 100) : 0}%</p>
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground">&lt;50%</p>
               </CardContent>
             </Card>
+            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "noEntries") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("goals", "noEntries")}>
+              <CardContent className="p-2 sm:p-3 text-center">
+                <p className="text-lg sm:text-xl font-bold text-orange-500">{goalsMetrics.noEntriesCount}</p>
+                <p className="text-[8px] sm:text-[9px] text-orange-500/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.noEntriesCount / companyMetrics.activeCompanies) * 100) : 0}%</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">S/ Lanç.</p>
+              </CardContent>
+            </Card>
             <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "noGoal") && "ring-2 ring-gray-500")} onClick={() => handleCardClick("goals", "noGoal")}>
               <CardContent className="p-2 sm:p-3 text-center">
                 <p className="text-lg sm:text-xl font-bold text-gray-500">{goalsMetrics.noGoalCount}</p>
                 <p className="text-[8px] sm:text-[9px] text-gray-500/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.noGoalCount / companyMetrics.activeCompanies) * 100) : 0}%</p>
-                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Sem Meta</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">S/ Meta</p>
               </CardContent>
             </Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "hasGoal") && "ring-2 ring-primary")} onClick={() => handleCardClick("goals", "hasGoal")}>
+            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "hasEntries") && "ring-2 ring-primary")} onClick={() => handleCardClick("goals", "hasEntries")}>
               <CardContent className="p-2 sm:p-3 text-center">
-                <p className="text-lg sm:text-xl font-bold">{goalsMetrics.totalWithGoals}</p>
-                <p className="text-[8px] sm:text-[9px] text-primary/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.totalWithGoals / companyMetrics.activeCompanies) * 100) : 0}%</p>
-                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Com Meta</p>
+                <p className="text-lg sm:text-xl font-bold">{goalsMetrics.totalWithEntries}</p>
+                <p className="text-[8px] sm:text-[9px] text-primary/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.totalWithEntries / companyMetrics.activeCompanies) * 100) : 0}%</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">C/ Lanç.</p>
               </CardContent>
             </Card>
           </div>

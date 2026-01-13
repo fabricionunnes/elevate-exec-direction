@@ -589,6 +589,8 @@ const OnboardingTasksPage = () => {
     const above70Ids = new Set<string>(); // 70-99%
     const between50And70Ids = new Set<string>(); // 50-69%
     const below50Ids = new Set<string>(); // <50%
+    const noEntriesIds = new Set<string>(); // Has KPI but no entries in month
+    const hasEntriesIds = new Set<string>(); // Has KPI AND entries in month
     
     // Companies with monetary KPI configured with target_value > 0 (same logic as DashboardMetrics)
     const companiesWithAnyKpiIds = new Set(
@@ -631,6 +633,19 @@ const OnboardingTasksPage = () => {
         e.entry_date <= monthEnd &&
         companyKpisList.some(k => k.id === e.kpi_id)
       );
+      
+      const hasEntries = companyEntries.length > 0;
+      
+      // Track companies with/without entries
+      if (hasEntries) {
+        hasEntriesIds.add(companyId);
+      } else if (totalMonthlyTarget > 0) {
+        // Has goal but no entries
+        noEntriesIds.add(companyId);
+      }
+      
+      // Only calculate projection for companies WITH entries
+      if (!hasEntries) return;
       
       const totalRealized = companyEntries.reduce((sum, e) => sum + e.value, 0);
       
@@ -705,6 +720,8 @@ const OnboardingTasksPage = () => {
       below50: below50Ids,
       noGoal: noGoalIds,
       hasGoal: companiesWithAnyKpiIds,
+      noEntries: noEntriesIds,
+      hasEntries: hasEntriesIds,
       realizedPercent: realizedPercentByCompany
     };
   }, [dateRange, companies, companyKpis, kpiEntries]);
@@ -820,6 +837,12 @@ const OnboardingTasksPage = () => {
           } else if (activeMetricFilter.value === "noGoal") {
             // Company has NO KPI configured
             matchesMetricFilter = companiesGoalRanges.noGoal.has(company.id);
+          } else if (activeMetricFilter.value === "noEntries") {
+            // Company has KPI but no entries in the selected month
+            matchesMetricFilter = companiesGoalRanges.noEntries.has(company.id);
+          } else if (activeMetricFilter.value === "hasEntries") {
+            // Company has KPI AND entries in the selected month
+            matchesMetricFilter = companiesGoalRanges.hasEntries.has(company.id);
           } else if (activeMetricFilter.value === "meeting" || activeMetricFilter.value === "100plus") {
             matchesMetricFilter = companiesGoalRanges.meetingGoal.has(company.id);
           } else if (activeMetricFilter.value === "above70") {
