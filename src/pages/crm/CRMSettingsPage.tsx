@@ -937,9 +937,9 @@ export const CRMSettingsPage = () => {
                   pipelineStages.map(stage => (
                     <div
                       key={stage.id}
-                      className="p-3 rounded-lg border border-border flex items-center gap-3"
+                      className="p-3 rounded-lg border border-border flex items-center gap-3 hover:bg-muted/50 transition-colors group"
                     >
-                      <GripVertical className="h-4 w-4 text-muted-foreground" />
+                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing group-hover:text-foreground transition-colors" />
                       <div
                         className="w-4 h-4 rounded-full"
                         style={{ backgroundColor: stage.color }}
