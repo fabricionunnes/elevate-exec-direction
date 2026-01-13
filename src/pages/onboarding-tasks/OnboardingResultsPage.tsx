@@ -22,7 +22,9 @@ import {
   ArrowLeft,
   ChevronRight,
   X,
-  Target
+  Target,
+  BarChart3,
+  CheckCircle2
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -68,6 +70,7 @@ const OnboardingResultsPage = () => {
   const [filterConsultant, setFilterConsultant] = useState<string>(() => searchParams.get("consultant") || "all");
   const [filterService, setFilterService] = useState<string>(() => searchParams.get("service") || "all");
   const [filterGoals, setFilterGoals] = useState<string>(() => searchParams.get("goals") || "all");
+  const [filterResults, setFilterResults] = useState<string>(() => searchParams.get("results") || "all");
   
   // Data states
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -75,6 +78,7 @@ const OnboardingResultsPage = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [companiesWithGoals, setCompaniesWithGoals] = useState<Set<string>>(new Set());
+  const [companiesWithResults, setCompaniesWithResults] = useState<Set<string>>(new Set());
 
   // Check staff permissions
   useEffect(() => {
@@ -118,8 +122,9 @@ const OnboardingResultsPage = () => {
     if (filterConsultant !== "all") params.set("consultant", filterConsultant);
     if (filterService !== "all") params.set("service", filterService);
     if (filterGoals !== "all") params.set("goals", filterGoals);
+    if (filterResults !== "all") params.set("results", filterResults);
     setSearchParams(params, { replace: true });
-  }, [selectedCompanyId, filterConsultant, filterService, filterGoals, setSearchParams]);
+  }, [selectedCompanyId, filterConsultant, filterService, filterGoals, filterResults, setSearchParams]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -149,7 +154,22 @@ const OnboardingResultsPage = () => {
       });
       setCompaniesWithGoals(companyIdsWithGoals);
       
+      // Fetch companies that have KPI entries (results launched)
+      const { data: entriesData } = await supabase
+        .from("kpi_entries")
+        .select("kpi_id, company_kpis!inner(company_id)")
+        .not("value", "is", null);
+      
+      const companyIdsWithResults = new Set<string>();
+      (entriesData || []).forEach((entry: any) => {
+        if (entry.company_kpis?.company_id) {
+          companyIdsWithResults.add(entry.company_kpis.company_id);
+        }
+      });
+      setCompaniesWithResults(companyIdsWithResults);
+      
       console.log("Companies with KPIs configured:", Array.from(companyIdsWithGoals));
+      console.log("Companies with results:", Array.from(companyIdsWithResults));
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Erro ao carregar dados");
@@ -191,9 +211,16 @@ const OnboardingResultsPage = () => {
         matchesGoals = filterGoals === "with_goals" ? hasGoals : !hasGoals;
       }
       
-      return matchesSearch && matchesConsultant && matchesService && matchesGoals;
+      // Results filter
+      let matchesResults = filterResults === "all";
+      if (!matchesResults) {
+        const hasResults = companiesWithResults.has(company.id);
+        matchesResults = filterResults === "with_results" ? hasResults : !hasResults;
+      }
+      
+      return matchesSearch && matchesConsultant && matchesService && matchesGoals && matchesResults;
     });
-  }, [companies, searchTerm, filterConsultant, filterService, filterGoals, projects, currentStaff, companiesWithGoals]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterGoals, filterResults, projects, currentStaff, companiesWithGoals, companiesWithResults]);
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -203,10 +230,24 @@ const OnboardingResultsPage = () => {
     }
     setFilterService("all");
     setFilterGoals("all");
+    setFilterResults("all");
   };
 
   // For consultants, don't consider consultant filter as active since they only see their own companies
-  const hasActiveFilters = (currentStaff?.role !== "consultant" && filterConsultant !== "all") || filterService !== "all" || filterGoals !== "all" || searchTerm !== "";
+  const hasActiveFilters = (currentStaff?.role !== "consultant" && filterConsultant !== "all") || filterService !== "all" || filterGoals !== "all" || filterResults !== "all" || searchTerm !== "";
+  
+  // Count companies with results (considering consultant visibility)
+  const companiesWithResultsCount = useMemo(() => {
+    return companies.filter(company => {
+      // Consultants can only see their own companies
+      if (currentStaff?.role === "consultant") {
+        if (company.consultant_id !== currentStaff.id && company.cs_id !== currentStaff.id) {
+          return false;
+        }
+      }
+      return companiesWithResults.has(company.id);
+    }).length;
+  }, [companies, companiesWithResults, currentStaff]);
 
   // Get selected company data
   const selectedCompany = useMemo(() => {
@@ -326,6 +367,52 @@ const OnboardingResultsPage = () => {
         ) : (
           /* Company List */
           <>
+            {/* Results Summary Card */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              <Card 
+                className={`cursor-pointer transition-colors ${filterResults === "with_results" ? "ring-2 ring-primary" : "hover:bg-muted/50"}`}
+                onClick={() => setFilterResults(filterResults === "with_results" ? "all" : "with_results")}
+              >
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{companiesWithResultsCount}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Empresas com resultados lançados
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card 
+                className={`cursor-pointer transition-colors ${filterResults === "without_results" ? "ring-2 ring-primary" : "hover:bg-muted/50"}`}
+                onClick={() => setFilterResults(filterResults === "without_results" ? "all" : "without_results")}
+              >
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                      <BarChart3 className="h-5 w-5 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{companies.filter(c => {
+                        if (currentStaff?.role === "consultant") {
+                          if (c.consultant_id !== currentStaff.id && c.cs_id !== currentStaff.id) return false;
+                        }
+                        return !companiesWithResults.has(c.id);
+                      }).length}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Empresas sem resultados
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             {/* Filters */}
             <Card className="mb-6">
               <CardContent className="py-4">
@@ -381,14 +468,29 @@ const OnboardingResultsPage = () => {
                   <div className="flex flex-col gap-1.5">
                     <Label className="text-xs text-muted-foreground">Metas</Label>
                     <Select value={filterGoals} onValueChange={setFilterGoals}>
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="w-[160px]">
                         <Target className="h-4 w-4 mr-2" />
                         <SelectValue placeholder="Todas" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todas</SelectItem>
-                        <SelectItem value="with_goals">Com metas cadastradas</SelectItem>
-                        <SelectItem value="without_goals">Sem metas cadastradas</SelectItem>
+                        <SelectItem value="with_goals">Com metas</SelectItem>
+                        <SelectItem value="without_goals">Sem metas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Resultados</Label>
+                    <Select value={filterResults} onValueChange={setFilterResults}>
+                      <SelectTrigger className="w-[160px]">
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="with_results">Com lançamentos</SelectItem>
+                        <SelectItem value="without_results">Sem lançamentos</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
