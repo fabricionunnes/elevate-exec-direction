@@ -44,7 +44,8 @@ import {
   Loader2,
   Edit2,
   Target,
-  Folder
+  Folder,
+  Copy
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -317,6 +318,53 @@ export const CRMSettingsPage = () => {
     setNewStageIsFinal(stage.is_final);
     setNewStageFinalType(stage.final_type);
     setEditStageOpen(true);
+  };
+
+  const handleDuplicatePipeline = async (pipeline: Pipeline) => {
+    setSaving(true);
+    try {
+      // 1. Create new pipeline with "Cópia de" prefix
+      const { data: newPipeline, error: pipelineError } = await supabase
+        .from("crm_pipelines")
+        .insert({
+          name: `Cópia de ${pipeline.name}`,
+          description: pipeline.description,
+          is_default: false,
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (pipelineError) throw pipelineError;
+
+      // 2. Get stages from original pipeline
+      const originalStages = stages.filter(s => s.pipeline_id === pipeline.id);
+
+      // 3. Create stages for new pipeline
+      if (originalStages.length > 0) {
+        const newStages = originalStages.map(stage => ({
+          pipeline_id: newPipeline.id,
+          name: stage.name,
+          sort_order: stage.sort_order,
+          is_final: stage.is_final,
+          final_type: stage.final_type,
+          color: stage.color,
+        }));
+
+        const { error: stagesError } = await supabase
+          .from("crm_stages")
+          .insert(newStages);
+
+        if (stagesError) throw stagesError;
+      }
+
+      toast.success(`Pipeline "${pipeline.name}" duplicado com sucesso`);
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao duplicar pipeline");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCreateReason = async () => {
@@ -688,8 +736,22 @@ export const CRMSettingsPage = () => {
                             e.stopPropagation();
                             openEditPipeline(pipeline);
                           }}
+                          title="Editar"
                         >
                           <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDuplicatePipeline(pipeline);
+                          }}
+                          disabled={saving}
+                          title="Duplicar"
+                        >
+                          <Copy className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -699,6 +761,7 @@ export const CRMSettingsPage = () => {
                             e.stopPropagation();
                             setDeleteDialog({ type: "pipeline", id: pipeline.id, name: pipeline.name });
                           }}
+                          title="Excluir"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
