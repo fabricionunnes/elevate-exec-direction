@@ -156,82 +156,104 @@ export const HealthScoreHistoryTab = ({ projectId, snapshots }: HealthScoreHisto
   const getEventDescription = (event: HealthEvent) => {
     const data = (typeof event.event_data === 'object' && event.event_data !== null ? event.event_data : {}) as Record<string, any>;
     const parts: string[] = [];
+    const details = data.details || {};
+    const penalties = details.penalties || {};
+    const bonuses = details.bonuses || {};
 
     // Calculate changes based on previous vs new score
     const change = event.new_score !== null && event.previous_score !== null
       ? event.new_score - event.previous_score
       : 0;
 
-    // Check for specific pillar values in event_data
-    if (data.satisfaction_score !== undefined) {
-      const satLabel = data.satisfaction_score >= 70 ? "bom" : data.satisfaction_score >= 50 ? "médio" : "baixo";
-      if (data.satisfaction_score < 50) {
-        parts.push(`Satisfação ${satLabel} (${data.satisfaction_score})`);
+    // Check for goal projection info
+    if (details.goal_projection !== undefined) {
+      if (!details.has_goals_configured) {
+        parts.push("⚠️ Sem meta configurada");
+      } else if (!details.has_kpi_entries) {
+        parts.push("⚠️ Sem lançamento de KPIs no mês");
+      } else if (details.goal_projection < 50) {
+        parts.push(`📉 Projeção de meta: ${details.goal_projection}%`);
+      } else if (details.goal_projection < 80) {
+        parts.push(`📊 Projeção de meta: ${details.goal_projection}%`);
+      } else if (details.goal_projection < 100) {
+        parts.push(`📈 Projeção de meta: ${details.goal_projection}%`);
+      } else {
+        parts.push(`🎯 Projetando bater meta: ${details.goal_projection}%`);
       }
     }
 
-    if (data.goals_score !== undefined) {
-      if (data.goals_score === 0) {
-        parts.push("Sem meta configurada ou atingimento 0%");
-      } else if (data.goals_score < 50) {
-        parts.push(`Metas abaixo do esperado (${data.goals_score})`);
+    // Overdue tasks
+    if (details.overdue_tasks_count > 0) {
+      parts.push(`⏰ ${details.overdue_tasks_count} tarefas atrasadas`);
+    }
+
+    // Completed tasks recent
+    if (details.completed_tasks_recent > 0) {
+      parts.push(`✅ ${details.completed_tasks_recent} tarefas concluídas (30d)`);
+    }
+
+    // Meetings
+    if (details.meetings_count_30d > 0) {
+      parts.push(`📅 ${details.meetings_count_30d} reuniões (30d)`);
+    }
+
+    // Days since last task
+    if (details.days_since_last_task >= 14) {
+      parts.push(`🔴 ${details.days_since_last_task} dias sem concluir tarefas`);
+    } else if (details.days_since_last_task >= 7) {
+      parts.push(`🟡 ${details.days_since_last_task} dias sem concluir tarefas`);
+    }
+
+    // Penalties
+    if (penalties.inactivity > 0) {
+      parts.push(`-${penalties.inactivity} inatividade`);
+    }
+    if (penalties.cancellation > 0) {
+      parts.push(`-${penalties.cancellation} cancelamento`);
+    }
+    if (penalties.overdue_tasks > 0) {
+      parts.push(`-${penalties.overdue_tasks} tarefas atrasadas`);
+    }
+
+    // Bonuses
+    if (bonuses.projection > 0) {
+      parts.push(`+${bonuses.projection} projeção meta`);
+    }
+    if (bonuses.meetings > 0) {
+      parts.push(`+${bonuses.meetings} reuniões`);
+    }
+    if (bonuses.completed_tasks > 0) {
+      parts.push(`+${bonuses.completed_tasks} tarefas`);
+    }
+    if (bonuses.renewal > 0) {
+      parts.push(`+${bonuses.renewal} renovação`);
+    }
+
+    // Fallback to legacy format
+    if (parts.length === 0) {
+      if (data.goals_score !== undefined) {
+        if (data.goals_score <= 20) {
+          parts.push("Sem meta ou atingimento muito baixo");
+        } else if (data.goals_score < 50) {
+          parts.push(`Metas abaixo do esperado (${data.goals_score})`);
+        }
       }
-    }
 
-    if (data.engagement_score !== undefined) {
-      if (data.engagement_score < 30) {
-        parts.push(`Baixo engajamento em tarefas (${data.engagement_score})`);
-      } else if (data.engagement_score < 50) {
-        parts.push(`Engajamento regular (${data.engagement_score})`);
+      if (data.engagement_score !== undefined && data.engagement_score < 40) {
+        parts.push(`Baixo engajamento (${data.engagement_score})`);
       }
-    }
 
-    if (data.commercial_score !== undefined) {
-      if (data.commercial_score < 50) {
-        parts.push(`Performance comercial abaixo (${data.commercial_score})`);
+      // Risk level
+      if (data.risk_level) {
+        const riskLabels: Record<string, string> = {
+          excellent: "Excelente",
+          healthy: "Saudável",
+          attention: "Atenção",
+          at_risk: "Em risco",
+          critical: "Crítico",
+        };
+        parts.push(`Nível: ${riskLabels[data.risk_level] || data.risk_level}`);
       }
-    }
-
-    // Check for bonuses
-    if (data.goal_projection_bonus) {
-      parts.push(`+${data.goal_projection_bonus} por projeção de meta`);
-    }
-    if (data.renewal_bonus) {
-      parts.push(`+${data.renewal_bonus} por renovação recente`);
-    }
-
-    // Check for penalties
-    if (data.inactivity_penalty) {
-      const days = data.days_since_last_task || "?";
-      parts.push(`-${Math.abs(data.inactivity_penalty)} por inatividade (${days} dias sem tarefas)`);
-    }
-    if (data.cancellation_penalty) {
-      parts.push(`-${Math.abs(data.cancellation_penalty)} por sinalização de cancelamento`);
-    }
-
-    // Check for trend direction
-    if (data.trend_direction) {
-      const trendLabels: Record<string, string> = {
-        rising: "Tendência de alta",
-        falling: "Tendência de queda",
-        stable: "Tendência estável",
-      };
-      if (data.trend_direction !== "stable") {
-        parts.push(trendLabels[data.trend_direction] || data.trend_direction);
-      }
-    }
-
-    // Risk level
-    if (data.risk_level) {
-      const riskLabels: Record<string, string> = {
-        healthy: "Saudável",
-        low: "Risco baixo",
-        medium: "Risco médio",
-        at_risk: "Em risco",
-        high: "Risco alto",
-        critical: "Risco crítico",
-      };
-      parts.push(`Nível: ${riskLabels[data.risk_level] || data.risk_level}`);
     }
 
     if (parts.length === 0 && change !== 0) {
@@ -244,10 +266,10 @@ export const HealthScoreHistoryTab = ({ projectId, snapshots }: HealthScoreHisto
   const getRiskBadge = (riskLevel: string | undefined) => {
     if (!riskLevel) return null;
     const config: Record<string, { label: string; className: string }> = {
+      excellent: { label: "Excelente", className: "bg-emerald-100 text-emerald-700" },
       healthy: { label: "Saudável", className: "bg-green-100 text-green-700" },
-      low: { label: "Baixo", className: "bg-blue-100 text-blue-700" },
-      medium: { label: "Médio", className: "bg-yellow-100 text-yellow-700" },
-      high: { label: "Alto", className: "bg-orange-100 text-orange-700" },
+      attention: { label: "Atenção", className: "bg-yellow-100 text-yellow-700" },
+      at_risk: { label: "Em Risco", className: "bg-orange-100 text-orange-700" },
       critical: { label: "Crítico", className: "bg-red-100 text-red-700" },
     };
     const cfg = config[riskLevel] || { label: riskLevel, className: "bg-muted" };
