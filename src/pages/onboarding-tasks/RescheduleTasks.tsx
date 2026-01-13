@@ -298,7 +298,13 @@ export default function RescheduleTasks() {
 
       const weekendHolidayList: WeekendHolidayTask[] = [];
       allDatedTasks?.forEach((task: any) => {
-        const taskDate = parseISO(task.due_date);
+        // Parse date manually to avoid timezone issues - due_date is in YYYY-MM-DD format
+        const dateParts = task.due_date.split('-');
+        const year = parseInt(dateParts[0], 10);
+        const month = parseInt(dateParts[1], 10) - 1; // JS months are 0-indexed
+        const day = parseInt(dateParts[2], 10);
+        const taskDate = new Date(year, month, day);
+        
         if (isWeekendOrHoliday(taskDate)) {
           weekendHolidayList.push({
             id: task.id,
