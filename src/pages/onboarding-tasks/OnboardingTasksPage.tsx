@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target } from "lucide-react";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
@@ -894,6 +894,8 @@ const OnboardingTasksPage = () => {
   const isAdmin = currentUserRole === "admin";
   const isCS = currentUserRole === "cs";
   const canCreateCompany = isAdmin || isCS;
+  const CRM_ROLES = ["admin", "head_comercial", "closer", "sdr"];
+  const canAccessCRM = currentUserRole ? CRM_ROLES.includes(currentUserRole) : false;
 
   if (loading) {
     return (
@@ -1026,6 +1028,12 @@ const OnboardingTasksPage = () => {
                     </>
                   )}
                   {/* Resultados for CS and consultants in mobile menu */}
+                  {canAccessCRM && (
+                    <DropdownMenuItem onClick={() => navigate("/crm")}>
+                      <Target className="h-4 w-4 mr-2" />
+                      CRM Comercial
+                    </DropdownMenuItem>
+                  )}
                   {(currentUserRole === "cs" || currentUserRole === "consultant") && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/results")}>
                       <BarChart3 className="h-4 w-4 mr-2" />
@@ -1168,6 +1176,18 @@ const OnboardingTasksPage = () => {
               >
                 <BarChart3 className="h-4 w-4" />
                 Resultados
+              </Button>
+            )}
+            {/* CRM Comercial button - visible for admin, head_comercial, closer, sdr */}
+            {canAccessCRM && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate("/crm")}
+                className="gap-2"
+              >
+                <Target className="h-4 w-4" />
+                CRM Comercial
               </Button>
             )}
 
