@@ -1021,8 +1021,19 @@ Deno.serve(async (req) => {
            // ignore
          }
 
+         // Check for various Drive API permission/scope errors
+         const isScopeInsufficient = 
+           driveResponse.status === 403 &&
+           (errorText.includes("ACCESS_TOKEN_SCOPE_INSUFFICIENT") ||
+            errorText.includes("insufficientPermissions") ||
+            errorText.includes("Insufficient Permission") ||
+            (parsed?.error?.details || []).some((d: any) => 
+              d?.reason === "ACCESS_TOKEN_SCOPE_INSUFFICIENT"
+            ));
+
          const isDriveApiDisabled =
            driveResponse.status === 403 &&
+           !isScopeInsufficient &&
            (errorText.includes("accessNotConfigured") ||
              errorText.includes("SERVICE_DISABLED") ||
              parsed?.error?.status === "PERMISSION_DENIED" &&
@@ -1036,6 +1047,19 @@ Deno.serve(async (req) => {
                needsDriveApi: true,
                message:
                  "A API do Google Drive não está habilitada no seu projeto Google. Ative a Google Drive API e tente novamente.",
+             }),
+             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+           );
+         }
+
+         if (isScopeInsufficient) {
+           return new Response(
+             JSON.stringify({
+               synced: 0,
+               transcriptsSynced: 0,
+               needsDriveAuth: true,
+               message:
+                 "O consultor precisa reconectar a conta Google para autorizar o acesso ao Drive. Vá em Escritório Virtual > Google Calendar > Desconectar e conectar novamente.",
              }),
              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
            );
