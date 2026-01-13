@@ -119,6 +119,7 @@ const OnboardingTasksPage = () => {
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
   const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; target_value: number }[]>([]);
+  const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
   const [healthScoresByProject, setHealthScoresByProject] = useState<Map<string, { total_score: number; risk_level: string }>>(new Map());
   
   // Announcement dialog state
@@ -222,13 +223,21 @@ const OnboardingTasksPage = () => {
 
   const fetchCompanyKpis = async () => {
     try {
-      const { data, error } = await supabase
-        .from("company_kpis")
-        .select("id, company_id, target_value")
-        .eq("is_active", true);
+      const [kpisResult, entriesResult] = await Promise.all([
+        supabase
+          .from("company_kpis")
+          .select("id, company_id, target_value")
+          .eq("is_active", true),
+        supabase
+          .from("kpi_entries")
+          .select("company_id, kpi_id, value, entry_date")
+      ]);
 
-      if (error) throw error;
-      setCompanyKpis(data || []);
+      if (kpisResult.error) throw kpisResult.error;
+      if (entriesResult.error) throw entriesResult.error;
+      
+      setCompanyKpis(kpisResult.data || []);
+      setKpiEntries(entriesResult.data || []);
     } catch (error) {
       console.error("Error fetching company KPIs:", error);
     }
@@ -555,8 +564,8 @@ const OnboardingTasksPage = () => {
     return { promoters, detractors };
   }, [npsResponses]);
 
-  // Calculate projects by goal projection ranges for the selected period (respects all filters)
-  const projectsGoalRanges = useMemo(() => {
+  // Calculate company goal projection ranges for the selected period (using company KPIs - same logic as DashboardMetrics)
+  const companiesGoalRanges = useMemo(() => {
     const periodMonth = dateRange.start.getMonth() + 1;
     const periodYear = dateRange.start.getFullYear();
     
@@ -567,93 +576,68 @@ const OnboardingTasksPage = () => {
     const currentDay = isCurrentMonth ? today.getDate() : daysInMonth;
     const timeElapsedPercent = currentDay / daysInMonth;
     
-    // Get company IDs that match the status filter (exclude inactive/closed companies)
+    // Get active company IDs (exclude inactive/closed companies)
     const activeCompanyIds = new Set(
       companies.filter(c => c.status !== "inactive" && c.status !== "closed").map(c => c.id)
     );
     
-    const statusFilteredCompanyIds = filterStatus === "all" 
-      ? activeCompanyIds 
-      : new Set(companies.filter(c => c.status === filterStatus && c.status !== "inactive" && c.status !== "closed").map(c => c.id));
-    
-    // Build a map of company_id to consultant_id for fallback lookup
-    const companyConsultantMap = new Map(
-      companies.map(c => [c.id, c.consultant_id])
-    );
-    
-    // Build set of filtered project IDs based on consultant, service, and status filters
-    // Also exclude projects from inactive/closed companies
-    const filteredProjectIdSet = new Set(
-      allProjects
-        .filter((project) => {
-          // Exclude projects from inactive/closed companies
-          const companyId = project.onboarding_company_id || project.company_id;
-          if (companyId && !activeCompanyIds.has(companyId)) {
-            return false;
-          }
-          
-          // Check consultant: project's consultant OR company's consultant
-          const companyConsultantId = project.onboarding_company_id 
-            ? companyConsultantMap.get(project.onboarding_company_id)
-            : null;
-          
-          const matchesConsultant = 
-            filterConsultant === "all" || 
-            project.consultant_id === filterConsultant ||
-            companyConsultantId === filterConsultant;
-          
-          const matchesService = 
-            filterService === "all" || 
-            project.product_id === filterService;
-          
-          const matchesStatus = filterStatus === "all" || 
-            (companyId && statusFilteredCompanyIds.has(companyId));
-          
-          return matchesConsultant && matchesService && matchesStatus;
-        })
-        .map(p => p.id)
-    );
+    // We need to fetch kpi_entries - use the state that should be set
+    const monthStart = `${periodYear}-${String(periodMonth).padStart(2, '0')}-01`;
+    const monthEnd = `${periodYear}-${String(periodMonth).padStart(2, '0')}-${daysInMonth}`;
     
     const meetingGoalIds = new Set<string>(); // >=100%
     const above70Ids = new Set<string>(); // 70-99%
     const between50And70Ids = new Set<string>(); // 50-69%
     const below50Ids = new Set<string>(); // <50%
-    const projectsWithGoalsIds = new Set<string>(); // Projects that have goals for this period
     
-    monthlyGoals.forEach(g => {
-      // Only include goals for filtered projects
-      if (
-        filteredProjectIdSet.has(g.project_id) &&
-        g.month === periodMonth &&
-        g.year === periodYear &&
-        g.sales_target && g.sales_target > 0
-      ) {
-        projectsWithGoalsIds.add(g.project_id);
-        
-        const result = g.sales_result || 0;
-        const achievementPercent = result / g.sales_target;
-        // Project to end of month based on time elapsed
-        const projectionPercent = timeElapsedPercent > 0 
-          ? Math.round((achievementPercent / timeElapsedPercent) * 100)
-          : 0;
-        
-        if (projectionPercent >= 100) {
-          meetingGoalIds.add(g.project_id);
-        } else if (projectionPercent >= 70) {
-          above70Ids.add(g.project_id);
-        } else if (projectionPercent >= 50) {
-          between50And70Ids.add(g.project_id);
-        } else {
-          below50Ids.add(g.project_id);
-        }
+    // Companies with any KPI configured with target_value > 0
+    const companiesWithAnyKpiIds = new Set(
+      companyKpis.filter(k => activeCompanyIds.has(k.company_id) && k.target_value > 0).map(k => k.company_id)
+    );
+    
+    // Companies without goals (no KPI configured)
+    const noGoalIds = new Set<string>();
+    activeCompanyIds.forEach(companyId => {
+      if (!companiesWithAnyKpiIds.has(companyId)) {
+        noGoalIds.add(companyId);
       }
     });
     
-    // Projects without goals: filtered projects that don't have a goal for this period
-    const noGoalIds = new Set<string>();
-    filteredProjectIdSet.forEach(projectId => {
-      if (!projectsWithGoalsIds.has(projectId)) {
-        noGoalIds.add(projectId);
+    // Calculate metrics per company (same logic as DashboardMetrics.tsx)
+    activeCompanyIds.forEach(companyId => {
+      if (!companyId) return;
+      
+      // Get KPIs for this company (only monetary for main goals tracking)
+      const companyKpisList = companyKpis.filter(k => k.company_id === companyId && k.target_value > 0);
+      
+      if (companyKpisList.length === 0) return;
+      
+      // Calculate monthly target (simplified - assuming monthly periodicity)
+      let totalMonthlyTarget = companyKpisList.reduce((sum, kpi) => sum + kpi.target_value, 0);
+      
+      // Get entries for this company in the period
+      const companyEntries = kpiEntries.filter(e => 
+        e.company_id === companyId &&
+        e.entry_date >= monthStart &&
+        e.entry_date <= monthEnd &&
+        companyKpisList.some(k => k.id === e.kpi_id)
+      );
+      
+      const totalRealized = companyEntries.reduce((sum, e) => sum + e.value, 0);
+      
+      // Calculate projection
+      const projectionPercent = timeElapsedPercent > 0 && totalMonthlyTarget > 0 
+        ? Math.round(((totalRealized / totalMonthlyTarget) / timeElapsedPercent) * 100) 
+        : 0;
+      
+      if (projectionPercent >= 100) {
+        meetingGoalIds.add(companyId);
+      } else if (projectionPercent >= 70) {
+        above70Ids.add(companyId);
+      } else if (projectionPercent >= 50) {
+        between50And70Ids.add(companyId);
+      } else {
+        below50Ids.add(companyId);
       }
     });
     
@@ -662,14 +646,10 @@ const OnboardingTasksPage = () => {
       above70: above70Ids,
       between50And70: between50And70Ids,
       below50: below50Ids,
-      noGoal: noGoalIds
+      noGoal: noGoalIds,
+      hasGoal: companiesWithAnyKpiIds
     };
-  }, [monthlyGoals, dateRange, allProjects, filterConsultant, filterService, filterStatus, companies]);
-
-  // Companies with any KPI configured with target > 0 (used for "Com Meta" and "Sem Meta" filters)
-  const companiesWithKpis = useMemo(() => {
-    return new Set(companyKpis.filter(k => k.target_value > 0).map(k => k.company_id));
-  }, [companyKpis]);
+  }, [dateRange, companies, companyKpis, kpiEntries]);
 
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
@@ -765,23 +745,21 @@ const OnboardingTasksPage = () => {
             return isWithinInterval(updatedAt, { start: dateRange.start, end: dateRange.end });
           }) ?? false;
         } else if (activeMetricFilter.type === "goals") {
-          // Filter by goal projection ranges or by company KPI status
+          // Filter by goal projection ranges or by company KPI status (now company-based, not project-based)
           if (activeMetricFilter.value === "hasGoal") {
             // Company has any KPI configured
-            matchesMetricFilter = companiesWithKpis.has(company.id);
+            matchesMetricFilter = companiesGoalRanges.hasGoal.has(company.id);
           } else if (activeMetricFilter.value === "noGoal") {
             // Company has NO KPI configured
-            matchesMetricFilter = !companiesWithKpis.has(company.id);
-          } else if (activeMetricFilter.value === "meeting") {
-            matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.meetingGoal.has(p.id)) ?? false;
-          } else if (activeMetricFilter.value === "100plus") {
-            matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.meetingGoal.has(p.id)) ?? false;
+            matchesMetricFilter = companiesGoalRanges.noGoal.has(company.id);
+          } else if (activeMetricFilter.value === "meeting" || activeMetricFilter.value === "100plus") {
+            matchesMetricFilter = companiesGoalRanges.meetingGoal.has(company.id);
           } else if (activeMetricFilter.value === "above70") {
-            matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.above70.has(p.id)) ?? false;
+            matchesMetricFilter = companiesGoalRanges.above70.has(company.id);
           } else if (activeMetricFilter.value === "between50and70") {
-            matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.between50And70.has(p.id)) ?? false;
+            matchesMetricFilter = companiesGoalRanges.between50And70.has(company.id);
           } else if (activeMetricFilter.value === "below50") {
-            matchesMetricFilter = company.projects?.some(p => projectsGoalRanges.below50.has(p.id)) ?? false;
+            matchesMetricFilter = companiesGoalRanges.below50.has(company.id);
           }
         } else if (activeMetricFilter.type === "company" && activeMetricFilter.value === "no_consultant") {
           // Filter active companies without consultant
@@ -794,7 +772,7 @@ const OnboardingTasksPage = () => {
     
     // Sort alphabetically
     return filtered.sort((a, b) => a.name.localeCompare(b.name));
-  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, projectsGoalRanges, currentUserRole, currentStaffId, allTasks, companiesWithKpis]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, companiesGoalRanges, currentUserRole, currentStaffId, allTasks]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
