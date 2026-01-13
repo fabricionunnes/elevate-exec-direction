@@ -16,10 +16,10 @@ interface HealthScoreWeights {
 }
 
 const DEFAULT_WEIGHTS: HealthScoreWeights = {
-  satisfaction_weight: 25,
-  goals_weight: 25,
-  commercial_weight: 20,
-  engagement_weight: 15,
+  satisfaction_weight: 20,
+  goals_weight: 30, // Increased weight for goals
+  commercial_weight: 15,
+  engagement_weight: 20, // Increased weight for engagement
   support_weight: 10,
   trend_weight: 5,
 };
@@ -83,12 +83,52 @@ serve(async (req) => {
   }
 });
 
+interface ScoreDetails {
+  goalProjection: number;
+  hasGoalsConfigured: boolean;
+  hasKpiEntries: boolean;
+  overdueTasksCount: number;
+  completedTasksRecent: number;
+  meetingsCount: number;
+  daysSinceLastTask: number;
+  daysSinceLastMeeting: number;
+  inactivityPenalty: number;
+  noGoalPenalty: number;
+  noKpiEntriesPenalty: number;
+  overduePenalty: number;
+  meetingBonus: number;
+  completedTasksBonus: number;
+  projectionBonus: number;
+  renewalBonus: number;
+  cancellationPenalty: number;
+}
+
 async function calculateProjectHealthScore(
   supabase: any,
   projectId: string,
   companyId: string | null,
   projectStatus: string | null
 ): Promise<number> {
+  const details: ScoreDetails = {
+    goalProjection: 0,
+    hasGoalsConfigured: false,
+    hasKpiEntries: false,
+    overdueTasksCount: 0,
+    completedTasksRecent: 0,
+    meetingsCount: 0,
+    daysSinceLastTask: 999,
+    daysSinceLastMeeting: 999,
+    inactivityPenalty: 0,
+    noGoalPenalty: 0,
+    noKpiEntriesPenalty: 0,
+    overduePenalty: 0,
+    meetingBonus: 0,
+    completedTasksBonus: 0,
+    projectionBonus: 0,
+    renewalBonus: 0,
+    cancellationPenalty: 0,
+  };
+
   // Get weights for this project
   const { data: weightsData } = await supabase
     .from("health_score_weights")
@@ -98,10 +138,10 @@ async function calculateProjectHealthScore(
 
   const weights: HealthScoreWeights = weightsData
     ? {
-        satisfaction_weight: Number(weightsData.satisfaction_weight) || 25,
-        goals_weight: Number(weightsData.goals_weight) || 25,
-        commercial_weight: Number(weightsData.commercial_weight) || 20,
-        engagement_weight: Number(weightsData.engagement_weight) || 15,
+        satisfaction_weight: Number(weightsData.satisfaction_weight) || 20,
+        goals_weight: Number(weightsData.goals_weight) || 30,
+        commercial_weight: Number(weightsData.commercial_weight) || 15,
+        engagement_weight: Number(weightsData.engagement_weight) || 20,
         support_weight: Number(weightsData.support_weight) || 10,
         trend_weight: Number(weightsData.trend_weight) || 5,
       }
@@ -115,6 +155,13 @@ async function calculateProjectHealthScore(
     "sinalizou_cancelamento",
     "cumprindo_aviso",
   ].includes(projectStatus?.toLowerCase() || "");
+
+  const today = new Date();
+  const currentMonth = today.getMonth() + 1;
+  const currentYear = today.getFullYear();
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+  const currentDay = today.getDate();
+  const timeElapsedPercent = currentDay / daysInMonth;
 
   // 1. SATISFACTION SCORE (CSAT + NPS)
   let satisfactionScore = 50;
@@ -144,39 +191,29 @@ async function calculateProjectHealthScore(
     satisfactionScore = (satisfactionScore + csatScore) / 2;
   }
 
-  // 2. GOALS SCORE (using company_kpis + kpi_entries for projection)
-  let goalsScore = 50;
-  let isProjectingToMeetGoal = false;
+  // 2. GOALS SCORE - Significantly improved logic
+  let goalsScore = 0; // Start at 0 instead of 50
 
   if (companyId) {
-    const today = new Date();
-    const currentMonth = today.getMonth() + 1;
-    const currentYear = today.getFullYear();
-    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-    const currentDay = today.getDate();
-    const timeElapsedPercent = currentDay / daysInMonth;
-    
     const monthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
     const monthEnd = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${daysInMonth}`;
     
-    // Get company KPIs
+    // Get MONETARY KPIs only for goal tracking
     const { data: companyKpis } = await supabase
       .from("company_kpis")
       .select("id, target_value, kpi_type, periodicity")
       .eq("company_id", companyId)
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("kpi_type", "monetary");
     
     if (companyKpis && companyKpis.length > 0) {
-      // Get KPI entries for current month
-      const { data: kpiEntries } = await supabase
-        .from("kpi_entries")
-        .select("kpi_id, value")
-        .eq("company_id", companyId)
-        .gte("entry_date", monthStart)
-        .lte("entry_date", monthEnd);
+      // Has goals configured
+      details.hasGoalsConfigured = true;
       
-      // Calculate monthly target
+      // Calculate total monthly target
       let totalMonthlyTarget = 0;
+      const kpiIds = companyKpis.map((kpi: any) => kpi.id);
+      
       companyKpis.forEach((kpi: any) => {
         if (kpi.target_value > 0) {
           if (kpi.periodicity === "daily") {
@@ -189,43 +226,85 @@ async function calculateProjectHealthScore(
         }
       });
       
-      if (totalMonthlyTarget > 0 && kpiEntries) {
-        const totalRealized = kpiEntries.reduce((sum: number, e: any) => sum + (e.value || 0), 0);
+      if (totalMonthlyTarget > 0) {
+        // Get KPI entries for current month
+        const { data: kpiEntries } = await supabase
+          .from("kpi_entries")
+          .select("kpi_id, value")
+          .eq("company_id", companyId)
+          .in("kpi_id", kpiIds)
+          .gte("entry_date", monthStart)
+          .lte("entry_date", monthEnd);
         
-        // Calculate projection percentage
-        const projectionPercent = timeElapsedPercent > 0 
-          ? ((totalRealized / totalMonthlyTarget) / timeElapsedPercent) * 100 
-          : 0;
-        
-        // Convert projection to score (100% projection = 100 score)
-        goalsScore = Math.min(100, Math.max(0, projectionPercent));
-        
-        // Flag if projecting to meet goal
-        isProjectingToMeetGoal = projectionPercent >= 100;
+        if (kpiEntries && kpiEntries.length > 0) {
+          details.hasKpiEntries = true;
+          const totalRealized = kpiEntries.reduce((sum: number, e: any) => sum + (e.value || 0), 0);
+          
+          // Calculate projection percentage
+          const projectionPercent = timeElapsedPercent > 0 
+            ? ((totalRealized / totalMonthlyTarget) / timeElapsedPercent) * 100 
+            : 0;
+          
+          details.goalProjection = projectionPercent;
+          
+          // Score based on projection:
+          // - 100%+ projection = 100 points
+          // - 80-99% = proportional 60-80 points
+          // - 50-79% = proportional 30-60 points
+          // - Below 50% = proportional 0-30 points
+          if (projectionPercent >= 100) {
+            goalsScore = 100;
+          } else if (projectionPercent >= 80) {
+            goalsScore = 60 + ((projectionPercent - 80) / 20) * 40;
+          } else if (projectionPercent >= 50) {
+            goalsScore = 30 + ((projectionPercent - 50) / 30) * 30;
+          } else {
+            goalsScore = (projectionPercent / 50) * 30;
+          }
+        } else {
+          // Has goals but NO KPI ENTRIES this month
+          details.hasKpiEntries = false;
+          goalsScore = 10; // Very low score
+          details.noKpiEntriesPenalty = 40;
+        }
+      } else {
+        // Has KPIs but target is 0
+        details.hasGoalsConfigured = false;
+        goalsScore = 20;
+        details.noGoalPenalty = 30;
       }
+    } else {
+      // NO GOALS CONFIGURED AT ALL
+      details.hasGoalsConfigured = false;
+      goalsScore = 15;
+      details.noGoalPenalty = 35;
     }
+  } else {
+    // No company linked
+    goalsScore = 25;
   }
   
-  // Fallback to legacy monthly_goals if no KPI data
-  if (goalsScore === 50) {
+  // Fallback to legacy monthly_goals if still low
+  if (goalsScore < 30 && !details.hasGoalsConfigured) {
     const { data: goalsData } = await supabase
       .from("onboarding_monthly_goals")
       .select("sales_target, sales_result")
       .eq("project_id", projectId)
       .order("year", { ascending: false })
       .order("month", { ascending: false })
-      .limit(6);
+      .limit(3);
 
     if (goalsData && goalsData.length > 0) {
       const goalsWithTargets = goalsData.filter((g: any) => g.sales_target && g.sales_target > 0);
       if (goalsWithTargets.length > 0) {
+        details.hasGoalsConfigured = true;
         const avgAchievement =
           goalsWithTargets.reduce((sum: number, g: any) => {
             const achievement = ((g.sales_result || 0) / g.sales_target) * 100;
             return sum + Math.min(100, achievement);
           }, 0) / goalsWithTargets.length;
         goalsScore = Math.min(100, avgAchievement);
-        isProjectingToMeetGoal = avgAchievement >= 100;
+        details.goalProjection = avgAchievement;
       }
     }
   }
@@ -257,40 +336,98 @@ async function calculateProjectHealthScore(
     }
   }
 
-  // 4. ENGAGEMENT SCORE (includes inactivity penalty)
-  let engagementScore = 50;
-  let daysSinceLastCompletion = 0;
+  // 4. ENGAGEMENT SCORE - Enhanced with meetings and task bonuses
+  let engagementScore = 0; // Start at 0
 
   const { data: tasks } = await supabase
     .from("onboarding_tasks")
-    .select("status, due_date, completed_at")
+    .select("status, due_date, completed_at, is_internal")
     .eq("project_id", projectId);
 
-  if (tasks && tasks.length > 0) {
-    const completed = tasks.filter((t: any) => t.status === "completed").length;
-    const total = tasks.length;
-    const completionRate = (completed / total) * 100;
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const today = new Date();
-    const overdue = tasks.filter(
+  if (tasks && tasks.length > 0) {
+    // Filter out internal tasks for engagement calculation
+    const clientTasks = tasks.filter((t: any) => !t.is_internal);
+    const totalTasks = clientTasks.length || 1;
+    
+    const completed = clientTasks.filter((t: any) => t.status === "completed").length;
+    const completionRate = (completed / totalTasks) * 100;
+
+    // Overdue tasks penalty
+    const overdue = clientTasks.filter(
       (t: any) => t.status !== "completed" && t.due_date && new Date(t.due_date) < today
     ).length;
+    details.overdueTasksCount = overdue;
+    
+    // Count recently completed tasks (last 30 days)
+    const recentlyCompleted = clientTasks.filter(
+      (t: any) => t.status === "completed" && t.completed_at && new Date(t.completed_at) >= thirtyDaysAgo
+    ).length;
+    details.completedTasksRecent = recentlyCompleted;
 
-    const overdueRate = (overdue / total) * 100;
-    engagementScore = Math.min(100, Math.max(0, completionRate - overdueRate));
+    // Base engagement from completion rate
+    engagementScore = Math.min(70, completionRate * 0.7);
+    
+    // Penalty for overdue tasks: -3 points per overdue task (max -30)
+    details.overduePenalty = Math.min(30, overdue * 3);
+    
+    // Bonus for recently completed tasks: +2 points per task (max +20)
+    details.completedTasksBonus = Math.min(20, recentlyCompleted * 2);
     
     // Calculate days since last task completion
-    const completedTasks = tasks.filter((t: any) => t.status === "completed" && t.completed_at);
+    const completedTasks = clientTasks.filter((t: any) => t.status === "completed" && t.completed_at);
     if (completedTasks.length > 0) {
       const lastCompletedDate = completedTasks
         .map((t: any) => new Date(t.completed_at))
         .sort((a: Date, b: Date) => b.getTime() - a.getTime())[0];
       
-      daysSinceLastCompletion = Math.floor((today.getTime() - lastCompletedDate.getTime()) / (1000 * 60 * 60 * 24));
+      details.daysSinceLastTask = Math.floor((today.getTime() - lastCompletedDate.getTime()) / (1000 * 60 * 60 * 24));
     } else {
-      // No completed tasks ever - consider it as very inactive
-      daysSinceLastCompletion = 30;
+      details.daysSinceLastTask = 60;
     }
+  }
+
+  // Get meetings data
+  const { data: meetings } = await supabase
+    .from("onboarding_meeting_notes")
+    .select("meeting_date, status")
+    .eq("project_id", projectId)
+    .gte("meeting_date", thirtyDaysAgo.toISOString());
+
+  if (meetings && meetings.length > 0) {
+    const completedMeetings = meetings.filter((m: any) => m.status === "completed" || m.status === "concluída");
+    details.meetingsCount = completedMeetings.length;
+    
+    // Bonus for meetings: +5 points per meeting in last 30 days (max +15)
+    details.meetingBonus = Math.min(15, completedMeetings.length * 5);
+    
+    // Days since last meeting
+    if (completedMeetings.length > 0) {
+      const lastMeetingDate = completedMeetings
+        .map((m: any) => new Date(m.meeting_date))
+        .sort((a: Date, b: Date) => b.getTime() - a.getTime())[0];
+      
+      details.daysSinceLastMeeting = Math.floor((today.getTime() - lastMeetingDate.getTime()) / (1000 * 60 * 60 * 24));
+    }
+  }
+
+  // Apply engagement bonuses and penalties
+  engagementScore = engagementScore - details.overduePenalty + details.completedTasksBonus + details.meetingBonus;
+  engagementScore = Math.min(100, Math.max(0, engagementScore));
+
+  // Inactivity penalty based on days since last task
+  if (details.daysSinceLastTask >= 30) {
+    details.inactivityPenalty = 25;
+  } else if (details.daysSinceLastTask >= 21) {
+    details.inactivityPenalty = 18;
+  } else if (details.daysSinceLastTask >= 14) {
+    details.inactivityPenalty = 12;
+  } else if (details.daysSinceLastTask >= 7) {
+    details.inactivityPenalty = 6;
   }
 
   // 5. SUPPORT SCORE
@@ -314,9 +451,6 @@ async function calculateProjectHealthScore(
   // 6. TREND SCORE
   let trendScore = 50;
   let trendDirection = "stable";
-
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   const { data: recentSnapshots } = await supabase
     .from("health_score_snapshots")
@@ -349,34 +483,24 @@ async function calculateProjectHealthScore(
       (trendScore * weights.trend_weight) / 100
   );
 
-  // Apply bonuses and penalties
-  
-  // BONUS: Projecting to meet goal (+15 points)
-  if (isProjectingToMeetGoal) {
-    totalScore = Math.min(100, totalScore + 15);
-  }
-  
-  // Legacy bonus for meeting goals (if goalsScore >= 80, add +10)
-  if (goalsScore >= 80 && !isProjectingToMeetGoal) {
+  // Apply global bonuses and penalties
+
+  // BONUS: Projecting to meet goal (+10 points)
+  if (details.goalProjection >= 100 && details.hasKpiEntries) {
+    details.projectionBonus = 10;
     totalScore = Math.min(100, totalScore + 10);
   }
-  
-  // PENALTY: Inactivity - no task completed recently
-  // 7+ days without completion: -5 points
-  // 14+ days without completion: -10 points  
-  // 21+ days without completion: -15 points
-  // 30+ days without completion: -20 points
-  if (daysSinceLastCompletion >= 30) {
-    totalScore = Math.max(0, totalScore - 20);
-  } else if (daysSinceLastCompletion >= 21) {
-    totalScore = Math.max(0, totalScore - 15);
-  } else if (daysSinceLastCompletion >= 14) {
+
+  // PENALTY: No goals configured (-15 points applied through low goalsScore already)
+  // PENALTY: No KPI entries this month (-10 additional)
+  if (details.hasGoalsConfigured && !details.hasKpiEntries) {
     totalScore = Math.max(0, totalScore - 10);
-  } else if (daysSinceLastCompletion >= 7) {
-    totalScore = Math.max(0, totalScore - 5);
   }
 
-  // Check for recent renewal (within last 90 days) - add +20 bonus
+  // PENALTY: Global inactivity
+  totalScore = Math.max(0, totalScore - details.inactivityPenalty);
+
+  // Check for recent renewal (within last 90 days) - add +15 bonus
   if (companyId) {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
@@ -390,15 +514,20 @@ async function calculateProjectHealthScore(
     if (companyData?.renewed_at) {
       const renewedAt = new Date(companyData.renewed_at);
       if (renewedAt >= ninetyDaysAgo) {
-        totalScore = Math.min(100, totalScore + 20);
+        details.renewalBonus = 15;
+        totalScore = Math.min(100, totalScore + 15);
       }
     }
   }
 
-  // Apply cancellation penalty (reduces score)
+  // Apply cancellation penalty (-35 points)
   if (isCancellationStatus) {
-    totalScore = Math.max(0, totalScore - 30);
+    details.cancellationPenalty = 35;
+    totalScore = Math.max(0, totalScore - 35);
   }
+
+  // Ensure minimum score boundaries
+  totalScore = Math.min(100, Math.max(0, totalScore));
 
   // Determine risk level
   let riskLevel = "healthy";
@@ -406,10 +535,14 @@ async function calculateProjectHealthScore(
     riskLevel = "critical";
   } else if (totalScore < 40) {
     riskLevel = "critical";
-  } else if (totalScore < 60) {
+  } else if (totalScore < 55) {
     riskLevel = "at_risk";
-  } else if (totalScore < 80) {
+  } else if (totalScore < 70) {
     riskLevel = "attention";
+  } else if (totalScore < 85) {
+    riskLevel = "healthy";
+  } else {
+    riskLevel = "excellent";
   }
 
   // Get existing score
@@ -441,17 +574,17 @@ async function calculateProjectHealthScore(
   }
 
   // Save daily snapshot
-  const today = new Date().toISOString().split("T")[0];
+  const todayStr = new Date().toISOString().split("T")[0];
   const { data: existingSnapshot } = await supabase
     .from("health_score_snapshots")
     .select("id")
     .eq("project_id", projectId)
-    .eq("snapshot_date", today)
+    .eq("snapshot_date", todayStr)
     .single();
 
   const snapshotPayload = {
     project_id: projectId,
-    snapshot_date: today,
+    snapshot_date: todayStr,
     total_score: totalScore,
     satisfaction_score: Math.round(satisfactionScore),
     goals_score: Math.round(goalsScore),
@@ -468,15 +601,44 @@ async function calculateProjectHealthScore(
     await supabase.from("health_score_snapshots").insert(snapshotPayload);
   }
 
-  // Log event
+  // Log event with detailed breakdown
+  const eventData = {
+    ...scorePayload,
+    details: {
+      goal_projection: Math.round(details.goalProjection),
+      has_goals_configured: details.hasGoalsConfigured,
+      has_kpi_entries: details.hasKpiEntries,
+      overdue_tasks_count: details.overdueTasksCount,
+      completed_tasks_recent: details.completedTasksRecent,
+      meetings_count_30d: details.meetingsCount,
+      days_since_last_task: details.daysSinceLastTask,
+      days_since_last_meeting: details.daysSinceLastMeeting,
+      penalties: {
+        inactivity: details.inactivityPenalty,
+        no_goal: details.noGoalPenalty,
+        no_kpi_entries: details.noKpiEntriesPenalty,
+        overdue_tasks: details.overduePenalty,
+        cancellation: details.cancellationPenalty,
+      },
+      bonuses: {
+        meetings: details.meetingBonus,
+        completed_tasks: details.completedTasksBonus,
+        projection: details.projectionBonus,
+        renewal: details.renewalBonus,
+      },
+    },
+  };
+
   await supabase.from("health_score_events").insert({
     project_id: projectId,
     event_type: "score_calculated",
-    event_data: scorePayload,
+    event_data: eventData,
     previous_score: existingScore?.total_score || null,
     new_score: totalScore,
     triggered_by: "automatic",
   });
+
+  console.log(`Project ${projectId} - Score: ${totalScore}, Goals: ${goalsScore}, Engagement: ${engagementScore}, Details:`, details);
 
   return totalScore;
 }
