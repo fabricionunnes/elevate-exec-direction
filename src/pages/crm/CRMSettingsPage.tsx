@@ -25,6 +25,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Settings,
   Plus,
@@ -35,7 +42,9 @@ import {
   XCircle,
   Kanban,
   Loader2,
-  Edit2
+  Edit2,
+  Target,
+  Folder
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -71,6 +80,26 @@ interface CRMTag {
   is_active: boolean;
 }
 
+interface OriginGroup {
+  id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+interface Origin {
+  id: string;
+  name: string;
+  group_id: string | null;
+  pipeline_id: string | null;
+  icon: string | null;
+  color: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
 export const CRMSettingsPage = () => {
   const { isAdmin } = useOutletContext<{ staffRole: string; isAdmin: boolean }>();
   const navigate = useNavigate();
@@ -78,21 +107,30 @@ export const CRMSettingsPage = () => {
   const [stages, setStages] = useState<Stage[]>([]);
   const [lossReasons, setLossReasons] = useState<LossReason[]>([]);
   const [tags, setTags] = useState<CRMTag[]>([]);
+  const [originGroups, setOriginGroups] = useState<OriginGroup[]>([]);
+  const [origins, setOrigins] = useState<Origin[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPipeline, setSelectedPipeline] = useState<string>("");
+  const [selectedOriginGroup, setSelectedOriginGroup] = useState<string>("");
 
   // Dialogs
   const [newPipelineOpen, setNewPipelineOpen] = useState(false);
   const [newStageOpen, setNewStageOpen] = useState(false);
   const [newReasonOpen, setNewReasonOpen] = useState(false);
   const [newTagOpen, setNewTagOpen] = useState(false);
+  const [newOriginGroupOpen, setNewOriginGroupOpen] = useState(false);
+  const [newOriginOpen, setNewOriginOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{ type: string; id: string; name: string } | null>(null);
   
   // Edit dialogs
   const [editPipelineOpen, setEditPipelineOpen] = useState(false);
   const [editStageOpen, setEditStageOpen] = useState(false);
+  const [editOriginGroupOpen, setEditOriginGroupOpen] = useState(false);
+  const [editOriginOpen, setEditOriginOpen] = useState(false);
   const [editingPipeline, setEditingPipeline] = useState<Pipeline | null>(null);
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
+  const [editingOriginGroup, setEditingOriginGroup] = useState<OriginGroup | null>(null);
+  const [editingOrigin, setEditingOrigin] = useState<Origin | null>(null);
 
   // Form states
   const [newPipelineName, setNewPipelineName] = useState("");
@@ -104,6 +142,11 @@ export const CRMSettingsPage = () => {
   const [newReasonName, setNewReasonName] = useState("");
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3B82F6");
+  const [newOriginGroupName, setNewOriginGroupName] = useState("");
+  const [newOriginGroupIcon, setNewOriginGroupIcon] = useState("target");
+  const [newOriginName, setNewOriginName] = useState("");
+  const [newOriginGroupId, setNewOriginGroupId] = useState<string>("");
+  const [newOriginPipelineId, setNewOriginPipelineId] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -117,20 +160,27 @@ export const CRMSettingsPage = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [pipelinesRes, stagesRes, reasonsRes, tagsRes] = await Promise.all([
+      const [pipelinesRes, stagesRes, reasonsRes, tagsRes, originGroupsRes, originsRes] = await Promise.all([
         supabase.from("crm_pipelines").select("*").order("is_default", { ascending: false }),
         supabase.from("crm_stages").select("*").order("sort_order"),
         supabase.from("crm_loss_reasons").select("*").order("sort_order"),
         supabase.from("crm_tags").select("*").order("name"),
+        supabase.from("crm_origin_groups").select("*").order("sort_order"),
+        supabase.from("crm_origins").select("*").order("sort_order"),
       ]);
 
       setPipelines(pipelinesRes.data || []);
       setStages(stagesRes.data || []);
       setLossReasons(reasonsRes.data || []);
       setTags(tagsRes.data || []);
+      setOriginGroups(originGroupsRes.data || []);
+      setOrigins(originsRes.data || []);
 
       if (pipelinesRes.data && pipelinesRes.data.length > 0 && !selectedPipeline) {
         setSelectedPipeline(pipelinesRes.data[0].id);
+      }
+      if (originGroupsRes.data && originGroupsRes.data.length > 0 && !selectedOriginGroup) {
+        setSelectedOriginGroup(originGroupsRes.data[0].id);
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -314,11 +364,29 @@ export const CRMSettingsPage = () => {
   const handleDelete = async () => {
     if (!deleteDialog) return;
     try {
-      const table = deleteDialog.type === "pipeline" ? "crm_pipelines" :
-                    deleteDialog.type === "stage" ? "crm_stages" :
-                    deleteDialog.type === "reason" ? "crm_loss_reasons" : "crm_tags";
-      
-      const { error } = await supabase.from(table).delete().eq("id", deleteDialog.id);
+      let error;
+      switch (deleteDialog.type) {
+        case "pipeline":
+          ({ error } = await supabase.from("crm_pipelines").delete().eq("id", deleteDialog.id));
+          break;
+        case "stage":
+          ({ error } = await supabase.from("crm_stages").delete().eq("id", deleteDialog.id));
+          break;
+        case "reason":
+          ({ error } = await supabase.from("crm_loss_reasons").delete().eq("id", deleteDialog.id));
+          break;
+        case "tag":
+          ({ error } = await supabase.from("crm_tags").delete().eq("id", deleteDialog.id));
+          break;
+        case "origin_group":
+          ({ error } = await supabase.from("crm_origin_groups").delete().eq("id", deleteDialog.id));
+          break;
+        case "origin":
+          ({ error } = await supabase.from("crm_origins").delete().eq("id", deleteDialog.id));
+          break;
+        default:
+          throw new Error("Tipo inválido");
+      }
       
       if (error) throw error;
       toast.success("Item excluído");
@@ -329,7 +397,133 @@ export const CRMSettingsPage = () => {
     }
   };
 
+  // Origin Group handlers
+  const handleCreateOriginGroup = async () => {
+    if (!newOriginGroupName.trim()) return;
+    setSaving(true);
+    try {
+      const maxOrder = Math.max(0, ...originGroups.map(g => g.sort_order));
+      const { error } = await supabase
+        .from("crm_origin_groups")
+        .insert({ 
+          name: newOriginGroupName, 
+          icon: newOriginGroupIcon,
+          sort_order: maxOrder + 1 
+        });
+      
+      if (error) throw error;
+      toast.success("Grupo de origem criado");
+      setNewOriginGroupOpen(false);
+      setNewOriginGroupName("");
+      setNewOriginGroupIcon("target");
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao criar grupo de origem");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateOriginGroup = async () => {
+    if (!editingOriginGroup || !newOriginGroupName.trim()) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("crm_origin_groups")
+        .update({ 
+          name: newOriginGroupName,
+          icon: newOriginGroupIcon,
+        })
+        .eq("id", editingOriginGroup.id);
+      
+      if (error) throw error;
+      toast.success("Grupo de origem atualizado");
+      setEditOriginGroupOpen(false);
+      setEditingOriginGroup(null);
+      setNewOriginGroupName("");
+      setNewOriginGroupIcon("target");
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar grupo de origem");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEditOriginGroup = (group: OriginGroup) => {
+    setEditingOriginGroup(group);
+    setNewOriginGroupName(group.name);
+    setNewOriginGroupIcon(group.icon || "target");
+    setEditOriginGroupOpen(true);
+  };
+
+  // Origin handlers
+  const handleCreateOrigin = async () => {
+    if (!newOriginName.trim()) return;
+    setSaving(true);
+    try {
+      const maxOrder = Math.max(0, ...origins.filter(o => o.group_id === (newOriginGroupId || null)).map(o => o.sort_order));
+      const { error } = await supabase
+        .from("crm_origins")
+        .insert({ 
+          name: newOriginName, 
+          group_id: newOriginGroupId || null,
+          pipeline_id: newOriginPipelineId || null,
+          sort_order: maxOrder + 1 
+        });
+      
+      if (error) throw error;
+      toast.success("Origem criada");
+      setNewOriginOpen(false);
+      setNewOriginName("");
+      setNewOriginGroupId("");
+      setNewOriginPipelineId("");
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao criar origem");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateOrigin = async () => {
+    if (!editingOrigin || !newOriginName.trim()) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("crm_origins")
+        .update({ 
+          name: newOriginName,
+          group_id: newOriginGroupId || null,
+          pipeline_id: newOriginPipelineId || null,
+        })
+        .eq("id", editingOrigin.id);
+      
+      if (error) throw error;
+      toast.success("Origem atualizada");
+      setEditOriginOpen(false);
+      setEditingOrigin(null);
+      setNewOriginName("");
+      setNewOriginGroupId("");
+      setNewOriginPipelineId("");
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar origem");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEditOrigin = (origin: Origin) => {
+    setEditingOrigin(origin);
+    setNewOriginName(origin.name);
+    setNewOriginGroupId(origin.group_id || "");
+    setNewOriginPipelineId(origin.pipeline_id || "");
+    setEditOriginOpen(true);
+  };
+
   const pipelineStages = stages.filter(s => s.pipeline_id === selectedPipeline);
+  const groupOrigins = origins.filter(o => o.group_id === selectedOriginGroup);
 
   if (loading) {
     return (
@@ -347,7 +541,7 @@ export const CRMSettingsPage = () => {
           Configurações do CRM
         </h1>
         <p className="text-muted-foreground">
-          Gerencie pipelines, etapas, tags e motivos de perda
+          Gerencie pipelines, origens, etapas, tags e motivos de perda
         </p>
       </div>
 
@@ -356,6 +550,10 @@ export const CRMSettingsPage = () => {
           <TabsTrigger value="pipelines" className="gap-2">
             <Kanban className="h-4 w-4" />
             Pipelines
+          </TabsTrigger>
+          <TabsTrigger value="origins" className="gap-2">
+            <Target className="h-4 w-4" />
+            Origens
           </TabsTrigger>
           <TabsTrigger value="reasons" className="gap-2">
             <XCircle className="h-4 w-4" />
@@ -698,6 +896,353 @@ export const CRMSettingsPage = () => {
                         size="icon"
                         className="h-8 w-8 text-destructive"
                         onClick={() => setDeleteDialog({ type: "stage", id: stage.id, name: stage.name })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Origins Tab */}
+        <TabsContent value="origins" className="mt-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Origens e Grupos</h2>
+            <div className="flex gap-2">
+              <Dialog open={newOriginGroupOpen} onOpenChange={(open) => {
+                setNewOriginGroupOpen(open);
+                if (!open) {
+                  setNewOriginGroupName("");
+                  setNewOriginGroupIcon("target");
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    <Folder className="h-4 w-4 mr-2" />
+                    Novo Grupo
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Novo Grupo de Origem</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Nome *</Label>
+                      <Input
+                        value={newOriginGroupName}
+                        onChange={(e) => setNewOriginGroupName(e.target.value)}
+                        placeholder="Ex: Funis Comerciais, Marketing..."
+                      />
+                    </div>
+                    <div>
+                      <Label>Ícone</Label>
+                      <Select value={newOriginGroupIcon} onValueChange={setNewOriginGroupIcon}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="target">🎯 Alvo</SelectItem>
+                          <SelectItem value="megaphone">📢 Marketing</SelectItem>
+                          <SelectItem value="shopping-cart">🛒 Vendas</SelectItem>
+                          <SelectItem value="folder">📁 Pasta</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleCreateOriginGroup} disabled={saving} className="w-full">
+                      {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Criar
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={newOriginOpen} onOpenChange={(open) => {
+                setNewOriginOpen(open);
+                if (!open) {
+                  setNewOriginName("");
+                  setNewOriginGroupId("");
+                  setNewOriginPipelineId("");
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nova Origem
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Nova Origem</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Nome *</Label>
+                      <Input
+                        value={newOriginName}
+                        onChange={(e) => setNewOriginName(e.target.value)}
+                        placeholder="Ex: Funil SE, Digital Influencer..."
+                      />
+                    </div>
+                    <div>
+                      <Label>Grupo</Label>
+                      <Select value={newOriginGroupId} onValueChange={setNewOriginGroupId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um grupo (opcional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Sem grupo</SelectItem>
+                          {originGroups.map(g => (
+                            <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Pipeline Associado</Label>
+                      <Select value={newOriginPipelineId} onValueChange={setNewOriginPipelineId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um pipeline (opcional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Nenhum pipeline específico</SelectItem>
+                          {pipelines.map(p => (
+                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Ao selecionar essa origem, o pipeline será automaticamente selecionado
+                      </p>
+                    </div>
+                    <Button onClick={handleCreateOrigin} disabled={saving} className="w-full">
+                      {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Criar
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Edit Origin Group Dialog */}
+              <Dialog open={editOriginGroupOpen} onOpenChange={(open) => {
+                setEditOriginGroupOpen(open);
+                if (!open) {
+                  setEditingOriginGroup(null);
+                  setNewOriginGroupName("");
+                  setNewOriginGroupIcon("target");
+                }
+              }}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Editar Grupo de Origem</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Nome *</Label>
+                      <Input
+                        value={newOriginGroupName}
+                        onChange={(e) => setNewOriginGroupName(e.target.value)}
+                        placeholder="Nome do grupo"
+                      />
+                    </div>
+                    <div>
+                      <Label>Ícone</Label>
+                      <Select value={newOriginGroupIcon} onValueChange={setNewOriginGroupIcon}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="target">🎯 Alvo</SelectItem>
+                          <SelectItem value="megaphone">📢 Marketing</SelectItem>
+                          <SelectItem value="shopping-cart">🛒 Vendas</SelectItem>
+                          <SelectItem value="folder">📁 Pasta</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleUpdateOriginGroup} disabled={saving} className="w-full">
+                      {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Salvar
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Edit Origin Dialog */}
+              <Dialog open={editOriginOpen} onOpenChange={(open) => {
+                setEditOriginOpen(open);
+                if (!open) {
+                  setEditingOrigin(null);
+                  setNewOriginName("");
+                  setNewOriginGroupId("");
+                  setNewOriginPipelineId("");
+                }
+              }}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Editar Origem</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Nome *</Label>
+                      <Input
+                        value={newOriginName}
+                        onChange={(e) => setNewOriginName(e.target.value)}
+                        placeholder="Nome da origem"
+                      />
+                    </div>
+                    <div>
+                      <Label>Grupo</Label>
+                      <Select value={newOriginGroupId} onValueChange={setNewOriginGroupId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um grupo (opcional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Sem grupo</SelectItem>
+                          {originGroups.map(g => (
+                            <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Pipeline Associado</Label>
+                      <Select value={newOriginPipelineId} onValueChange={setNewOriginPipelineId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um pipeline (opcional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Nenhum pipeline específico</SelectItem>
+                          {pipelines.map(p => (
+                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleUpdateOrigin} disabled={saving} className="w-full">
+                      {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Salvar
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Origin Groups List */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Grupos de Origem</CardTitle>
+                <CardDescription>
+                  Grupos organizam suas origens por categoria
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {originGroups.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhum grupo criado
+                  </p>
+                ) : (
+                  originGroups.map(group => (
+                    <div
+                      key={group.id}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                        selectedOriginGroup === group.id 
+                          ? "border-primary bg-primary/5" 
+                          : "border-border hover:bg-muted"
+                      }`}
+                      onClick={() => setSelectedOriginGroup(group.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">
+                            {group.icon === "target" ? "🎯" : 
+                             group.icon === "megaphone" ? "📢" : 
+                             group.icon === "shopping-cart" ? "🛒" : "📁"}
+                          </span>
+                          <span className="font-medium">{group.name}</span>
+                          <Badge variant="secondary" className="text-xs">
+                            {origins.filter(o => o.group_id === group.id).length} origens
+                          </Badge>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditOriginGroup(group);
+                            }}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteDialog({ type: "origin_group", id: group.id, name: group.name });
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Origins in selected group */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Origens {selectedOriginGroup && originGroups.find(g => g.id === selectedOriginGroup)?.name ? 
+                    `em "${originGroups.find(g => g.id === selectedOriginGroup)?.name}"` : ""}
+                </CardTitle>
+                <CardDescription>
+                  Cada origem representa um canal ou funil de captação de leads
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {groupOrigins.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    {selectedOriginGroup ? "Nenhuma origem neste grupo" : "Selecione um grupo"}
+                  </p>
+                ) : (
+                  groupOrigins.map(origin => (
+                    <div
+                      key={origin.id}
+                      className="p-3 rounded-lg border border-border flex items-center gap-3"
+                    >
+                      <Target className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex-1">
+                        <span className="font-medium">{origin.name}</span>
+                        {origin.pipeline_id && (
+                          <p className="text-xs text-muted-foreground">
+                            Pipeline: {pipelines.find(p => p.id === origin.pipeline_id)?.name || "-"}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => openEditOrigin(origin)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => setDeleteDialog({ type: "origin", id: origin.id, name: origin.name })}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
