@@ -650,13 +650,62 @@ const OnboardingTasksPage = () => {
       }
     });
     
+    // Also calculate the actual realized percentage per company for display
+    const realizedPercentByCompany = new Map<string, number | null>();
+    
+    activeCompanyIds.forEach(companyId => {
+      if (!companyId) return;
+      
+      const companyKpisList = companyKpis.filter(k => k.company_id === companyId && k.kpi_type === "monetary");
+      
+      if (companyKpisList.length === 0) {
+        realizedPercentByCompany.set(companyId, null); // No KPI configured
+        return;
+      }
+      
+      // Calculate monthly target (considering periodicity)
+      let totalMonthlyTarget = 0;
+      companyKpisList.forEach(kpi => {
+        if (kpi.periodicity === "daily") {
+          totalMonthlyTarget += kpi.target_value * daysInMonth;
+        } else if (kpi.periodicity === "weekly") {
+          totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
+        } else {
+          totalMonthlyTarget += kpi.target_value;
+        }
+      });
+      
+      if (totalMonthlyTarget === 0) {
+        realizedPercentByCompany.set(companyId, null); // Target is 0
+        return;
+      }
+      
+      // Get entries for this company in the period
+      const companyEntries = kpiEntries.filter(e => 
+        e.company_id === companyId &&
+        e.entry_date >= monthStart &&
+        e.entry_date <= monthEnd &&
+        companyKpisList.some(k => k.id === e.kpi_id)
+      );
+      
+      if (companyEntries.length === 0) {
+        realizedPercentByCompany.set(companyId, null); // No entries = N/A
+        return;
+      }
+      
+      const totalRealized = companyEntries.reduce((sum, e) => sum + e.value, 0);
+      const realizedPercent = Math.round((totalRealized / totalMonthlyTarget) * 100);
+      realizedPercentByCompany.set(companyId, realizedPercent);
+    });
+    
     return {
       meetingGoal: meetingGoalIds,
       above70: above70Ids,
       between50And70: between50And70Ids,
       below50: below50Ids,
       noGoal: noGoalIds,
-      hasGoal: companiesWithAnyKpiIds
+      hasGoal: companiesWithAnyKpiIds,
+      realizedPercent: realizedPercentByCompany
     };
   }, [dateRange, companies, companyKpis, kpiEntries]);
 
@@ -1426,6 +1475,9 @@ const OnboardingTasksPage = () => {
                 return { avgScore, riskLevel, riskInfo: getRiskLevelInfo(riskLevel) };
               })();
 
+              // Get the realized goal percentage for this company
+              const companyGoalPercent = companiesGoalRanges.realizedPercent.get(company.id);
+
               return (
               <div key={company.id}>
                 {/* Company Card - Mobile Optimized */}
@@ -1457,7 +1509,7 @@ const OnboardingTasksPage = () => {
                               </>
                             ) : null}
                           </div>
-                          {/* Mobile: Show CS/Consultant and Health inline */}
+                          {/* Mobile: Show CS/Consultant, Health and Goal % inline */}
                           <div className="flex sm:hidden flex-wrap items-center gap-x-2 text-[10px] text-muted-foreground mt-1">
                             <span>CS: {company.cs?.name || "—"}</span>
                             <span>Cons: {company.consultant?.name || "—"}</span>
@@ -1467,6 +1519,36 @@ const OnboardingTasksPage = () => {
                                 <span className={`font-semibold ${companyHealthData.riskInfo.color}`}>{companyHealthData.avgScore}</span>
                               </span>
                             )}
+                            <span className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
+                              companyGoalPercent === null || companyGoalPercent === undefined 
+                                ? 'bg-muted' 
+                                : companyGoalPercent >= 100 
+                                  ? 'bg-green-100' 
+                                  : companyGoalPercent >= 70 
+                                    ? 'bg-yellow-100' 
+                                    : 'bg-red-100'
+                            }`}>
+                              <Target className={`h-2.5 w-2.5 ${
+                                companyGoalPercent === null || companyGoalPercent === undefined 
+                                  ? 'text-muted-foreground' 
+                                  : companyGoalPercent >= 100 
+                                    ? 'text-green-600' 
+                                    : companyGoalPercent >= 70 
+                                      ? 'text-yellow-600' 
+                                      : 'text-red-600'
+                              }`} />
+                              <span className={`font-semibold ${
+                                companyGoalPercent === null || companyGoalPercent === undefined 
+                                  ? 'text-muted-foreground' 
+                                  : companyGoalPercent >= 100 
+                                    ? 'text-green-600' 
+                                    : companyGoalPercent >= 70 
+                                      ? 'text-yellow-600' 
+                                      : 'text-red-600'
+                              }`}>
+                                {companyGoalPercent === null || companyGoalPercent === undefined ? 'N/A' : `${companyGoalPercent}%`}
+                              </span>
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -1480,6 +1562,37 @@ const OnboardingTasksPage = () => {
                             </span>
                           </div>
                         )}
+                        {/* Goal % Indicator - Desktop */}
+                        <div className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full ${
+                          companyGoalPercent === null || companyGoalPercent === undefined 
+                            ? 'bg-muted' 
+                            : companyGoalPercent >= 100 
+                              ? 'bg-green-100' 
+                              : companyGoalPercent >= 70 
+                                ? 'bg-yellow-100' 
+                                : 'bg-red-100'
+                        }`}>
+                          <Target className={`h-3.5 w-3.5 ${
+                            companyGoalPercent === null || companyGoalPercent === undefined 
+                              ? 'text-muted-foreground' 
+                              : companyGoalPercent >= 100 
+                                ? 'text-green-600' 
+                                : companyGoalPercent >= 70 
+                                  ? 'text-yellow-600' 
+                                  : 'text-red-600'
+                          }`} />
+                          <span className={`text-sm font-semibold ${
+                            companyGoalPercent === null || companyGoalPercent === undefined 
+                              ? 'text-muted-foreground' 
+                              : companyGoalPercent >= 100 
+                                ? 'text-green-600' 
+                                : companyGoalPercent >= 70 
+                                  ? 'text-yellow-600' 
+                                  : 'text-red-600'
+                          }`}>
+                            {companyGoalPercent === null || companyGoalPercent === undefined ? 'N/A' : `${companyGoalPercent}%`}
+                          </span>
+                        </div>
                         {/* Desktop: Show CS/Consultant */}
                         <div className="hidden sm:block text-right text-sm">
                           <div className="text-muted-foreground">CS: {company.cs?.name || "—"}</div>
