@@ -87,11 +87,20 @@ export const CRMSettingsPage = () => {
   const [newReasonOpen, setNewReasonOpen] = useState(false);
   const [newTagOpen, setNewTagOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{ type: string; id: string; name: string } | null>(null);
+  
+  // Edit dialogs
+  const [editPipelineOpen, setEditPipelineOpen] = useState(false);
+  const [editStageOpen, setEditStageOpen] = useState(false);
+  const [editingPipeline, setEditingPipeline] = useState<Pipeline | null>(null);
+  const [editingStage, setEditingStage] = useState<Stage | null>(null);
 
   // Form states
   const [newPipelineName, setNewPipelineName] = useState("");
+  const [newPipelineDesc, setNewPipelineDesc] = useState("");
   const [newStageName, setNewStageName] = useState("");
   const [newStageColor, setNewStageColor] = useState("#6B7280");
+  const [newStageIsFinal, setNewStageIsFinal] = useState(false);
+  const [newStageFinalType, setNewStageFinalType] = useState<string | null>(null);
   const [newReasonName, setNewReasonName] = useState("");
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3B82F6");
@@ -137,15 +146,46 @@ export const CRMSettingsPage = () => {
     try {
       const { error } = await supabase
         .from("crm_pipelines")
-        .insert({ name: newPipelineName, is_default: pipelines.length === 0 });
+        .insert({ 
+          name: newPipelineName, 
+          description: newPipelineDesc || null,
+          is_default: pipelines.length === 0 
+        });
       
       if (error) throw error;
       toast.success("Pipeline criado");
       setNewPipelineOpen(false);
       setNewPipelineName("");
+      setNewPipelineDesc("");
       loadData();
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar pipeline");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdatePipeline = async () => {
+    if (!editingPipeline || !newPipelineName.trim()) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("crm_pipelines")
+        .update({ 
+          name: newPipelineName, 
+          description: newPipelineDesc || null,
+        })
+        .eq("id", editingPipeline.id);
+      
+      if (error) throw error;
+      toast.success("Pipeline atualizado");
+      setEditPipelineOpen(false);
+      setEditingPipeline(null);
+      setNewPipelineName("");
+      setNewPipelineDesc("");
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar pipeline");
     } finally {
       setSaving(false);
     }
@@ -163,19 +203,70 @@ export const CRMSettingsPage = () => {
           pipeline_id: selectedPipeline,
           color: newStageColor,
           sort_order: maxOrder + 1,
+          is_final: newStageIsFinal,
+          final_type: newStageIsFinal ? newStageFinalType : null,
         });
       
       if (error) throw error;
       toast.success("Etapa criada");
       setNewStageOpen(false);
-      setNewStageName("");
-      setNewStageColor("#6B7280");
+      resetStageForm();
       loadData();
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar etapa");
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleUpdateStage = async () => {
+    if (!editingStage || !newStageName.trim()) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("crm_stages")
+        .update({ 
+          name: newStageName, 
+          color: newStageColor,
+          is_final: newStageIsFinal,
+          final_type: newStageIsFinal ? newStageFinalType : null,
+        })
+        .eq("id", editingStage.id);
+      
+      if (error) throw error;
+      toast.success("Etapa atualizada");
+      setEditStageOpen(false);
+      setEditingStage(null);
+      resetStageForm();
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar etapa");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resetStageForm = () => {
+    setNewStageName("");
+    setNewStageColor("#6B7280");
+    setNewStageIsFinal(false);
+    setNewStageFinalType(null);
+  };
+
+  const openEditPipeline = (pipeline: Pipeline) => {
+    setEditingPipeline(pipeline);
+    setNewPipelineName(pipeline.name);
+    setNewPipelineDesc(pipeline.description || "");
+    setEditPipelineOpen(true);
+  };
+
+  const openEditStage = (stage: Stage) => {
+    setEditingStage(stage);
+    setNewStageName(stage.name);
+    setNewStageColor(stage.color);
+    setNewStageIsFinal(stage.is_final);
+    setNewStageFinalType(stage.final_type);
+    setEditStageOpen(true);
   };
 
   const handleCreateReason = async () => {
@@ -280,7 +371,13 @@ export const CRMSettingsPage = () => {
         <TabsContent value="pipelines" className="mt-6 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Pipelines</h2>
-            <Dialog open={newPipelineOpen} onOpenChange={setNewPipelineOpen}>
+            <Dialog open={newPipelineOpen} onOpenChange={(open) => {
+              setNewPipelineOpen(open);
+              if (!open) {
+                setNewPipelineName("");
+                setNewPipelineDesc("");
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button size="sm">
                   <Plus className="h-4 w-4 mr-2" />
@@ -293,16 +390,62 @@ export const CRMSettingsPage = () => {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label>Nome</Label>
+                    <Label>Nome *</Label>
                     <Input
                       value={newPipelineName}
                       onChange={(e) => setNewPipelineName(e.target.value)}
                       placeholder="Ex: Inbound, Outbound..."
                     />
                   </div>
+                  <div>
+                    <Label>Descrição</Label>
+                    <Input
+                      value={newPipelineDesc}
+                      onChange={(e) => setNewPipelineDesc(e.target.value)}
+                      placeholder="Descrição opcional..."
+                    />
+                  </div>
                   <Button onClick={handleCreatePipeline} disabled={saving} className="w-full">
                     {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Criar
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Pipeline Dialog */}
+            <Dialog open={editPipelineOpen} onOpenChange={(open) => {
+              setEditPipelineOpen(open);
+              if (!open) {
+                setEditingPipeline(null);
+                setNewPipelineName("");
+                setNewPipelineDesc("");
+              }
+            }}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Editar Pipeline</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Nome *</Label>
+                    <Input
+                      value={newPipelineName}
+                      onChange={(e) => setNewPipelineName(e.target.value)}
+                      placeholder="Nome do pipeline"
+                    />
+                  </div>
+                  <div>
+                    <Label>Descrição</Label>
+                    <Input
+                      value={newPipelineDesc}
+                      onChange={(e) => setNewPipelineDesc(e.target.value)}
+                      placeholder="Descrição opcional..."
+                    />
+                  </div>
+                  <Button onClick={handleUpdatePipeline} disabled={saving} className="w-full">
+                    {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Salvar
                   </Button>
                 </div>
               </DialogContent>
@@ -327,23 +470,41 @@ export const CRMSettingsPage = () => {
                     onClick={() => setSelectedPipeline(pipeline.id)}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{pipeline.name}</span>
-                        {pipeline.is_default && (
-                          <Badge variant="secondary" className="text-xs">Padrão</Badge>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{pipeline.name}</span>
+                          {pipeline.is_default && (
+                            <Badge variant="secondary" className="text-xs">Padrão</Badge>
+                          )}
+                        </div>
+                        {pipeline.description && (
+                          <p className="text-xs text-muted-foreground mt-1">{pipeline.description}</p>
                         )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteDialog({ type: "pipeline", id: pipeline.id, name: pipeline.name });
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditPipeline(pipeline);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteDialog({ type: "pipeline", id: pipeline.id, name: pipeline.name });
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -355,7 +516,10 @@ export const CRMSettingsPage = () => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">Etapas do Pipeline</CardTitle>
-                  <Dialog open={newStageOpen} onOpenChange={setNewStageOpen}>
+                  <Dialog open={newStageOpen} onOpenChange={(open) => {
+                    setNewStageOpen(open);
+                    if (!open) resetStageForm();
+                  }}>
                     <DialogTrigger asChild>
                       <Button size="sm" variant="outline">
                         <Plus className="h-4 w-4 mr-2" />
@@ -368,7 +532,7 @@ export const CRMSettingsPage = () => {
                       </DialogHeader>
                       <div className="space-y-4">
                         <div>
-                          <Label>Nome</Label>
+                          <Label>Nome *</Label>
                           <Input
                             value={newStageName}
                             onChange={(e) => setNewStageName(e.target.value)}
@@ -391,9 +555,108 @@ export const CRMSettingsPage = () => {
                             />
                           </div>
                         </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={newStageIsFinal}
+                            onCheckedChange={setNewStageIsFinal}
+                          />
+                          <Label>Etapa Final</Label>
+                        </div>
+                        {newStageIsFinal && (
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant={newStageFinalType === "won" ? "default" : "outline"}
+                              className={newStageFinalType === "won" ? "bg-green-600 hover:bg-green-700" : ""}
+                              onClick={() => setNewStageFinalType("won")}
+                            >
+                              Ganho
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={newStageFinalType === "lost" ? "default" : "outline"}
+                              className={newStageFinalType === "lost" ? "bg-red-600 hover:bg-red-700" : ""}
+                              onClick={() => setNewStageFinalType("lost")}
+                            >
+                              Perdido
+                            </Button>
+                          </div>
+                        )}
                         <Button onClick={handleCreateStage} disabled={saving} className="w-full">
                           {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                           Criar
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* Edit Stage Dialog */}
+                  <Dialog open={editStageOpen} onOpenChange={(open) => {
+                    setEditStageOpen(open);
+                    if (!open) {
+                      setEditingStage(null);
+                      resetStageForm();
+                    }
+                  }}>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Editar Etapa</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Nome *</Label>
+                          <Input
+                            value={newStageName}
+                            onChange={(e) => setNewStageName(e.target.value)}
+                            placeholder="Nome da etapa"
+                          />
+                        </div>
+                        <div>
+                          <Label>Cor</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="color"
+                              value={newStageColor}
+                              onChange={(e) => setNewStageColor(e.target.value)}
+                              className="w-16 h-10 p-1"
+                            />
+                            <Input
+                              value={newStageColor}
+                              onChange={(e) => setNewStageColor(e.target.value)}
+                              className="flex-1"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={newStageIsFinal}
+                            onCheckedChange={setNewStageIsFinal}
+                          />
+                          <Label>Etapa Final</Label>
+                        </div>
+                        {newStageIsFinal && (
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant={newStageFinalType === "won" ? "default" : "outline"}
+                              className={newStageFinalType === "won" ? "bg-green-600 hover:bg-green-700" : ""}
+                              onClick={() => setNewStageFinalType("won")}
+                            >
+                              Ganho
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={newStageFinalType === "lost" ? "default" : "outline"}
+                              className={newStageFinalType === "lost" ? "bg-red-600 hover:bg-red-700" : ""}
+                              onClick={() => setNewStageFinalType("lost")}
+                            >
+                              Perdido
+                            </Button>
+                          </div>
+                        )}
+                        <Button onClick={handleUpdateStage} disabled={saving} className="w-full">
+                          {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                          Salvar
                         </Button>
                       </div>
                     </DialogContent>
@@ -422,6 +685,14 @@ export const CRMSettingsPage = () => {
                           {stage.final_type === "won" ? "Ganho" : "Perdido"}
                         </Badge>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => openEditStage(stage)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
