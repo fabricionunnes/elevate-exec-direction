@@ -236,8 +236,8 @@ const OnboardingResultsPage = () => {
   // For consultants, don't consider consultant filter as active since they only see their own companies
   const hasActiveFilters = (currentStaff?.role !== "consultant" && filterConsultant !== "all") || filterService !== "all" || filterGoals !== "all" || filterResults !== "all" || searchTerm !== "";
   
-  // Count companies with results (considering consultant visibility)
-  const companiesWithResultsCount = useMemo(() => {
+  // Count companies with/without results based on filtered list (excluding the results filter itself)
+  const baseFilteredCompanies = useMemo(() => {
     return companies.filter(company => {
       // Consultants can only see their own companies
       if (currentStaff?.role === "consultant") {
@@ -245,9 +245,41 @@ const OnboardingResultsPage = () => {
           return false;
         }
       }
-      return companiesWithResults.has(company.id);
-    }).length;
-  }, [companies, companiesWithResults, currentStaff]);
+      
+      // Search filter
+      const matchesSearch = searchTerm === "" || 
+        company.name.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Consultant filter
+      const matchesConsultant = filterConsultant === "all" || 
+        company.cs_id === filterConsultant || 
+        company.consultant_id === filterConsultant;
+      
+      // Service filter
+      let matchesService = filterService === "all";
+      if (!matchesService) {
+        const companyProjects = projects.filter(p => p.onboarding_company_id === company.id);
+        matchesService = companyProjects.some(p => p.product_id === filterService);
+      }
+      
+      // Goals filter
+      let matchesGoals = filterGoals === "all";
+      if (!matchesGoals) {
+        const hasGoals = companiesWithGoals.has(company.id);
+        matchesGoals = filterGoals === "with_goals" ? hasGoals : !hasGoals;
+      }
+      
+      return matchesSearch && matchesConsultant && matchesService && matchesGoals;
+    });
+  }, [companies, searchTerm, filterConsultant, filterService, filterGoals, projects, currentStaff, companiesWithGoals]);
+
+  const companiesWithResultsCount = useMemo(() => {
+    return baseFilteredCompanies.filter(company => companiesWithResults.has(company.id)).length;
+  }, [baseFilteredCompanies, companiesWithResults]);
+
+  const companiesWithoutResultsCount = useMemo(() => {
+    return baseFilteredCompanies.filter(company => !companiesWithResults.has(company.id)).length;
+  }, [baseFilteredCompanies, companiesWithResults]);
 
   // Get selected company data
   const selectedCompany = useMemo(() => {
@@ -398,12 +430,7 @@ const OnboardingResultsPage = () => {
                       <BarChart3 className="h-5 w-5 text-amber-500" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{companies.filter(c => {
-                        if (currentStaff?.role === "consultant") {
-                          if (c.consultant_id !== currentStaff.id && c.cs_id !== currentStaff.id) return false;
-                        }
-                        return !companiesWithResults.has(c.id);
-                      }).length}</p>
+                      <p className="text-2xl font-bold">{companiesWithoutResultsCount}</p>
                       <p className="text-xs text-muted-foreground">
                         Empresas sem resultados
                       </p>
