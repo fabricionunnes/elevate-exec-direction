@@ -91,6 +91,18 @@ import FinancialModulePage from "./pages/onboarding-tasks/FinancialModulePage";
 import WhatsAppAdminPage from "./pages/onboarding-tasks/WhatsAppAdminPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
+// CRM Pages
+import {
+  CRMLayout,
+  CRMDashboardPage,
+  CRMPipelinePage,
+  CRMLeadsPage,
+  CRMLeadDetailPage,
+  CRMActivitiesPage,
+  CRMReportsPage,
+  CRMSettingsPage,
+} from "./pages/crm";
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -189,6 +201,17 @@ const App = () => (
             <Route path="/360" element={<Assessment360Page />} />
             <Route path="/avaliacao" element={<UnifiedAssessmentPage />} />
             <Route path="/onboarding-tasks/:projectId/reports" element={<AssessmentReportsPage />} />
+            
+            {/* CRM Comercial */}
+            <Route path="/crm" element={<CRMLayout />}>
+              <Route index element={<CRMDashboardPage />} />
+              <Route path="pipeline" element={<CRMPipelinePage />} />
+              <Route path="leads" element={<CRMLeadsPage />} />
+              <Route path="leads/:id" element={<CRMLeadDetailPage />} />
+              <Route path="activities" element={<CRMActivitiesPage />} />
+              <Route path="reports" element={<CRMReportsPage />} />
+              <Route path="settings" element={<CRMSettingsPage />} />
+            </Route>
             
             {/* Portal do Planejamento 2026 */}
             <Route path="/portal" element={<PortalLandingPage />} />
