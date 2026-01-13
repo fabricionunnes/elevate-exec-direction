@@ -333,15 +333,12 @@ const DashboardMetrics = ({
     const start = dateRange.start;
     const end = dateRange.end;
 
-    // Base: empresas que têm contrato com término (não-recorrente) no período
-    const eligibleCompanyIds = new Set(
-      filteredCompanies
-        .filter(c => c.payment_method !== "monthly" && c.contract_end_date && isWithinInterval(new Date(c.contract_end_date), { start, end }))
-        .map(c => c.id)
-    );
+    // Get all company IDs from filtered companies
+    const filteredCompanyIdSet = new Set(filteredCompanies.map(c => c.id));
 
+    // Count all renewals that happened in the period for filtered companies
     const renewalsInPeriod = contractRenewals.filter(r => {
-      if (!eligibleCompanyIds.has(r.company_id)) return false;
+      if (!filteredCompanyIdSet.has(r.company_id)) return false;
       const d = new Date(r.renewal_date.substring(0, 10) + "T12:00:00");
       return isWithinInterval(d, { start, end });
     });
@@ -350,6 +347,13 @@ const DashboardMetrics = ({
 
     const renewalsCount = renewalsInPeriod.length;
     const renewedClientsCount = renewedCompanyIds.size;
+
+    // For percentage, use companies with contract ending in period (eligible for renewal)
+    const eligibleCompanyIds = new Set(
+      filteredCompanies
+        .filter(c => c.payment_method !== "monthly" && c.contract_end_date && isWithinInterval(new Date(c.contract_end_date), { start, end }))
+        .map(c => c.id)
+    );
     const eligibleCount = eligibleCompanyIds.size;
     const renewedPercent = eligibleCount > 0 ? Math.round((renewedClientsCount / eligibleCount) * 100) : 0;
 
