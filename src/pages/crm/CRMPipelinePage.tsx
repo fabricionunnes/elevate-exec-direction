@@ -6,6 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { 
   Plus, 
   Search, 
@@ -15,7 +24,8 @@ import {
   Clock,
   AlertTriangle,
   DollarSign,
-  GripVertical
+  GripVertical,
+  Loader2
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -59,6 +69,16 @@ export const CRMPipelinePage = () => {
   const [loading, setLoading] = useState(true);
   const [addLeadOpen, setAddLeadOpen] = useState(false);
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
+  
+  // Stage move dialog state
+  const [stageMoveDialog, setStageMoveDialog] = useState<{
+    open: boolean;
+    leadId: string;
+    targetStageId: string;
+    targetStageName: string;
+  }>({ open: false, leadId: "", targetStageId: "", targetStageName: "" });
+  const [stageNote, setStageNote] = useState("");
+  const [movingLead, setMovingLead] = useState(false);
 
   const loadPipelines = async () => {
     const { data } = await supabase
@@ -154,33 +174,65 @@ export const CRMPipelinePage = () => {
       return;
     }
 
-    const leadId = draggedLead.id;
+    // Find target stage name
+    const targetStage = stages.find(s => s.id === stageId);
+    
+    // Open dialog to ask for note
+    setStageMoveDialog({
+      open: true,
+      leadId: draggedLead.id,
+      targetStageId: stageId,
+      targetStageName: targetStage?.name || "Nova Etapa"
+    });
+    setStageNote("");
+    setDraggedLead(null);
+  };
 
+  const confirmStageMove = async () => {
+    if (!stageMoveDialog.leadId || !stageMoveDialog.targetStageId) return;
+    
+    setMovingLead(true);
+    
     // Optimistic update
     setLeads(prev =>
       prev.map(l =>
-        l.id === leadId ? { ...l, stage_id: stageId } : l
+        l.id === stageMoveDialog.leadId ? { ...l, stage_id: stageMoveDialog.targetStageId } : l
       )
     );
 
     try {
+      // Update lead stage
       const { error } = await supabase
         .from("crm_leads")
-        .update({ stage_id: stageId })
-        .eq("id", leadId);
+        .update({ stage_id: stageMoveDialog.targetStageId })
+        .eq("id", stageMoveDialog.leadId);
 
       if (error) throw error;
       
+      // Add note if provided
+      if (stageNote.trim()) {
+        await supabase
+          .from("crm_lead_history")
+          .insert({
+            lead_id: stageMoveDialog.leadId,
+            action: "note_added",
+            notes: stageNote.trim(),
+            field_changed: "stage_change_note",
+            new_value: stageMoveDialog.targetStageName
+          });
+      }
+      
       // Create automatic activities for this stage
-      await createStageActivities(leadId, stageId);
+      await createStageActivities(stageMoveDialog.leadId, stageMoveDialog.targetStageId);
       
       toast.success("Lead movido com sucesso");
+      setStageMoveDialog({ open: false, leadId: "", targetStageId: "", targetStageName: "" });
     } catch (error) {
       console.error("Error moving lead:", error);
       toast.error("Erro ao mover lead");
       loadStagesAndLeads(); // Revert
     } finally {
-      setDraggedLead(null);
+      setMovingLead(false);
     }
   };
 
@@ -371,6 +423,52 @@ export const CRMPipelinePage = () => {
         pipelineId={selectedPipeline}
         onSuccess={loadStagesAndLeads}
       />
+
+      {/* Stage Move Confirmation Dialog */}
+      <Dialog 
+        open={stageMoveDialog.open} 
+        onOpenChange={(open) => {
+          if (!open && !movingLead) {
+            setStageMoveDialog({ open: false, leadId: "", targetStageId: "", targetStageName: "" });
+            // Revert optimistic update if cancelled
+            loadStagesAndLeads();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mover para {stageMoveDialog.targetStageName}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Observação (opcional)</Label>
+              <Textarea
+                value={stageNote}
+                onChange={(e) => setStageNote(e.target.value)}
+                placeholder="Adicione uma observação sobre a mudança de etapa..."
+                rows={3}
+                className="mt-2"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setStageMoveDialog({ open: false, leadId: "", targetStageId: "", targetStageName: "" });
+                loadStagesAndLeads();
+              }}
+              disabled={movingLead}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={confirmStageMove} disabled={movingLead}>
+              {movingLead && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
