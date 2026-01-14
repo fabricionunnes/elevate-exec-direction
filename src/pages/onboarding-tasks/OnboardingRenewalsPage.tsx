@@ -494,42 +494,14 @@ export default function OnboardingRenewalsPage() {
     }
   };
 
-  const handlePlanTypeChange = async (companyId: string, planType: string) => {
+  // Only update local state - plan type will only be saved when clicking "Renovar"
+  const handlePlanTypeChange = (companyId: string, planType: string) => {
     if (!isAdmin) return;
     
-    const company = companies.find(c => c.id === companyId);
-    if (!company) return;
-
-    try {
-      const plan = PLAN_TYPE_OPTIONS.find(p => p.value === planType);
-      let newEndDate: string | null = null;
-
-      // Calculate end date based on plan type (monthly = no end date)
-      if (plan && plan.months) {
-        const startDate = company.contract_start_date 
-          ? parseISO(company.contract_start_date) 
-          : new Date();
-        newEndDate = format(addMonths(startDate, plan.months), "yyyy-MM-dd");
-      }
-
-      const { error } = await supabase
-        .from("onboarding_companies")
-        .update({ 
-          renewal_plan_type: planType,
-          contract_end_date: newEndDate 
-        })
-        .eq("id", companyId);
-
-      if (error) throw error;
-      
-      setCompanies(prev => prev.map(c => 
-        c.id === companyId ? { ...c, renewal_plan_type: planType, contract_end_date: newEndDate } : c
-      ));
-      toast.success("Plano atualizado");
-    } catch (error) {
-      console.error("Error updating plan type:", error);
-      toast.error("Erro ao atualizar plano");
-    }
+    // Only update local state, do NOT save to database automatically
+    setCompanies(prev => prev.map(c => 
+      c.id === companyId ? { ...c, renewal_plan_type: planType } : c
+    ));
   };
 
   const handleRenewalStatusChange = async (companyId: string, status: string) => {
