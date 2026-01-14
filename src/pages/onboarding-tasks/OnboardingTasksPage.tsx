@@ -797,18 +797,21 @@ const OnboardingTasksPage = () => {
         const today = startOfDay(new Date());
         
         if (activeMetricFilter.type === "contracts" && activeMetricFilter.value === "ending") {
-          // Contratos recorrentes e empresas encerradas não aparecem
-          if (company.payment_method === "monthly" || company.status === "inactive" || company.status === "closed") {
+          // Contratos recorrentes, empresas encerradas e projetos encerrados não aparecem
+          const hasClosedProject = company.projects?.some(p => p.status === "closed" || p.status === "completed");
+          if (company.payment_method === "monthly" || company.status === "inactive" || company.status === "closed" || hasClosedProject) {
             matchesMetricFilter = false;
           } else if (!company.contract_end_date) {
             matchesMetricFilter = false;
           } else {
             const endDate = new Date(company.contract_end_date);
-            matchesMetricFilter = isWithinInterval(endDate, { start: dateRange.start, end: dateRange.end });
+            // Vencendo: data de fim dentro do período E ainda não passou
+            matchesMetricFilter = isWithinInterval(endDate, { start: dateRange.start, end: dateRange.end }) && !isBefore(endDate, today);
           }
         } else if (activeMetricFilter.type === "contracts" && activeMetricFilter.value === "expired") {
-          // Contratos recorrentes e empresas encerradas não aparecem
-          if (company.payment_method === "monthly" || company.status === "inactive" || company.status === "closed") {
+          // Contratos recorrentes, empresas encerradas e projetos encerrados não aparecem
+          const hasClosedProject = company.projects?.some(p => p.status === "closed" || p.status === "completed");
+          if (company.payment_method === "monthly" || company.status === "inactive" || company.status === "closed" || hasClosedProject) {
             matchesMetricFilter = false;
           } else if (!company.contract_end_date) {
             matchesMetricFilter = false;
