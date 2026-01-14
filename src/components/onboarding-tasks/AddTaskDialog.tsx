@@ -86,6 +86,7 @@ export const AddTaskDialog = ({
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string>("");
+  const [projectConsultantId, setProjectConsultantId] = useState<string | null>(null);
 
   // Fetch staff with calendar via edge function (like ScheduleMeetingDialog)
   useEffect(() => {
@@ -126,15 +127,21 @@ export const AddTaskDialog = ({
         setStaffWithCalendar(staffList);
       }
 
-      // Get company name for meeting title
+      // Get company name and consultant for meeting title and default responsible
       const { data: projectData } = await supabase
         .from("onboarding_projects")
-        .select("onboarding_company:onboarding_companies(name)")
+        .select("onboarding_company:onboarding_companies(name), consultant_id")
         .eq("id", projectId)
         .single();
 
       if (projectData?.onboarding_company?.name) {
         setCompanyName(projectData.onboarding_company.name);
+      }
+      
+      // Set project consultant as default responsible
+      if (projectData?.consultant_id) {
+        setProjectConsultantId(projectData.consultant_id);
+        setResponsibleStaffId(projectData.consultant_id);
       }
     };
 
@@ -168,14 +175,15 @@ export const AddTaskDialog = ({
       setDescription("");
       setDueDate(undefined);
       setPhase("");
-      setResponsibleStaffId("");
+      // Set consultant as default responsible when opening
+      setResponsibleStaffId(projectConsultantId || "");
       setRecurrence(null);
       setIsMeeting(false);
       setMeetingTime("09:00");
       setMeetingDuration("60");
       setTargetCalendarStaffId("");
     }
-  }, [open, initialTitle]);
+  }, [open, initialTitle, projectConsultantId]);
 
   const createGoogleMeetMeeting = async () => {
     if (!dueDate || !targetCalendarStaffId) {
