@@ -351,8 +351,9 @@ export const GenerateStrategicPlanningDialog = ({
         return pdf.splitTextToSize(text, maxWidth);
       };
 
-      // Load and add logo
+      // Load and add logo with high quality
       const img = new Image();
+      img.crossOrigin = "anonymous";
       img.src = logoUnv;
       await new Promise((resolve) => {
         img.onload = resolve;
@@ -360,9 +361,23 @@ export const GenerateStrategicPlanningDialog = ({
       });
 
       if (img.complete && img.naturalWidth > 0) {
-        const logoWidth = 50;
+        // Use canvas to render at higher resolution for better quality
+        const scale = 3; // Render at 3x resolution for crisp output
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth * scale;
+        canvas.height = img.naturalHeight * scale;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.scale(scale, scale);
+          ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
+        }
+        
+        const logoWidth = 60; // Slightly larger logo
         const logoHeight = (img.naturalHeight / img.naturalWidth) * logoWidth;
-        pdf.addImage(img, "PNG", (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
+        const logoDataUrl = canvas.toDataURL("image/png", 1.0);
+        pdf.addImage(logoDataUrl, "PNG", (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight, undefined, "FAST");
         y += logoHeight + 10;
       }
 
