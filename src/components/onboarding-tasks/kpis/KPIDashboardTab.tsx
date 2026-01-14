@@ -24,7 +24,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter, UsersRound } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter, UsersRound, Layers } from "lucide-react";
 import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidget";
 import { GamificationDashboardWidget } from "../gamification/GamificationDashboardWidget";
 import { SalesHistoryDialog } from "./SalesHistoryDialog";
@@ -40,6 +40,14 @@ interface KPI {
   effective_target?: number; // Monthly target or default target
   monthly_targets?: Record<string, number>; // Multiple target levels: { "Meta": 100, "Super Meta": 150 }
   is_individual: boolean;
+  is_active: boolean;
+  sector_id?: string | null;
+}
+
+interface Sector {
+  id: string;
+  name: string;
+  unit_id: string | null;
   is_active: boolean;
 }
 
@@ -66,6 +74,7 @@ interface Entry {
   value: number;
   unit_id: string | null;
   team_id: string | null;
+  sector_id: string | null;
 }
 
 interface Unit {
@@ -99,6 +108,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
   const [entries, setEntries] = useState<Entry[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
   const [allMonthlyTargets, setAllMonthlyTargets] = useState<MonthlyTarget[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
@@ -109,6 +119,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
   const [selectedSalesperson, setSelectedSalesperson] = useState<string>("all");
   const [selectedUnit, setSelectedUnit] = useState<string>("all");
   const [selectedTeam, setSelectedTeam] = useState<string>("all");
+  const [selectedSector, setSelectedSector] = useState<string>("all");
   const [salesHistoryRefreshKey, setSalesHistoryRefreshKey] = useState(0);
   const [contractStartDate, setContractStartDate] = useState<string | null>(null);
 
@@ -129,12 +140,13 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       // Get the month from the selected date range for monthly targets
       const selectedMonthYear = format(new Date(dateRange.start), "yyyy-MM");
 
-      const [kpisRes, salespeopleRes, entriesRes, unitsRes, teamsRes, companyRes, monthlyTargetsRes] = await Promise.all([
+      const [kpisRes, salespeopleRes, entriesRes, unitsRes, teamsRes, sectorsRes, companyRes, monthlyTargetsRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
         supabase.from("company_salespeople").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("kpi_entries").select("*").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end),
         supabase.from("company_units").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("company_teams").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
+        supabase.from("company_sectors").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("onboarding_companies").select("contract_start_date").eq("id", companyId).single(),
         supabase.from("kpi_monthly_targets").select("*").eq("company_id", companyId).eq("month_year", selectedMonthYear).order("level_order"),
       ]);
@@ -150,6 +162,8 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
         unitsError: unitsRes.error,
         teams: teamsRes.data?.length || 0,
         teamsError: teamsRes.error,
+        sectors: sectorsRes.data?.length || 0,
+        sectorsError: sectorsRes.error,
         monthlyTargets: monthlyTargetsRes.data?.length || 0,
       });
 
@@ -158,6 +172,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       if (entriesRes.error) throw entriesRes.error;
       if (unitsRes.error) throw unitsRes.error;
       if (teamsRes.error) throw teamsRes.error;
+      if (sectorsRes.error) throw sectorsRes.error;
 
       // Store all monthly targets for later filtering by unit/salesperson
       setAllMonthlyTargets((monthlyTargetsRes.data || []) as MonthlyTarget[]);
@@ -190,6 +205,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       setEntries(entriesRes.data || []);
       setUnits(unitsRes.data || []);
       setTeams(teamsRes.data || []);
+      setSectors(sectorsRes.data || []);
       if (companyRes.data) {
         setContractStartDate(companyRes.data.contract_start_date);
       }
@@ -289,14 +305,21 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     }
   };
 
-  // Filter entries based on selected unit, team, and salesperson
+  // Filter entries based on selected unit, team, sector, and salesperson
   const getFilteredEntries = () => {
     return entries.filter(e => {
       if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
+      if (selectedSector !== "all" && e.sector_id !== selectedSector) return false;
       if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
       return true;
     });
+  };
+
+  // Filter KPIs based on selected sector (show KPIs that belong to this sector or have no sector - shared KPIs)
+  const getFilteredKpis = () => {
+    if (selectedSector === "all") return kpis;
+    return kpis.filter(kpi => kpi.sector_id === selectedSector || kpi.sector_id === null);
   };
 
   // Calculate KPI summaries
@@ -342,6 +365,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     const monthEntries = allMonthEntries.filter(e => {
       if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
+      if (selectedSector !== "all" && e.sector_id !== selectedSector) return false;
       if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
       return true;
     });
@@ -350,7 +374,8 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     let totalRealized = 0;
     let totalTarget = 0;
 
-    kpis.forEach(kpi => {
+    const filteredKpis = getFilteredKpis();
+    filteredKpis.forEach(kpi => {
       const kpiEntries = monthEntries.filter(e => e.kpi_id === kpi.id);
       const kpiTotal = kpiEntries.reduce((sum, e) => sum + e.value, 0);
       
@@ -400,6 +425,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
       if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
+      if (selectedSector !== "all" && e.sector_id !== selectedSector) return false;
       return true;
     });
 
@@ -421,8 +447,9 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
 
   // Get target vs realized chart data - ALWAYS use monetary KPIs (faturamento, receita, valor de vendas)
   const getTargetVsRealizedData = () => {
-    // Get only monetary KPIs for this chart
-    const monetaryKpis = kpis.filter(k => k.kpi_type === "monetary");
+    // Get only monetary KPIs for this chart (filtered by sector)
+    const filteredKpis = getFilteredKpis();
+    const monetaryKpis = filteredKpis.filter(k => k.kpi_type === "monetary");
     const monetaryKpiIds = monetaryKpis.map(k => k.id);
     
     // Filter entries to only include monetary KPIs and apply unit/team/salesperson filter
@@ -430,6 +457,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       if (!monetaryKpiIds.includes(e.kpi_id)) return false;
       if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
+      if (selectedSector !== "all" && e.sector_id !== selectedSector) return false;
       if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
       return true;
     });
@@ -813,6 +841,26 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
                       .filter(t => selectedUnit === "all" || t.unit_id === selectedUnit || t.unit_id === null)
                       .map(team => (
                         <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {sectors.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs sm:text-sm">Setor</Label>
+                <Select value={selectedSector} onValueChange={(value) => {
+                  setSelectedSector(value);
+                }}>
+                  <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    <SelectItem value="all">Todos</SelectItem>
+                    {sectors
+                      .filter(s => selectedUnit === "all" || s.unit_id === selectedUnit || s.unit_id === null)
+                      .map(sector => (
+                        <SelectItem key={sector.id} value={sector.id}>{sector.name}</SelectItem>
                       ))}
                   </SelectContent>
                 </Select>
