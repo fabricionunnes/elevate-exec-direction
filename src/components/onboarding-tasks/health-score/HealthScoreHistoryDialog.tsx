@@ -865,50 +865,132 @@ Forneça insights práticos para melhorar a saúde geral dos clientes.`;
                 </TabsContent>
 
                 <TabsContent value="insights" className="mt-0 space-y-4 pr-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Lightbulb className="h-4 w-4 text-yellow-500" />
-                        Insights e Recomendações
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {!aiInsights && !loadingInsights && (
-                        <div className="text-center py-8">
-                          <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                          <p className="text-muted-foreground mb-4">
-                            Gere insights personalizados com base nos dados de saúde da sua carteira
+                  {/* Empty State */}
+                  {!aiInsights && !loadingInsights && (
+                    <Card className="border-dashed border-2 bg-gradient-to-br from-background to-muted/30">
+                      <CardContent className="py-12">
+                        <div className="text-center">
+                          <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4">
+                            <Sparkles className="h-8 w-8 text-primary" />
+                          </div>
+                          <h3 className="text-lg font-semibold mb-2">Análise Inteligente</h3>
+                          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                            Gere insights personalizados com base nos dados de saúde da sua carteira usando inteligência artificial.
                           </p>
-                          <Button onClick={generateAIInsights} className="gap-2">
-                            <Sparkles className="h-4 w-4" />
+                          <Button onClick={generateAIInsights} size="lg" className="gap-2 shadow-lg">
+                            <Sparkles className="h-5 w-5" />
                             Gerar Insights com IA
                           </Button>
                         </div>
-                      )}
+                      </CardContent>
+                    </Card>
+                  )}
 
-                      {loadingInsights && (
-                        <div className="flex items-center justify-center py-8">
-                          <RefreshCw className="h-6 w-6 animate-spin text-primary mr-2" />
-                          <span>Analisando dados...</span>
+                  {/* Loading State */}
+                  {loadingInsights && (
+                    <Card className="overflow-hidden">
+                      <CardContent className="py-12">
+                        <div className="flex flex-col items-center justify-center gap-4">
+                          <div className="relative">
+                            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                              <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                            <div className="absolute inset-0 rounded-full border-4 border-primary/20 animate-pulse" />
+                          </div>
+                          <div className="text-center">
+                            <p className="font-medium">Analisando sua carteira...</p>
+                            <p className="text-sm text-muted-foreground">Isso pode levar alguns segundos</p>
+                          </div>
                         </div>
-                      )}
+                      </CardContent>
+                    </Card>
+                  )}
 
-                      {aiInsights && (
-                        <div className="prose prose-sm max-w-none">
-                          <ReactMarkdown>{aiInsights}</ReactMarkdown>
+                  {/* Insights Content */}
+                  {aiInsights && (
+                    <div className="space-y-4">
+                      {/* Header with regenerate button */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5">
+                            <Lightbulb className="h-5 w-5 text-primary" />
+                          </div>
+                          <h3 className="font-semibold">Insights e Recomendações</h3>
                         </div>
-                      )}
+                        <Button variant="outline" size="sm" onClick={generateAIInsights} className="gap-2">
+                          <RefreshCw className="h-4 w-4" />
+                          Regenerar
+                        </Button>
+                      </div>
 
-                      {aiInsights && !loadingInsights && (
-                        <div className="mt-4 pt-4 border-t">
-                          <Button variant="outline" size="sm" onClick={generateAIInsights} className="gap-2">
-                            <RefreshCw className="h-4 w-4" />
-                            Gerar Novamente
-                          </Button>
-                        </div>
+                      {/* Insights Card */}
+                      <Card className="overflow-hidden border-0 shadow-lg">
+                        <div className="h-1 bg-gradient-to-r from-primary via-primary/60 to-primary/30" />
+                        <CardContent className="pt-6">
+                          <div className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-h2:text-base prose-h2:mt-6 prose-h2:mb-3 prose-h2:border-b prose-h2:pb-2 prose-h3:text-sm prose-h3:mt-4 prose-h3:mb-2 prose-p:text-muted-foreground prose-p:leading-relaxed prose-strong:text-foreground prose-ul:my-3 prose-li:text-muted-foreground prose-li:marker:text-primary">
+                            <ReactMarkdown
+                              components={{
+                                h2: ({ children }) => (
+                                  <h2 className="flex items-center gap-2 text-base font-semibold border-b pb-2 mt-6 mb-3">
+                                    <span className="w-1 h-5 rounded-full bg-primary" />
+                                    {children}
+                                  </h2>
+                                ),
+                                h3: ({ children }) => (
+                                  <h3 className="flex items-center gap-2 text-sm font-medium mt-4 mb-2">
+                                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                                    {children}
+                                  </h3>
+                                ),
+                                ul: ({ children }) => (
+                                  <ul className="space-y-2 my-3 pl-0">
+                                    {children}
+                                  </ul>
+                                ),
+                                li: ({ children }) => (
+                                  <li className="flex items-start gap-2 text-sm text-muted-foreground list-none">
+                                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                                    <span>{children}</span>
+                                  </li>
+                                ),
+                                strong: ({ children }) => (
+                                  <strong className="font-semibold text-foreground">{children}</strong>
+                                ),
+                                p: ({ children }) => (
+                                  <p className="text-sm text-muted-foreground leading-relaxed my-2">{children}</p>
+                                ),
+                              }}
+                            >
+                              {aiInsights}
+                            </ReactMarkdown>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Quick Stats */}
+                      {pillarAverages && (
+                        <Card className="bg-muted/30">
+                          <CardContent className="py-4">
+                            <p className="text-xs text-muted-foreground mb-3">Dados utilizados na análise</p>
+                            <div className="grid grid-cols-4 gap-3">
+                              {[
+                                { label: "Satisfação", value: pillarAverages.satisfaction, color: "from-rose-500 to-pink-500" },
+                                { label: "Metas", value: pillarAverages.goals, color: "from-amber-500 to-orange-500" },
+                                { label: "Engajamento", value: pillarAverages.engagement, color: "from-blue-500 to-cyan-500" },
+                                { label: "Suporte", value: pillarAverages.support, color: "from-emerald-500 to-teal-500" },
+                              ].map((p) => (
+                                <div key={p.label} className="relative overflow-hidden rounded-lg bg-background p-3 text-center">
+                                  <div className={cn("absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r", p.color)} />
+                                  <p className={cn("text-xl font-bold", getScoreColor(p.value))}>{p.value}</p>
+                                  <p className="text-[10px] text-muted-foreground">{p.label}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
                       )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="detalhes" className="mt-0 space-y-4 pr-4">
