@@ -144,17 +144,31 @@ async function uploadToAssemblyAI(fileId: string, accessToken: string, assemblyA
 
   if (!downloadResponse.ok) {
     const errorStatus = downloadResponse.status;
-    const errorText = await downloadResponse.text().catch(() => 'Unknown error');
-    console.error('Google Drive download error:', errorStatus, errorText.substring(0, 500));
-    
+    const raw = await downloadResponse.text().catch(() => '');
+    console.error('Google Drive download error:', errorStatus, raw.substring(0, 1000));
+
+    // Try to parse Google error payload
+    let googleReason: string | undefined;
+    try {
+      const parsed = JSON.parse(raw);
+      googleReason = parsed?.error?.errors?.[0]?.reason;
+    } catch {
+      // ignore
+    }
+
     if (errorStatus === 403) {
-      throw new Error('Acesso negado ao arquivo do Google Drive. Verifique se você tem permissão de visualização.');
+      if (googleReason === 'cannotDownloadFile') {
+        throw new Error(
+          'O Google Drive bloqueou o download deste arquivo (cannotDownloadFile). Normalmente isso acontece quando a gravação não pertence a esta conta Google ou quando o proprietário desativou “baixar/imprimir/copiar” para quem tem acesso. Use a conta Google dona da gravação (a mesma que organizou a reunião) ou peça ao proprietário para permitir download/baixar.'
+        );
+      }
+      throw new Error('Acesso negado ao arquivo do Google Drive. Verifique se você tem permissão de download/visualização.');
     } else if (errorStatus === 404) {
       throw new Error('Arquivo não encontrado no Google Drive.');
     } else if (errorStatus === 401) {
       throw new Error('Sessão do Google expirada. Reconecte o Google nas configurações.');
     }
-    
+
     throw new Error(`Falha ao baixar arquivo do Google Drive (${errorStatus})`);
   }
 
