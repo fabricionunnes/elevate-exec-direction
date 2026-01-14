@@ -638,6 +638,7 @@ export type Database = {
           kpi_type: string
           name: string
           periodicity: string
+          sector_id: string | null
           sort_order: number | null
           target_value: number
           updated_at: string | null
@@ -652,6 +653,7 @@ export type Database = {
           kpi_type: string
           name: string
           periodicity: string
+          sector_id?: string | null
           sort_order?: number | null
           target_value?: number
           updated_at?: string | null
@@ -666,6 +668,7 @@ export type Database = {
           kpi_type?: string
           name?: string
           periodicity?: string
+          sector_id?: string | null
           sort_order?: number | null
           target_value?: number
           updated_at?: string | null
@@ -676,6 +679,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_kpis_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "company_sectors"
             referencedColumns: ["id"]
           },
         ]
@@ -784,6 +794,60 @@ export type Database = {
           },
           {
             foreignKeyName: "company_salespeople_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "company_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_sectors: {
+        Row: {
+          code: string | null
+          company_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+          unit_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          code?: string | null
+          company_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+          unit_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string | null
+          company_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+          unit_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_sectors_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_sectors_unit_id_fkey"
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "company_units"
@@ -3716,6 +3780,7 @@ export type Database = {
           kpi_id: string
           observations: string | null
           salesperson_id: string
+          sector_id: string | null
           team_id: string | null
           unit_id: string | null
           updated_at: string | null
@@ -3729,6 +3794,7 @@ export type Database = {
           kpi_id: string
           observations?: string | null
           salesperson_id: string
+          sector_id?: string | null
           team_id?: string | null
           unit_id?: string | null
           updated_at?: string | null
@@ -3742,6 +3808,7 @@ export type Database = {
           kpi_id?: string
           observations?: string | null
           salesperson_id?: string
+          sector_id?: string | null
           team_id?: string | null
           unit_id?: string | null
           updated_at?: string | null
@@ -3770,6 +3837,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "kpi_entries_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "company_sectors"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "kpi_entries_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -3795,6 +3869,7 @@ export type Database = {
           level_order: number
           month_year: string
           salesperson_id: string | null
+          sector_id: string | null
           target_value: number
           team_id: string | null
           unit_id: string | null
@@ -3809,6 +3884,7 @@ export type Database = {
           level_order?: number
           month_year: string
           salesperson_id?: string | null
+          sector_id?: string | null
           target_value?: number
           team_id?: string | null
           unit_id?: string | null
@@ -3823,6 +3899,7 @@ export type Database = {
           level_order?: number
           month_year?: string
           salesperson_id?: string | null
+          sector_id?: string | null
           target_value?: number
           team_id?: string | null
           unit_id?: string | null
@@ -3848,6 +3925,13 @@ export type Database = {
             columns: ["salesperson_id"]
             isOneToOne: false
             referencedRelation: "company_salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_monthly_targets_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "company_sectors"
             referencedColumns: ["id"]
           },
           {
@@ -6290,6 +6374,42 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "portal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salesperson_sectors: {
+        Row: {
+          created_at: string | null
+          id: string
+          salesperson_id: string
+          sector_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          salesperson_id: string
+          sector_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          salesperson_id?: string
+          sector_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salesperson_sectors_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "company_salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesperson_sectors_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "company_sectors"
             referencedColumns: ["id"]
           },
         ]

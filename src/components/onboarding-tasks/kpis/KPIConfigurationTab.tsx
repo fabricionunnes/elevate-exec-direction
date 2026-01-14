@@ -42,6 +42,13 @@ interface KPI {
   is_required: boolean;
   is_active: boolean;
   sort_order: number;
+  sector_id: string | null;
+}
+
+interface Sector {
+  id: string;
+  name: string;
+  is_active: boolean;
 }
 
 interface KPIConfigurationTabProps {
@@ -52,6 +59,7 @@ interface KPIConfigurationTabProps {
 
 export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KPIConfigurationTabProps) => {
   const [kpis, setKpis] = useState<KPI[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [showMonthlyTargets, setShowMonthlyTargets] = useState(false);
@@ -63,11 +71,41 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
     target_value: 0,
     is_individual: true,
     is_required: true,
+    sector_id: "",
   });
 
   useEffect(() => {
-    fetchKpis();
+    fetchData();
   }, [companyId]);
+
+  const fetchData = async () => {
+    try {
+      const [kpisRes, sectorsRes] = await Promise.all([
+        supabase
+          .from("company_kpis")
+          .select("*")
+          .eq("company_id", companyId)
+          .order("sort_order"),
+        supabase
+          .from("company_sectors")
+          .select("id, name, is_active")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name"),
+      ]);
+
+      if (kpisRes.error) throw kpisRes.error;
+      if (sectorsRes.error) throw sectorsRes.error;
+
+      setKpis((kpisRes.data || []) as KPI[]);
+      setSectors(sectorsRes.data || []);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast.error("Erro ao carregar dados");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchKpis = async () => {
     try {
@@ -104,6 +142,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
             target_value: formData.target_value,
             is_individual: formData.is_individual,
             is_required: formData.is_required,
+            sector_id: formData.sector_id || null,
           })
           .eq("id", editingKpi.id);
 
@@ -119,6 +158,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
           target_value: formData.target_value,
           is_individual: formData.is_individual,
           is_required: formData.is_required,
+          sector_id: formData.sector_id || null,
           sort_order: maxOrder + 1,
         });
 
@@ -128,7 +168,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
 
       setShowDialog(false);
       resetForm();
-      fetchKpis();
+      fetchData();
     } catch (error) {
       console.error("Error saving KPI:", error);
       toast.error("Erro ao salvar KPI");
@@ -162,7 +202,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
 
       if (error) throw error;
       toast.success(isActive ? "KPI ativado" : "KPI desativado");
-      fetchKpis();
+      fetchData();
     } catch (error) {
       console.error("Error toggling KPI:", error);
       toast.error("Erro ao atualizar KPI");
@@ -178,6 +218,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
       target_value: 0,
       is_individual: true,
       is_required: true,
+      sector_id: "",
     });
   };
 
@@ -190,8 +231,15 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
       target_value: kpi.target_value,
       is_individual: kpi.is_individual,
       is_required: kpi.is_required,
+      sector_id: kpi.sector_id || "",
     });
     setShowDialog(true);
+  };
+
+  const getSectorName = (sectorId: string | null) => {
+    if (!sectorId) return null;
+    const sector = sectors.find(s => s.id === sectorId);
+    return sector ? sector.name : null;
   };
 
   const getTypeLabel = (type: string) => {
@@ -324,6 +372,31 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
                   />
                 </div>
 
+                {sectors.length > 0 && (
+                  <div>
+                    <Label>Setor (opcional)</Label>
+                    <Select
+                      value={formData.sector_id}
+                      onValueChange={(v) => setFormData({ ...formData, sector_id: v === "all" ? "" : v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todos os setores" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os setores</SelectItem>
+                        {sectors.map((sector) => (
+                          <SelectItem key={sector.id} value={sector.id}>
+                            {sector.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Vincule a um setor para que apenas vendedores desse setor lancem este KPI
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex gap-2 pt-4">
                   <Button variant="outline" onClick={() => { setShowDialog(false); resetForm(); }} className="flex-1">
                     Cancelar
@@ -344,7 +417,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
         onOpenChange={setShowMonthlyTargets}
         companyId={companyId}
         kpis={kpis}
-        onSaved={() => fetchKpis()}
+        onSaved={() => fetchData()}
         onAddKPI={() => {
           setShowMonthlyTargets(false);
           resetForm();
@@ -370,6 +443,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
                 <TableHead>Periodicidade</TableHead>
                 <TableHead>Meta</TableHead>
                 <TableHead>Escopo</TableHead>
+                {sectors.length > 0 && <TableHead>Setor</TableHead>}
                 <TableHead>Status</TableHead>
                 {isAdmin && <TableHead className="w-[100px]">Ações</TableHead>}
               </TableRow>
@@ -391,6 +465,17 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
                       {kpi.is_individual ? "Individual" : "Coletivo"}
                     </Badge>
                   </TableCell>
+                  {sectors.length > 0 && (
+                    <TableCell>
+                      {getSectorName(kpi.sector_id) ? (
+                        <Badge variant="outline" className="gap-1">
+                          {getSectorName(kpi.sector_id)}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">Todos</span>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     {isAdmin ? (
                       <Switch
