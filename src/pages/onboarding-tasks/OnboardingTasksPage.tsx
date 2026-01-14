@@ -120,6 +120,7 @@ const OnboardingTasksPage = () => {
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
   const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; target_value: number; kpi_type: string; periodicity: string }[]>([]);
   const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
+  const [contractRenewals, setContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
   const [healthScoresByProject, setHealthScoresByProject] = useState<Map<string, { total_score: number; risk_level: string }>>(new Map());
   
   // Announcement dialog state
@@ -151,6 +152,7 @@ const OnboardingTasksPage = () => {
           fetchMonthlyGoals(),
           fetchHealthScores(),
           fetchCompanyKpis(),
+          fetchContractRenewals(),
         ]);
         
         // Then fetch tasks and companies (companies now depends on tasks)
@@ -240,6 +242,19 @@ const OnboardingTasksPage = () => {
       setKpiEntries(entriesResult.data || []);
     } catch (error) {
       console.error("Error fetching company KPIs:", error);
+    }
+  };
+
+  const fetchContractRenewals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("onboarding_contract_renewals")
+        .select("company_id, renewal_date");
+
+      if (error) throw error;
+      setContractRenewals(data || []);
+    } catch (error) {
+      console.error("Error fetching contract renewals:", error);
     }
   };
 
@@ -801,6 +816,13 @@ const OnboardingTasksPage = () => {
             const endDate = new Date(company.contract_end_date);
             matchesMetricFilter = isBefore(endDate, today);
           }
+        } else if (activeMetricFilter.type === "contracts" && activeMetricFilter.value === "renewed") {
+          // Filter companies that have renewals in the selected period
+          matchesMetricFilter = contractRenewals.some(r => {
+            if (r.company_id !== company.id) return false;
+            const renewalDate = new Date(r.renewal_date.substring(0, 10) + "T12:00:00");
+            return isWithinInterval(renewalDate, { start: dateRange.start, end: dateRange.end });
+          });
         } else if (activeMetricFilter.type === "nps" && activeMetricFilter.value === "responded") {
           // Filter companies that have at least one project with NPS response
           matchesMetricFilter = company.projects?.some(p => projectsWithNpsResponse.has(p.id)) ?? false;
@@ -863,7 +885,7 @@ const OnboardingTasksPage = () => {
     
     // Sort alphabetically
     return filtered.sort((a, b) => a.name.localeCompare(b.name));
-  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, companiesGoalRanges, currentUserRole, currentStaffId, allTasks]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, companiesGoalRanges, currentUserRole, currentStaffId, allTasks, contractRenewals]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
