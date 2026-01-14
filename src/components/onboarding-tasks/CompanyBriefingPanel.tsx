@@ -30,10 +30,12 @@ import {
   ExternalLink,
   History,
   TrendingUp,
+  Sparkles,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { KickoffFormDialog } from "./KickoffFormDialog";
+import { GenerateStrategicPlanningDialog } from "./GenerateStrategicPlanningDialog";
 import { formatPhone } from "@/lib/utils";
 import { COMPANY_SEGMENTS } from "@/data/companySegments";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
@@ -143,7 +145,7 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<CompanyData>>({});
   const [showKickoffForm, setShowKickoffForm] = useState(false);
-
+  const [showStrategicPlanning, setShowStrategicPlanning] = useState(false);
   useEffect(() => {
     if (companyId) {
       fetchCompanyData();
@@ -382,6 +384,11 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
             </>
           ) : (
             <>
+              <Button variant="outline" size="sm" onClick={() => setShowStrategicPlanning(true)} className="h-8 sm:h-9 text-xs sm:text-sm">
+                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Gerar Planejamento Estratégico</span>
+                <span className="sm:hidden ml-1.5">Planejamento</span>
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setShowKickoffForm(true)} className="h-8 sm:h-9 text-xs sm:text-sm">
                 <ClipboardList className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Formulário de Kickoff</span>
@@ -404,6 +411,17 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
         companyId={companyId}
         onSuccess={fetchCompanyData}
       />
+
+      {/* Strategic Planning Dialog */}
+      {company && (
+        <GenerateStrategicPlanningDialog
+          open={showStrategicPlanning}
+          onOpenChange={setShowStrategicPlanning}
+          companyData={company}
+          projectId={projectId}
+          onTaskCreated={fetchCompanyData}
+        />
+      )}
 
       {/* Informações Básicas */}
       <Card>
