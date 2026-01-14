@@ -100,6 +100,16 @@ interface ImpactSummary {
   isPositive: boolean;
 }
 
+interface DetailedFactor {
+  key: string;
+  label: string;
+  value: number;
+  companyName: string;
+  projectId: string;
+  isPositive: boolean;
+  createdAt: string;
+}
+
 export const HealthScoreHistoryDialog = ({
   open,
   onOpenChange,
@@ -219,34 +229,152 @@ export const HealthScoreHistoryDialog = ({
     }
   };
 
-  // Calculate impact summary from events
-  const impactSummary = useMemo(() => {
-    const impactByType = new Map<string, { total: number; count: number }>();
+  // Helper to get factor label
+  const getFactorLabel = (key: string, type: 'penalty' | 'bonus'): string => {
+    const labels: Record<string, string> = {
+      // Penalties
+      overdue_tasks: "Tarefas Atrasadas",
+      no_goal: "Sem Meta Lançada",
+      no_kpi_entries: "Sem Lançamentos de KPI",
+      inactivity: "Inatividade",
+      cancellation: "Sinalização de Cancelamento",
+      // Bonuses
+      completed_tasks: "Tarefas Concluídas",
+      meetings: "Reuniões Realizadas",
+      projection: "Projeção de Meta Alcançada",
+      renewal: "Renovação Confirmada",
+    };
+    return labels[key] || key;
+  };
+
+  // Extract detailed factors from event_data.details
+  const detailedFactors = useMemo(() => {
+    const allFactors: DetailedFactor[] = [];
 
     events.forEach((event) => {
-      const impact = (event.score_after || 0) - (event.score_before || 0);
-      if (impact === 0) return;
+      const eventData = event.event_data;
+      const details = eventData?.details;
+      if (!details) return;
 
-      const existing = impactByType.get(event.event_type) || { total: 0, count: 0 };
-      impactByType.set(event.event_type, {
-        total: existing.total + impact,
+      const companyName = event.project?.onboarding_company?.name || event.project?.product_name || "Projeto";
+
+      // Extract penalties (negative factors)
+      if (details.penalties) {
+        Object.entries(details.penalties).forEach(([key, value]) => {
+          const numValue = Number(value);
+          if (numValue > 0) {
+            allFactors.push({
+              key,
+              label: getFactorLabel(key, 'penalty'),
+              value: -numValue,
+              companyName,
+              projectId: event.project_id,
+              isPositive: false,
+              createdAt: event.created_at,
+            });
+          }
+        });
+      }
+
+      // Extract bonuses (positive factors)
+      if (details.bonuses) {
+        Object.entries(details.bonuses).forEach(([key, value]) => {
+          const numValue = Number(value);
+          if (numValue > 0) {
+            allFactors.push({
+              key,
+              label: getFactorLabel(key, 'bonus'),
+              value: numValue,
+              companyName,
+              projectId: event.project_id,
+              isPositive: true,
+              createdAt: event.created_at,
+            });
+          }
+        });
+      }
+    });
+
+    return allFactors;
+  }, [events]);
+
+  // Aggregate factors by type for summary view
+  const impactSummary = useMemo(() => {
+    const impactByKey = new Map<string, { total: number; count: number; isPositive: boolean; label: string }>();
+
+    detailedFactors.forEach((factor) => {
+      const existing = impactByKey.get(factor.key) || { total: 0, count: 0, isPositive: factor.isPositive, label: factor.label };
+      impactByKey.set(factor.key, {
+        total: existing.total + Math.abs(factor.value),
         count: existing.count + 1,
+        isPositive: factor.isPositive,
+        label: factor.label,
       });
     });
 
     const summary: ImpactSummary[] = [];
-    impactByType.forEach((value, type) => {
+    impactByKey.forEach((value, key) => {
       summary.push({
-        type,
-        label: getEventLabel(type),
-        totalImpact: value.total,
+        type: key,
+        label: value.label,
+        totalImpact: value.isPositive ? value.total : -value.total,
         count: value.count,
-        isPositive: value.total > 0,
+        isPositive: value.isPositive,
       });
     });
 
     return summary.sort((a, b) => Math.abs(b.totalImpact) - Math.abs(a.totalImpact));
-  }, [events]);
+  }, [detailedFactors]);
+
+  // Get unique companies with negative factors for display
+  const negativeFactorsByCompany = useMemo(() => {
+    const byCompany = new Map<string, DetailedFactor[]>();
+    
+    detailedFactors
+      .filter(f => !f.isPositive)
+      .forEach(factor => {
+        const existing = byCompany.get(factor.companyName) || [];
+        // Avoid duplicates for same factor type per company
+        if (!existing.some(e => e.key === factor.key)) {
+          existing.push(factor);
+          byCompany.set(factor.companyName, existing);
+        }
+      });
+
+    return Array.from(byCompany.entries())
+      .map(([company, factors]) => ({
+        company,
+        factors,
+        totalImpact: factors.reduce((sum, f) => sum + f.value, 0)
+      }))
+      .sort((a, b) => a.totalImpact - b.totalImpact)
+      .slice(0, 10);
+  }, [detailedFactors]);
+
+  // Get unique companies with positive factors for display
+  const positiveFactorsByCompany = useMemo(() => {
+    const byCompany = new Map<string, DetailedFactor[]>();
+    
+    detailedFactors
+      .filter(f => f.isPositive)
+      .forEach(factor => {
+        const existing = byCompany.get(factor.companyName) || [];
+        // Avoid duplicates for same factor type per company
+        if (!existing.some(e => e.key === factor.key)) {
+          existing.push(factor);
+          byCompany.set(factor.companyName, existing);
+        }
+      });
+
+    return Array.from(byCompany.entries())
+      .map(([company, factors]) => ({
+        company,
+        factors,
+        totalImpact: factors.reduce((sum, f) => sum + f.value, 0)
+      }))
+      .sort((a, b) => b.totalImpact - a.totalImpact)
+      .slice(0, 10);
+  }, [detailedFactors]);
 
   const positiveFactors = useMemo(() => 
     impactSummary.filter((s) => s.isPositive).slice(0, 5),
@@ -529,24 +657,51 @@ Forneça insights práticos para melhorar a saúde geral dos clientes.`,
                           O que fez a saúde SUBIR
                         </CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        {positiveFactors.length === 0 ? (
+                      <CardContent className="space-y-3">
+                        {positiveFactors.length === 0 && positiveFactorsByCompany.length === 0 ? (
                           <p className="text-sm text-muted-foreground">Nenhum fator positivo registrado</p>
                         ) : (
-                          <div className="space-y-2">
-                            {positiveFactors.map((factor) => (
-                              <div key={factor.type} className="flex items-center justify-between bg-white rounded-lg p-2 border border-green-100">
-                                <div className="flex items-center gap-2">
-                                  {getEventIcon(factor.type)}
-                                  <span className="text-sm">{factor.label}</span>
-                                </div>
-                                <div className="text-right">
-                                  <span className="text-green-600 font-bold">+{factor.totalImpact} pts</span>
-                                  <span className="text-xs text-muted-foreground ml-2">({factor.count}x)</span>
+                          <>
+                            {/* Summary by factor type */}
+                            {positiveFactors.length > 0 && (
+                              <div className="space-y-2">
+                                {positiveFactors.map((factor) => (
+                                  <div key={factor.type} className="flex items-center justify-between bg-white rounded-lg p-2 border border-green-100">
+                                    <div className="flex items-center gap-2">
+                                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                      <span className="text-sm">{factor.label}</span>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-green-600 font-bold">+{factor.totalImpact} pts</span>
+                                      <span className="text-xs text-muted-foreground ml-2">({factor.count}x)</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Companies contributing positively */}
+                            {positiveFactorsByCompany.length > 0 && (
+                              <div className="pt-2 border-t border-green-100">
+                                <p className="text-xs text-muted-foreground mb-2">Empresas que contribuíram:</p>
+                                <div className="space-y-1.5 max-h-[150px] overflow-y-auto">
+                                  {positiveFactorsByCompany.slice(0, 5).map(({ company, factors, totalImpact }) => (
+                                    <div key={company} className="bg-white rounded p-2 border border-green-100 text-xs">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium text-foreground">{company}</span>
+                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px]">
+                                          +{totalImpact} pts
+                                        </Badge>
+                                      </div>
+                                      <div className="mt-1 text-muted-foreground">
+                                        {factors.map(f => f.label).join(", ")}
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
-                            ))}
-                          </div>
+                            )}
+                          </>
                         )}
                       </CardContent>
                     </Card>
@@ -559,24 +714,51 @@ Forneça insights práticos para melhorar a saúde geral dos clientes.`,
                           O que fez a saúde DESCER
                         </CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        {negativeFactors.length === 0 ? (
+                      <CardContent className="space-y-3">
+                        {negativeFactors.length === 0 && negativeFactorsByCompany.length === 0 ? (
                           <p className="text-sm text-muted-foreground">Nenhum fator negativo registrado</p>
                         ) : (
-                          <div className="space-y-2">
-                            {negativeFactors.map((factor) => (
-                              <div key={factor.type} className="flex items-center justify-between bg-white rounded-lg p-2 border border-red-100">
-                                <div className="flex items-center gap-2">
-                                  {getEventIcon(factor.type)}
-                                  <span className="text-sm">{factor.label}</span>
-                                </div>
-                                <div className="text-right">
-                                  <span className="text-red-600 font-bold">{factor.totalImpact} pts</span>
-                                  <span className="text-xs text-muted-foreground ml-2">({factor.count}x)</span>
+                          <>
+                            {/* Summary by factor type */}
+                            {negativeFactors.length > 0 && (
+                              <div className="space-y-2">
+                                {negativeFactors.map((factor) => (
+                                  <div key={factor.type} className="flex items-center justify-between bg-white rounded-lg p-2 border border-red-100">
+                                    <div className="flex items-center gap-2">
+                                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                                      <span className="text-sm">{factor.label}</span>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-red-600 font-bold">{factor.totalImpact} pts</span>
+                                      <span className="text-xs text-muted-foreground ml-2">({factor.count}x)</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Companies contributing negatively */}
+                            {negativeFactorsByCompany.length > 0 && (
+                              <div className="pt-2 border-t border-red-100">
+                                <p className="text-xs text-muted-foreground mb-2">Empresas impactando negativamente:</p>
+                                <div className="space-y-1.5 max-h-[150px] overflow-y-auto">
+                                  {negativeFactorsByCompany.slice(0, 5).map(({ company, factors, totalImpact }) => (
+                                    <div key={company} className="bg-white rounded p-2 border border-red-100 text-xs">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium text-foreground">{company}</span>
+                                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[10px]">
+                                          {totalImpact} pts
+                                        </Badge>
+                                      </div>
+                                      <div className="mt-1 text-muted-foreground">
+                                        {factors.map(f => f.label).join(", ")}
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
-                            ))}
-                          </div>
+                            )}
+                          </>
                         )}
                       </CardContent>
                     </Card>
