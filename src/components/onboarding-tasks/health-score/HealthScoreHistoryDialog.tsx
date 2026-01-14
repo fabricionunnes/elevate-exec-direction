@@ -431,48 +431,81 @@ export const HealthScoreHistoryDialog = ({
         pillarAverages,
         positiveFactors: positiveFactors.map((f) => ({ label: f.label, impact: f.totalImpact, count: f.count })),
         negativeFactors: negativeFactors.map((f) => ({ label: f.label, impact: f.totalImpact, count: f.count })),
+        negativeByCompany: negativeFactorsByCompany.slice(0, 10).map(({ company, factors, totalImpact }) => ({
+          company,
+          impact: totalImpact,
+          factors: factors.map(f => f.label)
+        })),
+        positiveByCompany: positiveFactorsByCompany.slice(0, 5).map(({ company, factors, totalImpact }) => ({
+          company,
+          impact: totalImpact,
+          factors: factors.map(f => f.label)
+        })),
         criticalProjects: projectHealths
           .filter((p) => p.risk_level === "critical" || p.risk_level === "high")
-          .slice(0, 5)
+          .slice(0, 10)
           .map((p) => ({
             name: getCompanyName(p),
             score: p.total_score,
             goals: p.goals_score,
             engagement: p.engagement_score,
+            satisfaction: p.satisfaction_score,
           })),
       };
 
-      const response = await supabase.functions.invoke("onboarding-ai-chat", {
-        body: {
-          messages: [
-            {
-              role: "system",
-              content: `Você é um especialista em Customer Success. Analise os dados de saúde da carteira de clientes e forneça insights acionáveis.
+      const systemPrompt = `Você é um especialista em Customer Success. Analise os dados de saúde da carteira de clientes e forneça insights acionáveis.
+
+CONTEXTO:
+- Os dados mostram penalidades e bônus que afetam o health score
+- Cada empresa pode ter múltiplos fatores impactando positiva ou negativamente
+- O objetivo é melhorar a saúde geral da carteira
 
 FORMATO DA RESPOSTA:
 ## 📊 Diagnóstico Geral
-[Breve análise da situação atual da carteira]
+[Breve análise da situação atual da carteira - 2-3 frases]
 
 ## 🔴 Principais Problemas
-[Liste os 3-4 principais problemas identificados com base nos fatores negativos]
+[Liste os 3-4 principais problemas identificados com base nos fatores negativos, incluindo quais empresas são as mais críticas]
 
 ## ✅ Ações Recomendadas
-[Liste 4-5 ações específicas e práticas para melhorar a saúde da carteira]
+[Liste 4-5 ações específicas e práticas para melhorar a saúde da carteira, mencionando empresas específicas quando relevante]
 
 ## 💡 Quick Wins
-[2-3 ações rápidas que podem ser implementadas imediatamente]
+[2-3 ações rápidas que podem ser implementadas imediatamente para melhorar o score]
 
-Seja direto, prático e focado em ações concretas.`,
-            },
-            {
-              role: "user",
-              content: `Analise os seguintes dados de saúde da carteira:
+Seja direto, prático e focado em ações concretas. Mencione empresas específicas quando apropriado.`;
 
-${JSON.stringify(context, null, 2)}
+      const userPrompt = `Analise os seguintes dados de saúde da carteira:
 
-Forneça insights práticos para melhorar a saúde geral dos clientes.`,
-            },
-          ],
+RESUMO GERAL:
+- Total de projetos: ${context.totalProjects}
+- Críticos: ${context.criticalCount}
+- Alto risco: ${context.highRiskCount}
+- Médio risco: ${context.mediumRiskCount}
+- Baixo risco/Excelente: ${context.lowRiskCount}
+- Score médio: ${context.averageScore}
+
+MÉDIAS POR PILAR:
+${pillarAverages ? `- Satisfação: ${pillarAverages.satisfaction}\n- Metas: ${pillarAverages.goals}\n- Engajamento: ${pillarAverages.engagement}\n- Suporte: ${pillarAverages.support}` : "N/A"}
+
+FATORES NEGATIVOS (o que está diminuindo a saúde):
+${context.negativeFactors.length > 0 ? context.negativeFactors.map(f => `- ${f.label}: ${f.impact} pts (${f.count} ocorrências)`).join("\n") : "Nenhum fator negativo identificado"}
+
+EMPRESAS COM MAIOR IMPACTO NEGATIVO:
+${context.negativeByCompany.length > 0 ? context.negativeByCompany.map(c => `- ${c.company}: ${c.impact} pts (${c.factors.join(", ")})`).join("\n") : "Nenhuma"}
+
+FATORES POSITIVOS (o que está aumentando a saúde):
+${context.positiveFactors.length > 0 ? context.positiveFactors.map(f => `- ${f.label}: +${f.impact} pts (${f.count} ocorrências)`).join("\n") : "Nenhum fator positivo identificado"}
+
+PROJETOS CRÍTICOS (top 10):
+${context.criticalProjects.length > 0 ? context.criticalProjects.map(p => `- ${p.name}: Score ${p.score} (Metas: ${p.goals}, Eng: ${p.engagement}, Sat: ${p.satisfaction})`).join("\n") : "Nenhum projeto crítico"}
+
+Forneça insights práticos para melhorar a saúde geral dos clientes.`;
+
+      const response = await supabase.functions.invoke("health-portfolio-insights", {
+        body: {
+          systemPrompt,
+          userPrompt,
         },
       });
 
@@ -496,13 +529,17 @@ Forneça insights práticos para melhorar a saúde geral dos clientes.`,
             if (data === "[DONE]") continue;
             try {
               const parsed = JSON.parse(data);
-              if (parsed.content) {
-                fullText += parsed.content;
+              if (parsed.choices?.[0]?.delta?.content) {
+                fullText += parsed.choices[0].delta.content;
                 setAiInsights(fullText);
               }
             } catch {}
           }
         }
+      }
+      
+      if (!fullText) {
+        setAiInsights("Não foi possível gerar insights. Tente novamente.");
       }
     } catch (error) {
       console.error("Error generating insights:", error);
