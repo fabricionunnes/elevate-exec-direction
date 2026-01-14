@@ -476,7 +476,9 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
     }
   };
 
-  // Confirm renewal - updates contract with new values
+  // Confirm renewal - extends contract end date and sums values
+  // IMPORTANT: Only updates contract_end_date (keeps original start_date)
+  // and sums the renewal value with the original contract value
   const handleConfirmRenewal = async () => {
     if (!selectedCompany || !staffId || !newStartDate) return;
     
@@ -485,7 +487,15 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
     try {
       const monthlyValue = renewalMode === "same" ? selectedCompany.monthly_value : newMonthlyValue;
       const termMonths = renewalMode === "same" ? selectedCompany.contract_months : newTermMonths;
-      const newTotalValue = monthlyValue * termMonths;
+      const renewalValue = monthlyValue * termMonths;
+      
+      // Calculate new end date based on the renewal start date + term months
+      const renewalStartDate = parseISO(newStartDate);
+      const newEndDate = format(addMonths(renewalStartDate, termMonths), "yyyy-MM-dd");
+      
+      // Sum the renewal value with the original contract value
+      const previousContractValue = selectedCompany.contract_value || 0;
+      const newTotalContractValue = previousContractValue + renewalValue;
       
       // Insert renewal history record
       const { error: renewalError } = await supabase
@@ -497,8 +507,8 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
           previous_value: selectedCompany.contract_value,
           previous_term_months: selectedCompany.contract_months,
           new_start_date: newStartDate,
-          new_end_date: calculatedValues.newEndDate,
-          new_value: newTotalValue,
+          new_end_date: newEndDate,
+          new_value: renewalValue,
           new_term_months: termMonths,
           notes: renewalNotes || null,
           status: "renovado",
@@ -507,15 +517,19 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
         
       if (renewalError) throw renewalError;
       
-      // Update company contract with new values and reset renewal status
+      // Update company contract:
+      // - KEEP original contract_start_date (do not change)
+      // - UPDATE contract_end_date to the new extended date
+      // - SUM renewal value with previous contract value
       const { error: contractError } = await supabase
         .from("onboarding_companies")
         .update({
-          contract_start_date: newStartDate,
-          contract_end_date: calculatedValues.newEndDate,
-          contract_value: newTotalValue,
+          // contract_start_date is NOT updated - keeps original start date
+          contract_end_date: newEndDate,
+          contract_value: newTotalContractValue, // Sum of original + renewal value
           renewal_status: null, // Reset for next renewal cycle
           renewal_notes: null,
+          renewal_meeting_date: null,
         })
         .eq("id", selectedCompany.id);
         
