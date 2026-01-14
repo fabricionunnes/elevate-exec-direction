@@ -11,7 +11,7 @@ import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
-import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
 import { TaskNotificationsDialog } from "@/components/onboarding-tasks/TaskNotificationsDialog";
@@ -1568,6 +1568,12 @@ const OnboardingTasksPage = () => {
                           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                             <h3 className="text-sm sm:text-lg font-bold text-[#0A2240] uppercase tracking-wide truncate">{company.name}</h3>
                             {getStatusBadge(company.status)}
+                            {/* Tag "Empresa Nova" for companies with contract_start_date within last 30 days */}
+                            {company.contract_start_date && differenceInDays(new Date(), new Date(company.contract_start_date)) <= 30 && (
+                              <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] sm:text-xs font-semibold shadow-md animate-pulse">
+                                ✨ Empresa Nova
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-muted-foreground mt-0.5">
                             {company.segment && <span className="truncate max-w-[100px] sm:max-w-none">{company.segment}</span>}
