@@ -62,6 +62,7 @@ interface FormData {
   hasSocialMedia: string;
   socialSatisfied: string;
   whyDiagnostic: string;
+  ownershipType: string;
 }
 
 const revenueOptions = [
@@ -608,7 +609,8 @@ export default function ClientDiagnosticPage() {
     trafficSatisfied: "",
     hasSocialMedia: "",
     socialSatisfied: "",
-    whyDiagnostic: ""
+    whyDiagnostic: "",
+    ownershipType: ""
   });
 
   const totalSteps = 5;
@@ -629,7 +631,7 @@ export default function ClientDiagnosticPage() {
   const canProceed = () => {
     switch (step) {
       case 1:
-        return formData.companyName && formData.contactName && formData.whatsapp && formData.email && formData.whyDiagnostic;
+        return formData.companyName && formData.contactName && formData.whatsapp && formData.email && formData.whyDiagnostic && formData.ownershipType;
       case 2:
         return formData.revenue && formData.teamSize;
       case 3:
@@ -933,6 +935,47 @@ export default function ClientDiagnosticPage() {
                     placeholder="seu@email.com"
                     required
                   />
+                </div>
+
+                <div>
+                  <Label className="flex items-center gap-2 mb-2">
+                    <Users2 className="h-4 w-4 text-accent" />
+                    Você é o único proprietário ou tem algum sócio? *
+                  </Label>
+                  <RadioGroup
+                    value={formData.ownershipType}
+                    onValueChange={(v) => updateField("ownershipType", v)}
+                    className="grid gap-2"
+                  >
+                    <div className="flex items-center">
+                      <RadioGroupItem value="unico" id="owner-unico" className="sr-only" />
+                      <Label
+                        htmlFor="owner-unico"
+                        className={cn(
+                          "flex-1 p-3 rounded-lg border cursor-pointer transition-all text-sm",
+                          formData.ownershipType === "unico"
+                            ? "border-accent bg-accent/10"
+                            : "border-border hover:border-accent/50"
+                        )}
+                      >
+                        Sou o único proprietário
+                      </Label>
+                    </div>
+                    <div className="flex items-center">
+                      <RadioGroupItem value="socios" id="owner-socios" className="sr-only" />
+                      <Label
+                        htmlFor="owner-socios"
+                        className={cn(
+                          "flex-1 p-3 rounded-lg border cursor-pointer transition-all text-sm",
+                          formData.ownershipType === "socios"
+                            ? "border-accent bg-accent/10"
+                            : "border-border hover:border-accent/50"
+                        )}
+                      >
+                        Tenho sócio(s)
+                      </Label>
+                    </div>
+                  </RadioGroup>
                 </div>
 
                 <div>
