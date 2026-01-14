@@ -108,9 +108,16 @@ const parseContent = (content: string) => {
     if (normalizedLine.includes("BLOCO 3") || 
         normalizedLine.includes("CRONOGRAMA") ||
         normalizedLine.includes("PLANO DE AÇÃO") ||
-        normalizedLine.includes("PLANO DE ACAO")) {
+        normalizedLine.includes("PLANO DE ACAO") ||
+        normalizedLine.includes("ACOES ESTRATEGICAS") ||
+        normalizedLine.includes("AÇÕES ESTRATÉGICAS")) {
       currentSection = "cronograma";
       currentSwotQuadrant = "";
+      // Save any pending action before switching
+      if (currentAction) {
+        sections.cronograma.push(currentAction);
+        currentAction = null;
+      }
       continue;
     }
 
@@ -169,15 +176,35 @@ const parseContent = (content: string) => {
       }
     }
 
-    // Handle cronograma
-    if (currentSection === "cronograma") {
+    // Handle cronograma - detect numbered actions even without explicit section header
+    if (currentSection === "cronograma" || 
+        (currentSection !== "swot" && normalizedLine.match(/^(MES|MÊS|SEMANA|AÇÃO|ACAO)\s*\d+/i))) {
+      
+      // Switch to cronograma if we detect action patterns
+      if (normalizedLine.match(/^(MES|MÊS|SEMANA|AÇÃO|ACAO)\s*\d+/i)) {
+        currentSection = "cronograma";
+        currentSwotQuadrant = "";
+      }
+      
       // Check if it's a main action (numbered) - handle various formats
-      const mainActionMatch = trimmedLine.match(/^(\d+)[.)]\s*(.+)/);
+      // Match: "1. Title", "1) Title", "Mês 1:", "Semana 1:", "Ação 1:", etc.
+      const mainActionMatch = trimmedLine.match(/^(\d+)[.)]\s*(.+)/) ||
+                               trimmedLine.match(/^(MES|MÊS|SEMANA|AÇÃO|ACAO)\s*(\d+)[:\s-]+(.+)/i);
+      
       if (mainActionMatch) {
+        // Save previous action
         if (currentAction) {
           sections.cronograma.push(currentAction);
         }
-        const title = mainActionMatch[2].replace(/\*\*/g, "").trim();
+        // Extract title - handle different match groups
+        let title = "";
+        if (mainActionMatch[3]) {
+          // Pattern: "Mês 1: Title"
+          title = mainActionMatch[3].replace(/\*\*/g, "").trim();
+        } else if (mainActionMatch[2]) {
+          // Pattern: "1. Title"
+          title = mainActionMatch[2].replace(/\*\*/g, "").trim();
+        }
         currentAction = { title, subactions: [] };
       } else if (currentAction && trimmedLine && !normalizedLine.match(/^BLOCO/)) {
         // It's a subaction - clean up the formatting
@@ -187,7 +214,8 @@ const parseContent = (content: string) => {
           .replace(/^\s*[–—]\s*/, "")
           .replace(/\*\*/g, "")
           .trim();
-        if (subaction && !subaction.match(/^\d+[.)]/)) {
+        // Don't add if it looks like a new main action
+        if (subaction && !subaction.match(/^\d+[.)]/) && !subaction.match(/^(MES|MÊS|SEMANA|AÇÃO|ACAO)\s*\d+/i)) {
           currentAction.subactions.push(subaction);
         }
       }
