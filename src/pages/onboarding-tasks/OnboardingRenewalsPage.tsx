@@ -457,6 +457,7 @@ export default function OnboardingRenewalsPage() {
         .update({
           contract_end_date: format(newEndDate, "yyyy-MM-dd"),
           contract_value: newValue,
+          renewed_at: new Date().toISOString(), // Mark as renewed for health score bonus
         })
         .eq("id", selectedCompany.id);
 
@@ -544,7 +545,8 @@ export default function OnboardingRenewalsPage() {
               renewal_status: status,
               renewal_meeting_date: null,
               contract_start_date: format(startDate, "yyyy-MM-dd"),
-              contract_end_date: newEndDate
+              contract_end_date: newEndDate,
+              renewed_at: new Date().toISOString(), // Mark as renewed for health score bonus
             })
             .eq("id", companyId);
 
@@ -561,7 +563,12 @@ export default function OnboardingRenewalsPage() {
           // Monthly plan - no end date
           await supabase
             .from("onboarding_companies")
-            .update({ renewal_status: status, renewal_meeting_date: null, contract_end_date: null })
+            .update({ 
+              renewal_status: status, 
+              renewal_meeting_date: null, 
+              contract_end_date: null,
+              renewed_at: new Date().toISOString(), // Mark as renewed for health score bonus
+            })
             .eq("id", companyId);
 
           setCompanies(prev => prev.map(c =>

@@ -530,6 +530,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
           renewal_status: null, // Reset for next renewal cycle
           renewal_notes: null,
           renewal_meeting_date: null,
+          renewed_at: new Date().toISOString(), // Mark as renewed for health score bonus
         })
         .eq("id", selectedCompany.id);
         

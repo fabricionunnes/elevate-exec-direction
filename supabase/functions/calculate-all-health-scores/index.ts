@@ -500,7 +500,7 @@ async function calculateProjectHealthScore(
   // PENALTY: Global inactivity
   totalScore = Math.max(0, totalScore - details.inactivityPenalty);
 
-  // Check for recent renewal (within last 90 days) - add +15 bonus
+  // Check for recent renewal (within last 90 days) - add +20 bonus
   if (companyId) {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
@@ -514,8 +514,8 @@ async function calculateProjectHealthScore(
     if (companyData?.renewed_at) {
       const renewedAt = new Date(companyData.renewed_at);
       if (renewedAt >= ninetyDaysAgo) {
-        details.renewalBonus = 15;
-        totalScore = Math.min(100, totalScore + 15);
+        details.renewalBonus = 20;
+        totalScore = Math.min(100, totalScore + 20);
       }
     }
   }
