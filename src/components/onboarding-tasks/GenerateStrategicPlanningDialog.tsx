@@ -48,6 +48,17 @@ interface GenerateStrategicPlanningDialogProps {
   onTaskCreated?: () => void;
 }
 
+// Helper to normalize text for matching (remove markdown, extra chars)
+const normalizeText = (text: string): string => {
+  return text
+    .replace(/\*\*/g, "") // Remove markdown bold
+    .replace(/\*/g, "")   // Remove markdown italic
+    .replace(/#+\s*/g, "") // Remove markdown headers
+    .replace(/[_~`]/g, "") // Remove other markdown
+    .trim()
+    .toUpperCase();
+};
+
 // Parse the content into structured sections
 const parseContent = (content: string) => {
   const sections = {
@@ -69,69 +80,108 @@ const parseContent = (content: string) => {
 
   for (const line of lines) {
     const trimmedLine = line.trim();
+    const normalizedLine = normalizeText(trimmedLine);
     
-    // Detect main blocks
-    if (trimmedLine.includes("BLOCO 1") || trimmedLine.includes("RESUMO COMPLETO")) {
+    // Detect main blocks - more flexible matching
+    if (normalizedLine.includes("BLOCO 1") || 
+        normalizedLine.includes("RESUMO COMPLETO") ||
+        normalizedLine.includes("RESUMO DA EMPRESA") ||
+        normalizedLine === "RESUMO") {
       currentSection = "resumo";
+      currentSwotQuadrant = "";
       continue;
     }
-    if (trimmedLine.includes("BLOCO 2") || trimmedLine.includes("ANÁLISE SWOT")) {
+    if (normalizedLine.includes("BLOCO 2") || 
+        normalizedLine.includes("ANÁLISE SWOT") ||
+        normalizedLine.includes("ANALISE SWOT") ||
+        normalizedLine === "SWOT") {
       currentSection = "swot";
+      currentSwotQuadrant = "";
       continue;
     }
-    if (trimmedLine.includes("BLOCO 3") || trimmedLine.includes("CRONOGRAMA")) {
+    if (normalizedLine.includes("BLOCO 3") || 
+        normalizedLine.includes("CRONOGRAMA") ||
+        normalizedLine.includes("PLANO DE AÇÃO") ||
+        normalizedLine.includes("PLANO DE ACAO")) {
       currentSection = "cronograma";
+      currentSwotQuadrant = "";
       continue;
     }
 
-    // Handle SWOT quadrants
-    if (currentSection === "swot") {
-      if (trimmedLine === "FORÇAS" || trimmedLine.startsWith("FORÇAS")) {
+    // Handle SWOT quadrants - more flexible matching
+    if (currentSection === "swot" || normalizedLine.match(/^(FORÇAS|FRAQUEZAS|OPORTUNIDADES|AMEAÇAS)/)) {
+      // Switch to SWOT section if we detect a quadrant header
+      if (normalizedLine.match(/^(FORÇAS|FRAQUEZAS|OPORTUNIDADES|AMEAÇAS)/)) {
+        currentSection = "swot";
+      }
+      
+      if (normalizedLine.startsWith("FORÇA") || normalizedLine === "FORÇAS" || normalizedLine.includes("FORÇAS:")) {
         currentSwotQuadrant = "forcas";
         continue;
       }
-      if (trimmedLine === "FRAQUEZAS" || trimmedLine.startsWith("FRAQUEZAS")) {
+      if (normalizedLine.startsWith("FRAQUEZA") || normalizedLine === "FRAQUEZAS" || normalizedLine.includes("FRAQUEZAS:")) {
         currentSwotQuadrant = "fraquezas";
         continue;
       }
-      if (trimmedLine === "OPORTUNIDADES" || trimmedLine.startsWith("OPORTUNIDADES")) {
+      if (normalizedLine.startsWith("OPORTUNIDADE") || normalizedLine === "OPORTUNIDADES" || normalizedLine.includes("OPORTUNIDADES:")) {
         currentSwotQuadrant = "oportunidades";
         continue;
       }
-      if (trimmedLine === "AMEAÇAS" || trimmedLine.startsWith("AMEAÇAS")) {
+      if (normalizedLine.startsWith("AMEAÇA") || normalizedLine === "AMEAÇAS" || normalizedLine.includes("AMEAÇAS:")) {
         currentSwotQuadrant = "ameacas";
         continue;
       }
 
-      // Add items to current quadrant
-      if (currentSwotQuadrant && trimmedLine.match(/^\d+\./)) {
-        const item = trimmedLine.replace(/^\d+\.\s*/, "");
-        if (item && currentSwotQuadrant in sections.swot) {
-          (sections.swot as any)[currentSwotQuadrant].push(item);
+      // Add items to current quadrant - handle various numbering formats
+      if (currentSwotQuadrant) {
+        const itemMatch = trimmedLine.match(/^(\d+)[.)]\s*(.+)/) || 
+                          trimmedLine.match(/^[-•]\s*(.+)/);
+        if (itemMatch) {
+          const item = (itemMatch[2] || itemMatch[1]).replace(/\*\*/g, "").trim();
+          if (item && currentSwotQuadrant in sections.swot) {
+            (sections.swot as any)[currentSwotQuadrant].push(item);
+          }
         }
       }
     }
 
     // Handle resumo
-    if (currentSection === "resumo") {
+    if (currentSection === "resumo" && !currentSwotQuadrant) {
+      // Stop resumo when we hit SWOT indicators
+      if (normalizedLine.match(/^(FORÇAS|FRAQUEZAS|OPORTUNIDADES|AMEAÇAS)/)) {
+        currentSection = "swot";
+        if (normalizedLine.startsWith("FORÇA")) currentSwotQuadrant = "forcas";
+        else if (normalizedLine.startsWith("FRAQUEZA")) currentSwotQuadrant = "fraquezas";
+        else if (normalizedLine.startsWith("OPORTUNIDADE")) currentSwotQuadrant = "oportunidades";
+        else if (normalizedLine.startsWith("AMEAÇA")) currentSwotQuadrant = "ameacas";
+        continue;
+      }
       if (trimmedLine) {
-        sections.resumo += line + "\n";
+        // Clean markdown from resumo content
+        const cleanLine = trimmedLine.replace(/\*\*/g, "");
+        sections.resumo += cleanLine + "\n";
       }
     }
 
     // Handle cronograma
     if (currentSection === "cronograma") {
-      // Check if it's a main action (numbered)
-      const mainActionMatch = trimmedLine.match(/^(\d+)\.\s*(.+)/);
+      // Check if it's a main action (numbered) - handle various formats
+      const mainActionMatch = trimmedLine.match(/^(\d+)[.)]\s*(.+)/);
       if (mainActionMatch) {
         if (currentAction) {
           sections.cronograma.push(currentAction);
         }
-        currentAction = { title: mainActionMatch[2], subactions: [] };
-      } else if (currentAction && trimmedLine && !trimmedLine.match(/^BLOCO/)) {
-        // It's a subaction
-        const subaction = trimmedLine.replace(/^[-•]\s*/, "").replace(/^[a-z]\)\s*/, "");
-        if (subaction) {
+        const title = mainActionMatch[2].replace(/\*\*/g, "").trim();
+        currentAction = { title, subactions: [] };
+      } else if (currentAction && trimmedLine && !normalizedLine.match(/^BLOCO/)) {
+        // It's a subaction - clean up the formatting
+        const subaction = trimmedLine
+          .replace(/^[-•]\s*/, "")
+          .replace(/^[a-z]\)\s*/i, "")
+          .replace(/^\s*[–—]\s*/, "")
+          .replace(/\*\*/g, "")
+          .trim();
+        if (subaction && !subaction.match(/^\d+[.)]/)) {
           currentAction.subactions.push(subaction);
         }
       }
