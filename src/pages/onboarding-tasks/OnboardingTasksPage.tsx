@@ -890,8 +890,12 @@ const OnboardingTasksPage = () => {
       return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
     });
     
-    // Sort alphabetically
-    return filtered.sort((a, b) => a.name.localeCompare(b.name));
+    // Sort by contract_start_date descending (newest first), nulls last
+    return filtered.sort((a, b) => {
+      const dateA = a.contract_start_date ? new Date(a.contract_start_date).getTime() : 0;
+      const dateB = b.contract_start_date ? new Date(b.contract_start_date).getTime() : 0;
+      return dateB - dateA;
+    });
   }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, companiesGoalRanges, currentUserRole, currentStaffId, allTasks, contractRenewals]);
 
   // Reset to page 1 when filters change
