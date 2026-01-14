@@ -88,6 +88,7 @@ interface Company {
 interface DashboardMetricsProps {
   companies: Company[];
   projects: Project[];
+  allProjects?: Project[]; // All projects including closed/completed for churn metrics
   onFilterChange: (filter: { type: string; value: string } | null) => void;
   activeMetricFilter: { type: string; value: string } | null;
   dateRange: { start: Date; end: Date };
@@ -106,6 +107,7 @@ interface DashboardMetricsProps {
 const DashboardMetrics = ({ 
   companies, 
   projects,
+  allProjects: externalAllProjects,
   onFilterChange, 
   activeMetricFilter,
   dateRange,
@@ -139,6 +141,9 @@ const DashboardMetrics = ({
 
   // Use external tasks if provided, otherwise fetch internally
   const allTasks = externalTasks || internalTasks;
+  
+  // Use allProjects (with closed/completed) for churn metrics, fallback to projects
+  const allProjectsForChurn = externalAllProjects || projects;
 
   useEffect(() => {
     fetchData();
@@ -386,11 +391,12 @@ const DashboardMetrics = ({
       return new Date(dateOnly + "T12:00:00");
     };
 
-    const closedInPeriod = projects.filter(
+    // Use allProjectsForChurn to include closed/completed projects
+    const closedInPeriod = allProjectsForChurn.filter(
       p => (p.status === "closed" || p.status === "completed") && isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end })
     ).length;
 
-    const signaledInPeriod = projects.filter(
+    const signaledInPeriod = allProjectsForChurn.filter(
       p => (p.status === "cancellation_signaled" || p.status === "notice_period") && isWithinInterval(new Date(p.updated_at), { start: dateRange.start, end: dateRange.end })
     ).length;
 
@@ -399,7 +405,7 @@ const DashboardMetrics = ({
 
     // Count unique companies with closed projects in the period
     const closedCompanyIds = new Set(
-      projects
+      allProjectsForChurn
         .filter(p => (p.status === "closed" || p.status === "completed") && isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end }))
         .map(getProjectCompanyId)
         .filter(Boolean) as string[]
@@ -407,7 +413,7 @@ const DashboardMetrics = ({
     const closedCompaniesInPeriod = closedCompanyIds.size;
 
     return { closedInPeriod, signaledInPeriod, churnRate, closedCompaniesInPeriod };
-  }, [projects, dateRange, projectMetrics]);
+  }, [allProjectsForChurn, dateRange, projectMetrics]);
 
   const monthlyChurnData = useMemo(() => {
     const currentYear = dateRange.start.getFullYear();
@@ -416,7 +422,7 @@ const DashboardMetrics = ({
       const monthStart = startOfMonth(monthDate);
       const monthEnd = endOfMonth(monthDate);
       // Usa churn_date como referência para determinar o mês do churn
-      const closedInMonth = projects.filter(p => {
+      const closedInMonth = allProjectsForChurn.filter(p => {
         if (p.status !== "closed" && p.status !== "completed") return false;
         // Prioriza churn_date, depois updated_at como fallback
         const churnDateStr = p.churn_date || p.updated_at;
@@ -425,7 +431,7 @@ const DashboardMetrics = ({
         const churnDate = new Date(dateOnly + "T12:00:00");
         return isWithinInterval(churnDate, { start: monthStart, end: monthEnd });
       }).length;
-      const activeAtMonthStart = projects.filter(p => {
+      const activeAtMonthStart = allProjectsForChurn.filter(p => {
         if (new Date(p.created_at) > monthEnd) return false;
         if (p.status === "closed" || p.status === "completed") {
           // Usa churn_date como referência
@@ -439,7 +445,7 @@ const DashboardMetrics = ({
       const churnRate = activeAtMonthStart > 0 ? Math.round((closedInMonth / activeAtMonthStart) * 100 * 10) / 10 : 0;
       return { month: format(monthDate, "MMM", { locale: ptBR }), churn: churnRate };
     });
-  }, [projects, dateRange]);
+  }, [allProjectsForChurn, dateRange]);
 
   const ltvMetrics = useMemo(() => {
     const today = new Date();

@@ -1474,6 +1474,7 @@ const OnboardingTasksPage = () => {
         <DashboardMetrics
           companies={companies} 
           projects={filteredProjects}
+          allProjects={allProjects}
           onFilterChange={handleMetricFilterChange}
           activeMetricFilter={activeMetricFilter}
           dateRange={dateRange}
