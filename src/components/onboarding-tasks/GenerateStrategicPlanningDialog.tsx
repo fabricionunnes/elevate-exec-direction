@@ -177,45 +177,64 @@ const parseContent = (content: string) => {
     }
 
     // Handle cronograma - detect numbered actions even without explicit section header
-    if (currentSection === "cronograma" || 
-        (currentSection !== "swot" && normalizedLine.match(/^(MES|MÊS|SEMANA|AÇÃO|ACAO)\s*\d+/i))) {
-      
+    // NOTE: AI often wraps numbering in markdown (e.g. "**1.** ..."), so we match on a cleaned line.
+    const cleanedLineForMatch = trimmedLine
+      .replace(/^\s*(?:\*\*|__)+/g, "")
+      .replace(/^\s*[-•]+\s*/g, "")
+      .replace(/^\s*[>#]+\s*/g, "")
+      .trim();
+
+    if (
+      currentSection === "cronograma" ||
+      (currentSection !== "swot" && normalizeText(cleanedLineForMatch).match(/^(MES|MÊS|SEMANA|AÇÃO|ACAO)\s*\d+/i))
+    ) {
       // Switch to cronograma if we detect action patterns
-      if (normalizedLine.match(/^(MES|MÊS|SEMANA|AÇÃO|ACAO)\s*\d+/i)) {
+      if (normalizeText(cleanedLineForMatch).match(/^(MES|MÊS|SEMANA|AÇÃO|ACAO)\s*\d+/i)) {
         currentSection = "cronograma";
         currentSwotQuadrant = "";
       }
-      
+
       // Check if it's a main action (numbered) - handle various formats
-      // Match: "1. Title", "1) Title", "Mês 1:", "Semana 1:", "Ação 1:", etc.
-      const mainActionMatch = trimmedLine.match(/^(\d+)[.)]\s*(.+)/) ||
-                               trimmedLine.match(/^(MES|MÊS|SEMANA|AÇÃO|ACAO)\s*(\d+)[:\s-]+(.+)/i);
-      
+      // Match: "1. Title", "1) Title", "1 - Title", "Mês 1: Title", "Ação 1 - Title", etc.
+      const mainActionMatch =
+        cleanedLineForMatch.match(/^(\d+)\s*[.)]\s*(.+)/) ||
+        cleanedLineForMatch.match(/^(\d+)\s*[-–—:]\s*(.+)/) ||
+        cleanedLineForMatch.match(/^(MES|MÊS|SEMANA|AÇÃO|ACAO)\s*(\d+)\s*[:\-–—\s]+(.+)/i);
+
       if (mainActionMatch) {
         // Save previous action
         if (currentAction) {
           sections.cronograma.push(currentAction);
         }
+
         // Extract title - handle different match groups
         let title = "";
         if (mainActionMatch[3]) {
           // Pattern: "Mês 1: Title"
-          title = mainActionMatch[3].replace(/\*\*/g, "").trim();
+          title = String(mainActionMatch[3]).replace(/\*\*/g, "").trim();
         } else if (mainActionMatch[2]) {
-          // Pattern: "1. Title"
-          title = mainActionMatch[2].replace(/\*\*/g, "").trim();
+          // Pattern: "1. Title" or "1 - Title"
+          title = String(mainActionMatch[2]).replace(/\*\*/g, "").trim();
         }
+
         currentAction = { title, subactions: [] };
       } else if (currentAction && trimmedLine && !normalizedLine.match(/^BLOCO/)) {
         // It's a subaction - clean up the formatting
         const subaction = trimmedLine
+          .replace(/^\s*(?:\*\*|__)+/g, "")
           .replace(/^[-•]\s*/, "")
           .replace(/^[a-z]\)\s*/i, "")
-          .replace(/^\s*[–—]\s*/, "")
+          .replace(/^\s*[–—-]\s*/, "")
           .replace(/\*\*/g, "")
           .trim();
+
         // Don't add if it looks like a new main action
-        if (subaction && !subaction.match(/^\d+[.)]/) && !subaction.match(/^(MES|MÊS|SEMANA|AÇÃO|ACAO)\s*\d+/i)) {
+        if (
+          subaction &&
+          !subaction.match(/^\d+\s*[.)]/) &&
+          !subaction.match(/^\d+\s*[-–—:]/) &&
+          !subaction.match(/^(MES|MÊS|SEMANA|AÇÃO|ACAO)\s*\d+/i)
+        ) {
           currentAction.subactions.push(subaction);
         }
       }
