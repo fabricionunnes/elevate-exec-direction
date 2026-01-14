@@ -52,9 +52,8 @@ async function refreshGoogleToken(supabase: any, userId: string, refreshToken: s
   }
 }
 
-// Get direct download URL from Google Drive using API
-async function getGoogleDriveDownloadUrl(fileId: string, accessToken: string): Promise<string> {
-  // First, get file metadata to check if it's accessible
+// Get file metadata and check access
+async function getFileMetadata(fileId: string, accessToken: string): Promise<{ name: string; mimeType: string; size: number } | null> {
   const metadataResponse = await fetch(
     `https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType,size`,
     {
@@ -66,12 +65,36 @@ async function getGoogleDriveDownloadUrl(fileId: string, accessToken: string): P
 
   if (!metadataResponse.ok) {
     const error = await metadataResponse.text();
-    console.error('Drive metadata error:', error);
-    throw new Error('Não foi possível acessar o arquivo no Google Drive. Verifique se você tem permissão.');
+    console.error('Drive metadata error:', metadataResponse.status, error);
+    return null;
   }
 
   const metadata = await metadataResponse.json();
-  console.log('File metadata:', metadata);
+  return {
+    name: metadata.name,
+    mimeType: metadata.mimeType,
+    size: parseInt(metadata.size || '0', 10),
+  };
+}
+
+// Get direct download URL from Google Drive using API
+async function getGoogleDriveDownloadUrl(fileId: string, accessToken: string): Promise<string> {
+  // First, get file metadata to check if it's accessible
+  const metadata = await getFileMetadata(fileId, accessToken);
+  
+  if (!metadata) {
+    throw new Error('Não foi possível acessar o arquivo no Google Drive. Verifique se você tem permissão.');
+  }
+
+  console.log('File metadata:', JSON.stringify(metadata));
+
+  // Check file size - warn for large files
+  const fileSizeMB = metadata.size / (1024 * 1024);
+  console.log(`File size: ${fileSizeMB.toFixed(2)} MB`);
+  
+  if (fileSizeMB > 500) {
+    console.warn(`Large file detected: ${fileSizeMB.toFixed(2)} MB - this may take a while`);
+  }
 
   // Use the download endpoint with access token
   // This returns a temporary URL that AssemblyAI can access
@@ -97,12 +120,18 @@ async function getGoogleDriveDownloadUrl(fileId: string, accessToken: string): P
   // If no redirect, we need to upload the file to AssemblyAI directly
   // because the API access doesn't give a public URL
   console.log('No redirect, will upload to AssemblyAI directly');
-  return `UPLOAD_NEEDED:${fileId}`;
+  return `UPLOAD_NEEDED:${fileId}:${metadata.size}`;
 }
 
 // Upload file directly to AssemblyAI (streaming to avoid memory blowups)
-async function uploadToAssemblyAI(fileId: string, accessToken: string, assemblyApiKey: string): Promise<string> {
+async function uploadToAssemblyAI(fileId: string, accessToken: string, assemblyApiKey: string, fileSize?: number): Promise<string> {
   console.log('Downloading file from Google Drive...');
+
+  // For very large files (>500MB), we need to handle this differently
+  const fileSizeMB = fileSize ? fileSize / (1024 * 1024) : 0;
+  if (fileSizeMB > 500) {
+    console.log(`Processing large file: ${fileSizeMB.toFixed(2)} MB`);
+  }
 
   const downloadResponse = await fetch(
     `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
@@ -114,7 +143,19 @@ async function uploadToAssemblyAI(fileId: string, accessToken: string, assemblyA
   );
 
   if (!downloadResponse.ok) {
-    throw new Error('Falha ao baixar arquivo do Google Drive');
+    const errorStatus = downloadResponse.status;
+    const errorText = await downloadResponse.text().catch(() => 'Unknown error');
+    console.error('Google Drive download error:', errorStatus, errorText.substring(0, 500));
+    
+    if (errorStatus === 403) {
+      throw new Error('Acesso negado ao arquivo do Google Drive. Verifique se você tem permissão de visualização.');
+    } else if (errorStatus === 404) {
+      throw new Error('Arquivo não encontrado no Google Drive.');
+    } else if (errorStatus === 401) {
+      throw new Error('Sessão do Google expirada. Reconecte o Google nas configurações.');
+    }
+    
+    throw new Error(`Falha ao baixar arquivo do Google Drive (${errorStatus})`);
   }
 
   if (!downloadResponse.body) {
@@ -122,7 +163,7 @@ async function uploadToAssemblyAI(fileId: string, accessToken: string, assemblyA
   }
 
   const contentLength = downloadResponse.headers.get('content-length');
-  console.log('Streaming upload to AssemblyAI...', contentLength ? `(${contentLength} bytes)` : '(unknown size)');
+  console.log('Streaming upload to AssemblyAI...', contentLength ? `(${(parseInt(contentLength) / (1024 * 1024)).toFixed(2)} MB)` : '(unknown size)');
 
   const uploadHeaders: Record<string, string> = {
     'Authorization': assemblyApiKey,
@@ -130,21 +171,32 @@ async function uploadToAssemblyAI(fileId: string, accessToken: string, assemblyA
   };
   if (contentLength) uploadHeaders['Content-Length'] = contentLength;
 
-  const uploadResponse = await fetch('https://api.assemblyai.com/v2/upload', {
-    method: 'POST',
-    headers: uploadHeaders,
-    body: downloadResponse.body,
-  });
+  try {
+    const uploadResponse = await fetch('https://api.assemblyai.com/v2/upload', {
+      method: 'POST',
+      headers: uploadHeaders,
+      body: downloadResponse.body,
+    });
 
-  if (!uploadResponse.ok) {
-    const error = await uploadResponse.text();
-    console.error('AssemblyAI upload error:', error);
-    throw new Error('Falha ao fazer upload para AssemblyAI');
+    if (!uploadResponse.ok) {
+      const errorStatus = uploadResponse.status;
+      const error = await uploadResponse.text().catch(() => 'Unknown error');
+      console.error('AssemblyAI upload error:', errorStatus, error.substring(0, 500));
+      
+      if (errorStatus === 413) {
+        throw new Error('Arquivo muito grande para transcrição. Tente um arquivo menor que 500MB.');
+      }
+      
+      throw new Error(`Falha ao fazer upload para AssemblyAI (${errorStatus})`);
+    }
+
+    const uploadData = await uploadResponse.json();
+    console.log('Upload complete, URL:', uploadData.upload_url?.substring(0, 50) + '...');
+    return uploadData.upload_url;
+  } catch (uploadError) {
+    console.error('Upload streaming error:', uploadError);
+    throw new Error('Erro durante o upload do arquivo. O arquivo pode ser muito grande.');
   }
-
-  const uploadData = await uploadResponse.json();
-  console.log('Upload complete');
-  return uploadData.upload_url;
 }
 
 serve(async (req) => {
@@ -212,13 +264,27 @@ serve(async (req) => {
             const driveUrl = await getGoogleDriveDownloadUrl(fileId, accessToken);
             
             if (driveUrl.startsWith('UPLOAD_NEEDED:')) {
+              // Parse file size from the URL if available
+              const parts = driveUrl.split(':');
+              const extractedFileId = parts[1];
+              const fileSize = parts[2] ? parseInt(parts[2], 10) : undefined;
+              
               // Need to download and re-upload to AssemblyAI
-              finalAudioUrl = await uploadToAssemblyAI(fileId, accessToken, ASSEMBLYAI_API_KEY);
+              finalAudioUrl = await uploadToAssemblyAI(extractedFileId, accessToken, ASSEMBLYAI_API_KEY, fileSize);
             } else {
               finalAudioUrl = driveUrl;
             }
           } catch (driveError) {
             console.error('Google Drive access error:', driveError);
+            // Re-throw with original message if it's already a user-friendly message
+            if (driveError instanceof Error && (
+              driveError.message.includes('Acesso negado') ||
+              driveError.message.includes('não encontrado') ||
+              driveError.message.includes('Sessão do Google') ||
+              driveError.message.includes('muito grande')
+            )) {
+              throw driveError;
+            }
             throw new Error('Não foi possível acessar o arquivo no Google Drive. Verifique as permissões do arquivo.');
           }
         } else {
