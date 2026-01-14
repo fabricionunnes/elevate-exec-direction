@@ -252,7 +252,16 @@ export const HealthScoreHistoryDialog = ({
     const allFactors: DetailedFactor[] = [];
 
     events.forEach((event) => {
-      const eventData = event.event_data;
+      const eventData = typeof event.event_data === "string"
+        ? (() => {
+            try {
+              return JSON.parse(event.event_data);
+            } catch {
+              return null;
+            }
+          })()
+        : event.event_data;
+
       const details = eventData?.details;
       if (!details) return;
 
@@ -511,34 +520,15 @@ Forneça insights práticos para melhorar a saúde geral dos clientes.`;
 
       if (response.error) throw response.error;
 
-      // Handle streaming response
-      const reader = response.data.getReader();
-      const decoder = new TextDecoder();
-      let fullText = "";
+      // The function returns JSON (no streaming)
+      const text =
+        (response.data && typeof response.data === "object" && "text" in response.data
+          ? (response.data as any).text
+          : response.data) as string | undefined;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.choices?.[0]?.delta?.content) {
-                fullText += parsed.choices[0].delta.content;
-                setAiInsights(fullText);
-              }
-            } catch {}
-          }
-        }
-      }
-      
-      if (!fullText) {
+      if (text && typeof text === "string" && text.trim().length > 0) {
+        setAiInsights(text);
+      } else {
         setAiInsights("Não foi possível gerar insights. Tente novamente.");
       }
     } catch (error) {
