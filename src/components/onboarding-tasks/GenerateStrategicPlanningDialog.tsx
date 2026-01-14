@@ -1,11 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, FileText, Check, Copy, Download, Target, ListChecks } from "lucide-react";
+import { Loader2, FileText, Check, Copy, Download, Target, ListChecks, Plus, Trash2, ChevronUp, ChevronDown, GripVertical, X, Pencil } from "lucide-react";
 import { jsPDF } from "jspdf";
 import logoUnv from "@/assets/logo-unv.png";
+
+interface CronogramaAction {
+  title: string;
+  subactions: string[];
+}
 
 interface CompanyData {
   id: string;
@@ -208,6 +214,11 @@ export const GenerateStrategicPlanningDialog = ({
   const [isComplete, setIsComplete] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
   const [taskCreated, setTaskCreated] = useState(false);
+  const [editableCronograma, setEditableCronograma] = useState<CronogramaAction[]>([]);
+  const [editingActionIndex, setEditingActionIndex] = useState<number | null>(null);
+  const [editingSubactionIndex, setEditingSubactionIndex] = useState<{ actionIdx: number; subIdx: number } | null>(null);
+  const [newSubactionText, setNewSubactionText] = useState("");
+  const [addingSubactionToAction, setAddingSubactionToAction] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -215,8 +226,19 @@ export const GenerateStrategicPlanningDialog = ({
       setContent("");
       setIsComplete(false);
       setTaskCreated(false);
+      setEditableCronograma([]);
+      setEditingActionIndex(null);
+      setEditingSubactionIndex(null);
     }
   }, [open]);
+
+  // When content is complete, initialize editable cronograma
+  useEffect(() => {
+    if (isComplete && content) {
+      const parsed = parseContent(content);
+      setEditableCronograma(parsed.cronograma);
+    }
+  }, [isComplete, content]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -307,6 +329,51 @@ export const GenerateStrategicPlanningDialog = ({
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
     toast.success("Planejamento copiado para a área de transferência");
+  };
+
+  // Cronograma editing functions
+  const moveAction = (index: number, direction: "up" | "down") => {
+    const newCronograma = [...editableCronograma];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newCronograma.length) return;
+    [newCronograma[index], newCronograma[targetIndex]] = [newCronograma[targetIndex], newCronograma[index]];
+    setEditableCronograma(newCronograma);
+  };
+
+  const deleteAction = (index: number) => {
+    setEditableCronograma(editableCronograma.filter((_, i) => i !== index));
+  };
+
+  const updateActionTitle = (index: number, newTitle: string) => {
+    const newCronograma = [...editableCronograma];
+    newCronograma[index].title = newTitle;
+    setEditableCronograma(newCronograma);
+  };
+
+  const addNewAction = () => {
+    setEditableCronograma([...editableCronograma, { title: "Nova ação", subactions: [] }]);
+    setEditingActionIndex(editableCronograma.length);
+  };
+
+  const deleteSubaction = (actionIdx: number, subIdx: number) => {
+    const newCronograma = [...editableCronograma];
+    newCronograma[actionIdx].subactions = newCronograma[actionIdx].subactions.filter((_, i) => i !== subIdx);
+    setEditableCronograma(newCronograma);
+  };
+
+  const updateSubaction = (actionIdx: number, subIdx: number, newText: string) => {
+    const newCronograma = [...editableCronograma];
+    newCronograma[actionIdx].subactions[subIdx] = newText;
+    setEditableCronograma(newCronograma);
+  };
+
+  const addSubaction = (actionIdx: number) => {
+    if (!newSubactionText.trim()) return;
+    const newCronograma = [...editableCronograma];
+    newCronograma[actionIdx].subactions.push(newSubactionText.trim());
+    setEditableCronograma(newCronograma);
+    setNewSubactionText("");
+    setAddingSubactionToAction(null);
   };
 
   const handleDownload = async () => {
@@ -512,8 +579,8 @@ export const GenerateStrategicPlanningDialog = ({
       pdf.text("CRONOGRAMA DE AÇÕES", margin, y);
       y += 10;
 
-      for (let i = 0; i < parsedContent.cronograma.length; i++) {
-        const action = parsedContent.cronograma[i];
+      for (let i = 0; i < editableCronograma.length; i++) {
+        const action = editableCronograma[i];
         checkPageBreak(15);
 
         // Action number and title
@@ -639,11 +706,23 @@ export const GenerateStrategicPlanningDialog = ({
         phaseId = newPhase.id;
       }
 
+      // Build updated content with edited cronograma
+      const cronogramaText = editableCronograma.map((action, i) => {
+        let text = `${i + 1}. ${action.title}`;
+        if (action.subactions.length > 0) {
+          text += "\n" + action.subactions.map(sub => `   • ${sub}`).join("\n");
+        }
+        return text;
+      }).join("\n\n");
+
+      const parsedForTask = parseContent(content);
+      const fullContent = `RESUMO DA EMPRESA\n\n${parsedForTask.resumo.trim()}\n\nANÁLISE SWOT\n\nFORÇAS:\n${parsedForTask.swot.forcas.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nFRAQUEZAS:\n${parsedForTask.swot.fraquezas.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nOPORTUNIDADES:\n${parsedForTask.swot.oportunidades.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nAMEAÇAS:\n${parsedForTask.swot.ameacas.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nCRONOGRAMA DE AÇÕES\n\n${cronogramaText}`;
+
       const { error: taskError } = await supabase.from("onboarding_tasks").insert({
         project_id: projectId,
         phase_id: phaseId,
         title: "Planejamento Estratégico",
-        description: content,
+        description: fullContent,
         status: "pending",
         priority: "high",
       });
@@ -775,36 +854,185 @@ export const GenerateStrategicPlanningDialog = ({
                 </div>
               </div>
 
-              {/* Cronograma Section */}
+              {/* Cronograma Section - Editable */}
               <div className="rounded-lg border bg-card">
-                <div className="flex items-center gap-2 px-4 py-3 border-b bg-muted/50">
-                  <ListChecks className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold">Cronograma de Ações</h3>
+                <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50">
+                  <div className="flex items-center gap-2">
+                    <ListChecks className="h-4 w-4 text-primary" />
+                    <h3 className="font-semibold">Cronograma de Ações</h3>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={addNewAction}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Nova Ação
+                  </Button>
                 </div>
                 <div className="p-4">
-                  <div className="space-y-4">
-                    {parsedContent.cronograma.map((action, i) => (
-                      <div key={i} className="rounded-lg border bg-muted/30 p-4">
-                        <div className="flex items-start gap-3">
-                          <span className="shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                  <div className="space-y-3">
+                    {editableCronograma.map((action, i) => (
+                      <div key={i} className="rounded-lg border bg-muted/30 p-4 group">
+                        <div className="flex items-start gap-2">
+                          {/* Reorder buttons */}
+                          <div className="flex flex-col gap-0.5 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => moveAction(i, "up")}
+                              disabled={i === 0}
+                            >
+                              <ChevronUp className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => moveAction(i, "down")}
+                              disabled={i === editableCronograma.length - 1}
+                            >
+                              <ChevronDown className="h-3 w-3" />
+                            </Button>
+                          </div>
+
+                          {/* Action number */}
+                          <span className="shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold mt-1">
                             {i + 1}
                           </span>
+
+                          {/* Content */}
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm">{action.title}</h4>
-                            {action.subactions.length > 0 && (
-                              <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                                {action.subactions.map((sub, j) => (
-                                  <li key={j} className="flex items-start gap-2">
-                                    <span className="shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
-                                    <span>{sub}</span>
-                                  </li>
-                                ))}
-                              </ul>
+                            {/* Title */}
+                            {editingActionIndex === i ? (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  value={action.title}
+                                  onChange={(e) => updateActionTitle(i, e.target.value)}
+                                  className="flex-1 h-8 text-sm font-semibold"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") setEditingActionIndex(null);
+                                    if (e.key === "Escape") setEditingActionIndex(null);
+                                  }}
+                                  onBlur={() => setEditingActionIndex(null)}
+                                />
+                              </div>
+                            ) : (
+                              <div
+                                className="font-semibold text-sm cursor-pointer hover:text-primary flex items-center gap-2 group/title"
+                                onClick={() => setEditingActionIndex(i)}
+                              >
+                                {action.title}
+                                <Pencil className="h-3 w-3 opacity-0 group-hover/title:opacity-50" />
+                              </div>
                             )}
+
+                            {/* Subactions */}
+                            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                              {action.subactions.map((sub, j) => (
+                                <li key={j} className="flex items-start gap-2 group/sub">
+                                  <span className="shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+                                  {editingSubactionIndex?.actionIdx === i && editingSubactionIndex?.subIdx === j ? (
+                                    <Input
+                                      value={sub}
+                                      onChange={(e) => updateSubaction(i, j, e.target.value)}
+                                      className="flex-1 h-7 text-sm"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") setEditingSubactionIndex(null);
+                                        if (e.key === "Escape") setEditingSubactionIndex(null);
+                                      }}
+                                      onBlur={() => setEditingSubactionIndex(null)}
+                                    />
+                                  ) : (
+                                    <>
+                                      <span
+                                        className="flex-1 cursor-pointer hover:text-foreground"
+                                        onClick={() => setEditingSubactionIndex({ actionIdx: i, subIdx: j })}
+                                      >
+                                        {sub}
+                                      </span>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-5 w-5 opacity-0 group-hover/sub:opacity-100 shrink-0 text-destructive hover:text-destructive"
+                                        onClick={() => deleteSubaction(i, j)}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </>
+                                  )}
+                                </li>
+                              ))}
+
+                              {/* Add subaction */}
+                              {addingSubactionToAction === i ? (
+                                <li className="flex items-center gap-2 mt-2">
+                                  <Input
+                                    placeholder="Nova subação..."
+                                    value={newSubactionText}
+                                    onChange={(e) => setNewSubactionText(e.target.value)}
+                                    className="flex-1 h-7 text-sm"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") addSubaction(i);
+                                      if (e.key === "Escape") {
+                                        setAddingSubactionToAction(null);
+                                        setNewSubactionText("");
+                                      }
+                                    }}
+                                  />
+                                  <Button size="sm" variant="ghost" className="h-7" onClick={() => addSubaction(i)}>
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7"
+                                    onClick={() => {
+                                      setAddingSubactionToAction(null);
+                                      setNewSubactionText("");
+                                    }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </li>
+                              ) : (
+                                <li>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 text-xs text-muted-foreground hover:text-foreground mt-1"
+                                    onClick={() => setAddingSubactionToAction(i)}
+                                  >
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Adicionar subação
+                                  </Button>
+                                </li>
+                              )}
+                            </ul>
                           </div>
+
+                          {/* Delete action button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive shrink-0"
+                            onClick={() => deleteAction(i)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     ))}
+
+                    {editableCronograma.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>Nenhuma ação no cronograma.</p>
+                        <Button variant="outline" className="mt-2" onClick={addNewAction}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Adicionar primeira ação
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
