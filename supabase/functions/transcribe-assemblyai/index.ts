@@ -295,7 +295,9 @@ serve(async (req) => {
               driveError.message.includes('Acesso negado') ||
               driveError.message.includes('não encontrado') ||
               driveError.message.includes('Sessão do Google') ||
-              driveError.message.includes('muito grande')
+              driveError.message.includes('muito grande') ||
+              driveError.message.includes('cannotDownloadFile') ||
+              driveError.message.includes('bloqueou o download')
             )) {
               throw driveError;
             }
