@@ -93,6 +93,11 @@ const CSATSurveyPage = () => {
       return;
     }
 
+    if (!feedback.trim()) {
+      toast.error('Por favor, deixe um comentário');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke('csat-public', {
@@ -256,16 +261,22 @@ const CSATSurveyPage = () => {
               )}
             </div>
 
-            {/* Open Question */}
+            {/* Open Question - Required */}
             <div className="space-y-2">
-              <Label htmlFor="feedback">O que podemos melhorar?</Label>
+              <Label htmlFor="feedback">
+                O que podemos melhorar? <span className="text-destructive">*</span>
+              </Label>
               <Textarea
                 id="feedback"
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
                 placeholder="Seu feedback nos ajuda a melhorar..."
                 rows={3}
+                required
               />
+              {score !== null && !feedback.trim() && (
+                <p className="text-xs text-destructive">Este campo é obrigatório</p>
+              )}
             </div>
 
             {/* Respondent Name */}
@@ -282,7 +293,7 @@ const CSATSurveyPage = () => {
             {/* Submit Button */}
             <Button 
               onClick={handleSubmit} 
-              disabled={submitting || score === null}
+              disabled={submitting || score === null || !feedback.trim()}
               className="w-full"
               size="lg"
             >
