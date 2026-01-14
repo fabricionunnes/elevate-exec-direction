@@ -7,10 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import ReactMarkdown from "react-markdown";
 import {
   Building2,
   Globe,
@@ -33,9 +30,6 @@ import {
   ExternalLink,
   History,
   TrendingUp,
-  Sparkles,
-  Loader2,
-  CheckCircle2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -136,10 +130,9 @@ interface CompanyBriefingPanelProps {
   projectId?: string;
   userRole?: "admin" | "cs" | "consultant" | "client" | null;
   isStaffAdmin?: boolean;
-  onTasksRefresh?: () => void;
 }
 
-export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAdmin = false, onTasksRefresh }: CompanyBriefingPanelProps) => {
+export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAdmin = false }: CompanyBriefingPanelProps) => {
   // Apenas admin e CS podem editar o briefing
   const canEdit = isStaffAdmin || userRole === "admin" || userRole === "cs";
   const [company, setCompany] = useState<CompanyData | null>(null);
@@ -150,12 +143,6 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<CompanyData>>({});
   const [showKickoffForm, setShowKickoffForm] = useState(false);
-  
-  // Strategic Plan state
-  const [showStrategicPlanDialog, setShowStrategicPlanDialog] = useState(false);
-  const [generatingPlan, setGeneratingPlan] = useState(false);
-  const [strategicPlan, setStrategicPlan] = useState<string | null>(null);
-  const [creatingTask, setCreatingTask] = useState(false);
 
   useEffect(() => {
     if (companyId) {
@@ -291,96 +278,6 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleGenerateStrategicPlan = async () => {
-    if (!projectId) {
-      toast.error("Projeto não encontrado");
-      return;
-    }
-    
-    setGeneratingPlan(true);
-    setStrategicPlan(null);
-    setShowStrategicPlanDialog(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-strategic-plan", {
-        body: { companyId, projectId }
-      });
-      
-      if (error) throw error;
-      
-      if (data?.success && data?.strategicPlan) {
-        setStrategicPlan(data.strategicPlan);
-        toast.success("Planejamento estratégico gerado com sucesso!");
-      } else {
-        throw new Error(data?.error || "Erro ao gerar planejamento");
-      }
-    } catch (error: any) {
-      console.error("Error generating strategic plan:", error);
-      toast.error(error.message || "Erro ao gerar planejamento estratégico");
-      setShowStrategicPlanDialog(false);
-    } finally {
-      setGeneratingPlan(false);
-    }
-  };
-
-  const handleCreateStrategicPlanTask = async () => {
-    if (!projectId || !strategicPlan) return;
-    
-    setCreatingTask(true);
-    try {
-      // Get the first phase for the project's service
-      const { data: project } = await supabase
-        .from("onboarding_projects")
-        .select("product_id")
-        .eq("id", projectId)
-        .single();
-      
-      let phaseId = null;
-      let phaseName = "Planejamento";
-      
-      if (project?.product_id) {
-        // Try to get the first phase of the service
-        const { data: phases } = await supabase
-          .from("onboarding_service_phases")
-          .select("id, name")
-          .eq("service_id", project.product_id)
-          .order("phase_order", { ascending: true })
-          .limit(1);
-        
-        if (phases && phases.length > 0) {
-          phaseId = phases[0].id;
-          phaseName = phases[0].name;
-        }
-      }
-      
-      // Create the task with the strategic plan content
-      const { error } = await supabase
-        .from("onboarding_tasks")
-        .insert({
-          project_id: projectId,
-          title: "Planejamento Estratégico",
-          description: strategicPlan,
-          status: "completed",
-          priority: "high",
-          phase: phaseName,
-          phase_id: phaseId,
-          completed_at: new Date().toISOString(),
-        });
-      
-      if (error) throw error;
-      
-      toast.success("Tarefa de Planejamento Estratégico criada com sucesso!");
-      setShowStrategicPlanDialog(false);
-      setStrategicPlan(null);
-      onTasksRefresh?.();
-    } catch (error: any) {
-      console.error("Error creating strategic plan task:", error);
-      toast.error("Erro ao criar tarefa de planejamento");
-    } finally {
-      setCreatingTask(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -485,18 +382,6 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
             </>
           ) : (
             <>
-              {projectId && (
-                <Button 
-                  size="sm" 
-                  onClick={handleGenerateStrategicPlan} 
-                  disabled={generatingPlan}
-                  className="h-8 sm:h-9 text-xs sm:text-sm bg-gradient-to-r from-primary to-primary/80"
-                >
-                  <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Gerar Planejamento Estratégico</span>
-                  <span className="sm:hidden ml-1.5">Planejamento</span>
-                </Button>
-              )}
               <Button variant="outline" size="sm" onClick={() => setShowKickoffForm(true)} className="h-8 sm:h-9 text-xs sm:text-sm">
                 <ClipboardList className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Formulário de Kickoff</span>
@@ -511,60 +396,6 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
           )}
         </div>
       )}
-
-      {/* Strategic Plan Dialog */}
-      <Dialog open={showStrategicPlanDialog} onOpenChange={setShowStrategicPlanDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Planejamento Estratégico - {company?.name}
-            </DialogTitle>
-            <DialogDescription>
-              Plano de ação comercial gerado com base no briefing da empresa
-            </DialogDescription>
-          </DialogHeader>
-          
-          <ScrollArea className="flex-1 max-h-[60vh] pr-4">
-            {generatingPlan ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-4">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-muted-foreground">Analisando briefing e gerando planejamento estratégico...</p>
-                <p className="text-sm text-muted-foreground">Isso pode levar alguns segundos</p>
-              </div>
-            ) : strategicPlan ? (
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown>{strategicPlan}</ReactMarkdown>
-              </div>
-            ) : null}
-          </ScrollArea>
-          
-          {strategicPlan && !generatingPlan && (
-            <DialogFooter className="flex-shrink-0 pt-4 border-t">
-              <Button variant="outline" onClick={() => setShowStrategicPlanDialog(false)}>
-                Fechar
-              </Button>
-              <Button 
-                onClick={handleCreateStrategicPlanTask} 
-                disabled={creatingTask}
-                className="gap-2"
-              >
-                {creatingTask ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Criando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4" />
-                    Criar Tarefa na Jornada
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Kickoff Form Dialog */}
       <KickoffFormDialog

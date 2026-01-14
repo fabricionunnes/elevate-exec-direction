@@ -1442,7 +1442,6 @@ const OnboardingProjectPage = () => {
               projectId={projectId}
               userRole={currentUserRole}
               isStaffAdmin={isStaffAdmin}
-              onTasksRefresh={fetchProjectData}
             />
           </TabsContent>
 
