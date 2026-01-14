@@ -374,14 +374,11 @@ const DashboardMetrics = ({
     const renewalsCount = renewalsInPeriod.length;
     const renewedClientsCount = renewedCompanyIds.size;
 
-    // For percentage, use companies with contract ending in period (eligible for renewal)
-    const eligibleCompanyIds = new Set(
-      filteredCompanies
-        .filter(c => c.payment_method !== "monthly" && c.contract_end_date && isWithinInterval(new Date(c.contract_end_date), { start, end }))
-        .map(c => c.id)
-    );
-    const eligibleCount = eligibleCompanyIds.size;
-    const renewedPercent = eligibleCount > 0 ? Math.round((renewedClientsCount / eligibleCount) * 100) : 0;
+    // For percentage, use total ACTIVE companies (not just those with ending contracts)
+    const activeCompaniesCount = filteredCompanies.filter(c => 
+      c.status !== "inactive" && c.status !== "closed"
+    ).length;
+    const renewedPercent = activeCompaniesCount > 0 ? Math.round((renewedClientsCount / activeCompaniesCount) * 100) : 0;
 
     return { renewalsCount, renewedClientsCount, renewedPercent };
   }, [contractRenewals, dateRange, filteredCompanies]);
