@@ -199,31 +199,27 @@ export const AddTaskDialog = ({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Sessão não encontrada");
 
-      const { data, error } = await supabase.functions.invoke("google-calendar", {
+      // Get target staff's user_id for the calendar
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("user_id")
+        .eq("id", targetCalendarStaffId)
+        .single();
+
+      if (!staffData?.user_id) {
+        throw new Error("Usuário do staff não encontrado");
+      }
+
+      const { data, error } = await supabase.functions.invoke("google-calendar?action=create-event", {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: {
-          action: "createEvent",
-          staffId: targetCalendarStaffId,
-          event: {
-            summary: meetingTitle,
-            description: description || `Reunião agendada para o projeto`,
-            start: {
-              dateTime: startDateTime.toISOString(),
-              timeZone: "America/Sao_Paulo",
-            },
-            end: {
-              dateTime: endDateTime.toISOString(),
-              timeZone: "America/Sao_Paulo",
-            },
-            conferenceData: {
-              createRequest: {
-                requestId: `meet-${Date.now()}`,
-                conferenceSolutionKey: { type: "hangoutsMeet" },
-              },
-            },
-          },
+          title: meetingTitle,
+          description: description || `Reunião agendada para o projeto`,
+          startDateTime: startDateTime.toISOString(),
+          endDateTime: endDateTime.toISOString(),
+          target_user_id: staffData.user_id,
         },
       });
 
