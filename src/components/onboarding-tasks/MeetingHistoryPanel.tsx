@@ -49,10 +49,12 @@ import {
   Copy,
   MessageSquareHeart,
   ClipboardPaste,
-  UserX
+  UserX,
+  Sparkles
 } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { ScheduleMeetingDialog } from "./ScheduleMeetingDialog";
+import { GenerateMeetingActionsDialog } from "./GenerateMeetingActionsDialog";
 
 interface MeetingNote {
   id: string;
@@ -150,6 +152,11 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
   // Schedule meeting dialog
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   
+  // Generate actions dialog
+  const [showActionsDialog, setShowActionsDialog] = useState(false);
+  const [meetingForActions, setMeetingForActions] = useState<MeetingNote | null>(null);
+  const [productId, setProductId] = useState<string | null>(null);
+  
   useEffect(() => {
     fetchAll();
     
@@ -185,7 +192,24 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
     // Fetch consultant info and then sync calendar with the returned values
     const consultantInfo = await fetchProjectConsultant();
     await syncCalendarEvents(consultantInfo?.consultantUserId, consultantInfo?.companyName);
+    // Get product ID for phase creation
+    await fetchProductId();
     setLoading(false);
+  };
+
+  const fetchProductId = async () => {
+    try {
+      const { data: project } = await supabase
+        .from("onboarding_projects")
+        .select("product_id")
+        .eq("id", projectId)
+        .single();
+      if (project?.product_id) {
+        setProductId(project.product_id);
+      }
+    } catch (error) {
+      console.error("Error fetching product ID:", error);
+    }
   };
 
   const fetchCSATSurveys = async () => {
@@ -1496,9 +1520,22 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
               </div>
 
 
-              {/* Actions - only Admin can delete */}
-              {isAdmin && (
-                <div className="flex justify-end">
+              {/* Actions - Generate Actions and Delete */}
+              <div className="flex justify-between items-center">
+                {(selectedMeeting.transcript || selectedMeeting.manual_transcript || selectedMeeting.notes) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setMeetingForActions(selectedMeeting);
+                      setShowActionsDialog(true);
+                    }}
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Gerar Ações
+                  </Button>
+                )}
+                {isAdmin && (
                   <Button
                     variant="destructive"
                     size="sm"
@@ -1510,8 +1547,8 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
                     <Trash2 className="h-4 w-4 mr-2" />
                     Excluir Registro
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
             </ScrollArea>
           )}
@@ -1550,6 +1587,24 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
           syncCalendarEvents();
         }}
       />
+
+      {/* Generate Meeting Actions Dialog */}
+      {meetingForActions && (
+        <GenerateMeetingActionsDialog
+          open={showActionsDialog}
+          onOpenChange={(open) => {
+            setShowActionsDialog(open);
+            if (!open) setMeetingForActions(null);
+          }}
+          meetingId={meetingForActions.id}
+          meetingSubject={meetingForActions.subject}
+          projectId={projectId}
+          productId={productId || undefined}
+          onActionsCreated={() => {
+            toast.success("Ações criadas com sucesso!");
+          }}
+        />
+      )}
     </>
   );
 };

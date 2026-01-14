@@ -80,3 +80,6 @@ verify_jwt = true
 
 [functions.evolution-api]
 verify_jwt = false
+
+[functions.generate-meeting-actions]
+verify_jwt = true
