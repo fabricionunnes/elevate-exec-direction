@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FileText, Video, Building2, Loader2, PlayCircle } from "lucide-react";
+import { FileText, Video, Building2, Loader2, PlayCircle, Search } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -64,6 +64,7 @@ export const MeetingNotesDialog = ({
   const [attendees, setAttendees] = useState("");
   const [recordingLink, setRecordingLink] = useState("");
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -180,6 +181,14 @@ export const MeetingNotesDialog = ({
   };
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
+  
+  const filteredProjects = projects.filter((project) => {
+    if (!searchTerm.trim()) return true;
+    const searchLower = searchTerm.toLowerCase();
+    const companyName = project.onboarding_company?.name?.toLowerCase() || "";
+    const productName = project.product_name?.toLowerCase() || "";
+    return companyName.includes(searchLower) || productName.includes(searchLower);
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -218,22 +227,41 @@ export const MeetingNotesDialog = ({
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o cliente..." />
                 </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span>
-                          {project.onboarding_company?.name || project.product_name}
-                        </span>
-                        {project.onboarding_company && (
-                          <span className="text-xs text-muted-foreground">
-                            ({project.product_name})
+                <SelectContent className="max-h-[300px]">
+                  <div className="sticky top-0 bg-popover p-2 border-b">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar empresa..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8 h-8 text-sm"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  </div>
+                  {filteredProjects.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      Nenhuma empresa encontrada
+                    </div>
+                  ) : (
+                    filteredProjects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span>
+                            {project.onboarding_company?.name || project.product_name}
                           </span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
+                          {project.onboarding_company && (
+                            <span className="text-xs text-muted-foreground">
+                              ({project.product_name})
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             )}
