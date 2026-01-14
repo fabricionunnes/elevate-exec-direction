@@ -209,7 +209,9 @@ Por favor, gere o planejamento estratégico completo conforme os 3 blocos especi
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        // Use a higher output budget to avoid truncating before BLOCO 3
+        model: "google/gemini-3-flash-preview",
+        max_tokens: 6000,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userPrompt },
