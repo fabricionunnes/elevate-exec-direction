@@ -1475,7 +1475,7 @@ const OnboardingProjectPage = () => {
           </TabsContent>
 
           <TabsContent value="meetings">
-            <MeetingHistoryPanel projectId={projectId!} />
+            <MeetingHistoryPanel projectId={projectId!} onTasksRefresh={fetchProjectData} />
           </TabsContent>
 
           <TabsContent value="support">

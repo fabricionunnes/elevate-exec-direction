@@ -104,9 +104,10 @@ interface CalendarEvent {
 
 interface MeetingHistoryPanelProps {
   projectId: string;
+  onTasksRefresh?: () => void;
 }
 
-export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => {
+export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistoryPanelProps) => {
   const [meetings, setMeetings] = useState<MeetingNote[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [csatSurveys, setCsatSurveys] = useState<CSATSurvey[]>([]);
@@ -1619,6 +1620,7 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
           productId={productId || undefined}
           onActionsCreated={() => {
             toast.success("Ações criadas com sucesso!");
+            onTasksRefresh?.();
           }}
         />
       )}
