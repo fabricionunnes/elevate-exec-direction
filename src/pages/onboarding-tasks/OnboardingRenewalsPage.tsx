@@ -495,14 +495,28 @@ export default function OnboardingRenewalsPage() {
     }
   };
 
-  // Only update local state - plan type will only be saved when clicking "Renovar"
-  const handlePlanTypeChange = (companyId: string, planType: string) => {
+  // Save only renewal_plan_type to database (not contract details - those only change on "Renovar")
+  const handlePlanTypeChange = async (companyId: string, planType: string) => {
     if (!isAdmin) return;
     
-    // Only update local state, do NOT save to database automatically
-    setCompanies(prev => prev.map(c => 
-      c.id === companyId ? { ...c, renewal_plan_type: planType } : c
-    ));
+    try {
+      // Save ONLY the renewal_plan_type field - this is just for tracking the offer/plan status
+      // Contract details (contract_end_date, contract_value, renewed_at) only change on "Renovar"
+      const { error } = await supabase
+        .from("onboarding_companies")
+        .update({ renewal_plan_type: planType })
+        .eq("id", companyId);
+
+      if (error) throw error;
+      
+      setCompanies(prev => prev.map(c => 
+        c.id === companyId ? { ...c, renewal_plan_type: planType } : c
+      ));
+      toast.success("Plano atualizado");
+    } catch (error) {
+      console.error("Error updating plan type:", error);
+      toast.error("Erro ao atualizar plano");
+    }
   };
 
   const handleRenewalStatusChange = async (companyId: string, status: string) => {
