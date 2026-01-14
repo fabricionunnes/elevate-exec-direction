@@ -204,8 +204,25 @@ export const MeetingHistoryPanel = ({ projectId }: MeetingHistoryPanelProps) => 
         .select("product_id")
         .eq("id", projectId)
         .single();
+      
       if (project?.product_id) {
-        setProductId(project.product_id);
+        // Check if product_id is a UUID or a product name
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(project.product_id);
+        
+        if (isUUID) {
+          setProductId(project.product_id);
+        } else {
+          // product_id is a name, look up the service by name
+          const { data: service } = await supabase
+            .from("onboarding_services")
+            .select("id")
+            .ilike("name", `%${project.product_id}%`)
+            .single();
+          
+          if (service?.id) {
+            setProductId(service.id);
+          }
+        }
       }
     } catch (error) {
       console.error("Error fetching product ID:", error);
