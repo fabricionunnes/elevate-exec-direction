@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import {
   HeartPulse,
@@ -23,6 +24,11 @@ import {
   FileWarning,
   CheckCircle2,
   XCircle,
+  Sparkles,
+  Lightbulb,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO, subDays } from "date-fns";
@@ -35,7 +41,10 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  BarChart,
+  Bar,
 } from "recharts";
+import ReactMarkdown from "react-markdown";
 
 interface HealthScoreHistoryDialogProps {
   open: boolean;
@@ -66,6 +75,8 @@ interface ProjectHealth {
   trend_direction: string | null;
   satisfaction_score: number | null;
   goals_score: number | null;
+  engagement_score: number | null;
+  support_score: number | null;
   updated_at: string;
   project?: {
     product_name: string;
@@ -81,6 +92,14 @@ interface DailySnapshot {
   count: number;
 }
 
+interface ImpactSummary {
+  type: string;
+  label: string;
+  totalImpact: number;
+  count: number;
+  isPositive: boolean;
+}
+
 export const HealthScoreHistoryDialog = ({
   open,
   onOpenChange,
@@ -90,6 +109,9 @@ export const HealthScoreHistoryDialog = ({
   const [projectHealths, setProjectHealths] = useState<ProjectHealth[]>([]);
   const [dailyData, setDailyData] = useState<DailySnapshot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [aiInsights, setAiInsights] = useState<string>("");
+  const [loadingInsights, setLoadingInsights] = useState(false);
+  const [activeTab, setActiveTab] = useState("resumo");
 
   useEffect(() => {
     if (open) {
@@ -117,7 +139,7 @@ export const HealthScoreHistoryDialog = ({
           )
         `)
         .order("created_at", { ascending: false })
-        .limit(100);
+        .limit(200);
 
       if (projectIds && projectIds.length > 0) {
         eventsQuery = eventsQuery.in("project_id", projectIds);
@@ -136,6 +158,8 @@ export const HealthScoreHistoryDialog = ({
           trend_direction,
           satisfaction_score,
           goals_score,
+          engagement_score,
+          support_score,
           updated_at,
           project:onboarding_projects(
             product_name,
@@ -150,7 +174,6 @@ export const HealthScoreHistoryDialog = ({
       }
 
       const { data: healthData } = await healthQuery;
-      // Filter only active projects
       const activeHealths = (healthData || []).filter(
         (h: any) => h.project?.status === "active"
       );
@@ -170,7 +193,6 @@ export const HealthScoreHistoryDialog = ({
 
       const { data: snapshotsData } = await snapshotsQuery;
 
-      // Group by date and calculate average
       const byDate = new Map<string, { total: number; count: number }>();
       (snapshotsData || []).forEach((s) => {
         const existing = byDate.get(s.snapshot_date) || { total: 0, count: 0 };
@@ -197,44 +219,185 @@ export const HealthScoreHistoryDialog = ({
     }
   };
 
+  // Calculate impact summary from events
+  const impactSummary = useMemo(() => {
+    const impactByType = new Map<string, { total: number; count: number }>();
+
+    events.forEach((event) => {
+      const impact = (event.score_after || 0) - (event.score_before || 0);
+      if (impact === 0) return;
+
+      const existing = impactByType.get(event.event_type) || { total: 0, count: 0 };
+      impactByType.set(event.event_type, {
+        total: existing.total + impact,
+        count: existing.count + 1,
+      });
+    });
+
+    const summary: ImpactSummary[] = [];
+    impactByType.forEach((value, type) => {
+      summary.push({
+        type,
+        label: getEventLabel(type),
+        totalImpact: value.total,
+        count: value.count,
+        isPositive: value.total > 0,
+      });
+    });
+
+    return summary.sort((a, b) => Math.abs(b.totalImpact) - Math.abs(a.totalImpact));
+  }, [events]);
+
+  const positiveFactors = useMemo(() => 
+    impactSummary.filter((s) => s.isPositive).slice(0, 5),
+    [impactSummary]
+  );
+
+  const negativeFactors = useMemo(() => 
+    impactSummary.filter((s) => !s.isPositive).slice(0, 5),
+    [impactSummary]
+  );
+
+  // Pillar averages for insights
+  const pillarAverages = useMemo(() => {
+    if (projectHealths.length === 0) return null;
+
+    const totals = {
+      satisfaction: 0,
+      goals: 0,
+      engagement: 0,
+      support: 0,
+      count: 0,
+    };
+
+    projectHealths.forEach((p) => {
+      totals.satisfaction += p.satisfaction_score || 0;
+      totals.goals += p.goals_score || 0;
+      totals.engagement += p.engagement_score || 0;
+      totals.support += p.support_score || 0;
+      totals.count++;
+    });
+
+    return {
+      satisfaction: Math.round(totals.satisfaction / totals.count),
+      goals: Math.round(totals.goals / totals.count),
+      engagement: Math.round(totals.engagement / totals.count),
+      support: Math.round(totals.support / totals.count),
+    };
+  }, [projectHealths]);
+
+  const generateAIInsights = async () => {
+    setLoadingInsights(true);
+    setAiInsights("");
+
+    try {
+      const context = {
+        totalProjects: projectHealths.length,
+        criticalCount: projectHealths.filter((p) => p.risk_level === "critical").length,
+        highRiskCount: projectHealths.filter((p) => p.risk_level === "high").length,
+        mediumRiskCount: projectHealths.filter((p) => p.risk_level === "medium").length,
+        lowRiskCount: projectHealths.filter((p) => p.risk_level === "low" || p.risk_level === "excellent").length,
+        averageScore: projectHealths.length > 0 
+          ? Math.round(projectHealths.reduce((acc, p) => acc + p.total_score, 0) / projectHealths.length) 
+          : 0,
+        pillarAverages,
+        positiveFactors: positiveFactors.map((f) => ({ label: f.label, impact: f.totalImpact, count: f.count })),
+        negativeFactors: negativeFactors.map((f) => ({ label: f.label, impact: f.totalImpact, count: f.count })),
+        criticalProjects: projectHealths
+          .filter((p) => p.risk_level === "critical" || p.risk_level === "high")
+          .slice(0, 5)
+          .map((p) => ({
+            name: getCompanyName(p),
+            score: p.total_score,
+            goals: p.goals_score,
+            engagement: p.engagement_score,
+          })),
+      };
+
+      const response = await supabase.functions.invoke("onboarding-ai-chat", {
+        body: {
+          messages: [
+            {
+              role: "system",
+              content: `Você é um especialista em Customer Success. Analise os dados de saúde da carteira de clientes e forneça insights acionáveis.
+
+FORMATO DA RESPOSTA:
+## 📊 Diagnóstico Geral
+[Breve análise da situação atual da carteira]
+
+## 🔴 Principais Problemas
+[Liste os 3-4 principais problemas identificados com base nos fatores negativos]
+
+## ✅ Ações Recomendadas
+[Liste 4-5 ações específicas e práticas para melhorar a saúde da carteira]
+
+## 💡 Quick Wins
+[2-3 ações rápidas que podem ser implementadas imediatamente]
+
+Seja direto, prático e focado em ações concretas.`,
+            },
+            {
+              role: "user",
+              content: `Analise os seguintes dados de saúde da carteira:
+
+${JSON.stringify(context, null, 2)}
+
+Forneça insights práticos para melhorar a saúde geral dos clientes.`,
+            },
+          ],
+        },
+      });
+
+      if (response.error) throw response.error;
+
+      // Handle streaming response
+      const reader = response.data.getReader();
+      const decoder = new TextDecoder();
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6);
+            if (data === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                fullText += parsed.content;
+                setAiInsights(fullText);
+              }
+            } catch {}
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error generating insights:", error);
+      setAiInsights("Erro ao gerar insights. Tente novamente.");
+    } finally {
+      setLoadingInsights(false);
+    }
+  };
+
   const getRiskBadge = (riskLevel: string | null) => {
     switch (riskLevel) {
       case "critical":
-        return (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
-            Crítico
-          </Badge>
-        );
+        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">Crítico</Badge>;
       case "high":
-        return (
-          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">
-            Alto
-          </Badge>
-        );
+        return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">Alto</Badge>;
       case "medium":
-        return (
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
-            Médio
-          </Badge>
-        );
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">Médio</Badge>;
       case "low":
-        return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
-            Baixo
-          </Badge>
-        );
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">Baixo</Badge>;
       case "excellent":
-        return (
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300">
-            Excelente
-          </Badge>
-        );
+        return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300">Excelente</Badge>;
       default:
-        return (
-          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300">
-            —
-          </Badge>
-        );
+        return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300">—</Badge>;
     }
   };
 
@@ -279,16 +442,16 @@ export const HealthScoreHistoryDialog = ({
     }
   };
 
-  const getEventLabel = (eventType: string) => {
+  function getEventLabel(eventType: string) {
     switch (eventType) {
       case "goal_projection":
         return "Projeção de Meta";
       case "task_overdue":
-        return "Tarefa Atrasada";
+        return "Tarefas Atrasadas";
       case "task_completed":
-        return "Tarefa Concluída";
+        return "Tarefas Concluídas";
       case "meeting_completed":
-        return "Reunião Realizada";
+        return "Reuniões Realizadas";
       case "nps_received":
         return "NPS Recebido";
       case "renewal_confirmed":
@@ -304,107 +467,23 @@ export const HealthScoreHistoryDialog = ({
       default:
         return eventType;
     }
-  };
-
-  const getEventDescription = (event: HealthEvent) => {
-    const data = event.event_data || {};
-    const scoreDiff = (event.score_after || 0) - (event.score_before || 0);
-    const diffText =
-      scoreDiff > 0 ? `+${scoreDiff}` : scoreDiff < 0 ? `${scoreDiff}` : "0";
-    const diffColor =
-      scoreDiff > 0 ? "text-green-600" : scoreDiff < 0 ? "text-red-600" : "text-gray-500";
-
-    switch (event.event_type) {
-      case "goal_projection":
-        return (
-          <span>
-            Projeção de meta: <strong>{data.projection || 0}%</strong> -{" "}
-            <span className={diffColor}>{diffText} pts</span>
-          </span>
-        );
-      case "task_overdue":
-        return (
-          <span>
-            {data.count || 1} tarefa(s) atrasada(s) -{" "}
-            <span className={diffColor}>{diffText} pts</span>
-          </span>
-        );
-      case "task_completed":
-        return (
-          <span>
-            Tarefa concluída - <span className={diffColor}>{diffText} pts</span>
-          </span>
-        );
-      case "meeting_completed":
-        return (
-          <span>
-            Reunião realizada - <span className={diffColor}>{diffText} pts</span>
-          </span>
-        );
-      case "nps_received":
-        return (
-          <span>
-            NPS recebido: <strong>{data.score || 0}</strong> -{" "}
-            <span className={diffColor}>{diffText} pts</span>
-          </span>
-        );
-      case "renewal_confirmed":
-        return (
-          <span>
-            Renovação confirmada - <span className={diffColor}>{diffText} pts</span>
-          </span>
-        );
-      case "cancellation_signaled":
-        return (
-          <span>
-            Cancelamento sinalizado - <span className={diffColor}>{diffText} pts</span>
-          </span>
-        );
-      case "no_goals":
-        return (
-          <span>
-            Empresa sem metas configuradas -{" "}
-            <span className={diffColor}>{diffText} pts</span>
-          </span>
-        );
-      case "inactivity":
-        return (
-          <span>
-            {data.days_inactive || 0} dias sem atividade -{" "}
-            <span className={diffColor}>{diffText} pts</span>
-          </span>
-        );
-      case "recalculation":
-        return (
-          <span>
-            Score recalculado:{" "}
-            <span className={getScoreColor(event.score_after || 0)}>
-              {event.score_after || 0}
-            </span>
-          </span>
-        );
-      default:
-        return (
-          <span>
-            {data.description || event.event_type} -{" "}
-            <span className={diffColor}>{diffText} pts</span>
-          </span>
-        );
-    }
-  };
+  }
 
   const getCompanyName = (item: HealthEvent | ProjectHealth) => {
-    return (
-      item.project?.onboarding_company?.name ||
-      item.project?.product_name ||
-      "Projeto"
-    );
+    return item.project?.onboarding_company?.name || item.project?.product_name || "Projeto";
   };
 
-  // Group events by company for better visualization
   const criticalProjects = projectHealths.filter(
     (p) => p.risk_level === "critical" || p.risk_level === "high"
   );
+
+  const impactChartData = useMemo(() => {
+    return impactSummary.slice(0, 8).map((item) => ({
+      name: item.label.length > 15 ? item.label.substring(0, 15) + "..." : item.label,
+      impacto: item.totalImpact,
+      fill: item.isPositive ? "#22c55e" : "#ef4444",
+    }));
+  }, [impactSummary]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -421,92 +500,262 @@ export const HealthScoreHistoryDialog = ({
             <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="flex-1 overflow-hidden">
-            <ScrollArea className="h-[calc(90vh-120px)]">
-              <div className="space-y-4 pr-4">
-                {/* Average Score Chart */}
-                {dailyData.length > 0 && (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
+            <TabsList className="w-full grid grid-cols-3">
+              <TabsTrigger value="resumo" className="gap-1.5">
+                <BarChart3 className="h-4 w-4" />
+                Resumo
+              </TabsTrigger>
+              <TabsTrigger value="insights" className="gap-1.5">
+                <Sparkles className="h-4 w-4" />
+                Insights IA
+              </TabsTrigger>
+              <TabsTrigger value="detalhes" className="gap-1.5">
+                <Building2 className="h-4 w-4" />
+                Detalhes
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex-1 overflow-hidden mt-4">
+              <ScrollArea className="h-[calc(90vh-200px)]">
+                <TabsContent value="resumo" className="mt-0 space-y-4 pr-4">
+                  {/* Impact Summary Cards */}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {/* Positive Factors */}
+                    <Card className="border-green-200 bg-green-50/30">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm flex items-center gap-2 text-green-700">
+                          <ArrowUpCircle className="h-4 w-4" />
+                          O que fez a saúde SUBIR
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {positiveFactors.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">Nenhum fator positivo registrado</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {positiveFactors.map((factor) => (
+                              <div key={factor.type} className="flex items-center justify-between bg-white rounded-lg p-2 border border-green-100">
+                                <div className="flex items-center gap-2">
+                                  {getEventIcon(factor.type)}
+                                  <span className="text-sm">{factor.label}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-green-600 font-bold">+{factor.totalImpact} pts</span>
+                                  <span className="text-xs text-muted-foreground ml-2">({factor.count}x)</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Negative Factors */}
+                    <Card className="border-red-200 bg-red-50/30">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm flex items-center gap-2 text-red-700">
+                          <ArrowDownCircle className="h-4 w-4" />
+                          O que fez a saúde DESCER
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {negativeFactors.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">Nenhum fator negativo registrado</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {negativeFactors.map((factor) => (
+                              <div key={factor.type} className="flex items-center justify-between bg-white rounded-lg p-2 border border-red-100">
+                                <div className="flex items-center gap-2">
+                                  {getEventIcon(factor.type)}
+                                  <span className="text-sm">{factor.label}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-red-600 font-bold">{factor.totalImpact} pts</span>
+                                  <span className="text-xs text-muted-foreground ml-2">({factor.count}x)</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Impact Chart */}
+                  {impactChartData.length > 0 && (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Impacto por Tipo de Evento</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-[200px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={impactChartData} layout="vertical">
+                              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                              <XAxis type="number" tick={{ fontSize: 10 }} />
+                              <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
+                              <Tooltip formatter={(value: number) => [`${value} pts`, "Impacto"]} />
+                              <Bar dataKey="impacto" radius={[0, 4, 4, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Evolution Chart */}
+                  {dailyData.length > 0 && (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4" />
+                          Evolução da Saúde Média (30 dias)
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-[150px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={dailyData}>
+                              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                              <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                              <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={30} />
+                              <Tooltip formatter={(value: number) => [`${value} pts`, "Média"]} />
+                              <Line type="monotone" dataKey="avgScore" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Pillar Averages */}
+                  {pillarAverages && (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Média por Pilar</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-4 gap-4">
+                          {[
+                            { label: "Satisfação", value: pillarAverages.satisfaction, icon: HeartPulse },
+                            { label: "Metas", value: pillarAverages.goals, icon: Target },
+                            { label: "Engajamento", value: pillarAverages.engagement, icon: Calendar },
+                            { label: "Suporte", value: pillarAverages.support, icon: CheckCircle2 },
+                          ].map((pillar) => (
+                            <div key={pillar.label} className="text-center">
+                              <pillar.icon className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+                              <p className={cn("text-2xl font-bold", getScoreColor(pillar.value))}>{pillar.value}</p>
+                              <p className="text-xs text-muted-foreground">{pillar.label}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="insights" className="mt-0 space-y-4 pr-4">
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4" />
-                        Evolução da Saúde Média (últimos 30 dias)
+                        <Lightbulb className="h-4 w-4 text-yellow-500" />
+                        Insights e Recomendações
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="h-[150px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={dailyData}>
-                            <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                            <XAxis
-                              dataKey="date"
-                              tick={{ fontSize: 10 }}
-                              stroke="hsl(var(--muted-foreground))"
-                            />
-                            <YAxis
-                              domain={[0, 100]}
-                              tick={{ fontSize: 10 }}
-                              stroke="hsl(var(--muted-foreground))"
-                              width={30}
-                            />
-                            <Tooltip
-                              formatter={(value: number) => [`${value} pts`, "Média"]}
-                              labelFormatter={(label) => `Data: ${label}`}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="avgScore"
-                              stroke="hsl(var(--primary))"
-                              strokeWidth={2}
-                              dot={false}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
+                      {!aiInsights && !loadingInsights && (
+                        <div className="text-center py-8">
+                          <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                          <p className="text-muted-foreground mb-4">
+                            Gere insights personalizados com base nos dados de saúde da sua carteira
+                          </p>
+                          <Button onClick={generateAIInsights} className="gap-2">
+                            <Sparkles className="h-4 w-4" />
+                            Gerar Insights com IA
+                          </Button>
+                        </div>
+                      )}
+
+                      {loadingInsights && (
+                        <div className="flex items-center justify-center py-8">
+                          <RefreshCw className="h-6 w-6 animate-spin text-primary mr-2" />
+                          <span>Analisando dados...</span>
+                        </div>
+                      )}
+
+                      {aiInsights && (
+                        <div className="prose prose-sm max-w-none">
+                          <ReactMarkdown>{aiInsights}</ReactMarkdown>
+                        </div>
+                      )}
+
+                      {aiInsights && !loadingInsights && (
+                        <div className="mt-4 pt-4 border-t">
+                          <Button variant="outline" size="sm" onClick={generateAIInsights} className="gap-2">
+                            <RefreshCw className="h-4 w-4" />
+                            Gerar Novamente
+                          </Button>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
-                )}
+                </TabsContent>
 
-                {/* Critical Projects */}
-                {criticalProjects.length > 0 && (
-                  <Card className="border-red-200 bg-red-50/30">
+                <TabsContent value="detalhes" className="mt-0 space-y-4 pr-4">
+                  {/* Critical Projects */}
+                  {criticalProjects.length > 0 && (
+                    <Card className="border-red-200 bg-red-50/30">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm flex items-center gap-2 text-red-700">
+                          <AlertTriangle className="h-4 w-4" />
+                          Empresas em Risco ({criticalProjects.length})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {criticalProjects.slice(0, 10).map((project) => (
+                            <div key={project.project_id} className="flex items-center justify-between bg-white rounded-lg p-3 border">
+                              <div className="flex items-center gap-3">
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <p className="font-medium text-sm">{getCompanyName(project)}</p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>Metas: {project.goals_score ?? "—"} | Satisfação: {project.satisfaction_score ?? "—"}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {getTrendIcon(project.trend_direction)}
+                                <span className={cn("text-lg font-bold", getScoreColor(project.total_score))}>{project.total_score}</span>
+                                {getRiskBadge(project.risk_level)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* All Projects Ranking */}
+                  <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2 text-red-700">
-                        <AlertTriangle className="h-4 w-4" />
-                        Empresas em Risco ({criticalProjects.length})
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Ranking de Saúde
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-2">
-                        {criticalProjects.slice(0, 10).map((project) => (
-                          <div
-                            key={project.project_id}
-                            className="flex items-center justify-between bg-white rounded-lg p-3 border"
-                          >
+                      <div className="space-y-1">
+                        {projectHealths.slice(0, 20).map((project, idx) => (
+                          <div key={project.project_id} className="flex items-center justify-between py-2 border-b last:border-0">
                             <div className="flex items-center gap-3">
-                              <Building2 className="h-4 w-4 text-muted-foreground" />
-                              <div>
-                                <p className="font-medium text-sm">
-                                  {getCompanyName(project)}
-                                </p>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <span>
-                                    Metas: {project.goals_score ?? "—"} |{" "}
-                                    Satisfação: {project.satisfaction_score ?? "—"}
-                                  </span>
-                                </div>
-                              </div>
+                              <span className="text-xs text-muted-foreground w-5">{idx + 1}.</span>
+                              <span className="text-sm">{getCompanyName(project)}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               {getTrendIcon(project.trend_direction)}
-                              <span
-                                className={cn(
-                                  "text-lg font-bold",
-                                  getScoreColor(project.total_score)
-                                )}
-                              >
-                                {project.total_score}
-                              </span>
+                              <span className={cn("font-bold", getScoreColor(project.total_score))}>{project.total_score}</span>
                               {getRiskBadge(project.risk_level)}
                             </div>
                           </div>
@@ -514,111 +763,10 @@ export const HealthScoreHistoryDialog = ({
                       </div>
                     </CardContent>
                   </Card>
-                )}
-
-                {/* Recent Events */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Eventos Recentes
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {events.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Nenhum evento registrado
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {events.slice(0, 30).map((event) => (
-                          <div
-                            key={event.id}
-                            className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                          >
-                            <div className="mt-0.5">
-                              {getEventIcon(event.event_type)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium text-sm">
-                                  {getCompanyName(event)}
-                                </span>
-                                <Badge variant="outline" className="text-[10px]">
-                                  {getEventLabel(event.event_type)}
-                                </Badge>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {getEventDescription(event)}
-                              </p>
-                              <p className="text-[10px] text-muted-foreground mt-1">
-                                {format(
-                                  parseISO(event.created_at),
-                                  "dd/MM/yyyy 'às' HH:mm",
-                                  { locale: ptBR }
-                                )}
-                              </p>
-                            </div>
-                            {event.score_after !== null && (
-                              <div className="text-right">
-                                <span
-                                  className={cn(
-                                    "text-sm font-bold",
-                                    getScoreColor(event.score_after)
-                                  )}
-                                >
-                                  {event.score_after}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* All Projects Ranking */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      Ranking de Saúde
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-1">
-                      {projectHealths.slice(0, 20).map((project, idx) => (
-                        <div
-                          key={project.project_id}
-                          className="flex items-center justify-between py-2 border-b last:border-0"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs text-muted-foreground w-5">
-                              {idx + 1}.
-                            </span>
-                            <span className="text-sm">{getCompanyName(project)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {getTrendIcon(project.trend_direction)}
-                            <span
-                              className={cn(
-                                "font-bold",
-                                getScoreColor(project.total_score)
-                              )}
-                            >
-                              {project.total_score}
-                            </span>
-                            {getRiskBadge(project.risk_level)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </ScrollArea>
-          </div>
+                </TabsContent>
+              </ScrollArea>
+            </div>
+          </Tabs>
         )}
       </DialogContent>
     </Dialog>
