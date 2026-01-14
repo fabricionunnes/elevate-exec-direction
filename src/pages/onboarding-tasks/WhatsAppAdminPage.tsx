@@ -100,10 +100,34 @@ const WhatsAppAdminPage = () => {
   const [deleteInstance, setDeleteInstance] = useState<WhatsAppInstance | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Auth state listener - redirect to login if session expires
   useEffect(() => {
-    checkPermissions();
-    fetchInstances();
-    fetchMessageLogs();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        toast.error("Sessão expirada. Por favor, faça login novamente.");
+        navigate("/onboarding-tasks/login");
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  useEffect(() => {
+    const initPage = async () => {
+      // Check authentication first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Você precisa estar logado para acessar esta página");
+        navigate("/onboarding-tasks/login");
+        return;
+      }
+      
+      checkPermissions();
+      fetchInstances();
+      fetchMessageLogs();
+    };
+    
+    initPage();
     
     // Subscribe to realtime updates
     const instancesChannel = supabase
@@ -124,26 +148,32 @@ const WhatsAppAdminPage = () => {
       supabase.removeChannel(instancesChannel);
       supabase.removeChannel(logsChannel);
     };
-  }, []);
+  }, [navigate]);
 
   const checkPermissions = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: staff } = await supabase
-        .from("onboarding_staff")
-        .select("id, role")
-        .eq("user_id", user.id)
-        .single();
+    if (!user) {
+      navigate("/onboarding-tasks/login");
+      return;
+    }
+    
+    const { data: staff } = await supabase
+      .from("onboarding_staff")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+    
+    if (staff) {
+      setCurrentUserRole(staff.role);
+      setCurrentStaffId(staff.id);
       
-      if (staff) {
-        setCurrentUserRole(staff.role);
-        setCurrentStaffId(staff.id);
-        
-        if (staff.role !== "admin") {
-          toast.error("Acesso restrito a administradores");
-          navigate("/onboarding-tasks");
-        }
+      if (staff.role !== "admin") {
+        toast.error("Acesso restrito a administradores");
+        navigate("/onboarding-tasks");
       }
+    } else {
+      toast.error("Usuário não encontrado no sistema");
+      navigate("/onboarding-tasks/login");
     }
   };
 
@@ -191,7 +221,11 @@ const WhatsAppAdminPage = () => {
     queryParams?: Record<string, string>
   ) => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error("Não autenticado");
+    if (!session) {
+      toast.error("Sessão expirada. Por favor, faça login novamente.");
+      navigate("/onboarding-tasks/login");
+      throw new Error("Não autenticado");
+    }
 
     // Build URL with action and additional query parameters
     const params = new URLSearchParams({ action, ...queryParams });
