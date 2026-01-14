@@ -744,8 +744,12 @@ const OnboardingTasksPage = () => {
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
       // Hide inactive and closed companies entirely from dashboard
+      // Exception: show closed companies when filtering by "closed" status metric
+      const isClosedFilter = activeMetricFilter?.type === "status" && activeMetricFilter?.value === "closed";
       if (company.status === "inactive" || company.status === "closed") {
-        return false;
+        if (!isClosedFilter) {
+          return false;
+        }
       }
       
       // For consultants: only show companies where they are the consultant or CS
