@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-
+import { addBusinessDays, ensureBusinessDay } from "@/lib/businessDays";
 type TemplateTask = {
   id: string;
   title: string;
@@ -164,8 +164,8 @@ export const GenerateTasksDialog = ({
       const today = new Date();
       const tasksToInsert = Array.from(selectedAiTasks).map((index, i) => {
         const task = aiTasks[index];
-        const dueDate = new Date(today);
-        dueDate.setDate(dueDate.getDate() + 7 + i * 3); // Stagger due dates
+        // Use business days: start 7 business days from now, stagger by 3 business days
+        const dueDate = addBusinessDays(today, 7 + i * 3);
 
         return {
           project_id: projectId,
@@ -228,8 +228,8 @@ export const GenerateTasksDialog = ({
         let dueDate: string | null = null;
         const offset = (tpl.default_days_offset ?? 0) + (tpl.duration_days ?? 0);
         if (offset > 0) {
-          const due = new Date(today);
-          due.setDate(due.getDate() + offset);
+          // Use business days to avoid weekends and holidays
+          const due = addBusinessDays(today, offset);
           dueDate = due.toISOString().split("T")[0];
         }
 

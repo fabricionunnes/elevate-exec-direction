@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { addDays } from "date-fns";
+import { addBusinessDays, ensureBusinessDay } from "@/lib/businessDays";
 
 interface StageAction {
   id: string;
@@ -34,11 +34,15 @@ export async function createStageActivities(
       return; // No actions configured for this stage
     }
 
-    // Create activities for each action
+    // Create activities for each action - using business days to avoid weekends/holidays
     const activities = actions.map((action: StageAction) => {
-      const scheduledAt = action.days_offset 
-        ? addDays(new Date(), action.days_offset).toISOString()
-        : new Date().toISOString();
+      let scheduledAt: string;
+      if (action.days_offset && action.days_offset > 0) {
+        scheduledAt = addBusinessDays(new Date(), action.days_offset).toISOString();
+      } else {
+        // Ensure today is also a business day
+        scheduledAt = ensureBusinessDay(new Date()).toISOString();
+      }
 
       return {
         lead_id: leadId,
