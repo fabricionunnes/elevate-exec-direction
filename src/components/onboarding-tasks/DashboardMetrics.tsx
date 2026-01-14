@@ -720,7 +720,7 @@ const DashboardMetrics = ({
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className="text-base sm:text-lg font-bold leading-none text-amber-500">{projectMetrics.churnSignaled}</p>
-                <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate">Risco</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate">Solicitou Canc.</p>
               </div>
             </div>
           </CardContent>
