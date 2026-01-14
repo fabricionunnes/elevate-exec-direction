@@ -28,6 +28,7 @@ interface Company {
   consultant?: Staff;
   kickoff_date: string | null;
   created_at: string;
+  hasGoal?: boolean;
 }
 
 const OnboardingCompaniesPage = () => {
@@ -95,7 +96,34 @@ const OnboardingCompaniesPage = () => {
       const { data, error } = await query;
 
       if (error) throw error;
-      setCompanies(data || []);
+      
+      // Fetch monthly goals for current month to check which companies have goals
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      
+      // Get all projects and their goals for current month
+      const { data: projectsWithGoals } = await supabase
+        .from("onboarding_projects")
+        .select(`
+          company_id,
+          onboarding_monthly_goals!inner(sales_target)
+        `)
+        .eq("onboarding_monthly_goals.month", currentMonth)
+        .eq("onboarding_monthly_goals.year", currentYear)
+        .gt("onboarding_monthly_goals.sales_target", 0);
+      
+      // Create a set of company IDs that have goals > 0
+      const companiesWithGoals = new Set(
+        projectsWithGoals?.map(p => p.company_id) || []
+      );
+      
+      // Mark companies with/without goals
+      const companiesWithGoalFlag = (data || []).map(company => ({
+        ...company,
+        hasGoal: companiesWithGoals.has(company.id)
+      }));
+      
+      setCompanies(companiesWithGoalFlag);
     } catch (error: any) {
       console.error("Error fetching companies:", error);
       toast.error("Erro ao carregar empresas");
@@ -178,7 +206,7 @@ const OnboardingCompaniesPage = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="pt-6">
               <div className="text-2xl font-bold">{companies.length}</div>
@@ -199,6 +227,14 @@ const OnboardingCompaniesPage = () => {
                 {companies.filter((c) => !c.kickoff_date).length}
               </div>
               <div className="text-sm text-muted-foreground">Sem Kickoff</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold text-orange-500">
+                {companies.filter((c) => !c.hasGoal && c.status === "active").length}
+              </div>
+              <div className="text-sm text-muted-foreground">Sem Meta</div>
             </CardContent>
           </Card>
         </div>
@@ -227,9 +263,16 @@ const OnboardingCompaniesPage = () => {
                 onClick={() => navigate(`/onboarding-tasks/companies/${company.id}`)}
               >
                 <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-lg">{company.name}</CardTitle>
-                    {getStatusBadge(company.status)}
+                    <div className="flex flex-wrap gap-1">
+                      {!company.hasGoal && company.status === "active" && (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
+                          Sem Meta
+                        </Badge>
+                      )}
+                      {getStatusBadge(company.status)}
+                    </div>
                   </div>
                   {company.segment && (
                     <p className="text-sm text-muted-foreground">{company.segment}</p>
