@@ -3,7 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, FileText, Check, Copy, Download, Target, TrendingUp, ListChecks } from "lucide-react";
+import { Loader2, FileText, Check, Copy, Download, Target, ListChecks } from "lucide-react";
+import { jsPDF } from "jspdf";
+import logoUnv from "@/assets/logo-unv.png";
 
 interface CompanyData {
   id: string;
@@ -257,17 +259,243 @@ export const GenerateStrategicPlanningDialog = ({
     toast.success("Planejamento copiado para a área de transferência");
   };
 
-  const handleDownload = () => {
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `planejamento-estrategico-${companyData.name.replace(/\s+/g, "-").toLowerCase()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success("Arquivo baixado com sucesso");
+  const handleDownload = async () => {
+    if (!parsedContent) {
+      toast.error("Aguarde a geração do planejamento");
+      return;
+    }
+
+    try {
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      const contentWidth = pageWidth - margin * 2;
+      let y = margin;
+
+      // Colors
+      const primaryColor: [number, number, number] = [10, 34, 64]; // #0A2240
+      const redColor: [number, number, number] = [196, 30, 58]; // #C41E3A
+      const greenColor: [number, number, number] = [34, 139, 34];
+      const orangeColor: [number, number, number] = [255, 140, 0];
+      const blueColor: [number, number, number] = [30, 90, 180];
+
+      // Helper function to check page break
+      const checkPageBreak = (neededHeight: number) => {
+        if (y + neededHeight > pageHeight - margin) {
+          pdf.addPage();
+          y = margin;
+          return true;
+        }
+        return false;
+      };
+
+      // Helper function to wrap text
+      const wrapText = (text: string, maxWidth: number, fontSize: number): string[] => {
+        pdf.setFontSize(fontSize);
+        return pdf.splitTextToSize(text, maxWidth);
+      };
+
+      // Load and add logo
+      const img = new Image();
+      img.src = logoUnv;
+      await new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+
+      if (img.complete && img.naturalWidth > 0) {
+        const logoWidth = 50;
+        const logoHeight = (img.naturalHeight / img.naturalWidth) * logoWidth;
+        pdf.addImage(img, "PNG", (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
+        y += logoHeight + 10;
+      }
+
+      // Title
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(20);
+      pdf.setTextColor(...primaryColor);
+      const title = "PLANEJAMENTO ESTRATÉGICO";
+      pdf.text(title, pageWidth / 2, y, { align: "center" });
+      y += 8;
+
+      // Company name
+      pdf.setFontSize(14);
+      pdf.setTextColor(...redColor);
+      pdf.text(companyData.name.toUpperCase(), pageWidth / 2, y, { align: "center" });
+      y += 6;
+
+      // Date
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(100, 100, 100);
+      const date = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+      pdf.text(date, pageWidth / 2, y, { align: "center" });
+      y += 15;
+
+      // Divider line
+      pdf.setDrawColor(...primaryColor);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 12;
+
+      // BLOCO 1 - RESUMO
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.setTextColor(...primaryColor);
+      pdf.text("RESUMO DA EMPRESA", margin, y);
+      y += 8;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      pdf.setTextColor(40, 40, 40);
+
+      const resumoLines = parsedContent.resumo.trim().split("\n");
+      for (const line of resumoLines) {
+        if (line.trim()) {
+          const wrapped = wrapText(line, contentWidth, 10);
+          for (const wl of wrapped) {
+            checkPageBreak(6);
+            // Bold the label part if it contains ":"
+            if (line.includes(":")) {
+              const colonIndex = wl.indexOf(":");
+              if (colonIndex > 0 && colonIndex < 30) {
+                pdf.setFont("helvetica", "bold");
+                pdf.text(wl.substring(0, colonIndex + 1), margin, y);
+                const labelWidth = pdf.getTextWidth(wl.substring(0, colonIndex + 1));
+                pdf.setFont("helvetica", "normal");
+                pdf.text(wl.substring(colonIndex + 1), margin + labelWidth, y);
+              } else {
+                pdf.text(wl, margin, y);
+              }
+            } else {
+              pdf.text(wl, margin, y);
+            }
+            y += 5;
+          }
+        }
+      }
+      y += 8;
+
+      // BLOCO 2 - SWOT
+      checkPageBreak(30);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.setTextColor(...primaryColor);
+      pdf.text("ANÁLISE SWOT", margin, y);
+      y += 10;
+
+      const swotBoxWidth = (contentWidth - 5) / 2;
+      const swotStartY = y;
+      let maxSwotY = y;
+
+      // Helper to draw SWOT quadrant
+      const drawSwotQuadrant = (
+        title: string,
+        items: string[],
+        x: number,
+        startY: number,
+        color: [number, number, number]
+      ): number => {
+        let localY = startY;
+        
+        // Title
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(11);
+        pdf.setTextColor(...color);
+        pdf.text(title, x, localY);
+        localY += 6;
+
+        // Items
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(9);
+        pdf.setTextColor(40, 40, 40);
+
+        for (let i = 0; i < items.length; i++) {
+          const itemText = `${i + 1}. ${items[i]}`;
+          const wrapped = wrapText(itemText, swotBoxWidth - 5, 9);
+          for (const line of wrapped) {
+            checkPageBreak(5);
+            pdf.text(line, x, localY);
+            localY += 4.5;
+          }
+        }
+        return localY;
+      };
+
+      // Draw quadrants
+      const forcasEndY = drawSwotQuadrant("FORÇAS", parsedContent.swot.forcas, margin, swotStartY, greenColor);
+      const fraquezasEndY = drawSwotQuadrant("FRAQUEZAS", parsedContent.swot.fraquezas, margin + swotBoxWidth + 5, swotStartY, redColor);
+      maxSwotY = Math.max(forcasEndY, fraquezasEndY) + 8;
+
+      checkPageBreak(30);
+      y = maxSwotY;
+      const oportunidadesEndY = drawSwotQuadrant("OPORTUNIDADES", parsedContent.swot.oportunidades, margin, y, blueColor);
+      const ameacasEndY = drawSwotQuadrant("AMEAÇAS", parsedContent.swot.ameacas, margin + swotBoxWidth + 5, y, orangeColor);
+      y = Math.max(oportunidadesEndY, ameacasEndY) + 12;
+
+      // BLOCO 3 - CRONOGRAMA
+      checkPageBreak(20);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.setTextColor(...primaryColor);
+      pdf.text("CRONOGRAMA DE AÇÕES", margin, y);
+      y += 10;
+
+      for (let i = 0; i < parsedContent.cronograma.length; i++) {
+        const action = parsedContent.cronograma[i];
+        checkPageBreak(15);
+
+        // Action number and title
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(11);
+        pdf.setTextColor(...primaryColor);
+        const actionTitle = `${i + 1}. ${action.title}`;
+        const titleWrapped = wrapText(actionTitle, contentWidth, 11);
+        for (const line of titleWrapped) {
+          pdf.text(line, margin, y);
+          y += 5;
+        }
+        y += 2;
+
+        // Subactions
+        if (action.subactions.length > 0) {
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(9);
+          pdf.setTextColor(60, 60, 60);
+          
+          for (const sub of action.subactions) {
+            checkPageBreak(6);
+            const subText = `   • ${sub}`;
+            const subWrapped = wrapText(subText, contentWidth - 10, 9);
+            for (const line of subWrapped) {
+              pdf.text(line, margin + 3, y);
+              y += 4.5;
+            }
+          }
+        }
+        y += 5;
+      }
+
+      // Footer on last page
+      y = pageHeight - 15;
+      pdf.setFont("helvetica", "italic");
+      pdf.setFontSize(8);
+      pdf.setTextColor(120, 120, 120);
+      pdf.text("Universidade Nacional de Vendas • universidadevendas.com.br", pageWidth / 2, y, { align: "center" });
+
+      // Save PDF
+      pdf.save(`planejamento-estrategico-${companyData.name.replace(/\s+/g, "-").toLowerCase()}.pdf`);
+      toast.success("PDF gerado com sucesso!");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Erro ao gerar PDF");
+    }
   };
 
   const handleCreateTask = async () => {
