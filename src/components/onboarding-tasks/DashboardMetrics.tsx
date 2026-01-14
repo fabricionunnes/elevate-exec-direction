@@ -45,6 +45,7 @@ import {
 } from "recharts";
 import { TasksListDialog } from "./TasksListDialog";
 import { DashboardAgenda } from "./DashboardAgenda";
+import { HealthScoreHistoryDialog } from "./health-score/HealthScoreHistoryDialog";
 
 interface Task {
   id: string;
@@ -137,6 +138,7 @@ const DashboardMetrics = ({
   const [npsDetailType, setNpsDetailType] = useState<"promoters" | "detractors" | "neutrals" | "all" | null>(null);
   const [npsDetailPage, setNpsDetailPage] = useState(1);
   const [showCompaniesWithoutTasks, setShowCompaniesWithoutTasks] = useState(false);
+  const [healthHistoryDialogOpen, setHealthHistoryDialogOpen] = useState(false);
   const npsPerPage = 10;
 
   // Use external tasks if provided, otherwise fetch internally
@@ -776,6 +778,7 @@ const DashboardMetrics = ({
           onClick={(e) => {
             // If clicking the recalculate button, don't propagate
             if ((e.target as HTMLElement).closest('button')) return;
+            setHealthHistoryDialogOpen(true);
           }}
         >
           <CardContent className="p-2 sm:p-3">
@@ -1165,6 +1168,12 @@ const DashboardMetrics = ({
         type={tasksDialogType}
         taskIds={tasksDialogIds}
         status={tasksDialogStatus ?? undefined}
+        projectIds={projects.map((p) => p.id)}
+      />
+
+      <HealthScoreHistoryDialog
+        open={healthHistoryDialogOpen}
+        onOpenChange={setHealthHistoryDialogOpen}
         projectIds={projects.map((p) => p.id)}
       />
     </div>
