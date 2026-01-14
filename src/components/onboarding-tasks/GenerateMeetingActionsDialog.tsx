@@ -15,7 +15,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { format, addDays } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Loader2,
@@ -25,6 +25,7 @@ import {
   AlertCircle,
   ListTodo,
 } from "lucide-react";
+import { addBusinessDays } from "@/lib/businessDays";
 
 interface GeneratedAction {
   id: string;
@@ -175,10 +176,10 @@ export const GenerateMeetingActionsDialog = ({
         }
       }
 
-      // Create tasks with the phase
+      // Create tasks with the phase - using business days to avoid weekends/holidays
       const today = new Date();
       const tasksToCreate = selectedActions.map((action, index) => {
-        const dueDate = addDays(today, action.due_days);
+        const dueDate = addBusinessDays(today, action.due_days);
         return {
           project_id: projectId,
           title: action.title,
@@ -350,7 +351,7 @@ export const GenerateMeetingActionsDialog = ({
               <ScrollArea className="h-[300px] pr-4">
                 <div className="space-y-3">
                   {actions.map((action) => {
-                    const dueDate = addDays(new Date(), action.due_days);
+                    const dueDate = addBusinessDays(new Date(), action.due_days);
                     return (
                       <div
                         key={action.id}
