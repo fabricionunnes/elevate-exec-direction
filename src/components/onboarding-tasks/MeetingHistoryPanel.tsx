@@ -1615,7 +1615,7 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
             if (!open) setMeetingForActions(null);
           }}
           meetingId={meetingForActions.id}
-          meetingSubject={meetingForActions.subject}
+          meetingSubject={meetingForActions.meeting_title || meetingForActions.subject}
           projectId={projectId}
           productId={productId || undefined}
           onActionsCreated={() => {
