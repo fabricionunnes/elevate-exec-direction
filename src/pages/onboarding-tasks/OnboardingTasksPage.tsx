@@ -342,7 +342,7 @@ const OnboardingTasksPage = () => {
             cs:onboarding_staff!onboarding_companies_cs_id_fkey(id, name, role),
             consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(id, name, role)
           `)
-          .order("name"),
+          .order("contract_start_date", { ascending: false, nullsFirst: false }),
         supabase
           .from("onboarding_projects")
           .select("*")
