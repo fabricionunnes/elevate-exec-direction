@@ -2,12 +2,15 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Version tag for debugging deployments
-const EVOLUTION_API_FUNC_VERSION = "2026-01-12-v5-qr-payload-variants";
+const EVOLUTION_API_FUNC_VERSION = "2026-01-14-v6-route-prefixes";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Route prefixes to try (Evolution API v2.x sometimes uses different base paths)
+const ROUTE_PREFIXES = ['', '/api/v1', '/api/v2', '/v1', '/v2'];
 
 serve(async (req) => {
   console.log(`[evolution-api] Version: ${EVOLUTION_API_FUNC_VERSION}`);
@@ -73,8 +76,8 @@ serve(async (req) => {
       'apikey': EVOLUTION_API_KEY,
     };
 
-    const fetchEvolutionJson = async (endpoint: string, init?: RequestInit) => {
-      const fullUrl = `${evolutionBaseUrl}${endpoint}`;
+    // Make a raw fetch to any URL with Evolution headers
+    const fetchEvolutionRaw = async (fullUrl: string, init?: RequestInit) => {
       console.log(`[evolution-api] Calling: ${init?.method || 'GET'} ${fullUrl}`);
       
       const res = await fetch(fullUrl, {
@@ -96,10 +99,32 @@ serve(async (req) => {
       return { res, json };
     };
 
-    // Helper to fetch all instances from Evolution
+    const fetchEvolutionJson = async (endpoint: string, init?: RequestInit) => {
+      const fullUrl = `${evolutionBaseUrl}${endpoint}`;
+      return fetchEvolutionRaw(fullUrl, init);
+    };
+
+    // Try multiple route prefixes to find the working one
+    const fetchWithPrefixes = async (path: string, init?: RequestInit): Promise<{ res: Response; json: any; prefix: string }> => {
+      for (const prefix of ROUTE_PREFIXES) {
+        const endpoint = `${prefix}${path}`;
+        const { res, json } = await fetchEvolutionJson(endpoint, init);
+        if (res.ok || (res.status !== 404 && res.status !== 405)) {
+          return { res, json, prefix };
+        }
+        console.log(`[evolution-api] Prefix "${prefix}" returned ${res.status}, trying next...`);
+      }
+      // Return last attempt result
+      const endpoint = `${ROUTE_PREFIXES[0]}${path}`;
+      const { res, json } = await fetchEvolutionJson(endpoint, init);
+      return { res, json, prefix: '' };
+    };
+
+    // Helper to fetch all instances from Evolution (tries multiple prefixes)
     const fetchEvolutionInstances = async () => {
-      const { res, json } = await fetchEvolutionJson('/instance/fetchInstances', { method: 'GET' });
+      const { res, json, prefix } = await fetchWithPrefixes('/instance/fetchInstances', { method: 'GET' });
       if (res.ok && Array.isArray(json)) {
+        console.log(`[evolution-api] Found instances using prefix: "${prefix}"`);
         return json;
       }
       return [];
@@ -410,12 +435,87 @@ serve(async (req) => {
       }
 
       case 'list-instances': {
-        // List all instances
-        const { res, json } = await fetchEvolutionJson('/instance/fetchInstances', { method: 'GET' });
+        // List all instances (tries multiple prefixes)
+        const instances = await fetchEvolutionInstances();
+        return new Response(
+          JSON.stringify(instances),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'diagnose': {
+        // Diagnose Evolution API configuration by testing multiple endpoints and prefixes
+        console.log(`[evolution-api] Running diagnostics on ${evolutionBaseUrl}`);
+        
+        const diagnostics: any = {
+          baseUrl: evolutionBaseUrl,
+          version: EVOLUTION_API_FUNC_VERSION,
+          apiKeyPresent: !!EVOLUTION_API_KEY,
+          tests: [],
+        };
+
+        // Test root endpoint
+        try {
+          const rootRes = await fetch(evolutionBaseUrl, { headers: evolutionHeaders });
+          diagnostics.tests.push({
+            endpoint: '/',
+            status: rootRes.status,
+            ok: rootRes.ok,
+          });
+        } catch (e) {
+          diagnostics.tests.push({ endpoint: '/', error: String(e) });
+        }
+
+        // Test different route prefixes with fetchInstances
+        for (const prefix of ROUTE_PREFIXES) {
+          const testEndpoint = `${evolutionBaseUrl}${prefix}/instance/fetchInstances`;
+          try {
+            const res = await fetch(testEndpoint, { method: 'GET', headers: evolutionHeaders });
+            const text = await res.text();
+            let parsed: any = null;
+            try { parsed = JSON.parse(text); } catch { parsed = text.substring(0, 200); }
+            
+            diagnostics.tests.push({
+              endpoint: `${prefix}/instance/fetchInstances`,
+              status: res.status,
+              ok: res.ok,
+              isArray: Array.isArray(parsed),
+              preview: typeof parsed === 'object' ? JSON.stringify(parsed).substring(0, 200) : parsed,
+            });
+            
+            if (res.ok && Array.isArray(parsed)) {
+              diagnostics.workingPrefix = prefix;
+              diagnostics.instances = parsed.map((i: any) => ({
+                name: i.name || i.instanceName,
+                state: i.connectionStatus || i.state,
+              }));
+            }
+          } catch (e) {
+            diagnostics.tests.push({ endpoint: `${prefix}/instance/fetchInstances`, error: String(e) });
+          }
+        }
+
+        // Also try /instance/list endpoint
+        for (const prefix of ROUTE_PREFIXES) {
+          const testEndpoint = `${evolutionBaseUrl}${prefix}/instance/list`;
+          try {
+            const res = await fetch(testEndpoint, { method: 'GET', headers: evolutionHeaders });
+            diagnostics.tests.push({
+              endpoint: `${prefix}/instance/list`,
+              status: res.status,
+              ok: res.ok,
+            });
+            if (res.ok && !diagnostics.workingPrefix) {
+              diagnostics.workingPrefix = prefix;
+            }
+          } catch (e) {
+            diagnostics.tests.push({ endpoint: `${prefix}/instance/list`, error: String(e) });
+          }
+        }
 
         return new Response(
-          JSON.stringify(json),
-          { status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify(diagnostics),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -601,7 +701,8 @@ serve(async (req) => {
               'send-media',
               'delete-instance',
               'logout',
-              'restart'
+              'restart',
+              'diagnose'
             ],
             _version: EVOLUTION_API_FUNC_VERSION
           }),
