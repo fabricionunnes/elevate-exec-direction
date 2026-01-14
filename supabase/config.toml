@@ -1,5 +1,8 @@
 project_id = "czmyjgdixwhpfasfugkm"
 
+[functions.generate-strategic-planning]
+verify_jwt = false
+
 [functions.create-admin]
 verify_jwt = false
 
