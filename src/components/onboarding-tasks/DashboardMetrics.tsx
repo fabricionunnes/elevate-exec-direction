@@ -442,16 +442,34 @@ const DashboardMetrics = ({
   }, [projects, dateRange]);
 
   const ltvMetrics = useMemo(() => {
-    // Calcular média do churn mensal do ano
-    const churnRates = monthlyChurnData.map(d => d.churn).filter(c => c > 0);
-    const averageMonthlyChurn = churnRates.length > 0 
-      ? churnRates.reduce((sum, c) => sum + c, 0) / churnRates.length 
-      : 0;
-    
-    // Tempo Médio (meses) = 1 ÷ Churn Mensal (em decimal)
-    // Se churn é 5%, então 1 / 0.05 = 20 meses
-    const averageLifetimeMonths = averageMonthlyChurn > 0 
-      ? Math.round((1 / (averageMonthlyChurn / 100)) * 10) / 10
+    const today = new Date();
+
+    const parseDateOnlySafe = (value: string | null): Date | null => {
+      if (!value) return null;
+      const dateOnly = value.substring(0, 10);
+      const d = new Date(dateOnly + "T12:00:00");
+      return isNaN(d.getTime()) ? null : d;
+    };
+
+    // Tempo médio: calcular tempo real de permanência por empresa
+    const companiesWithContractStart = filteredCompanies
+      .map(c => ({ company: c, start: parseDateOnlySafe(c.contract_start_date) }))
+      .filter(x => x.start);
+
+    const lifetimes = companiesWithContractStart
+      .map(({ company, start }) => {
+        const end = (company.status === "closed" || company.status === "inactive")
+          ? parseDateOnlySafe(company.status_changed_at) || today
+          : today;
+
+        const lifetimeMonths = Math.max(0, differenceInMonths(end, start as Date));
+        return lifetimeMonths;
+      })
+      // Evita que datas claramente erradas distorçam o dashboard
+      .filter(m => m >= 0 && m <= 180);
+
+    const averageLifetimeMonths = lifetimes.length > 0
+      ? Math.round((lifetimes.reduce((sum, m) => sum + m, 0) / lifetimes.length) * 10) / 10
       : 0;
 
     // Ticket médio mensal: somente empresas com valor de contrato
@@ -464,8 +482,8 @@ const DashboardMetrics = ({
     // LTV = Ticket Médio Mensal × Tempo Médio de Permanência (em meses)
     const ltv = Math.round(averageMonthlyTicket * averageLifetimeMonths);
 
-    return { averageLifetimeMonths, ltv, averageMonthlyTicket, averageMonthlyChurn };
-  }, [filteredCompanies, monthlyChurnData]);
+    return { averageLifetimeMonths, ltv, averageMonthlyTicket };
+  }, [filteredCompanies]);
 
   const npsMetrics = useMemo(() => {
     const filteredProjectIds = new Set(projects.map(p => p.id));
