@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { format, isToday, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Copy, Search, Building2, MessageSquareHeart, ChevronDown, ChevronRight, Calendar, Star, Clock, CheckCircle2 } from "lucide-react";
+import { Copy, Search, Building2, MessageSquareHeart, ChevronDown, ChevronRight, Calendar, Star, Clock, CheckCircle2, User, MessageSquare } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface MeetingCSATData {
@@ -30,6 +30,8 @@ interface MeetingCSATData {
   meetingTitle: string;
   meetingDate: string;
   score: number | null;
+  feedback: string | null;
+  respondentName: string | null;
   responseDate: string | null;
   status: string | null;
   companyName: string;
@@ -139,6 +141,8 @@ export function CSATGlobalDialog({ open, onOpenChange }: CSATGlobalDialogProps) 
           meeting_id,
           csat_responses (
             score,
+            feedback,
+            respondent_name,
             responded_at
           )
         `)
@@ -153,7 +157,7 @@ export function CSATGlobalDialog({ open, onOpenChange }: CSATGlobalDialogProps) 
           const project = projectMap.get(meeting.project_id)!;
           const company = project.onboarding_companies as { id: string; name: string };
           const survey = surveyByMeeting.get(meeting.id);
-          const responses = survey?.csat_responses as unknown as { score: number; responded_at: string }[] | null;
+          const responses = survey?.csat_responses as unknown as { score: number; feedback: string | null; respondent_name: string | null; responded_at: string }[] | null;
           const response = responses?.[0];
 
           return {
@@ -163,6 +167,8 @@ export function CSATGlobalDialog({ open, onOpenChange }: CSATGlobalDialogProps) 
             meetingTitle: meeting.meeting_title,
             meetingDate: meeting.meeting_date,
             score: response?.score ?? null,
+            feedback: response?.feedback ?? null,
+            respondentName: response?.respondent_name ?? null,
             responseDate: response?.responded_at ?? null,
             status: survey?.status ?? null,
             companyName: company.name,
@@ -185,6 +191,8 @@ export function CSATGlobalDialog({ open, onOpenChange }: CSATGlobalDialogProps) 
           project_id,
           csat_responses (
             score,
+            feedback,
+            respondent_name,
             responded_at
           ),
           onboarding_meeting_notes!inner (
@@ -200,7 +208,7 @@ export function CSATGlobalDialog({ open, onOpenChange }: CSATGlobalDialogProps) 
       
       (surveys || []).forEach((survey) => {
         const meeting = survey.onboarding_meeting_notes as unknown as { id: string; meeting_title: string; meeting_date: string };
-        const responses = survey.csat_responses as unknown as { score: number; responded_at: string }[] | null;
+        const responses = survey.csat_responses as unknown as { score: number; feedback: string | null; respondent_name: string | null; responded_at: string }[] | null;
         const response = responses?.[0];
         const project = projectMap.get(survey.project_id);
         const company = project?.onboarding_companies as { id: string; name: string } | undefined;
@@ -212,6 +220,8 @@ export function CSATGlobalDialog({ open, onOpenChange }: CSATGlobalDialogProps) 
           meetingTitle: meeting.meeting_title,
           meetingDate: meeting.meeting_date,
           score: response?.score ?? null,
+          feedback: response?.feedback ?? null,
+          respondentName: response?.respondent_name ?? null,
           responseDate: response?.responded_at ?? null,
           status: survey.status,
           companyName: company?.name ?? "",
@@ -401,24 +411,44 @@ export function CSATGlobalDialog({ open, onOpenChange }: CSATGlobalDialogProps) 
                         {respondedTodayMeetings.map((meeting) => (
                           <div
                             key={meeting.meetingId}
-                            className="flex items-center justify-between gap-3 p-3 bg-green-500/10 rounded-lg border border-green-500/30"
+                            className="p-3 bg-green-500/10 rounded-lg border border-green-500/30"
                           >
-                            <div className="flex-1 min-w-0 overflow-hidden">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <span className="font-medium truncate max-w-[200px]">{meeting.companyName}</span>
-                                <Badge variant="outline" className="text-xs truncate max-w-[150px]">
-                                  {meeting.productName}
-                                </Badge>
-                                <Badge className={`${getScoreColor(meeting.score)} text-xs shrink-0`}>
-                                  <Star className="h-3 w-3 mr-1" />
-                                  {meeting.score}/5
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Calendar className="h-3.5 w-3.5 shrink-0" />
-                                <span className="truncate">{meeting.meetingTitle}</span>
-                                <span className="shrink-0">•</span>
-                                <span className="shrink-0">{format(new Date(meeting.meetingDate), "HH:mm", { locale: ptBR })}</span>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0 overflow-hidden">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <span className="font-medium truncate max-w-[200px]">{meeting.companyName}</span>
+                                  <Badge variant="outline" className="text-xs truncate max-w-[150px]">
+                                    {meeting.productName}
+                                  </Badge>
+                                  <Badge className={`${getScoreColor(meeting.score)} text-xs shrink-0`}>
+                                    <Star className="h-3 w-3 mr-1" />
+                                    {meeting.score}/5
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                                  <span className="truncate">{meeting.meetingTitle}</span>
+                                  <span className="shrink-0">•</span>
+                                  <span className="shrink-0">{format(new Date(meeting.meetingDate), "HH:mm", { locale: ptBR })}</span>
+                                </div>
+                                
+                                {/* Feedback section */}
+                                {(meeting.respondentName || meeting.feedback) && (
+                                  <div className="mt-2 p-2 bg-background/50 rounded border border-border/50">
+                                    {meeting.respondentName && (
+                                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                                        <User className="h-3 w-3" />
+                                        <span>{meeting.respondentName}</span>
+                                      </div>
+                                    )}
+                                    {meeting.feedback && (
+                                      <div className="flex items-start gap-1.5 text-sm">
+                                        <MessageSquare className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
+                                        <p className="text-muted-foreground italic">"{meeting.feedback}"</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -516,51 +546,71 @@ export function CSATGlobalDialog({ open, onOpenChange }: CSATGlobalDialogProps) 
                               {item.meetings.map((meeting) => (
                                 <div
                                   key={meeting.surveyId}
-                                  className="flex items-center justify-between gap-4 p-3 bg-background rounded-lg border"
+                                  className="p-3 bg-background rounded-lg border"
                                 >
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                      <span className="text-sm font-medium truncate">
-                                        {meeting.meetingTitle}
-                                      </span>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                                      <span>
-                                        {format(new Date(meeting.meetingDate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                                      </span>
-                                      {meeting.score !== null ? (
-                                        <>
-                                          <span className="flex items-center gap-1">
-                                            <Star className="h-3 w-3 text-yellow-500" />
-                                            Nota: {meeting.score}/5
-                                          </span>
-                                          {meeting.responseDate && (
-                                            <span>
-                                              Respondido: {format(new Date(meeting.responseDate), "dd/MM/yyyy", { locale: ptBR })}
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <span className="text-sm font-medium truncate">
+                                          {meeting.meetingTitle}
+                                        </span>
+                                      </div>
+                                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                        <span>
+                                          {format(new Date(meeting.meetingDate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                        </span>
+                                        {meeting.score !== null ? (
+                                          <>
+                                            <span className="flex items-center gap-1">
+                                              <Star className="h-3 w-3 text-yellow-500" />
+                                              Nota: {meeting.score}/5
                                             </span>
+                                            {meeting.responseDate && (
+                                              <span>
+                                                Respondido: {format(new Date(meeting.responseDate), "dd/MM/yyyy", { locale: ptBR })}
+                                              </span>
+                                            )}
+                                          </>
+                                        ) : (
+                                          <Badge variant="outline" className="text-xs">
+                                            Aguardando resposta
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      
+                                      {/* Feedback section */}
+                                      {meeting.score !== null && (meeting.respondentName || meeting.feedback) && (
+                                        <div className="mt-2 p-2 bg-muted/30 rounded border border-border/50">
+                                          {meeting.respondentName && (
+                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                                              <User className="h-3 w-3" />
+                                              <span>{meeting.respondentName}</span>
+                                            </div>
                                           )}
-                                        </>
-                                      ) : (
-                                        <Badge variant="outline" className="text-xs">
-                                          Aguardando resposta
-                                        </Badge>
+                                          {meeting.feedback && (
+                                            <div className="flex items-start gap-1.5 text-sm">
+                                              <MessageSquare className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
+                                              <p className="text-muted-foreground italic">"{meeting.feedback}"</p>
+                                            </div>
+                                          )}
+                                        </div>
                                       )}
                                     </div>
+                                    
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="gap-2 shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        copyLink(meeting);
+                                      }}
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                      Copiar
+                                    </Button>
                                   </div>
-                                  
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-2 shrink-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      copyLink(meeting);
-                                    }}
-                                  >
-                                    <Copy className="h-3 w-3" />
-                                    Copiar
-                                  </Button>
                                 </div>
                               ))}
                             </div>
