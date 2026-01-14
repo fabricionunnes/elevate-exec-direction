@@ -38,7 +38,8 @@ interface DiagnosticInfo {
 const POLLING_INTERVALS = [2000, 3000, 4000, 5000, 6000, 7000, 8000];
 const MAX_POLLING_ATTEMPTS = 15;
 const STATUS_CHECK_INTERVAL = 5000;
-const STUCK_THRESHOLD = 6; // After this many attempts with count=0, show recovery options
+// Nesta versão da integração, o QR pode não vir via API; mostramos alternativa cedo.
+const STUCK_THRESHOLD = 2; // After this many attempts with count=0, show recovery/manual options
 
 export const WhatsAppQRCodeModal = ({ 
   instance, 
@@ -569,10 +570,10 @@ export const WhatsAppQRCodeModal = ({
                 <>
                   <AlertTriangle className="h-12 w-12 text-amber-500" />
                   <p className="text-amber-600 font-medium text-center">
-                    QR Code não gerado após {diagnostic.attempts} tentativas
+                    QR Code não ficou disponível após {diagnostic.attempts} tentativas
                   </p>
                   <p className="text-sm text-muted-foreground text-center">
-                    A sessão pode estar travada. Tente as ações abaixo:
+                    Em algumas versões da API o QR não é retornado por aqui. Conecte a instância pelo painel do Evolution Manager e depois clique em “Verificar status” na lista.
                   </p>
                   
                   {getDiagnosticMessage() && (
@@ -635,6 +636,14 @@ export const WhatsAppQRCodeModal = ({
                   </p>
                   {getPollingStatus() && (
                     <p className="text-xs text-muted-foreground">{getPollingStatus()}</p>
+                  )}
+
+                  {diagnostic.count === 0 && diagnostic.attempts >= 1 && (
+                    <Alert className="mt-2">
+                      <AlertDescription className="text-xs">
+                        Se o QR continuar indisponível, conecte a instância pelo painel do Evolution Manager e volte aqui para verificar o status.
+                      </AlertDescription>
+                    </Alert>
                   )}
                   
                   {getDiagnosticMessage() && diagnostic.attempts > 2 && (
