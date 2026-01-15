@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
-import { TrendingUp } from "lucide-react";
-import { format, subDays, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { TrendingUp, TrendingDown } from "lucide-react";
+import { format, subDays } from "date-fns";
+import { motion } from "framer-motion";
 
 interface TrendDataPoint {
   date: string;
@@ -15,21 +15,24 @@ interface HealthTrendChartProps {
 }
 
 export function HealthTrendChart({ data, currentAvg }: HealthTrendChartProps) {
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return "#22c55e";
-    if (score >= 60) return "#eab308";
-    if (score >= 40) return "#f97316";
-    return "#ef4444";
+  const getScoreColor = (value: number) => {
+    if (value >= 80) return { main: "#22c55e", light: "#86efac" };
+    if (value >= 60) return { main: "#eab308", light: "#fde047" };
+    if (value >= 40) return { main: "#f97316", light: "#fdba74" };
+    return { main: "#ef4444", light: "#fca5a5" };
   };
+
+  const colors = getScoreColor(currentAvg);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const score = payload[0].value;
+      const value = payload[0].value;
+      const tooltipColors = getScoreColor(value);
       return (
-        <div className="bg-background border rounded-lg shadow-lg p-3">
-          <p className="text-sm font-medium">{label}</p>
-          <p className="text-lg font-bold" style={{ color: getScoreColor(score) }}>
-            Score: {score.toFixed(1)}
+        <div className="bg-background/95 backdrop-blur-sm border border-border/50 rounded-xl shadow-xl p-3">
+          <p className="text-xs text-muted-foreground mb-1">{label}</p>
+          <p className="text-lg font-bold" style={{ color: tooltipColors.main }}>
+            Score: {value.toFixed(1)}
           </p>
         </div>
       );
@@ -37,76 +40,66 @@ export function HealthTrendChart({ data, currentAvg }: HealthTrendChartProps) {
     return null;
   };
 
-  // Generate sample data if empty
-  const chartData = data.length > 0 ? data : Array.from({ length: 30 }, (_, i) => ({
-    date: format(subDays(new Date(), 29 - i), "dd/MM"),
-    score: currentAvg + (Math.random() - 0.5) * 10,
+  const chartData = data.length > 0 ? data : Array.from({ length: 10 }, (_, i) => ({
+    date: format(subDays(new Date(), 9 - i), "dd/MM"),
+    score: 50 + Math.random() * 30,
   }));
 
-  // Calculate trend
   const firstHalf = chartData.slice(0, Math.floor(chartData.length / 2));
   const secondHalf = chartData.slice(Math.floor(chartData.length / 2));
   const firstAvg = firstHalf.reduce((sum, d) => sum + d.score, 0) / firstHalf.length;
   const secondAvg = secondHalf.reduce((sum, d) => sum + d.score, 0) / secondHalf.length;
   const trend = secondAvg - firstAvg;
+  const trendIsPositive = trend >= 0;
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
+    <Card className="relative overflow-hidden border-border/50 bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-blue-500/5 to-transparent rounded-full blur-3xl" />
+      
+      <CardHeader className="pb-2 relative z-10">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-500/10">
+              <TrendingUp className="h-4 w-4 text-blue-500" />
+            </div>
             Tendência de Saúde (30 dias)
           </CardTitle>
-          <div className={`text-sm font-medium ${trend >= 0 ? "text-green-500" : "text-red-500"}`}>
+          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-semibold ${
+            trendIsPositive ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
+          }`}>
+            {trendIsPositive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
             {trend >= 0 ? "+" : ""}{trend.toFixed(1)} pts
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="h-[200px]">
+      <CardContent className="relative z-10">
+        <motion.div className="h-[180px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData}>
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
-                <linearGradient id="healthGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={getScoreColor(currentAvg)} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={getScoreColor(currentAvg)} stopOpacity={0} />
+                <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={colors.main} stopOpacity={0.4} />
+                  <stop offset="100%" stopColor={colors.main} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis 
-                dataKey="date" 
-                tick={{ fontSize: 10 }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis 
-                domain={[0, 100]}
-                tick={{ fontSize: 10 }}
-                tickLine={false}
-                axisLine={false}
-              />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#9ca3af" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "#9ca3af" }} axisLine={false} tickLine={false} ticks={[0, 25, 50, 75, 100]} />
               <Tooltip content={<CustomTooltip />} />
-              <ReferenceLine y={60} stroke="#eab308" strokeDasharray="3 3" />
-              <ReferenceLine y={80} stroke="#22c55e" strokeDasharray="3 3" />
-              <Area
-                type="monotone"
-                dataKey="score"
-                stroke={getScoreColor(currentAvg)}
-                strokeWidth={2}
-                fill="url(#healthGradient)"
-              />
+              <ReferenceLine y={80} stroke="#22c55e" strokeDasharray="3 3" strokeWidth={1.5} opacity={0.5} />
+              <ReferenceLine y={60} stroke="#eab308" strokeDasharray="3 3" strokeWidth={1.5} opacity={0.5} />
+              <Area type="monotone" dataKey="score" stroke={colors.main} strokeWidth={3} fill="url(#trendGradient)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
-        <div className="flex justify-center gap-6 mt-2 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <div className="w-3 h-0.5 bg-green-500" />
-            Meta (80)
-          </span>
-          <span className="flex items-center gap-1">
-            <div className="w-3 h-0.5 bg-yellow-500" />
-            Atenção (60)
-          </span>
+        </motion.div>
+        <div className="flex justify-center gap-4 mt-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10">
+            <div className="w-4 h-0.5 bg-emerald-500 rounded" />
+            <span className="text-xs text-emerald-600 font-medium">Meta (80)</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10">
+            <div className="w-4 h-0.5 bg-amber-500 rounded" />
+            <span className="text-xs text-amber-600 font-medium">Atenção (60)</span>
+          </div>
         </div>
       </CardContent>
     </Card>

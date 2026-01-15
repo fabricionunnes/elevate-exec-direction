@@ -6,6 +6,7 @@ import { Brain, Sparkles, Loader2, AlertTriangle, CheckCircle, TrendingUp } from
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface PortfolioData {
   totalProjects: number;
@@ -85,19 +86,51 @@ Forneça uma análise executiva com riscos, ações prioritárias e oportunidade
   };
 
   return (
-    <Card className="border-purple-200">
-      <CardHeader className="pb-3">
+    <Card className="relative overflow-hidden border-border/50 bg-gradient-to-br from-background via-background to-purple-500/5">
+      {/* Animated background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <motion.div 
+          className="absolute -top-20 -right-20 w-60 h-60 bg-gradient-to-br from-purple-500/10 to-violet-500/5 rounded-full blur-3xl"
+          animate={{ 
+            scale: [1, 1.2, 1],
+            rotate: [0, 90, 0]
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        />
+        <motion.div 
+          className="absolute -bottom-10 -left-10 w-40 h-40 bg-gradient-to-tr from-blue-500/5 to-purple-500/5 rounded-full blur-2xl"
+          animate={{ 
+            scale: [1, 1.1, 1],
+          }}
+          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+        />
+      </div>
+      
+      <CardHeader className="pb-3 relative z-10">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2 text-purple-600">
-            <Brain className="h-5 w-5" />
-            Insights Executivos (IA)
+          <CardTitle className="text-lg flex items-center gap-2">
+            <motion.div 
+              className="p-2 rounded-lg bg-gradient-to-br from-purple-500/20 to-violet-500/10"
+              animate={{ 
+                boxShadow: ["0 0 0 0 rgba(139, 92, 246, 0)", "0 0 20px 4px rgba(139, 92, 246, 0.2)", "0 0 0 0 rgba(139, 92, 246, 0)"]
+              }}
+              transition={{ duration: 3, repeat: Infinity }}
+            >
+              <Brain className="h-4 w-4 text-purple-500" />
+            </motion.div>
+            <span className="bg-gradient-to-r from-purple-500 to-violet-500 bg-clip-text text-transparent font-bold">
+              Insights Executivos (IA)
+            </span>
           </CardTitle>
           <Button
             onClick={generateInsights}
             disabled={loading}
             size="sm"
-            variant={hasGenerated ? "outline" : "default"}
-            className="gap-2"
+            className={`gap-2 transition-all ${
+              hasGenerated 
+                ? "bg-white/50 dark:bg-white/10 text-purple-600 border border-purple-200/50 hover:bg-purple-500/10" 
+                : "bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
+            }`}
           >
             {loading ? (
               <>
@@ -113,52 +146,130 @@ Forneça uma análise executiva com riscos, ações prioritárias e oportunidade
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        {!hasGenerated && !loading ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Brain className="h-12 w-12 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">Análise Executiva com IA</p>
-            <p className="text-sm mt-1">
-              Clique em "Gerar Análise" para obter insights estratégicos sobre seu portfólio.
-            </p>
-            <div className="flex justify-center gap-6 mt-4 text-xs">
-              <span className="flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3 text-orange-500" />
-                Riscos
-              </span>
-              <span className="flex items-center gap-1">
-                <CheckCircle className="h-3 w-3 text-green-500" />
-                Ações
-              </span>
-              <span className="flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-blue-500" />
-                Oportunidades
-              </span>
-            </div>
-          </div>
-        ) : loading ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-purple-500 mb-3" />
-            <p className="text-sm text-muted-foreground">Analisando dados do portfólio...</p>
-          </div>
-        ) : (
-          <ScrollArea className="h-[320px]">
-            <div className="prose prose-sm max-w-none dark:prose-invert">
-              <ReactMarkdown
-                components={{
-                  h1: ({ children }) => <h3 className="text-lg font-bold mt-4 mb-2">{children}</h3>,
-                  h2: ({ children }) => <h4 className="text-base font-semibold mt-3 mb-2">{children}</h4>,
-                  strong: ({ children }) => <strong className="text-purple-700 dark:text-purple-400">{children}</strong>,
-                  ul: ({ children }) => <ul className="list-disc pl-4 space-y-1">{children}</ul>,
-                  li: ({ children }) => <li className="text-sm">{children}</li>,
-                  p: ({ children }) => <p className="text-sm mb-2">{children}</p>,
+      <CardContent className="relative z-10">
+        <AnimatePresence mode="wait">
+          {!hasGenerated && !loading ? (
+            <motion.div 
+              key="empty"
+              className="text-center py-8"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.3 }}
+            >
+              <motion.div 
+                className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-violet-500/10 flex items-center justify-center"
+                animate={{ 
+                  rotateY: [0, 360],
                 }}
+                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
               >
-                {insights}
-              </ReactMarkdown>
-            </div>
-          </ScrollArea>
-        )}
+                <Brain className="h-10 w-10 text-purple-500" />
+              </motion.div>
+              <p className="font-semibold text-foreground">Análise Executiva com IA</p>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
+                Clique em "Gerar Análise" para obter insights estratégicos sobre seu portfólio.
+              </p>
+              <div className="flex justify-center gap-4 mt-6">
+                {[
+                  { icon: AlertTriangle, label: "Riscos", color: "from-orange-400 to-orange-600" },
+                  { icon: CheckCircle, label: "Ações", color: "from-emerald-400 to-emerald-600" },
+                  { icon: TrendingUp, label: "Oportunidades", color: "from-blue-400 to-blue-600" },
+                ].map((item, index) => (
+                  <motion.div 
+                    key={item.label}
+                    className="flex flex-col items-center gap-2"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.1 * index }}
+                  >
+                    <div className={`p-2 rounded-lg bg-gradient-to-br ${item.color} shadow-lg`}>
+                      <item.icon className="h-4 w-4 text-white" />
+                    </div>
+                    <span className="text-xs text-muted-foreground">{item.label}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          ) : loading ? (
+            <motion.div 
+              key="loading"
+              className="flex flex-col items-center justify-center py-12"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="relative"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              >
+                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-violet-500 opacity-20 blur-lg absolute inset-0" />
+                <div className="w-16 h-16 rounded-full border-4 border-purple-200 border-t-purple-500 animate-spin" />
+              </motion.div>
+              <p className="text-sm text-muted-foreground mt-4">Analisando dados do portfólio...</p>
+              <div className="flex gap-1 mt-2">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="w-2 h-2 rounded-full bg-purple-500"
+                    animate={{ scale: [1, 1.5, 1] }}
+                    transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="content"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <ScrollArea className="h-[320px] pr-2">
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                  <ReactMarkdown
+                    components={{
+                      h1: ({ children }) => (
+                        <h3 className="text-lg font-bold mt-4 mb-2 bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent">
+                          {children}
+                        </h3>
+                      ),
+                      h2: ({ children }) => (
+                        <h4 className="text-base font-semibold mt-3 mb-2 text-foreground">
+                          {children}
+                        </h4>
+                      ),
+                      strong: ({ children }) => (
+                        <strong className="text-purple-600 dark:text-purple-400 font-semibold">
+                          {children}
+                        </strong>
+                      ),
+                      ul: ({ children }) => (
+                        <ul className="space-y-2 my-2">
+                          {children}
+                        </ul>
+                      ),
+                      li: ({ children }) => (
+                        <li className="flex items-start gap-2 text-sm">
+                          <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-gradient-to-r from-purple-500 to-violet-500 shrink-0" />
+                          <span>{children}</span>
+                        </li>
+                      ),
+                      p: ({ children }) => (
+                        <p className="text-sm mb-2 text-muted-foreground leading-relaxed">
+                          {children}
+                        </p>
+                      ),
+                    }}
+                  >
+                    {insights}
+                  </ReactMarkdown>
+                </div>
+              </ScrollArea>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </CardContent>
     </Card>
   );
