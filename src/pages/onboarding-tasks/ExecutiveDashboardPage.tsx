@@ -218,9 +218,20 @@ export default function ExecutiveDashboardPage() {
         : 0;
 
       // Fetch churn data using same logic as DashboardMetrics
-      // Get all projects to calculate churn properly
-      const periodStart = subMonths(new Date(), parseInt(period) / 30);
-      const periodEnd = new Date();
+      // Use the same period logic as the main dashboard (current month by default, or last X days)
+      const now = new Date();
+      let periodStart: Date;
+      let periodEnd: Date;
+      
+      if (period === "30") {
+        // Default: use current calendar month (same as main dashboard)
+        periodStart = startOfMonth(now);
+        periodEnd = endOfMonth(now);
+      } else {
+        // For other periods (60, 90 days), use rolling days
+        periodStart = subMonths(now, parseInt(period) / 30);
+        periodEnd = now;
+      }
       
       const { data: allProjectsData } = await supabase
         .from("onboarding_projects")
