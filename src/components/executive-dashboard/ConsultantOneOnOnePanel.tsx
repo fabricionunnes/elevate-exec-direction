@@ -77,6 +77,7 @@ interface ProjectBriefing {
   ai_insight?: string;
   days_since_meeting?: number;
   segment?: string;
+  last_nps_feedback?: string;
 }
 
 interface AgendaSection {
@@ -200,10 +201,10 @@ export function ConsultantOneOnOnePanel() {
               .limit(1)
               .single();
 
-            // Get latest NPS
+            // Get latest NPS with feedback
             const { data: latestNps } = await supabase
               .from("onboarding_nps_responses")
-              .select("score")
+              .select("score, feedback")
               .eq("project_id", project.id)
               .order("created_at", { ascending: false })
               .limit(1)
@@ -248,7 +249,8 @@ export function ConsultantOneOnOnePanel() {
               overdue_tasks: overdueCount || 0,
               nps_score: latestNps?.score,
               days_since_meeting: daysSinceMeeting,
-              segment: project.onboarding_companies?.segment
+              segment: project.onboarding_companies?.segment,
+              last_nps_feedback: latestNps?.feedback
             });
 
             // Categorize for agenda
