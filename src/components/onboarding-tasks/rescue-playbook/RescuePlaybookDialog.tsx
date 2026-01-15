@@ -90,14 +90,15 @@ export const RescuePlaybookDialog = ({
 
       // Fetch rescue tasks
       if (playbookData) {
-        const { data: tasksData } = await supabase
+        const client = supabase as any;
+        const { data: tasksData } = await client
           .from("onboarding_tasks")
           .select("id, title, status, due_date")
           .eq("project_id", projectId)
           .eq("category", "resgate")
           .order("due_date", { ascending: true });
 
-        setTasks(tasksData || []);
+        setTasks((tasksData as PlaybookTask[]) || []);
       }
     } catch (error) {
       console.error("Error fetching playbook:", error);
