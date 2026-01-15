@@ -149,6 +149,8 @@ export default function ExecutiveDashboardPage() {
         .from("onboarding_projects")
         .select(`
           id,
+          onboarding_company_id,
+          company_id,
           onboarding_companies (name),
           consultant:onboarding_staff!onboarding_projects_consultant_id_fkey (id, name, avatar_url),
           client_health_scores (total_score, risk_level)
@@ -246,25 +248,44 @@ export default function ExecutiveDashboardPage() {
         ? Math.round((closedInPeriod / totalActiveStart) * 100)
         : 0;
 
-      // Fetch renewal data - same as DashboardMetrics (no status filter, filter by date in code)
+      // Fetch renewal data - match DashboardMetrics logic (unique companies renewed / active companies)
+      const companyIdsForActiveProjects = Array.from(
+        new Set(
+          (projects as any[])
+            .map(p => p.onboarding_company_id || p.company_id)
+            .filter(Boolean)
+        )
+      ) as string[];
+
+      // Denominator: active companies in the portfolio (linked to active projects)
+      const { data: companiesForRenewalDenominator } = await supabase
+        .from("onboarding_companies")
+        .select("id, status")
+        .in("id", companyIdsForActiveProjects);
+
+      const activeCompaniesCount = (companiesForRenewalDenominator || []).filter(c =>
+        c.status !== "inactive" && c.status !== "closed"
+      ).length;
+
+      // Fetch renewals (no status filter), then filter by company + period
       const { data: renewals } = await supabase
         .from("onboarding_contract_renewals")
-        .select("id, company_id, renewal_date");
+        .select("company_id, renewal_date");
 
-      // Filter renewals in period (same logic as DashboardMetrics)
+      const companyIdSet = new Set(companyIdsForActiveProjects);
+
       const renewalsInPeriod = (renewals || []).filter(r => {
         if (!r.renewal_date) return false;
+        if (!companyIdSet.has(r.company_id)) return false;
         const d = new Date(r.renewal_date.substring(0, 10) + "T12:00:00");
         return d >= periodStart && d <= periodEnd;
       });
 
-      // Count unique companies that renewed
       const renewedCompanyIds = new Set(renewalsInPeriod.map(r => r.company_id));
       const renewedClientsCount = renewedCompanyIds.size;
-      
-      // Renewal rate = renewed clients / active companies (same as DashboardMetrics)
-      const renewalRate = totalProjects > 0
-        ? Math.round((renewedClientsCount / totalProjects) * 100)
+
+      const renewalRate = activeCompaniesCount > 0
+        ? Math.round((renewedClientsCount / activeCompaniesCount) * 100)
         : 0;
 
       // Calculate LTV using same logic as DashboardMetrics
