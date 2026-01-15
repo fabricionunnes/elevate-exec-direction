@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Search, QrCode, User } from "lucide-react";
+import { Plus, Search, User, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -45,7 +46,6 @@ interface Transaction {
   created_at: string;
   client: { id: string; name: string; cpf: string } | null;
   rule: { id: string; name: string } | null;
-  qr_campaign: { id: string; name: string } | null;
 }
 
 export default function CustomerPointsTransactions() {
@@ -55,7 +55,6 @@ export default function CustomerPointsTransactions() {
   const [clients, setClients] = useState<Client[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [search, setSearch] = useState("");
-  const [sourceFilter, setSourceFilter] = useState<"all" | "manual" | "qr_code">("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -71,29 +70,23 @@ export default function CustomerPointsTransactions() {
 
   useEffect(() => {
     if (companyId) fetchData();
-  }, [companyId, sourceFilter]);
+  }, [companyId]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       // Fetch transactions
-      let query = supabase
+      const { data: transactionsData, error: txError } = await supabase
         .from("customer_points_transactions")
         .select(`
           *,
           client:customer_points_clients(id, name, cpf),
-          rule:customer_points_rules(id, name),
-          qr_campaign:customer_points_qr_campaigns(id, name)
+          rule:customer_points_rules(id, name)
         `)
         .eq("company_id", companyId)
         .order("created_at", { ascending: false })
         .limit(100);
 
-      if (sourceFilter !== "all") {
-        query = query.eq("source", sourceFilter);
-      }
-
-      const { data: transactionsData, error: txError } = await query;
       if (txError) throw txError;
       setTransactions((transactionsData || []) as Transaction[]);
 
@@ -199,6 +192,23 @@ export default function CustomerPointsTransactions() {
 
   const formatCPF = (cpf: string) => {
     return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.***.**$4");
+  };
+
+  const deleteTransaction = async (tx: Transaction) => {
+    try {
+      const { error } = await supabase
+        .from("customer_points_transactions")
+        .delete()
+        .eq("id", tx.id);
+      
+      if (error) throw error;
+      
+      toast.success("Registro excluído com sucesso");
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      toast.error("Erro ao excluir registro");
+    }
   };
 
   const filteredTransactions = transactions.filter((tx) => {
@@ -377,16 +387,6 @@ export default function CustomerPointsTransactions() {
                 className="pl-10"
               />
             </div>
-            <Select value={sourceFilter} onValueChange={(v: any) => setSourceFilter(v)}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="manual">Manual</SelectItem>
-                <SelectItem value="qr_code">QR Code</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>
@@ -413,6 +413,7 @@ export default function CustomerPointsTransactions() {
                     <TableHead className="text-right">{pointsName}</TableHead>
                     <TableHead>Origem</TableHead>
                     <TableHead>Observação</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -434,19 +435,35 @@ export default function CustomerPointsTransactions() {
                         +{tx.points.toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={tx.source === "manual" ? "secondary" : "default"}>
-                          {tx.source === "manual" ? (
-                            <><User className="h-3 w-3 mr-1" /> Manual</>
-                          ) : (
-                            <><QrCode className="h-3 w-3 mr-1" /> QR Code</>
-                          )}
+                        <Badge variant="secondary">
+                          <User className="h-3 w-3 mr-1" /> Manual
                         </Badge>
-                        {tx.qr_campaign && (
-                          <p className="text-xs text-muted-foreground mt-1">{tx.qr_campaign.name}</p>
-                        )}
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate">
                         {tx.notes || "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir registro?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Isso excluirá permanentemente este registro de {tx.points} {pointsName.toLowerCase()} do cliente "{tx.client?.name}". Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteTransaction(tx)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </TableCell>
                     </TableRow>
                   ))}
