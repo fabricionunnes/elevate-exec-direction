@@ -32,24 +32,47 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get project and company data
-    const { data: project } = await supabase
+    const { data: project, error: projectError } = await supabase
       .from('onboarding_projects')
       .select(`
         id,
-        start_date,
+        product_name,
+        product_id,
         consultant_id,
-        onboarding_companies(name, segment, contact_name, contact_phone, contact_email),
-        onboarding_products(name),
-        onboarding_staff(name)
+        cs_id,
+        onboarding_company_id
       `)
       .eq('id', projectId)
       .single();
 
-    if (!project) {
+    if (projectError || !project) {
+      console.error('Project query error:', projectError);
       return new Response(
-        JSON.stringify({ error: 'Project not found' }),
+        JSON.stringify({ error: 'Project not found', details: projectError?.message }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Get company data separately
+    let company: { name: string; segment: string | null; email: string | null; phone: string | null } | null = null;
+    if (project.onboarding_company_id) {
+      const { data: companyData } = await supabase
+        .from('onboarding_companies')
+        .select('name, segment, email, phone')
+        .eq('id', project.onboarding_company_id)
+        .single();
+      company = companyData;
+    }
+
+    // Get consultant data
+    let consultant: { name: string } | null = null;
+    if (project.consultant_id) {
+      const { data: staffData } = await supabase
+        .from('onboarding_staff')
+        .select('name')
+        .eq('id', project.consultant_id)
+        .single();
+      consultant = staffData;
     }
 
     // Get last 3 completed meetings
@@ -113,15 +136,6 @@ serve(async (req) => {
       .limit(3);
 
     // Build context for AI
-    interface Company {
-      name: string;
-      segment: string;
-      contact_name: string;
-      contact_phone: string;
-      contact_email: string;
-    }
-    interface Product { name: string; }
-    interface Staff { name: string; }
     interface Meeting {
       id: string;
       meeting_date: string;
@@ -149,14 +163,10 @@ serve(async (req) => {
       created_at: string;
     }
 
-    const company = project.onboarding_companies as unknown as Company | null;
-    const product = project.onboarding_products as unknown as Product | null;
-    const staff = project.onboarding_staff as unknown as Staff | null;
-
     const companyName = company?.name || 'Cliente';
-    const contactName = company?.contact_name || 'Contato';
     const segment = company?.segment || 'Não definido';
-    const productName = product?.name || 'Serviço';
+    const productName = project.product_name || 'Serviço';
+    const consultantName = consultant?.name || 'Não definido';
 
     const meetingList = (pastMeetings || []) as Meeting[];
     const meetingHistory = meetingList.map((m, idx) => {
@@ -193,10 +203,10 @@ Responda APENAS com um JSON válido no seguinte formato:
     const userPrompt = `Prepare um briefing para a próxima reunião com o cliente:
 
 **Cliente:** ${companyName}
-**Contato Principal:** ${contactName}
+**Contato:** ${company?.email || company?.phone || 'Não informado'}
 **Segmento:** ${segment}
 **Produto:** ${productName}
-**Consultor:** ${staff?.name || 'Não definido'}
+**Consultor:** ${consultantName}
 
 **Health Score:** ${healthScore?.total_score?.toFixed(0) || 'N/A'} (Risco: ${healthScore?.risk_level || 'N/A'})
 **Risco de Churn:** ${churnPrediction ? `${(churnPrediction.churn_probability * 100).toFixed(0)}% (${churnPrediction.risk_level})` : 'Não calculado'}
