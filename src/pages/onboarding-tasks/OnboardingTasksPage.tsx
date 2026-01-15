@@ -1004,7 +1004,9 @@ const OnboardingTasksPage = () => {
 
   const isAdmin = currentUserRole === "admin";
   const isCS = currentUserRole === "cs";
+  const isConsultant = currentUserRole === "consultant";
   const canCreateCompany = isAdmin || isCS;
+  const canAccessAnalytics = isAdmin || isCS || isConsultant;
   const CRM_ROLES = ["admin", "head_comercial", "closer", "sdr"];
   const canAccessCRM = currentUserRole ? CRM_ROLES.includes(currentUserRole) : false;
 
@@ -1310,8 +1312,8 @@ const OnboardingTasksPage = () => {
               </Button>
             )}
 
-            {/* Admin/CS Actions Menu - Reorganized with submenus */}
-            {canCreateCompany && (
+            {/* Admin/CS/Consultant Actions Menu - Reorganized with submenus */}
+            {canAccessAnalytics && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -1321,27 +1323,47 @@ const OnboardingTasksPage = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  {/* Cadastros */}
+                  {/* Análises - Available to Admin, CS, and Consultants */}
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
-                      <Database className="h-4 w-4 mr-2" />
-                      Cadastros
+                      <TrendingDown className="h-4 w-4 mr-2" />
+                      Análises
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent className="w-48">
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/staff")}>
-                        <Users className="h-4 w-4 mr-2" />
-                        Equipe
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/churn-prediction")}>
+                        <TrendingDown className="h-4 w-4 mr-2" />
+                        Previsão de Churn
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/services")}>
-                        <Package className="h-4 w-4 mr-2" />
-                        Serviços
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/import")}>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Importar
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cohort-retention")}>
+                        <Users2 className="h-4 w-4 mr-2" />
+                        Análise de Cohort
                       </DropdownMenuItem>
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
+
+                  {/* Cadastros - Admin and CS only */}
+                  {canCreateCompany && (
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Database className="h-4 w-4 mr-2" />
+                        Cadastros
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-48">
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/staff")}>
+                          <Users className="h-4 w-4 mr-2" />
+                          Equipe
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/services")}>
+                          <Package className="h-4 w-4 mr-2" />
+                          Serviços
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/import")}>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Importar
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  )}
 
                   {(isAdmin || isCS) && (
                     <>
@@ -1363,24 +1385,6 @@ const OnboardingTasksPage = () => {
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/engagement")}>
                             <Award className="h-4 w-4 mr-2" />
                             Ranking de Engajamento
-                          </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-
-                      {/* Análises */}
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                          <TrendingDown className="h-4 w-4 mr-2" />
-                          Análises
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="w-48">
-                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/churn-prediction")}>
-                            <TrendingDown className="h-4 w-4 mr-2" />
-                            Previsão de Churn
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cohort-retention")}>
-                            <Users2 className="h-4 w-4 mr-2" />
-                            Análise de Cohort
                           </DropdownMenuItem>
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
