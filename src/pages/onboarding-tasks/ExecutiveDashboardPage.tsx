@@ -89,13 +89,56 @@ export default function ExecutiveDashboardPage() {
   const [consultantPerformance, setConsultantPerformance] = useState<ConsultantPerformance[]>([]);
   const [trendData, setTrendData] = useState<{ date: string; score: number }[]>([]);
 
-  // Load user email on mount (before data fetch)
+  // Load user email on mount (used to gate the "Reunião Liderança" tab)
   useEffect(() => {
-    const staffData = localStorage.getItem("onboarding_staff");
-    if (staffData) {
-      const staff = JSON.parse(staffData);
-      setUserEmail(staff.email);
-    }
+    const loadEmail = async () => {
+      try {
+        // Prefer authenticated user (cannot be tampered with like localStorage)
+        const { data: authData, error: authErr } = await supabase.auth.getUser();
+        if (authErr) throw authErr;
+
+        const authUser = authData.user;
+
+        // Prefer staff table email (source of truth for the onboarding app)
+        if (authUser?.id) {
+          const { data: staffRow, error: staffErr } = await supabase
+            .from("onboarding_staff")
+            .select("email")
+            .eq("user_id", authUser.id)
+            .maybeSingle();
+
+          if (!staffErr && staffRow?.email) {
+            setUserEmail(staffRow.email);
+            return;
+          }
+        }
+
+        // Fallback to auth email
+        if (authUser?.email) {
+          setUserEmail(authUser.email);
+          return;
+        }
+
+        // Last-resort fallback for legacy flows
+        try {
+          const staffData = localStorage.getItem("onboarding_staff");
+          if (staffData) {
+            const staff = JSON.parse(staffData);
+            setUserEmail(staff?.email ?? null);
+            return;
+          }
+        } catch {
+          // ignore
+        }
+
+        setUserEmail(null);
+      } catch (e) {
+        console.log("[ExecutiveDashboard] failed to resolve user email", e);
+        setUserEmail(null);
+      }
+    };
+
+    loadEmail();
   }, []);
 
   const fetchData = async () => {
@@ -310,6 +353,8 @@ export default function ExecutiveDashboardPage() {
     );
   }
 
+  const isLeadershipUser = (userEmail ?? "").trim().toLowerCase() === "fabricio@universidadevendas.com.br";
+
   return (
     <div className="container mx-auto py-6 px-4 space-y-6">
       {/* Header */}
@@ -349,9 +394,9 @@ export default function ExecutiveDashboardPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={`grid w-full max-w-md mb-6 ${userEmail === 'fabricio@universidadevendas.com.br' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        <TabsList className={`grid w-full max-w-md mb-6 ${isLeadershipUser ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          {userEmail === 'fabricio@universidadevendas.com.br' && (
+          {isLeadershipUser && (
             <TabsTrigger value="leadership">Reunião Liderança</TabsTrigger>
           )}
           <TabsTrigger value="oneOnOne">1:1 Consultor</TabsTrigger>
@@ -448,7 +493,7 @@ export default function ExecutiveDashboardPage() {
           </Card>
         </TabsContent>
 
-        {userEmail === 'fabricio@universidadevendas.com.br' && (
+        {isLeadershipUser && (
           <TabsContent value="leadership">
             <DailyLeadershipAgenda />
           </TabsContent>
