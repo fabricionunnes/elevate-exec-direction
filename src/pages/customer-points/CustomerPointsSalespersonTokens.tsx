@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Copy, Trash2, Users, Link2, ExternalLink } from "lucide-react";
+import { Plus, Copy, Trash2, Users, Link2, ExternalLink, UserPlus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -28,18 +29,31 @@ interface SalespersonToken {
   created_at: string;
 }
 
+interface RegisteredSalesperson {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+}
+
 export default function CustomerPointsSalespersonTokens() {
   const { companyId, pointsName } = useOutletContext<ContextType>();
   const [loading, setLoading] = useState(true);
   const [tokens, setTokens] = useState<SalespersonToken[]>([]);
+  const [registeredSalespeople, setRegisteredSalespeople] = useState<RegisteredSalesperson[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newName, setNewName] = useState("");
+  const [selectedSalesperson, setSelectedSalesperson] = useState<string>("");
+  const [createMode, setCreateMode] = useState<"existing" | "new">("existing");
 
   const publicDomain = "https://unvholdings.com.br";
 
   useEffect(() => {
-    if (companyId) fetchTokens();
+    if (companyId) {
+      fetchTokens();
+      fetchRegisteredSalespeople();
+    }
   }, [companyId]);
 
   const fetchTokens = async () => {
@@ -61,10 +75,47 @@ export default function CustomerPointsSalespersonTokens() {
     }
   };
 
+  const fetchRegisteredSalespeople = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("company_salespeople")
+        .select("id, name, email, phone")
+        .eq("company_id", companyId)
+        .eq("is_active", true)
+        .order("name");
+
+      if (error) throw error;
+      setRegisteredSalespeople(data || []);
+    } catch (error) {
+      console.error("Error fetching salespeople:", error);
+    }
+  };
+
+  // Get salespeople that don't have a token yet
+  const availableSalespeople = registeredSalespeople.filter(
+    (sp) => !tokens.some((t) => t.name.toLowerCase() === sp.name.toLowerCase())
+  );
+
   const handleCreate = async () => {
-    if (!newName.trim()) {
-      toast.error("Nome do vendedor é obrigatório");
-      return;
+    let salespersonName = "";
+
+    if (createMode === "existing") {
+      if (!selectedSalesperson) {
+        toast.error("Selecione um vendedor");
+        return;
+      }
+      const sp = registeredSalespeople.find((s) => s.id === selectedSalesperson);
+      if (!sp) {
+        toast.error("Vendedor não encontrado");
+        return;
+      }
+      salespersonName = sp.name;
+    } else {
+      if (!newName.trim()) {
+        toast.error("Nome do vendedor é obrigatório");
+        return;
+      }
+      salespersonName = newName.trim();
     }
 
     setSaving(true);
@@ -73,7 +124,7 @@ export default function CustomerPointsSalespersonTokens() {
         .from("customer_points_salesperson_tokens")
         .insert({
           company_id: companyId,
-          name: newName.trim(),
+          name: salespersonName,
         });
 
       if (error) throw error;
@@ -81,10 +132,40 @@ export default function CustomerPointsSalespersonTokens() {
       toast.success("Link criado com sucesso!");
       setDialogOpen(false);
       setNewName("");
+      setSelectedSalesperson("");
       fetchTokens();
     } catch (error) {
       console.error("Error creating token:", error);
       toast.error("Erro ao criar link");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const createAllLinks = async () => {
+    if (availableSalespeople.length === 0) {
+      toast.info("Todos os vendedores já possuem links");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const inserts = availableSalespeople.map((sp) => ({
+        company_id: companyId,
+        name: sp.name,
+      }));
+
+      const { error } = await supabase
+        .from("customer_points_salesperson_tokens")
+        .insert(inserts);
+
+      if (error) throw error;
+
+      toast.success(`${availableSalespeople.length} links criados!`);
+      fetchTokens();
+    } catch (error) {
+      console.error("Error creating all tokens:", error);
+      toast.error("Erro ao criar links");
     } finally {
       setSaving(false);
     }
@@ -149,44 +230,121 @@ export default function CustomerPointsSalespersonTokens() {
             Gere links para vendedores registrarem {pointsName.toLowerCase()} de clientes
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Novo Link
+        <div className="flex gap-2">
+          {availableSalespeople.length > 0 && (
+            <Button variant="outline" className="gap-2" onClick={createAllLinks} disabled={saving}>
+              <UserPlus className="h-4 w-4" />
+              Criar para todos ({availableSalespeople.length})
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Criar Link para Vendedor</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 mt-4">
+          )}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Novo Link
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Criar Link para Vendedor</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                {registeredSalespeople.length > 0 && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant={createMode === "existing" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCreateMode("existing")}
+                    >
+                      Vendedor cadastrado
+                    </Button>
+                    <Button
+                      variant={createMode === "new" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCreateMode("new")}
+                    >
+                      Novo nome
+                    </Button>
+                  </div>
+                )}
+
+                {createMode === "existing" && registeredSalespeople.length > 0 ? (
+                  <div>
+                    <Label>Selecione o vendedor *</Label>
+                    <Select value={selectedSalesperson} onValueChange={setSelectedSalesperson}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Escolha um vendedor..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableSalespeople.length === 0 ? (
+                          <div className="p-2 text-sm text-muted-foreground text-center">
+                            Todos os vendedores já possuem links
+                          </div>
+                        ) : (
+                          availableSalespeople.map((sp) => (
+                            <SelectItem key={sp.id} value={sp.id}>
+                              {sp.name}
+                              {sp.email && <span className="text-muted-foreground ml-2">({sp.email})</span>}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Vendedores cadastrados no sistema de KPIs
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <Label htmlFor="name">Nome do vendedor *</Label>
+                    <Input
+                      id="name"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder="Ex: João Silva"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Este nome aparecerá no formulário e nas transações registradas
+                    </p>
+                  </div>
+                )}
+                
+                <Button onClick={handleCreate} disabled={saving} className="w-full">
+                  {saving ? "Criando..." : "Criar Link"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Registered Salespeople Info */}
+      {registeredSalespeople.length > 0 && (
+        <Card className="bg-muted/50 border-dashed">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Users className="h-5 w-5 text-muted-foreground" />
               <div>
-                <Label htmlFor="name">Nome do vendedor *</Label>
-                <Input
-                  id="name"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Ex: João Silva"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Este nome aparecerá no formulário e nas transações registradas
+                <p className="text-sm font-medium">
+                  {registeredSalespeople.length} vendedor(es) cadastrado(s) no projeto
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {availableSalespeople.length > 0
+                    ? `${availableSalespeople.length} ainda sem link criado`
+                    : "Todos já possuem links"}
                 </p>
               </div>
-              <Button onClick={handleCreate} disabled={saving} className="w-full">
-                {saving ? "Criando..." : "Criar Link"}
-              </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tokens List */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Links Ativos
+            <Link2 className="h-5 w-5" />
+            Links Criados
           </CardTitle>
           <CardDescription>
             Cada vendedor tem um link único para registrar pontos
