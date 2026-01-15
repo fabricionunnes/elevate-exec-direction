@@ -74,9 +74,8 @@ export default function ChurnPredictionPage() {
           *,
           onboarding_projects!inner(
             status,
-            onboarding_companies!inner(name),
-            onboarding_services!inner(name),
-            onboarding_staff(name)
+            product_name,
+            onboarding_companies!inner(name)
           )
         `)
         .eq('prediction_date', today)
@@ -88,8 +87,7 @@ export default function ChurnPredictionPage() {
       const formattedPredictions = (data || []).map((p: any) => ({
         ...p,
         company_name: p.onboarding_projects?.onboarding_companies?.name,
-        product_name: p.onboarding_projects?.onboarding_services?.name,
-        consultant_name: p.onboarding_projects?.onboarding_staff?.name
+        product_name: p.onboarding_projects?.product_name
       }));
 
       setPredictions(formattedPredictions);
