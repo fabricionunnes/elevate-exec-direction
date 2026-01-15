@@ -123,15 +123,16 @@ async function calculateMetricsForStaff(
 ): Promise<EngagementMetrics> {
   const breakdown: Record<string, unknown> = {};
 
-  // 1. Meeting Score (20%) - frequency and completion
+  // 1. Projects handled by this staff member
+  // Consultants are linked via consultant_id, CS via cs_id.
+  // We include both so the same scoring function works for both roles.
   const { data: projects } = await supabase
     .from('onboarding_projects')
     .select('id')
-    .eq('consultant_id', staffId)
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .or(`consultant_id.eq.${staffId},cs_id.eq.${staffId}`);
 
   const projectIds = projects?.map((p: { id: string }) => p.id) || [];
-
   let meetingScore = 0;
   if (projectIds.length > 0) {
     // Use is_finalized instead of status = 'completed'
@@ -222,18 +223,21 @@ async function calculateMetricsForStaff(
   }
 
   // 4. Retention Score (25%) - client retention
+  // For consultants: projects where consultant_id = staffId
+  // For CS: projects where cs_id = staffId
   let retentionScore = 100;
+
   const { count: activeCount } = await supabase
     .from('onboarding_projects')
     .select('id', { count: 'exact' })
-    .eq('consultant_id', staffId)
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .or(`consultant_id.eq.${staffId},cs_id.eq.${staffId}`);
 
   const { count: churnedCount } = await supabase
     .from('onboarding_projects')
     .select('id', { count: 'exact' })
-    .eq('consultant_id', staffId)
-    .eq('status', 'churned')
+    .eq('status', 'closed')
+    .or(`consultant_id.eq.${staffId},cs_id.eq.${staffId}`)
     .gte('churned_at', periodStart.toISOString());
 
   const totalHandled = (activeCount || 0) + (churnedCount || 0);
@@ -241,7 +245,6 @@ async function calculateMetricsForStaff(
     retentionScore = ((activeCount || 0) / totalHandled) * 100;
   }
   breakdown.retention = { active: activeCount || 0, churned: churnedCount || 0 };
-
   // 5. NPS Score (15%) - average NPS from clients
   let npsScore = 50; // default neutral
   if (projectIds.length > 0) {
