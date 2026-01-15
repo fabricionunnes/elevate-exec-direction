@@ -33,8 +33,20 @@ interface Salesperson {
 
 export default function CustomerPointsSalespersonForm() {
   const [searchParams] = useSearchParams();
-  const companyIdParam = searchParams.get("company");
-  const tokenParam = searchParams.get("token");
+
+  // HashRouter URLs can carry query params inside the hash (e.g. /#/points-salesperson?company=...)
+  // Some environments also prepend their own ?query before the hash.
+  // To be robust, we read from both React Router searchParams and the raw hash.
+  const hashQuery = (() => {
+    if (typeof window === "undefined") return "";
+    const h = window.location.hash || "";
+    const idx = h.indexOf("?");
+    return idx >= 0 ? h.slice(idx + 1) : "";
+  })();
+  const hashParams = new URLSearchParams(hashQuery);
+
+  const companyIdParam = searchParams.get("company") ?? hashParams.get("company");
+  const tokenParam = searchParams.get("token") ?? hashParams.get("token");
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
