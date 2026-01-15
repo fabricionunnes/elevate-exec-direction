@@ -100,6 +100,7 @@ export function DailyLeadershipAgenda() {
   const [positiveHighlights, setPositiveHighlights] = useState<PositiveHighlight[]>([]);
   const [consultantSummaries, setConsultantSummaries] = useState<ConsultantSummary[]>([]);
   const [newCompanies, setNewCompanies] = useState<NewCompany[]>([]);
+  const [newCompaniesFilter, setNewCompaniesFilter] = useState<30 | 60 | 90>(30);
   const [totalProjects, setTotalProjects] = useState(0);
 
   const fetchData = async () => {
@@ -282,9 +283,9 @@ export function DailyLeadershipAgenda() {
 
       setPositiveHighlights(highlights.slice(0, 5));
 
-      // Fetch new companies (started within last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      // Fetch new companies (started within last 90 days - we'll filter client-side)
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
       
       const { data: newProjects } = await supabase
         .from("onboarding_projects")
@@ -297,7 +298,7 @@ export function DailyLeadershipAgenda() {
           onboarding_staff!onboarding_projects_consultant_id_fkey(name)
         `)
         .in("status", ["active", "implementation", "ongoing"])
-        .gte("created_at", thirtyDaysAgo.toISOString());
+        .gte("created_at", ninetyDaysAgo.toISOString());
 
       if (newProjects && newProjects.length > 0) {
         // Fetch task counts for new projects
@@ -765,19 +766,37 @@ export function DailyLeadershipAgenda() {
         >
           <Card className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50">
-                  <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <CardTitle className="text-lg flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50">
+                    <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <span className="text-foreground">Empresas Novas</span>
+                  <Badge className="ml-2 bg-blue-500 text-white">
+                    {newCompanies.filter(c => c.days_since_start <= newCompaniesFilter).length} em onboarding
+                  </Badge>
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {[30, 60, 90].map((days) => (
+                    <Button
+                      key={days}
+                      variant={newCompaniesFilter === days ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setNewCompaniesFilter(days as 30 | 60 | 90)}
+                      className={newCompaniesFilter === days 
+                        ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                        : "bg-background hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                      }
+                    >
+                      {days}d
+                    </Button>
+                  ))}
                 </div>
-                <span className="text-foreground">Empresas Novas</span>
-                <Badge className="ml-2 bg-blue-500 text-white">
-                  {newCompanies.length} em onboarding
-                </Badge>
-              </CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {newCompanies.map((company, i) => {
+                {newCompanies.filter(c => c.days_since_start <= newCompaniesFilter).map((company, i) => {
                   const progressPercent = company.total_tasks > 0 
                     ? Math.round((company.completed_tasks / company.total_tasks) * 100) 
                     : 0;
