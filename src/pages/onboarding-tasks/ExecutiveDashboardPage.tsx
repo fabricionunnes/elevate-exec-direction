@@ -201,14 +201,18 @@ export default function ExecutiveDashboardPage() {
         ? totalScore / projectsWithScores.length 
         : 0;
 
-      // Fetch NPS data - use same logic as DashboardMetrics (average of scores)
+      // Fetch NPS data - filter by active project IDs (same as DashboardMetrics)
+      const activeProjectIds = projects?.map(p => p.id) || [];
+      
       const { data: npsData } = await supabase
         .from("onboarding_nps_responses")
-        .select("score")
-        .gte("responded_at", format(subMonths(new Date(), 3), "yyyy-MM-dd"));
+        .select("score, project_id");
 
-      const avgNPS = npsData && npsData.length > 0
-        ? Math.round((npsData.reduce((sum, r) => sum + r.score, 0) / npsData.length) * 10) / 10
+      // Filter NPS responses to only include active projects (same as DashboardMetrics)
+      const filteredNpsResponses = (npsData || []).filter(r => activeProjectIds.includes(r.project_id));
+      
+      const avgNPS = filteredNpsResponses.length > 0
+        ? Math.round((filteredNpsResponses.reduce((sum, r) => sum + r.score, 0) / filteredNpsResponses.length) * 10) / 10
         : 0;
 
       // Fetch churn data using same logic as DashboardMetrics
@@ -242,16 +246,20 @@ export default function ExecutiveDashboardPage() {
         ? Math.round((closedInPeriod / totalActiveStart) * 100)
         : 0;
 
-      // Fetch renewal data - count unique companies renewed (same as DashboardMetrics)
-      const periodStartStr = format(periodStart, "yyyy-MM-dd");
+      // Fetch renewal data - same as DashboardMetrics (no status filter, filter by date in code)
       const { data: renewals } = await supabase
         .from("onboarding_contract_renewals")
-        .select("id, company_id")
-        .eq("status", "confirmed")
-        .gte("renewal_date", periodStartStr);
+        .select("id, company_id, renewal_date");
+
+      // Filter renewals in period (same logic as DashboardMetrics)
+      const renewalsInPeriod = (renewals || []).filter(r => {
+        if (!r.renewal_date) return false;
+        const d = new Date(r.renewal_date.substring(0, 10) + "T12:00:00");
+        return d >= periodStart && d <= periodEnd;
+      });
 
       // Count unique companies that renewed
-      const renewedCompanyIds = new Set((renewals || []).map(r => r.company_id));
+      const renewedCompanyIds = new Set(renewalsInPeriod.map(r => r.company_id));
       const renewedClientsCount = renewedCompanyIds.size;
       
       // Renewal rate = renewed clients / active companies (same as DashboardMetrics)
