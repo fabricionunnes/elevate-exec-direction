@@ -158,83 +158,162 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
 
   // Generate suggested questions for 1:1 - personalized based on project context
   const getSuggestedQuestions = () => {
-    const questions: string[] = [];
     const companyName = project.company_name;
-    
-    // Critical health score - prioritize understanding root cause
+
+    const hashString = (value: string) => {
+      // Simple deterministic hash (djb2)
+      let hash = 5381;
+      for (let i = 0; i < value.length; i++) {
+        hash = (hash * 33) ^ value.charCodeAt(i);
+      }
+      return Math.abs(hash);
+    };
+
+    const pickUnique = (pool: string[], seed: string, count: number) => {
+      const chosen: string[] = [];
+      const used = new Set<number>();
+      if (pool.length === 0) return chosen;
+
+      let attempts = 0;
+      while (chosen.length < Math.min(count, pool.length) && attempts < 50) {
+        const idx = (hashString(`${seed}:${attempts}`) + hashString(project.id)) % pool.length;
+        attempts++;
+        if (used.has(idx)) continue;
+        used.add(idx);
+        chosen.push(pool[idx]);
+      }
+
+      return chosen;
+    };
+
+    // KPIs context (pick the worst KPI if available)
+    const kpis = project.kpis ?? [];
+    const worstKpi = [...kpis].sort((a, b) => a.percentage - b.percentage)[0];
+
+    const questions: string[] = [];
+
+    // --- Category pools (varied phrasings) ---
+
+    // Health / risk
+    const healthCritical = [
+      `Qual foi o evento gatilho que derrubou a saúde de ${companyName}?`,
+      `Se você tivesse que apontar 1 causa raiz do risco de ${companyName}, qual seria?`,
+      `Quais sinais de churn você está percebendo em ${companyName} esta semana?`,
+      `Qual é o plano de recuperação (3 ações) para estabilizar ${companyName} nos próximos 7 dias?`,
+      `O que está mais comprometendo a entrega de valor percebida por ${companyName}?`,
+    ];
+
+    const healthMedium = [
+      `Qual é o gargalo que mais está travando a evolução de ${companyName}?`,
+      `Qual mudança de comportamento do cliente faria ${companyName} melhorar de patamar?`,
+      `O que você precisa de mim (ou do time) para destravar ${companyName}?`,
+      `Qual é a próxima decisão estratégica que precisamos induzir em ${companyName}?`,
+    ];
+
+    // Goals / KPIs
+    const goalsLow = [
+      `O que explica o baixo atingimento de metas em ${companyName}: volume, conversão ou ticket?`,
+      `Qual etapa do funil de ${companyName} está mais fraca hoje?`,
+      `O que o cliente precisa fazer (ação concreta) para melhorar o resultado ainda este mês?`,
+      `Quais 2 iniciativas você priorizaria para acelerar a meta de ${companyName}?`,
+    ];
+
+    const goalsHigh = [
+      `${companyName} está performando bem — qual foi o driver principal desse resultado?`,
+      `O que podemos padronizar do que funcionou em ${companyName} para replicar em outros clientes?`,
+      `Existe espaço para elevar a meta do próximo ciclo mantendo execução saudável?`,
+    ];
+
+    // Meetings / responsiveness
+    const meetingStale = [
+      `${companyName} está há alguns dias sem reunião — é problema de agenda, prioridade do cliente ou fricção?`,
+      `Quem é o verdadeiro decisor em ${companyName} e ele está participando?`,
+      `Qual é o próximo contato que você vai fazer (quando e por qual canal) com ${companyName}?`,
+    ];
+
+    // Tasks / execution
+    const execution = [
+      `O que está impedindo a execução das tarefas em ${companyName}: dependência do cliente, do time ou falta de clareza?`,
+      `Qual tarefa atrasada em ${companyName} destrava mais resultado se for concluída primeiro?`,
+      `O cliente entende o “porquê” das tarefas ou estamos só pedindo execução sem contexto?`,
+    ];
+
+    // NPS / feedback
+    const npsDetractor = [
+      `${companyName} deu NPS baixo — o motivo foi entrega, comunicação ou expectativa desalinhada?`,
+      `Qual conversa difícil precisa acontecer com ${companyName} para reverter a percepção?`,
+      `Qual ação de recuperação você vai executar nas próximas 48h para ${companyName}?`,
+    ];
+
+    const expansion = [
+      `Qual oportunidade de expansão (upsell/cross-sell) faz sentido para ${companyName} agora?`,
+      `Quem mais dentro de ${companyName} deveríamos influenciar para ampliar impacto?`,
+      `Qual resultado rápido (quick win) pode virar case em ${companyName}?`,
+    ];
+
+    // --- Build based on real signals ---
+
+    // 1) Health score bucket
     if (project.health_score < 40) {
-      questions.push(`O que está causando a queda drástica na saúde de ${companyName}?`);
-      questions.push(`Você identificou algum problema grave que ainda não foi escalado?`);
-      questions.push(`Qual é o nível de engajamento do decisor principal neste momento?`);
-    } 
-    // Medium health - focus on recovery
-    else if (project.health_score < 60) {
-      questions.push(`Quais são os principais blockers para melhorar a performance de ${companyName}?`);
-      questions.push(`O cliente está receptivo às suas sugestões de mudança?`);
-    }
-    
-    // Goal projection issues - dig into sales execution
-    if (project.goal_projection !== undefined) {
-      if (project.goal_projection < 50) {
-        questions.push(`A meta de ${companyName} está em ${project.goal_projection.toFixed(0)}%. O time comercial está executando o processo?`);
-        questions.push(`Existe algum problema de mercado ou sazonalidade afetando as vendas?`);
-      } else if (project.goal_projection < 80) {
-        questions.push(`O que falta para ${companyName} atingir a meta este mês?`);
-        questions.push(`O funil de vendas está saudável ou há gargalos específicos?`);
-      } else if (project.goal_projection >= 100) {
-        questions.push(`${companyName} bateu a meta! Qual foi o diferencial este mês?`);
-        questions.push(`Há espaço para aumentar as metas do próximo ciclo?`);
-      }
-    }
-    
-    // Meeting frequency issues - understand communication
-    if (project.days_since_meeting !== undefined) {
-      if (project.days_since_meeting > 14) {
-        questions.push(`${companyName} está há ${project.days_since_meeting} dias sem reunião. O cliente está evitando contato?`);
-        questions.push(`Existe algum conflito ou insatisfação não resolvida?`);
-      } else if (project.days_since_meeting > 7) {
-        questions.push(`A última reunião com ${companyName} foi há ${project.days_since_meeting} dias. Ficou algo pendente?`);
-      }
+      questions.push(...pickUnique(healthCritical, "health_critical", 2));
+    } else if (project.health_score < 60) {
+      questions.push(...pickUnique(healthMedium, "health_medium", 1));
     }
 
-    // NPS specific questions
-    if (project.nps_score !== undefined) {
-      if (project.nps_score <= 6) {
-        questions.push(`${companyName} deu NPS ${project.nps_score}. Qual foi o feedback específico do cliente?`);
-        questions.push(`Já conversou com o cliente sobre o que podemos fazer diferente?`);
-      } else if (project.nps_score >= 9) {
-        questions.push(`${companyName} é promotor (NPS ${project.nps_score}). Podemos pedir um depoimento ou indicação?`);
+    // 2) Goal projection or KPI performance
+    const goalPct = project.goal_projection;
+    const worstKpiPct = worstKpi?.percentage;
+
+    const hasWeakKpi = typeof worstKpiPct === "number" && worstKpiPct > 0 && worstKpiPct < 80;
+
+    if ((typeof goalPct === "number" && goalPct < 80) || hasWeakKpi) {
+      const base = pickUnique(goalsLow, `goals_low:${goalPct ?? "na"}:${worstKpi?.name ?? "none"}`, 1);
+      questions.push(...base);
+
+      if (worstKpi && worstKpi.percentage < 80) {
+        questions.push(
+          `O KPI “${worstKpi.name}” está em ${worstKpi.percentage.toFixed(0)}%. Qual é a causa e qual ação você vai priorizar?`
+        );
       }
+    } else if (typeof goalPct === "number" && goalPct >= 100) {
+      questions.push(...pickUnique(goalsHigh, "goals_high", 1));
     }
 
-    // Overdue tasks
-    if (project.overdue_tasks > 5) {
-      questions.push(`${companyName} tem ${project.overdue_tasks} tarefas atrasadas. O que está impedindo a execução?`);
-    } else if (project.overdue_tasks > 0) {
-      questions.push(`Como está a execução das ${project.overdue_tasks} tarefa(s) pendente(s)?`);
+    // 3) Meeting cadence
+    if (typeof project.days_since_meeting === "number" && project.days_since_meeting > 7) {
+      questions.push(...pickUnique(meetingStale, `meeting:${project.days_since_meeting}`, 1));
     }
 
-    // Segment-specific questions
-    if (project.segment) {
-      if (project.health_score >= 70) {
-        questions.push(`Como ${companyName} (${project.segment}) se compara com outros clientes do mesmo segmento?`);
-      }
+    // 4) Overdue tasks
+    if (project.overdue_tasks > 0) {
+      questions.push(...pickUnique(execution, `tasks:${project.overdue_tasks}`, 1));
     }
 
-    // NPS feedback follow-up
+    // 5) NPS and feedback
+    if (typeof project.nps_score === "number" && project.nps_score <= 6) {
+      questions.push(...pickUnique(npsDetractor, `nps:${project.nps_score}`, 1));
+    }
+
     if (project.last_nps_feedback) {
-      questions.push(`O cliente mencionou no NPS: "${project.last_nps_feedback.substring(0, 50)}..." - já foi endereçado?`);
+      const feedback = project.last_nps_feedback.trim();
+      if (feedback.length > 0) {
+        const snippet = feedback.length > 80 ? `${feedback.slice(0, 80)}…` : feedback;
+        questions.push(`No NPS, ${companyName} disse: “${snippet}”. O que já foi endereçado e o que falta?`);
+      }
     }
 
-    // Fallback for healthy projects
-    if (questions.length === 0) {
-      questions.push(`${companyName} está saudável. Quais são as próximas oportunidades de crescimento?`);
-      questions.push(`Há algum upsell ou cross-sell que podemos explorar?`);
-      questions.push(`O cliente mencionou alguma dor nova que podemos resolver?`);
+    // 6) Healthy fallback
+    if (questions.length < 3) {
+      questions.push(...pickUnique(expansion, "expansion", 3));
     }
 
-    // Return max 3 unique questions
-    return [...new Set(questions)].slice(0, 3);
+    // Final: unique + deterministic shuffle + return top 3
+    const unique = Array.from(new Set(questions));
+    const seed = `${project.id}:${project.health_score}:${project.overdue_tasks}:${project.nps_score ?? "na"}`;
+
+    unique.sort((a, b) => (hashString(`${seed}:${a}`) % 1000) - (hashString(`${seed}:${b}`) % 1000));
+
+    return unique.slice(0, 3);
   };
 
   const talkingPoints = getTalkingPoints();
