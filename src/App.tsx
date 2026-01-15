@@ -91,6 +91,7 @@ import FinancialModulePage from "./pages/onboarding-tasks/FinancialModulePage";
 import WhatsAppAdminPage from "./pages/onboarding-tasks/WhatsAppAdminPage";
 import ChurnPredictionPage from "./pages/onboarding-tasks/ChurnPredictionPage";
 import CohortRetentionPage from "./pages/onboarding-tasks/CohortRetentionPage";
+import ConsultantEngagementPage from "./pages/onboarding-tasks/ConsultantEngagementPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
 // CRM Pages
@@ -191,6 +192,7 @@ const App = () => (
               <Route path="/onboarding-tasks/whatsapp" element={<WhatsAppAdminPage />} />
               <Route path="/onboarding-tasks/churn-prediction" element={<ChurnPredictionPage />} />
               <Route path="/onboarding-tasks/cohort-retention" element={<CohortRetentionPage />} />
+              <Route path="/onboarding-tasks/engagement" element={<ConsultantEngagementPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
             </Route>

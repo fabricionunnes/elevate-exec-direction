@@ -1,12 +1,15 @@
 import { Badge } from "@/components/ui/badge";
 
 interface MeetingSentimentBadgeProps {
-  sentiment: 'positive' | 'neutral' | 'negative' | 'mixed';
+  sentiment?: string | null;
   score?: number;
   size?: 'sm' | 'md';
+  onClick?: (e: React.MouseEvent) => void;
 }
 
-export const MeetingSentimentBadge = ({ sentiment, score, size = 'sm' }: MeetingSentimentBadgeProps) => {
+export const MeetingSentimentBadge = ({ sentiment, score, size = 'sm', onClick }: MeetingSentimentBadgeProps) => {
+  if (!sentiment) return null;
+
   const getSentimentConfig = () => {
     switch (sentiment) {
       case 'positive':
@@ -41,7 +44,8 @@ export const MeetingSentimentBadge = ({ sentiment, score, size = 'sm' }: Meeting
   return (
     <Badge 
       variant="outline" 
-      className={`${config.className} ${size === 'sm' ? 'text-xs' : 'text-sm'}`}
+      className={`${config.className} ${size === 'sm' ? 'text-xs' : 'text-sm'} ${onClick ? 'cursor-pointer hover:opacity-80' : ''}`}
+      onClick={onClick}
     >
       <span className="mr-1">{config.emoji}</span>
       {config.label}

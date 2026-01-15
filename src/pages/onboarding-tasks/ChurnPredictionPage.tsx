@@ -28,6 +28,9 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ReactMarkdown from 'react-markdown';
+import { RescuePlaybookBadge } from "@/components/onboarding-tasks/rescue-playbook/RescuePlaybookBadge";
+import { RescuePlaybookDialog } from "@/components/onboarding-tasks/rescue-playbook/RescuePlaybookDialog";
+import { GeneratePlaybookButton } from "@/components/onboarding-tasks/rescue-playbook/GeneratePlaybookButton";
 
 interface ChurnPrediction {
   id: string;
@@ -59,10 +62,36 @@ export default function ChurnPredictionPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [riskFilter, setRiskFilter] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  
+  // Rescue playbook state
+  const [playbookDialogOpen, setPlaybookDialogOpen] = useState(false);
+  const [selectedPlaybookProjectId, setSelectedPlaybookProjectId] = useState<string | null>(null);
+  const [selectedPlaybookCompanyName, setSelectedPlaybookCompanyName] = useState<string>("");
+  const [playbookStatuses, setPlaybookStatuses] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchPredictions();
+    fetchPlaybookStatuses();
   }, []);
+  
+  const fetchPlaybookStatuses = async () => {
+    try {
+      const { data } = await supabase
+        .from('rescue_playbooks')
+        .select('project_id, status')
+        .order('created_at', { ascending: false });
+      
+      const statusMap: Record<string, string> = {};
+      (data || []).forEach((p: any) => {
+        if (!statusMap[p.project_id]) {
+          statusMap[p.project_id] = p.status;
+        }
+      });
+      setPlaybookStatuses(statusMap);
+    } catch (error) {
+      console.error('Error fetching playbook statuses:', error);
+    }
+  };
 
   const fetchPredictions = async () => {
     try {
@@ -343,6 +372,14 @@ export default function ChurnPredictionPage() {
                           <Badge className={`${config.bgLight} ${config.textColor} border-0`}>
                             {config.label}
                           </Badge>
+                          <RescuePlaybookBadge 
+                            status={playbookStatuses[prediction.project_id]}
+                            onClick={() => {
+                              setSelectedPlaybookProjectId(prediction.project_id);
+                              setSelectedPlaybookCompanyName(prediction.company_name || "");
+                              setPlaybookDialogOpen(true);
+                            }}
+                          />
                         </CardTitle>
                         <p className="text-sm text-muted-foreground">
                           {prediction.product_name} • {prediction.consultant_name}
@@ -446,7 +483,7 @@ export default function ChurnPredictionPage() {
                       </TabsContent>
                     </Tabs>
 
-                    <div className="flex gap-2 mt-4 pt-4 border-t">
+                    <div className="flex gap-2 mt-4 pt-4 border-t flex-wrap">
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -461,6 +498,14 @@ export default function ChurnPredictionPage() {
                       >
                         Ver Health Score
                       </Button>
+                      {(prediction.risk_level === 'high' || prediction.risk_level === 'critical') && 
+                       !playbookStatuses[prediction.project_id] && (
+                        <GeneratePlaybookButton
+                          projectId={prediction.project_id}
+                          churnPredictionId={prediction.id}
+                          onSuccess={fetchPlaybookStatuses}
+                        />
+                      )}
                     </div>
                   </CardContent>
                 )}
@@ -469,6 +514,13 @@ export default function ChurnPredictionPage() {
           })}
         </div>
       )}
+      
+      <RescuePlaybookDialog
+        open={playbookDialogOpen}
+        onOpenChange={setPlaybookDialogOpen}
+        projectId={selectedPlaybookProjectId || ""}
+        companyName={selectedPlaybookCompanyName}
+      />
     </div>
   );
 }

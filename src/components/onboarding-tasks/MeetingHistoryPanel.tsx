@@ -55,6 +55,10 @@ import {
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { ScheduleMeetingDialog } from "./ScheduleMeetingDialog";
 import { GenerateMeetingActionsDialog } from "./GenerateMeetingActionsDialog";
+import { MeetingSentimentBadge } from "./meeting-sentiment/MeetingSentimentBadge";
+import { MeetingSentimentDialog } from "./meeting-sentiment/MeetingSentimentDialog";
+import { MeetingBriefingSheet } from "./meeting-briefing/MeetingBriefingSheet";
+import { BriefingBadge } from "./meeting-briefing/BriefingBadge";
 
 interface MeetingNote {
   id: string;
@@ -158,6 +162,16 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
   const [meetingForActions, setMeetingForActions] = useState<MeetingNote | null>(null);
   const [productId, setProductId] = useState<string | null>(null);
   
+  // Sentiment and briefing dialogs
+  const [sentimentDialogOpen, setSentimentDialogOpen] = useState(false);
+  const [sentimentMeetingId, setSentimentMeetingId] = useState<string | null>(null);
+  const [sentimentMeetingTitle, setSentimentMeetingTitle] = useState<string>("");
+  const [sentimentHasTranscript, setSentimentHasTranscript] = useState(false);
+  const [briefingSheetOpen, setBriefingSheetOpen] = useState(false);
+  const [briefingMeeting, setBriefingMeeting] = useState<MeetingNote | null>(null);
+  const [meetingSentiments, setMeetingSentiments] = useState<Record<string, string>>({});
+  const [meetingBriefings, setMeetingBriefings] = useState<Record<string, boolean>>({});
+  
   useEffect(() => {
     fetchAll();
     
@@ -189,6 +203,8 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
       fetchCurrentStaff(),
       fetchMeetings(),
       fetchCSATSurveys(),
+      fetchMeetingSentiments(),
+      fetchMeetingBriefings(),
     ]);
     // Fetch consultant info and then sync calendar with the returned values
     const consultantInfo = await fetchProjectConsultant();
@@ -196,6 +212,42 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
     // Get product ID for phase creation
     await fetchProductId();
     setLoading(false);
+  };
+  
+  const fetchMeetingSentiments = async () => {
+    try {
+      const client = supabase as any;
+      const { data } = await client
+        .from("meeting_sentiments")
+        .select("meeting_id, overall_sentiment")
+        .eq("project_id", projectId);
+      
+      const sentimentMap: Record<string, string> = {};
+      (data || []).forEach((s: any) => {
+        sentimentMap[s.meeting_id] = s.overall_sentiment;
+      });
+      setMeetingSentiments(sentimentMap);
+    } catch (error) {
+      console.error("Error fetching sentiments:", error);
+    }
+  };
+  
+  const fetchMeetingBriefings = async () => {
+    try {
+      const client = supabase as any;
+      const { data } = await client
+        .from("meeting_briefings")
+        .select("meeting_id")
+        .eq("project_id", projectId);
+      
+      const briefingMap: Record<string, boolean> = {};
+      (data || []).forEach((b: any) => {
+        briefingMap[b.meeting_id] = true;
+      });
+      setMeetingBriefings(briefingMap);
+    } catch (error) {
+      console.error("Error fetching briefings:", error);
+    }
   };
 
   const fetchProductId = async () => {
@@ -1004,6 +1056,16 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
                                 {csatResponse ? `CSAT: ${csatResponse.score}` : "CSAT pendente"}
                               </Badge>
                             )}
+                            <MeetingSentimentBadge 
+                              sentiment={meetingSentiments[meeting.id]} 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSentimentMeetingId(meeting.id);
+                                setSentimentMeetingTitle(meeting.subject);
+                                setSentimentHasTranscript(!!(meeting.notes || meeting.transcript || meeting.manual_transcript));
+                                setSentimentDialogOpen(true);
+                              }}
+                            />
                           </div>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground mb-1 flex-wrap">
                             <span className="flex items-center gap-1">
@@ -1622,6 +1684,31 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
             toast.success("Ações criadas com sucesso!");
             onTasksRefresh?.();
           }}
+        />
+      )}
+
+      {/* Meeting Sentiment Dialog */}
+      <MeetingSentimentDialog
+        open={sentimentDialogOpen}
+        onOpenChange={setSentimentDialogOpen}
+        meetingId={sentimentMeetingId || ""}
+        projectId={projectId}
+        meetingTitle={sentimentMeetingTitle}
+        hasTranscript={sentimentHasTranscript}
+      />
+
+      {/* Meeting Briefing Sheet */}
+      {briefingMeeting && (
+        <MeetingBriefingSheet
+          open={briefingSheetOpen}
+          onOpenChange={(open) => {
+            setBriefingSheetOpen(open);
+            if (!open) setBriefingMeeting(null);
+          }}
+          meetingId={briefingMeeting.id}
+          projectId={projectId}
+          meetingTitle={briefingMeeting.subject}
+          meetingDate={briefingMeeting.meeting_date}
         />
       )}
     </>
