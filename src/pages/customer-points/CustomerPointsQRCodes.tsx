@@ -223,7 +223,9 @@ export default function CustomerPointsQRCodes() {
 
   const showQRCode = async (campaign: Campaign) => {
     setSelectedCampaign(campaign);
-    const formUrl = `${window.location.origin}/pontuacao-form/${campaign.access_token}`;
+    // Use domain público com hash route para evitar login do Lovable
+    const publicDomain = "https://unvholdings.com.br";
+    const formUrl = `${publicDomain}/#/points?token=${campaign.access_token}`;
     
     try {
       const qrDataUrl = await QRCode.toDataURL(formUrl, {
@@ -248,7 +250,8 @@ export default function CustomerPointsQRCodes() {
   };
 
   const copyLink = async (campaign: Campaign) => {
-    const formUrl = `${window.location.origin}/pontuacao-form/${campaign.access_token}`;
+    const publicDomain = "https://unvholdings.com.br";
+    const formUrl = `${publicDomain}/#/points?token=${campaign.access_token}`;
     await navigator.clipboard.writeText(formUrl);
     toast.success("Link copiado!");
   };
