@@ -153,24 +153,44 @@ export default function ExecutiveDashboardPage() {
         ? npsData.reduce((sum, r) => sum + r.score, 0) / npsData.length
         : 0;
 
-      // Fetch churn data (projects that became closed/completed in period)
-      const periodStart = format(subMonths(new Date(), parseInt(period) / 30), "yyyy-MM-dd");
-      const { data: churnedProjects } = await supabase
+      // Fetch churn data using same logic as DashboardMetrics
+      // Get all projects to calculate churn properly
+      const periodStart = subMonths(new Date(), parseInt(period) / 30);
+      const periodEnd = new Date();
+      
+      const { data: allProjectsData } = await supabase
         .from("onboarding_projects")
-        .select("id")
-        .in("status", ["closed", "completed"])
-        .gte("updated_at", periodStart);
+        .select("id, status, churn_date, updated_at")
+        .in("status", ["closed", "completed", "cancellation_signaled", "notice_period"]);
 
-      const churnRate = totalProjects > 0 
-        ? (churnedProjects?.length || 0) / (totalProjects + (churnedProjects?.length || 0))
+      // Calculate closed in period using churn_date (fallback to updated_at)
+      const closedInPeriod = (allProjectsData || []).filter(p => {
+        if (p.status !== "closed" && p.status !== "completed") return false;
+        const churnDateStr = p.churn_date || p.updated_at;
+        const churnDate = new Date(churnDateStr.substring(0, 10) + "T12:00:00");
+        return churnDate >= periodStart && churnDate <= periodEnd;
+      }).length;
+
+      // Count signaled in period
+      const signaledInPeriod = (allProjectsData || []).filter(p => {
+        if (p.status !== "cancellation_signaled" && p.status !== "notice_period") return false;
+        const updateDate = new Date(p.updated_at);
+        return updateDate >= periodStart && updateDate <= periodEnd;
+      }).length;
+
+      // Use same formula as DashboardMetrics: churnRate = closedInPeriod / (activeProjects + closedInPeriod + signaledInPeriod)
+      const totalActiveStart = totalProjects + closedInPeriod + signaledInPeriod;
+      const churnRate = totalActiveStart > 0 
+        ? closedInPeriod / totalActiveStart
         : 0;
 
       // Fetch renewal data
+      const periodStartStr = format(periodStart, "yyyy-MM-dd");
       const { data: renewals } = await supabase
         .from("onboarding_contract_renewals")
         .select("id")
         .eq("status", "confirmed")
-        .gte("renewal_date", periodStart);
+        .gte("renewal_date", periodStartStr);
 
       const renewalRate = totalProjects > 0
         ? (renewals?.length || 0) / totalProjects
