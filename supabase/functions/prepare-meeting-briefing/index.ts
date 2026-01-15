@@ -291,23 +291,19 @@ Gere um briefing completo e acionável para esta reunião.`;
     }
 
     // Save briefing to database
+    // We store the full structured payload as JSON in a single column for flexibility.
     const { data: briefingData, error: insertError } = await supabase
-      .from('meeting_briefings')
-      .upsert({
-        meeting_id: meetingId,
-        project_id: projectId,
-        executive_summary: briefing.executive_summary,
-        client_history: briefing.client_history,
-        pending_items: briefing.pending_items,
-        goal_status: briefing.goal_status,
-        attention_points: briefing.attention_points,
-        suggested_agenda: briefing.suggested_agenda,
-        talking_points: briefing.talking_points || [],
-        health_score_at_generation: healthScore?.total_score,
-        churn_risk_at_generation: churnPrediction?.risk_level,
-      }, {
-        onConflict: 'meeting_id',
-      })
+      .from('onboarding_meeting_briefings')
+      .upsert(
+        {
+          meeting_id: meetingId,
+          project_id: projectId,
+          briefing_content: JSON.stringify(briefing),
+        },
+        {
+          onConflict: 'meeting_id',
+        }
+      )
       .select()
       .single();
 
