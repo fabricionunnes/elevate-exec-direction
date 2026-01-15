@@ -28,7 +28,9 @@ import {
   Shield,
   ChevronRight,
   BarChart3,
-  Sparkles
+  Sparkles,
+  FileText,
+  CalendarClock
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -79,6 +81,17 @@ interface NewCompany {
   last_meeting_date?: string;
 }
 
+interface UpcomingRenewal {
+  id: string;
+  company_name: string;
+  contract_end_date: string;
+  days_until_renewal: number;
+  consultant_name: string;
+  health_score: number;
+  contract_value: number;
+  renewal_status?: string;
+}
+
 interface DailyKPI {
   label: string;
   value: number | string;
@@ -102,6 +115,8 @@ export function DailyLeadershipAgenda() {
   const [newCompanies, setNewCompanies] = useState<NewCompany[]>([]);
   const [newCompaniesFilter, setNewCompaniesFilter] = useState<30 | 60 | 90>(30);
   const [totalProjects, setTotalProjects] = useState(0);
+  const [upcomingRenewals, setUpcomingRenewals] = useState<UpcomingRenewal[]>([]);
+  const [renewalsFilter, setRenewalsFilter] = useState<30 | 60 | 90>(30);
 
   const fetchData = async () => {
     try {
@@ -357,6 +372,71 @@ export function DailyLeadershipAgenda() {
         }).sort((a, b) => a.days_since_start - b.days_since_start);
 
         setNewCompanies(newCompaniesData);
+      }
+
+      // Fetch companies with upcoming contract renewals (next 90 days)
+      const ninetyDaysFromNow = new Date();
+      ninetyDaysFromNow.setDate(ninetyDaysFromNow.getDate() + 90);
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      
+      const { data: companiesForRenewal } = await supabase
+        .from("onboarding_companies")
+        .select(`
+          id,
+          name,
+          contract_end_date,
+          contract_value,
+          onboarding_projects!inner(
+            id,
+            status,
+            consultant_id,
+            client_health_scores(total_score),
+            onboarding_staff!onboarding_projects_consultant_id_fkey(name)
+          )
+        `)
+        .gte("contract_end_date", todayStr)
+        .lte("contract_end_date", format(ninetyDaysFromNow, "yyyy-MM-dd"))
+        .order("contract_end_date", { ascending: true });
+
+      if (companiesForRenewal) {
+        // Check if they already have a confirmed renewal
+        const companyIds = companiesForRenewal.map(c => c.id);
+        const { data: confirmedRenewals } = await supabase
+          .from("onboarding_contract_renewals")
+          .select("project_id, status, onboarding_projects!inner(company_id)")
+          .eq("status", "confirmed")
+          .in("onboarding_projects.company_id", companyIds);
+
+        const confirmedCompanyIds = new Set(
+          confirmedRenewals?.map((r: any) => r.onboarding_projects?.company_id) || []
+        );
+
+        const renewalsData: UpcomingRenewal[] = companiesForRenewal
+          .filter(c => {
+            // Filter to active projects only
+            const activeProject = (c.onboarding_projects as any[])?.find(
+              (p: any) => ["active", "implementation", "ongoing", "expansion"].includes(p.status)
+            );
+            return activeProject && !confirmedCompanyIds.has(c.id);
+          })
+          .map(c => {
+            const project = (c.onboarding_projects as any[])?.[0];
+            const endDate = new Date(c.contract_end_date!);
+            const daysUntil = Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            
+            return {
+              id: project?.id || c.id,
+              company_name: c.name,
+              contract_end_date: c.contract_end_date!,
+              days_until_renewal: daysUntil,
+              consultant_name: project?.onboarding_staff?.name || "N/A",
+              health_score: project?.client_health_scores?.total_score || 50,
+              contract_value: c.contract_value || 0,
+              renewal_status: undefined
+            };
+          });
+
+        setUpcomingRenewals(renewalsData);
       }
 
     } catch (error) {
@@ -881,6 +961,142 @@ export function DailyLeadershipAgenda() {
           </Card>
         </motion.div>
       )}
+
+      {/* Upcoming Renewals Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.65 }}
+      >
+        <Card className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <CardTitle className="text-lg flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                  <CalendarClock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <span className="text-foreground">Empresas para Renovar</span>
+                <Badge className="ml-2 bg-amber-500 text-white">
+                  {upcomingRenewals.filter(r => r.days_until_renewal <= renewalsFilter).length} contratos
+                </Badge>
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {[30, 60, 90].map((days) => (
+                  <Button
+                    key={days}
+                    variant={renewalsFilter === days ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setRenewalsFilter(days as 30 | 60 | 90)}
+                    className={renewalsFilter === days 
+                      ? "bg-amber-600 hover:bg-amber-700 text-white" 
+                      : "bg-background hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                    }
+                  >
+                    {days}d
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {upcomingRenewals.filter(r => r.days_until_renewal <= renewalsFilter).length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="p-4 rounded-full bg-green-100 dark:bg-green-900/50 mb-4">
+                  <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
+                </div>
+                <p className="text-lg font-medium text-green-700 dark:text-green-400">Sem renovações pendentes</p>
+                <p className="text-sm text-center mt-1 text-muted-foreground">
+                  Nenhum contrato vencendo nos próximos {renewalsFilter} dias
+                </p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {upcomingRenewals
+                  .filter(r => r.days_until_renewal <= renewalsFilter)
+                  .map((renewal, i) => {
+                    const isUrgent = renewal.days_until_renewal <= 15;
+                    const isWarning = renewal.days_until_renewal <= 30;
+                    
+                    return (
+                      <motion.div
+                        key={renewal.id}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.7 + i * 0.05 }}
+                        className={`p-4 rounded-xl border hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02] ${
+                          isUrgent 
+                            ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-700' 
+                            : isWarning 
+                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700'
+                            : 'bg-background border-amber-200 dark:border-amber-800'
+                        }`}
+                        onClick={() => navigate(`/onboarding-tasks/${renewal.id}`)}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-foreground truncate">{renewal.company_name}</h4>
+                            <p className="text-xs text-muted-foreground">{renewal.consultant_name}</p>
+                          </div>
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs shrink-0 ${
+                              isUrgent 
+                                ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 border-red-300 dark:border-red-600' 
+                                : isWarning
+                                ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-600'
+                                : 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 border-green-300 dark:border-green-600'
+                            }`}
+                          >
+                            {renewal.days_until_renewal}d
+                          </Badge>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {/* Contract End Date */}
+                          <div className="flex items-center gap-2">
+                            <Calendar className={`h-4 w-4 ${
+                              isUrgent ? 'text-red-500' : isWarning ? 'text-amber-500' : 'text-green-500'
+                            }`} />
+                            <span className="text-xs text-muted-foreground">Término:</span>
+                            <span className="text-sm font-medium text-foreground">
+                              {format(new Date(renewal.contract_end_date), "dd/MM/yyyy", { locale: ptBR })}
+                            </span>
+                          </div>
+
+                          {/* Health Score */}
+                          <div className="flex items-center gap-2">
+                            <Activity className={`h-4 w-4 ${
+                              renewal.health_score >= 70 ? 'text-green-500' :
+                              renewal.health_score >= 40 ? 'text-yellow-500' : 'text-red-500'
+                            }`} />
+                            <span className="text-xs text-muted-foreground">Saúde:</span>
+                            <span className={`text-sm font-bold ${
+                              renewal.health_score >= 70 ? 'text-green-600 dark:text-green-400' :
+                              renewal.health_score >= 40 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
+                            }`}>
+                              {renewal.health_score}
+                            </span>
+                          </div>
+
+                          {/* Contract Value */}
+                          {renewal.contract_value > 0 && (
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">Valor:</span>
+                              <span className="text-sm font-medium text-foreground">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(renewal.contract_value)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Consultant Summary Table */}
       <motion.div
