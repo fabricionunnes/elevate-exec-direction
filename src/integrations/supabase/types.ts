@@ -1867,6 +1867,317 @@ export type Database = {
           },
         ]
       }
+      customer_points_clients: {
+        Row: {
+          birth_date: string | null
+          company_id: string
+          cpf: string
+          created_at: string
+          email: string | null
+          id: string
+          last_activity_at: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          status: string | null
+          total_points: number | null
+          updated_at: string
+        }
+        Insert: {
+          birth_date?: string | null
+          company_id: string
+          cpf: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_activity_at?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          status?: string | null
+          total_points?: number | null
+          updated_at?: string
+        }
+        Update: {
+          birth_date?: string | null
+          company_id?: string
+          cpf?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_activity_at?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          status?: string | null
+          total_points?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_points_clients_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_points_config: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          levels_config: Json | null
+          levels_enabled: boolean | null
+          points_name: string | null
+          rewards_config: Json | null
+          rewards_enabled: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          levels_config?: Json | null
+          levels_enabled?: boolean | null
+          points_name?: string | null
+          rewards_config?: Json | null
+          rewards_enabled?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          levels_config?: Json | null
+          levels_enabled?: boolean | null
+          points_name?: string | null
+          rewards_config?: Json | null
+          rewards_enabled?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_points_config_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_points_qr_campaigns: {
+        Row: {
+          access_token: string
+          company_id: string
+          created_at: string
+          description: string | null
+          ends_at: string | null
+          form_fields: Json | null
+          id: string
+          is_active: boolean | null
+          limit_per_cpf_per_day: number | null
+          limit_per_cpf_total: number | null
+          min_hours_between: number | null
+          name: string
+          rule_id: string | null
+          starts_at: string | null
+          total_scans: number | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string
+          company_id: string
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          form_fields?: Json | null
+          id?: string
+          is_active?: boolean | null
+          limit_per_cpf_per_day?: number | null
+          limit_per_cpf_total?: number | null
+          min_hours_between?: number | null
+          name: string
+          rule_id?: string | null
+          starts_at?: string | null
+          total_scans?: number | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          form_fields?: Json | null
+          id?: string
+          is_active?: boolean | null
+          limit_per_cpf_per_day?: number | null
+          limit_per_cpf_total?: number | null
+          min_hours_between?: number | null
+          name?: string
+          rule_id?: string | null
+          starts_at?: string | null
+          total_scans?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_points_qr_campaigns_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_points_qr_campaigns_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "customer_points_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_points_rules: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          max_points_per_action: number | null
+          min_value: number | null
+          multiplier: number | null
+          name: string
+          points_value: number | null
+          rule_type: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_points_per_action?: number | null
+          min_value?: number | null
+          multiplier?: number | null
+          name: string
+          points_value?: number | null
+          rule_type: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_points_per_action?: number | null
+          min_value?: number | null
+          multiplier?: number | null
+          name?: string
+          points_value?: number | null
+          rule_type?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_points_rules_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_points_transactions: {
+        Row: {
+          client_id: string
+          company_id: string
+          cpf: string
+          created_at: string
+          created_by: string | null
+          form_responses: Json | null
+          id: string
+          notes: string | null
+          points: number
+          qr_campaign_id: string | null
+          reference_quantity: number | null
+          reference_value: number | null
+          rule_id: string | null
+          source: string
+        }
+        Insert: {
+          client_id: string
+          company_id: string
+          cpf: string
+          created_at?: string
+          created_by?: string | null
+          form_responses?: Json | null
+          id?: string
+          notes?: string | null
+          points: number
+          qr_campaign_id?: string | null
+          reference_quantity?: number | null
+          reference_value?: number | null
+          rule_id?: string | null
+          source: string
+        }
+        Update: {
+          client_id?: string
+          company_id?: string
+          cpf?: string
+          created_at?: string
+          created_by?: string | null
+          form_responses?: Json | null
+          id?: string
+          notes?: string | null
+          points?: number
+          qr_campaign_id?: string | null
+          reference_quantity?: number | null
+          reference_value?: number | null
+          rule_id?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_points_transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "customer_points_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_points_transactions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_points_transactions_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "customer_points_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_qr_campaign"
+            columns: ["qr_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "customer_points_qr_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       disc_responses: {
         Row: {
           completed_at: string
