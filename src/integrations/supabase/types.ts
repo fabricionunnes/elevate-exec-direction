@@ -4864,6 +4864,51 @@ export type Database = {
           },
         ]
       }
+      onboarding_meeting_briefings: {
+        Row: {
+          briefing_content: string
+          created_at: string
+          generated_at: string
+          id: string
+          meeting_id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          briefing_content: string
+          created_at?: string
+          generated_at?: string
+          id?: string
+          meeting_id: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          briefing_content?: string
+          created_at?: string
+          generated_at?: string
+          id?: string
+          meeting_id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_meeting_briefings_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_meeting_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_meeting_briefings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_meeting_notes: {
         Row: {
           attendees: string | null
