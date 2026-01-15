@@ -65,6 +65,16 @@ interface ConsultantMetrics {
   avgGoalProjection: number;
 }
 
+interface NewCompany {
+  id: string;
+  company_name: string;
+  days_since_start: number;
+  health_score: number;
+  completed_tasks: number;
+  total_tasks: number;
+  last_meeting_date?: string;
+}
+
 interface KPIData {
   name: string;
   target: number;
@@ -111,6 +121,8 @@ export function ConsultantOneOnOnePanel() {
   const [metrics, setMetrics] = useState<ConsultantMetrics | null>(null);
   const [projects, setProjects] = useState<ProjectBriefing[]>([]);
   const [agendaSections, setAgendaSections] = useState<AgendaSection[]>([]);
+  const [newCompanies, setNewCompanies] = useState<NewCompany[]>([]);
+  const [newCompaniesFilter, setNewCompaniesFilter] = useState<30 | 60 | 90>(30);
   const [copied, setCopied] = useState(false);
 
   // Load consultants - only show role='consultant'
@@ -375,6 +387,80 @@ export function ConsultantOneOnOnePanel() {
           // Sort by health score (worst first)
           briefings.sort((a, b) => a.health_score - b.health_score);
           setProjects(briefings);
+
+          // Fetch new companies (started within last 90 days) for this consultant
+          const ninetyDaysAgo = new Date();
+          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+          
+          const { data: newProjectsData } = await supabase
+            .from("onboarding_projects")
+            .select(`
+              id,
+              created_at,
+              onboarding_companies(name, contract_start_date),
+              client_health_scores(total_score)
+            `)
+            .or(`consultant_id.eq.${selectedConsultant},cs_id.eq.${selectedConsultant}`)
+            .in("status", ["active", "implementation", "ongoing"])
+            .gte("created_at", ninetyDaysAgo.toISOString());
+
+          if (newProjectsData && newProjectsData.length > 0) {
+            const projectIds = newProjectsData.map(p => p.id);
+            
+            const { data: taskCounts } = await supabase
+              .from("onboarding_tasks")
+              .select("project_id, status")
+              .in("project_id", projectIds);
+
+            const { data: meetingsData } = await supabase
+              .from("onboarding_meeting_notes")
+              .select("project_id, meeting_date")
+              .in("project_id", projectIds)
+              .order("meeting_date", { ascending: false });
+
+            const taskCountMap = new Map<string, { completed: number; total: number }>();
+            if (taskCounts) {
+              taskCounts.forEach(t => {
+                if (!taskCountMap.has(t.project_id)) {
+                  taskCountMap.set(t.project_id, { completed: 0, total: 0 });
+                }
+                const counts = taskCountMap.get(t.project_id)!;
+                counts.total++;
+                if (t.status === 'completed') counts.completed++;
+              });
+            }
+
+            const meetingMap = new Map<string, string>();
+            if (meetingsData) {
+              meetingsData.forEach(m => {
+                if (!meetingMap.has(m.project_id)) {
+                  meetingMap.set(m.project_id, m.meeting_date);
+                }
+              });
+            }
+
+            const newCompaniesData: NewCompany[] = newProjectsData.map(p => {
+              const startDate = p.onboarding_companies?.contract_start_date 
+                ? new Date(p.onboarding_companies.contract_start_date)
+                : new Date(p.created_at);
+              const daysSince = Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+              const tasks = taskCountMap.get(p.id) || { completed: 0, total: 0 };
+              
+              return {
+                id: p.id,
+                company_name: p.onboarding_companies?.name || "Empresa",
+                days_since_start: daysSince,
+                health_score: p.client_health_scores?.total_score || 50,
+                completed_tasks: tasks.completed,
+                total_tasks: tasks.total,
+                last_meeting_date: meetingMap.get(p.id)
+              };
+            }).sort((a, b) => a.days_since_start - b.days_since_start);
+
+            setNewCompanies(newCompaniesData);
+          } else {
+            setNewCompanies([]);
+          }
         }
 
         // Fetch engagement score
@@ -677,6 +763,132 @@ export function ConsultantOneOnOnePanel() {
                       </motion.div>
                     );
                   })}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* New Companies Section */}
+            {newCompanies.length > 0 && (
+              <Card className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                <CardHeader className="pb-3">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <CardTitle className="text-lg flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50">
+                        <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <span className="text-foreground">Empresas Novas</span>
+                      <Badge className="ml-2 bg-blue-500 text-white">
+                        {newCompanies.filter(c => c.days_since_start <= newCompaniesFilter).length} em onboarding
+                      </Badge>
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      {[30, 60, 90].map((days) => (
+                        <Button
+                          key={days}
+                          variant={newCompaniesFilter === days ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setNewCompaniesFilter(days as 30 | 60 | 90)}
+                          className={newCompaniesFilter === days 
+                            ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                            : "bg-background hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                          }
+                        >
+                          {days}d
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {newCompanies.filter(c => c.days_since_start <= newCompaniesFilter).length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Nenhuma empresa nova nos últimos {newCompaniesFilter} dias
+                    </p>
+                  ) : (
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {newCompanies.filter(c => c.days_since_start <= newCompaniesFilter).map((company, i) => {
+                        const progressPercent = company.total_tasks > 0 
+                          ? Math.round((company.completed_tasks / company.total_tasks) * 100) 
+                          : 0;
+                        const hasMeeting = !!company.last_meeting_date;
+                        
+                        return (
+                          <motion.div
+                            key={company.id}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.3 + i * 0.05 }}
+                            className="p-4 rounded-xl bg-background border border-blue-200 dark:border-blue-800 hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02]"
+                            onClick={() => navigate(`/onboarding-tasks/${company.id}`)}
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-foreground truncate">{company.company_name}</h4>
+                              </div>
+                              <Badge 
+                                variant="outline" 
+                                className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-600 text-xs shrink-0"
+                              >
+                                {company.days_since_start}d
+                              </Badge>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              {/* Health Score */}
+                              <div className="flex items-center gap-2">
+                                <Target className={`h-4 w-4 ${
+                                  company.health_score >= 70 ? 'text-green-500' :
+                                  company.health_score >= 40 ? 'text-yellow-500' : 'text-red-500'
+                                }`} />
+                                <span className="text-xs text-muted-foreground">Saúde:</span>
+                                <span className={`text-sm font-bold ${
+                                  company.health_score >= 70 ? 'text-green-600 dark:text-green-400' :
+                                  company.health_score >= 40 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
+                                }`}>
+                                  {company.health_score}
+                                </span>
+                              </div>
+
+                              {/* Task Progress */}
+                              <div>
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                  <span className="text-muted-foreground flex items-center gap-1">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    Tarefas
+                                  </span>
+                                  <span className="font-medium text-foreground">
+                                    {company.completed_tasks}/{company.total_tasks}
+                                  </span>
+                                </div>
+                                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-blue-500 transition-all duration-500"
+                                    style={{ width: `${progressPercent}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Meeting Status */}
+                              <div className="flex items-center gap-2">
+                                <Calendar className={`h-4 w-4 ${hasMeeting ? 'text-green-500' : 'text-orange-500'}`} />
+                                <span className="text-xs text-muted-foreground">
+                                  {hasMeeting 
+                                    ? `Última: ${format(new Date(company.last_meeting_date!), "dd/MM", { locale: ptBR })}`
+                                    : "Sem reunião registrada"
+                                  }
+                                </span>
+                                {!hasMeeting && (
+                                  <Badge variant="outline" className="text-[10px] bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-600">
+                                    Pendente
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
