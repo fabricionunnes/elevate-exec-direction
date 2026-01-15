@@ -66,8 +66,8 @@ export function ChurnPredictionWidget({ onViewDetails, limit = 5 }: Props) {
           *,
           onboarding_projects!inner(
             status,
-            onboarding_companies!inner(name),
-            onboarding_services!inner(name)
+            product_name,
+            onboarding_companies!inner(name)
           )
         `)
         .eq('prediction_date', today)
@@ -80,7 +80,7 @@ export function ChurnPredictionWidget({ onViewDetails, limit = 5 }: Props) {
       const formattedPredictions = (data || []).map((p: any) => ({
         ...p,
         company_name: p.onboarding_projects?.onboarding_companies?.name,
-        product_name: p.onboarding_projects?.onboarding_services?.name
+        product_name: p.onboarding_projects?.product_name
       }));
 
       setPredictions(formattedPredictions);
