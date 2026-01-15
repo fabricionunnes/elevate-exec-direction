@@ -16,6 +16,7 @@ import {
   Trophy,
   ChevronLeft,
   ShieldCheck,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,7 @@ export default function CustomerPointsLayout() {
     { id: "rules", label: "Regras de Pontuação", icon: Settings2, href: "rules" },
     { id: "transactions", label: "Ações / Registros", icon: ClipboardList, href: "transactions" },
     { id: "qrcodes", label: "QR Code & Formulários", icon: QrCode, href: "qr-codes" },
+    { id: "salesperson", label: "Links de Vendedores", icon: Link2, href: "salesperson-links" },
   ];
 
   useEffect(() => {

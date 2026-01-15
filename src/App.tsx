@@ -115,6 +115,8 @@ import CustomerPointsRules from "./pages/customer-points/CustomerPointsRules";
 import CustomerPointsTransactions from "./pages/customer-points/CustomerPointsTransactions";
 import CustomerPointsQRCodes from "./pages/customer-points/CustomerPointsQRCodes";
 import CustomerPointsPublicForm from "./pages/customer-points/CustomerPointsPublicForm";
+import CustomerPointsSalespersonForm from "./pages/customer-points/CustomerPointsSalespersonForm";
+import CustomerPointsSalespersonTokens from "./pages/customer-points/CustomerPointsSalespersonTokens";
 
 // Loading fallback component
 const PageLoader = () => (
@@ -221,6 +223,7 @@ const App = () => (
             
             {/* Customer Points - Public */}
             <Route path="/points" element={<CustomerPointsPublicForm />} />
+            <Route path="/points-salesperson" element={<CustomerPointsSalespersonForm />} />
             
             {/* Customer Points - Client Area */}
             <Route path="/customer-points/:companyId" element={<CustomerPointsLayout />}>
@@ -229,6 +232,7 @@ const App = () => (
               <Route path="rules" element={<CustomerPointsRules />} />
               <Route path="transactions" element={<CustomerPointsTransactions />} />
               <Route path="qr-codes" element={<CustomerPointsQRCodes />} />
+              <Route path="salesperson-links" element={<CustomerPointsSalespersonTokens />} />
             </Route>
             
             {/* CRM Comercial */}
