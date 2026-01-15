@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2 } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award } from "lucide-react";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
@@ -1358,6 +1358,10 @@ const OnboardingTasksPage = () => {
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cohort-retention")}>
                         <Users2 className="h-4 w-4 mr-2" />
                         Análise de Cohort
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/engagement")}>
+                        <Award className="h-4 w-4 mr-2" />
+                        Ranking de Engajamento
                       </DropdownMenuItem>
                       {currentUserEmail === "fabricio@universidadevendas.com.br" && (
                         <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
