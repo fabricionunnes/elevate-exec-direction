@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity } from "lucide-react";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
@@ -1379,6 +1379,12 @@ const OnboardingTasksPage = () => {
                           Relatórios
                         </DropdownMenuSubTrigger>
                         <DropdownMenuSubContent className="w-52">
+                          {isAdmin && (
+                            <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/executive")}>
+                              <Activity className="h-4 w-4 mr-2" />
+                              Dashboard Executivo
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies-report")}>
                             <FileBarChart className="h-4 w-4 mr-2" />
                             Relatório de Empresas
