@@ -226,6 +226,11 @@ export default function CustomerPointsRules() {
   };
 
   const saveConfig = async () => {
+    if (!config?.id) {
+      toast.error("Configuração não encontrada");
+      return;
+    }
+    
     setSaving(true);
     try {
       const { error } = await supabase
@@ -234,7 +239,7 @@ export default function CustomerPointsRules() {
           points_name: configForm.points_name,
           is_active: configForm.is_active,
         })
-        .eq("id", config?.id);
+        .eq("id", config.id);
       if (error) throw error;
       toast.success("Configurações salvas!");
       setConfigDialogOpen(false);
