@@ -146,36 +146,88 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
     return points;
   };
 
-  // Generate suggested questions for 1:1
+  // Generate suggested questions for 1:1 - personalized based on project context
   const getSuggestedQuestions = () => {
     const questions: string[] = [];
+    const companyName = project.company_name;
     
-    if (project.health_score < 60) {
-      questions.push("Qual é a principal dificuldade que você está enfrentando com esse cliente?");
-      questions.push("Existe algo que está fora do nosso controle impactando esse projeto?");
+    // Critical health score - prioritize understanding root cause
+    if (project.health_score < 40) {
+      questions.push(`O que está causando a queda drástica na saúde de ${companyName}?`);
+      questions.push(`Você identificou algum problema grave que ainda não foi escalado?`);
+      questions.push(`Qual é o nível de engajamento do decisor principal neste momento?`);
+    } 
+    // Medium health - focus on recovery
+    else if (project.health_score < 60) {
+      questions.push(`Quais são os principais blockers para melhorar a performance de ${companyName}?`);
+      questions.push(`O cliente está receptivo às suas sugestões de mudança?`);
     }
     
-    if (project.goal_projection !== undefined && project.goal_projection < 80) {
-      questions.push("O cliente está engajado com as estratégias propostas?");
-      questions.push("O time de vendas do cliente está aplicando as metodologias?");
+    // Goal projection issues - dig into sales execution
+    if (project.goal_projection !== undefined) {
+      if (project.goal_projection < 50) {
+        questions.push(`A meta de ${companyName} está em ${project.goal_projection.toFixed(0)}%. O time comercial está executando o processo?`);
+        questions.push(`Existe algum problema de mercado ou sazonalidade afetando as vendas?`);
+      } else if (project.goal_projection < 80) {
+        questions.push(`O que falta para ${companyName} atingir a meta este mês?`);
+        questions.push(`O funil de vendas está saudável ou há gargalos específicos?`);
+      } else if (project.goal_projection >= 100) {
+        questions.push(`${companyName} bateu a meta! Qual foi o diferencial este mês?`);
+        questions.push(`Há espaço para aumentar as metas do próximo ciclo?`);
+      }
     }
     
-    if (project.days_since_meeting !== undefined && project.days_since_meeting > 7) {
-      questions.push("Houve alguma dificuldade para agendar reunião?");
-      questions.push("O cliente tem respondido às mensagens?");
+    // Meeting frequency issues - understand communication
+    if (project.days_since_meeting !== undefined) {
+      if (project.days_since_meeting > 14) {
+        questions.push(`${companyName} está há ${project.days_since_meeting} dias sem reunião. O cliente está evitando contato?`);
+        questions.push(`Existe algum conflito ou insatisfação não resolvida?`);
+      } else if (project.days_since_meeting > 7) {
+        questions.push(`A última reunião com ${companyName} foi há ${project.days_since_meeting} dias. Ficou algo pendente?`);
+      }
     }
 
-    if (project.nps_score !== undefined && project.nps_score <= 6) {
-      questions.push("O que o cliente mencionou como principal frustração?");
-      questions.push("Temos algum plano de ação para reverter essa percepção?");
+    // NPS specific questions
+    if (project.nps_score !== undefined) {
+      if (project.nps_score <= 6) {
+        questions.push(`${companyName} deu NPS ${project.nps_score}. Qual foi o feedback específico do cliente?`);
+        questions.push(`Já conversou com o cliente sobre o que podemos fazer diferente?`);
+      } else if (project.nps_score >= 9) {
+        questions.push(`${companyName} é promotor (NPS ${project.nps_score}). Podemos pedir um depoimento ou indicação?`);
+      }
     }
 
+    // Overdue tasks
+    if (project.overdue_tasks > 5) {
+      questions.push(`${companyName} tem ${project.overdue_tasks} tarefas atrasadas. O que está impedindo a execução?`);
+    } else if (project.overdue_tasks > 0) {
+      questions.push(`Como está a execução das ${project.overdue_tasks} tarefa(s) pendente(s)?`);
+    }
+
+    // Renewal proximity
+    if (project.renewal_date) {
+      const daysToRenewal = differenceInDays(new Date(project.renewal_date), new Date());
+      if (daysToRenewal <= 30 && daysToRenewal > 0) {
+        questions.push(`A renovação de ${companyName} é em ${daysToRenewal} dias. O cliente já sinalizou intenção de renovar?`);
+      } else if (daysToRenewal <= 60 && daysToRenewal > 30) {
+        questions.push(`Qual é a percepção de valor do cliente pensando na renovação?`);
+      }
+    }
+
+    // Support tickets
+    if (project.pending_support_tickets && project.pending_support_tickets > 2) {
+      questions.push(`${companyName} tem ${project.pending_support_tickets} tickets abertos. São problemas recorrentes?`);
+    }
+
+    // Fallback for healthy projects
     if (questions.length === 0) {
-      questions.push("Como está a relação com esse cliente?");
-      questions.push("Há alguma oportunidade de expansão?");
+      questions.push(`${companyName} está saudável. Quais são as próximas oportunidades de crescimento?`);
+      questions.push(`Há algum upsell ou cross-sell que podemos explorar?`);
+      questions.push(`O cliente mencionou alguma dor nova que podemos resolver?`);
     }
 
-    return questions.slice(0, 3);
+    // Return max 3 unique questions
+    return [...new Set(questions)].slice(0, 3);
   };
 
   const talkingPoints = getTalkingPoints();
