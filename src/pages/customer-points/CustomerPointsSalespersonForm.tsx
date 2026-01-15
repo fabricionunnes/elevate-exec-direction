@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CheckCircle2, Loader2, AlertTriangle, UserCheck, Search, Plus, Coins } from "lucide-react";
+import { CheckCircle2, Loader2, AlertTriangle, UserCheck, UserPlus, Coins } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Rule {
@@ -39,20 +39,23 @@ export default function CustomerPointsSalespersonForm() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [tokenData, setTokenData] = useState<TokenData | null>(null);
   const [rules, setRules] = useState<Rule[]>([]);
-  const [step, setStep] = useState<"search" | "register" | "success" | "error">("search");
+  const [step, setStep] = useState<"form" | "success" | "error">("form");
   const [errorMessage, setErrorMessage] = useState("");
 
-  // Search state
+  // Client state
   const [cpf, setCpf] = useState("");
   const [searchedClient, setSearchedClient] = useState<Client | null>(null);
-  const [isNewClient, setIsNewClient] = useState(false);
+  const [clientSearched, setClientSearched] = useState(false);
 
-  // Form state
+  // New client form state (only used when client not found)
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientEmail, setClientEmail] = useState("");
+
+  // Points form state
   const [selectedRuleId, setSelectedRuleId] = useState("");
   const [transactionValue, setTransactionValue] = useState("");
   const [pointsEarned, setPointsEarned] = useState(0);
@@ -73,7 +76,7 @@ export default function CustomerPointsSalespersonForm() {
           .select("*")
           .eq("access_token", token)
           .eq("is_active", true)
-          .single();
+          .maybeSingle();
 
         if (tokenError || !tokenInfo) {
           setErrorMessage("Link inválido ou desativado");
@@ -137,17 +140,11 @@ export default function CustomerPointsSalespersonForm() {
     return true;
   };
 
-  const handleSearch = async () => {
-    if (!tokenData) return;
+  // Auto-search when CPF is complete
+  const searchClient = useCallback(async (cleanCPF: string) => {
+    if (!tokenData || cleanCPF.length !== 11) return;
 
-    if (!validateCPF(cpf)) {
-      toast.error("CPF inválido");
-      return;
-    }
-
-    const cleanCPF = cpf.replace(/\D/g, "");
-    setSubmitting(true);
-
+    setSearching(true);
     try {
       const { data: existingClient, error } = await supabase
         .from("customer_points_clients")
@@ -158,25 +155,36 @@ export default function CustomerPointsSalespersonForm() {
 
       if (error) {
         console.error("Error searching client:", error);
-        toast.error("Erro ao buscar cliente");
-        setSubmitting(false);
         return;
       }
 
-      if (existingClient) {
-        setSearchedClient(existingClient);
-        setIsNewClient(false);
-      } else {
-        setSearchedClient(null);
-        setIsNewClient(true);
-      }
-
-      setStep("register");
+      setSearchedClient(existingClient);
+      setClientSearched(true);
     } catch (error) {
       console.error("Error searching client:", error);
-      toast.error("Erro ao buscar cliente");
     } finally {
-      setSubmitting(false);
+      setSearching(false);
+    }
+  }, [tokenData]);
+
+  const handleCPFChange = (value: string) => {
+    const formatted = formatCPF(value);
+    setCpf(formatted);
+    
+    const cleanCPF = formatted.replace(/\D/g, "");
+    
+    // Reset search state when CPF changes
+    if (cleanCPF.length < 11) {
+      setSearchedClient(null);
+      setClientSearched(false);
+      setClientName("");
+      setClientPhone("");
+      setClientEmail("");
+    }
+    
+    // Auto-search when CPF is complete
+    if (cleanCPF.length === 11 && validateCPF(formatted)) {
+      searchClient(cleanCPF);
     }
   };
 
@@ -192,10 +200,18 @@ export default function CustomerPointsSalespersonForm() {
   };
 
   const selectedRule = rules.find((r) => r.id === selectedRuleId);
+  const isNewClient = clientSearched && !searchedClient;
 
   const handleSubmit = async () => {
     if (!tokenData || !selectedRule) {
       toast.error("Selecione uma regra de pontuação");
+      return;
+    }
+
+    const cleanCPF = cpf.replace(/\D/g, "");
+    
+    if (!validateCPF(cpf)) {
+      toast.error("CPF inválido");
       return;
     }
 
@@ -204,7 +220,6 @@ export default function CustomerPointsSalespersonForm() {
       return;
     }
 
-    const cleanCPF = cpf.replace(/\D/g, "");
     setSubmitting(true);
 
     try {
@@ -292,13 +307,13 @@ export default function CustomerPointsSalespersonForm() {
   const resetForm = () => {
     setCpf("");
     setSearchedClient(null);
-    setIsNewClient(false);
+    setClientSearched(false);
     setClientName("");
     setClientPhone("");
     setClientEmail("");
     setSelectedRuleId("");
     setTransactionValue("");
-    setStep("search");
+    setStep("form");
   };
 
   if (loading) {
@@ -329,9 +344,9 @@ export default function CustomerPointsSalespersonForm() {
           </motion.div>
         )}
 
-        {step === "search" && tokenData && (
+        {step === "form" && tokenData && (
           <motion.div
-            key="search"
+            key="form"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -348,165 +363,163 @@ export default function CustomerPointsSalespersonForm() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* CPF Input */}
                 <div className="space-y-2">
                   <Label htmlFor="cpf">CPF do Cliente</Label>
-                  <Input
-                    id="cpf"
-                    placeholder="000.000.000-00"
-                    value={cpf}
-                    onChange={(e) => setCpf(formatCPF(e.target.value))}
-                    maxLength={14}
-                    className="text-center text-lg"
-                  />
-                </div>
-                <Button
-                  onClick={handleSearch}
-                  disabled={submitting || cpf.replace(/\D/g, "").length !== 11}
-                  className="w-full gap-2"
-                  size="lg"
-                >
-                  {submitting ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <>
-                      <Search className="h-5 w-5" />
-                      Buscar Cliente
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
-        {step === "register" && tokenData && (
-          <motion.div
-            key="register"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="w-full max-w-md"
-          >
-            <Card>
-              <CardHeader className="text-center">
-                <CardTitle className="flex items-center justify-center gap-2">
-                  {isNewClient ? (
-                    <>
-                      <Plus className="h-5 w-5" />
-                      Novo Cliente
-                    </>
-                  ) : (
-                    <>
-                      <UserCheck className="h-5 w-5 text-green-500" />
-                      {searchedClient?.name}
-                    </>
-                  )}
-                </CardTitle>
-                <CardDescription>
-                  {isNewClient
-                    ? "Cliente não encontrado. Preencha os dados para cadastrar."
-                    : `Saldo atual: ${searchedClient?.total_points || 0} pontos`}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isNewClient && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Nome completo *</Label>
-                      <Input
-                        id="name"
-                        value={clientName}
-                        onChange={(e) => setClientName(e.target.value)}
-                        placeholder="Nome do cliente"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Telefone</Label>
-                      <Input
-                        id="phone"
-                        value={clientPhone}
-                        onChange={(e) => setClientPhone(e.target.value)}
-                        placeholder="(00) 00000-0000"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">E-mail</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={clientEmail}
-                        onChange={(e) => setClientEmail(e.target.value)}
-                        placeholder="email@exemplo.com"
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div className="space-y-2">
-                  <Label>Tipo de pontuação *</Label>
-                  <Select value={selectedRuleId} onValueChange={setSelectedRuleId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {rules.map((rule) => (
-                        <SelectItem key={rule.id} value={rule.id}>
-                          {rule.name} (+{rule.points_value} pts)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedRule && selectedRule.rule_type === "per_value" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="value">Valor da compra (R$)</Label>
+                  <div className="relative">
                     <Input
-                      id="value"
-                      type="number"
-                      step="0.01"
-                      value={transactionValue}
-                      onChange={(e) => setTransactionValue(e.target.value)}
-                      placeholder="0,00"
+                      id="cpf"
+                      placeholder="000.000.000-00"
+                      value={cpf}
+                      onChange={(e) => handleCPFChange(e.target.value)}
+                      maxLength={14}
+                      className="text-center text-lg pr-10"
                     />
-                    {transactionValue && (
-                      <p className="text-sm text-muted-foreground">
-                        = {calculatePoints(selectedRule, parseFloat(transactionValue))} pontos
-                      </p>
+                    {searching && (
+                      <Loader2 className="h-5 w-5 animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     )}
                   </div>
-                )}
+                </div>
 
-                {selectedRule && selectedRule.rule_type === "per_quantity" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="quantity">Quantidade</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      value={transactionValue}
-                      onChange={(e) => setTransactionValue(e.target.value)}
-                      placeholder="0"
-                    />
-                    {transactionValue && (
-                      <p className="text-sm text-muted-foreground">
-                        = {calculatePoints(selectedRule, parseInt(transactionValue))} pontos
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={resetForm} className="flex-1">
-                    Voltar
-                  </Button>
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={submitting || !selectedRuleId}
-                    className="flex-1"
+                {/* Client Info Display */}
+                {clientSearched && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="rounded-lg border p-4"
                   >
-                    {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Registrar Pontos"}
-                  </Button>
-                </div>
+                    {searchedClient ? (
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                          <UserCheck className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold">{searchedClient.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Saldo: <span className="font-medium text-primary">{searchedClient.total_points} pontos</span>
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                            <UserPlus className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <p className="font-semibold">Novo Cliente</p>
+                            <p className="text-sm text-muted-foreground">Preencha os dados abaixo</p>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <div>
+                            <Label htmlFor="name">Nome completo *</Label>
+                            <Input
+                              id="name"
+                              value={clientName}
+                              onChange={(e) => setClientName(e.target.value)}
+                              placeholder="Nome do cliente"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="phone">Telefone</Label>
+                            <Input
+                              id="phone"
+                              value={clientPhone}
+                              onChange={(e) => setClientPhone(e.target.value)}
+                              placeholder="(00) 00000-0000"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="email">E-mail</Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              value={clientEmail}
+                              onChange={(e) => setClientEmail(e.target.value)}
+                              placeholder="email@exemplo.com"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* Points Selection - Only show after client is found/created */}
+                {clientSearched && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-4 pt-2"
+                  >
+                    <div className="space-y-2">
+                      <Label>Tipo de pontuação *</Label>
+                      <Select value={selectedRuleId} onValueChange={setSelectedRuleId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {rules.map((rule) => (
+                            <SelectItem key={rule.id} value={rule.id}>
+                              {rule.name} (+{rule.points_value} pts)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedRule && selectedRule.rule_type === "per_value" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="value">Valor da compra (R$)</Label>
+                        <Input
+                          id="value"
+                          type="number"
+                          step="0.01"
+                          value={transactionValue}
+                          onChange={(e) => setTransactionValue(e.target.value)}
+                          placeholder="0,00"
+                        />
+                        {transactionValue && (
+                          <p className="text-sm text-muted-foreground">
+                            = {calculatePoints(selectedRule, parseFloat(transactionValue))} pontos
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {selectedRule && selectedRule.rule_type === "per_quantity" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="quantity">Quantidade</Label>
+                        <Input
+                          id="quantity"
+                          type="number"
+                          value={transactionValue}
+                          onChange={(e) => setTransactionValue(e.target.value)}
+                          placeholder="0"
+                        />
+                        {transactionValue && (
+                          <p className="text-sm text-muted-foreground">
+                            = {calculatePoints(selectedRule, parseInt(transactionValue))} pontos
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={submitting || !selectedRuleId || (isNewClient && !clientName.trim())}
+                      className="w-full"
+                      size="lg"
+                    >
+                      {submitting ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        "Registrar Pontos"
+                      )}
+                    </Button>
+                  </motion.div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -522,23 +535,19 @@ export default function CustomerPointsSalespersonForm() {
           >
             <Card>
               <CardContent className="pt-6 text-center space-y-4">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: "spring" }}
-                >
-                  <CheckCircle2 className="h-20 w-20 text-green-500 mx-auto" />
-                </motion.div>
+                <div className="mx-auto h-20 w-20 rounded-full bg-green-100 flex items-center justify-center">
+                  <CheckCircle2 className="h-12 w-12 text-green-600" />
+                </div>
                 <h2 className="text-2xl font-bold">Pontos Registrados!</h2>
-                <div className="bg-muted rounded-lg p-4 space-y-2">
-                  <p className="text-3xl font-bold text-primary">+{pointsEarned}</p>
+                <div className="bg-primary/10 rounded-lg p-4">
+                  <p className="text-4xl font-bold text-primary">+{pointsEarned}</p>
                   <p className="text-sm text-muted-foreground">pontos adicionados</p>
                 </div>
                 <p className="text-muted-foreground">
-                  Novo saldo: <strong>{newTotalPoints} pontos</strong>
+                  Novo saldo: <span className="font-semibold text-foreground">{newTotalPoints} pontos</span>
                 </p>
                 <Button onClick={resetForm} className="w-full" size="lg">
-                  Registrar Outro
+                  Registrar outro cliente
                 </Button>
               </CardContent>
             </Card>
