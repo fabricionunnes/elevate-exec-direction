@@ -57,28 +57,28 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
   const navigate = useNavigate();
 
   const getHealthColor = (score: number) => {
-    if (score >= 70) return "from-emerald-500 to-green-400";
-    if (score >= 40) return "from-amber-500 to-yellow-400";
-    return "from-red-500 to-rose-400";
+    if (score >= 70) return "from-green-500 to-green-400";
+    if (score >= 40) return "from-yellow-500 to-yellow-400";
+    return "from-red-500 to-red-400";
   };
 
   const getHealthBg = (score: number) => {
-    if (score >= 70) return "bg-emerald-500/10 border-emerald-500/20";
-    if (score >= 40) return "bg-amber-500/10 border-amber-500/20";
-    return "bg-red-500/10 border-red-500/20";
+    if (score >= 70) return "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800";
+    if (score >= 40) return "bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800";
+    return "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800";
   };
 
   const getHealthTextColor = (score: number) => {
-    if (score >= 70) return "text-emerald-400";
-    if (score >= 40) return "text-amber-400";
-    return "text-red-400";
+    if (score >= 70) return "text-green-700 dark:text-green-400";
+    if (score >= 40) return "text-yellow-700 dark:text-yellow-400";
+    return "text-red-700 dark:text-red-400";
   };
 
   const getNPSBadge = (score?: number) => {
     if (score === undefined || score === null) return null;
-    if (score >= 9) return { label: "Promotor", className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" };
-    if (score >= 7) return { label: "Neutro", className: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
-    return { label: "Detrator", className: "bg-red-500/20 text-red-400 border-red-500/30" };
+    if (score >= 9) return { label: "Promotor", className: "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700" };
+    if (score >= 7) return { label: "Neutro", className: "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-700" };
+    return { label: "Detrator", className: "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700" };
   };
 
   const npsBadge = getNPSBadge(project.nps_score);
@@ -183,19 +183,19 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
 
   const getPointIcon = (type: string) => {
     switch (type) {
-      case 'warning': return <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />;
-      case 'success': return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />;
-      case 'action': return <Zap className="h-3.5 w-3.5 text-blue-400 shrink-0" />;
-      default: return <Flag className="h-3.5 w-3.5 text-slate-400 shrink-0" />;
+      case 'warning': return <AlertTriangle className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 shrink-0" />;
+      case 'success': return <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />;
+      case 'action': return <Zap className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />;
+      default: return <Flag className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400 shrink-0" />;
     }
   };
 
   const getPointBg = (type: string) => {
     switch (type) {
-      case 'warning': return 'bg-amber-500/10 border-amber-500/20';
-      case 'success': return 'bg-emerald-500/10 border-emerald-500/20';
-      case 'action': return 'bg-blue-500/10 border-blue-500/20';
-      default: return 'bg-slate-500/10 border-slate-500/20';
+      case 'warning': return 'bg-yellow-50 dark:bg-yellow-950/50 border-yellow-200 dark:border-yellow-800';
+      case 'success': return 'bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-800';
+      case 'action': return 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800';
+      default: return 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700';
     }
   };
 
@@ -276,29 +276,29 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-4 gap-2">
             {/* Goal Projection */}
-            <div className="p-3 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50">
+            <div className="p-3 rounded-lg bg-muted border">
               <div className="flex items-center gap-1.5 mb-1">
                 <Target className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Meta</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className={`text-xl font-bold ${(project.goal_projection || 0) >= 100 ? 'text-emerald-400' : (project.goal_projection || 0) >= 80 ? 'text-amber-400' : 'text-red-400'}`}>
+                <span className={`text-xl font-bold ${(project.goal_projection || 0) >= 100 ? 'text-green-600 dark:text-green-400' : (project.goal_projection || 0) >= 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
                   {project.goal_projection?.toFixed(0) || 0}%
                 </span>
                 {(project.goal_projection || 0) >= 100 ? 
-                  <TrendingUp className="h-4 w-4 text-emerald-400" /> : 
-                  <TrendingDown className="h-4 w-4 text-red-400" />
+                  <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" /> : 
+                  <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
                 }
               </div>
             </div>
 
             {/* Last Meeting */}
-            <div className="p-3 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50">
+            <div className="p-3 rounded-lg bg-muted border">
               <div className="flex items-center gap-1.5 mb-1">
                 <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Reunião</span>
               </div>
-              <p className={`text-sm font-bold ${(project.days_since_meeting || 0) > 14 ? 'text-amber-400' : (project.days_since_meeting || 0) > 7 ? 'text-slate-300' : 'text-emerald-400'}`}>
+              <p className={`text-sm font-bold ${(project.days_since_meeting || 0) > 14 ? 'text-yellow-600 dark:text-yellow-400' : (project.days_since_meeting || 0) > 7 ? 'text-foreground' : 'text-green-600 dark:text-green-400'}`}>
                 {project.days_since_meeting !== undefined ? 
                   (project.days_since_meeting === 0 ? 'Hoje' : 
                    project.days_since_meeting === 1 ? 'Ontem' : 
@@ -308,28 +308,28 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
             </div>
 
             {/* Overdue Tasks */}
-            <div className="p-3 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50">
+            <div className="p-3 rounded-lg bg-muted border">
               <div className="flex items-center gap-1.5 mb-1">
                 <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Atrasadas</span>
               </div>
-              <p className={`text-xl font-bold ${project.overdue_tasks > 3 ? 'text-red-400' : project.overdue_tasks > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+              <p className={`text-xl font-bold ${project.overdue_tasks > 3 ? 'text-red-600 dark:text-red-400' : project.overdue_tasks > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}`}>
                 {project.overdue_tasks}
               </p>
             </div>
 
             {/* NPS */}
-            <div className="p-3 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50">
+            <div className="p-3 rounded-lg bg-muted border">
               <div className="flex items-center gap-1.5 mb-1">
                 <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">NPS</span>
               </div>
               {npsBadge ? (
                 <div className="flex items-center gap-1">
-                  <span className={`text-xl font-bold ${project.nps_score! >= 9 ? 'text-emerald-400' : project.nps_score! >= 7 ? 'text-amber-400' : 'text-red-400'}`}>
+                  <span className={`text-xl font-bold ${project.nps_score! >= 9 ? 'text-green-600 dark:text-green-400' : project.nps_score! >= 7 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
                     {project.nps_score}
                   </span>
-                  <span className={`text-[10px] ${npsBadge.className} px-1.5 py-0.5 rounded`}>
+                  <span className={`text-[10px] ${npsBadge.className} px-1.5 py-0.5 rounded border`}>
                     {npsBadge.label}
                   </span>
                 </div>
@@ -341,12 +341,12 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
 
           {expanded && (
             <>
-              <Separator className="bg-slate-700/50" />
+              <Separator className="bg-border" />
 
               {/* Talking Points */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <Lightbulb className="h-4 w-4 text-amber-400" />
+                  <Lightbulb className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                   <h5 className="text-sm font-semibold text-foreground">Pontos para Discussão</h5>
                 </div>
                 <div className="space-y-2">
@@ -360,13 +360,13 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
                         className={`flex items-start gap-2 p-2.5 rounded-lg border ${getPointBg(point.type)}`}
                       >
                         {getPointIcon(point.type)}
-                        <p className="text-xs text-muted-foreground leading-relaxed">{point.text}</p>
+                        <p className="text-xs text-foreground leading-relaxed">{point.text}</p>
                       </motion.div>
                     ))
                   ) : (
-                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                      <p className="text-xs text-emerald-400">Cliente saudável, sem pontos críticos para discussão.</p>
+                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                      <p className="text-xs text-green-700 dark:text-green-300">Cliente saudável, sem pontos críticos para discussão.</p>
                     </div>
                   )}
                 </div>
@@ -375,7 +375,7 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
               {/* Suggested Questions */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <FileText className="h-4 w-4 text-blue-400" />
+                  <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   <h5 className="text-sm font-semibold text-foreground">Perguntas Sugeridas</h5>
                 </div>
                 <div className="space-y-1.5">
@@ -385,10 +385,10 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.2 + i * 0.05 }}
-                      className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/5 hover:bg-blue-500/10 transition-colors"
+                      className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-950/70 transition-colors border border-blue-200 dark:border-blue-800"
                     >
-                      <ArrowRight className="h-3 w-3 text-blue-400 shrink-0" />
-                      <p className="text-xs text-slate-300">{question}</p>
+                      <ArrowRight className="h-3 w-3 text-blue-600 dark:text-blue-400 shrink-0" />
+                      <p className="text-xs text-foreground">{question}</p>
                     </motion.div>
                   ))}
                 </div>
@@ -396,14 +396,14 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
 
               {/* AI Insight */}
               {project.ai_insight && (
-                <div className="p-4 rounded-xl bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10 border border-violet-500/20">
+                <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
                   <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-violet-500/20">
-                      <Sparkles className="h-4 w-4 text-violet-400" />
+                    <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/50">
+                      <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-violet-300 mb-1">Insight da IA</p>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
+                      <p className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">Insight da IA</p>
+                      <p className="text-sm text-foreground leading-relaxed">
                         {project.ai_insight}
                       </p>
                     </div>
@@ -417,13 +417,11 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
           <Button
             variant="outline"
             size="sm"
-            className="w-full bg-gradient-to-r from-primary/10 to-violet-500/10 border-primary/30 hover:border-primary/50 hover:bg-primary/20 transition-all"
+            className="w-full"
             onClick={() => navigate(`/onboarding-tasks/${project.id}`)}
           >
-            <span className="bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent font-medium">
-              Ver Projeto Completo
-            </span>
-            <ExternalLink className="h-3.5 w-3.5 ml-2 text-primary" />
+            Ver Projeto Completo
+            <ExternalLink className="h-3.5 w-3.5 ml-2" />
           </Button>
         </div>
       </Card>
