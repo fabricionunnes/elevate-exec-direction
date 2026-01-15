@@ -491,10 +491,10 @@ export default function ExecutiveDashboardPage() {
             />
             <ExecutiveKPICard
               title="Taxa de Churn"
-              value={`${(metrics.churnRate * 100).toFixed(1)}%`}
+              value={`${metrics.churnRate.toFixed(0)}%`}
               subtitle="No período selecionado"
               icon={TrendingDown}
-              colorClass={metrics.churnRate <= 0.05 ? "text-green-600" : metrics.churnRate <= 0.1 ? "text-yellow-600" : "text-red-600"}
+              colorClass={metrics.churnRate <= 5 ? "text-green-600" : metrics.churnRate <= 10 ? "text-yellow-600" : "text-red-600"}
             />
             <ExecutiveKPICard
               title="LTV Médio"
@@ -506,16 +506,16 @@ export default function ExecutiveDashboardPage() {
             <ExecutiveKPICard
               title="NPS Médio"
               value={metrics.avgNPS.toFixed(0)}
-              subtitle="Últimos 3 meses"
+              subtitle="Base ativa"
               icon={ThumbsUp}
               colorClass={metrics.avgNPS >= 50 ? "text-green-600" : metrics.avgNPS >= 0 ? "text-yellow-600" : "text-red-600"}
             />
             <ExecutiveKPICard
               title="Taxa de Renovação"
-              value={`${(metrics.renewalRate * 100).toFixed(0)}%`}
-              subtitle="Renovações confirmadas"
+              value={`${metrics.renewalRate.toFixed(0)}%`}
+              subtitle="No período selecionado"
               icon={RefreshCw}
-              colorClass={metrics.renewalRate >= 0.8 ? "text-green-600" : metrics.renewalRate >= 0.6 ? "text-yellow-600" : "text-red-600"}
+              colorClass={metrics.renewalRate >= 80 ? "text-green-600" : metrics.renewalRate >= 60 ? "text-yellow-600" : "text-red-600"}
             />
           </div>
 
