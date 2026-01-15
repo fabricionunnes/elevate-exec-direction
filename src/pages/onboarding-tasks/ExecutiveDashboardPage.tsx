@@ -26,8 +26,11 @@ import { CriticalAlertsPanel } from "@/components/executive-dashboard/CriticalAl
 import { ExecutiveAIInsights } from "@/components/executive-dashboard/ExecutiveAIInsights";
 import { HealthTrendChart } from "@/components/executive-dashboard/HealthTrendChart";
 import { ConsultantPerformanceRanking } from "@/components/executive-dashboard/ConsultantPerformanceRanking";
+import { DailyLeadershipAgenda } from "@/components/executive-dashboard/DailyLeadershipAgenda";
+import { ConsultantOneOnOnePanel } from "@/components/executive-dashboard/ConsultantOneOnOnePanel";
 import { CohortMatrix } from "@/components/retention/CohortMatrix";
 import { RetentionBySegmentChart } from "@/components/retention/RetentionBySegmentChart";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PortfolioMetrics {
   totalProjects: number;
@@ -66,6 +69,7 @@ export default function ExecutiveDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [period, setPeriod] = useState("30");
+  const [activeTab, setActiveTab] = useState("dashboard");
   
   const [metrics, setMetrics] = useState<PortfolioMetrics>({
     totalProjects: 0,
@@ -323,94 +327,113 @@ export default function ExecutiveDashboardPage() {
         </div>
       </div>
 
-      {/* Hero KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <ExecutiveKPICard
-          title="Saúde Média"
-          value={metrics.avgHealthScore.toFixed(0)}
-          subtitle={`${metrics.totalProjects} projetos ativos`}
-          icon={Activity}
-          colorClass={metrics.avgHealthScore >= 70 ? "text-green-600" : metrics.avgHealthScore >= 50 ? "text-yellow-600" : "text-red-600"}
-        />
-        <ExecutiveKPICard
-          title="Taxa de Churn"
-          value={`${(metrics.churnRate * 100).toFixed(1)}%`}
-          subtitle="No período selecionado"
-          icon={TrendingDown}
-          colorClass={metrics.churnRate <= 0.05 ? "text-green-600" : metrics.churnRate <= 0.1 ? "text-yellow-600" : "text-red-600"}
-        />
-        <ExecutiveKPICard
-          title="LTV Médio"
-          value={`R$ ${metrics.avgLTV.toLocaleString("pt-BR")}`}
-          subtitle="Valor médio de contrato"
-          icon={DollarSign}
-          colorClass="text-blue-600"
-        />
-        <ExecutiveKPICard
-          title="NPS Médio"
-          value={metrics.avgNPS.toFixed(0)}
-          subtitle="Últimos 3 meses"
-          icon={ThumbsUp}
-          colorClass={metrics.avgNPS >= 50 ? "text-green-600" : metrics.avgNPS >= 0 ? "text-yellow-600" : "text-red-600"}
-        />
-        <ExecutiveKPICard
-          title="Taxa de Renovação"
-          value={`${(metrics.renewalRate * 100).toFixed(0)}%`}
-          subtitle="Renovações confirmadas"
-          icon={RefreshCw}
-          colorClass={metrics.renewalRate >= 0.8 ? "text-green-600" : metrics.renewalRate >= 0.6 ? "text-yellow-600" : "text-red-600"}
-        />
-      </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-3 mb-6">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="leadership">Reunião Liderança</TabsTrigger>
+          <TabsTrigger value="oneOnOne">1:1 Consultor</TabsTrigger>
+        </TabsList>
 
-      {/* Main Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <PortfolioHealthGauge
-          score={metrics.avgHealthScore}
-          totalProjects={metrics.totalProjects}
-        />
-        <RiskDistributionChart
-          distribution={{
-            healthy: metrics.healthyCount,
-            attention: metrics.attentionCount,
-            highRisk: metrics.highRiskCount,
-            critical: metrics.criticalCount,
-          }}
-          onSegmentClick={(level) => navigate(`/onboarding-tasks?risk=${level}`)}
-        />
-        <HealthTrendChart data={trendData} currentAvg={metrics.avgHealthScore} />
-      </div>
+        <TabsContent value="dashboard" className="space-y-6">
+          {/* Hero KPIs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <ExecutiveKPICard
+              title="Saúde Média"
+              value={metrics.avgHealthScore.toFixed(0)}
+              subtitle={`${metrics.totalProjects} projetos ativos`}
+              icon={Activity}
+              colorClass={metrics.avgHealthScore >= 70 ? "text-green-600" : metrics.avgHealthScore >= 50 ? "text-yellow-600" : "text-red-600"}
+            />
+            <ExecutiveKPICard
+              title="Taxa de Churn"
+              value={`${(metrics.churnRate * 100).toFixed(1)}%`}
+              subtitle="No período selecionado"
+              icon={TrendingDown}
+              colorClass={metrics.churnRate <= 0.05 ? "text-green-600" : metrics.churnRate <= 0.1 ? "text-yellow-600" : "text-red-600"}
+            />
+            <ExecutiveKPICard
+              title="LTV Médio"
+              value={`R$ ${metrics.avgLTV.toLocaleString("pt-BR")}`}
+              subtitle="Valor médio de contrato"
+              icon={DollarSign}
+              colorClass="text-blue-600"
+            />
+            <ExecutiveKPICard
+              title="NPS Médio"
+              value={metrics.avgNPS.toFixed(0)}
+              subtitle="Últimos 3 meses"
+              icon={ThumbsUp}
+              colorClass={metrics.avgNPS >= 50 ? "text-green-600" : metrics.avgNPS >= 0 ? "text-yellow-600" : "text-red-600"}
+            />
+            <ExecutiveKPICard
+              title="Taxa de Renovação"
+              value={`${(metrics.renewalRate * 100).toFixed(0)}%`}
+              subtitle="Renovações confirmadas"
+              icon={RefreshCw}
+              colorClass={metrics.renewalRate >= 0.8 ? "text-green-600" : metrics.renewalRate >= 0.6 ? "text-yellow-600" : "text-red-600"}
+            />
+          </div>
 
-      {/* Alerts and AI Insights Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CriticalAlertsPanel projects={criticalProjects} maxItems={5} />
-        <ExecutiveAIInsights
-          portfolioData={{
-            totalProjects: metrics.totalProjects,
-            avgHealthScore: metrics.avgHealthScore,
-            criticalCount: metrics.criticalCount,
-            highRiskCount: metrics.highRiskCount,
-            churnRate: metrics.churnRate,
-            avgNPS: metrics.avgNPS,
-            renewalRate: metrics.renewalRate,
-          }}
-        />
-      </div>
+          {/* Main Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <PortfolioHealthGauge
+              score={metrics.avgHealthScore}
+              totalProjects={metrics.totalProjects}
+            />
+            <RiskDistributionChart
+              distribution={{
+                healthy: metrics.healthyCount,
+                attention: metrics.attentionCount,
+                highRisk: metrics.highRiskCount,
+                critical: metrics.criticalCount,
+              }}
+              onSegmentClick={(level) => navigate(`/onboarding-tasks?risk=${level}`)}
+            />
+            <HealthTrendChart data={trendData} currentAvg={metrics.avgHealthScore} />
+          </div>
 
-      {/* Performance and Retention Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ConsultantPerformanceRanking consultants={consultantPerformance} maxItems={5} />
-        <RetentionBySegmentChart />
-      </div>
+          {/* Alerts and AI Insights Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <CriticalAlertsPanel projects={criticalProjects} maxItems={5} />
+            <ExecutiveAIInsights
+              portfolioData={{
+                totalProjects: metrics.totalProjects,
+                avgHealthScore: metrics.avgHealthScore,
+                criticalCount: metrics.criticalCount,
+                highRiskCount: metrics.highRiskCount,
+                churnRate: metrics.churnRate,
+                avgNPS: metrics.avgNPS,
+                renewalRate: metrics.renewalRate,
+              }}
+            />
+          </div>
 
-      {/* Cohort Matrix */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Matriz de Cohort - Retenção por Mês de Início</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CohortMatrix monthsToShow={6} />
-        </CardContent>
-      </Card>
+          {/* Performance and Retention Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ConsultantPerformanceRanking consultants={consultantPerformance} maxItems={5} />
+            <RetentionBySegmentChart />
+          </div>
+
+          {/* Cohort Matrix */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Matriz de Cohort - Retenção por Mês de Início</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CohortMatrix monthsToShow={6} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="leadership">
+          <DailyLeadershipAgenda />
+        </TabsContent>
+
+        <TabsContent value="oneOnOne">
+          <ConsultantOneOnOnePanel />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
