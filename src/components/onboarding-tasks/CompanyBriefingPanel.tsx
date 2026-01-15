@@ -1117,7 +1117,7 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                     >
                       <Download className="h-4 w-4" />
                     </Button>
-                    {canEdit && (
+                    {isStaffAdmin && (
                       <Button
                         variant="ghost"
                         size="icon"
