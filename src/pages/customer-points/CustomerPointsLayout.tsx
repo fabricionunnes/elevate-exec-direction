@@ -10,7 +10,6 @@ import {
   Users,
   Settings2,
   ClipboardList,
-  QrCode,
   Menu,
   LogOut,
   Trophy,
@@ -45,7 +44,6 @@ export default function CustomerPointsLayout() {
     { id: "clients", label: "Clientes", icon: Users, href: "clients" },
     { id: "rules", label: "Regras de Pontuação", icon: Settings2, href: "rules" },
     { id: "transactions", label: "Ações / Registros", icon: ClipboardList, href: "transactions" },
-    { id: "qrcodes", label: "QR Code & Formulários", icon: QrCode, href: "qr-codes" },
     { id: "salesperson", label: "Links de Vendedores", icon: Link2, href: "salesperson-links" },
   ];
 

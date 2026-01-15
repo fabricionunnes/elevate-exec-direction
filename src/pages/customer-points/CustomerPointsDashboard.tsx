@@ -291,7 +291,7 @@ export default function CustomerPointsDashboard() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Ranking de Clientes</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => navigate("/pontuacao-clientes/clientes")}>
+          <Button variant="ghost" size="sm" onClick={() => navigate(`/customer-points/${companyId}/clients`)}>
             Ver todos
           </Button>
         </CardHeader>
@@ -305,8 +305,7 @@ export default function CustomerPointsDashboard() {
               topClients.map((client, index) => (
                 <div
                   key={client.id}
-                  className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                  onClick={() => navigate(`/pontuacao-clientes/clientes/${client.id}`)}
+                  className="flex items-center gap-4 p-3 rounded-lg bg-muted/50"
                 >
                   <div className="flex-shrink-0">{getPositionIcon(index)}</div>
                   <div className="flex-1 min-w-0">

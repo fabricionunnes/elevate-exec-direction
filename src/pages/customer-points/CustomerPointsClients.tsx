@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Search, Edit2, Eye, UserX, UserCheck } from "lucide-react";
+import { Plus, Search, Edit2, UserX, UserCheck, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -215,6 +216,32 @@ export default function CustomerPointsClients() {
     }
   };
 
+  const deleteClient = async (client: Client) => {
+    try {
+      // First delete all transactions for this client
+      const { error: txError } = await supabase
+        .from("customer_points_transactions")
+        .delete()
+        .eq("client_id", client.id);
+      
+      if (txError) throw txError;
+
+      // Then delete the client
+      const { error } = await supabase
+        .from("customer_points_clients")
+        .delete()
+        .eq("id", client.id);
+      
+      if (error) throw error;
+      
+      toast.success("Cliente excluído com sucesso");
+      fetchClients();
+    } catch (error) {
+      console.error("Error deleting client:", error);
+      toast.error("Erro ao excluir cliente");
+    }
+  };
+
   const filteredClients = clients.filter((client) => {
     const searchLower = search.toLowerCase();
     return (
@@ -385,13 +412,6 @@ export default function CustomerPointsClients() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => navigate(`/pontuacao-clientes/clientes/${client.id}`)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => openEditDialog(client)}>
                             <Edit2 className="h-4 w-4" />
                           </Button>
@@ -402,6 +422,27 @@ export default function CustomerPointsClients() {
                               <UserCheck className="h-4 w-4 text-green-500" />
                             )}
                           </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Isso excluirá permanentemente o cliente "{client.name}" e todo o histórico de {pointsName.toLowerCase()}. Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteClient(client)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </TableCell>
                     </TableRow>
