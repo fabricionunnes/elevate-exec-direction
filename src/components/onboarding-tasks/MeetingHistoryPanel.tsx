@@ -473,12 +473,25 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
 
     const normalizedCompanyName = nameToUse.toLowerCase().trim();
     
+    // Extract meaningful keywords from company name (ignore common words)
+    const stopWords = new Set(['e', 'de', 'da', 'do', 'das', 'dos', 'ltda', 'me', 'eireli', 'sa', 's/a', 'comercio', 'servicos']);
+    const companyKeywords = normalizedCompanyName
+      .split(/[\s\-_,.|]+/)
+      .filter(word => word.length >= 3 && !stopWords.has(word));
+    
     return events.filter(event => {
       const title = (event.title || "").toLowerCase();
       const description = (event.description || "").toLowerCase();
+      const combined = `${title} ${description}`;
       
-      // Check if the event title or description contains the company name
-      return title.includes(normalizedCompanyName) || description.includes(normalizedCompanyName);
+      // Check if the event contains the full company name
+      if (combined.includes(normalizedCompanyName)) {
+        return true;
+      }
+      
+      // Check if any significant keyword from the company name appears in the event
+      // Require at least one keyword match (for companies with distinctive names)
+      return companyKeywords.some(keyword => combined.includes(keyword));
     });
   };
 
