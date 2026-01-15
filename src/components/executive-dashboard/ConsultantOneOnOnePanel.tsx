@@ -400,11 +400,9 @@ export function ConsultantOneOnOnePanel() {
           <motion.h2 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-3xl font-bold"
+            className="text-3xl font-bold text-foreground"
           >
-            <span className="bg-gradient-to-r from-primary via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
-              Pauta de 1:1 com Consultor
-            </span>
+            Pauta de 1:1 com Consultor
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0 }}
@@ -417,10 +415,10 @@ export function ConsultantOneOnOnePanel() {
         </div>
         
         <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
-          <SelectTrigger className="w-[320px] h-12 bg-gradient-to-r from-slate-900/80 to-slate-800/80 border-2 border-slate-700/50 backdrop-blur-xl">
+          <SelectTrigger className="w-[320px] h-12 bg-background border-2 border-border backdrop-blur-xl">
             <SelectValue placeholder="Selecione um consultor" />
           </SelectTrigger>
-          <SelectContent className="bg-slate-900 border-slate-700">
+          <SelectContent className="bg-popover border-border">
             {consultants.map((consultant) => (
               <SelectItem key={consultant.id} value={consultant.id} className="py-3">
                 <div className="flex items-center gap-3">
@@ -431,7 +429,7 @@ export function ConsultantOneOnOnePanel() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{consultant.name}</span>
+                    <span className="font-medium text-foreground">{consultant.name}</span>
                     <Badge variant="secondary" className="text-xs">
                       {consultant.role === 'consultant' ? 'Consultor' : 
                        consultant.role === 'cs' ? 'CS' : 'Admin'}
@@ -515,49 +513,49 @@ export function ConsultantOneOnOnePanel() {
                     <div className="flex-1 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                       <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
                         <Building2 className="h-5 w-5 mx-auto mb-2 text-primary" />
-                        <p className="text-2xl font-bold">{metrics.totalProjects}</p>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Projetos</p>
+                        <p className="text-2xl font-bold text-foreground">{metrics.totalProjects}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-foreground/60">Projetos</p>
                       </div>
                       <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
                         <Target className={`h-5 w-5 mx-auto mb-2 ${
-                          metrics.avgHealthScore >= 70 ? 'text-emerald-400' :
-                          metrics.avgHealthScore >= 50 ? 'text-amber-400' : 'text-red-400'
+                          metrics.avgHealthScore >= 70 ? 'text-emerald-500' :
+                          metrics.avgHealthScore >= 50 ? 'text-amber-500' : 'text-red-500'
                         }`} />
                         <p className={`text-2xl font-bold ${
-                          metrics.avgHealthScore >= 70 ? 'text-emerald-400' :
-                          metrics.avgHealthScore >= 50 ? 'text-amber-400' : 'text-red-400'
+                          metrics.avgHealthScore >= 70 ? 'text-emerald-500' :
+                          metrics.avgHealthScore >= 50 ? 'text-amber-500' : 'text-red-500'
                         }`}>{metrics.avgHealthScore}</p>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Saúde Média</p>
+                        <p className="text-[10px] uppercase tracking-wider text-foreground/60">Saúde Média</p>
                       </div>
                       <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
-                        <AlertTriangle className={`h-5 w-5 mx-auto mb-2 ${metrics.criticalProjects > 0 ? 'text-red-400' : 'text-emerald-400'}`} />
-                        <p className={`text-2xl font-bold ${metrics.criticalProjects > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        <AlertTriangle className={`h-5 w-5 mx-auto mb-2 ${metrics.criticalProjects > 0 ? 'text-red-500' : 'text-emerald-500'}`} />
+                        <p className={`text-2xl font-bold ${metrics.criticalProjects > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                           {metrics.criticalProjects}
                         </p>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Críticos</p>
+                        <p className="text-[10px] uppercase tracking-wider text-foreground/60">Críticos</p>
                       </div>
                       <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
-                        <Clock className={`h-5 w-5 mx-auto mb-2 ${metrics.overdueTasksTotal > 10 ? 'text-red-400' : metrics.overdueTasksTotal > 5 ? 'text-amber-400' : 'text-emerald-400'}`} />
-                        <p className={`text-2xl font-bold ${metrics.overdueTasksTotal > 10 ? 'text-red-400' : metrics.overdueTasksTotal > 5 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        <Clock className={`h-5 w-5 mx-auto mb-2 ${metrics.overdueTasksTotal > 10 ? 'text-red-500' : metrics.overdueTasksTotal > 5 ? 'text-amber-500' : 'text-emerald-500'}`} />
+                        <p className={`text-2xl font-bold ${metrics.overdueTasksTotal > 10 ? 'text-red-500' : metrics.overdueTasksTotal > 5 ? 'text-amber-500' : 'text-emerald-500'}`}>
                           {metrics.overdueTasksTotal}
                         </p>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Atrasadas</p>
+                        <p className="text-[10px] uppercase tracking-wider text-foreground/60">Atrasadas</p>
                       </div>
                       <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
-                        <Calendar className="h-5 w-5 mx-auto mb-2 text-blue-400" />
-                        <p className="text-2xl font-bold text-blue-400">{metrics.meetingsThisWeek}</p>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Reuniões/Sem</p>
+                        <Calendar className="h-5 w-5 mx-auto mb-2 text-blue-500" />
+                        <p className="text-2xl font-bold text-blue-500">{metrics.meetingsThisWeek}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-foreground/60">Reuniões/Sem</p>
                       </div>
                       <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
                         <TrendingUp className={`h-5 w-5 mx-auto mb-2 ${
-                          metrics.avgGoalProjection >= 100 ? 'text-emerald-400' :
-                          metrics.avgGoalProjection >= 80 ? 'text-amber-400' : 'text-red-400'
+                          metrics.avgGoalProjection >= 100 ? 'text-emerald-500' :
+                          metrics.avgGoalProjection >= 80 ? 'text-amber-500' : 'text-red-500'
                         }`} />
                         <p className={`text-2xl font-bold ${
-                          metrics.avgGoalProjection >= 100 ? 'text-emerald-400' :
-                          metrics.avgGoalProjection >= 80 ? 'text-amber-400' : 'text-red-400'
+                          metrics.avgGoalProjection >= 100 ? 'text-emerald-500' :
+                          metrics.avgGoalProjection >= 80 ? 'text-amber-500' : 'text-red-500'
                         }`}>{metrics.avgGoalProjection}%</p>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Meta Média</p>
+                        <p className="text-[10px] uppercase tracking-wider text-foreground/60">Meta Média</p>
                       </div>
                     </div>
                   </div>

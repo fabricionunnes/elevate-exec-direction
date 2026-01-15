@@ -351,11 +351,9 @@ export function DailyLeadershipAgenda() {
           <motion.h2 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-3xl font-bold"
+            className="text-3xl font-bold text-foreground"
           >
-            <span className="bg-gradient-to-r from-primary via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
-              Pauta de Reunião de Liderança
-            </span>
+            Pauta de Reunião de Liderança
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0 }}
@@ -412,7 +410,7 @@ export function DailyLeadershipAgenda() {
               }`} />
               <CardContent className="p-5 relative">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  <span className="text-xs uppercase tracking-wider text-foreground/80 font-semibold">
                     {kpi.label}
                   </span>
                   <div className={`p-2 rounded-lg ${
@@ -425,10 +423,10 @@ export function DailyLeadershipAgenda() {
                   </div>
                 </div>
                 <p className={`text-4xl font-bold ${
-                  kpi.color === 'emerald' ? 'text-emerald-400' :
-                  kpi.color === 'amber' ? 'text-amber-400' :
-                  kpi.color === 'red' ? 'text-red-400' :
-                  'text-blue-400'
+                  kpi.color === 'emerald' ? 'text-emerald-500' :
+                  kpi.color === 'amber' ? 'text-amber-500' :
+                  kpi.color === 'red' ? 'text-red-500' :
+                  'text-blue-500'
                 }`}>
                   {kpi.value}
                 </p>
@@ -495,19 +493,19 @@ export function DailyLeadershipAgenda() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <span className="text-muted-foreground">Crítico ({riskDistribution.critical})</span>
+                  <span className="text-foreground/70">Crítico ({riskDistribution.critical})</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-orange-500" />
-                  <span className="text-muted-foreground">Alto ({riskDistribution.high})</span>
+                  <span className="text-foreground/70">Alto ({riskDistribution.high})</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-amber-500" />
-                  <span className="text-muted-foreground">Médio ({riskDistribution.medium})</span>
+                  <span className="text-foreground/70">Médio ({riskDistribution.medium})</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                  <span className="text-muted-foreground">Saudável ({riskDistribution.low})</span>
+                  <span className="text-foreground/70">Saudável ({riskDistribution.low})</span>
                 </div>
               </div>
             </div>
@@ -691,27 +689,27 @@ export function DailyLeadershipAgenda() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-700/50">
-                    <th className="text-left py-4 px-4 font-semibold text-muted-foreground">Consultor</th>
-                    <th className="text-center py-4 px-3 font-semibold text-muted-foreground">
+                    <th className="text-left py-4 px-4 font-semibold text-foreground/70">Consultor</th>
+                    <th className="text-center py-4 px-3 font-semibold text-foreground/70">
                       <span className="flex items-center justify-center gap-1">
                         <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
                         Críticos
                       </span>
                     </th>
-                    <th className="text-center py-4 px-3 font-semibold text-muted-foreground">
+                    <th className="text-center py-4 px-3 font-semibold text-foreground/70">
                       <span className="flex items-center justify-center gap-1">
                         <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                         Em Risco
                       </span>
                     </th>
-                    <th className="text-center py-4 px-3 font-semibold text-muted-foreground">
+                    <th className="text-center py-4 px-3 font-semibold text-foreground/70">
                       <span className="flex items-center justify-center gap-1">
                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                         Saudáveis
                       </span>
                     </th>
-                    <th className="text-center py-4 px-3 font-semibold text-muted-foreground">Saúde Média</th>
-                    <th className="text-right py-4 px-4 font-semibold text-muted-foreground">Ação</th>
+                    <th className="text-center py-4 px-3 font-semibold text-foreground/70">Saúde Média</th>
+                    <th className="text-right py-4 px-4 font-semibold text-foreground/70">Ação</th>
                   </tr>
                 </thead>
                 <tbody>
