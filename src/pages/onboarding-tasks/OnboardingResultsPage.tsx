@@ -24,7 +24,11 @@ import {
   X,
   Target,
   BarChart3,
-  CheckCircle2
+  CheckCircle2,
+  Trophy,
+  ThumbsUp,
+  AlertTriangle,
+  XCircle
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -71,6 +75,7 @@ const OnboardingResultsPage = () => {
   const [filterService, setFilterService] = useState<string>(() => searchParams.get("service") || "all");
   const [filterGoals, setFilterGoals] = useState<string>(() => searchParams.get("goals") || "all");
   const [filterResults, setFilterResults] = useState<string>(() => searchParams.get("results") || "all");
+  const [filterProjection, setFilterProjection] = useState<string>(() => searchParams.get("projection") || "all");
   
   // Data states
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -79,6 +84,7 @@ const OnboardingResultsPage = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [companiesWithGoals, setCompaniesWithGoals] = useState<Set<string>>(new Set());
   const [companiesWithResults, setCompaniesWithResults] = useState<Set<string>>(new Set());
+  const [companyProjections, setCompanyProjections] = useState<Map<string, number>>(new Map());
 
   // Check staff permissions
   useEffect(() => {
@@ -123,12 +129,15 @@ const OnboardingResultsPage = () => {
     if (filterService !== "all") params.set("service", filterService);
     if (filterGoals !== "all") params.set("goals", filterGoals);
     if (filterResults !== "all") params.set("results", filterResults);
+    if (filterProjection !== "all") params.set("projection", filterProjection);
     setSearchParams(params, { replace: true });
-  }, [selectedCompanyId, filterConsultant, filterService, filterGoals, filterResults, setSearchParams]);
+  }, [selectedCompanyId, filterConsultant, filterService, filterGoals, filterResults, filterProjection, setSearchParams]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      const currentMonth = format(new Date(), "yyyy-MM");
+      
       const [companiesRes, staffRes, servicesRes, projectsRes] = await Promise.all([
         supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status").eq("status", "active").order("name"),
         supabase.from("onboarding_staff").select("id, name, role").eq("is_active", true).order("name"),
@@ -144,7 +153,7 @@ const OnboardingResultsPage = () => {
       // Fetch companies with ANY KPI configured (not just monthly targets with value > 0)
       const { data: kpisData } = await supabase
         .from("company_kpis")
-        .select("company_id")
+        .select("id, company_id, kpi_type, target_value")
         .eq("is_active", true);
       
       // Create set of company IDs that have any KPI configured
@@ -154,28 +163,102 @@ const OnboardingResultsPage = () => {
       });
       setCompaniesWithGoals(companyIdsWithGoals);
       
-      // Fetch companies that have KPI entries (results launched)
+      // Fetch current month entries for all KPIs
       const { data: entriesData } = await supabase
         .from("kpi_entries")
-        .select("kpi_id, company_kpis!inner(company_id)")
+        .select("kpi_id, value, entry_date, company_kpis!inner(id, company_id, kpi_type, target_value)")
+        .gte("entry_date", `${currentMonth}-01`)
+        .lte("entry_date", `${currentMonth}-31`)
         .not("value", "is", null);
       
-      const companyIdsWithResults = new Set<string>();
+      // Fetch monthly targets for current month
+      const { data: monthlyTargets } = await supabase
+        .from("kpi_monthly_targets")
+        .select("kpi_id, target_value")
+        .eq("month_year", currentMonth);
+      
+      const targetMap = new Map<string, number>();
+      (monthlyTargets || []).forEach(t => {
+        targetMap.set(t.kpi_id, t.target_value);
+      });
+      
+      // Calculate projection for each company
+      const projectionsMap = new Map<string, number>();
+      const companyIdsWithResultsSet = new Set<string>();
+      
+      // Group entries by company
+      const entriesByCompany = new Map<string, { value: number; target: number; kpiId: string }[]>();
+      
       (entriesData || []).forEach((entry: any) => {
-        if (entry.company_kpis?.company_id) {
-          companyIdsWithResults.add(entry.company_kpis.company_id);
+        const companyId = entry.company_kpis?.company_id;
+        if (!companyId) return;
+        
+        companyIdsWithResultsSet.add(companyId);
+        
+        // Get target: first from monthly targets, then from KPI default
+        const monthlyTarget = targetMap.get(entry.kpi_id);
+        const defaultTarget = entry.company_kpis?.target_value || 0;
+        const target = monthlyTarget ?? defaultTarget;
+        
+        if (!entriesByCompany.has(companyId)) {
+          entriesByCompany.set(companyId, []);
+        }
+        entriesByCompany.get(companyId)!.push({
+          value: entry.value || 0,
+          target,
+          kpiId: entry.kpi_id
+        });
+      });
+      
+      // Calculate average projection for each company
+      entriesByCompany.forEach((entries, companyId) => {
+        const kpiProjections: number[] = [];
+        
+        // Group by KPI and sum values
+        const kpiTotals = new Map<string, { total: number; target: number }>();
+        entries.forEach(e => {
+          if (!kpiTotals.has(e.kpiId)) {
+            kpiTotals.set(e.kpiId, { total: 0, target: e.target });
+          }
+          kpiTotals.get(e.kpiId)!.total += e.value;
+        });
+        
+        // Calculate projection for each KPI
+        kpiTotals.forEach(({ total, target }) => {
+          if (target > 0) {
+            kpiProjections.push((total / target) * 100);
+          }
+        });
+        
+        // Average projection across all KPIs with targets
+        if (kpiProjections.length > 0) {
+          const avgProjection = kpiProjections.reduce((a, b) => a + b, 0) / kpiProjections.length;
+          projectionsMap.set(companyId, avgProjection);
         }
       });
-      setCompaniesWithResults(companyIdsWithResults);
+      
+      setCompaniesWithResults(companyIdsWithResultsSet);
+      setCompanyProjections(projectionsMap);
       
       console.log("Companies with KPIs configured:", Array.from(companyIdsWithGoals));
-      console.log("Companies with results:", Array.from(companyIdsWithResults));
+      console.log("Companies with results:", Array.from(companyIdsWithResultsSet));
+      console.log("Company projections:", Object.fromEntries(projectionsMap));
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Erro ao carregar dados");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper to check projection range
+  const getProjectionRange = (companyId: string): string | null => {
+    const projection = companyProjections.get(companyId);
+    if (projection === undefined) return null;
+    if (projection >= 100) return "above_100";
+    if (projection >= 70) return "70_99";
+    if (projection >= 50) return "50_69";
+    return "below_50";
   };
 
   // Filtered companies - consultants only see their own companies
@@ -218,9 +301,16 @@ const OnboardingResultsPage = () => {
         matchesResults = filterResults === "with_results" ? hasResults : !hasResults;
       }
       
-      return matchesSearch && matchesConsultant && matchesService && matchesGoals && matchesResults;
+      // Projection filter
+      let matchesProjection = filterProjection === "all";
+      if (!matchesProjection) {
+        const range = getProjectionRange(company.id);
+        matchesProjection = range === filterProjection;
+      }
+      
+      return matchesSearch && matchesConsultant && matchesService && matchesGoals && matchesResults && matchesProjection;
     });
-  }, [companies, searchTerm, filterConsultant, filterService, filterGoals, filterResults, projects, currentStaff, companiesWithGoals, companiesWithResults]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterGoals, filterResults, filterProjection, projects, currentStaff, companiesWithGoals, companiesWithResults, companyProjections]);
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -231,10 +321,11 @@ const OnboardingResultsPage = () => {
     setFilterService("all");
     setFilterGoals("all");
     setFilterResults("all");
+    setFilterProjection("all");
   };
 
   // For consultants, don't consider consultant filter as active since they only see their own companies
-  const hasActiveFilters = (currentStaff?.role !== "consultant" && filterConsultant !== "all") || filterService !== "all" || filterGoals !== "all" || filterResults !== "all" || searchTerm !== "";
+  const hasActiveFilters = (currentStaff?.role !== "consultant" && filterConsultant !== "all") || filterService !== "all" || filterGoals !== "all" || filterResults !== "all" || filterProjection !== "all" || searchTerm !== "";
   
   // Count companies with/without results based on filtered list (excluding the results filter itself)
   const baseFilteredCompanies = useMemo(() => {
@@ -280,6 +371,30 @@ const OnboardingResultsPage = () => {
   const companiesWithoutResultsCount = useMemo(() => {
     return baseFilteredCompanies.filter(company => !companiesWithResults.has(company.id)).length;
   }, [baseFilteredCompanies, companiesWithResults]);
+
+  // Projection-based counters for companies with results
+  const projectionCounts = useMemo(() => {
+    const companiesWithResultsList = baseFilteredCompanies.filter(c => companiesWithResults.has(c.id));
+    
+    return {
+      above100: companiesWithResultsList.filter(c => {
+        const proj = companyProjections.get(c.id);
+        return proj !== undefined && proj >= 100;
+      }).length,
+      range70to99: companiesWithResultsList.filter(c => {
+        const proj = companyProjections.get(c.id);
+        return proj !== undefined && proj >= 70 && proj < 100;
+      }).length,
+      range50to69: companiesWithResultsList.filter(c => {
+        const proj = companyProjections.get(c.id);
+        return proj !== undefined && proj >= 50 && proj < 70;
+      }).length,
+      below50: companiesWithResultsList.filter(c => {
+        const proj = companyProjections.get(c.id);
+        return proj !== undefined && proj < 50;
+      }).length,
+    };
+  }, [baseFilteredCompanies, companiesWithResults, companyProjections]);
 
   // Get selected company data
   const selectedCompany = useMemo(() => {
@@ -399,40 +514,140 @@ const OnboardingResultsPage = () => {
         ) : (
           /* Company List */
           <>
-            {/* Results Summary Card */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {/* Results Summary Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+              {/* With Results */}
               <Card 
-                className={`cursor-pointer transition-colors ${filterResults === "with_results" ? "ring-2 ring-primary" : "hover:bg-muted/50"}`}
-                onClick={() => setFilterResults(filterResults === "with_results" ? "all" : "with_results")}
+                className={`cursor-pointer transition-colors ${filterResults === "with_results" && filterProjection === "all" ? "ring-2 ring-primary" : "hover:bg-muted/50"}`}
+                onClick={() => {
+                  setFilterProjection("all");
+                  setFilterResults(filterResults === "with_results" ? "all" : "with_results");
+                }}
               >
-                <CardContent className="py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{companiesWithResultsCount}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Empresas com resultados lançados
+                      <p className="text-xl font-bold">{companiesWithResultsCount}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">
+                        Com lançamentos
                       </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
+              {/* Without Results */}
               <Card 
                 className={`cursor-pointer transition-colors ${filterResults === "without_results" ? "ring-2 ring-primary" : "hover:bg-muted/50"}`}
-                onClick={() => setFilterResults(filterResults === "without_results" ? "all" : "without_results")}
+                onClick={() => {
+                  setFilterProjection("all");
+                  setFilterResults(filterResults === "without_results" ? "all" : "without_results");
+                }}
               >
-                <CardContent className="py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                      <BarChart3 className="h-5 w-5 text-amber-500" />
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-slate-500/10 flex items-center justify-center">
+                      <BarChart3 className="h-4 w-4 text-slate-500" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{companiesWithoutResultsCount}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Empresas sem resultados
+                      <p className="text-xl font-bold">{companiesWithoutResultsCount}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">
+                        Sem lançamentos
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Above 100% */}
+              <Card 
+                className={`cursor-pointer transition-colors ${filterProjection === "above_100" ? "ring-2 ring-emerald-500" : "hover:bg-muted/50"}`}
+                onClick={() => {
+                  setFilterResults("all");
+                  setFilterProjection(filterProjection === "above_100" ? "all" : "above_100");
+                }}
+              >
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                      <Trophy className="h-4 w-4 text-emerald-500" />
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold">{projectionCounts.above100}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">
+                        Acima de 100%
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 70-99% */}
+              <Card 
+                className={`cursor-pointer transition-colors ${filterProjection === "70_99" ? "ring-2 ring-blue-500" : "hover:bg-muted/50"}`}
+                onClick={() => {
+                  setFilterResults("all");
+                  setFilterProjection(filterProjection === "70_99" ? "all" : "70_99");
+                }}
+              >
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                      <ThumbsUp className="h-4 w-4 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold">{projectionCounts.range70to99}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">
+                        Entre 70% e 99%
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 50-69% */}
+              <Card 
+                className={`cursor-pointer transition-colors ${filterProjection === "50_69" ? "ring-2 ring-amber-500" : "hover:bg-muted/50"}`}
+                onClick={() => {
+                  setFilterResults("all");
+                  setFilterProjection(filterProjection === "50_69" ? "all" : "50_69");
+                }}
+              >
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold">{projectionCounts.range50to69}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">
+                        Entre 50% e 69%
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Below 50% */}
+              <Card 
+                className={`cursor-pointer transition-colors ${filterProjection === "below_50" ? "ring-2 ring-red-500" : "hover:bg-muted/50"}`}
+                onClick={() => {
+                  setFilterResults("all");
+                  setFilterProjection(filterProjection === "below_50" ? "all" : "below_50");
+                }}
+              >
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                      <XCircle className="h-4 w-4 text-red-500" />
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold">{projectionCounts.below50}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">
+                        Abaixo de 50%
                       </p>
                     </div>
                   </div>
@@ -560,6 +775,44 @@ const OnboardingResultsPage = () => {
                   const project = getProjectForCompany(company.id);
                   const consultantName = getConsultantName(company.consultant_id);
                   const csName = getConsultantName(company.cs_id);
+                  const projection = companyProjections.get(company.id);
+                  const hasResults = companiesWithResults.has(company.id);
+                  
+                  // Determine projection badge styling
+                  const getProjectionBadge = () => {
+                    if (!hasResults || projection === undefined) return null;
+                    
+                    if (projection >= 100) {
+                      return (
+                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200 text-[10px]">
+                          <Trophy className="h-3 w-3 mr-1" />
+                          {projection.toFixed(0)}%
+                        </Badge>
+                      );
+                    }
+                    if (projection >= 70) {
+                      return (
+                        <Badge className="bg-blue-500/10 text-blue-600 border-blue-200 text-[10px]">
+                          <ThumbsUp className="h-3 w-3 mr-1" />
+                          {projection.toFixed(0)}%
+                        </Badge>
+                      );
+                    }
+                    if (projection >= 50) {
+                      return (
+                        <Badge className="bg-amber-500/10 text-amber-600 border-amber-200 text-[10px]">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          {projection.toFixed(0)}%
+                        </Badge>
+                      );
+                    }
+                    return (
+                      <Badge className="bg-red-500/10 text-red-600 border-red-200 text-[10px]">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        {projection.toFixed(0)}%
+                      </Badge>
+                    );
+                  };
                   
                   return (
                     <Card 
@@ -595,7 +848,10 @@ const OnboardingResultsPage = () => {
                               </div>
                             </div>
                           </div>
-                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex items-center gap-2">
+                            {getProjectionBadge()}
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
