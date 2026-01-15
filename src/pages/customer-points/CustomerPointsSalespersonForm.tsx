@@ -149,12 +149,19 @@ export default function CustomerPointsSalespersonForm() {
     setSubmitting(true);
 
     try {
-      const { data: existingClient } = await supabase
+      const { data: existingClient, error } = await supabase
         .from("customer_points_clients")
         .select("id, name, cpf, total_points")
         .eq("company_id", tokenData.company_id)
         .eq("cpf", cleanCPF)
-        .single();
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error searching client:", error);
+        toast.error("Erro ao buscar cliente");
+        setSubmitting(false);
+        return;
+      }
 
       if (existingClient) {
         setSearchedClient(existingClient);
