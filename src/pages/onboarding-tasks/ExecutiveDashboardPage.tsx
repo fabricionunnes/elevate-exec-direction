@@ -201,14 +201,14 @@ export default function ExecutiveDashboardPage() {
         ? totalScore / projectsWithScores.length 
         : 0;
 
-      // Fetch NPS data
+      // Fetch NPS data - use same logic as DashboardMetrics (average of scores)
       const { data: npsData } = await supabase
         .from("onboarding_nps_responses")
         .select("score")
         .gte("responded_at", format(subMonths(new Date(), 3), "yyyy-MM-dd"));
 
       const avgNPS = npsData && npsData.length > 0
-        ? npsData.reduce((sum, r) => sum + r.score, 0) / npsData.length
+        ? Math.round((npsData.reduce((sum, r) => sum + r.score, 0) / npsData.length) * 10) / 10
         : 0;
 
       // Fetch churn data using same logic as DashboardMetrics
@@ -236,23 +236,71 @@ export default function ExecutiveDashboardPage() {
         return updateDate >= periodStart && updateDate <= periodEnd;
       }).length;
 
-      // Use same formula as DashboardMetrics: churnRate = closedInPeriod / (activeProjects + closedInPeriod + signaledInPeriod)
+      // Use same formula as DashboardMetrics: churnRate = closedInPeriod / (activeProjects + closedInPeriod + signaledInPeriod) * 100
       const totalActiveStart = totalProjects + closedInPeriod + signaledInPeriod;
       const churnRate = totalActiveStart > 0 
-        ? closedInPeriod / totalActiveStart
+        ? Math.round((closedInPeriod / totalActiveStart) * 100)
         : 0;
 
-      // Fetch renewal data
+      // Fetch renewal data - count unique companies renewed (same as DashboardMetrics)
       const periodStartStr = format(periodStart, "yyyy-MM-dd");
       const { data: renewals } = await supabase
         .from("onboarding_contract_renewals")
-        .select("id")
+        .select("id, company_id")
         .eq("status", "confirmed")
         .gte("renewal_date", periodStartStr);
 
+      // Count unique companies that renewed
+      const renewedCompanyIds = new Set((renewals || []).map(r => r.company_id));
+      const renewedClientsCount = renewedCompanyIds.size;
+      
+      // Renewal rate = renewed clients / active companies (same as DashboardMetrics)
       const renewalRate = totalProjects > 0
-        ? (renewals?.length || 0) / totalProjects
+        ? Math.round((renewedClientsCount / totalProjects) * 100)
         : 0;
+
+      // Calculate LTV using same logic as DashboardMetrics
+      const { data: companiesData } = await supabase
+        .from("onboarding_companies")
+        .select("id, contract_start_date, contract_value, status, status_changed_at")
+        .not("contract_start_date", "is", null);
+
+      let avgLTV = 0;
+      if (companiesData && companiesData.length > 0) {
+        const today = new Date();
+        const lifetimes: number[] = [];
+        let totalContractValue = 0;
+        let companiesWithValue = 0;
+
+        companiesData.forEach(c => {
+          if (!c.contract_start_date) return;
+          
+          const start = new Date(c.contract_start_date.substring(0, 10) + "T12:00:00");
+          const end = (c.status === "closed" || c.status === "inactive") && c.status_changed_at
+            ? new Date(c.status_changed_at.substring(0, 10) + "T12:00:00")
+            : today;
+          
+          const lifetimeMonths = Math.max(0, Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+          if (lifetimeMonths >= 0 && lifetimeMonths <= 180) {
+            lifetimes.push(lifetimeMonths);
+          }
+
+          if (c.contract_value && c.contract_value > 0) {
+            totalContractValue += c.contract_value;
+            companiesWithValue++;
+          }
+        });
+
+        const averageLifetimeMonths = lifetimes.length > 0
+          ? lifetimes.reduce((sum, m) => sum + m, 0) / lifetimes.length
+          : 0;
+        
+        const averageMonthlyTicket = companiesWithValue > 0
+          ? totalContractValue / companiesWithValue
+          : 0;
+
+        avgLTV = Math.round(averageMonthlyTicket * averageLifetimeMonths);
+      }
 
       // Calculate consultant performance
       const consultantMap = new Map<string, ConsultantPerformance>();
@@ -292,7 +340,7 @@ export default function ExecutiveDashboardPage() {
         churnRate,
         avgNPS,
         renewalRate,
-        avgLTV: 12000, // Placeholder - calculate from actual contract values
+        avgLTV,
       });
 
       setCriticalProjects(criticalList);
