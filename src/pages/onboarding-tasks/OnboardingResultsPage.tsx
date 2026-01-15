@@ -136,7 +136,13 @@ const OnboardingResultsPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const currentMonth = format(new Date(), "yyyy-MM");
+      const now = new Date();
+      const currentMonth = format(now, "yyyy-MM");
+      const periodMonth = now.getMonth() + 1;
+      const periodYear = now.getFullYear();
+      const daysInMonth = new Date(periodYear, periodMonth, 0).getDate();
+      const currentDay = now.getDate();
+      const timeElapsedPercent = currentDay / daysInMonth;
       
       const [companiesRes, staffRes, servicesRes, projectsRes] = await Promise.all([
         supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status").eq("status", "active").order("name"),
@@ -151,9 +157,10 @@ const OnboardingResultsPage = () => {
       setProjects(projectsRes.data || []);
       
       // Fetch companies with ANY KPI configured (not just monthly targets with value > 0)
+      // Filter to only MONETARY KPIs for goal tracking (same as dashboard)
       const { data: kpisData } = await supabase
         .from("company_kpis")
-        .select("id, company_id, kpi_type, target_value")
+        .select("id, company_id, kpi_type, target_value, periodicity")
         .eq("is_active", true);
       
       // Create set of company IDs that have any KPI configured
@@ -163,10 +170,20 @@ const OnboardingResultsPage = () => {
       });
       setCompaniesWithGoals(companyIdsWithGoals);
       
+      // Filter only monetary KPIs for projection calculation (same as dashboard)
+      const monetaryKpis = (kpisData || []).filter(k => k.kpi_type === "monetary");
+      const monetaryKpiIds = new Set(monetaryKpis.map(k => k.id));
+      
+      // Create a map for KPI periodicity
+      const kpiPeriodicityMap = new Map<string, { periodicity: string; target: number }>();
+      monetaryKpis.forEach(k => {
+        kpiPeriodicityMap.set(k.id, { periodicity: k.periodicity, target: k.target_value });
+      });
+      
       // Fetch current month entries for all KPIs
       const { data: entriesData } = await supabase
         .from("kpi_entries")
-        .select("kpi_id, value, entry_date, company_kpis!inner(id, company_id, kpi_type, target_value)")
+        .select("kpi_id, value, entry_date, company_kpis!inner(id, company_id, kpi_type, target_value, periodicity)")
         .gte("entry_date", `${currentMonth}-01`)
         .lte("entry_date", `${currentMonth}-31`)
         .not("value", "is", null);
@@ -182,37 +199,53 @@ const OnboardingResultsPage = () => {
         targetMap.set(t.kpi_id, t.target_value);
       });
       
-      // Calculate projection for each company
+      // Calculate projection for each company (using same logic as dashboard)
       const projectionsMap = new Map<string, number>();
       const companyIdsWithResultsSet = new Set<string>();
       
-      // Group entries by company
+      // Group entries by company - only for monetary KPIs
       const entriesByCompany = new Map<string, { value: number; target: number; kpiId: string }[]>();
       
       (entriesData || []).forEach((entry: any) => {
         const companyId = entry.company_kpis?.company_id;
+        const kpiType = entry.company_kpis?.kpi_type;
         if (!companyId) return;
         
         companyIdsWithResultsSet.add(companyId);
         
+        // Only process monetary KPIs for projection
+        if (kpiType !== "monetary") return;
+        
         // Get target: first from monthly targets, then from KPI default
         const monthlyTarget = targetMap.get(entry.kpi_id);
         const defaultTarget = entry.company_kpis?.target_value || 0;
-        const target = monthlyTarget ?? defaultTarget;
+        const periodicity = entry.company_kpis?.periodicity || "monthly";
+        
+        // Calculate monthly target based on periodicity (same as dashboard)
+        let calculatedTarget = monthlyTarget ?? defaultTarget;
+        if (!monthlyTarget) {
+          if (periodicity === "daily") {
+            calculatedTarget = defaultTarget * daysInMonth;
+          } else if (periodicity === "weekly") {
+            calculatedTarget = defaultTarget * Math.ceil(daysInMonth / 7);
+          }
+        }
         
         if (!entriesByCompany.has(companyId)) {
           entriesByCompany.set(companyId, []);
         }
         entriesByCompany.get(companyId)!.push({
           value: entry.value || 0,
-          target,
+          target: calculatedTarget,
           kpiId: entry.kpi_id
         });
       });
       
-      // Calculate average projection for each company
+      // Calculate projection for each company (same formula as dashboard)
       entriesByCompany.forEach((entries, companyId) => {
-        const kpiProjections: number[] = [];
+        // Sum all values and targets
+        let totalRealized = 0;
+        let totalTarget = 0;
         
         // Group by KPI and sum values
         const kpiTotals = new Map<string, { total: number; target: number }>();
@@ -223,17 +256,17 @@ const OnboardingResultsPage = () => {
           kpiTotals.get(e.kpiId)!.total += e.value;
         });
         
-        // Calculate projection for each KPI
+        // Sum totals
         kpiTotals.forEach(({ total, target }) => {
-          if (target > 0) {
-            kpiProjections.push((total / target) * 100);
-          }
+          totalRealized += total;
+          totalTarget += target;
         });
         
-        // Average projection across all KPIs with targets
-        if (kpiProjections.length > 0) {
-          const avgProjection = kpiProjections.reduce((a, b) => a + b, 0) / kpiProjections.length;
-          projectionsMap.set(companyId, avgProjection);
+        // Calculate projection with time elapsed (same formula as dashboard)
+        // projectionPercent = ((totalRealized / totalTarget) / timeElapsedPercent) * 100
+        if (totalTarget > 0 && timeElapsedPercent > 0) {
+          const projectionPercent = Math.round(((totalRealized / totalTarget) / timeElapsedPercent) * 100);
+          projectionsMap.set(companyId, projectionPercent);
         }
       });
       
