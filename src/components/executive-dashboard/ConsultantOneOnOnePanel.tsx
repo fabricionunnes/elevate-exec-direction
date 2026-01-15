@@ -64,6 +64,14 @@ interface ConsultantMetrics {
   avgGoalProjection: number;
 }
 
+interface KPIData {
+  name: string;
+  target: number;
+  result: number;
+  percentage: number;
+  kpiType: string;
+}
+
 interface ProjectBriefing {
   id: string;
   company_name: string;
@@ -78,6 +86,8 @@ interface ProjectBriefing {
   days_since_meeting?: number;
   segment?: string;
   last_nps_feedback?: string;
+  company_id?: string;
+  kpis?: KPIData[];
 }
 
 interface AgendaSection {
@@ -226,9 +236,46 @@ export function ConsultantOneOnOnePanel() {
               ? (goalData.sales_result / goalData.sales_target) * 100
               : undefined;
 
-            if (goalProjection !== undefined) {
-              totalGoalProjection += goalProjection;
-              goalsCount++;
+            // Fetch KPIs for this company
+            const companyId = project.company_id;
+            const kpisData: KPIData[] = [];
+            
+            if (companyId) {
+              // Get company KPIs
+              const { data: kpis } = await supabase
+                .from("company_kpis")
+                .select("id, name, target_value, kpi_type")
+                .eq("company_id", companyId)
+                .eq("is_active", true)
+                .order("sort_order")
+                .limit(5);
+
+              if (kpis && kpis.length > 0) {
+                // Get current month entries for each KPI
+                const startOfMonth = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
+                const endOfMonth = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
+
+                for (const kpi of kpis) {
+                  const { data: entries } = await supabase
+                    .from("kpi_entries")
+                    .select("value")
+                    .eq("kpi_id", kpi.id)
+                    .gte("entry_date", startOfMonth)
+                    .lte("entry_date", endOfMonth);
+
+                  const totalValue = entries?.reduce((sum, e) => sum + (Number(e.value) || 0), 0) || 0;
+                  const target = Number(kpi.target_value) || 0;
+                  const percentage = target > 0 ? (totalValue / target) * 100 : 0;
+
+                  kpisData.push({
+                    name: kpi.name,
+                    target,
+                    result: totalValue,
+                    percentage,
+                    kpiType: kpi.kpi_type
+                  });
+                }
+              }
             }
 
             const daysSinceMeeting = lastMeeting?.meeting_date
@@ -250,7 +297,9 @@ export function ConsultantOneOnOnePanel() {
               nps_score: latestNps?.score,
               days_since_meeting: daysSinceMeeting,
               segment: project.onboarding_companies?.segment,
-              last_nps_feedback: latestNps?.feedback
+              last_nps_feedback: latestNps?.feedback,
+              company_id: companyId,
+              kpis: kpisData
             });
 
             // Categorize for agenda

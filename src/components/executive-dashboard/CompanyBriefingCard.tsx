@@ -20,12 +20,21 @@ import {
   Lightbulb,
   ArrowRight,
   Flag,
-  Zap
+  Zap,
+  BarChart3
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+interface KPIData {
+  name: string;
+  target: number;
+  result: number;
+  percentage: number;
+  kpiType: string;
+}
 
 interface CompanyBriefingCardProps {
   project: {
@@ -48,6 +57,7 @@ interface CompanyBriefingCardProps {
     pending_support_tickets?: number;
     completed_tasks_this_month?: number;
     total_tasks_this_month?: number;
+    kpis?: KPIData[];
   };
   index: number;
   expanded?: boolean;
@@ -442,6 +452,69 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
                   ))}
                 </div>
               </div>
+
+              {/* KPIs Section */}
+              {project.kpis && project.kpis.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <BarChart3 className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                    <h5 className="text-sm font-semibold text-foreground">Metas do Mês</h5>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {project.kpis.slice(0, 4).map((kpi, i) => {
+                      const getKPIColor = (pct: number) => {
+                        if (pct >= 100) return 'text-green-600 dark:text-green-400';
+                        if (pct >= 70) return 'text-yellow-600 dark:text-yellow-400';
+                        return 'text-red-600 dark:text-red-400';
+                      };
+                      const getKPIBg = (pct: number) => {
+                        if (pct >= 100) return 'bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-800';
+                        if (pct >= 70) return 'bg-yellow-50 dark:bg-yellow-950/50 border-yellow-200 dark:border-yellow-800';
+                        return 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800';
+                      };
+                      const formatValue = (val: number, type: string) => {
+                        if (type === 'monetary') {
+                          return val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val.toFixed(0);
+                        }
+                        return val.toFixed(0);
+                      };
+
+                      return (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.25 + i * 0.05 }}
+                          className={`p-2.5 rounded-lg border ${getKPIBg(kpi.percentage)}`}
+                        >
+                          <p className="text-[10px] font-medium text-muted-foreground truncate mb-1">
+                            {kpi.name}
+                          </p>
+                          <div className="flex items-baseline gap-1">
+                            <span className={`text-lg font-bold ${getKPIColor(kpi.percentage)}`}>
+                              {kpi.percentage.toFixed(0)}%
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              ({formatValue(kpi.result, kpi.kpiType)}/{formatValue(kpi.target, kpi.kpiType)})
+                            </span>
+                          </div>
+                          <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all ${kpi.percentage >= 100 ? 'bg-green-500' : kpi.percentage >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                              style={{ width: `${Math.min(kpi.percentage, 100)}%` }}
+                            />
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                  {project.kpis.length === 0 && (
+                    <div className="p-2.5 rounded-lg bg-muted border text-center">
+                      <p className="text-xs text-muted-foreground">Nenhum KPI configurado</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* AI Insight */}
               {project.ai_insight && (
