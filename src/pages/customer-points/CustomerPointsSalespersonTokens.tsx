@@ -50,7 +50,8 @@ export default function CustomerPointsSalespersonTokens() {
   };
 
   const getFormUrl = () => {
-    return `${publicDomain}/#/points-salesperson?company=${companyId}`;
+    // Use query-based public links to survive apps that strip the URL fragment (#/...)
+    return `${publicDomain}/?public=points-salesperson&company=${companyId}`;
   };
 
   const copyLink = async () => {
