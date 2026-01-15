@@ -70,6 +70,7 @@ export default function ExecutiveDashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [period, setPeriod] = useState("30");
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   
   const [metrics, setMetrics] = useState<PortfolioMetrics>({
     totalProjects: 0,
@@ -90,6 +91,13 @@ export default function ExecutiveDashboardPage() {
 
   const fetchData = async () => {
     try {
+      // Get current user email
+      const staffData = localStorage.getItem("onboarding_staff");
+      if (staffData) {
+        const staff = JSON.parse(staffData);
+        setUserEmail(staff.email);
+      }
+
       // Fetch active projects with health scores
       const { data: projects, error: projectsError } = await supabase
         .from("onboarding_projects")
@@ -338,9 +346,11 @@ export default function ExecutiveDashboardPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-3 mb-6">
+        <TabsList className={`grid w-full max-w-md mb-6 ${userEmail === 'fabricio@universidadevendas.com.br' ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="leadership">Reunião Liderança</TabsTrigger>
+          {userEmail === 'fabricio@universidadevendas.com.br' && (
+            <TabsTrigger value="leadership">Reunião Liderança</TabsTrigger>
+          )}
           <TabsTrigger value="oneOnOne">1:1 Consultor</TabsTrigger>
         </TabsList>
 
@@ -435,9 +445,11 @@ export default function ExecutiveDashboardPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="leadership">
-          <DailyLeadershipAgenda />
-        </TabsContent>
+        {userEmail === 'fabricio@universidadevendas.com.br' && (
+          <TabsContent value="leadership">
+            <DailyLeadershipAgenda />
+          </TabsContent>
+        )}
 
         <TabsContent value="oneOnOne">
           <ConsultantOneOnOnePanel />
