@@ -53,8 +53,26 @@ serve(async (req) => {
     }
 
     const results: unknown[] = [];
+    const staffWithProjects: string[] = [];
 
     for (const sid of staffIds) {
+      // Check if staff has any projects assigned (as consultant or CS)
+      const { count: projectCount } = await supabase
+        .from('onboarding_projects')
+        .select('id', { count: 'exact' })
+        .or(`consultant_id.eq.${sid},cs_id.eq.${sid}`);
+
+      if (!projectCount || projectCount === 0) {
+        // Staff has no projects - delete any existing score and skip
+        await supabase
+          .from('consultant_engagement_scores')
+          .delete()
+          .eq('staff_id', sid);
+        console.log(`Skipping staff ${sid} - no projects assigned`);
+        continue;
+      }
+
+      staffWithProjects.push(sid);
       const metrics = await calculateMetricsForStaff(supabase, sid, periodStart, periodEnd);
       
       const { data: scoreData, error: upsertError } = await supabase
