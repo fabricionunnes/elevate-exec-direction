@@ -879,6 +879,15 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
   // Separate meetings into pending and finalized
   const pendingMeetings = meetings.filter(m => !m.is_finalized);
   const finalizedMeetings = meetings.filter(m => m.is_finalized);
+  
+  // Get existing google_event_ids to avoid showing duplicates
+  const existingGoogleEventIds = new Set(meetings.map(m => m.google_event_id).filter(Boolean));
+  
+  // Filter calendar events to show only FUTURE scheduled meetings that aren't already in the DB
+  const futureScheduledMeetings = calendarEvents.filter(event => {
+    const eventDate = parseISO(event.start);
+    return !isPast(eventDate) && !existingGoogleEventIds.has(event.id);
+  });
 
   if (loading) {
     return (
@@ -945,6 +954,71 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Future Scheduled Meetings Section (from Google Calendar) */}
+        {futureScheduledMeetings.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-blue-600" />
+              <h4 className="font-medium text-blue-600">
+                Reuniões agendadas ({futureScheduledMeetings.length})
+              </h4>
+            </div>
+            <div className="space-y-3">
+              {futureScheduledMeetings.map((event) => (
+                <Card 
+                  key={event.id} 
+                  className="border-blue-200 bg-blue-50/50"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium truncate">{event.title}</h4>
+                          <Badge variant="outline" className="shrink-0 text-xs bg-blue-100 text-blue-700 border-blue-300">
+                            Agendada
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2 flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {format(parseISO(event.start), "dd/MM/yyyy", { locale: ptBR })}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {format(parseISO(event.start), "HH:mm", { locale: ptBR })}
+                          </span>
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                          {event.meetingLink && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => window.open(event.meetingLink, "_blank")}
+                            >
+                              <Video className="h-3 w-3" />
+                              Entrar na reunião
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => window.open(event.calendarLink, "_blank")}
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Ver no Calendar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Pending Meetings Section */}
