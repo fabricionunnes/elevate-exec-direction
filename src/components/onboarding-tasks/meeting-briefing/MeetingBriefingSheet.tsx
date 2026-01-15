@@ -28,22 +28,29 @@ import {
 import ReactMarkdown from "react-markdown";
 
 interface BriefingContent {
-  executive_summary: string;
-  client_history: string;
-  pending_items: string;
-  goal_status: string;
-  attention_points: string;
+  executive_summary: string | string[];
+  client_history: string | string[];
+  pending_items: string | string[];
+  goal_status: string | string[];
+  attention_points: string | string[];
   suggested_agenda: string | string[];
-  talking_points: string[];
+  talking_points: string[] | string;
 }
 
-// Helper to ensure a value is a string for ReactMarkdown
-const ensureString = (value: string | string[] | undefined): string => {
-  if (!value) return '';
-  if (Array.isArray(value)) {
-    return value.map((item, i) => `${i + 1}. ${item}`).join('\n');
-  }
-  return value;
+// Helpers to normalize AI output
+const ensureString = (value: unknown): string => {
+  if (value == null) return "";
+  if (Array.isArray(value)) return value.filter(Boolean).join("\n");
+  return String(value);
+};
+
+const ensureStringList = (value: unknown): string[] => {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value.map((v) => String(v)).filter(Boolean);
+  return String(value)
+    .split(/\r?\n|,\s*/)
+    .map((v) => v.trim())
+    .filter(Boolean);
 };
 
 interface MeetingBriefing {
@@ -186,7 +193,7 @@ export const MeetingBriefingSheet = ({
                   Resumo Executivo
                 </h3>
                 <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
-                  <p className="text-sm">{parsedContent.executive_summary}</p>
+                  <p className="text-sm whitespace-pre-wrap">{ensureString(parsedContent.executive_summary)}</p>
                 </div>
               </div>
 
@@ -200,7 +207,7 @@ export const MeetingBriefingSheet = ({
                     Pontos de Atenção
                   </h3>
                   <div className="text-sm bg-orange-500/10 p-3 rounded border border-orange-500/20">
-                    <ReactMarkdown>{parsedContent.attention_points}</ReactMarkdown>
+                    <ReactMarkdown>{ensureString(parsedContent.attention_points)}</ReactMarkdown>
                   </div>
                 </div>
               )}
@@ -213,7 +220,7 @@ export const MeetingBriefingSheet = ({
                     Histórico do Cliente
                   </h3>
                   <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
-                    <ReactMarkdown>{parsedContent.client_history}</ReactMarkdown>
+                    <ReactMarkdown>{ensureString(parsedContent.client_history)}</ReactMarkdown>
                   </div>
                 </div>
               )}
@@ -226,7 +233,7 @@ export const MeetingBriefingSheet = ({
                     Itens Pendentes
                   </h3>
                   <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
-                    <ReactMarkdown>{parsedContent.pending_items}</ReactMarkdown>
+                    <ReactMarkdown>{ensureString(parsedContent.pending_items)}</ReactMarkdown>
                   </div>
                 </div>
               )}
@@ -239,7 +246,7 @@ export const MeetingBriefingSheet = ({
                     Status das Metas
                   </h3>
                   <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
-                    <ReactMarkdown>{parsedContent.goal_status}</ReactMarkdown>
+                    <ReactMarkdown>{ensureString(parsedContent.goal_status)}</ReactMarkdown>
                   </div>
                 </div>
               )}
@@ -260,14 +267,14 @@ export const MeetingBriefingSheet = ({
               )}
 
               {/* Talking Points */}
-              {parsedContent.talking_points && parsedContent.talking_points.length > 0 && (
+              {ensureStringList(parsedContent.talking_points).length > 0 && (
                 <div>
                   <h3 className="font-medium mb-2 flex items-center gap-2">
                     <MessageSquare className="h-4 w-4" />
                     Talking Points
                   </h3>
                   <ul className="space-y-2">
-                    {parsedContent.talking_points.map((point, idx) => (
+                    {ensureStringList(parsedContent.talking_points).map((point, idx) => (
                       <li key={idx} className="text-sm flex items-start gap-2">
                         <span className="text-primary">•</span>
                         {point}
