@@ -223,6 +223,62 @@ export type Database = {
         }
         Relationships: []
       }
+      churn_predictions: {
+        Row: {
+          ai_analysis: string | null
+          churn_probability: number
+          created_at: string
+          estimated_risk_window: string | null
+          health_score_at_prediction: number | null
+          id: string
+          nps_at_prediction: number | null
+          prediction_date: string
+          project_id: string
+          recommended_actions: string[] | null
+          risk_factors: Json | null
+          risk_level: string
+          updated_at: string
+        }
+        Insert: {
+          ai_analysis?: string | null
+          churn_probability: number
+          created_at?: string
+          estimated_risk_window?: string | null
+          health_score_at_prediction?: number | null
+          id?: string
+          nps_at_prediction?: number | null
+          prediction_date?: string
+          project_id: string
+          recommended_actions?: string[] | null
+          risk_factors?: Json | null
+          risk_level?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_analysis?: string | null
+          churn_probability?: number
+          created_at?: string
+          estimated_risk_window?: string | null
+          health_score_at_prediction?: number | null
+          id?: string
+          nps_at_prediction?: number | null
+          prediction_date?: string
+          project_id?: string
+          recommended_actions?: string[] | null
+          risk_factors?: Json | null
+          risk_level?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "churn_predictions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_diagnostics: {
         Row: {
           biggest_challenge: string | null
