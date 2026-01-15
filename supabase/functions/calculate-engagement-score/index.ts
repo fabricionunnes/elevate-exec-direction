@@ -115,7 +115,7 @@ serve(async (req) => {
 });
 
 async function calculateMetricsForStaff(
-  supabase: ReturnType<typeof createClient<unknown>>,
+  supabase: any,
   staffId: string,
   periodStart: Date,
   periodEnd: Date
