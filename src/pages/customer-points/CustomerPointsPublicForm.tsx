@@ -267,7 +267,15 @@ export default function CustomerPointsPublicForm() {
   };
 
   const handleFormSubmit = async () => {
-    if (!campaign || !rule) return;
+    if (!campaign) {
+      toast.error("Campanha não encontrada");
+      return;
+    }
+    
+    if (!rule) {
+      toast.error("Esta campanha não possui uma regra de pontuação configurada. Entre em contato com o estabelecimento.");
+      return;
+    }
 
     const cleanCPF = cpf.replace(/\D/g, "");
     
