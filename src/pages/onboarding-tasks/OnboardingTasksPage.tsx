@@ -284,22 +284,27 @@ const OnboardingTasksPage = () => {
 
   const checkUserPermissions = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (user) {
         setCurrentUserId(user.id);
         setCurrentUserEmail(user.email || null);
+
         const { data: staffMember } = await supabase
           .from("onboarding_staff")
           .select("id, role")
           .eq("user_id", user.id)
           .single();
-        
+
         if (staffMember) {
-          setCurrentUserRole(staffMember.role);
+          const normalizedRole = (staffMember.role || "").trim().toLowerCase();
+          setCurrentUserRole(normalizedRole);
           setCurrentStaffId(staffMember.id);
-          
+
           // For consultants, auto-filter to their own projects
-          if (staffMember.role === "consultant") {
+          if (normalizedRole === "consultant") {
             setFilterConsultant(staffMember.id);
           }
         }
