@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database } from "lucide-react";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
@@ -27,6 +27,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -1307,7 +1310,7 @@ const OnboardingTasksPage = () => {
               </Button>
             )}
 
-            {/* Admin/CS Actions Menu */}
+            {/* Admin/CS Actions Menu - Reorganized with submenus */}
             {canCreateCompany && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -1317,58 +1320,98 @@ const OnboardingTasksPage = () => {
                     <ChevronDown className="h-4 w-4 ml-2" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
-                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/staff")}>
-                    <Users className="h-4 w-4 mr-2" />
-                    Equipe
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/services")}>
-                    <Package className="h-4 w-4 mr-2" />
-                    Serviços
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/import")}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Importar
-                  </DropdownMenuItem>
+                <DropdownMenuContent align="end" className="w-56">
+                  {/* Cadastros */}
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Database className="h-4 w-4 mr-2" />
+                      Cadastros
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-48">
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/staff")}>
+                        <Users className="h-4 w-4 mr-2" />
+                        Equipe
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/services")}>
+                        <Package className="h-4 w-4 mr-2" />
+                        Serviços
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/import")}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Importar
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+
                   {(isAdmin || isCS) && (
                     <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/renewals")}>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Renovações
-                      </DropdownMenuItem>
-                      {isAdmin && (
-                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/reschedule")}>
-                          <CalendarClock className="h-4 w-4 mr-2" />
-                          Reagendar Tarefas
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/activity-history")}>
-                        <History className="h-4 w-4 mr-2" />
-                        Histórico de Atividades
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies-report")}>
-                        <FileBarChart className="h-4 w-4 mr-2" />
-                        Relatório de Empresas
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/churn-prediction")}>
-                        <TrendingDown className="h-4 w-4 mr-2" />
-                        Previsão de Churn
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cohort-retention")}>
-                        <Users2 className="h-4 w-4 mr-2" />
-                        Análise de Cohort
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/engagement")}>
-                        <Award className="h-4 w-4 mr-2" />
-                        Ranking de Engajamento
-                      </DropdownMenuItem>
+                      {/* Relatórios */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <FileBarChart className="h-4 w-4 mr-2" />
+                          Relatórios
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-52">
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies-report")}>
+                            <FileBarChart className="h-4 w-4 mr-2" />
+                            Relatório de Empresas
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/activity-history")}>
+                            <History className="h-4 w-4 mr-2" />
+                            Histórico de Atividades
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/engagement")}>
+                            <Award className="h-4 w-4 mr-2" />
+                            Ranking de Engajamento
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      {/* Análises */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <TrendingDown className="h-4 w-4 mr-2" />
+                          Análises
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-48">
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/churn-prediction")}>
+                            <TrendingDown className="h-4 w-4 mr-2" />
+                            Previsão de Churn
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cohort-retention")}>
+                            <Users2 className="h-4 w-4 mr-2" />
+                            Análise de Cohort
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      {/* Operacional */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Operacional
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-48">
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/renewals")}>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Renovações
+                          </DropdownMenuItem>
+                          {isAdmin && (
+                            <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/reschedule")}>
+                              <CalendarClock className="h-4 w-4 mr-2" />
+                              Reagendar Tarefas
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
                       {currentUserEmail === "fabricio@universidadevendas.com.br" && (
                         <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
                           <Calculator className="h-4 w-4 mr-2" />
                           Módulo Financeiro
                         </DropdownMenuItem>
                       )}
+
                       {isAdmin && (
                         <>
                           <DropdownMenuSeparator />
