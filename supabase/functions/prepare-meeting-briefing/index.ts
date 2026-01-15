@@ -75,12 +75,12 @@ serve(async (req) => {
       consultant = staffData;
     }
 
-    // Get last 3 completed meetings
+    // Get last 3 finalized meetings (excluding current meeting)
     const { data: pastMeetings } = await supabase
       .from('onboarding_meeting_notes')
-      .select('id, meeting_date, meeting_type, notes, transcript, manual_transcript')
+      .select('id, meeting_date, meeting_title, notes, transcript')
       .eq('project_id', projectId)
-      .eq('status', 'completed')
+      .eq('is_finalized', true)
       .neq('id', meetingId)
       .order('meeting_date', { ascending: false })
       .limit(3);
@@ -139,10 +139,9 @@ serve(async (req) => {
     interface Meeting {
       id: string;
       meeting_date: string;
-      meeting_type: string;
+      meeting_title: string | null;
       notes: string | null;
       transcript: string | null;
-      manual_transcript: string | null;
     }
     interface Task {
       id: string;
@@ -169,10 +168,15 @@ serve(async (req) => {
     const consultantName = consultant?.name || 'Não definido';
 
     const meetingList = (pastMeetings || []) as Meeting[];
-    const meetingHistory = meetingList.map((m, idx) => {
-      const content = m.notes || m.transcript || m.manual_transcript || 'Sem notas';
-      return `Reunião ${idx + 1} (${new Date(m.meeting_date).toLocaleDateString('pt-BR')}): ${content.substring(0, 500)}...`;
-    }).join('\n\n') || 'Sem histórico de reuniões anteriores';
+    const meetingHistory = meetingList.length > 0 
+      ? meetingList.map((m, idx) => {
+          const title = m.meeting_title || 'Reunião';
+          const content = m.transcript || m.notes || 'Sem notas/transcrição';
+          // Prioritize transcript if available (more detailed)
+          const contentPreview = content.length > 800 ? content.substring(0, 800) + '...' : content;
+          return `**${title}** (${new Date(m.meeting_date).toLocaleDateString('pt-BR')}):\n${contentPreview}`;
+        }).join('\n\n---\n\n')
+      : 'Sem histórico de reuniões anteriores';
 
     const taskList = (pendingTasks || []) as Task[];
     const tasksList = taskList.map((t) => 
