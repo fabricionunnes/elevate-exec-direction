@@ -29,7 +29,7 @@ import {
   User
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { format, isToday, isBefore, startOfDay } from "date-fns";
+import { format, isToday, isBefore, startOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -336,7 +336,7 @@ export function LeadershipMeetingNotesDialog({
         .filter(item => {
           if (item.done) return false;
           if (!item.due_date) return false;
-          const dueDate = new Date(item.due_date);
+          const dueDate = parseISO(item.due_date);
           return isBefore(startOfDay(dueDate), startOfDay(new Date())) || isToday(dueDate);
         })
         .map(item => ({ ...item, noteId: note.id, fromMeeting: note.meeting_date }))
@@ -349,7 +349,7 @@ export function LeadershipMeetingNotesDialog({
         .filter(item => {
           if (item.done) return false;
           if (!item.due_date) return true;
-          const dueDate = new Date(item.due_date);
+          const dueDate = parseISO(item.due_date);
           return !isBefore(startOfDay(dueDate), startOfDay(new Date())) && !isToday(dueDate);
         })
         .map(item => ({ ...item, noteId: note.id, fromMeeting: note.meeting_date }))
@@ -426,15 +426,15 @@ export function LeadershipMeetingNotesDialog({
                                 variant="outline" 
                                 className={cn(
                                   "text-xs gap-1",
-                                  isBefore(new Date(item.due_date), startOfDay(new Date())) && "bg-destructive/10 text-destructive border-destructive/30"
+                                  isBefore(parseISO(item.due_date), startOfDay(new Date())) && "bg-destructive/10 text-destructive border-destructive/30"
                                 )}
                               >
                                 <CalendarIcon className="h-3 w-3" />
-                                {format(new Date(item.due_date), "dd/MM")}
+                                {format(parseISO(item.due_date), "dd/MM")}
                               </Badge>
                             )}
                             <Badge variant="outline" className="text-xs">
-                              Reunião: {format(new Date(item.fromMeeting), "dd/MM")}
+                              Reunião: {format(parseISO(item.fromMeeting), "dd/MM")}
                             </Badge>
                           </div>
                         </div>
@@ -468,7 +468,7 @@ export function LeadershipMeetingNotesDialog({
                             {item.due_date && (
                               <Badge variant="outline" className="text-xs gap-1">
                                 <CalendarIcon className="h-3 w-3" />
-                                {format(new Date(item.due_date), "dd/MM")}
+                                {format(parseISO(item.due_date), "dd/MM")}
                               </Badge>
                             )}
                           </div>
@@ -666,7 +666,7 @@ export function LeadershipMeetingNotesDialog({
                               <div className="flex items-center gap-3">
                                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                                 <span className="font-semibold">
-                                  {format(new Date(note.meeting_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                                  {format(parseISO(note.meeting_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                                 </span>
                                 {pendingActions.length > 0 && (
                                   <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border-amber-300">
