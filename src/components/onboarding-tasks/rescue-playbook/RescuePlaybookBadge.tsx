@@ -2,10 +2,11 @@ import { Badge } from "@/components/ui/badge";
 import { Shield, Loader2, CheckCircle2 } from "lucide-react";
 
 interface RescuePlaybookBadgeProps {
-  status: 'pending' | 'in_progress' | 'completed' | null;
+  status?: string | null;
+  onClick?: () => void;
 }
 
-export const RescuePlaybookBadge = ({ status }: RescuePlaybookBadgeProps) => {
+export const RescuePlaybookBadge = ({ status, onClick }: RescuePlaybookBadgeProps) => {
   if (!status) return null;
 
   const getConfig = () => {
@@ -35,7 +36,11 @@ export const RescuePlaybookBadge = ({ status }: RescuePlaybookBadgeProps) => {
   const Icon = config.icon;
 
   return (
-    <Badge variant="outline" className={`${config.className} text-xs`}>
+    <Badge 
+      variant="outline" 
+      className={`${config.className} text-xs ${onClick ? 'cursor-pointer hover:opacity-80' : ''}`}
+      onClick={onClick}
+    >
       <Icon className={`h-3 w-3 mr-1 ${status === 'in_progress' ? 'animate-spin' : ''}`} />
       {config.label}
     </Badge>
