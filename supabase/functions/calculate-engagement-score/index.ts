@@ -151,23 +151,24 @@ async function calculateMetricsForStaff(
     .or(`consultant_id.eq.${staffId},cs_id.eq.${staffId}`);
 
   const projectIds = projects?.map((p: { id: string }) => p.id) || [];
+  // 1. Meeting Score (20%) - finalized meetings by this staff member
   let meetingScore = 0;
-  if (projectIds.length > 0) {
-    // Use is_finalized instead of status = 'completed'
-    const { count: meetingCount } = await supabase
-      .from('onboarding_meeting_notes')
-      .select('id', { count: 'exact' })
-      .in('project_id', projectIds)
-      .eq('is_finalized', true)
-      .gte('meeting_date', periodStart.toISOString())
-      .lte('meeting_date', periodEnd.toISOString());
+  
+  // Count meetings finalized by this staff (staff_id = who finalized the meeting)
+  // Also consider meetings on this staff's calendar (calendar_owner_id)
+  const { count: meetingCount } = await supabase
+    .from('onboarding_meeting_notes')
+    .select('id', { count: 'exact' })
+    .eq('is_finalized', true)
+    .or(`staff_id.eq.${staffId},calendar_owner_id.eq.${staffId}`)
+    .gte('meeting_date', periodStart.toISOString())
+    .lte('meeting_date', periodEnd.toISOString());
 
-    // Expect at least 2 meetings per project per month
-    const expectedMeetings = projectIds.length * 2;
-    const actualMeetings = meetingCount || 0;
-    meetingScore = Math.min(100, (actualMeetings / Math.max(expectedMeetings, 1)) * 100);
-    breakdown.meetings = { expected: expectedMeetings, actual: actualMeetings };
-  }
+  // Expect at least 2 meetings per project per month
+  const expectedMeetings = Math.max(projectIds.length * 2, 4); // minimum 4 meetings expected
+  const actualMeetings = meetingCount || 0;
+  meetingScore = Math.min(100, (actualMeetings / Math.max(expectedMeetings, 1)) * 100);
+  breakdown.meetings = { expected: expectedMeetings, actual: actualMeetings };
 
   // 2. Task Score (25%) - completion rate
   let taskScore = 0;
