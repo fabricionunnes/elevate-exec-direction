@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CheckCircle2, Loader2, AlertTriangle, UserCheck, UserPlus, Coins, User } from "lucide-react";
+import { CheckCircle2, Loader2, AlertTriangle, UserCheck, UserPlus, Coins, User, Gift, MinusCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Rule {
@@ -76,8 +76,11 @@ export default function CustomerPointsSalespersonForm() {
   const [clientEmail, setClientEmail] = useState("");
 
   // Points form state
+  const [mode, setMode] = useState<"add" | "redeem">("add");
   const [selectedRuleId, setSelectedRuleId] = useState("");
   const [transactionValue, setTransactionValue] = useState("");
+  const [redeemPoints, setRedeemPoints] = useState("");
+  const [redeemDescription, setRedeemDescription] = useState("");
   const [pointsEarned, setPointsEarned] = useState(0);
   const [newTotalPoints, setNewTotalPoints] = useState(0);
 
@@ -291,11 +294,6 @@ export default function CustomerPointsSalespersonForm() {
   };
 
   const handleSubmit = async () => {
-    if (!companyId || !selectedRule) {
-      toast.error("Selecione uma regra de pontuação");
-      return;
-    }
-
     const cleanCPF = cpf.replace(/\D/g, "");
     
     if (!validateCPF(cpf)) {
@@ -303,7 +301,30 @@ export default function CustomerPointsSalespersonForm() {
       return;
     }
 
-    if (isNewClient && !clientName.trim()) {
+    // For adding points, need a rule
+    if (mode === "add" && !selectedRule) {
+      toast.error("Selecione uma regra de pontuação");
+      return;
+    }
+
+    // For redemption, need points amount and existing client
+    if (mode === "redeem") {
+      if (!searchedClient) {
+        toast.error("Cliente não encontrado para resgate");
+        return;
+      }
+      const pointsToRedeem = parseInt(redeemPoints);
+      if (isNaN(pointsToRedeem) || pointsToRedeem <= 0) {
+        toast.error("Informe uma quantidade válida de pontos");
+        return;
+      }
+      if (pointsToRedeem > searchedClient.total_points) {
+        toast.error(`O cliente possui apenas ${searchedClient.total_points.toLocaleString()} pontos`);
+        return;
+      }
+    }
+
+    if (mode === "add" && isNewClient && !clientName.trim()) {
       toast.error("Nome do cliente é obrigatório");
       return;
     }
@@ -314,8 +335,8 @@ export default function CustomerPointsSalespersonForm() {
       let clientId = searchedClient?.id;
       let currentPoints = searchedClient?.total_points || 0;
 
-      // Create new client if needed
-      if (isNewClient) {
+      // Create new client if needed (only for add mode)
+      if (mode === "add" && isNewClient) {
         const { data: newClient, error: clientError } = await supabase
           .from("customer_points_clients")
           .insert({
@@ -343,36 +364,68 @@ export default function CustomerPointsSalespersonForm() {
         currentPoints = 0;
       }
 
-      // Calculate points
-      const value = transactionValue ? parseFloat(transactionValue) : undefined;
-      const points = calculatePoints(selectedRule, value);
+      let points: number;
+      let newTotal: number;
 
-      // Create transaction
-      const { error: transactionError } = await supabase
-        .from("customer_points_transactions")
-        .insert({
-          company_id: companyId,
-          client_id: clientId!,
-          cpf: cleanCPF,
-          rule_id: selectedRule.id,
-          points: points,
-          source: "salesperson",
-          reference_value: value ?? null,
-          form_responses: {
-            salesperson_name: confirmedSalespersonName,
-            transaction_value: transactionValue || null,
-          },
-        });
+      if (mode === "add") {
+        // Calculate points to add
+        const value = transactionValue ? parseFloat(transactionValue) : undefined;
+        points = calculatePoints(selectedRule!, value);
+        newTotal = currentPoints + points;
 
-      if (transactionError) {
-        console.error("Transaction error:", transactionError);
-        toast.error(`Erro ao registrar pontos: ${transactionError.message}`);
-        setSubmitting(false);
-        return;
+        // Create add transaction
+        const { error: transactionError } = await supabase
+          .from("customer_points_transactions")
+          .insert({
+            company_id: companyId,
+            client_id: clientId!,
+            cpf: cleanCPF,
+            rule_id: selectedRule!.id,
+            points: points,
+            source: "salesperson",
+            reference_value: value ?? null,
+            form_responses: {
+              salesperson_name: confirmedSalespersonName,
+              transaction_value: transactionValue || null,
+            },
+          });
+
+        if (transactionError) {
+          console.error("Transaction error:", transactionError);
+          toast.error(`Erro ao registrar pontos: ${transactionError.message}`);
+          setSubmitting(false);
+          return;
+        }
+      } else {
+        // Redemption mode
+        points = parseInt(redeemPoints);
+        newTotal = currentPoints - points;
+
+        // Create redemption transaction (negative points)
+        const { error: transactionError } = await supabase
+          .from("customer_points_transactions")
+          .insert({
+            company_id: companyId,
+            client_id: clientId!,
+            cpf: cleanCPF,
+            points: -points, // Negative to subtract
+            source: "redemption",
+            form_responses: {
+              salesperson_name: confirmedSalespersonName,
+              description: redeemDescription || "Resgate de pontos",
+              redeemed_points: points,
+            },
+          });
+
+        if (transactionError) {
+          console.error("Transaction error:", transactionError);
+          toast.error(`Erro ao resgatar pontos: ${transactionError.message}`);
+          setSubmitting(false);
+          return;
+        }
       }
 
       // Update client total points
-      const newTotal = currentPoints + points;
       const { error: updateClientError } = await supabase
         .from("customer_points_clients")
         .update({
@@ -383,8 +436,7 @@ export default function CustomerPointsSalespersonForm() {
 
       if (updateClientError) {
         console.error("Client update error:", updateClientError);
-        toast.error(`Pontos lançados, mas falhou ao atualizar saldo: ${updateClientError.message}`);
-        // Still show success since the transaction was recorded
+        toast.error(`Operação registrada, mas falhou ao atualizar saldo: ${updateClientError.message}`);
       }
 
       setPointsEarned(points);
@@ -407,6 +459,9 @@ export default function CustomerPointsSalespersonForm() {
     setClientEmail("");
     setSelectedRuleId("");
     setTransactionValue("");
+    setRedeemPoints("");
+    setRedeemDescription("");
+    setMode("add");
     setStep("form");
   };
 
@@ -625,8 +680,37 @@ export default function CustomerPointsSalespersonForm() {
                   </motion.div>
                 )}
 
-                {/* Points Selection - Only show after client is found/created */}
-                {clientSearched && (
+                {/* Mode Toggle - Only show after client is found */}
+                {clientSearched && searchedClient && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex gap-2"
+                  >
+                    <Button
+                      variant={mode === "add" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setMode("add")}
+                      className="flex-1 gap-2"
+                    >
+                      <Coins className="h-4 w-4" />
+                      Adicionar
+                    </Button>
+                    <Button
+                      variant={mode === "redeem" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setMode("redeem")}
+                      className="flex-1 gap-2"
+                      disabled={searchedClient.total_points === 0}
+                    >
+                      <Gift className="h-4 w-4" />
+                      Resgatar
+                    </Button>
+                  </motion.div>
+                )}
+
+                {/* Add Points - Only show after client is found/created */}
+                {clientSearched && mode === "add" && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -688,13 +772,64 @@ export default function CustomerPointsSalespersonForm() {
                     <Button
                       onClick={handleSubmit}
                       disabled={submitting || !selectedRuleId || (isNewClient && !clientName.trim())}
-                      className="w-full"
+                      className="w-full gap-2"
                       size="lg"
                     >
                       {submitting ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
                       ) : (
-                        "Registrar Pontos"
+                        <>
+                          <Coins className="h-5 w-5" />
+                          Registrar Pontos
+                        </>
+                      )}
+                    </Button>
+                  </motion.div>
+                )}
+
+                {/* Redeem Points - Only show for existing clients with points */}
+                {clientSearched && searchedClient && mode === "redeem" && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-4 pt-2"
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="redeemPoints">Quantidade de pontos a resgatar *</Label>
+                      <Input
+                        id="redeemPoints"
+                        type="number"
+                        min="1"
+                        max={searchedClient.total_points}
+                        value={redeemPoints}
+                        onChange={(e) => setRedeemPoints(e.target.value)}
+                        placeholder={`Máximo: ${searchedClient.total_points.toLocaleString()}`}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="redeemDescription">Descrição / Motivo</Label>
+                      <Input
+                        id="redeemDescription"
+                        value={redeemDescription}
+                        onChange={(e) => setRedeemDescription(e.target.value)}
+                        placeholder="Ex: Desconto de R$ 50,00"
+                      />
+                    </div>
+
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={submitting || !redeemPoints || parseInt(redeemPoints) <= 0}
+                      className="w-full gap-2"
+                      size="lg"
+                    >
+                      {submitting ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Gift className="h-5 w-5" />
+                          Resgatar {redeemPoints ? parseInt(redeemPoints).toLocaleString() : 0} pontos
+                        </>
                       )}
                     </Button>
                   </motion.div>
@@ -714,13 +849,23 @@ export default function CustomerPointsSalespersonForm() {
           >
             <Card>
               <CardContent className="pt-6 text-center space-y-4">
-                <div className="mx-auto h-20 w-20 rounded-full bg-green-100 flex items-center justify-center">
-                  <CheckCircle2 className="h-12 w-12 text-green-600" />
+                <div className={`mx-auto h-20 w-20 rounded-full flex items-center justify-center ${mode === "redeem" ? "bg-orange-100" : "bg-green-100"}`}>
+                  {mode === "redeem" ? (
+                    <Gift className="h-12 w-12 text-orange-600" />
+                  ) : (
+                    <CheckCircle2 className="h-12 w-12 text-green-600" />
+                  )}
                 </div>
-                <h2 className="text-2xl font-bold">Pontos Registrados!</h2>
-                <div className="bg-primary/10 rounded-lg p-4">
-                  <p className="text-4xl font-bold text-primary">+{pointsEarned}</p>
-                  <p className="text-sm text-muted-foreground">pontos adicionados</p>
+                <h2 className="text-2xl font-bold">
+                  {mode === "redeem" ? "Pontos Resgatados!" : "Pontos Registrados!"}
+                </h2>
+                <div className={`rounded-lg p-4 ${mode === "redeem" ? "bg-orange-100" : "bg-primary/10"}`}>
+                  <p className={`text-4xl font-bold ${mode === "redeem" ? "text-orange-600" : "text-primary"}`}>
+                    {mode === "redeem" ? `-${pointsEarned}` : `+${pointsEarned}`}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {mode === "redeem" ? "pontos resgatados" : "pontos adicionados"}
+                  </p>
                 </div>
                 <p className="text-muted-foreground">
                   Novo saldo: <span className="font-semibold text-foreground">{newTotalPoints} pontos</span>
