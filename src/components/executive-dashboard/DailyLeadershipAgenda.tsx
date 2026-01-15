@@ -30,13 +30,15 @@ import {
   BarChart3,
   Sparkles,
   FileText,
-  CalendarClock
+  CalendarClock,
+  NotebookPen
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { LeadershipMeetingNotesDialog } from "./LeadershipMeetingNotesDialog";
 
 interface ConsultantSummary {
   id: string;
@@ -535,6 +537,19 @@ export function DailyLeadershipAgenda() {
           </motion.p>
         </div>
         <div className="flex items-center gap-3">
+          <LeadershipMeetingNotesDialog 
+            meetingType="leadership"
+            trigger={
+              <Button 
+                variant="default" 
+                size="sm" 
+                className="bg-primary hover:bg-primary/90 gap-2"
+              >
+                <NotebookPen className="h-4 w-4" />
+                Anotações
+              </Button>
+            }
+          />
           <Button 
             variant="outline" 
             size="sm" 

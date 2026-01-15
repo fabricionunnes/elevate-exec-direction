@@ -4449,6 +4449,66 @@ export type Database = {
           },
         ]
       }
+      leadership_meeting_notes: {
+        Row: {
+          action_items: Json | null
+          attendees: Json | null
+          consultant_id: string | null
+          created_at: string
+          created_by: string | null
+          decisions: string | null
+          id: string
+          meeting_date: string
+          meeting_type: string
+          next_steps: string | null
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          action_items?: Json | null
+          attendees?: Json | null
+          consultant_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decisions?: string | null
+          id?: string
+          meeting_date?: string
+          meeting_type: string
+          next_steps?: string | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action_items?: Json | null
+          attendees?: Json | null
+          consultant_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decisions?: string | null
+          id?: string
+          meeting_date?: string
+          meeting_type?: string
+          next_steps?: string | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leadership_meeting_notes_consultant_id_fkey"
+            columns: ["consultant_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leadership_meeting_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mastermind_applications: {
         Row: {
           agrees_confidentiality: boolean
