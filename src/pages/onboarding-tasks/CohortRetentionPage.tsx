@@ -40,11 +40,54 @@ export default function CohortRetentionPage() {
     retentionRate: 0,
     avgLifetime: 0
   });
+  
+  // Staff state for consultant filtering
+  const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [isConsultant, setIsConsultant] = useState(false);
 
   useEffect(() => {
-    fetchFilters();
-    fetchOverallStats();
+    checkUserPermissions();
   }, []);
+
+  useEffect(() => {
+    if (currentUserRole !== null) {
+      fetchFilters();
+      fetchOverallStats();
+      
+      // Auto-filter to consultant's own data
+      if (isConsultant && currentStaffId) {
+        setConsultantFilter(currentStaffId);
+      }
+    }
+  }, [currentUserRole, currentStaffId, isConsultant]);
+
+  const checkUserPermissions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: staffMember } = await supabase
+          .from("onboarding_staff")
+          .select("id, role")
+          .eq("user_id", user.id)
+          .single();
+
+        if (staffMember) {
+          const normalizedRole = (staffMember.role || "").trim().toLowerCase();
+          setCurrentUserRole(normalizedRole);
+          setCurrentStaffId(staffMember.id);
+          setIsConsultant(normalizedRole === 'consultant');
+        } else {
+          setCurrentUserRole("");
+        }
+      } else {
+        setCurrentUserRole("");
+      }
+    } catch (error) {
+      console.error("Error checking permissions:", error);
+      setCurrentUserRole("");
+    }
+  };
 
   const fetchFilters = async () => {
     try {
@@ -75,19 +118,39 @@ export default function CohortRetentionPage() {
 
   const fetchOverallStats = async () => {
     try {
-      const { data: projects } = await supabase
+      let query = supabase
         .from('onboarding_projects')
-        .select('status, start_date, end_date')
+        .select('status, start_date, end_date, consultant_id, cs_id, onboarding_company_id')
         .not('start_date', 'is', null);
+
+      const { data: projects } = await query;
 
       if (!projects) return;
 
-      const active = projects.filter((p: any) => p.status === 'active').length;
-      const churned = projects.filter((p: any) => p.status === 'churned' || p.status === 'cancelled').length;
-      const total = projects.length;
+      // Filter for consultants
+      let filteredProjects = projects;
+      if (isConsultant && currentStaffId) {
+        // Get companies linked to this consultant
+        const { data: companies } = await supabase
+          .from('onboarding_companies')
+          .select('id')
+          .or(`consultant_id.eq.${currentStaffId},cs_id.eq.${currentStaffId}`);
+        
+        const companyIds = new Set((companies || []).map((c: any) => c.id));
+        
+        filteredProjects = projects.filter((p: any) => 
+          p.consultant_id === currentStaffId ||
+          p.cs_id === currentStaffId ||
+          companyIds.has(p.onboarding_company_id)
+        );
+      }
+
+      const active = filteredProjects.filter((p: any) => p.status === 'active').length;
+      const churned = filteredProjects.filter((p: any) => p.status === 'churned' || p.status === 'cancelled' || p.status === 'closed').length;
+      const total = filteredProjects.length;
 
       // Calculate average lifetime in months
-      const completedProjects = projects.filter((p: any) => p.end_date);
+      const completedProjects = filteredProjects.filter((p: any) => p.end_date);
       let avgLifetime = 0;
       if (completedProjects.length > 0) {
         const totalMonths = completedProjects.reduce((acc: number, p: any) => {
@@ -204,17 +267,20 @@ export default function CohortRetentionPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={consultantFilter} onValueChange={setConsultantFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filtrar por consultor" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os consultores</SelectItem>
-            {consultants.map(c => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Hide consultant filter for consultants - they only see their own data */}
+        {!isConsultant && (
+          <Select value={consultantFilter} onValueChange={setConsultantFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filtrar por consultor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os consultores</SelectItem>
+              {consultants.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Main Content */}

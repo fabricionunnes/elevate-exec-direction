@@ -68,11 +68,47 @@ export default function ChurnPredictionPage() {
   const [selectedPlaybookProjectId, setSelectedPlaybookProjectId] = useState<string | null>(null);
   const [selectedPlaybookCompanyName, setSelectedPlaybookCompanyName] = useState<string>("");
   const [playbookStatuses, setPlaybookStatuses] = useState<Record<string, string>>({});
+  
+  // Staff state for consultant filtering
+  const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPredictions();
-    fetchPlaybookStatuses();
+    checkUserPermissions();
   }, []);
+
+  useEffect(() => {
+    if (currentUserRole !== null) {
+      fetchPredictions();
+      fetchPlaybookStatuses();
+    }
+  }, [currentUserRole, currentStaffId]);
+
+  const checkUserPermissions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: staffMember } = await supabase
+          .from("onboarding_staff")
+          .select("id, role")
+          .eq("user_id", user.id)
+          .single();
+
+        if (staffMember) {
+          const normalizedRole = (staffMember.role || "").trim().toLowerCase();
+          setCurrentUserRole(normalizedRole);
+          setCurrentStaffId(staffMember.id);
+        } else {
+          setCurrentUserRole("");
+        }
+      } else {
+        setCurrentUserRole("");
+      }
+    } catch (error) {
+      console.error("Error checking permissions:", error);
+      setCurrentUserRole("");
+    }
+  };
   
   const fetchPlaybookStatuses = async () => {
     try {
@@ -104,7 +140,9 @@ export default function ChurnPredictionPage() {
           onboarding_projects!inner(
             status,
             product_name,
-            onboarding_companies!inner(name)
+            consultant_id,
+            cs_id,
+            onboarding_companies!inner(name, consultant_id, cs_id)
           )
         `)
         .eq('prediction_date', today)
@@ -113,7 +151,23 @@ export default function ChurnPredictionPage() {
 
       if (error) throw error;
 
-      const formattedPredictions = (data || []).map((p: any) => ({
+      let filteredData = data || [];
+      
+      // If consultant, filter to only their companies/projects
+      if (currentUserRole === 'consultant' && currentStaffId) {
+        filteredData = filteredData.filter((p: any) => {
+          const project = p.onboarding_projects;
+          const company = project?.onboarding_companies;
+          return (
+            project?.consultant_id === currentStaffId ||
+            project?.cs_id === currentStaffId ||
+            company?.consultant_id === currentStaffId ||
+            company?.cs_id === currentStaffId
+          );
+        });
+      }
+
+      const formattedPredictions = filteredData.map((p: any) => ({
         ...p,
         company_name: p.onboarding_projects?.onboarding_companies?.name,
         product_name: p.onboarding_projects?.product_name
