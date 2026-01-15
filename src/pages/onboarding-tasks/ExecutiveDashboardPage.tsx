@@ -264,6 +264,15 @@ export default function ExecutiveDashboardPage() {
     fetchData();
   }, [period]);
 
+  // Listen for tab switch event from DailyLeadershipAgenda
+  useEffect(() => {
+    const handleSwitchToOneOnOne = () => {
+      setActiveTab("oneOnOne");
+    };
+    window.addEventListener('switchToOneOnOneTab', handleSwitchToOneOnOne);
+    return () => window.removeEventListener('switchToOneOnOneTab', handleSwitchToOneOnOne);
+  }, []);
+
   const handleRefresh = () => {
     setRefreshing(true);
     fetchData();

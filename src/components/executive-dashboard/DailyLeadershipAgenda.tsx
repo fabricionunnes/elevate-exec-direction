@@ -288,8 +288,9 @@ export function DailyLeadershipAgenda() {
   };
 
   const handleSelectConsultant = (consultantId: string) => {
-    // Dispatch event to select consultant in the 1:1 panel
+    // Dispatch event to select consultant in the 1:1 panel AND switch to the 1:1 tab
     window.dispatchEvent(new CustomEvent('selectConsultant', { detail: consultantId }));
+    window.dispatchEvent(new CustomEvent('switchToOneOnOneTab'));
   };
 
   if (loading) {
