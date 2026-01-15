@@ -107,6 +107,15 @@ import {
   CRMSettingsPage,
 } from "./pages/crm";
 
+// Customer Points Pages
+import CustomerPointsLayout from "./pages/customer-points/CustomerPointsLayout";
+import CustomerPointsDashboard from "./pages/customer-points/CustomerPointsDashboard";
+import CustomerPointsClients from "./pages/customer-points/CustomerPointsClients";
+import CustomerPointsRules from "./pages/customer-points/CustomerPointsRules";
+import CustomerPointsTransactions from "./pages/customer-points/CustomerPointsTransactions";
+import CustomerPointsQRCodes from "./pages/customer-points/CustomerPointsQRCodes";
+import CustomerPointsPublicForm from "./pages/customer-points/CustomerPointsPublicForm";
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -209,6 +218,18 @@ const App = () => (
             <Route path="/360" element={<Assessment360Page />} />
             <Route path="/avaliacao" element={<UnifiedAssessmentPage />} />
             <Route path="/onboarding-tasks/:projectId/reports" element={<AssessmentReportsPage />} />
+            
+            {/* Customer Points - Public */}
+            <Route path="/points" element={<CustomerPointsPublicForm />} />
+            
+            {/* Customer Points - Client Area */}
+            <Route path="/customer-points/:companyId" element={<CustomerPointsLayout />}>
+              <Route index element={<CustomerPointsDashboard />} />
+              <Route path="clients" element={<CustomerPointsClients />} />
+              <Route path="rules" element={<CustomerPointsRules />} />
+              <Route path="transactions" element={<CustomerPointsTransactions />} />
+              <Route path="qr-codes" element={<CustomerPointsQRCodes />} />
+            </Route>
             
             {/* CRM Comercial */}
             <Route path="/crm" element={<CRMLayout />}>
