@@ -64,7 +64,8 @@ export const PendingMeetingsAlert = () => {
 
       if (!staff) return;
 
-      // Fetch unfinalized meetings for this staff
+      // Fetch unfinalized meetings where this staff is the calendar owner
+      // Only show to the person who owns the calendar the meeting was scheduled on
       const { data, error } = await supabase
         .from("onboarding_meeting_notes")
         .select(`
@@ -82,7 +83,7 @@ export const PendingMeetingsAlert = () => {
             )
           )
         `)
-        .eq("staff_id", staff.id)
+        .eq("calendar_owner_id", staff.id)
         .eq("is_finalized", false)
         .order("meeting_date", { ascending: true });
 
