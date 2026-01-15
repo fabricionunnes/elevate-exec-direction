@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +48,11 @@ export default function CustomerPointsSalespersonTokens() {
   const [selectedSalesperson, setSelectedSalesperson] = useState<string>("");
   const [createMode, setCreateMode] = useState<"existing" | "new">("existing");
 
-  const publicDomain = typeof window !== "undefined" ? window.location.origin : "";
+  // NOTE: This table may not be present in generated DB types in some environments.
+  // We cast to any to avoid TS errors while keeping runtime behavior.
+  const sb: any = supabase;
+
+  const publicDomain = getPublicBaseUrl();
 
   useEffect(() => {
     if (companyId) {
@@ -59,14 +64,14 @@ export default function CustomerPointsSalespersonTokens() {
   const fetchTokens = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await sb
         .from("customer_points_salesperson_tokens")
         .select("*")
         .eq("company_id", companyId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setTokens(data || []);
+      setTokens((data as SalespersonToken[]) || []);
     } catch (error) {
       console.error("Error fetching tokens:", error);
       toast.error("Erro ao carregar tokens");
@@ -120,7 +125,7 @@ export default function CustomerPointsSalespersonTokens() {
 
     setSaving(true);
     try {
-      const { error } = await supabase
+      const { error } = await sb
         .from("customer_points_salesperson_tokens")
         .insert({
           company_id: companyId,
@@ -155,7 +160,7 @@ export default function CustomerPointsSalespersonTokens() {
         name: sp.name,
       }));
 
-      const { error } = await supabase
+      const { error } = await sb
         .from("customer_points_salesperson_tokens")
         .insert(inserts);
 
@@ -173,7 +178,7 @@ export default function CustomerPointsSalespersonTokens() {
 
   const toggleStatus = async (token: SalespersonToken) => {
     try {
-      const { error } = await supabase
+      const { error } = await sb
         .from("customer_points_salesperson_tokens")
         .update({ is_active: !token.is_active })
         .eq("id", token.id);
@@ -189,7 +194,7 @@ export default function CustomerPointsSalespersonTokens() {
 
   const deleteToken = async (tokenId: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await sb
         .from("customer_points_salesperson_tokens")
         .delete()
         .eq("id", tokenId);

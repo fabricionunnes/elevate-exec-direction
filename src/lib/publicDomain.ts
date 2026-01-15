@@ -5,7 +5,7 @@
  * should use this domain instead of window.location.origin to ensure
  * they work without requiring platform authentication.
  */
-export const PUBLIC_DOMAIN = "https://unvholdings.com.br";
+export const PUBLIC_DOMAIN = "https://elevate-exec-direction.lovable.app";
 
 /**
  * Get the base URL for public links.
