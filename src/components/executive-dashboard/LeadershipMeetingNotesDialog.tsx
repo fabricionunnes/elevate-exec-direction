@@ -224,13 +224,27 @@ export function LeadershipMeetingNotesDialog({
         staffId = staff?.id;
       }
 
+      // Auto-add pending action item if user forgot to click +
+      let finalActionItems = [...actionItems];
+      if (newActionText.trim()) {
+        const staff = staffMembers.find(s => s.id === newActionResponsibleId);
+        finalActionItems.push({
+          id: crypto.randomUUID(),
+          text: newActionText.trim(),
+          responsible_id: newActionResponsibleId || undefined,
+          responsible_name: staff?.name || undefined,
+          due_date: newActionDueDate ? format(newActionDueDate, "yyyy-MM-dd") : undefined,
+          done: false
+        });
+      }
+
       const noteData = {
         meeting_date: format(new Date(), "yyyy-MM-dd"),
         meeting_type: meetingType as string,
         consultant_id: meetingType === 'one_on_one' ? consultantId : null,
         notes: notes.trim(),
         decisions: decisions.trim() || null,
-        action_items: JSON.parse(JSON.stringify(actionItems)) as Json,
+        action_items: JSON.parse(JSON.stringify(finalActionItems)) as Json,
         next_steps: nextSteps.trim() || null,
         attendees: attendees.split(',').map(a => a.trim()).filter(Boolean) as Json,
         created_by: staffId
