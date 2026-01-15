@@ -280,6 +280,7 @@ export default function CustomerPointsClients() {
         .insert({
           client_id: redeemingClient.id,
           company_id: companyId,
+          cpf: redeemingClient.cpf,
           points: -pointsToRedeem, // Negative to subtract
           source: "redemption",
           form_responses: {
