@@ -33,9 +33,18 @@ interface BriefingContent {
   pending_items: string;
   goal_status: string;
   attention_points: string;
-  suggested_agenda: string;
+  suggested_agenda: string | string[];
   talking_points: string[];
 }
+
+// Helper to ensure a value is a string for ReactMarkdown
+const ensureString = (value: string | string[] | undefined): string => {
+  if (!value) return '';
+  if (Array.isArray(value)) {
+    return value.map((item, i) => `${i + 1}. ${item}`).join('\n');
+  }
+  return value;
+};
 
 interface MeetingBriefing {
   id: string;
@@ -245,7 +254,7 @@ export const MeetingBriefingSheet = ({
                     Pauta Sugerida
                   </h3>
                   <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
-                    <ReactMarkdown>{parsedContent.suggested_agenda}</ReactMarkdown>
+                    <ReactMarkdown>{ensureString(parsedContent.suggested_agenda)}</ReactMarkdown>
                   </div>
                 </div>
               )}
