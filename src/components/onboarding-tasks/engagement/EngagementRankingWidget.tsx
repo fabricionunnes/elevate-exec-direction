@@ -37,7 +37,7 @@ export const EngagementRankingWidget = () => {
           onboarding_staff!inner(name, role)
         `)
         .in("onboarding_staff.role", ["cs", "consultant"])
-        .order("rank_position", { ascending: true })
+        .order("total_score", { ascending: false })
         .limit(5);
 
       if (error) throw error;

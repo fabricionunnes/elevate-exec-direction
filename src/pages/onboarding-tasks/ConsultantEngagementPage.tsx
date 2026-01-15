@@ -52,9 +52,10 @@ export default function ConsultantEngagementPage() {
         .from("consultant_engagement_scores")
         .select(`
           *,
-          onboarding_staff!inner(name)
+          onboarding_staff!inner(name, role)
         `)
-        .order("rank_position", { ascending: true });
+        .in("onboarding_staff.role", ["cs", "consultant"])
+        .order("total_score", { ascending: false });
 
       if (error) throw error;
 
