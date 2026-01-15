@@ -33,11 +33,13 @@ interface Salesperson {
 
 export default function CustomerPointsSalespersonForm() {
   const [searchParams] = useSearchParams();
-  const companyId = searchParams.get("company");
+  const companyIdParam = searchParams.get("company");
+  const tokenParam = searchParams.get("token");
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyValid, setCompanyValid] = useState(false);
   const [rules, setRules] = useState<Rule[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
@@ -67,20 +69,54 @@ export default function CustomerPointsSalespersonForm() {
   const [newTotalPoints, setNewTotalPoints] = useState(0);
 
   useEffect(() => {
-    const loadCompanyData = async () => {
-      if (!companyId) {
+    const loadData = async () => {
+      let resolvedCompanyId: string | null = companyIdParam;
+      let presetSalespersonName: string | null = null;
+
+      // If using old token format, resolve company_id from token
+      if (!resolvedCompanyId && tokenParam) {
+        try {
+          // Cast to any since this table may not be in generated types
+          const sb: any = supabase;
+          const { data: tokenData, error: tokenError } = await sb
+            .from("customer_points_salesperson_tokens")
+            .select("company_id, name, is_active")
+            .eq("access_token", tokenParam)
+            .maybeSingle();
+
+          if (tokenError || !tokenData || !tokenData.is_active) {
+            setErrorMessage("Link inválido ou desativado");
+            setStep("error");
+            setLoading(false);
+            return;
+          }
+
+          resolvedCompanyId = tokenData.company_id;
+          presetSalespersonName = tokenData.name;
+        } catch (error) {
+          console.error("Error loading token:", error);
+          setErrorMessage("Erro ao carregar dados");
+          setStep("error");
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (!resolvedCompanyId) {
         setErrorMessage("Link inválido");
         setStep("error");
         setLoading(false);
         return;
       }
 
+      setCompanyId(resolvedCompanyId);
+
       try {
         // Verify company has points config
         const { data: config, error: configError } = await supabase
           .from("customer_points_config")
           .select("id, is_active")
-          .eq("company_id", companyId)
+          .eq("company_id", resolvedCompanyId)
           .maybeSingle();
 
         if (configError || !config || !config.is_active) {
@@ -96,7 +132,7 @@ export default function CustomerPointsSalespersonForm() {
         const { data: rulesData } = await supabase
           .from("customer_points_rules")
           .select("*")
-          .eq("company_id", companyId)
+          .eq("company_id", resolvedCompanyId)
           .eq("is_active", true)
           .order("sort_order");
 
@@ -106,11 +142,17 @@ export default function CustomerPointsSalespersonForm() {
         const { data: salespeopleData } = await supabase
           .from("company_salespeople")
           .select("id, name")
-          .eq("company_id", companyId)
+          .eq("company_id", resolvedCompanyId)
           .eq("is_active", true)
           .order("name");
 
         setSalespeople(salespeopleData || []);
+
+        // If we got salesperson name from token, skip identify step
+        if (presetSalespersonName) {
+          setConfirmedSalespersonName(presetSalespersonName);
+          setStep("form");
+        }
       } catch (error) {
         console.error("Error loading company:", error);
         setErrorMessage("Erro ao carregar dados");
@@ -120,8 +162,8 @@ export default function CustomerPointsSalespersonForm() {
       }
     };
 
-    loadCompanyData();
-  }, [companyId]);
+    loadData();
+  }, [companyIdParam, tokenParam]);
 
   const formatCPF = (value: string) => {
     const digits = value.replace(/\D/g, "");
