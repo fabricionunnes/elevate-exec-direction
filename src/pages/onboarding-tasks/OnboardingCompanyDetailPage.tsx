@@ -40,6 +40,7 @@ import {
   FolderOpen,
   ExternalLink,
   UserCircle,
+  Trophy,
 } from "lucide-react";
 import { format } from "date-fns";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
@@ -444,6 +445,12 @@ const OnboardingCompanyDetailPage = () => {
                 <Target className="h-4 w-4" />
                 Briefing & Metas
               </TabsTrigger>
+              {!isNew && (
+                <TabsTrigger value="points" className="gap-2">
+                  <Trophy className="h-4 w-4" />
+                  Pontuação
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Info Tab */}
@@ -828,6 +835,71 @@ const OnboardingCompanyDetailPage = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Points Tab */}
+            {!isNew && companyId && (
+              <TabsContent value="points">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Trophy className="h-5 w-5 text-primary" />
+                          Pontuação de Clientes
+                        </CardTitle>
+                        <CardDescription>
+                          Gerencie o sistema de pontuação e gamificação para clientes finais desta empresa
+                        </CardDescription>
+                      </div>
+                      <Button 
+                        type="button"
+                        onClick={() => navigate(`/customer-points/${companyId}`)}
+                      >
+                        <Trophy className="h-4 w-4 mr-2" />
+                        Acessar Módulo
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <Card className="bg-muted/50">
+                        <CardContent className="pt-4">
+                          <div className="text-center">
+                            <Trophy className="h-8 w-8 text-primary mx-auto mb-2" />
+                            <h3 className="font-semibold">Dashboard</h3>
+                            <p className="text-sm text-muted-foreground">
+                              Visualize ranking e pontuação
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-muted/50">
+                        <CardContent className="pt-4">
+                          <div className="text-center">
+                            <Users className="h-8 w-8 text-primary mx-auto mb-2" />
+                            <h3 className="font-semibold">Clientes Finais</h3>
+                            <p className="text-sm text-muted-foreground">
+                              Cadastre e gerencie clientes
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-muted/50">
+                        <CardContent className="pt-4">
+                          <div className="text-center">
+                            <ExternalLink className="h-8 w-8 text-primary mx-auto mb-2" />
+                            <h3 className="font-semibold">QR Codes</h3>
+                            <p className="text-sm text-muted-foreground">
+                              Crie campanhas com QR Code
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
 
           </Tabs>
         </form>
