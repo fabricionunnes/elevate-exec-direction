@@ -35,7 +35,8 @@ import {
   Flame,
   Lightbulb,
   Copy,
-  Check
+  Check,
+  NotebookPen
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInDays } from "date-fns";
@@ -44,6 +45,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { CompanyBriefingCard } from "./CompanyBriefingCard";
 import { toast } from "sonner";
+import { LeadershipMeetingNotesDialog } from "./LeadershipMeetingNotesDialog";
 
 interface Consultant {
   id: string;
@@ -702,15 +704,32 @@ export function ConsultantOneOnOnePanel() {
                         </p>
                       </div>
                     </CardTitle>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={copyAgendaToClipboard}
-                      className="gap-2"
-                    >
-                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                      {copied ? 'Copiado!' : 'Copiar Pauta'}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <LeadershipMeetingNotesDialog 
+                        meetingType="one_on_one"
+                        consultantId={selectedConsultant}
+                        consultantName={selectedConsultantData?.name}
+                        trigger={
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            className="bg-primary hover:bg-primary/90 gap-2"
+                          >
+                            <NotebookPen className="h-4 w-4" />
+                            Anotações
+                          </Button>
+                        }
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={copyAgendaToClipboard}
+                        className="gap-2"
+                      >
+                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        {copied ? 'Copiado!' : 'Copiar Pauta'}
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
