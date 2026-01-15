@@ -31,6 +31,11 @@ import {
   History,
   TrendingUp,
   Sparkles,
+  Upload,
+  Download,
+  Trash2,
+  Loader2,
+  File,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -146,10 +151,15 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
   const [formData, setFormData] = useState<Partial<CompanyData>>({});
   const [showKickoffForm, setShowKickoffForm] = useState(false);
   const [showStrategicPlanning, setShowStrategicPlanning] = useState(false);
+  
+  // Contract documents state
+  const [contractDocuments, setContractDocuments] = useState<any[]>([]);
+  const [uploadingContract, setUploadingContract] = useState(false);
   useEffect(() => {
     if (companyId) {
       fetchCompanyData();
       fetchSalesHistory();
+      fetchContractDocuments();
     } else {
       setLoading(false);
     }
@@ -224,6 +234,130 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
     } catch (error: any) {
       console.error("Error fetching CAC forms:", error);
     }
+  };
+
+  const fetchContractDocuments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("onboarding_documents")
+        .select(`
+          id, file_name, file_path, file_size, file_type, created_at,
+          uploader:onboarding_users(name)
+        `)
+        .eq("company_id", companyId)
+        .eq("category", "contract")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setContractDocuments(data || []);
+    } catch (error: any) {
+      console.error("Error fetching contract documents:", error);
+    }
+  };
+
+  const handleContractUpload = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Arquivo muito grande (máx. 10MB)");
+      return;
+    }
+
+    setUploadingContract(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Get onboarding user or staff user
+      const { data: onboardingUser } = await supabase
+        .from("onboarding_users")
+        .select("id")
+        .eq("user_id", user?.id)
+        .maybeSingle();
+
+      // Sanitize file name
+      const sanitizedName = file.name
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9._-]/g, "_");
+      
+      const filePath = `${companyId}/contracts/${Date.now()}_${sanitizedName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("onboarding-documents")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { error: docError } = await supabase
+        .from("onboarding_documents")
+        .insert({
+          company_id: companyId,
+          file_name: file.name,
+          file_path: filePath,
+          file_size: file.size,
+          file_type: file.type,
+          category: "contract",
+          uploaded_by: onboardingUser?.id || null,
+        });
+
+      if (docError) throw docError;
+
+      toast.success("Contrato anexado com sucesso");
+      fetchContractDocuments();
+    } catch (error: any) {
+      console.error("Error uploading contract:", error);
+      toast.error("Erro ao anexar contrato");
+    } finally {
+      setUploadingContract(false);
+    }
+  };
+
+  const handleContractDownload = async (doc: any) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("onboarding-documents")
+        .download(doc.file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.file_name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error("Error downloading contract:", error);
+      toast.error("Erro ao baixar contrato");
+    }
+  };
+
+  const handleContractDelete = async (doc: any) => {
+    if (!confirm(`Tem certeza que deseja excluir "${doc.file_name}"?`)) return;
+
+    try {
+      await supabase.storage
+        .from("onboarding-documents")
+        .remove([doc.file_path]);
+
+      await supabase
+        .from("onboarding_documents")
+        .delete()
+        .eq("id", doc.id);
+
+      toast.success("Contrato excluído");
+      fetchContractDocuments();
+    } catch (error: any) {
+      console.error("Error deleting contract:", error);
+      toast.error("Erro ao excluir contrato");
+    }
+  };
+
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return "-";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const handleSave = async () => {
@@ -913,6 +1047,91 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
               </>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Anexo de Contrato */}
+      <Card>
+        <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+          <CardTitle className="flex items-center justify-between text-base sm:text-lg">
+            <div className="flex items-center gap-2">
+              <File className="h-4 w-4 sm:h-5 sm:w-5" />
+              Contrato em PDF
+            </div>
+            {canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={uploadingContract}
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = ".pdf,.doc,.docx";
+                  input.onchange = (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (file) handleContractUpload(file);
+                  };
+                  input.click();
+                }}
+                className="h-8 text-xs sm:text-sm"
+              >
+                {uploadingContract ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Upload className="h-4 w-4 mr-2" />
+                )}
+                {uploadingContract ? "Enviando..." : "Anexar Contrato"}
+              </Button>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-6">
+          {contractDocuments.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <File className="h-10 w-10 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Nenhum contrato anexado</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {contractDocuments.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText className="h-5 w-5 text-red-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{doc.file_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(doc.file_size)} • {format(new Date(doc.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                        {doc.uploader?.name && ` • ${doc.uploader.name}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleContractDownload(doc)}
+                      className="h-8 w-8"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleContractDelete(doc)}
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
