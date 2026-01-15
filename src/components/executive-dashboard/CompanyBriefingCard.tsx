@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { 
   Building2, 
   Calendar, 
@@ -11,10 +12,20 @@ import {
   TrendingDown,
   MessageSquare,
   ExternalLink,
-  Sparkles
+  Sparkles,
+  Clock,
+  Users,
+  Phone,
+  FileText,
+  Lightbulb,
+  ArrowRight,
+  Flag,
+  Zap
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { format, differenceInDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface CompanyBriefingCardProps {
   project: {
@@ -29,11 +40,20 @@ interface CompanyBriefingCardProps {
     next_action?: string;
     ai_insight?: string;
     days_since_meeting?: number;
+    segment?: string;
+    contract_value?: number;
+    renewal_date?: string;
+    main_contact?: string;
+    last_nps_feedback?: string;
+    pending_support_tickets?: number;
+    completed_tasks_this_month?: number;
+    total_tasks_this_month?: number;
   };
   index: number;
+  expanded?: boolean;
 }
 
-export function CompanyBriefingCard({ project, index }: CompanyBriefingCardProps) {
+export function CompanyBriefingCard({ project, index, expanded = true }: CompanyBriefingCardProps) {
   const navigate = useNavigate();
 
   const getHealthColor = (score: number) => {
@@ -48,14 +68,136 @@ export function CompanyBriefingCard({ project, index }: CompanyBriefingCardProps
     return "bg-red-500/10 border-red-500/20";
   };
 
+  const getHealthTextColor = (score: number) => {
+    if (score >= 70) return "text-emerald-400";
+    if (score >= 40) return "text-amber-400";
+    return "text-red-400";
+  };
+
   const getNPSBadge = (score?: number) => {
     if (score === undefined || score === null) return null;
-    if (score >= 9) return { label: "Promotor", variant: "default" as const, className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" };
-    if (score >= 7) return { label: "Neutro", variant: "secondary" as const, className: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
-    return { label: "Detrator", variant: "destructive" as const, className: "bg-red-500/20 text-red-400 border-red-500/30" };
+    if (score >= 9) return { label: "Promotor", className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" };
+    if (score >= 7) return { label: "Neutro", className: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
+    return { label: "Detrator", className: "bg-red-500/20 text-red-400 border-red-500/30" };
   };
 
   const npsBadge = getNPSBadge(project.nps_score);
+
+  // Generate talking points based on project data
+  const getTalkingPoints = () => {
+    const points: { type: 'warning' | 'success' | 'info' | 'action'; text: string }[] = [];
+    
+    // Health score issues
+    if (project.health_score < 40) {
+      points.push({ type: 'warning', text: `Health Score crítico (${project.health_score}). Investigar causas raiz e definir plano de ação imediato.` });
+    } else if (project.health_score < 60) {
+      points.push({ type: 'warning', text: `Health Score abaixo do ideal (${project.health_score}). Revisar métricas que estão impactando.` });
+    }
+
+    // Goal projection
+    if (project.goal_projection !== undefined) {
+      if (project.goal_projection < 50) {
+        points.push({ type: 'warning', text: `Meta do mês em apenas ${project.goal_projection.toFixed(0)}%. Discutir estratégias de aceleração.` });
+      } else if (project.goal_projection >= 100) {
+        points.push({ type: 'success', text: `Meta atingida (${project.goal_projection.toFixed(0)}%)! Avaliar se há espaço para aumentar objetivos.` });
+      }
+    }
+
+    // Meeting frequency
+    if (project.days_since_meeting !== undefined) {
+      if (project.days_since_meeting > 14) {
+        points.push({ type: 'action', text: `Sem reunião há ${project.days_since_meeting} dias. Agendar follow-up urgente.` });
+      } else if (project.days_since_meeting > 7) {
+        points.push({ type: 'info', text: `Última reunião há ${project.days_since_meeting} dias. Considerar próximo contato.` });
+      }
+    }
+
+    // Overdue tasks
+    if (project.overdue_tasks > 3) {
+      points.push({ type: 'warning', text: `${project.overdue_tasks} tarefas atrasadas. Priorizar resolução de blockers.` });
+    } else if (project.overdue_tasks > 0) {
+      points.push({ type: 'info', text: `${project.overdue_tasks} tarefa(s) atrasada(s). Verificar dependências.` });
+    }
+
+    // NPS
+    if (project.nps_score !== undefined) {
+      if (project.nps_score <= 6) {
+        points.push({ type: 'warning', text: `NPS detrator (${project.nps_score}). Entender insatisfação e criar plano de recuperação.` });
+      } else if (project.nps_score >= 9) {
+        points.push({ type: 'success', text: `NPS promotor (${project.nps_score}). Oportunidade de case de sucesso ou indicação.` });
+      }
+    }
+
+    // Renewal
+    if (project.renewal_date) {
+      const daysToRenewal = differenceInDays(new Date(project.renewal_date), new Date());
+      if (daysToRenewal <= 30 && daysToRenewal > 0) {
+        points.push({ type: 'action', text: `Renovação em ${daysToRenewal} dias. Iniciar conversas de renovação.` });
+      } else if (daysToRenewal <= 60 && daysToRenewal > 30) {
+        points.push({ type: 'info', text: `Renovação em ${daysToRenewal} dias. Preparar proposta de renovação.` });
+      }
+    }
+
+    // Support tickets
+    if (project.pending_support_tickets && project.pending_support_tickets > 0) {
+      points.push({ type: 'warning', text: `${project.pending_support_tickets} ticket(s) de suporte aberto(s). Verificar status.` });
+    }
+
+    return points;
+  };
+
+  // Generate suggested questions for 1:1
+  const getSuggestedQuestions = () => {
+    const questions: string[] = [];
+    
+    if (project.health_score < 60) {
+      questions.push("Qual é a principal dificuldade que você está enfrentando com esse cliente?");
+      questions.push("Existe algo que está fora do nosso controle impactando esse projeto?");
+    }
+    
+    if (project.goal_projection !== undefined && project.goal_projection < 80) {
+      questions.push("O cliente está engajado com as estratégias propostas?");
+      questions.push("O time de vendas do cliente está aplicando as metodologias?");
+    }
+    
+    if (project.days_since_meeting !== undefined && project.days_since_meeting > 7) {
+      questions.push("Houve alguma dificuldade para agendar reunião?");
+      questions.push("O cliente tem respondido às mensagens?");
+    }
+
+    if (project.nps_score !== undefined && project.nps_score <= 6) {
+      questions.push("O que o cliente mencionou como principal frustração?");
+      questions.push("Temos algum plano de ação para reverter essa percepção?");
+    }
+
+    if (questions.length === 0) {
+      questions.push("Como está a relação com esse cliente?");
+      questions.push("Há alguma oportunidade de expansão?");
+    }
+
+    return questions.slice(0, 3);
+  };
+
+  const talkingPoints = getTalkingPoints();
+  const suggestedQuestions = getSuggestedQuestions();
+
+  const getPointIcon = (type: string) => {
+    switch (type) {
+      case 'warning': return <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />;
+      case 'success': return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />;
+      case 'action': return <Zap className="h-3.5 w-3.5 text-blue-400 shrink-0" />;
+      default: return <Flag className="h-3.5 w-3.5 text-slate-400 shrink-0" />;
+    }
+  };
+
+  const getPointBg = (type: string) => {
+    switch (type) {
+      case 'warning': return 'bg-amber-500/10 border-amber-500/20';
+      case 'success': return 'bg-emerald-500/10 border-emerald-500/20';
+      case 'action': return 'bg-blue-500/10 border-blue-500/20';
+      default: return 'bg-slate-500/10 border-slate-500/20';
+    }
+  };
 
   return (
     <motion.div
@@ -63,154 +205,225 @@ export function CompanyBriefingCard({ project, index }: CompanyBriefingCardProps
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
     >
-      <Card className={`relative overflow-hidden border ${getHealthBg(project.health_score)} backdrop-blur-xl hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group`}>
-        {/* Gradient accent */}
-        <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${getHealthColor(project.health_score)}`} />
+      <Card className={`relative overflow-hidden border-2 ${getHealthBg(project.health_score)} backdrop-blur-xl hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 group`}>
+        {/* Animated gradient accent */}
+        <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${getHealthColor(project.health_score)}`}>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
+        </div>
         
-        <div className="p-4 space-y-3">
+        <div className="p-5 space-y-4">
           {/* Header */}
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg bg-gradient-to-br ${getHealthColor(project.health_score)} shadow-lg`}>
-                <Building2 className="h-4 w-4 text-white" />
+            <div className="flex items-center gap-4">
+              <div className={`p-3 rounded-xl bg-gradient-to-br ${getHealthColor(project.health_score)} shadow-lg shadow-primary/20`}>
+                <Building2 className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                <h4 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
                   {project.company_name}
                 </h4>
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="outline" className={`text-xs ${getHealthBg(project.health_score)}`}>
-                    {project.risk_level === 'critical' ? 'Crítico' : 
-                     project.risk_level === 'high' ? 'Alto' : 
-                     project.risk_level === 'medium' ? 'Médio' : 'Baixo'}
+                  <Badge variant="outline" className={`text-xs font-medium ${getHealthBg(project.health_score)}`}>
+                    {project.risk_level === 'critical' ? '🔴 Crítico' : 
+                     project.risk_level === 'high' ? '🟠 Alto' : 
+                     project.risk_level === 'medium' ? '🟡 Médio' : '🟢 Baixo'}
                   </Badge>
+                  {project.segment && (
+                    <Badge variant="secondary" className="text-xs">
+                      {project.segment}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
             
-            {/* Health Score Circle */}
+            {/* Health Score Circle - Enhanced */}
             <div className="relative">
-              <svg className="w-14 h-14 -rotate-90">
+              <div className={`absolute inset-0 blur-xl opacity-50 bg-gradient-to-br ${getHealthColor(project.health_score)}`} />
+              <svg className="w-16 h-16 -rotate-90 relative">
                 <circle
-                  cx="28"
-                  cy="28"
-                  r="24"
+                  cx="32"
+                  cy="32"
+                  r="26"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="4"
+                  strokeWidth="5"
                   className="text-muted/20"
                 />
                 <circle
-                  cx="28"
-                  cy="28"
-                  r="24"
+                  cx="32"
+                  cy="32"
+                  r="26"
                   fill="none"
                   stroke="url(#healthGradient)"
-                  strokeWidth="4"
+                  strokeWidth="5"
                   strokeLinecap="round"
-                  strokeDasharray={`${(project.health_score / 100) * 150.8} 150.8`}
+                  strokeDasharray={`${(project.health_score / 100) * 163.4} 163.4`}
                 />
                 <defs>
-                  <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <linearGradient id={`healthGradient-${project.id}`} x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stopColor={project.health_score >= 70 ? "#10b981" : project.health_score >= 40 ? "#f59e0b" : "#ef4444"} />
                     <stop offset="100%" stopColor={project.health_score >= 70 ? "#34d399" : project.health_score >= 40 ? "#fbbf24" : "#f87171"} />
                   </linearGradient>
                 </defs>
               </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">
+              <span className={`absolute inset-0 flex items-center justify-center text-lg font-bold ${getHealthTextColor(project.health_score)}`}>
                 {project.health_score}
               </span>
             </div>
           </div>
 
-          {/* Metrics Grid */}
-          <div className="grid grid-cols-2 gap-2 text-sm">
+          {/* Key Metrics Grid */}
+          <div className="grid grid-cols-4 gap-2">
             {/* Goal Projection */}
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-              <Target className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <span className="text-muted-foreground text-xs">Meta</span>
-                <div className="flex items-center gap-1">
-                  <span className={`font-medium ${(project.goal_projection || 0) >= 100 ? 'text-emerald-400' : (project.goal_projection || 0) >= 80 ? 'text-amber-400' : 'text-red-400'}`}>
-                    {project.goal_projection?.toFixed(0) || 0}%
-                  </span>
-                  {(project.goal_projection || 0) >= 100 ? 
-                    <TrendingUp className="h-3 w-3 text-emerald-400" /> : 
-                    <TrendingDown className="h-3 w-3 text-red-400" />
-                  }
-                </div>
+            <div className="p-3 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Target className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Meta</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className={`text-xl font-bold ${(project.goal_projection || 0) >= 100 ? 'text-emerald-400' : (project.goal_projection || 0) >= 80 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {project.goal_projection?.toFixed(0) || 0}%
+                </span>
+                {(project.goal_projection || 0) >= 100 ? 
+                  <TrendingUp className="h-4 w-4 text-emerald-400" /> : 
+                  <TrendingDown className="h-4 w-4 text-red-400" />
+                }
               </div>
             </div>
 
             {/* Last Meeting */}
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <span className="text-muted-foreground text-xs">Reunião</span>
-                <p className={`font-medium text-xs ${(project.days_since_meeting || 0) > 14 ? 'text-amber-400' : 'text-foreground'}`}>
-                  {project.days_since_meeting !== undefined ? 
-                    (project.days_since_meeting === 0 ? 'Hoje' : 
-                     project.days_since_meeting === 1 ? 'Ontem' : 
-                     `${project.days_since_meeting}d atrás`) : 
-                    'Sem registro'}
-                </p>
+            <div className="p-3 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Reunião</span>
               </div>
+              <p className={`text-sm font-bold ${(project.days_since_meeting || 0) > 14 ? 'text-amber-400' : (project.days_since_meeting || 0) > 7 ? 'text-slate-300' : 'text-emerald-400'}`}>
+                {project.days_since_meeting !== undefined ? 
+                  (project.days_since_meeting === 0 ? 'Hoje' : 
+                   project.days_since_meeting === 1 ? 'Ontem' : 
+                   `${project.days_since_meeting}d`) : 
+                  'N/A'}
+              </p>
             </div>
 
             {/* Overdue Tasks */}
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-              {project.overdue_tasks > 0 ? (
-                <AlertTriangle className="h-4 w-4 text-amber-400" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-              )}
-              <div>
-                <span className="text-muted-foreground text-xs">Atrasadas</span>
-                <p className={`font-medium ${project.overdue_tasks > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                  {project.overdue_tasks} tarefa{project.overdue_tasks !== 1 ? 's' : ''}
-                </p>
+            <div className="p-3 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Atrasadas</span>
               </div>
+              <p className={`text-xl font-bold ${project.overdue_tasks > 3 ? 'text-red-400' : project.overdue_tasks > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                {project.overdue_tasks}
+              </p>
             </div>
 
             {/* NPS */}
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <span className="text-muted-foreground text-xs">NPS</span>
-                <div className="flex items-center gap-1">
-                  {npsBadge ? (
-                    <Badge variant={npsBadge.variant} className={`text-xs px-1.5 py-0 ${npsBadge.className}`}>
-                      {project.nps_score} - {npsBadge.label}
-                    </Badge>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">N/A</span>
-                  )}
-                </div>
+            <div className="p-3 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50">
+              <div className="flex items-center gap-1.5 mb-1">
+                <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">NPS</span>
               </div>
+              {npsBadge ? (
+                <div className="flex items-center gap-1">
+                  <span className={`text-xl font-bold ${project.nps_score! >= 9 ? 'text-emerald-400' : project.nps_score! >= 7 ? 'text-amber-400' : 'text-red-400'}`}>
+                    {project.nps_score}
+                  </span>
+                  <span className={`text-[10px] ${npsBadge.className} px-1.5 py-0.5 rounded`}>
+                    {npsBadge.label}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">N/A</span>
+              )}
             </div>
           </div>
 
-          {/* AI Insight */}
-          {project.ai_insight && (
-            <div className="p-3 rounded-lg bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20">
-              <div className="flex items-start gap-2">
-                <Sparkles className="h-4 w-4 text-violet-400 mt-0.5 shrink-0" />
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {project.ai_insight}
-                </p>
+          {expanded && (
+            <>
+              <Separator className="bg-slate-700/50" />
+
+              {/* Talking Points */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Lightbulb className="h-4 w-4 text-amber-400" />
+                  <h5 className="text-sm font-semibold text-foreground">Pontos para Discussão</h5>
+                </div>
+                <div className="space-y-2">
+                  {talkingPoints.length > 0 ? (
+                    talkingPoints.slice(0, 4).map((point, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 + i * 0.05 }}
+                        className={`flex items-start gap-2 p-2.5 rounded-lg border ${getPointBg(point.type)}`}
+                      >
+                        {getPointIcon(point.type)}
+                        <p className="text-xs text-muted-foreground leading-relaxed">{point.text}</p>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                      <p className="text-xs text-emerald-400">Cliente saudável, sem pontos críticos para discussão.</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+
+              {/* Suggested Questions */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="h-4 w-4 text-blue-400" />
+                  <h5 className="text-sm font-semibold text-foreground">Perguntas Sugeridas</h5>
+                </div>
+                <div className="space-y-1.5">
+                  {suggestedQuestions.map((question, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 + i * 0.05 }}
+                      className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/5 hover:bg-blue-500/10 transition-colors"
+                    >
+                      <ArrowRight className="h-3 w-3 text-blue-400 shrink-0" />
+                      <p className="text-xs text-slate-300">{question}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* AI Insight */}
+              {project.ai_insight && (
+                <div className="p-4 rounded-xl bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10 border border-violet-500/20">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-violet-500/20">
+                      <Sparkles className="h-4 w-4 text-violet-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-violet-300 mb-1">Insight da IA</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {project.ai_insight}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Action Button */}
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="w-full mt-2 text-xs hover:bg-primary/10"
-            onClick={() => navigate(`/onboarding-tasks/project/${project.id}`)}
+            className="w-full bg-gradient-to-r from-primary/10 to-violet-500/10 border-primary/30 hover:border-primary/50 hover:bg-primary/20 transition-all"
+            onClick={() => navigate(`/onboarding-tasks/${project.id}`)}
           >
-            Ver Detalhes
-            <ExternalLink className="h-3 w-3 ml-2" />
+            <span className="bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent font-medium">
+              Ver Projeto Completo
+            </span>
+            <ExternalLink className="h-3.5 w-3.5 ml-2 text-primary" />
           </Button>
         </div>
       </Card>

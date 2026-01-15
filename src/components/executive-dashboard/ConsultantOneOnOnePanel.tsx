@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 import { 
   Select,
   SelectContent,
@@ -18,18 +19,30 @@ import {
   Target, 
   AlertTriangle, 
   TrendingUp,
+  TrendingDown,
   Calendar,
   CheckCircle2,
   Clock,
   Sparkles,
   FileText,
   RefreshCw,
-  ChevronRight
+  ChevronRight,
+  MessageSquare,
+  Zap,
+  Users,
+  Award,
+  ShieldCheck,
+  Flame,
+  Lightbulb,
+  Copy,
+  Check
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { CompanyBriefingCard } from "./CompanyBriefingCard";
+import { toast } from "sonner";
 
 interface Consultant {
   id: string;
@@ -40,9 +53,15 @@ interface Consultant {
 
 interface ConsultantMetrics {
   totalProjects: number;
+  criticalProjects: number;
+  atRiskProjects: number;
+  healthyProjects: number;
   avgHealthScore: number;
   engagementScore: number;
   retentionRate: number;
+  overdueTasksTotal: number;
+  meetingsThisWeek: number;
+  avgGoalProjection: number;
 }
 
 interface ProjectBriefing {
@@ -57,13 +76,18 @@ interface ProjectBriefing {
   next_action?: string;
   ai_insight?: string;
   days_since_meeting?: number;
+  segment?: string;
 }
 
-interface AgendaItem {
-  type: 'urgent' | 'attention' | 'opportunity' | 'celebrate';
+interface AgendaSection {
+  type: 'urgent' | 'attention' | 'celebrate' | 'discuss';
   title: string;
-  description: string;
-  projectId?: string;
+  items: {
+    company: string;
+    projectId: string;
+    reason: string;
+    healthScore: number;
+  }[];
 }
 
 export function ConsultantOneOnOnePanel() {
@@ -73,7 +97,8 @@ export function ConsultantOneOnOnePanel() {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [metrics, setMetrics] = useState<ConsultantMetrics | null>(null);
   const [projects, setProjects] = useState<ProjectBriefing[]>([]);
-  const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
+  const [agendaSections, setAgendaSections] = useState<AgendaSection[]>([]);
+  const [copied, setCopied] = useState(false);
 
   // Load consultants
   useEffect(() => {
@@ -115,7 +140,7 @@ export function ConsultantOneOnOnePanel() {
             id,
             company_id,
             status,
-            onboarding_companies(name),
+            onboarding_companies(name, segment),
             client_health_scores(total_score, risk_level, goals_score)
           `)
           .or(`consultant_id.eq.${selectedConsultant},cs_id.eq.${selectedConsultant}`)
@@ -123,26 +148,36 @@ export function ConsultantOneOnOnePanel() {
 
         if (projectsData) {
           // Calculate metrics
+          let criticalCount = 0;
+          let atRiskCount = 0;
+          let healthyCount = 0;
+          let totalOverdue = 0;
+          let totalGoalProjection = 0;
+          let goalsCount = 0;
+
           const scores = projectsData
             .filter(p => p.client_health_scores?.total_score)
-            .map(p => p.client_health_scores!.total_score);
+            .map(p => {
+              const score = p.client_health_scores!.total_score;
+              if (score < 40) criticalCount++;
+              else if (score < 70) atRiskCount++;
+              else healthyCount++;
+              return score;
+            });
           
           const avgHealth = scores.length > 0 
             ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
             : 0;
 
-          setMetrics({
-            totalProjects: projectsData.length,
-            avgHealthScore: avgHealth,
-            engagementScore: 0,
-            retentionRate: 0
-          });
-
           // Fetch additional data for each project
           const briefings: ProjectBriefing[] = [];
-          const agenda: AgendaItem[] = [];
+          const urgent: AgendaSection['items'] = [];
+          const attention: AgendaSection['items'] = [];
+          const celebrate: AgendaSection['items'] = [];
+          const discuss: AgendaSection['items'] = [];
 
           const today = format(new Date(), "yyyy-MM-dd");
+          const weekAgo = format(new Date(Date.now() - 7 * 86400000), "yyyy-MM-dd");
           
           for (const project of projectsData) {
             // Get overdue tasks count
@@ -152,6 +187,8 @@ export function ConsultantOneOnOnePanel() {
               .eq("project_id", project.id)
               .lt("due_date", today)
               .neq("status", "completed");
+
+            totalOverdue += overdueCount || 0;
 
             // Get last meeting
             const { data: lastMeeting } = await supabase
@@ -188,58 +225,103 @@ export function ConsultantOneOnOnePanel() {
               ? (goalData.sales_result / goalData.sales_target) * 100
               : undefined;
 
+            if (goalProjection !== undefined) {
+              totalGoalProjection += goalProjection;
+              goalsCount++;
+            }
+
             const daysSinceMeeting = lastMeeting?.meeting_date
               ? differenceInDays(new Date(), new Date(lastMeeting.meeting_date))
               : undefined;
 
             const healthScore = project.client_health_scores?.total_score || 50;
             const riskLevel = project.client_health_scores?.risk_level || 'medium';
+            const companyName = project.onboarding_companies?.name || "Empresa";
 
             briefings.push({
               id: project.id,
-              company_name: project.onboarding_companies?.name || "Empresa",
+              company_name: companyName,
               health_score: healthScore,
               risk_level: riskLevel,
               goal_projection: goalProjection,
               last_meeting_date: lastMeeting?.meeting_date,
               overdue_tasks: overdueCount || 0,
               nps_score: latestNps?.score,
-              days_since_meeting: daysSinceMeeting
+              days_since_meeting: daysSinceMeeting,
+              segment: project.onboarding_companies?.segment
             });
 
-            // Build agenda items
+            // Categorize for agenda
             if (healthScore < 40) {
-              agenda.push({
-                type: 'urgent',
-                title: project.onboarding_companies?.name || "Empresa",
-                description: `Health Score crítico (${healthScore})`,
-                projectId: project.id
+              urgent.push({
+                company: companyName,
+                projectId: project.id,
+                reason: `Health Score crítico (${healthScore})`,
+                healthScore
               });
-            } else if (healthScore < 60 || (overdueCount && overdueCount > 3)) {
-              agenda.push({
-                type: 'attention',
-                title: project.onboarding_companies?.name || "Empresa",
-                description: overdueCount && overdueCount > 3 
-                  ? `${overdueCount} tarefas atrasadas` 
-                  : `Health Score requer atenção (${healthScore})`,
-                projectId: project.id
+            } else if (healthScore < 60 || (overdueCount && overdueCount > 3) || (daysSinceMeeting && daysSinceMeeting > 14)) {
+              const reasons = [];
+              if (healthScore < 60) reasons.push(`Health Score ${healthScore}`);
+              if (overdueCount && overdueCount > 3) reasons.push(`${overdueCount} tarefas atrasadas`);
+              if (daysSinceMeeting && daysSinceMeeting > 14) reasons.push(`${daysSinceMeeting}d sem reunião`);
+              
+              attention.push({
+                company: companyName,
+                projectId: project.id,
+                reason: reasons.join(' • '),
+                healthScore
               });
-            }
-
-            if (latestNps?.score && latestNps.score >= 9) {
-              agenda.push({
-                type: 'celebrate',
-                title: project.onboarding_companies?.name || "Empresa",
-                description: `NPS Promotor (${latestNps.score})`,
-                projectId: project.id
+            } else if (healthScore >= 80 && latestNps?.score && latestNps.score >= 9) {
+              celebrate.push({
+                company: companyName,
+                projectId: project.id,
+                reason: `Health ${healthScore} • NPS ${latestNps.score}`,
+                healthScore
+              });
+            } else {
+              discuss.push({
+                company: companyName,
+                projectId: project.id,
+                reason: goalProjection ? `Meta ${goalProjection.toFixed(0)}%` : 'Alinhamento geral',
+                healthScore
               });
             }
           }
 
+          // Count meetings this week
+          const { count: meetingsCount } = await supabase
+            .from("onboarding_meeting_notes")
+            .select("id", { count: "exact", head: true })
+            .eq("staff_id", selectedConsultant)
+            .gte("meeting_date", weekAgo)
+            .lte("meeting_date", today)
+            .eq("is_finalized", true);
+
+          setMetrics({
+            totalProjects: projectsData.length,
+            criticalProjects: criticalCount,
+            atRiskProjects: atRiskCount,
+            healthyProjects: healthyCount,
+            avgHealthScore: avgHealth,
+            engagementScore: 0,
+            retentionRate: 0,
+            overdueTasksTotal: totalOverdue,
+            meetingsThisWeek: meetingsCount || 0,
+            avgGoalProjection: goalsCount > 0 ? Math.round(totalGoalProjection / goalsCount) : 0
+          });
+
+          // Build agenda sections
+          const sections: AgendaSection[] = [];
+          if (urgent.length > 0) sections.push({ type: 'urgent', title: '🚨 Urgente - Intervenção Necessária', items: urgent });
+          if (attention.length > 0) sections.push({ type: 'attention', title: '⚠️ Atenção - Monitoramento Próximo', items: attention });
+          if (celebrate.length > 0) sections.push({ type: 'celebrate', title: '🎉 Celebrar - Cases de Sucesso', items: celebrate });
+          if (discuss.length > 0) sections.push({ type: 'discuss', title: '💬 Alinhamento Geral', items: discuss.slice(0, 3) });
+          
+          setAgendaSections(sections);
+
           // Sort by health score (worst first)
           briefings.sort((a, b) => a.health_score - b.health_score);
           setProjects(briefings);
-          setAgendaItems(agenda);
         }
 
         // Fetch engagement score
@@ -251,7 +333,7 @@ export function ConsultantOneOnOnePanel() {
           .limit(1)
           .single();
 
-        if (engagementData && metrics) {
+        if (engagementData) {
           setMetrics(prev => prev ? {
             ...prev,
             engagementScore: engagementData.total_score || 0,
@@ -271,26 +353,43 @@ export function ConsultantOneOnOnePanel() {
 
   const selectedConsultantData = consultants.find(c => c.id === selectedConsultant);
 
-  const getAgendaIcon = (type: AgendaItem['type']) => {
-    switch (type) {
-      case 'urgent': return <AlertTriangle className="h-4 w-4 text-red-400" />;
-      case 'attention': return <Clock className="h-4 w-4 text-amber-400" />;
-      case 'opportunity': return <TrendingUp className="h-4 w-4 text-blue-400" />;
-      case 'celebrate': return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
-    }
+  const copyAgendaToClipboard = () => {
+    if (!selectedConsultantData || !metrics) return;
+
+    let text = `📋 PAUTA 1:1 - ${selectedConsultantData.name}\n`;
+    text += `📅 ${format(new Date(), "dd/MM/yyyy")}\n\n`;
+    
+    text += `📊 MÉTRICAS DA CARTEIRA\n`;
+    text += `• Projetos: ${metrics.totalProjects} (${metrics.criticalProjects} críticos, ${metrics.atRiskProjects} atenção, ${metrics.healthyProjects} saudáveis)\n`;
+    text += `• Saúde Média: ${metrics.avgHealthScore}\n`;
+    text += `• Tarefas Atrasadas: ${metrics.overdueTasksTotal}\n`;
+    text += `• Reuniões na Semana: ${metrics.meetingsThisWeek}\n\n`;
+
+    agendaSections.forEach(section => {
+      text += `${section.title}\n`;
+      section.items.forEach(item => {
+        text += `  → ${item.company}: ${item.reason}\n`;
+      });
+      text += '\n';
+    });
+
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success("Pauta copiada!");
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const getAgendaColor = (type: AgendaItem['type']) => {
+  const getSectionStyle = (type: AgendaSection['type']) => {
     switch (type) {
-      case 'urgent': return 'border-red-500/30 bg-red-500/10';
-      case 'attention': return 'border-amber-500/30 bg-amber-500/10';
-      case 'opportunity': return 'border-blue-500/30 bg-blue-500/10';
-      case 'celebrate': return 'border-emerald-500/30 bg-emerald-500/10';
+      case 'urgent': return { bg: 'from-red-500/20 to-red-500/5', border: 'border-red-500/40', icon: <Flame className="h-5 w-5 text-red-400" /> };
+      case 'attention': return { bg: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/40', icon: <AlertTriangle className="h-5 w-5 text-amber-400" /> };
+      case 'celebrate': return { bg: 'from-emerald-500/20 to-emerald-500/5', border: 'border-emerald-500/40', icon: <Award className="h-5 w-5 text-emerald-400" /> };
+      case 'discuss': return { bg: 'from-blue-500/20 to-blue-500/5', border: 'border-blue-500/40', icon: <MessageSquare className="h-5 w-5 text-blue-400" /> };
     }
   };
 
   if (loading) {
-    return <Skeleton className="h-96 w-full" />;
+    return <Skeleton className="h-96 w-full rounded-2xl" />;
   }
 
   return (
@@ -298,33 +397,46 @@ export function ConsultantOneOnOnePanel() {
       {/* Header with Consultant Selector */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">
-            Pauta de 1:1 com Consultor
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Selecione um consultor para ver o briefing completo
-          </p>
+          <motion.h2 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-3xl font-bold"
+          >
+            <span className="bg-gradient-to-r from-primary via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+              Pauta de 1:1 com Consultor
+            </span>
+          </motion.h2>
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="text-muted-foreground mt-1"
+          >
+            Briefing completo para direcionamento estratégico
+          </motion.p>
         </div>
         
         <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
-          <SelectTrigger className="w-[280px] bg-background/50 backdrop-blur-sm">
+          <SelectTrigger className="w-[320px] h-12 bg-gradient-to-r from-slate-900/80 to-slate-800/80 border-2 border-slate-700/50 backdrop-blur-xl">
             <SelectValue placeholder="Selecione um consultor" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-slate-900 border-slate-700">
             {consultants.map((consultant) => (
-              <SelectItem key={consultant.id} value={consultant.id}>
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
+              <SelectItem key={consultant.id} value={consultant.id} className="py-3">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8 border border-primary/30">
                     <AvatarImage src={consultant.avatar_url} />
-                    <AvatarFallback className="text-xs">
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-violet-500 text-white text-xs">
                       {consultant.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <span>{consultant.name}</span>
-                  <Badge variant="secondary" className="text-xs ml-2">
-                    {consultant.role === 'consultant' ? 'Consultor' : 
-                     consultant.role === 'cs' ? 'CS' : 'Admin'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{consultant.name}</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {consultant.role === 'consultant' ? 'Consultor' : 
+                       consultant.role === 'cs' ? 'CS' : 'Admin'}
+                    </Badge>
+                  </div>
                 </div>
               </SelectItem>
             ))}
@@ -339,10 +451,13 @@ export function ConsultantOneOnOnePanel() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center py-16 text-muted-foreground"
+            className="flex flex-col items-center justify-center py-20"
           >
-            <User className="h-16 w-16 mb-4 opacity-20" />
-            <p>Selecione um consultor para começar</p>
+            <div className="p-6 rounded-full bg-gradient-to-br from-primary/20 to-violet-500/20 mb-6">
+              <User className="h-16 w-16 text-primary/50" />
+            </div>
+            <p className="text-xl font-medium text-muted-foreground">Selecione um consultor</p>
+            <p className="text-sm text-muted-foreground mt-2">para visualizar o briefing completo da carteira</p>
           </motion.div>
         ) : loadingProjects ? (
           <motion.div
@@ -352,10 +467,12 @@ export function ConsultantOneOnOnePanel() {
             exit={{ opacity: 0 }}
             className="space-y-6"
           >
-            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-40 w-full rounded-2xl" />
+            <Skeleton className="h-60 w-full rounded-2xl" />
             <div className="grid md:grid-cols-2 gap-4">
-              <Skeleton className="h-64" />
-              <Skeleton className="h-64" />
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-64 rounded-xl" />
+              ))}
             </div>
           </motion.div>
         ) : (
@@ -367,96 +484,190 @@ export function ConsultantOneOnOnePanel() {
             className="space-y-6"
           >
             {/* Consultant Header Card */}
-            {selectedConsultantData && (
-              <Card className="bg-gradient-to-br from-primary/10 to-violet-500/10 border-primary/20 backdrop-blur-xl overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-violet-500/5" />
+            {selectedConsultantData && metrics && (
+              <Card className="relative overflow-hidden border-2 bg-gradient-to-br from-primary/10 via-violet-500/10 to-fuchsia-500/10 border-primary/30 backdrop-blur-xl">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-violet-500/5" />
+                <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-20 bg-gradient-to-br from-primary to-violet-500" />
+                
                 <CardContent className="relative p-6">
-                  <div className="flex items-center gap-6">
-                    <Avatar className="h-20 w-20 border-4 border-primary/30 shadow-xl shadow-primary/20">
-                      <AvatarImage src={selectedConsultantData.avatar_url} />
-                      <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-violet-500 text-white">
-                        {selectedConsultantData.name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <h3 className="text-2xl font-bold">{selectedConsultantData.name}</h3>
-                      <Badge variant="secondary" className="mt-1">
-                        {selectedConsultantData.role === 'consultant' ? 'Consultor' : 
-                         selectedConsultantData.role === 'cs' ? 'Customer Success' : 'Administrador'}
-                      </Badge>
+                  <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+                    {/* Avatar & Name */}
+                    <div className="flex items-center gap-5">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary to-violet-500 rounded-full blur-lg opacity-50" />
+                        <Avatar className="h-24 w-24 border-4 border-primary/50 relative">
+                          <AvatarImage src={selectedConsultantData.avatar_url} />
+                          <AvatarFallback className="text-3xl bg-gradient-to-br from-primary to-violet-500 text-white font-bold">
+                            {selectedConsultantData.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold">{selectedConsultantData.name}</h3>
+                        <Badge className="mt-2 bg-primary/20 text-primary border-primary/40">
+                          {selectedConsultantData.role === 'consultant' ? 'Consultor' : 
+                           selectedConsultantData.role === 'cs' ? 'Customer Success' : 'Administrador'}
+                        </Badge>
+                      </div>
                     </div>
                     
-                    {/* Metrics */}
-                    {metrics && (
-                      <div className="grid grid-cols-4 gap-4">
-                        <div className="text-center p-3 rounded-lg bg-background/50 backdrop-blur-sm">
-                          <Building2 className="h-5 w-5 mx-auto mb-1 text-primary" />
-                          <p className="text-2xl font-bold">{metrics.totalProjects}</p>
-                          <p className="text-xs text-muted-foreground">Projetos</p>
-                        </div>
-                        <div className="text-center p-3 rounded-lg bg-background/50 backdrop-blur-sm">
-                          <Target className="h-5 w-5 mx-auto mb-1 text-emerald-400" />
-                          <p className="text-2xl font-bold">{metrics.avgHealthScore}</p>
-                          <p className="text-xs text-muted-foreground">Saúde Média</p>
-                        </div>
-                        <div className="text-center p-3 rounded-lg bg-background/50 backdrop-blur-sm">
-                          <Sparkles className="h-5 w-5 mx-auto mb-1 text-violet-400" />
-                          <p className="text-2xl font-bold">{metrics.engagementScore || '-'}</p>
-                          <p className="text-xs text-muted-foreground">Engajamento</p>
-                        </div>
-                        <div className="text-center p-3 rounded-lg bg-background/50 backdrop-blur-sm">
-                          <TrendingUp className="h-5 w-5 mx-auto mb-1 text-blue-400" />
-                          <p className="text-2xl font-bold">{metrics.retentionRate ? `${metrics.retentionRate}%` : '-'}</p>
-                          <p className="text-xs text-muted-foreground">Retenção</p>
-                        </div>
+                    {/* Metrics Grid */}
+                    <div className="flex-1 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
+                        <Building2 className="h-5 w-5 mx-auto mb-2 text-primary" />
+                        <p className="text-2xl font-bold">{metrics.totalProjects}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Projetos</p>
                       </div>
-                    )}
+                      <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
+                        <Target className={`h-5 w-5 mx-auto mb-2 ${
+                          metrics.avgHealthScore >= 70 ? 'text-emerald-400' :
+                          metrics.avgHealthScore >= 50 ? 'text-amber-400' : 'text-red-400'
+                        }`} />
+                        <p className={`text-2xl font-bold ${
+                          metrics.avgHealthScore >= 70 ? 'text-emerald-400' :
+                          metrics.avgHealthScore >= 50 ? 'text-amber-400' : 'text-red-400'
+                        }`}>{metrics.avgHealthScore}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Saúde Média</p>
+                      </div>
+                      <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
+                        <AlertTriangle className={`h-5 w-5 mx-auto mb-2 ${metrics.criticalProjects > 0 ? 'text-red-400' : 'text-emerald-400'}`} />
+                        <p className={`text-2xl font-bold ${metrics.criticalProjects > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                          {metrics.criticalProjects}
+                        </p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Críticos</p>
+                      </div>
+                      <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
+                        <Clock className={`h-5 w-5 mx-auto mb-2 ${metrics.overdueTasksTotal > 10 ? 'text-red-400' : metrics.overdueTasksTotal > 5 ? 'text-amber-400' : 'text-emerald-400'}`} />
+                        <p className={`text-2xl font-bold ${metrics.overdueTasksTotal > 10 ? 'text-red-400' : metrics.overdueTasksTotal > 5 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                          {metrics.overdueTasksTotal}
+                        </p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Atrasadas</p>
+                      </div>
+                      <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
+                        <Calendar className="h-5 w-5 mx-auto mb-2 text-blue-400" />
+                        <p className="text-2xl font-bold text-blue-400">{metrics.meetingsThisWeek}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Reuniões/Sem</p>
+                      </div>
+                      <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
+                        <TrendingUp className={`h-5 w-5 mx-auto mb-2 ${
+                          metrics.avgGoalProjection >= 100 ? 'text-emerald-400' :
+                          metrics.avgGoalProjection >= 80 ? 'text-amber-400' : 'text-red-400'
+                        }`} />
+                        <p className={`text-2xl font-bold ${
+                          metrics.avgGoalProjection >= 100 ? 'text-emerald-400' :
+                          metrics.avgGoalProjection >= 80 ? 'text-amber-400' : 'text-red-400'
+                        }`}>{metrics.avgGoalProjection}%</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Meta Média</p>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             )}
 
             {/* Suggested Agenda */}
-            {agendaItems.length > 0 && (
-              <Card className="bg-gradient-to-br from-slate-900/50 to-slate-800/50 border-slate-700/50 backdrop-blur-xl">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    Pauta Sugerida para 1:1
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-2 gap-3">
-                    {agendaItems.slice(0, 6).map((item, i) => (
-                      <motion.div
-                        key={`${item.projectId}-${item.type}-${i}`}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className={`flex items-center gap-3 p-3 rounded-lg border ${getAgendaColor(item.type)}`}
-                      >
-                        {getAgendaIcon(item.type)}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{item.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">{item.description}</p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </motion.div>
-                    ))}
+            {agendaSections.length > 0 && (
+              <Card className="relative overflow-hidden border-2 bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700/50 backdrop-blur-xl">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/30 to-violet-500/20">
+                        <FileText className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <span>Pauta Sugerida para 1:1</span>
+                        <p className="text-sm font-normal text-muted-foreground mt-0.5">
+                          Pontos organizados por prioridade
+                        </p>
+                      </div>
+                    </CardTitle>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={copyAgendaToClipboard}
+                      className="gap-2 bg-background/50"
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {copied ? 'Copiado!' : 'Copiar Pauta'}
+                    </Button>
                   </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {agendaSections.map((section, sectionIndex) => {
+                    const style = getSectionStyle(section.type);
+                    return (
+                      <motion.div
+                        key={section.type}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: sectionIndex * 0.1 }}
+                        className={`p-4 rounded-xl border-2 bg-gradient-to-br ${style.bg} ${style.border}`}
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="p-2 rounded-lg bg-slate-900/50">
+                            {style.icon}
+                          </div>
+                          <h4 className="font-semibold">{section.title}</h4>
+                          <Badge variant="secondary" className="ml-auto">
+                            {section.items.length} {section.items.length === 1 ? 'item' : 'itens'}
+                          </Badge>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-2">
+                          {section.items.map((item, i) => (
+                            <motion.div
+                              key={item.projectId}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: sectionIndex * 0.1 + i * 0.05 }}
+                              className="flex items-center gap-3 p-3 rounded-lg bg-slate-900/50 hover:bg-slate-900/80 transition-colors cursor-pointer group"
+                            >
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm ${
+                                item.healthScore < 40 ? 'bg-red-500/30 text-red-400' :
+                                item.healthScore < 70 ? 'bg-amber-500/30 text-amber-400' :
+                                'bg-emerald-500/30 text-emerald-400'
+                              }`}>
+                                {item.healthScore}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">
+                                  {item.company}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">{item.reason}</p>
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                            </motion.div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </CardContent>
               </Card>
             )}
 
-            {/* Company Briefings */}
+            {/* Company Briefing Cards */}
             <div>
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary" />
-                Empresas da Carteira ({projects.length})
-              </h3>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {projects.map((project, i) => (
-                  <CompanyBriefingCard key={project.id} project={project} index={i} />
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/20">
+                    <Building2 className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Briefing por Empresa</h3>
+                    <p className="text-sm text-muted-foreground">Ordenado por prioridade (menor saúde primeiro)</p>
+                  </div>
+                </div>
+                <Badge variant="secondary">{projects.length} empresas</Badge>
+              </div>
+              
+              <div className="grid md:grid-cols-2 gap-4">
+                {projects.map((project, index) => (
+                  <CompanyBriefingCard 
+                    key={project.id} 
+                    project={project} 
+                    index={index}
+                    expanded={true}
+                  />
                 ))}
               </div>
             </div>
