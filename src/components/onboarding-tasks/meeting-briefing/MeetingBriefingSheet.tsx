@@ -27,17 +27,24 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
+interface BriefingContent {
+  executive_summary: string;
+  client_history: string;
+  pending_items: string;
+  goal_status: string;
+  attention_points: string;
+  suggested_agenda: string;
+  talking_points: string[];
+}
+
 interface MeetingBriefing {
   id: string;
   meeting_id: string;
   project_id: string;
-  executive_summary: string;
-  client_history: string;
-  goal_status: string;
-  attention_points: string;
-  suggested_agenda: string[];
-  talking_points: string[];
+  briefing_content: string;
   generated_at: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface MeetingBriefingSheetProps {
@@ -58,6 +65,7 @@ export const MeetingBriefingSheet = ({
   meetingDate,
 }: MeetingBriefingSheetProps) => {
   const [briefing, setBriefing] = useState<MeetingBriefing | null>(null);
+  const [parsedContent, setParsedContent] = useState<BriefingContent | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
 
@@ -67,17 +75,31 @@ export const MeetingBriefingSheet = ({
     }
   }, [open, meetingId]);
 
+  useEffect(() => {
+    if (briefing?.briefing_content) {
+      try {
+        const content = JSON.parse(briefing.briefing_content) as BriefingContent;
+        setParsedContent(content);
+      } catch (e) {
+        console.error("Error parsing briefing content:", e);
+        setParsedContent(null);
+      }
+    } else {
+      setParsedContent(null);
+    }
+  }, [briefing]);
+
   const fetchBriefing = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from("meeting_briefings")
+        .from("onboarding_meeting_briefings")
         .select("*")
         .eq("meeting_id", meetingId)
         .single();
 
       if (error && error.code !== "PGRST116") throw error;
-      setBriefing(data as unknown as MeetingBriefing | null);
+      setBriefing(data as MeetingBriefing | null);
     } catch (error) {
       console.error("Error fetching briefing:", error);
     } finally {
@@ -125,7 +147,7 @@ export const MeetingBriefingSheet = ({
               <Skeleton className="h-32 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
-          ) : !briefing ? (
+          ) : !briefing || !parsedContent ? (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
               <h3 className="font-medium mb-2">Briefing não encontrado</h3>
@@ -155,82 +177,88 @@ export const MeetingBriefingSheet = ({
                   Resumo Executivo
                 </h3>
                 <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
-                  <p className="text-sm">{briefing.executive_summary}</p>
+                  <p className="text-sm">{parsedContent.executive_summary}</p>
                 </div>
               </div>
 
               <Separator />
 
               {/* Attention Points */}
-              {briefing.attention_points && (
+              {parsedContent.attention_points && (
                 <div>
                   <h3 className="font-medium mb-2 flex items-center gap-2 text-orange-600">
                     <AlertTriangle className="h-4 w-4" />
                     Pontos de Atenção
                   </h3>
                   <div className="text-sm bg-orange-500/10 p-3 rounded border border-orange-500/20">
-                    <ReactMarkdown>{briefing.attention_points}</ReactMarkdown>
+                    <ReactMarkdown>{parsedContent.attention_points}</ReactMarkdown>
                   </div>
                 </div>
               )}
 
               {/* Client History */}
-              {briefing.client_history && (
+              {parsedContent.client_history && (
                 <div>
                   <h3 className="font-medium mb-2 flex items-center gap-2">
                     <Users className="h-4 w-4" />
                     Histórico do Cliente
                   </h3>
                   <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
-                    <ReactMarkdown>{briefing.client_history}</ReactMarkdown>
+                    <ReactMarkdown>{parsedContent.client_history}</ReactMarkdown>
+                  </div>
+                </div>
+              )}
+
+              {/* Pending Items */}
+              {parsedContent.pending_items && (
+                <div>
+                  <h3 className="font-medium mb-2 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Itens Pendentes
+                  </h3>
+                  <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
+                    <ReactMarkdown>{parsedContent.pending_items}</ReactMarkdown>
                   </div>
                 </div>
               )}
 
               {/* Goals Status */}
-              {briefing.goal_status && (
+              {parsedContent.goal_status && (
                 <div>
                   <h3 className="font-medium mb-2 flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Status das Metas
-                </h3>
-                <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
-                  <ReactMarkdown>{briefing.goal_status}</ReactMarkdown>
+                    <TrendingUp className="h-4 w-4" />
+                    Status das Metas
+                  </h3>
+                  <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
+                    <ReactMarkdown>{parsedContent.goal_status}</ReactMarkdown>
+                  </div>
                 </div>
-              </div>
               )}
 
               <Separator />
 
               {/* Suggested Agenda */}
-              {briefing.suggested_agenda && briefing.suggested_agenda.length > 0 && (
+              {parsedContent.suggested_agenda && (
                 <div>
                   <h3 className="font-medium mb-2 flex items-center gap-2">
                     <Clock className="h-4 w-4" />
                     Pauta Sugerida
                   </h3>
-                  <ol className="space-y-2">
-                    {briefing.suggested_agenda.map((item, idx) => (
-                      <li key={idx} className="text-sm flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-xs font-bold text-primary">
-                          {idx + 1}
-                        </span>
-                        {item}
-                      </li>
-                    ))}
-                  </ol>
+                  <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
+                    <ReactMarkdown>{parsedContent.suggested_agenda}</ReactMarkdown>
+                  </div>
                 </div>
               )}
 
               {/* Talking Points */}
-              {briefing.talking_points && briefing.talking_points.length > 0 && (
+              {parsedContent.talking_points && parsedContent.talking_points.length > 0 && (
                 <div>
                   <h3 className="font-medium mb-2 flex items-center gap-2">
                     <MessageSquare className="h-4 w-4" />
                     Talking Points
                   </h3>
                   <ul className="space-y-2">
-                    {briefing.talking_points.map((point, idx) => (
+                    {parsedContent.talking_points.map((point, idx) => (
                       <li key={idx} className="text-sm flex items-start gap-2">
                         <span className="text-primary">•</span>
                         {point}
