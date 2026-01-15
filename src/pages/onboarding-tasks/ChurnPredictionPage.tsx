@@ -450,14 +450,14 @@ export default function ChurnPredictionPage() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => navigate(`/onboarding-tasks/project/${prediction.project_id}`)}
+                        onClick={() => navigate(`/onboarding-tasks/${prediction.project_id}`)}
                       >
                         Ver Projeto
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => navigate(`/onboarding-tasks/health-score/${prediction.project_id}`)}
+                        onClick={() => navigate(`/onboarding-tasks/${prediction.project_id}/health-score`)}
                       >
                         Ver Health Score
                       </Button>
