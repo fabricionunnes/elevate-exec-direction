@@ -7672,6 +7672,10 @@ export type Database = {
     }
     Functions: {
       check_notice_period_ending: { Args: never; Returns: undefined }
+      client_has_company_access: {
+        Args: { check_company_id: string }
+        Returns: boolean
+      }
       get_current_staff_id: { Args: never; Returns: string }
       get_next_business_day: {
         Args: { days_to_add: number; start_date: string }
