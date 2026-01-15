@@ -1009,12 +1009,26 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
                           </Button>
                         )}
                       </div>
-                      <Button 
-                        onClick={() => openFinalizeDialog(meeting)}
-                        size="sm"
-                      >
-                        Finalizar
-                      </Button>
+                      <div className="flex flex-col gap-2">
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setBriefingMeeting(meeting);
+                            setBriefingSheetOpen(true);
+                          }}
+                          className="gap-2"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                          {meetingBriefings[meeting.id] ? "Ver Briefing" : "Preparar"}
+                        </Button>
+                        <Button 
+                          onClick={() => openFinalizeDialog(meeting)}
+                          size="sm"
+                        >
+                          Finalizar
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
