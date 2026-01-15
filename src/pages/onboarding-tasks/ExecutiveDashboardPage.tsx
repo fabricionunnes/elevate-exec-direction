@@ -89,14 +89,17 @@ export default function ExecutiveDashboardPage() {
   const [consultantPerformance, setConsultantPerformance] = useState<ConsultantPerformance[]>([]);
   const [trendData, setTrendData] = useState<{ date: string; score: number }[]>([]);
 
+  // Load user email on mount (before data fetch)
+  useEffect(() => {
+    const staffData = localStorage.getItem("onboarding_staff");
+    if (staffData) {
+      const staff = JSON.parse(staffData);
+      setUserEmail(staff.email);
+    }
+  }, []);
+
   const fetchData = async () => {
     try {
-      // Get current user email
-      const staffData = localStorage.getItem("onboarding_staff");
-      if (staffData) {
-        const staff = JSON.parse(staffData);
-        setUserEmail(staff.email);
-      }
 
       // Fetch active projects with health scores
       const { data: projects, error: projectsError } = await supabase
