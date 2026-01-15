@@ -442,25 +442,25 @@ export function DailyLeadershipAgenda() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
       >
-        <Card className="bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700/50 backdrop-blur-xl">
+        <Card className="bg-card border">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                <span className="font-semibold">Distribuição do Portfólio</span>
+                <BarChart3 className="h-5 w-5 text-foreground" />
+                <span className="font-semibold text-foreground">Distribuição do Portfólio</span>
               </div>
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="outline" className="text-xs">
                 {totalProjects} projetos ativos
               </Badge>
             </div>
             
-            <div className="h-4 rounded-full overflow-hidden flex bg-slate-700/50">
+            <div className="h-4 rounded-full overflow-hidden flex bg-muted">
               {riskDistribution.critical > 0 && (
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${(riskDistribution.critical / totalProjects) * 100}%` }}
                   transition={{ duration: 0.5, delay: 0.5 }}
-                  className="bg-gradient-to-r from-red-500 to-red-400 h-full"
+                  className="bg-red-500 h-full"
                 />
               )}
               {riskDistribution.high > 0 && (
@@ -468,7 +468,7 @@ export function DailyLeadershipAgenda() {
                   initial={{ width: 0 }}
                   animate={{ width: `${(riskDistribution.high / totalProjects) * 100}%` }}
                   transition={{ duration: 0.5, delay: 0.6 }}
-                  className="bg-gradient-to-r from-orange-500 to-orange-400 h-full"
+                  className="bg-orange-500 h-full"
                 />
               )}
               {riskDistribution.medium > 0 && (
@@ -476,7 +476,7 @@ export function DailyLeadershipAgenda() {
                   initial={{ width: 0 }}
                   animate={{ width: `${(riskDistribution.medium / totalProjects) * 100}%` }}
                   transition={{ duration: 0.5, delay: 0.7 }}
-                  className="bg-gradient-to-r from-amber-500 to-amber-400 h-full"
+                  className="bg-yellow-500 h-full"
                 />
               )}
               {riskDistribution.low > 0 && (
@@ -484,7 +484,7 @@ export function DailyLeadershipAgenda() {
                   initial={{ width: 0 }}
                   animate={{ width: `${(riskDistribution.low / totalProjects) * 100}%` }}
                   transition={{ duration: 0.5, delay: 0.8 }}
-                  className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-full"
+                  className="bg-green-500 h-full"
                 />
               )}
             </div>
@@ -493,19 +493,19 @@ export function DailyLeadershipAgenda() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <span className="text-foreground/70">Crítico ({riskDistribution.critical})</span>
+                  <span className="text-foreground">Crítico ({riskDistribution.critical})</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-orange-500" />
-                  <span className="text-foreground/70">Alto ({riskDistribution.high})</span>
+                  <span className="text-foreground">Alto ({riskDistribution.high})</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-amber-500" />
-                  <span className="text-foreground/70">Médio ({riskDistribution.medium})</span>
+                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                  <span className="text-foreground">Médio ({riskDistribution.medium})</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                  <span className="text-foreground/70">Saudável ({riskDistribution.low})</span>
+                  <div className="w-3 h-3 rounded-full bg-green-500" />
+                  <span className="text-foreground">Saudável ({riskDistribution.low})</span>
                 </div>
               </div>
             </div>
@@ -520,15 +520,15 @@ export function DailyLeadershipAgenda() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <Card className="bg-gradient-to-br from-red-950/40 to-rose-950/30 border-2 border-red-500/30 backdrop-blur-xl h-full">
+          <Card className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 h-full">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-red-500/20">
-                  <Flame className="h-5 w-5 text-red-400" />
+                <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/50">
+                  <Flame className="h-5 w-5 text-red-600 dark:text-red-400" />
                 </div>
-                <span>Alertas Críticos</span>
+                <span className="text-foreground">Alertas Críticos</span>
                 {criticalProjects.length > 0 && (
-                  <Badge variant="destructive" className="ml-auto animate-pulse">
+                  <Badge variant="destructive" className="ml-auto">
                     {criticalProjects.length} projetos
                   </Badge>
                 )}
@@ -537,12 +537,12 @@ export function DailyLeadershipAgenda() {
             <CardContent>
               <ScrollArea className="h-[320px] pr-4">
                 {criticalProjects.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
-                    <div className="p-4 rounded-full bg-emerald-500/10 mb-4">
-                      <Shield className="h-10 w-10 text-emerald-400" />
+                  <div className="flex flex-col items-center justify-center h-full py-8">
+                    <div className="p-4 rounded-full bg-green-100 dark:bg-green-900/50 mb-4">
+                      <Shield className="h-10 w-10 text-green-600 dark:text-green-400" />
                     </div>
-                    <p className="text-lg font-medium text-emerald-400">Excelente!</p>
-                    <p className="text-sm text-center mt-1">Nenhum projeto em estado crítico</p>
+                    <p className="text-lg font-medium text-green-700 dark:text-green-400">Excelente!</p>
+                    <p className="text-sm text-center mt-1 text-muted-foreground">Nenhum projeto em estado crítico</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -552,37 +552,38 @@ export function DailyLeadershipAgenda() {
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.6 + i * 0.05 }}
-                        className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 hover:scale-[1.01] ${
+                        className={`p-4 rounded-lg border cursor-pointer transition-all duration-300 hover:scale-[1.01] ${
                           project.priority === 'critical' 
-                            ? 'bg-red-500/15 border-red-500/40 hover:border-red-500/60' 
+                            ? 'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700' 
                             : project.priority === 'high'
-                            ? 'bg-orange-500/15 border-orange-500/40 hover:border-orange-500/60'
-                            : 'bg-amber-500/15 border-amber-500/40 hover:border-amber-500/60'
+                            ? 'bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700'
+                            : 'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-300 dark:border-yellow-700'
                         }`}
                         onClick={() => navigate(`/onboarding-tasks/${project.id}`)}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-lg ${
-                              project.priority === 'critical' ? 'bg-red-500/30' :
-                              project.priority === 'high' ? 'bg-orange-500/30' : 'bg-amber-500/30'
+                              project.priority === 'critical' ? 'bg-red-200 dark:bg-red-800/50' :
+                              project.priority === 'high' ? 'bg-orange-200 dark:bg-orange-800/50' : 'bg-yellow-200 dark:bg-yellow-800/50'
                             }`}>
                               <Building2 className={`h-4 w-4 ${
-                                project.priority === 'critical' ? 'text-red-400' :
-                                project.priority === 'high' ? 'text-orange-400' : 'text-amber-400'
+                                project.priority === 'critical' ? 'text-red-700 dark:text-red-300' :
+                                project.priority === 'high' ? 'text-orange-700 dark:text-orange-300' : 'text-yellow-700 dark:text-yellow-300'
                               }`} />
                             </div>
                             <div>
-                              <p className="font-semibold">{project.company_name}</p>
+                              <p className="font-semibold text-foreground">{project.company_name}</p>
                               <p className="text-xs text-muted-foreground">{project.consultant_name}</p>
                             </div>
                           </div>
                           <div className="text-right">
                             <Badge 
+                              variant="outline"
                               className={`text-xs ${
-                                project.priority === 'critical' ? 'bg-red-500/30 text-red-300 border-red-500/50' :
-                                project.priority === 'high' ? 'bg-orange-500/30 text-orange-300 border-orange-500/50' :
-                                'bg-amber-500/30 text-amber-300 border-amber-500/50'
+                                project.priority === 'critical' ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 border-red-300 dark:border-red-600' :
+                                project.priority === 'high' ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-600' :
+                                'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-600'
                               }`}
                             >
                               Score: {project.health_score}
@@ -591,10 +592,10 @@ export function DailyLeadershipAgenda() {
                         </div>
                         <div className="flex items-center gap-2 mt-2">
                           <Zap className={`h-3.5 w-3.5 ${
-                            project.priority === 'critical' ? 'text-red-400' :
-                            project.priority === 'high' ? 'text-orange-400' : 'text-amber-400'
+                            project.priority === 'critical' ? 'text-red-600 dark:text-red-400' :
+                            project.priority === 'high' ? 'text-orange-600 dark:text-orange-400' : 'text-yellow-600 dark:text-yellow-400'
                           }`} />
-                          <p className="text-xs text-muted-foreground">{project.action_needed}</p>
+                          <p className="text-xs text-foreground">{project.action_needed}</p>
                         </div>
                       </motion.div>
                     ))}
@@ -611,21 +612,21 @@ export function DailyLeadershipAgenda() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <Card className="bg-gradient-to-br from-emerald-950/40 to-green-950/30 border-2 border-emerald-500/30 backdrop-blur-xl h-full">
+          <Card className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 h-full">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-emerald-500/20">
-                  <Star className="h-5 w-5 text-emerald-400" />
+                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/50">
+                  <Star className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
-                <span>Destaques Positivos</span>
+                <span className="text-foreground">Destaques Positivos</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[320px] pr-4">
                 {positiveHighlights.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
-                    <Sparkles className="h-10 w-10 mb-4 opacity-30" />
-                    <p className="text-sm">Nenhum destaque recente</p>
+                  <div className="flex flex-col items-center justify-center h-full py-8">
+                    <Sparkles className="h-10 w-10 mb-4 text-muted-foreground opacity-30" />
+                    <p className="text-sm text-muted-foreground">Nenhum destaque recente</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -635,21 +636,21 @@ export function DailyLeadershipAgenda() {
                         initial={{ x: 20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.6 + i * 0.1 }}
-                        className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 hover:border-emerald-500/50 transition-colors"
+                        className="p-4 rounded-lg bg-green-100 dark:bg-green-900/40 border border-green-200 dark:border-green-700"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/30 to-green-500/20">
-                            {highlight.type === 'renewal' ? <Target className="h-5 w-5 text-emerald-400" /> :
-                             highlight.type === 'nps' ? <MessageSquare className="h-5 w-5 text-emerald-400" /> :
-                             highlight.type === 'goal' ? <TrendingUp className="h-5 w-5 text-emerald-400" /> :
-                             <ArrowUpRight className="h-5 w-5 text-emerald-400" />}
+                          <div className="p-3 rounded-lg bg-green-200 dark:bg-green-800/50">
+                            {highlight.type === 'renewal' ? <Target className="h-5 w-5 text-green-700 dark:text-green-300" /> :
+                             highlight.type === 'nps' ? <MessageSquare className="h-5 w-5 text-green-700 dark:text-green-300" /> :
+                             highlight.type === 'goal' ? <TrendingUp className="h-5 w-5 text-green-700 dark:text-green-300" /> :
+                             <ArrowUpRight className="h-5 w-5 text-green-700 dark:text-green-300" />}
                           </div>
                           <div className="flex-1">
-                            <p className="font-semibold text-emerald-100">{highlight.company_name}</p>
+                            <p className="font-semibold text-foreground">{highlight.company_name}</p>
                             <div className="flex items-center gap-2 mt-1">
-                              <p className="text-sm text-emerald-400">{highlight.description}</p>
+                              <p className="text-sm text-green-700 dark:text-green-400">{highlight.description}</p>
                               {highlight.value && (
-                                <Badge className="bg-emerald-500/30 text-emerald-300 border-emerald-500/50 text-xs">
+                                <Badge variant="outline" className="bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 border-green-300 dark:border-green-600 text-xs">
                                   {highlight.value}
                                 </Badge>
                               )}
@@ -672,14 +673,14 @@ export function DailyLeadershipAgenda() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.7 }}
       >
-        <Card className="bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-2 border-slate-700/50 backdrop-blur-xl">
+        <Card className="bg-card border">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/20">
-                <Users className="h-5 w-5 text-primary" />
+              <div className="p-2 rounded-lg bg-muted">
+                <Users className="h-5 w-5 text-foreground" />
               </div>
-              <span>Visão por Consultor</span>
-              <Badge variant="secondary" className="ml-auto text-xs">
+              <span className="text-foreground">Visão por Consultor</span>
+              <Badge variant="outline" className="ml-auto text-xs">
                 Clique para ver 1:1
               </Badge>
             </CardTitle>
@@ -688,28 +689,28 @@ export function DailyLeadershipAgenda() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-700/50">
-                    <th className="text-left py-4 px-4 font-semibold text-foreground/70">Consultor</th>
-                    <th className="text-center py-4 px-3 font-semibold text-foreground/70">
+                  <tr className="border-b border-border">
+                    <th className="text-left py-4 px-4 font-semibold text-muted-foreground">Consultor</th>
+                    <th className="text-center py-4 px-3 font-semibold text-muted-foreground">
                       <span className="flex items-center justify-center gap-1">
                         <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
                         Críticos
                       </span>
                     </th>
-                    <th className="text-center py-4 px-3 font-semibold text-foreground/70">
+                    <th className="text-center py-4 px-3 font-semibold text-muted-foreground">
                       <span className="flex items-center justify-center gap-1">
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
                         Em Risco
                       </span>
                     </th>
-                    <th className="text-center py-4 px-3 font-semibold text-foreground/70">
+                    <th className="text-center py-4 px-3 font-semibold text-muted-foreground">
                       <span className="flex items-center justify-center gap-1">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
                         Saudáveis
                       </span>
                     </th>
-                    <th className="text-center py-4 px-3 font-semibold text-foreground/70">Saúde Média</th>
-                    <th className="text-right py-4 px-4 font-semibold text-foreground/70">Ação</th>
+                    <th className="text-center py-4 px-3 font-semibold text-muted-foreground">Saúde Média</th>
+                    <th className="text-right py-4 px-4 font-semibold text-muted-foreground">Ação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -719,23 +720,23 @@ export function DailyLeadershipAgenda() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.8 + i * 0.05 }}
-                      className="border-b border-slate-700/30 hover:bg-slate-800/50 cursor-pointer transition-colors"
+                      className="border-b border-border hover:bg-muted/50 cursor-pointer transition-colors"
                       onClick={() => handleSelectConsultant(consultant.id)}
                     >
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10 border-2 border-primary/30">
+                          <Avatar className="h-10 w-10 border border-border">
                             <AvatarImage src={consultant.avatar} />
-                            <AvatarFallback className="bg-gradient-to-br from-primary to-violet-500 text-white font-bold">
+                            <AvatarFallback className="bg-primary text-primary-foreground font-bold">
                               {consultant.name.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium">{consultant.name}</span>
+                          <span className="font-medium text-foreground">{consultant.name}</span>
                         </div>
                       </td>
                       <td className="text-center py-4 px-3">
                         {consultant.criticalProjects > 0 ? (
-                          <Badge className="bg-red-500/20 text-red-300 border-red-500/40 font-bold">
+                          <Badge variant="outline" className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 border-red-300 dark:border-red-600 font-bold">
                             {consultant.criticalProjects}
                           </Badge>
                         ) : (
@@ -744,7 +745,7 @@ export function DailyLeadershipAgenda() {
                       </td>
                       <td className="text-center py-4 px-3">
                         {consultant.atRiskProjects > 0 ? (
-                          <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40">
+                          <Badge variant="outline" className="bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-600">
                             {consultant.atRiskProjects}
                           </Badge>
                         ) : (
@@ -752,26 +753,26 @@ export function DailyLeadershipAgenda() {
                         )}
                       </td>
                       <td className="text-center py-4 px-3">
-                        <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
+                        <Badge variant="outline" className="bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 border-green-300 dark:border-green-600">
                           {consultant.healthyProjects}
                         </Badge>
                       </td>
                       <td className="text-center py-4 px-3">
                         <div className="flex items-center justify-center gap-2">
-                          <div className={`w-16 h-2 rounded-full overflow-hidden bg-slate-700`}>
+                          <div className="w-16 h-2 rounded-full overflow-hidden bg-muted">
                             <motion.div 
                               initial={{ width: 0 }}
                               animate={{ width: `${consultant.avgHealthScore}%` }}
                               transition={{ duration: 0.5, delay: 0.9 + i * 0.05 }}
                               className={`h-full ${
-                                consultant.avgHealthScore >= 70 ? 'bg-emerald-500' :
-                                consultant.avgHealthScore >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                                consultant.avgHealthScore >= 70 ? 'bg-green-500' :
+                                consultant.avgHealthScore >= 50 ? 'bg-yellow-500' : 'bg-red-500'
                               }`}
                             />
                           </div>
                           <span className={`font-bold text-sm ${
-                            consultant.avgHealthScore >= 70 ? 'text-emerald-400' :
-                            consultant.avgHealthScore >= 50 ? 'text-amber-400' : 'text-red-400'
+                            consultant.avgHealthScore >= 70 ? 'text-green-600 dark:text-green-400' :
+                            consultant.avgHealthScore >= 50 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                           }`}>
                             {consultant.avgHealthScore}
                           </span>
@@ -781,7 +782,7 @@ export function DailyLeadershipAgenda() {
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          className="hover:bg-primary/20 hover:text-primary"
+                          className="text-primary"
                         >
                           Ver 1:1
                           <ChevronRight className="h-4 w-4 ml-1" />
