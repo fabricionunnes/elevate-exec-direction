@@ -41,18 +41,43 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { project_id, calculate_all } = await req.json();
+    const { project_id, calculate_all, offset, limit } = await req.json();
 
     let projectIds: string[] = [];
 
     if (calculate_all) {
-      // Get all active projects
-      const { data: projects } = await supabase
+      const pageSize = typeof limit === "number" && limit > 0 ? Math.min(limit, 50) : 20;
+      const pageOffset = typeof offset === "number" && offset >= 0 ? offset : 0;
+
+      // Get all active projects (paged) to avoid timeouts
+      const { count } = await supabase
+        .from("onboarding_projects")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active");
+
+      const { data: projects, error: projectsError } = await supabase
         .from("onboarding_projects")
         .select("id")
-        .eq("status", "active");
-      
-      projectIds = projects?.map(p => p.id) || [];
+        .eq("status", "active")
+        .order("created_at", { ascending: true })
+        .range(pageOffset, pageOffset + pageSize - 1);
+
+      if (projectsError) {
+        console.error("[predict-churn] Error listing projects:", projectsError);
+        throw projectsError;
+      }
+
+      projectIds = projects?.map((p) => p.id) || [];
+
+      // Attach paging metadata
+      const total = count || 0;
+      (req as any)._paging = {
+        total,
+        offset: pageOffset,
+        limit: pageSize,
+        has_more: pageOffset + pageSize < total,
+        next_offset: pageOffset + pageSize,
+      };
     } else if (project_id) {
       projectIds = [project_id];
     } else {
@@ -65,14 +90,17 @@ serve(async (req) => {
     const predictions = [];
 
     for (const pid of projectIds) {
+      console.log("[predict-churn] Calculating prediction for project", pid);
       const prediction = await calculateChurnPrediction(supabase, pid);
       if (prediction) {
         predictions.push(prediction);
       }
     }
 
+    const paging = (req as any)._paging;
+
     return new Response(
-      JSON.stringify({ success: true, predictions }),
+      JSON.stringify({ success: true, predictions, paging }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
@@ -86,19 +114,28 @@ serve(async (req) => {
 
 async function calculateChurnPrediction(supabase: any, projectId: string) {
   // Fetch project data
-  const { data: project } = await supabase
+  const { data: project, error: projectError } = await supabase
     .from("onboarding_projects")
-    .select(`
+    .select(
+      `
       id,
       status,
-      start_date,
-      onboarding_companies!inner(name, segment),
-      onboarding_services!inner(name)
-    `)
+      product_name,
+      onboarding_companies(
+        name,
+        segment
+      )
+    `
+    )
     .eq("id", projectId)
-    .single();
+    .maybeSingle();
 
-  if (!project || project.status !== 'active') {
+  if (projectError) {
+    console.error("[predict-churn] Error fetching project:", { projectId, projectError });
+    return null;
+  }
+
+  if (!project || project.status !== "active") {
     return null;
   }
 
@@ -122,7 +159,7 @@ async function calculateChurnPrediction(supabase: any, projectId: string) {
 
   // Fetch NPS responses
   const { data: npsResponses } = await supabase
-    .from("nps_responses")
+    .from("onboarding_nps_responses")
     .select("score")
     .eq("project_id", projectId)
     .order("created_at", { ascending: false })
@@ -153,18 +190,22 @@ async function calculateChurnPrediction(supabase: any, projectId: string) {
 
   // Fetch open support tickets
   const { data: openTickets } = await supabase
-    .from("support_tickets")
+    .from("onboarding_tickets")
     .select("id")
     .eq("project_id", projectId)
     .in("status", ["open", "in_progress"]);
 
-  // Fetch monthly goals achievement
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  // Fetch monthly goals achievement (current month)
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+
   const { data: goals } = await supabase
-    .from("project_monthly_goals")
-    .select("target_value, current_value")
+    .from("onboarding_monthly_goals")
+    .select("sales_target, sales_result")
     .eq("project_id", projectId)
-    .eq("month_year", currentMonth);
+    .eq("month", currentMonth)
+    .eq("year", currentYear);
 
   // Calculate risk factors
   const riskFactors: RiskFactor[] = [];
@@ -249,8 +290,8 @@ async function calculateChurnPrediction(supabase: any, projectId: string) {
   let goalsDetails = "";
   
   if (goals && goals.length > 0) {
-    const totalTarget = goals.reduce((acc: number, g: any) => acc + (g.target_value || 0), 0);
-    const totalCurrent = goals.reduce((acc: number, g: any) => acc + (g.current_value || 0), 0);
+    const totalTarget = goals.reduce((acc: number, g: any) => acc + (g.sales_target || 0), 0);
+    const totalCurrent = goals.reduce((acc: number, g: any) => acc + (g.sales_result || 0), 0);
     const achievement = totalTarget > 0 ? (totalCurrent / totalTarget) * 100 : 0;
     
     if (achievement < 50) {
@@ -483,7 +524,7 @@ async function calculateChurnPrediction(supabase: any, projectId: string) {
   return {
     ...prediction,
     company_name: project.onboarding_companies?.name,
-    product_name: project.onboarding_services?.name
+    product_name: project.product_name
   };
 }
 
