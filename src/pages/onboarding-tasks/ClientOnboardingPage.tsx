@@ -17,6 +17,7 @@ import {
   ChevronDown,
   Building2,
   Check,
+  Gift,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -359,6 +360,9 @@ const ClientOnboardingPage = () => {
     { id: "assessments" as ViewType, icon: ClipboardCheck, label: "Testes" },
   ];
 
+  // Get company ID for customer points link
+  const companyId = project?.onboarding_company_id;
+
   const handleSwitchProject = (newProjectId: string) => {
     if (newProjectId !== projectId) {
       navigate(`/onboarding-client/${newProjectId}`);
@@ -449,6 +453,17 @@ const ClientOnboardingPage = () => {
 
             {/* Right: Actions */}
             <div className="flex items-center gap-1 flex-shrink-0">
+              {companyId && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="hidden md:flex gap-2 text-muted-foreground hover:text-primary"
+                  onClick={() => navigate(`/customer-points/${companyId}`)}
+                >
+                  <Gift className="h-4 w-4" />
+                  <span>Pontuação</span>
+                </Button>
+              )}
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -505,6 +520,18 @@ const ClientOnboardingPage = () => {
               </button>
             );
           })}
+          {/* Customer Points link for mobile */}
+          {companyId && (
+            <button
+              onClick={() => navigate(`/customer-points/${companyId}`)}
+              className="flex-1 flex flex-col items-center justify-center py-2 px-1 gap-0.5 transition-colors touch-manipulation min-h-[56px] text-muted-foreground active:text-foreground"
+            >
+              <div className="p-1.5 rounded-xl transition-colors">
+                <Gift className="h-5 w-5" />
+              </div>
+              <span className="text-[10px] font-medium leading-tight">Pontos</span>
+            </button>
+          )}
         </div>
       </nav>
 
