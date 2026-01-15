@@ -100,13 +100,13 @@ export function ConsultantOneOnOnePanel() {
   const [agendaSections, setAgendaSections] = useState<AgendaSection[]>([]);
   const [copied, setCopied] = useState(false);
 
-  // Load consultants
+  // Load consultants - only show role='consultant'
   useEffect(() => {
     const fetchConsultants = async () => {
       const { data } = await supabase
         .from("onboarding_staff")
         .select("id, name, avatar_url, role")
-        .in("role", ["consultant", "cs", "admin"])
+        .eq("role", "consultant")
         .eq("is_active", true)
         .order("name");
       
@@ -381,10 +381,10 @@ export function ConsultantOneOnOnePanel() {
 
   const getSectionStyle = (type: AgendaSection['type']) => {
     switch (type) {
-      case 'urgent': return { bg: 'from-red-500/20 to-red-500/5', border: 'border-red-500/40', icon: <Flame className="h-5 w-5 text-red-400" /> };
-      case 'attention': return { bg: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/40', icon: <AlertTriangle className="h-5 w-5 text-amber-400" /> };
-      case 'celebrate': return { bg: 'from-emerald-500/20 to-emerald-500/5', border: 'border-emerald-500/40', icon: <Award className="h-5 w-5 text-emerald-400" /> };
-      case 'discuss': return { bg: 'from-blue-500/20 to-blue-500/5', border: 'border-blue-500/40', icon: <MessageSquare className="h-5 w-5 text-blue-400" /> };
+      case 'urgent': return { bg: 'bg-red-50 dark:bg-red-950/30', border: 'border-red-200 dark:border-red-800', icon: <Flame className="h-5 w-5 text-red-600 dark:text-red-400" /> };
+      case 'attention': return { bg: 'bg-yellow-50 dark:bg-yellow-950/30', border: 'border-yellow-200 dark:border-yellow-800', icon: <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" /> };
+      case 'celebrate': return { bg: 'bg-green-50 dark:bg-green-950/30', border: 'border-green-200 dark:border-green-800', icon: <Award className="h-5 w-5 text-green-600 dark:text-green-400" /> };
+      case 'discuss': return { bg: 'bg-slate-50 dark:bg-slate-900/50', border: 'border-slate-200 dark:border-slate-700', icon: <MessageSquare className="h-5 w-5 text-slate-600 dark:text-slate-400" /> };
     }
   };
 
@@ -415,26 +415,23 @@ export function ConsultantOneOnOnePanel() {
         </div>
         
         <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
-          <SelectTrigger className="w-[320px] h-12 bg-background border-2 border-border backdrop-blur-xl">
+          <SelectTrigger className="w-[280px] h-11 bg-card border border-border">
             <SelectValue placeholder="Selecione um consultor" />
           </SelectTrigger>
-          <SelectContent className="bg-popover border-border">
+          <SelectContent className="bg-card border-border">
             {consultants.map((consultant) => (
-              <SelectItem key={consultant.id} value={consultant.id} className="py-3">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-8 w-8 border border-primary/30">
+              <SelectItem key={consultant.id} value={consultant.id} className="py-2">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-7 w-7 border border-border">
                     <AvatarImage src={consultant.avatar_url} />
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-violet-500 text-white text-xs">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                       {consultant.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">{consultant.name}</span>
-                    <Badge variant="secondary" className="text-xs">
-                      {consultant.role === 'consultant' ? 'Consultor' : 
-                       consultant.role === 'cs' ? 'CS' : 'Admin'}
-                    </Badge>
-                  </div>
+                  <span className="font-medium text-foreground">{consultant.name}</span>
+                  <Badge variant="outline" className="text-xs ml-1">
+                    Consultor
+                  </Badge>
                 </div>
               </SelectItem>
             ))}
@@ -483,79 +480,66 @@ export function ConsultantOneOnOnePanel() {
           >
             {/* Consultant Header Card */}
             {selectedConsultantData && metrics && (
-              <Card className="relative overflow-hidden border-2 bg-gradient-to-br from-primary/10 via-violet-500/10 to-fuchsia-500/10 border-primary/30 backdrop-blur-xl">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-violet-500/5" />
-                <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-20 bg-gradient-to-br from-primary to-violet-500" />
-                
-                <CardContent className="relative p-6">
+              <Card className="border bg-card">
+                <CardContent className="p-6">
                   <div className="flex flex-col lg:flex-row lg:items-center gap-6">
                     {/* Avatar & Name */}
-                    <div className="flex items-center gap-5">
-                      <div className="relative">
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary to-violet-500 rounded-full blur-lg opacity-50" />
-                        <Avatar className="h-24 w-24 border-4 border-primary/50 relative">
-                          <AvatarImage src={selectedConsultantData.avatar_url} />
-                          <AvatarFallback className="text-3xl bg-gradient-to-br from-primary to-violet-500 text-white font-bold">
-                            {selectedConsultantData.name.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-20 w-20 border-2 border-primary">
+                        <AvatarImage src={selectedConsultantData.avatar_url} />
+                        <AvatarFallback className="text-2xl bg-primary text-primary-foreground font-bold">
+                          {selectedConsultantData.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
                       <div>
-                        <h3 className="text-2xl font-bold">{selectedConsultantData.name}</h3>
-                        <Badge className="mt-2 bg-primary/20 text-primary border-primary/40">
-                          {selectedConsultantData.role === 'consultant' ? 'Consultor' : 
-                           selectedConsultantData.role === 'cs' ? 'Customer Success' : 'Administrador'}
+                        <h3 className="text-2xl font-bold text-foreground">{selectedConsultantData.name}</h3>
+                        <Badge variant="outline" className="mt-2">
+                          Consultor
                         </Badge>
                       </div>
                     </div>
                     
                     {/* Metrics Grid */}
                     <div className="flex-1 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                      <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
-                        <Building2 className="h-5 w-5 mx-auto mb-2 text-primary" />
+                      <div className="p-4 rounded-lg bg-muted text-center">
+                        <Building2 className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
                         <p className="text-2xl font-bold text-foreground">{metrics.totalProjects}</p>
-                        <p className="text-[10px] uppercase tracking-wider text-foreground/60">Projetos</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Projetos</p>
                       </div>
-                      <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
-                        <Target className={`h-5 w-5 mx-auto mb-2 ${
-                          metrics.avgHealthScore >= 70 ? 'text-emerald-500' :
-                          metrics.avgHealthScore >= 50 ? 'text-amber-500' : 'text-red-500'
-                        }`} />
+                      <div className="p-4 rounded-lg bg-muted text-center">
+                        <Target className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
                         <p className={`text-2xl font-bold ${
-                          metrics.avgHealthScore >= 70 ? 'text-emerald-500' :
-                          metrics.avgHealthScore >= 50 ? 'text-amber-500' : 'text-red-500'
+                          metrics.avgHealthScore >= 70 ? 'text-green-600 dark:text-green-500' :
+                          metrics.avgHealthScore >= 50 ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-600 dark:text-red-500'
                         }`}>{metrics.avgHealthScore}</p>
-                        <p className="text-[10px] uppercase tracking-wider text-foreground/60">Saúde Média</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Saúde Média</p>
                       </div>
-                      <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
-                        <AlertTriangle className={`h-5 w-5 mx-auto mb-2 ${metrics.criticalProjects > 0 ? 'text-red-500' : 'text-emerald-500'}`} />
-                        <p className={`text-2xl font-bold ${metrics.criticalProjects > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                      <div className="p-4 rounded-lg bg-muted text-center">
+                        <AlertTriangle className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+                        <p className={`text-2xl font-bold ${metrics.criticalProjects > 0 ? 'text-red-600 dark:text-red-500' : 'text-green-600 dark:text-green-500'}`}>
                           {metrics.criticalProjects}
                         </p>
-                        <p className="text-[10px] uppercase tracking-wider text-foreground/60">Críticos</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Críticos</p>
                       </div>
-                      <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
-                        <Clock className={`h-5 w-5 mx-auto mb-2 ${metrics.overdueTasksTotal > 10 ? 'text-red-500' : metrics.overdueTasksTotal > 5 ? 'text-amber-500' : 'text-emerald-500'}`} />
-                        <p className={`text-2xl font-bold ${metrics.overdueTasksTotal > 10 ? 'text-red-500' : metrics.overdueTasksTotal > 5 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                      <div className="p-4 rounded-lg bg-muted text-center">
+                        <Clock className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+                        <p className={`text-2xl font-bold ${metrics.overdueTasksTotal > 10 ? 'text-red-600 dark:text-red-500' : metrics.overdueTasksTotal > 5 ? 'text-yellow-600 dark:text-yellow-500' : 'text-green-600 dark:text-green-500'}`}>
                           {metrics.overdueTasksTotal}
                         </p>
-                        <p className="text-[10px] uppercase tracking-wider text-foreground/60">Atrasadas</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Atrasadas</p>
                       </div>
-                      <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
-                        <Calendar className="h-5 w-5 mx-auto mb-2 text-blue-500" />
-                        <p className="text-2xl font-bold text-blue-500">{metrics.meetingsThisWeek}</p>
-                        <p className="text-[10px] uppercase tracking-wider text-foreground/60">Reuniões/Sem</p>
+                      <div className="p-4 rounded-lg bg-muted text-center">
+                        <Calendar className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-2xl font-bold text-foreground">{metrics.meetingsThisWeek}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Reuniões/Sem</p>
                       </div>
-                      <div className="p-4 rounded-xl bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 text-center">
-                        <TrendingUp className={`h-5 w-5 mx-auto mb-2 ${
-                          metrics.avgGoalProjection >= 100 ? 'text-emerald-500' :
-                          metrics.avgGoalProjection >= 80 ? 'text-amber-500' : 'text-red-500'
-                        }`} />
+                      <div className="p-4 rounded-lg bg-muted text-center">
+                        <TrendingUp className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
                         <p className={`text-2xl font-bold ${
-                          metrics.avgGoalProjection >= 100 ? 'text-emerald-500' :
-                          metrics.avgGoalProjection >= 80 ? 'text-amber-500' : 'text-red-500'
+                          metrics.avgGoalProjection >= 100 ? 'text-green-600 dark:text-green-500' :
+                          metrics.avgGoalProjection >= 80 ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-600 dark:text-red-500'
                         }`}>{metrics.avgGoalProjection}%</p>
-                        <p className="text-[10px] uppercase tracking-wider text-foreground/60">Meta Média</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Meta Média</p>
                       </div>
                     </div>
                   </div>
@@ -565,15 +549,15 @@ export function ConsultantOneOnOnePanel() {
 
             {/* Suggested Agenda */}
             {agendaSections.length > 0 && (
-              <Card className="relative overflow-hidden border-2 bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700/50 backdrop-blur-xl">
+              <Card className="border bg-card">
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-xl flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/30 to-violet-500/20">
-                        <FileText className="h-6 w-6 text-primary" />
+                      <div className="p-2 rounded-lg bg-muted">
+                        <FileText className="h-5 w-5 text-foreground" />
                       </div>
                       <div>
-                        <span>Pauta Sugerida para 1:1</span>
+                        <span className="text-foreground">Pauta Sugerida para 1:1</span>
                         <p className="text-sm font-normal text-muted-foreground mt-0.5">
                           Pontos organizados por prioridade
                         </p>
@@ -583,7 +567,7 @@ export function ConsultantOneOnOnePanel() {
                       variant="outline" 
                       size="sm"
                       onClick={copyAgendaToClipboard}
-                      className="gap-2 bg-background/50"
+                      className="gap-2"
                     >
                       {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                       {copied ? 'Copiado!' : 'Copiar Pauta'}
@@ -599,14 +583,14 @@ export function ConsultantOneOnOnePanel() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: sectionIndex * 0.1 }}
-                        className={`p-4 rounded-xl border-2 bg-gradient-to-br ${style.bg} ${style.border}`}
+                        className={`p-4 rounded-lg border ${style.bg} ${style.border}`}
                       >
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="p-2 rounded-lg bg-slate-900/50">
+                          <div className="p-2 rounded-lg bg-background">
                             {style.icon}
                           </div>
-                          <h4 className="font-semibold">{section.title}</h4>
-                          <Badge variant="secondary" className="ml-auto">
+                          <h4 className="font-semibold text-foreground">{section.title}</h4>
+                          <Badge variant="outline" className="ml-auto">
                             {section.items.length} {section.items.length === 1 ? 'item' : 'itens'}
                           </Badge>
                         </div>
@@ -617,17 +601,17 @@ export function ConsultantOneOnOnePanel() {
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: sectionIndex * 0.1 + i * 0.05 }}
-                              className="flex items-center gap-3 p-3 rounded-lg bg-slate-900/50 hover:bg-slate-900/80 transition-colors cursor-pointer group"
+                              className="flex items-center gap-3 p-3 rounded-lg bg-background hover:bg-muted transition-colors cursor-pointer group border"
                             >
                               <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm ${
-                                item.healthScore < 40 ? 'bg-red-500/30 text-red-400' :
-                                item.healthScore < 70 ? 'bg-amber-500/30 text-amber-400' :
-                                'bg-emerald-500/30 text-emerald-400'
+                                item.healthScore < 40 ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' :
+                                item.healthScore < 70 ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300' :
+                                'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
                               }`}>
                                 {item.healthScore}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">
+                                <p className="font-medium text-sm truncate text-foreground group-hover:text-primary transition-colors">
                                   {item.company}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate">{item.reason}</p>
@@ -647,15 +631,15 @@ export function ConsultantOneOnOnePanel() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/20">
-                    <Building2 className="h-5 w-5 text-primary" />
+                  <div className="p-2 rounded-lg bg-muted">
+                    <Building2 className="h-5 w-5 text-foreground" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold">Briefing por Empresa</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Briefing por Empresa</h3>
                     <p className="text-sm text-muted-foreground">Ordenado por prioridade (menor saúde primeiro)</p>
                   </div>
                 </div>
-                <Badge variant="secondary">{projects.length} empresas</Badge>
+                <Badge variant="outline">{projects.length} empresas</Badge>
               </div>
               
               <div className="grid md:grid-cols-2 gap-4">
