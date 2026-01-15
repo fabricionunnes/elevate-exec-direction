@@ -41,6 +41,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { CompanyBriefingCard } from "./CompanyBriefingCard";
 import { toast } from "sonner";
 
@@ -102,6 +103,7 @@ interface AgendaSection {
 }
 
 export function ConsultantOneOnOnePanel() {
+  const navigate = useNavigate();
   const [consultants, setConsultants] = useState<Consultant[]>([]);
   const [selectedConsultant, setSelectedConsultant] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -653,6 +655,7 @@ export function ConsultantOneOnOnePanel() {
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: sectionIndex * 0.1 + i * 0.05 }}
                               className="flex items-center gap-3 p-3 rounded-lg bg-background hover:bg-muted transition-colors cursor-pointer group border"
+                              onClick={() => navigate(`/onboarding-tasks/${item.projectId}`)}
                             >
                               <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm ${
                                 item.healthScore < 40 ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' :
