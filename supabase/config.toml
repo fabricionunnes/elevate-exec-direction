@@ -89,3 +89,18 @@ verify_jwt = true
 
 [functions.health-portfolio-insights]
 verify_jwt = true
+
+[functions.predict-churn]
+verify_jwt = false
+
+[functions.analyze-meeting-sentiment]
+verify_jwt = true
+
+[functions.calculate-engagement-score]
+verify_jwt = false
+
+[functions.generate-rescue-playbook]
+verify_jwt = true
+
+[functions.prepare-meeting-briefing]
+verify_jwt = true

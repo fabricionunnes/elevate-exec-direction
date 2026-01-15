@@ -997,6 +997,65 @@ export type Database = {
           },
         ]
       }
+      consultant_engagement_scores: {
+        Row: {
+          calculation_date: string | null
+          created_at: string | null
+          id: string
+          meeting_score: number | null
+          metrics_breakdown: Json | null
+          nps_score: number | null
+          period_end: string | null
+          period_start: string | null
+          rank_position: number | null
+          response_score: number | null
+          retention_score: number | null
+          staff_id: string | null
+          task_score: number | null
+          total_score: number | null
+        }
+        Insert: {
+          calculation_date?: string | null
+          created_at?: string | null
+          id?: string
+          meeting_score?: number | null
+          metrics_breakdown?: Json | null
+          nps_score?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          rank_position?: number | null
+          response_score?: number | null
+          retention_score?: number | null
+          staff_id?: string | null
+          task_score?: number | null
+          total_score?: number | null
+        }
+        Update: {
+          calculation_date?: string | null
+          created_at?: string | null
+          id?: string
+          meeting_score?: number | null
+          metrics_breakdown?: Json | null
+          nps_score?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          rank_position?: number | null
+          response_score?: number | null
+          retention_score?: number | null
+          staff_id?: string | null
+          task_score?: number | null
+          total_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultant_engagement_scores_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_activities: {
         Row: {
           completed_at: string | null
@@ -4146,6 +4205,126 @@ export type Database = {
         }
         Relationships: []
       }
+      meeting_briefings: {
+        Row: {
+          attention_points: string | null
+          churn_risk_at_generation: string | null
+          client_history: string | null
+          executive_summary: string | null
+          generated_at: string | null
+          goal_status: string | null
+          health_score_at_generation: number | null
+          id: string
+          meeting_id: string | null
+          pending_items: string | null
+          project_id: string | null
+          suggested_agenda: string | null
+          talking_points: string[] | null
+        }
+        Insert: {
+          attention_points?: string | null
+          churn_risk_at_generation?: string | null
+          client_history?: string | null
+          executive_summary?: string | null
+          generated_at?: string | null
+          goal_status?: string | null
+          health_score_at_generation?: number | null
+          id?: string
+          meeting_id?: string | null
+          pending_items?: string | null
+          project_id?: string | null
+          suggested_agenda?: string | null
+          talking_points?: string[] | null
+        }
+        Update: {
+          attention_points?: string | null
+          churn_risk_at_generation?: string | null
+          client_history?: string | null
+          executive_summary?: string | null
+          generated_at?: string | null
+          goal_status?: string | null
+          health_score_at_generation?: number | null
+          id?: string
+          meeting_id?: string | null
+          pending_items?: string | null
+          project_id?: string | null
+          suggested_agenda?: string | null
+          talking_points?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_briefings_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_meeting_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_briefings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_sentiment_analysis: {
+        Row: {
+          ai_insights: string | null
+          concern_keywords: string[] | null
+          created_at: string | null
+          id: string
+          key_emotions: Json | null
+          meeting_id: string | null
+          overall_sentiment: string | null
+          positive_keywords: string[] | null
+          project_id: string | null
+          sentiment_score: number | null
+          summary: string | null
+        }
+        Insert: {
+          ai_insights?: string | null
+          concern_keywords?: string[] | null
+          created_at?: string | null
+          id?: string
+          key_emotions?: Json | null
+          meeting_id?: string | null
+          overall_sentiment?: string | null
+          positive_keywords?: string[] | null
+          project_id?: string | null
+          sentiment_score?: number | null
+          summary?: string | null
+        }
+        Update: {
+          ai_insights?: string | null
+          concern_keywords?: string[] | null
+          created_at?: string | null
+          id?: string
+          key_emotions?: Json | null
+          meeting_id?: string | null
+          overall_sentiment?: string | null
+          positive_keywords?: string[] | null
+          project_id?: string | null
+          sentiment_score?: number | null
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_sentiment_analysis_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_meeting_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_sentiment_analysis_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_ai_chat: {
         Row: {
           content: string
@@ -6430,6 +6609,66 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "portal_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rescue_playbooks: {
+        Row: {
+          ai_recommendations: string | null
+          churn_prediction_id: string | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          notifications_sent: Json | null
+          project_id: string | null
+          status: string | null
+          strategy_summary: string | null
+          tasks_created: number | null
+          triggered_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_recommendations?: string | null
+          churn_prediction_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          notifications_sent?: Json | null
+          project_id?: string | null
+          status?: string | null
+          strategy_summary?: string | null
+          tasks_created?: number | null
+          triggered_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_recommendations?: string | null
+          churn_prediction_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          notifications_sent?: Json | null
+          project_id?: string | null
+          status?: string | null
+          strategy_summary?: string | null
+          tasks_created?: number | null
+          triggered_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rescue_playbooks_churn_prediction_id_fkey"
+            columns: ["churn_prediction_id"]
+            isOneToOne: false
+            referencedRelation: "churn_predictions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rescue_playbooks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
             referencedColumns: ["id"]
           },
         ]
