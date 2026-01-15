@@ -78,7 +78,7 @@ import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel"
 import { CSATConfigPanel } from "@/components/onboarding-tasks/CSATConfigPanel";
 import { HealthScoreWidget } from "@/components/onboarding-tasks/health-score/HealthScoreWidget";
 import { HealthScoreDetailPanel } from "@/components/onboarding-tasks/health-score/HealthScoreDetailPanel";
-import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star, Heart } from "lucide-react";
+import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star, Heart, Trophy } from "lucide-react";
 import { GoogleDriveConnect } from "@/components/onboarding-tasks/GoogleDriveConnect";
 import { Label } from "@/components/ui/label";
 import { Ticket } from "lucide-react";
@@ -1067,15 +1067,26 @@ const OnboardingProjectPage = () => {
           {project.onboarding_company?.name && (
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap pl-10 sm:pl-14">
               {project.onboarding_company_id && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-7 px-2 text-xs"
-                  onClick={() => navigate(`/onboarding-tasks/companies/${project.onboarding_company_id}`)}
-                >
-                  <Building2 className="h-3 w-3 mr-1" />
-                  <span className="hidden xs:inline">Ver </span>Empresa
-                </Button>
+                <>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-7 px-2 text-xs"
+                    onClick={() => navigate(`/onboarding-tasks/companies/${project.onboarding_company_id}`)}
+                  >
+                    <Building2 className="h-3 w-3 mr-1" />
+                    <span className="hidden xs:inline">Ver </span>Empresa
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-7 px-2 text-xs"
+                    onClick={() => navigate(`/customer-points/${project.onboarding_company_id}`)}
+                  >
+                    <Trophy className="h-3 w-3 mr-1" />
+                    Pontuação
+                  </Button>
+                </>
               )}
               {/* CRM Button */}
               {project.crm_link ? (

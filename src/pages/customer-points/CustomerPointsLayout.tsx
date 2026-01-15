@@ -41,10 +41,10 @@ export default function CustomerPointsLayout() {
 
   const navItems: NavItem[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "" },
-    { id: "clients", label: "Clientes", icon: Users, href: "/clients" },
-    { id: "rules", label: "Regras de Pontuação", icon: Settings2, href: "/rules" },
-    { id: "transactions", label: "Ações / Registros", icon: ClipboardList, href: "/transactions" },
-    { id: "qrcodes", label: "QR Code & Formulários", icon: QrCode, href: "/qr-codes" },
+    { id: "clients", label: "Clientes", icon: Users, href: "clients" },
+    { id: "rules", label: "Regras de Pontuação", icon: Settings2, href: "rules" },
+    { id: "transactions", label: "Ações / Registros", icon: ClipboardList, href: "transactions" },
+    { id: "qrcodes", label: "QR Code & Formulários", icon: QrCode, href: "qr-codes" },
   ];
 
   useEffect(() => {
@@ -174,9 +174,9 @@ export default function CustomerPointsLayout() {
   };
 
   const basePath = `/customer-points/${companyId}`;
-  const currentPath = location.pathname.replace(basePath, "");
+  const currentPath = location.pathname.replace(basePath, "").replace(/^\//, "");
   const activeNav = navItems.find(item => 
-    item.href === "" ? currentPath === "" || currentPath === "/" : currentPath.startsWith(item.href)
+    item.href === "" ? currentPath === "" : currentPath.startsWith(item.href)
   )?.id || "dashboard";
 
   if (loading) {
@@ -220,7 +220,7 @@ export default function CustomerPointsLayout() {
                 isActive && "bg-primary/10 text-primary"
               )}
               onClick={() => {
-                navigate(`${basePath}${item.href}`);
+                navigate(item.href ? `${basePath}/${item.href}` : basePath);
                 setMobileMenuOpen(false);
               }}
             >
