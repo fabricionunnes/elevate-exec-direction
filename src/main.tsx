@@ -18,6 +18,8 @@ const publicRoutes = [
   "/kpi-entry",
   "/kickoff",
   "/cac-form",
+  "/points",
+  "/points-salesperson",
 ];
 
 const urlSearch = new URLSearchParams(window.location.search);
