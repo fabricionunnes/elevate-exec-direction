@@ -356,7 +356,7 @@ export default function CustomerPointsSalespersonForm() {
           rule_id: selectedRule.id,
           points: points,
           source: "salesperson",
-          value: value || null,
+          reference_value: value ?? null,
           form_responses: {
             salesperson_name: confirmedSalespersonName,
             transaction_value: transactionValue || null,
