@@ -50,6 +50,12 @@ if (publicParam) {
     forceHashRoute("/360", window.location.search);
   } else if (publicParam === "disc") {
     forceHashRoute("/disc", window.location.search);
+  } else if (publicParam === "points") {
+    // expects company=... (optional)
+    forceHashRoute("/points", window.location.search);
+  } else if (publicParam === "points-salesperson") {
+    // expects company=... or token=...
+    forceHashRoute("/points-salesperson", window.location.search);
   }
 } else {
   // Path-based public links
