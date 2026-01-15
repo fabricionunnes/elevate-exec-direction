@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CheckCircle2, Loader2, AlertTriangle, UserCheck, UserPlus, Coins } from "lucide-react";
+import { CheckCircle2, Loader2, AlertTriangle, UserCheck, UserPlus, Coins, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Rule {
@@ -26,24 +26,29 @@ interface Client {
   total_points: number;
 }
 
-interface TokenData {
+interface Salesperson {
   id: string;
   name: string;
-  company_id: string;
-  is_active: boolean;
 }
 
 export default function CustomerPointsSalespersonForm() {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
+  const companyId = searchParams.get("company");
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [tokenData, setTokenData] = useState<TokenData | null>(null);
+  const [companyValid, setCompanyValid] = useState(false);
   const [rules, setRules] = useState<Rule[]>([]);
-  const [step, setStep] = useState<"form" | "success" | "error">("form");
+  const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
+  const [step, setStep] = useState<"identify" | "form" | "success" | "error">("identify");
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Salesperson identification
+  const [selectedSalespersonId, setSelectedSalespersonId] = useState("");
+  const [salespersonName, setSalespersonName] = useState("");
+  const [useExistingSalesperson, setUseExistingSalesperson] = useState(true);
+  const [confirmedSalespersonName, setConfirmedSalespersonName] = useState("");
 
   // Client state
   const [cpf, setCpf] = useState("");
@@ -62,8 +67,8 @@ export default function CustomerPointsSalespersonForm() {
   const [newTotalPoints, setNewTotalPoints] = useState(0);
 
   useEffect(() => {
-    const loadTokenData = async () => {
-      if (!token) {
+    const loadCompanyData = async () => {
+      if (!companyId) {
         setErrorMessage("Link inválido");
         setStep("error");
         setLoading(false);
@@ -71,33 +76,43 @@ export default function CustomerPointsSalespersonForm() {
       }
 
       try {
-        const { data: tokenInfo, error: tokenError } = await supabase
-          .from("customer_points_salesperson_tokens")
-          .select("*")
-          .eq("access_token", token)
-          .eq("is_active", true)
+        // Verify company has points config
+        const { data: config, error: configError } = await supabase
+          .from("customer_points_config")
+          .select("id, is_active")
+          .eq("company_id", companyId)
           .maybeSingle();
 
-        if (tokenError || !tokenInfo) {
-          setErrorMessage("Link inválido ou desativado");
+        if (configError || !config || !config.is_active) {
+          setErrorMessage("Programa de pontos não encontrado ou desativado");
           setStep("error");
           setLoading(false);
           return;
         }
 
-        setTokenData(tokenInfo);
+        setCompanyValid(true);
 
         // Load active rules for this company
         const { data: rulesData } = await supabase
           .from("customer_points_rules")
           .select("*")
-          .eq("company_id", tokenInfo.company_id)
+          .eq("company_id", companyId)
           .eq("is_active", true)
           .order("sort_order");
 
         setRules(rulesData || []);
+
+        // Load registered salespeople
+        const { data: salespeopleData } = await supabase
+          .from("company_salespeople")
+          .select("id, name")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name");
+
+        setSalespeople(salespeopleData || []);
       } catch (error) {
-        console.error("Error loading token:", error);
+        console.error("Error loading company:", error);
         setErrorMessage("Erro ao carregar dados");
         setStep("error");
       } finally {
@@ -105,8 +120,8 @@ export default function CustomerPointsSalespersonForm() {
       }
     };
 
-    loadTokenData();
-  }, [token]);
+    loadCompanyData();
+  }, [companyId]);
 
   const formatCPF = (value: string) => {
     const digits = value.replace(/\D/g, "");
@@ -142,14 +157,14 @@ export default function CustomerPointsSalespersonForm() {
 
   // Auto-search when CPF is complete
   const searchClient = useCallback(async (cleanCPF: string) => {
-    if (!tokenData || cleanCPF.length !== 11) return;
+    if (!companyId || cleanCPF.length !== 11) return;
 
     setSearching(true);
     try {
       const { data: existingClient, error } = await supabase
         .from("customer_points_clients")
         .select("id, name, cpf, total_points")
-        .eq("company_id", tokenData.company_id)
+        .eq("company_id", companyId)
         .eq("cpf", cleanCPF)
         .maybeSingle();
 
@@ -165,7 +180,7 @@ export default function CustomerPointsSalespersonForm() {
     } finally {
       setSearching(false);
     }
-  }, [tokenData]);
+  }, [companyId]);
 
   const handleCPFChange = (value: string) => {
     const formatted = formatCPF(value);
@@ -202,8 +217,26 @@ export default function CustomerPointsSalespersonForm() {
   const selectedRule = rules.find((r) => r.id === selectedRuleId);
   const isNewClient = clientSearched && !searchedClient;
 
+  const handleIdentify = () => {
+    let name = "";
+    if (useExistingSalesperson && selectedSalespersonId) {
+      const sp = salespeople.find(s => s.id === selectedSalespersonId);
+      name = sp?.name || "";
+    } else if (!useExistingSalesperson && salespersonName.trim()) {
+      name = salespersonName.trim();
+    }
+
+    if (!name) {
+      toast.error("Informe seu nome para continuar");
+      return;
+    }
+
+    setConfirmedSalespersonName(name);
+    setStep("form");
+  };
+
   const handleSubmit = async () => {
-    if (!tokenData || !selectedRule) {
+    if (!companyId || !selectedRule) {
       toast.error("Selecione uma regra de pontuação");
       return;
     }
@@ -231,7 +264,7 @@ export default function CustomerPointsSalespersonForm() {
         const { data: newClient, error: clientError } = await supabase
           .from("customer_points_clients")
           .insert({
-            company_id: tokenData.company_id,
+            company_id: companyId,
             name: clientName.trim(),
             cpf: cleanCPF,
             phone: clientPhone || null,
@@ -263,7 +296,7 @@ export default function CustomerPointsSalespersonForm() {
       const { error: transactionError } = await supabase
         .from("customer_points_transactions")
         .insert({
-          company_id: tokenData.company_id,
+          company_id: companyId,
           client_id: clientId!,
           cpf: cleanCPF,
           rule_id: selectedRule.id,
@@ -271,7 +304,7 @@ export default function CustomerPointsSalespersonForm() {
           source: "salesperson",
           value: value || null,
           form_responses: {
-            salesperson_token: tokenData.name,
+            salesperson_name: confirmedSalespersonName,
             transaction_value: transactionValue || null,
           },
         });
@@ -344,7 +377,92 @@ export default function CustomerPointsSalespersonForm() {
           </motion.div>
         )}
 
-        {step === "form" && tokenData && (
+        {step === "identify" && companyValid && (
+          <motion.div
+            key="identify"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="w-full max-w-md"
+          >
+            <Card>
+              <CardHeader className="text-center">
+                <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="h-8 w-8 text-primary" />
+                </div>
+                <CardTitle>Identificação</CardTitle>
+                <CardDescription>
+                  Informe seu nome para registrar pontos
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {salespeople.length > 0 && (
+                  <div className="flex gap-2 mb-4">
+                    <Button
+                      variant={useExistingSalesperson ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setUseExistingSalesperson(true)}
+                      className="flex-1"
+                    >
+                      Selecionar da lista
+                    </Button>
+                    <Button
+                      variant={!useExistingSalesperson ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setUseExistingSalesperson(false)}
+                      className="flex-1"
+                    >
+                      Digitar nome
+                    </Button>
+                  </div>
+                )}
+
+                {useExistingSalesperson && salespeople.length > 0 ? (
+                  <div className="space-y-2">
+                    <Label>Seu nome</Label>
+                    <Select value={selectedSalespersonId} onValueChange={setSelectedSalespersonId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione seu nome..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {salespeople.map((sp) => (
+                          <SelectItem key={sp.id} value={sp.id}>
+                            {sp.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="salesperson-name">Seu nome</Label>
+                    <Input
+                      id="salesperson-name"
+                      value={salespersonName}
+                      onChange={(e) => setSalespersonName(e.target.value)}
+                      placeholder="Digite seu nome"
+                    />
+                  </div>
+                )}
+
+                <Button 
+                  onClick={handleIdentify} 
+                  className="w-full" 
+                  size="lg"
+                  disabled={
+                    (useExistingSalesperson && salespeople.length > 0 && !selectedSalespersonId) ||
+                    (!useExistingSalesperson && !salespersonName.trim()) ||
+                    (salespeople.length === 0 && !salespersonName.trim())
+                  }
+                >
+                  Continuar
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {step === "form" && companyValid && (
           <motion.div
             key="form"
             initial={{ opacity: 0, y: 20 }}
@@ -359,7 +477,7 @@ export default function CustomerPointsSalespersonForm() {
                 </div>
                 <CardTitle>Registrar Pontos</CardTitle>
                 <CardDescription>
-                  Vendedor: {tokenData.name}
+                  Vendedor: {confirmedSalespersonName}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
