@@ -47,7 +47,7 @@ export default function CustomerPointsSalespersonTokens() {
   const [selectedSalesperson, setSelectedSalesperson] = useState<string>("");
   const [createMode, setCreateMode] = useState<"existing" | "new">("existing");
 
-  const publicDomain = "https://unvholdings.com.br";
+  const publicDomain = typeof window !== "undefined" ? window.location.origin : "";
 
   useEffect(() => {
     if (companyId) {
