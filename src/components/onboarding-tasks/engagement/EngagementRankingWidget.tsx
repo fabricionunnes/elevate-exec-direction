@@ -26,6 +26,7 @@ export const EngagementRankingWidget = () => {
 
   const fetchRankings = async () => {
     try {
+      // Only show consultants and CS in the ranking
       const { data, error } = await supabase
         .from("consultant_engagement_scores")
         .select(`
@@ -33,8 +34,9 @@ export const EngagementRankingWidget = () => {
           staff_id,
           total_score,
           rank_position,
-          onboarding_staff!inner(name)
+          onboarding_staff!inner(name, role)
         `)
+        .in("onboarding_staff.role", ["cs", "consultant"])
         .order("rank_position", { ascending: true })
         .limit(5);
 
