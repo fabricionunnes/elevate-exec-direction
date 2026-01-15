@@ -94,13 +94,27 @@ export function ChurnPredictionWidget({ onViewDetails, limit = 5 }: Props) {
   const calculateAllPredictions = async () => {
     setCalculating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('predict-churn', {
-        body: { calculate_all: true }
-      });
+      // Batch processing to avoid function timeouts
+      const pageSize = 20;
+      let offset = 0;
+      let totalCalculated = 0;
+      let safety = 0;
 
-      if (error) throw error;
+      while (safety < 200) {
+        safety++;
+        const { data, error } = await supabase.functions.invoke('predict-churn', {
+          body: { calculate_all: true, offset, limit: pageSize }
+        });
 
-      toast.success(`${data.predictions?.length || 0} previsões calculadas`);
+        if (error) throw error;
+
+        totalCalculated += data?.predictions?.length || 0;
+
+        if (!data?.paging?.has_more) break;
+        offset = data.paging.next_offset;
+      }
+
+      toast.success(`${totalCalculated} previsões calculadas`);
       fetchPredictions();
     } catch (error: any) {
       console.error('Error calculating predictions:', error);
