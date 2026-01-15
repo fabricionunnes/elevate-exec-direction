@@ -204,19 +204,16 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
       questions.push(`Como está a execução das ${project.overdue_tasks} tarefa(s) pendente(s)?`);
     }
 
-    // Renewal proximity
-    if (project.renewal_date) {
-      const daysToRenewal = differenceInDays(new Date(project.renewal_date), new Date());
-      if (daysToRenewal <= 30 && daysToRenewal > 0) {
-        questions.push(`A renovação de ${companyName} é em ${daysToRenewal} dias. O cliente já sinalizou intenção de renovar?`);
-      } else if (daysToRenewal <= 60 && daysToRenewal > 30) {
-        questions.push(`Qual é a percepção de valor do cliente pensando na renovação?`);
+    // Segment-specific questions
+    if (project.segment) {
+      if (project.health_score >= 70) {
+        questions.push(`Como ${companyName} (${project.segment}) se compara com outros clientes do mesmo segmento?`);
       }
     }
 
-    // Support tickets
-    if (project.pending_support_tickets && project.pending_support_tickets > 2) {
-      questions.push(`${companyName} tem ${project.pending_support_tickets} tickets abertos. São problemas recorrentes?`);
+    // NPS feedback follow-up
+    if (project.last_nps_feedback) {
+      questions.push(`O cliente mencionou no NPS: "${project.last_nps_feedback.substring(0, 50)}..." - já foi endereçado?`);
     }
 
     // Fallback for healthy projects
