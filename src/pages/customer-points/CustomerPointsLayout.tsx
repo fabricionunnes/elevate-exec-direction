@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { Outlet, useNavigate, useLocation, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   LayoutDashboard,
@@ -14,6 +15,7 @@ import {
   LogOut,
   Trophy,
   ChevronLeft,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,23 +26,26 @@ interface NavItem {
   href: string;
 }
 
-const navItems: NavItem[] = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "" },
-  { id: "clients", label: "Clientes", icon: Users, href: "/clientes" },
-  { id: "rules", label: "Regras de Pontuação", icon: Settings2, href: "/regras" },
-  { id: "transactions", label: "Ações / Registros", icon: ClipboardList, href: "/acoes" },
-  { id: "qrcodes", label: "QR Code & Formulários", icon: QrCode, href: "/qrcodes" },
-];
-
 export default function CustomerPointsLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { companyId: paramCompanyId } = useParams<{ companyId: string }>();
   const [loading, setLoading] = useState(true);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string>("");
   const [projectId, setProjectId] = useState<string | null>(null);
   const [pointsName, setPointsName] = useState("Pontos");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isStaff, setIsStaff] = useState(false);
+  const [staffRole, setStaffRole] = useState<string | null>(null);
+
+  const navItems: NavItem[] = [
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "" },
+    { id: "clients", label: "Clientes", icon: Users, href: "/clients" },
+    { id: "rules", label: "Regras de Pontuação", icon: Settings2, href: "/rules" },
+    { id: "transactions", label: "Ações / Registros", icon: ClipboardList, href: "/transactions" },
+    { id: "qrcodes", label: "QR Code & Formulários", icon: QrCode, href: "/qr-codes" },
+  ];
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -52,10 +57,60 @@ export default function CustomerPointsLayout() {
           return;
         }
 
-        // Check if user is a client (onboarding_users) - not staff
+        // First check if user is staff (admin, cs, consultant)
+        const { data: staffData } = await supabase
+          .from("onboarding_staff")
+          .select("id, role, is_active")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (staffData && ["admin", "cs", "consultant"].includes(staffData.role)) {
+          // Staff member - use companyId from URL params
+          setIsStaff(true);
+          setStaffRole(staffData.role);
+          
+          if (!paramCompanyId) {
+            toast.error("Empresa não especificada");
+            navigate("/onboarding-tasks/companies");
+            return;
+          }
+
+          // Verify company exists
+          const { data: company } = await supabase
+            .from("onboarding_companies")
+            .select("id, name")
+            .eq("id", paramCompanyId)
+            .single();
+
+          if (!company) {
+            toast.error("Empresa não encontrada");
+            navigate("/onboarding-tasks/companies");
+            return;
+          }
+
+          setCompanyId(company.id);
+          setCompanyName(company.name);
+
+          // Load points config
+          const { data: config } = await supabase
+            .from("customer_points_config")
+            .select("points_name")
+            .eq("company_id", company.id)
+            .maybeSingle();
+
+          if (config?.points_name) {
+            setPointsName(config.points_name);
+          }
+
+          setLoading(false);
+          return;
+        }
+
+        // Check if user is a client (onboarding_users)
         const { data: onboardingUser, error: userError } = await supabase
           .from("onboarding_users")
-          .select("*, project:onboarding_projects(id, company_id, onboarding_company:onboarding_companies(id, name))")
+          .select("*, project:onboarding_projects(id, onboarding_company_id, onboarding_company:onboarding_companies(id, name))")
           .eq("user_id", user.id)
           .maybeSingle();
 
@@ -69,6 +124,13 @@ export default function CustomerPointsLayout() {
         if (!company) {
           toast.error("Empresa não encontrada");
           navigate("/onboarding-tasks/login");
+          return;
+        }
+
+        // Verify URL companyId matches user's company (for clients)
+        if (paramCompanyId && paramCompanyId !== company.id) {
+          toast.error("Acesso não autorizado a esta empresa");
+          navigate(`/customer-points/${company.id}`);
           return;
         }
 
@@ -96,20 +158,23 @@ export default function CustomerPointsLayout() {
     };
 
     checkAccess();
-  }, [navigate]);
+  }, [navigate, paramCompanyId]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/onboarding-tasks/login");
   };
 
-  const handleBackToPortal = () => {
-    if (projectId) {
+  const handleBack = () => {
+    if (isStaff) {
+      navigate(`/onboarding-tasks/companies/${companyId}`);
+    } else if (projectId) {
       navigate(`/onboarding-client/${projectId}`);
     }
   };
 
-  const currentPath = location.pathname.replace("/pontuacao-clientes", "");
+  const basePath = `/customer-points/${companyId}`;
+  const currentPath = location.pathname.replace(basePath, "");
   const activeNav = navItems.find(item => 
     item.href === "" ? currentPath === "" || currentPath === "/" : currentPath.startsWith(item.href)
   )?.id || "dashboard";
@@ -127,9 +192,17 @@ export default function CustomerPointsLayout() {
       <div className="p-4 border-b">
         <div className="flex items-center gap-2">
           <Trophy className="h-6 w-6 text-primary" />
-          <div>
-            <h1 className="font-bold text-lg">Pontuação de Clientes</h1>
-            <p className="text-xs text-muted-foreground">{companyName}</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="font-bold text-lg truncate">Pontuação de Clientes</h1>
+              {isStaff && (
+                <Badge variant="outline" className="text-xs shrink-0">
+                  <ShieldCheck className="h-3 w-3 mr-1" />
+                  Staff
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground truncate">{companyName}</p>
           </div>
         </div>
       </div>
@@ -147,7 +220,7 @@ export default function CustomerPointsLayout() {
                 isActive && "bg-primary/10 text-primary"
               )}
               onClick={() => {
-                navigate(`/pontuacao-clientes${item.href}`);
+                navigate(`${basePath}${item.href}`);
                 setMobileMenuOpen(false);
               }}
             >
@@ -162,19 +235,21 @@ export default function CustomerPointsLayout() {
         <Button
           variant="ghost"
           className="w-full justify-start gap-3"
-          onClick={handleBackToPortal}
+          onClick={handleBack}
         >
           <ChevronLeft className="h-4 w-4" />
-          Voltar ao Portal
+          {isStaff ? "Voltar à Empresa" : "Voltar ao Portal"}
         </Button>
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3 text-muted-foreground"
-          onClick={handleLogout}
-        >
-          <LogOut className="h-4 w-4" />
-          Sair
-        </Button>
+        {!isStaff && (
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-muted-foreground"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4" />
+            Sair
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -192,6 +267,9 @@ export default function CustomerPointsLayout() {
           <div className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-primary" />
             <span className="font-semibold">{pointsName}</span>
+            {isStaff && (
+              <Badge variant="outline" className="text-xs">Staff</Badge>
+            )}
           </div>
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
@@ -209,7 +287,7 @@ export default function CustomerPointsLayout() {
       {/* Main Content */}
       <main className="flex-1 lg:overflow-auto">
         <div className="pt-16 lg:pt-0">
-          <Outlet context={{ companyId, companyName, pointsName, projectId }} />
+          <Outlet context={{ companyId, companyName, pointsName, projectId, isStaff, staffRole }} />
         </div>
       </main>
     </div>
