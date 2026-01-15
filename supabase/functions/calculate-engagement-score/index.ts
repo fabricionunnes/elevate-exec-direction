@@ -35,11 +35,12 @@ serve(async (req) => {
     let staffIds: string[] = [];
 
     if (calculateAll) {
+      // Only calculate for consultants and CS roles
       const { data: allStaff } = await supabase
         .from('onboarding_staff')
         .select('id')
         .eq('is_active', true)
-        .in('role', ['cs', 'admin']);
+        .in('role', ['cs', 'consultant']);
 
       staffIds = allStaff?.map((s: { id: string }) => s.id) || [];
     } else if (staffId) {
@@ -133,11 +134,12 @@ async function calculateMetricsForStaff(
 
   let meetingScore = 0;
   if (projectIds.length > 0) {
+    // Use is_finalized instead of status = 'completed'
     const { count: meetingCount } = await supabase
       .from('onboarding_meeting_notes')
       .select('id', { count: 'exact' })
       .in('project_id', projectIds)
-      .eq('status', 'completed')
+      .eq('is_finalized', true)
       .gte('meeting_date', periodStart.toISOString())
       .lte('meeting_date', periodEnd.toISOString());
 
