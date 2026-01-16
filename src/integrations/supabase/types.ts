@@ -187,6 +187,278 @@ export type Database = {
           },
         ]
       }
+      ceo_agenda: {
+        Row: {
+          attendees: string[] | null
+          created_at: string
+          end_time: string | null
+          event_type: string
+          id: string
+          objective: string | null
+          observations: string | null
+          start_time: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attendees?: string[] | null
+          created_at?: string
+          end_time?: string | null
+          event_type: string
+          id?: string
+          objective?: string | null
+          observations?: string | null
+          start_time: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attendees?: string[] | null
+          created_at?: string
+          end_time?: string | null
+          event_type?: string
+          id?: string
+          objective?: string | null
+          observations?: string | null
+          start_time?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ceo_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          description: string | null
+          id: string
+          is_dismissed: boolean | null
+          is_read: boolean | null
+          related_entity_id: string | null
+          related_entity_type: string | null
+          severity: string
+          title: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          severity: string
+          title: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          severity?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      ceo_decision_results: {
+        Row: {
+          created_at: string
+          decision_id: string
+          id: string
+          indicator_name: string
+          observations: string | null
+          recorded_at: string
+          result: string | null
+          value_after: number | null
+          value_before: number | null
+        }
+        Insert: {
+          created_at?: string
+          decision_id: string
+          id?: string
+          indicator_name: string
+          observations?: string | null
+          recorded_at?: string
+          result?: string | null
+          value_after?: number | null
+          value_before?: number | null
+        }
+        Update: {
+          created_at?: string
+          decision_id?: string
+          id?: string
+          indicator_name?: string
+          observations?: string | null
+          recorded_at?: string
+          result?: string | null
+          value_after?: number | null
+          value_before?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ceo_decision_results_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "ceo_decisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ceo_decisions: {
+        Row: {
+          area: string
+          created_at: string
+          decision_date: string
+          description: string | null
+          hypothesis: string | null
+          id: string
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          decision_date?: string
+          description?: string | null
+          hypothesis?: string | null
+          id?: string
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          decision_date?: string
+          description?: string | null
+          hypothesis?: string | null
+          id?: string
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ceo_notes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          related_area: string | null
+          related_company_id: string | null
+          related_decision_id: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          related_area?: string | null
+          related_company_id?: string | null
+          related_decision_id?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          related_area?: string | null
+          related_company_id?: string | null
+          related_decision_id?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ceo_notes_related_company_id_fkey"
+            columns: ["related_company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ceo_notes_related_decision_id_fkey"
+            columns: ["related_decision_id"]
+            isOneToOne: false
+            referencedRelation: "ceo_decisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ceo_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          learnings: string | null
+          metrics: Json
+          snapshot_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          learnings?: string | null
+          metrics?: Json
+          snapshot_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          learnings?: string | null
+          metrics?: Json
+          snapshot_date?: string
+        }
+        Relationships: []
+      }
+      ceo_tasks: {
+        Row: {
+          created_at: string
+          due_date: string | null
+          id: string
+          is_strategic: boolean | null
+          observations: string | null
+          priority: string
+          related_area: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          is_strategic?: boolean | null
+          observations?: string | null
+          priority?: string
+          related_area?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          is_strategic?: boolean | null
+          observations?: string | null
+          priority?: string
+          related_area?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_advisor_leads: {
         Row: {
           created_at: string
