@@ -106,20 +106,19 @@ export default function HrCandidateDiscPage() {
 
       setDiscRecord(disc);
 
-      // Get candidate info
+      // Get candidate info (optional for public access)
       const { data: candidateData, error: candidateError } = await supabase
         .from("candidates")
         .select("id, full_name, email")
         .eq("id", disc.candidate_id)
         .single();
 
-      if (candidateError || !candidateData) {
-        setError("Candidato não encontrado");
-        setLoading(false);
-        return;
+      // Anonymous users may not have permission to read candidates due to RLS.
+      // The DISC can still be completed without showing candidate data.
+      if (!candidateError && candidateData) {
+        setCandidate(candidateData);
       }
 
-      setCandidate(candidateData);
       setLoading(false);
     } catch (err) {
       console.error("Error fetching data:", err);

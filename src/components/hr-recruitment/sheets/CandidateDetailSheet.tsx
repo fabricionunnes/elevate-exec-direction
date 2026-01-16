@@ -156,7 +156,9 @@ export function CandidateDetailSheet({
     if (error) {
       toast.error("Erro ao criar avaliação DISC");
     } else {
-      const discUrl = `${window.location.origin}/hr-disc/${data.access_token}`;
+      const discUrl = `${window.location.origin}/?public=hr-disc&token=${encodeURIComponent(
+        data.access_token
+      )}`;
       await navigator.clipboard.writeText(discUrl);
       toast.success("Link DISC copiado para a área de transferência!");
       fetchCandidateData();
