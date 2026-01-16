@@ -396,6 +396,60 @@ export type Database = {
           },
         ]
       }
+      ceo_planning: {
+        Row: {
+          churn_actual: number | null
+          churn_target: number | null
+          clients_actual: number | null
+          clients_target: number | null
+          created_at: string
+          id: string
+          month: number
+          mrr_actual: number | null
+          mrr_target: number | null
+          notes: string | null
+          revenue_actual: number | null
+          revenue_target: number | null
+          scenario: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          churn_actual?: number | null
+          churn_target?: number | null
+          clients_actual?: number | null
+          clients_target?: number | null
+          created_at?: string
+          id?: string
+          month: number
+          mrr_actual?: number | null
+          mrr_target?: number | null
+          notes?: string | null
+          revenue_actual?: number | null
+          revenue_target?: number | null
+          scenario?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          churn_actual?: number | null
+          churn_target?: number | null
+          clients_actual?: number | null
+          clients_target?: number | null
+          created_at?: string
+          id?: string
+          month?: number
+          mrr_actual?: number | null
+          mrr_target?: number | null
+          notes?: string | null
+          revenue_actual?: number | null
+          revenue_target?: number | null
+          scenario?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       ceo_snapshots: {
         Row: {
           created_at: string
@@ -417,6 +471,54 @@ export type Database = {
           learnings?: string | null
           metrics?: Json
           snapshot_date?: string
+        }
+        Relationships: []
+      }
+      ceo_strategic_goals: {
+        Row: {
+          category: string | null
+          created_at: string
+          current_value: number | null
+          description: string | null
+          id: string
+          priority: string | null
+          status: string | null
+          target_date: string | null
+          target_period: string | null
+          target_value: number | null
+          title: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          current_value?: number | null
+          description?: string | null
+          id?: string
+          priority?: string | null
+          status?: string | null
+          target_date?: string | null
+          target_period?: string | null
+          target_value?: number | null
+          title: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          current_value?: number | null
+          description?: string | null
+          id?: string
+          priority?: string | null
+          status?: string | null
+          target_date?: string | null
+          target_period?: string | null
+          target_value?: number | null
+          title?: string
+          unit?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
