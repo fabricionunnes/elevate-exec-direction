@@ -389,10 +389,11 @@ const ClientOnboardingPage = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/98 backdrop-blur-md border-b safe-area-top">
         <div className="px-4 py-3 max-w-7xl mx-auto">
-          <div className="flex items-center justify-between gap-4">
-            {/* Left: Company/Project selector */}
-            <div className="flex-1 min-w-0">
-              <WelcomeHeader className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider" />
+          {/* Top row: Welcome + Actions */}
+          <div className="flex items-center justify-between gap-3 mb-3">
+            {/* Left: Welcome + Company */}
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <WelcomeHeader showAvatar className="hidden md:flex text-sm text-foreground" />
               
               {userProjects.length > 1 ? (
                 <DropdownMenu>
@@ -436,26 +437,6 @@ const ClientOnboardingPage = () => {
               )}
             </div>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
-              {viewTabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeView === tab.id;
-                return (
-                  <Button
-                    key={tab.id}
-                    variant={isActive ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setActiveView(tab.id)}
-                    className={`gap-2 ${isActive ? "bg-primary/10 text-primary" : ""}`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{tab.label}</span>
-                  </Button>
-                );
-              })}
-            </nav>
-
             {/* Right: Actions */}
             <div className="flex items-center gap-1 flex-shrink-0">
               {companyId && (
@@ -472,26 +453,46 @@ const ClientOnboardingPage = () => {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-10 w-10 rounded-full touch-manipulation" 
+                className="h-9 w-9 rounded-full touch-manipulation" 
                 onClick={() => setShowSettings(true)}
               >
-                <Settings className="h-5 w-5" />
+                <Settings className="h-4 w-4" />
               </Button>
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-10 w-10 rounded-full touch-manipulation" 
+                className="h-9 w-9 rounded-full touch-manipulation" 
                 onClick={handleLogout}
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
           {/* Progress bar */}
-          <div className="mt-2 flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-3">
             <Progress value={progressPercent} className="h-2 flex-1" />
-            <span className="text-xs font-bold text-primary tabular-nums">{progressPercent}%</span>
+            <span className="text-xs font-bold text-primary tabular-nums whitespace-nowrap">{progressPercent}%</span>
+          </div>
+
+          {/* Navigation tabs - horizontal scroll on mobile */}
+          <div className="hidden md:flex items-center gap-1 flex-wrap">
+            {viewTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeView === tab.id;
+              return (
+                <Button
+                  key={tab.id}
+                  variant={isActive ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveView(tab.id)}
+                  className={`gap-1.5 h-8 text-xs ${isActive ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  <span>{tab.label}</span>
+                </Button>
+              );
+            })}
           </div>
         </div>
       </header>
