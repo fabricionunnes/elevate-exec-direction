@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Brain, FileText, MapPin, Trophy, Users, Calculator } from "lucide-react";
+import { Loader2, Brain, FileText, MapPin, Trophy, Users, Calculator, ArrowLeft } from "lucide-react";
 import { CEOBigNumbers } from "@/components/ceo-dashboard/CEOBigNumbers";
 import { CEOBusinessHealth } from "@/components/ceo-dashboard/CEOBusinessHealth";
 import { CEODecisions } from "@/components/ceo-dashboard/CEODecisions";
@@ -18,6 +18,7 @@ import { CEOScoreCard } from "@/components/ceo-dashboard/CEOScoreCard";
 import { CEOVirtualBoard } from "@/components/ceo-dashboard/CEOVirtualBoard";
 import { CEODecisionSimulator } from "@/components/ceo-dashboard/CEODecisionSimulator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 const CEO_EMAIL = "fabricio@universidadevendas.com.br";
 
@@ -94,11 +95,21 @@ export default function CEODashboardPage() {
       <div className="space-y-6 p-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">CEO Dashboard</h1>
-            <p className="text-muted-foreground">
-              Painel de Comando Estratégico
-            </p>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => navigate("/onboarding-tasks")}
+              className="h-10 w-10"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">CEO Dashboard</h1>
+              <p className="text-muted-foreground">
+                Painel de Comando Estratégico
+              </p>
+            </div>
           </div>
         </div>
 
