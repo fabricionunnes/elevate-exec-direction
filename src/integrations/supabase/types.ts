@@ -8634,6 +8634,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_ceo: { Args: never; Returns: boolean }
       is_crm_admin: { Args: never; Returns: boolean }
       is_financial_admin: { Args: never; Returns: boolean }
       is_onboarding_admin:
