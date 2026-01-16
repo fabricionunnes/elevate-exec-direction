@@ -97,47 +97,26 @@ export default function NPSSurveyPage() {
 
     setSubmitting(true);
     try {
-      // Insert NPS response
-      const { data: npsResponse, error: npsError } = await supabase
-        .from('onboarding_nps_responses')
-        .insert({
-          project_id: projectId,
+      const validReferrals = score >= 8
+        ? referrals.filter((r) => r.name.trim() && r.phone.trim())
+        : [];
+
+      const { data, error } = await supabase.functions.invoke('nps-public', {
+        body: {
+          action: 'submit',
+          projectId,
           score,
           feedback: feedback.trim() || null,
-          what_can_improve: whatCanImprove.trim() || null,
-          would_recommend_why: wouldRecommendWhy.trim() || null,
-          respondent_name: respondentName.trim() || null,
-          respondent_email: null,
-        })
-        .select('id')
-        .single();
+          whatCanImprove: whatCanImprove.trim() || null,
+          wouldRecommendWhy: wouldRecommendWhy.trim() || null,
+          respondentName: respondentName.trim() || null,
+          referrals: validReferrals,
+        },
+      });
 
-      if (npsError) throw npsError;
-
-      // Insert referrals if score >= 8 and there are valid referrals
-      if (score >= 8 && projectInfo?.company_id) {
-        const validReferrals = referrals.filter(r => r.name.trim() && r.phone.trim());
-        
-        if (validReferrals.length > 0) {
-          const referralInserts = validReferrals.map(r => ({
-            referrer_company_id: projectInfo.company_id,
-            referrer_project_id: projectId,
-            referrer_name: respondentName.trim() || null,
-            referred_name: r.name.trim(),
-            referred_phone: r.phone.trim(),
-            source: 'nps' as const,
-            nps_response_id: npsResponse.id,
-          }));
-
-          const { error: referralError } = await supabase
-            .from('client_referrals')
-            .insert(referralInserts);
-
-          if (referralError) {
-            console.error('Error saving referrals:', referralError);
-            // Don't fail the whole submission for referral errors
-          }
-        }
+      if (error || data?.error) {
+        console.error('nps-public submit error:', error || data);
+        throw new Error(data?.error || 'submit_failed');
       }
 
       setSubmitted(true);
