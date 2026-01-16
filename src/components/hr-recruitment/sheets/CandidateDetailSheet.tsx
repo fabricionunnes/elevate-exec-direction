@@ -25,6 +25,7 @@ import {
   FileText, 
   Clock,
   User,
+  Users,
   Send,
   Download,
   Brain,
@@ -418,31 +419,96 @@ export function CandidateDetailSheet({
                 ) : (
                   <div className="space-y-4">
                     {interviews.map((interview) => (
-                      <div key={interview.id} className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <Badge variant="outline">
-                            {interview.interview_type === 'hr' ? 'RH' :
-                             interview.interview_type === 'technical' ? 'Técnica' : 'Final'}
-                          </Badge>
-                          <Badge variant={interview.status === 'completed' ? 'default' : 'secondary'}>
+                      <div key={interview.id} className="p-4 border rounded-lg space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">
+                              {interview.interview_type === 'hr' ? 'RH' :
+                               interview.interview_type === 'technical' ? 'Técnica' : 
+                               interview.interview_type === 'video' ? 'Video' :
+                               interview.interview_type === 'phone' ? 'Telefone' :
+                               interview.interview_type === 'in_person' ? 'Presencial' : 'Final'}
+                            </Badge>
+                            {(interview as any).group_session_id && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Users className="h-3 w-3 mr-1" />
+                                Grupo
+                              </Badge>
+                            )}
+                          </div>
+                          <Badge variant={
+                            interview.status === 'completed' ? 'default' : 
+                            interview.status === 'cancelled' ? 'destructive' :
+                            interview.status === 'no_show' ? 'destructive' : 'secondary'
+                          }>
                             {interview.status === 'completed' ? 'Realizada' : 
-                             interview.status === 'scheduled' ? 'Agendada' : interview.status}
+                             interview.status === 'scheduled' ? 'Agendada' : 
+                             interview.status === 'cancelled' ? 'Cancelada' :
+                             interview.status === 'no_show' ? 'Não compareceu' : interview.status}
                           </Badge>
                         </div>
+                        
                         {interview.scheduled_at && (
-                          <p className="text-sm">
+                          <p className="text-sm flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
                             {format(new Date(interview.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                           </p>
                         )}
+                        
+                        {interview.interviewer && (
+                          <p className="text-sm text-muted-foreground flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            Entrevistador: {(interview.interviewer as any).name}
+                          </p>
+                        )}
+
+                        {(interview as any).meet_link && (
+                          <a 
+                            href={(interview as any).meet_link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline flex items-center gap-1"
+                          >
+                            🔗 Link do Google Meet
+                          </a>
+                        )}
+                        
                         {interview.score !== null && (
-                          <div className="mt-2">
-                            <span className="text-lg font-bold">{interview.score}/10</span>
+                          <div className="flex items-center gap-2 p-2 bg-muted rounded">
+                            <span className="text-sm text-muted-foreground">Nota:</span>
+                            <span className="text-xl font-bold text-primary">{interview.score}/10</span>
                           </div>
                         )}
+
+                        {interview.recommendation && (
+                          <Badge variant={
+                            interview.recommendation === 'approved' ? 'default' :
+                            interview.recommendation === 'talent_pool' ? 'secondary' : 'destructive'
+                          }>
+                            {interview.recommendation === 'approved' ? '✓ Aprovado' :
+                             interview.recommendation === 'talent_pool' ? '⏳ Banco de Talentos' : '✗ Reprovado'}
+                          </Badge>
+                        )}
+                        
+                        {interview.strengths && (
+                          <div className="text-sm">
+                            <span className="font-medium text-green-600">Pontos fortes:</span>
+                            <p className="text-muted-foreground">{interview.strengths}</p>
+                          </div>
+                        )}
+
+                        {interview.concerns && (
+                          <div className="text-sm">
+                            <span className="font-medium text-orange-600">Pontos de atenção:</span>
+                            <p className="text-muted-foreground">{interview.concerns}</p>
+                          </div>
+                        )}
+                        
                         {interview.detailed_feedback && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            {interview.detailed_feedback}
-                          </p>
+                          <div className="text-sm">
+                            <span className="font-medium">Parecer detalhado:</span>
+                            <p className="text-muted-foreground whitespace-pre-wrap">{interview.detailed_feedback}</p>
+                          </div>
                         )}
                       </div>
                     ))}
