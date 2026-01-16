@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Candidate, PIPELINE_STAGES, SOURCE_LABELS, STATUS_LABELS } from "../types";
+import { usePipelineStages } from "../hooks/usePipelineStages";
 import { CandidateDialog } from "../dialogs/CandidateDialog";
 import { CandidateDetailSheet } from "../sheets/CandidateDetailSheet";
 import { ScheduleGroupInterviewDialog } from "../dialogs/ScheduleGroupInterviewDialog";
@@ -54,6 +55,7 @@ export function CandidatesTab({ projectId, canEdit, isStaff, onUpdate }: Candida
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set());
   const [showGroupInterviewDialog, setShowGroupInterviewDialog] = useState(false);
 
+  const { stages: pipelineStages } = usePipelineStages(projectId);
   useEffect(() => {
     fetchData();
   }, [projectId]);
@@ -97,7 +99,9 @@ export function CandidatesTab({ projectId, canEdit, isStaff, onUpdate }: Candida
   });
 
   const getStageInfo = (stageKey: string) => {
-    return PIPELINE_STAGES.find((s) => s.key === stageKey) || { name: stageKey, color: "#6366f1" };
+    return pipelineStages.find((s) => s.key === stageKey) || 
+      PIPELINE_STAGES.find((s) => s.key === stageKey) || 
+      { name: stageKey, color: "#6366f1" };
   };
 
   const getInitials = (name: string) => {
@@ -189,7 +193,7 @@ export function CandidatesTab({ projectId, canEdit, isStaff, onUpdate }: Candida
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas as etapas</SelectItem>
-            {PIPELINE_STAGES.map((stage) => (
+            {pipelineStages.map((stage) => (
               <SelectItem key={stage.key} value={stage.key}>
                 {stage.name}
               </SelectItem>

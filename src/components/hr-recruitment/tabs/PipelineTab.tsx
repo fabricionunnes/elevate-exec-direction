@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/select";
 import { GripVertical, Mail, Users } from "lucide-react";
 import { toast } from "sonner";
-import { Candidate, PIPELINE_STAGES } from "../types";
+import { Candidate } from "../types";
+import { usePipelineStages } from "../hooks/usePipelineStages";
 import { CandidateDetailSheet } from "../sheets/CandidateDetailSheet";
 
 interface PipelineTabProps {
@@ -30,6 +31,8 @@ export function PipelineTab({ projectId, canEdit, onUpdate }: PipelineTabProps) 
   const [draggedCandidate, setDraggedCandidate] = useState<Candidate | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
+
+  const { stages: pipelineStages, loading: stagesLoading, refetch: refetchStages } = usePipelineStages(projectId);
 
   useEffect(() => {
     fetchData();
@@ -137,7 +140,7 @@ export function PipelineTab({ projectId, canEdit, onUpdate }: PipelineTabProps) 
       {/* Pipeline Board */}
       <ScrollArea className="w-full">
         <div className="flex gap-4 pb-4" style={{ minWidth: "fit-content" }}>
-          {PIPELINE_STAGES.map((stage) => {
+          {pipelineStages.map((stage) => {
             const stageCandidates = getCandidatesByStage(stage.key);
             return (
               <div
@@ -228,6 +231,7 @@ export function PipelineTab({ projectId, canEdit, onUpdate }: PipelineTabProps) 
         projectId={projectId}
         onUpdate={() => {
           fetchData();
+          refetchStages();
           onUpdate();
         }}
       />
