@@ -6,116 +6,107 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, CalendarIcon, Clock, Users, Target, Coffee, Briefcase, Video } from "lucide-react";
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, isSameDay } from "date-fns";
+import { Plus, CalendarIcon, Clock, Users, RefreshCw, Video, ExternalLink, AlertCircle } from "lucide-react";
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-interface AgendaEvent {
+interface GoogleCalendarEvent {
   id: string;
-  title: string;
-  start_time: string;
-  end_time: string | null;
-  event_type: string;
-  objective: string | null;
-  attendees: string[] | null;
-  observations: string | null;
+  summary: string;
+  description?: string;
+  start: { dateTime?: string; date?: string };
+  end: { dateTime?: string; date?: string };
+  attendees?: { email: string; responseStatus?: string }[];
+  hangoutLink?: string;
+  htmlLink?: string;
 }
 
-const EVENT_TYPES = [
-  { value: "reuniao_estrategica", label: "Reunião Estratégica", icon: Target, color: "bg-purple-500" },
-  { value: "reuniao_cliente", label: "Reunião com Cliente", icon: Briefcase, color: "bg-blue-500" },
-  { value: "reuniao_interna", label: "Reunião Interna", icon: Users, color: "bg-green-500" },
-  { value: "evento", label: "Evento", icon: Video, color: "bg-orange-500" },
-  { value: "tempo_foco", label: "Tempo de Foco", icon: Coffee, color: "bg-gray-500" },
-];
-
 export function CEOAgenda() {
-  const [events, setEvents] = useState<AgendaEvent[]>([]);
+  const [events, setEvents] = useState<GoogleCalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("week");
+  const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
+    description: "",
     date: new Date(),
     start_time: "09:00",
     end_time: "10:00",
-    event_type: "",
-    objective: "",
     attendees: "",
-    observations: "",
+    addMeet: false,
   });
 
   const fetchEvents = async () => {
     try {
-      let startDate: Date;
-      let endDate: Date;
+      setIsRefreshing(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-      switch (viewMode) {
-        case "day":
-          startDate = startOfDay(selectedDate);
-          endDate = endOfDay(selectedDate);
-          break;
-        case "week":
-          startDate = startOfWeek(selectedDate, { locale: ptBR });
-          endDate = endOfWeek(selectedDate, { locale: ptBR });
-          break;
-        case "month":
-          startDate = startOfMonth(selectedDate);
-          endDate = endOfMonth(selectedDate);
-          break;
-      }
-
-      const { data, error } = await supabase
-        .from("ceo_agenda")
-        .select("*")
-        .gte("start_time", startDate.toISOString())
-        .lte("start_time", endDate.toISOString())
-        .order("start_time", { ascending: true });
+      const { data, error } = await supabase.functions.invoke("google-calendar?action=events", {
+        body: {},
+      });
 
       if (error) throw error;
-      setEvents(data || []);
+
+      if (data?.needsAuth) {
+        setIsConnected(false);
+        return;
+      }
+
+      setIsConnected(true);
+      if (data?.events) {
+        setEvents(data.events);
+      }
     } catch (error) {
-      console.error("Error fetching agenda:", error);
+      console.error("Fetch events error:", error);
+      toast.error("Erro ao buscar eventos do calendário");
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchEvents();
-  }, [selectedDate, viewMode]);
+  }, []);
 
-  const handleSubmit = async () => {
-    if (!formData.title || !formData.event_type) {
-      toast.error("Preencha os campos obrigatórios");
+  const handleCreateEvent = async () => {
+    if (!formData.title) {
+      toast.error("Preencha o título do evento");
       return;
     }
 
+    setIsCreating(true);
     try {
-      const startDateTime = new Date(formData.date);
-      const [startHour, startMin] = formData.start_time.split(":");
-      startDateTime.setHours(Number(startHour), Number(startMin));
+      const startDateTime = `${format(formData.date, "yyyy-MM-dd")}T${formData.start_time}:00`;
+      const endDateTime = `${format(formData.date, "yyyy-MM-dd")}T${formData.end_time}:00`;
 
-      const endDateTime = new Date(formData.date);
-      const [endHour, endMin] = formData.end_time.split(":");
-      endDateTime.setHours(Number(endHour), Number(endMin));
+      const attendees = formData.attendees
+        .split(",")
+        .map((e) => e.trim())
+        .filter((e) => e.includes("@"));
 
-      const { error } = await supabase.from("ceo_agenda").insert({
+      const body: Record<string, unknown> = {
         title: formData.title,
-        start_time: startDateTime.toISOString(),
-        end_time: endDateTime.toISOString(),
-        event_type: formData.event_type,
-        objective: formData.objective || null,
-        attendees: formData.attendees ? formData.attendees.split(",").map(a => a.trim()) : null,
-        observations: formData.observations || null,
+        description: formData.description,
+        startDateTime,
+        endDateTime,
+        attendees: attendees.length > 0 ? attendees : undefined,
+        addMeet: formData.addMeet,
+      };
+
+      const { data, error } = await supabase.functions.invoke("google-calendar?action=create-event", {
+        body,
       });
 
       if (error) throw error;
@@ -124,26 +115,58 @@ export function CEOAgenda() {
       setIsDialogOpen(false);
       setFormData({
         title: "",
+        description: "",
         date: new Date(),
         start_time: "09:00",
         end_time: "10:00",
-        event_type: "",
-        objective: "",
         attendees: "",
-        observations: "",
+        addMeet: false,
       });
       fetchEvents();
     } catch (error) {
       console.error("Error creating event:", error);
       toast.error("Erro ao criar evento");
+    } finally {
+      setIsCreating(false);
     }
   };
 
-  const getEventTypeConfig = (type: string) => EVENT_TYPES.find(t => t.value === type);
+  const getEventDateTime = (event: GoogleCalendarEvent) => {
+    const startStr = event.start.dateTime || event.start.date;
+    return startStr ? parseISO(startStr) : new Date();
+  };
 
-  const renderEvent = (event: AgendaEvent) => {
-    const typeConfig = getEventTypeConfig(event.event_type);
-    const Icon = typeConfig?.icon || CalendarIcon;
+  const getFilteredEvents = () => {
+    let startDate: Date;
+    let endDate: Date;
+
+    switch (viewMode) {
+      case "day":
+        startDate = startOfDay(selectedDate);
+        endDate = endOfDay(selectedDate);
+        break;
+      case "week":
+        startDate = startOfWeek(selectedDate, { locale: ptBR });
+        endDate = endOfWeek(selectedDate, { locale: ptBR });
+        break;
+      case "month":
+        startDate = startOfMonth(selectedDate);
+        endDate = endOfMonth(selectedDate);
+        break;
+    }
+
+    return events.filter((event) => {
+      const eventDate = getEventDateTime(event);
+      return eventDate >= startDate && eventDate <= endDate;
+    });
+  };
+
+  const filteredEvents = getFilteredEvents();
+
+  const renderEvent = (event: GoogleCalendarEvent) => {
+    const eventDate = getEventDateTime(event);
+    const endStr = event.end.dateTime || event.end.date;
+    const endDate = endStr ? parseISO(endStr) : null;
 
     return (
       <div
@@ -151,36 +174,53 @@ export function CEOAgenda() {
         className="p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-start gap-3">
-          <div className={cn("p-2 rounded-lg text-white", typeConfig?.color || "bg-gray-500")}>
-            <Icon className="h-4 w-4" />
+          <div className="p-2 rounded-lg bg-primary text-primary-foreground">
+            <CalendarIcon className="h-4 w-4" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium truncate">{event.title}</h4>
+            <h4 className="font-medium truncate">{event.summary}</h4>
             <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
               <Clock className="h-3 w-3" />
               <span>
-                {format(new Date(event.start_time), "HH:mm")}
-                {event.end_time && ` - ${format(new Date(event.end_time), "HH:mm")}`}
+                {format(eventDate, "HH:mm")}
+                {endDate && ` - ${format(endDate, "HH:mm")}`}
               </span>
             </div>
-            {event.objective && (
+            {event.description && (
               <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
-                {event.objective}
+                {event.description}
               </p>
             )}
             {event.attendees && event.attendees.length > 0 && (
               <div className="flex items-center gap-1 mt-2">
                 <Users className="h-3 w-3 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">
-                  {event.attendees.slice(0, 3).join(", ")}
+                  {event.attendees.slice(0, 3).map(a => a.email.split("@")[0]).join(", ")}
                   {event.attendees.length > 3 && ` +${event.attendees.length - 3}`}
                 </span>
               </div>
             )}
           </div>
-          <Badge variant="outline" className="text-xs">
-            {typeConfig?.label || event.event_type}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {event.hangoutLink && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(event.hangoutLink, "_blank")}
+              >
+                <Video className="h-4 w-4" />
+              </Button>
+            )}
+            {event.htmlLink && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.open(event.htmlLink, "_blank")}
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -193,7 +233,7 @@ export function CEOAgenda() {
     return (
       <div className="grid grid-cols-7 gap-4">
         {days.map((day) => {
-          const dayEvents = events.filter(e => isSameDay(new Date(e.start_time), day));
+          const dayEvents = filteredEvents.filter(e => isSameDay(getEventDateTime(e), day));
           return (
             <div key={day.toISOString()} className="min-h-[200px]">
               <div className={cn(
@@ -204,18 +244,16 @@ export function CEOAgenda() {
                 <p className="text-lg font-bold">{format(day, "d")}</p>
               </div>
               <div className="space-y-2">
-                {dayEvents.map((event) => {
-                  const typeConfig = getEventTypeConfig(event.event_type);
-                  return (
-                    <div
-                      key={event.id}
-                      className={cn("p-2 rounded text-white text-xs", typeConfig?.color || "bg-gray-500")}
-                    >
-                      <p className="font-medium truncate">{event.title}</p>
-                      <p>{format(new Date(event.start_time), "HH:mm")}</p>
-                    </div>
-                  );
-                })}
+                {dayEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    className="p-2 rounded bg-primary text-primary-foreground text-xs cursor-pointer hover:opacity-90"
+                    onClick={() => event.htmlLink && window.open(event.htmlLink, "_blank")}
+                  >
+                    <p className="font-medium truncate">{event.summary}</p>
+                    <p>{format(getEventDateTime(event), "HH:mm")}</p>
+                  </div>
+                ))}
               </div>
             </div>
           );
@@ -237,14 +275,45 @@ export function CEOAgenda() {
     );
   }
 
+  if (!isConnected) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CalendarIcon className="h-5 w-5 text-blue-500" />
+            Agenda do CEO
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="font-medium text-lg mb-2">Google Calendar não conectado</h3>
+            <p className="text-muted-foreground mb-4">
+              Conecte sua conta Google no Escritório Virtual para visualizar sua agenda.
+            </p>
+            <Button onClick={() => window.open("/onboarding-tasks/office", "_self")}>
+              Ir para Escritório Virtual
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
           <CalendarIcon className="h-5 w-5 text-blue-500" />
           Agenda do CEO
+          <Badge variant="outline" className="ml-2 text-xs font-normal">
+            Google Calendar
+          </Badge>
         </CardTitle>
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={fetchEvents} disabled={isRefreshing}>
+            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+          </Button>
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as typeof viewMode)}>
             <TabsList>
               <TabsTrigger value="day">Dia</TabsTrigger>
@@ -273,19 +342,12 @@ export function CEOAgenda() {
                   />
                 </div>
                 <div>
-                  <Label>Tipo de Evento *</Label>
-                  <Select value={formData.event_type} onValueChange={(v) => setFormData({ ...formData, event_type: v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {EVENT_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Descrição</Label>
+                  <Textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Detalhes do evento..."
+                  />
                 </div>
                 <div>
                   <Label>Data</Label>
@@ -325,31 +387,27 @@ export function CEOAgenda() {
                   </div>
                 </div>
                 <div>
-                  <Label>Objetivo</Label>
-                  <Input
-                    value={formData.objective}
-                    onChange={(e) => setFormData({ ...formData, objective: e.target.value })}
-                    placeholder="Qual o objetivo deste evento?"
-                  />
-                </div>
-                <div>
-                  <Label>Participantes</Label>
+                  <Label>Convidados (e-mails)</Label>
                   <Input
                     value={formData.attendees}
                     onChange={(e) => setFormData({ ...formData, attendees: e.target.value })}
-                    placeholder="Nomes separados por vírgula"
+                    placeholder="email1@exemplo.com, email2@exemplo.com"
                   />
                 </div>
-                <div>
-                  <Label>Observações</Label>
-                  <Textarea
-                    value={formData.observations}
-                    onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-                    placeholder="Observações adicionais..."
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="addMeet"
+                    checked={formData.addMeet}
+                    onChange={(e) => setFormData({ ...formData, addMeet: e.target.checked })}
+                    className="rounded"
                   />
+                  <Label htmlFor="addMeet" className="cursor-pointer">
+                    Adicionar link do Google Meet
+                  </Label>
                 </div>
-                <Button onClick={handleSubmit} className="w-full">
-                  Criar Evento
+                <Button onClick={handleCreateEvent} className="w-full" disabled={isCreating}>
+                  {isCreating ? "Criando..." : "Criar Evento"}
                 </Button>
               </div>
             </DialogContent>
@@ -375,12 +433,12 @@ export function CEOAgenda() {
           renderWeekView()
         ) : (
           <div className="space-y-3">
-            {events.length === 0 ? (
+            {filteredEvents.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 Nenhum evento para este período
               </p>
             ) : (
-              events.map(renderEvent)
+              filteredEvents.map(renderEvent)
             )}
           </div>
         )}
