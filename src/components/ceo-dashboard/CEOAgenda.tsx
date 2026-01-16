@@ -16,19 +16,18 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-interface GoogleCalendarEvent {
+interface CalendarEvent {
   id: string;
-  summary: string;
+  title: string;
   description?: string;
-  start: { dateTime?: string; date?: string };
-  end: { dateTime?: string; date?: string };
-  attendees?: { email: string; responseStatus?: string }[];
-  hangoutLink?: string;
-  htmlLink?: string;
+  start: string;
+  end: string;
+  meetingLink?: string | null;
+  calendarLink?: string;
 }
 
 export function CEOAgenda() {
-  const [events, setEvents] = useState<GoogleCalendarEvent[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
@@ -43,14 +42,18 @@ export function CEOAgenda() {
     start_time: "09:00",
     end_time: "10:00",
     attendees: "",
-    addMeet: false,
+    addMeet: true,
   });
 
   const fetchEvents = async () => {
     try {
       setIsRefreshing(true);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        setIsConnected(false);
+        setIsLoading(false);
+        return;
+      }
 
       const { data, error } = await supabase.functions.invoke("google-calendar?action=events", {
         body: {},
@@ -102,7 +105,6 @@ export function CEOAgenda() {
         startDateTime,
         endDateTime,
         attendees: attendees.length > 0 ? attendees : undefined,
-        addMeet: formData.addMeet,
       };
 
       const { data, error } = await supabase.functions.invoke("google-calendar?action=create-event", {
@@ -120,7 +122,7 @@ export function CEOAgenda() {
         start_time: "09:00",
         end_time: "10:00",
         attendees: "",
-        addMeet: false,
+        addMeet: true,
       });
       fetchEvents();
     } catch (error) {
@@ -131,9 +133,8 @@ export function CEOAgenda() {
     }
   };
 
-  const getEventDateTime = (event: GoogleCalendarEvent) => {
-    const startStr = event.start.dateTime || event.start.date;
-    return startStr ? parseISO(startStr) : new Date();
+  const getEventDateTime = (event: CalendarEvent) => {
+    return event.start ? parseISO(event.start) : new Date();
   };
 
   const getFilteredEvents = () => {
@@ -163,10 +164,9 @@ export function CEOAgenda() {
 
   const filteredEvents = getFilteredEvents();
 
-  const renderEvent = (event: GoogleCalendarEvent) => {
+  const renderEvent = (event: CalendarEvent) => {
     const eventDate = getEventDateTime(event);
-    const endStr = event.end.dateTime || event.end.date;
-    const endDate = endStr ? parseISO(endStr) : null;
+    const endDate = event.end ? parseISO(event.end) : null;
 
     return (
       <div
@@ -178,7 +178,7 @@ export function CEOAgenda() {
             <CalendarIcon className="h-4 w-4" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium truncate">{event.summary}</h4>
+            <h4 className="font-medium truncate">{event.title}</h4>
             <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
               <Clock className="h-3 w-3" />
               <span>
@@ -191,31 +191,22 @@ export function CEOAgenda() {
                 {event.description}
               </p>
             )}
-            {event.attendees && event.attendees.length > 0 && (
-              <div className="flex items-center gap-1 mt-2">
-                <Users className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">
-                  {event.attendees.slice(0, 3).map(a => a.email.split("@")[0]).join(", ")}
-                  {event.attendees.length > 3 && ` +${event.attendees.length - 3}`}
-                </span>
-              </div>
-            )}
           </div>
           <div className="flex items-center gap-2">
-            {event.hangoutLink && (
+            {event.meetingLink && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(event.hangoutLink, "_blank")}
+                onClick={() => window.open(event.meetingLink!, "_blank")}
               >
                 <Video className="h-4 w-4" />
               </Button>
             )}
-            {event.htmlLink && (
+            {event.calendarLink && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => window.open(event.htmlLink, "_blank")}
+                onClick={() => window.open(event.calendarLink, "_blank")}
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>
@@ -248,10 +239,24 @@ export function CEOAgenda() {
                   <div
                     key={event.id}
                     className="p-2 rounded bg-primary text-primary-foreground text-xs cursor-pointer hover:opacity-90"
-                    onClick={() => event.htmlLink && window.open(event.htmlLink, "_blank")}
+                    onClick={() => event.calendarLink && window.open(event.calendarLink, "_blank")}
                   >
-                    <p className="font-medium truncate">{event.summary}</p>
+                    <p className="font-medium truncate">{event.title}</p>
                     <p>{format(getEventDateTime(event), "HH:mm")}</p>
+                    {event.meetingLink && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="mt-1 h-6 text-xs w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(event.meetingLink!, "_blank");
+                        }}
+                      >
+                        <Video className="h-3 w-3 mr-1" />
+                        Meet
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -393,18 +398,6 @@ export function CEOAgenda() {
                     onChange={(e) => setFormData({ ...formData, attendees: e.target.value })}
                     placeholder="email1@exemplo.com, email2@exemplo.com"
                   />
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="addMeet"
-                    checked={formData.addMeet}
-                    onChange={(e) => setFormData({ ...formData, addMeet: e.target.checked })}
-                    className="rounded"
-                  />
-                  <Label htmlFor="addMeet" className="cursor-pointer">
-                    Adicionar link do Google Meet
-                  </Label>
                 </div>
                 <Button onClick={handleCreateEvent} className="w-full" disabled={isCreating}>
                   {isCreating ? "Criando..." : "Criar Evento"}
