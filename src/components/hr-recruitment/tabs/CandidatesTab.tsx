@@ -40,10 +40,11 @@ interface CandidatesTabProps {
   projectId: string;
   canEdit: boolean;
   isStaff: boolean;
+  userRole?: string;
   onUpdate: () => void;
 }
 
-export function CandidatesTab({ projectId, canEdit, isStaff, onUpdate }: CandidatesTabProps) {
+export function CandidatesTab({ projectId, canEdit, isStaff, userRole = '', onUpdate }: CandidatesTabProps) {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [jobs, setJobs] = useState<{ id: string; title: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -404,6 +405,7 @@ export function CandidatesTab({ projectId, canEdit, isStaff, onUpdate }: Candida
         onOpenChange={setShowDetailSheet}
         candidate={selectedCandidate}
         canEdit={canEdit}
+        canDelete={userRole === 'admin' || userRole === 'cs'}
         projectId={projectId}
         onUpdate={() => {
           fetchData();
