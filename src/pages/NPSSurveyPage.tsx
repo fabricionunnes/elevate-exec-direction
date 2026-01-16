@@ -7,7 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { CheckCircle, Star } from 'lucide-react';
+import { CheckCircle, Star, UserPlus, Plus, Trash2 } from 'lucide-react';
+
+interface Referral {
+  name: string;
+  phone: string;
+}
 
 export default function NPSSurveyPage() {
   const [searchParams] = useSearchParams();
@@ -17,13 +22,16 @@ export default function NPSSurveyPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [projectInfo, setProjectInfo] = useState<{ product_name: string; company_name?: string } | null>(null);
+  const [projectInfo, setProjectInfo] = useState<{ product_name: string; company_name?: string; company_id?: string } | null>(null);
   
   const [score, setScore] = useState<number | null>(null);
   const [feedback, setFeedback] = useState('');
   const [whatCanImprove, setWhatCanImprove] = useState('');
   const [wouldRecommendWhy, setWouldRecommendWhy] = useState('');
   const [respondentName, setRespondentName] = useState('');
+  
+  // Referral fields - only for score >= 8
+  const [referrals, setReferrals] = useState<Referral[]>([{ name: '', phone: '' }]);
 
   useEffect(() => {
     const fetchProjectInfo = async () => {
@@ -38,7 +46,7 @@ export default function NPSSurveyPage() {
           .select(`
             product_name,
             onboarding_company_id,
-            onboarding_companies(name)
+            onboarding_companies(id, name)
           `)
           .eq('id', projectId)
           .single();
@@ -47,7 +55,8 @@ export default function NPSSurveyPage() {
 
         setProjectInfo({
           product_name: data.product_name,
-          company_name: (data.onboarding_companies as any)?.name
+          company_name: (data.onboarding_companies as any)?.name,
+          company_id: (data.onboarding_companies as any)?.id
         });
       } catch (error) {
         console.error('Error fetching project:', error);
@@ -58,6 +67,20 @@ export default function NPSSurveyPage() {
 
     fetchProjectInfo();
   }, [projectId]);
+
+  const handleAddReferral = () => {
+    setReferrals([...referrals, { name: '', phone: '' }]);
+  };
+
+  const handleRemoveReferral = (index: number) => {
+    setReferrals(referrals.filter((_, i) => i !== index));
+  };
+
+  const handleReferralChange = (index: number, field: 'name' | 'phone', value: string) => {
+    const updated = [...referrals];
+    updated[index][field] = value;
+    setReferrals(updated);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +97,8 @@ export default function NPSSurveyPage() {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase
+      // Insert NPS response
+      const { data: npsResponse, error: npsError } = await supabase
         .from('onboarding_nps_responses')
         .insert({
           project_id: projectId,
@@ -84,9 +108,37 @@ export default function NPSSurveyPage() {
           would_recommend_why: wouldRecommendWhy.trim() || null,
           respondent_name: respondentName.trim() || null,
           respondent_email: null,
-        });
+        })
+        .select('id')
+        .single();
 
-      if (error) throw error;
+      if (npsError) throw npsError;
+
+      // Insert referrals if score >= 8 and there are valid referrals
+      if (score >= 8 && projectInfo?.company_id) {
+        const validReferrals = referrals.filter(r => r.name.trim() && r.phone.trim());
+        
+        if (validReferrals.length > 0) {
+          const referralInserts = validReferrals.map(r => ({
+            referrer_company_id: projectInfo.company_id,
+            referrer_project_id: projectId,
+            referrer_name: respondentName.trim() || null,
+            referred_name: r.name.trim(),
+            referred_phone: r.phone.trim(),
+            source: 'nps' as const,
+            nps_response_id: npsResponse.id,
+          }));
+
+          const { error: referralError } = await supabase
+            .from('client_referrals')
+            .insert(referralInserts);
+
+          if (referralError) {
+            console.error('Error saving referrals:', referralError);
+            // Don't fail the whole submission for referral errors
+          }
+        }
+      }
 
       setSubmitted(true);
       toast.success('Obrigado pelo seu feedback!');
@@ -256,6 +308,60 @@ export default function NPSSurveyPage() {
                   required
                 />
               </div>
+
+              {/* Referrals section - only for promoters (score >= 8) */}
+              {score !== null && score >= 8 && (
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="h-5 w-5 text-green-600" />
+                    <Label className="text-base font-medium text-green-700">
+                      Indique amigos ou colegas (opcional)
+                    </Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Conhece alguém que também poderia se beneficiar dos nossos serviços? Deixe o contato abaixo!
+                  </p>
+
+                  {referrals.map((referral, index) => (
+                    <div key={index} className="flex gap-2 items-start">
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          placeholder="Nome do indicado"
+                          value={referral.name}
+                          onChange={(e) => handleReferralChange(index, 'name', e.target.value)}
+                        />
+                        <Input
+                          placeholder="Telefone/WhatsApp"
+                          value={referral.phone}
+                          onChange={(e) => handleReferralChange(index, 'phone', e.target.value)}
+                        />
+                      </div>
+                      {referrals.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveReferral(index)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddReferral}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar outra indicação
+                  </Button>
+                </div>
+              )}
 
               {/* Respondent info */}
               <div className="pt-4 border-t">
