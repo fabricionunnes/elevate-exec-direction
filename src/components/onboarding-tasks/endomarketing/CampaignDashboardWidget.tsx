@@ -99,6 +99,8 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
       const now = new Date();
       const visibleCampaigns = (data || [])
         .filter((campaign) => {
+          // Skip campaigns without a valid KPI
+          if (!campaign.kpi_id || !campaign.kpi) return false;
           if (campaign.status === "ended") return false;
           const endDate = parseISO(campaign.end_date);
           return isAfter(endDate, now) || endDate >= now;
@@ -125,6 +127,13 @@ export const CampaignDashboardWidget = ({ companyId, projectId }: CampaignDashbo
   };
 
   const fetchCampaignRanking = async (campaign: Campaign) => {
+    // Skip if campaign has no valid KPI
+    if (!campaign.kpi_id) {
+      setRanking([]);
+      setTeamTotal(0);
+      return;
+    }
+    
     try {
       let salespeopleIds: string[] = [];
       
