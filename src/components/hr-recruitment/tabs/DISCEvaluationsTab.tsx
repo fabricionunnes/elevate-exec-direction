@@ -65,7 +65,7 @@ export function DISCEvaluationsTab({ projectId, canEdit }: DISCEvaluationsTabPro
   };
 
   const copyLink = (token: string) => {
-    const url = `${window.location.origin}/hr-disc/${token}`;
+    const url = `${window.location.origin}/?public=hr-disc&token=${encodeURIComponent(token)}`;
     navigator.clipboard.writeText(url);
     toast.success("Link copiado!");
   };
@@ -183,7 +183,12 @@ export function DISCEvaluationsTab({ projectId, canEdit }: DISCEvaluationsTabPro
                           <Button
                             variant="outline"
                             size="icon"
-                            onClick={() => window.open(`/hr-disc/${disc.access_token}`, '_blank')}
+                            onClick={() =>
+                              window.open(
+                                `/?public=hr-disc&token=${encodeURIComponent(disc.access_token)}`,
+                                "_blank"
+                              )
+                            }
                           >
                             <ExternalLink className="h-4 w-4" />
                           </Button>
