@@ -569,71 +569,104 @@ Foque em:
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - Premium Design */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <Target className="h-5 w-5 text-muted-foreground" />
-              <span className="text-2xl font-bold">{stats.total}</span>
+        <Card className="relative overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border-slate-200 dark:border-slate-700">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-slate-200/50 dark:bg-slate-700/30 rounded-full -mr-8 -mt-8" />
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-xl bg-slate-200/80 dark:bg-slate-700">
+                <Target className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+              </div>
+              <span className="text-3xl font-bold text-slate-700 dark:text-slate-200">{stats.total}</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Total Decisões</p>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-3">Total Decisões</p>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="text-2xl font-bold text-green-500">{stats.positive}</span>
+        <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 border-emerald-200 dark:border-emerald-800">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-200/50 dark:bg-emerald-800/30 rounded-full -mr-8 -mt-8" />
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-xl bg-emerald-200/80 dark:bg-emerald-800">
+                <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
+              </div>
+              <span className="text-3xl font-bold text-emerald-600 dark:text-emerald-300">{stats.positive}</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Positivas</p>
+            <p className="text-sm font-medium text-emerald-600/70 dark:text-emerald-400 mt-3">Positivas</p>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <XCircle className="h-5 w-5 text-red-500" />
-              <span className="text-2xl font-bold text-red-500">{stats.negative}</span>
+        <Card className="relative overflow-hidden bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 border-red-200 dark:border-red-800">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-red-200/50 dark:bg-red-800/30 rounded-full -mr-8 -mt-8" />
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-xl bg-red-200/80 dark:bg-red-800">
+                <XCircle className="h-5 w-5 text-red-600 dark:text-red-300" />
+              </div>
+              <span className="text-3xl font-bold text-red-600 dark:text-red-300">{stats.negative}</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Negativas</p>
+            <p className="text-sm font-medium text-red-600/70 dark:text-red-400 mt-3">Negativas</p>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <DollarSign className="h-5 w-5 text-muted-foreground" />
-              <span className="text-lg font-bold">{formatCurrency(stats.totalEstimated)}</span>
+        <Card className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900 border-blue-200 dark:border-indigo-800">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-blue-200/50 dark:bg-indigo-800/30 rounded-full -mr-8 -mt-8" />
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-xl bg-blue-200/80 dark:bg-indigo-800">
+                <TrendingUp className="h-5 w-5 text-blue-600 dark:text-indigo-300" />
+              </div>
+              <span className="text-xl font-bold text-blue-700 dark:text-indigo-200">{formatCurrency(stats.totalEstimated)}</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Impacto Estimado</p>
+            <p className="text-sm font-medium text-blue-600/70 dark:text-indigo-400 mt-3">Impacto Estimado</p>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <DollarSign className="h-5 w-5 text-green-500" />
-              <span className="text-lg font-bold">{formatCurrency(stats.totalActual)}</span>
+        <Card className="relative overflow-hidden bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-950 dark:to-orange-900 border-amber-200 dark:border-orange-800">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-amber-200/50 dark:bg-orange-800/30 rounded-full -mr-8 -mt-8" />
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-xl bg-amber-200/80 dark:bg-orange-800">
+                <DollarSign className="h-5 w-5 text-amber-600 dark:text-orange-300" />
+              </div>
+              <span className="text-xl font-bold text-amber-700 dark:text-orange-200">{formatCurrency(stats.totalActual)}</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Impacto Real</p>
+            <p className="text-sm font-medium text-amber-600/70 dark:text-orange-400 mt-3">Impacto Real</p>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="table" className="space-y-4">
-        <div className="flex justify-between items-center">
-          <TabsList>
-            <TabsTrigger value="table">Tabela</TabsTrigger>
-            <TabsTrigger value="timeline">Linha do Tempo</TabsTrigger>
-            <TabsTrigger value="insights">Insights IA</TabsTrigger>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <TabsList className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+            <TabsTrigger 
+              value="table" 
+              className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-lg px-4 py-2 font-medium transition-all"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Tabela
+            </TabsTrigger>
+            <TabsTrigger 
+              value="timeline" 
+              className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-lg px-4 py-2 font-medium transition-all"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Linha do Tempo
+            </TabsTrigger>
+            <TabsTrigger 
+              value="insights" 
+              className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-lg px-4 py-2 font-medium transition-all"
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Insights IA
+            </TabsTrigger>
           </TabsList>
           
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
             <Select value={selectedArea} onValueChange={setSelectedArea}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[140px] rounded-lg">
                 <SelectValue placeholder="Área" />
               </SelectTrigger>
               <SelectContent>
@@ -645,7 +678,7 @@ Foque em:
             </Select>
             
             <Select value={selectedResult} onValueChange={setSelectedResult}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[140px] rounded-lg">
                 <SelectValue placeholder="Resultado" />
               </SelectTrigger>
               <SelectContent>
@@ -660,7 +693,7 @@ Foque em:
 
         {/* Table View */}
         <TabsContent value="table">
-          <Card>
+          <Card className="border-slate-200 dark:border-slate-700 shadow-sm">
             <CardContent className="p-0">
               <ScrollArea className="h-[500px]">
                 <Table>
