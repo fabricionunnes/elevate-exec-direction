@@ -1525,6 +1525,7 @@ export type Database = {
           consensus_points: string[] | null
           context_data: Json | null
           created_at: string
+          created_by_client: boolean
           critical_risks: string[] | null
           decision_description: string
           decision_title: string
@@ -1544,6 +1545,7 @@ export type Database = {
           consensus_points?: string[] | null
           context_data?: Json | null
           created_at?: string
+          created_by_client?: boolean
           critical_risks?: string[] | null
           decision_description: string
           decision_title: string
@@ -1563,6 +1565,7 @@ export type Database = {
           consensus_points?: string[] | null
           context_data?: Json | null
           created_at?: string
+          created_by_client?: boolean
           critical_risks?: string[] | null
           decision_description?: string
           decision_title?: string
