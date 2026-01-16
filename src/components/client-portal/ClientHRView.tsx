@@ -16,11 +16,15 @@ import {
   ExternalLink,
   FileText,
   Star,
-  Copy
+  Copy,
+  Plus,
+  UserPlus
 } from "lucide-react";
 import { usePipelineStages } from "@/components/hr-recruitment/hooks/usePipelineStages";
 import { ClientCandidateDetailSheet } from "./ClientCandidateDetailSheet";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
+import { JobOpeningDialog } from "@/components/hr-recruitment/dialogs/JobOpeningDialog";
+import { CandidateDialog } from "@/components/hr-recruitment/dialogs/CandidateDialog";
 
 interface JobOpening {
   id: string;
@@ -56,6 +60,8 @@ export function ClientHRView({ projectId }: ClientHRViewProps) {
   const [searchJobs, setSearchJobs] = useState("");
   const [searchCandidates, setSearchCandidates] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [showJobDialog, setShowJobDialog] = useState(false);
+  const [showCandidateDialog, setShowCandidateDialog] = useState(false);
   
   const { stages: pipelineStages } = usePipelineStages(projectId);
 
@@ -133,11 +139,29 @@ export function ClientHRView({ projectId }: ClientHRViewProps) {
     candidates: candidates.filter(c => c.current_stage === stage.key)
   }));
 
+  // Prepare jobs list for candidate dialog
+  const jobsForCandidateDialog = jobs.filter(j => j.status === "open").map(j => ({
+    id: j.id,
+    title: j.title
+  }));
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Recrutamento</h2>
-        <p className="text-muted-foreground">Acompanhe o processo seletivo</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Recrutamento</h2>
+          <p className="text-muted-foreground">Acompanhe o processo seletivo</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowCandidateDialog(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Adicionar Candidato</span>
+          </Button>
+          <Button onClick={() => setShowJobDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Nova Vaga</span>
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="jobs" className="space-y-4">
@@ -148,15 +172,30 @@ export function ClientHRView({ projectId }: ClientHRViewProps) {
         </TabsList>
 
         <TabsContent value="jobs" className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar vagas..." value={searchJobs} onChange={(e) => setSearchJobs(e.target.value)} className="pl-10" />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar vagas..." value={searchJobs} onChange={(e) => setSearchJobs(e.target.value)} className="pl-10" />
+            </div>
+            <Button className="sm:hidden" size="icon" onClick={() => setShowJobDialog(true)}>
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
 
           {loading ? (
             <div className="grid gap-4 md:grid-cols-2">{[1, 2].map(i => <Card key={i} className="animate-pulse"><CardContent className="p-4"><div className="h-24 bg-muted rounded" /></CardContent></Card>)}</div>
           ) : filteredJobs.length === 0 ? (
-            <Card><CardContent className="p-8 text-center"><Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><h3 className="font-semibold">Nenhuma vaga</h3></CardContent></Card>
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="font-semibold mb-2">Nenhuma vaga</h3>
+                <p className="text-sm text-muted-foreground mb-4">Crie sua primeira vaga para começar a receber candidatos</p>
+                <Button onClick={() => setShowJobDialog(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Vaga
+                </Button>
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {filteredJobs.map(job => (
@@ -186,15 +225,30 @@ export function ClientHRView({ projectId }: ClientHRViewProps) {
         </TabsContent>
 
         <TabsContent value="candidates" className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar candidatos..." value={searchCandidates} onChange={(e) => setSearchCandidates(e.target.value)} className="pl-10" />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar candidatos..." value={searchCandidates} onChange={(e) => setSearchCandidates(e.target.value)} className="pl-10" />
+            </div>
+            <Button className="sm:hidden" size="icon" onClick={() => setShowCandidateDialog(true)}>
+              <UserPlus className="h-4 w-4" />
+            </Button>
           </div>
 
           {loading ? (
             <div className="space-y-2">{[1, 2, 3].map(i => <Card key={i} className="animate-pulse"><CardContent className="p-4"><div className="h-16 bg-muted rounded" /></CardContent></Card>)}</div>
           ) : filteredCandidates.length === 0 ? (
-            <Card><CardContent className="p-8 text-center"><Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><h3 className="font-semibold">Nenhum candidato</h3></CardContent></Card>
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="font-semibold mb-2">Nenhum candidato</h3>
+                <p className="text-sm text-muted-foreground mb-4">Adicione candidatos manualmente ou compartilhe o link das vagas</p>
+                <Button onClick={() => setShowCandidateDialog(true)}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Adicionar Candidato
+                </Button>
+              </CardContent>
+            </Card>
           ) : (
             <div className="space-y-2">
               {filteredCandidates.map(candidate => (
@@ -262,6 +316,29 @@ export function ClientHRView({ projectId }: ClientHRViewProps) {
         candidate={selectedCandidate}
         projectId={projectId}
         pipelineStages={pipelineStages}
+      />
+
+      <JobOpeningDialog
+        open={showJobDialog}
+        onOpenChange={setShowJobDialog}
+        projectId={projectId}
+        job={null}
+        onSuccess={() => {
+          fetchData();
+          setShowJobDialog(false);
+        }}
+      />
+
+      <CandidateDialog
+        open={showCandidateDialog}
+        onOpenChange={setShowCandidateDialog}
+        projectId={projectId}
+        jobs={jobsForCandidateDialog}
+        isStaff={false}
+        onSuccess={() => {
+          fetchData();
+          setShowCandidateDialog(false);
+        }}
       />
     </div>
   );
