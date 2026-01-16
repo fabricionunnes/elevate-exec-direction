@@ -166,7 +166,11 @@ const GlobalJobOpeningsPage = () => {
           .select(`
             *,
             candidates:candidates(count),
-            project:onboarding_projects!job_openings_project_id_fkey(id, product_name),
+            project:onboarding_projects!job_openings_project_id_fkey(
+              id, 
+              product_name,
+              onboarding_company:onboarding_companies!onboarding_projects_onboarding_company_id_fkey(id, name)
+            ),
             company:onboarding_companies!job_openings_company_id_fkey(id, name),
             responsible_rh:onboarding_staff!job_openings_responsible_rh_id_fkey(id, name),
             consultant:onboarding_staff!job_openings_consultant_id_fkey(id, name)
@@ -188,14 +192,21 @@ const GlobalJobOpeningsPage = () => {
       if (companiesResult.error) throw companiesResult.error;
       if (staffResult.error) throw staffResult.error;
 
-      const jobsWithDetails = (jobsResult.data || []).map((job: any) => ({
-        ...job,
-        candidates_count: job.candidates?.[0]?.count || 0,
-        company_name: job.company?.name || "Sem empresa",
-        project_name: job.project?.product_name || "Sem projeto",
-        responsible_rh_name: job.responsible_rh?.name || null,
-        consultant_name: job.consultant?.name || null,
-      }));
+      const jobsWithDetails = (jobsResult.data || []).map((job: any) => {
+        // Prioritize job.company, fallback to project's onboarding_company
+        const companyName = job.company?.name || job.project?.onboarding_company?.name || "Sem empresa";
+        const companyId = job.company_id || job.project?.onboarding_company?.id || null;
+        
+        return {
+          ...job,
+          candidates_count: job.candidates?.[0]?.count || 0,
+          company_name: companyName,
+          company_id: companyId, // Ensure we have the correct company_id for filtering
+          project_name: job.project?.product_name || "Sem projeto",
+          responsible_rh_name: job.responsible_rh?.name || null,
+          consultant_name: job.consultant?.name || null,
+        };
+      });
 
       setJobs(jobsWithDetails);
       setCompanies(companiesResult.data || []);
