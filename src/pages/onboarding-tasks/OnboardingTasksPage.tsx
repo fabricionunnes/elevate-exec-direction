@@ -1688,7 +1688,7 @@ const OnboardingTasksPage = () => {
                               <span className="font-medium text-slate-700">
                                 {company.contract_end_date 
                                   ? format(new Date(company.contract_end_date), "dd/MM/yy")
-                                  : company.payment_method === 'monthly' || company.payment_method === 'card'
+                                  : company.payment_method === 'monthly'
                                     ? 'Recorr.'
                                     : '—'}
                               </span>
@@ -1779,7 +1779,7 @@ const OnboardingTasksPage = () => {
                           <span className="text-sm font-medium text-slate-700">
                             {company.contract_end_date 
                               ? format(new Date(company.contract_end_date), "dd/MM/yyyy")
-                              : company.payment_method === 'monthly' || company.payment_method === 'card'
+                              : company.payment_method === 'monthly'
                                 ? 'Recorrente'
                                 : '—'}
                           </span>
