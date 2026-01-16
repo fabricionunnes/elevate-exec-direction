@@ -174,6 +174,14 @@ export function LeadershipMeetingNotesDialog({
     setEditingId(null);
   };
 
+  // Format date to local YYYY-MM-DD without timezone shift
+  const formatDateLocal = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const handleAddAction = () => {
     if (!newActionText.trim()) return;
     
@@ -186,7 +194,7 @@ export function LeadershipMeetingNotesDialog({
         text: newActionText.trim(),
         responsible_id: newActionResponsibleId || undefined,
         responsible_name: staff?.name || undefined,
-        due_date: newActionDueDate ? format(newActionDueDate, "yyyy-MM-dd") : undefined,
+        due_date: newActionDueDate ? formatDateLocal(newActionDueDate) : undefined,
         done: false
       }
     ]);
@@ -235,13 +243,13 @@ export function LeadershipMeetingNotesDialog({
           text: newActionText.trim(),
           responsible_id: newActionResponsibleId || undefined,
           responsible_name: staff?.name || undefined,
-          due_date: newActionDueDate ? format(newActionDueDate, "yyyy-MM-dd") : undefined,
+          due_date: newActionDueDate ? formatDateLocal(newActionDueDate) : undefined,
           done: false
         });
       }
 
       const noteData = {
-        meeting_date: format(new Date(), "yyyy-MM-dd"),
+        meeting_date: formatDateLocal(new Date()),
         meeting_type: meetingType as string,
         consultant_id: meetingType === 'one_on_one' ? consultantId : null,
         notes: notes.trim(),
