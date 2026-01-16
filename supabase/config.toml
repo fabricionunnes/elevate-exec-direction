@@ -104,3 +104,6 @@ verify_jwt = true
 
 [functions.prepare-meeting-briefing]
 verify_jwt = true
+
+[functions.ceo-ai-analysis]
+verify_jwt = false
