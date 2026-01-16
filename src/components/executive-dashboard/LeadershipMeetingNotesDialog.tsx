@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextarea } from "@/components/ui/rich-textarea";
 import { Input } from "@/components/ui/input";
+import ReactMarkdown from "react-markdown";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -507,25 +509,23 @@ export function LeadershipMeetingNotesDialog({
 
               <div>
                 <Label htmlFor="notes">Anotações da Reunião *</Label>
-                <Textarea
+                <RichTextarea
                   id="notes"
-                  placeholder="O que foi discutido na reunião..."
+                  placeholder="O que foi discutido na reunião... (use a barra de ferramentas para formatar)"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  rows={4}
-                  className="resize-none"
+                  rows={5}
                 />
               </div>
 
               <div>
                 <Label htmlFor="decisions">Decisões Tomadas</Label>
-                <Textarea
+                <RichTextarea
                   id="decisions"
                   placeholder="Quais decisões foram tomadas..."
                   value={decisions}
                   onChange={(e) => setDecisions(e.target.value)}
                   rows={3}
-                  className="resize-none"
                 />
               </div>
 
@@ -728,14 +728,18 @@ export function LeadershipMeetingNotesDialog({
                                   {note.notes && (
                                     <div>
                                       <h4 className="text-sm font-medium mb-1 text-muted-foreground">Anotações</h4>
-                                      <p className="text-sm whitespace-pre-wrap">{note.notes}</p>
+                                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                                        <ReactMarkdown>{note.notes}</ReactMarkdown>
+                                      </div>
                                     </div>
                                   )}
 
                                   {note.decisions && (
                                     <div>
                                       <h4 className="text-sm font-medium mb-1 text-muted-foreground">Decisões</h4>
-                                      <p className="text-sm whitespace-pre-wrap">{note.decisions}</p>
+                                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                                        <ReactMarkdown>{note.decisions}</ReactMarkdown>
+                                      </div>
                                     </div>
                                   )}
 
@@ -788,7 +792,9 @@ export function LeadershipMeetingNotesDialog({
                                   {note.next_steps && (
                                     <div>
                                       <h4 className="text-sm font-medium mb-1 text-muted-foreground">Próximos Passos</h4>
-                                      <p className="text-sm whitespace-pre-wrap">{note.next_steps}</p>
+                                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                                        <ReactMarkdown>{note.next_steps}</ReactMarkdown>
+                                      </div>
                                     </div>
                                   )}
 
