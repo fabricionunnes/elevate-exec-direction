@@ -801,20 +801,27 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
         },
       });
 
-      // If ElevenLabs fails due to file size or config, try AssemblyAI as fallback
+      // If ElevenLabs fails (commonly because of file size), try AssemblyAI as fallback
       if (response.error || response.data?.error) {
+        const status = (response.error as any)?.status;
         const errorMsg = response.data?.error || response.error?.message || "";
-        console.log("ElevenLabs transcription failed:", errorMsg);
-        
-        // If file is too large for ElevenLabs, try AssemblyAI which handles larger files via streaming
-        if (errorMsg.includes("too large") || errorMsg.includes("not configured") || errorMsg.includes("Maximum")) {
+        console.log("ElevenLabs transcription failed:", { status, errorMsg });
+
+        // ElevenLabs returns 400 when the recording exceeds 25MB; in that case always fallback.
+        const shouldFallbackToAssembly =
+          status === 400 ||
+          errorMsg.toLowerCase().includes("too large") ||
+          errorMsg.toLowerCase().includes("maximum") ||
+          errorMsg.toLowerCase().includes("not configured");
+
+        if (shouldFallbackToAssembly) {
           toast.info("Arquivo grande detectado. Tentando com serviço alternativo (pode levar vários minutos)...", { duration: 15000 });
-          
+
           response = await supabase.functions.invoke("transcribe-assemblyai", {
-            body: { 
+            body: {
               audioUrl: meeting.recording_link,
               staffId: currentStaffId,
-              meetingId: meeting.id
+              meetingId: meeting.id,
             },
           });
         }
