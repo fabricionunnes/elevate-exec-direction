@@ -103,23 +103,32 @@ export function CandidateDialog({
       let staffId = null;
       let userId = null;
 
-      // Try to get staff or user ID based on isStaff prop
+      // Try to get staff ID first (for staff users)
       if (isStaff) {
-        const { data: staff } = await supabase
+        const { data: staff, error: staffError } = await supabase
           .from("onboarding_staff")
           .select("id")
           .eq("user_id", user.id)
           .eq("is_active", true)
           .maybeSingle();
-        staffId = staff?.id;
-      } else {
-        const { data: onbUser } = await supabase
+        
+        if (!staffError && staff) {
+          staffId = staff.id;
+        }
+      }
+      
+      // Get user ID for client users (onboarding_users does NOT have is_active column)
+      if (!isStaff) {
+        const { data: onbUser, error: userError } = await supabase
           .from("onboarding_users")
           .select("id")
           .eq("user_id", user.id)
           .eq("project_id", projectId)
           .maybeSingle();
-        userId = onbUser?.id;
+        
+        if (!userError && onbUser) {
+          userId = onbUser.id;
+        }
       }
 
       // Create candidate with the available IDs
