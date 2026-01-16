@@ -96,6 +96,7 @@ import CohortRetentionPage from "./pages/onboarding-tasks/CohortRetentionPage";
 import ConsultantEngagementPage from "./pages/onboarding-tasks/ConsultantEngagementPage";
 import ExecutiveDashboardPage from "./pages/onboarding-tasks/ExecutiveDashboardPage";
 import CEODashboardPage from "./pages/onboarding-tasks/CEODashboardPage";
+import GlobalJobOpeningsPage from "./pages/onboarding-tasks/GlobalJobOpeningsPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
 // CRM Pages
@@ -209,6 +210,7 @@ const App = () => (
               <Route path="/onboarding-tasks/cohort-retention" element={<CohortRetentionPage />} />
               <Route path="/onboarding-tasks/engagement" element={<ConsultantEngagementPage />} />
               <Route path="/onboarding-tasks/executive" element={<ExecutiveDashboardPage />} />
+              <Route path="/onboarding-tasks/vagas" element={<GlobalJobOpeningsPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
             </Route>
