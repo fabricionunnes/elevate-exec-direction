@@ -107,3 +107,6 @@ verify_jwt = true
 
 [functions.ceo-ai-analysis]
 verify_jwt = false
+
+[functions.generate-weekly-report]
+verify_jwt = false
