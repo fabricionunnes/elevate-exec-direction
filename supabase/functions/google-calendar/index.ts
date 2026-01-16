@@ -1000,9 +1000,8 @@ Deno.serve(async (req) => {
 
       // Search for recordings AND transcripts - more flexible query
       // Recordings: any mp4 files in Meet Recordings folder
-      // Transcripts: vtt, srt, sbv (Google Meet captions), and plain text files with "Transcript" in name
       const recordingsQuery = "mimeType='video/mp4'";
-      const transcriptQuery = "mimeType='text/vtt' or mimeType='text/plain' or mimeType='application/x-subrip' or mimeType='text/srt' or (mimeType='text/x-subviewer' or name contains '.sbv')";
+      const transcriptQuery = "mimeType='text/vtt' or mimeType='text/plain' or mimeType='application/x-subrip' or mimeType='text/srt'";
       
       const combinedQuery = `(${recordingsQuery}) or (${transcriptQuery})`;
       const driveUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(combinedQuery)}&fields=files(id,name,createdTime,webViewLink,mimeType)&orderBy=createdTime desc&pageSize=200`;
@@ -1090,20 +1089,9 @@ Deno.serve(async (req) => {
       
       // Separate recordings and transcripts
       const recordings = allFiles.filter((f: { mimeType: string }) => f.mimeType === 'video/mp4');
-      
-      // Filter transcripts: include vtt, srt, sbv, and plain text files
-      // BUT exclude "Chat" files (Google Meet chat logs, not actual transcripts)
-      const transcripts = allFiles.filter((f: { mimeType: string; name: string }) => {
-        const isTextFile = f.mimeType === 'text/vtt' || f.mimeType === 'text/plain' || 
-                           f.mimeType === 'application/x-subrip' || f.mimeType === 'text/srt' ||
-                           f.mimeType === 'text/x-subviewer' || f.name.toLowerCase().endsWith('.sbv');
-        
-        // Exclude "Chat" files - these are just chat message logs, not transcripts
-        const isChatFile = f.name.toLowerCase().includes('chat');
-        
-        // Prefer files that explicitly have "transcript" or "transcrição" in the name
-        return isTextFile && !isChatFile;
-      });
+      const transcripts = allFiles.filter((f: { mimeType: string }) => 
+        f.mimeType === 'text/vtt' || f.mimeType === 'text/plain' || f.mimeType === 'application/x-subrip' || f.mimeType === 'text/srt'
+      );
 
       console.log(`Found ${recordings.length} recordings and ${transcripts.length} transcripts`);
       
@@ -1264,9 +1252,8 @@ Deno.serve(async (req) => {
         const prevDayStr = new Date(meetingDate.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         const nextDayStr = new Date(meetingDate.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         
-        // Split on common delimiters including pipe character |
         const titleWords = (meeting.meeting_title || meeting.subject || "").toLowerCase()
-          .split(/[\s\-_|,.:]+/)
+          .split(/[\s\-_]+/)
           .filter((w: string) => w.length > 2);
 
         console.log(`Checking meeting: "${meeting.meeting_title}" on ${meetingDateStr}, keywords: [${titleWords.join(', ')}]`);

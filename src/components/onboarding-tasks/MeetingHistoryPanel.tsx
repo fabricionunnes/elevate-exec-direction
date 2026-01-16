@@ -791,47 +791,20 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
         return;
       }
 
-      toast.info("Iniciando transcrição com IA... Isso pode levar alguns minutos.", { duration: 10000 });
+      toast.info("Iniciando transcrição com AssemblyAI... Isso pode levar vários minutos para arquivos grandes.", { duration: 10000 });
 
-      // Try ElevenLabs first (via transcribe-lovableai), fallback to AssemblyAI
-      let response = await supabase.functions.invoke("transcribe-lovableai", {
+      const response = await supabase.functions.invoke("transcribe-assemblyai", {
         body: { 
-          meetingId: meeting.id,
-          recordingUrl: meeting.recording_link
+          audioUrl: meeting.recording_link,
+          staffId: currentStaffId 
         },
       });
-
-      // If ElevenLabs fails (commonly because of file size), try AssemblyAI as fallback
-      if (response.error || response.data?.error) {
-        const status = (response.error as any)?.status;
-        const errorMsg = response.data?.error || response.error?.message || "";
-        console.log("ElevenLabs transcription failed:", { status, errorMsg });
-
-        // ElevenLabs returns 400 when the recording exceeds 25MB; in that case always fallback.
-        const shouldFallbackToAssembly =
-          status === 400 ||
-          errorMsg.toLowerCase().includes("too large") ||
-          errorMsg.toLowerCase().includes("maximum") ||
-          errorMsg.toLowerCase().includes("not configured");
-
-        if (shouldFallbackToAssembly) {
-          toast.info("Arquivo grande detectado. Tentando com serviço alternativo (pode levar vários minutos)...", { duration: 15000 });
-
-          response = await supabase.functions.invoke("transcribe-assemblyai", {
-            body: {
-              audioUrl: meeting.recording_link,
-              staffId: currentStaffId,
-              meetingId: meeting.id,
-            },
-          });
-        }
-      }
 
       if (response.error) {
         throw new Error(response.error.message || "Erro na transcrição");
       }
 
-      const data = response.data as { text?: string; error?: string; wordCount?: number; words?: number };
+      const data = response.data as { text?: string; error?: string; duration?: number; words?: number };
       
       if (data?.error) {
         throw new Error(data.error);
@@ -841,19 +814,26 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
         throw new Error("Transcrição vazia retornada");
       }
 
-      // Refresh meetings to get the updated transcript
-      await fetchMeetings();
-      
-      // Update selected meeting if it's the one being transcribed
-      if (selectedMeeting?.id === meeting.id) {
-        const updated = meetings.find(m => m.id === meeting.id);
-        if (updated) {
-          setSelectedMeeting({ ...updated, transcript: data.text });
-        }
-      }
+      // Save transcription to meeting notes
+      const existingNotes = meeting.notes || "";
+      const separator = existingNotes ? "\n\n---\n\n" : "";
+      const durationInfo = data.duration ? ` (${Math.round(data.duration / 60)} minutos)` : "";
+      const newNotes = existingNotes + separator + `## Transcrição Automática${durationInfo}\n\n${data.text}`;
 
-      const wordInfo = data.wordCount || data.words;
-      toast.success(`Transcrição concluída! ${wordInfo ? `${wordInfo} palavras` : ''}`);
+      const { error: updateError } = await supabase
+        .from("onboarding_meeting_notes")
+        .update({ notes: newNotes })
+        .eq("id", meeting.id);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      if (selectedMeeting?.id === meeting.id) {
+        setSelectedMeeting(prev => prev ? { ...prev, notes: newNotes } : prev);
+      }
+      setMeetings(prev => prev.map(m => m.id === meeting.id ? { ...m, notes: newNotes } : m));
+
+      toast.success(`Transcrição concluída! ${data.words ? `${data.words} palavras` : ''}`);
     } catch (error) {
       console.error("Transcription error:", error);
       toast.error(error instanceof Error ? error.message : "Erro ao transcrever gravação");
@@ -1176,27 +1156,6 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
                               <Badge variant="secondary" className="shrink-0 text-xs">
                                 <PlayCircle className="h-3 w-3 mr-1" />
                                 Gravação
-                              </Badge>
-                            )}
-                            {/* Show badge when recording exists but no transcript */}
-                            {meeting.recording_link && !meeting.transcript && !meeting.manual_transcript && (
-                              <Badge 
-                                variant="outline" 
-                                className="shrink-0 text-xs text-amber-600 border-amber-400 cursor-pointer hover:bg-amber-50"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleTranscribe(meeting);
-                                }}
-                              >
-                                <FileAudio className="h-3 w-3 mr-1" />
-                                {transcribing ? "Transcrevendo..." : "Transcrever"}
-                              </Badge>
-                            )}
-                            {/* Show transcript badge when transcript exists */}
-                            {(meeting.transcript || meeting.manual_transcript) && (
-                              <Badge variant="secondary" className="shrink-0 text-xs bg-green-100 text-green-700">
-                                <FileText className="h-3 w-3 mr-1" />
-                                Transcrição
                               </Badge>
                             )}
                             {csatSurvey && (
