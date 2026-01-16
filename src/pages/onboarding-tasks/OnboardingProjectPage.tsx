@@ -83,6 +83,7 @@ import { GoogleDriveConnect } from "@/components/onboarding-tasks/GoogleDriveCon
 import { Label } from "@/components/ui/label";
 import { Ticket } from "lucide-react";
 import { HRRecruitmentPanel } from "@/components/hr-recruitment/HRRecruitmentPanel";
+import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualBoard";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
@@ -1313,6 +1314,10 @@ const OnboardingProjectPage = () => {
                   <Briefcase className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   RH
                 </TabsTrigger>
+                <TabsTrigger value="board" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Board
+                </TabsTrigger>
               </TabsList>
             </div>
           </div>
@@ -1519,6 +1524,14 @@ const OnboardingProjectPage = () => {
               isStaff={currentUserRole !== "client"}
               canEdit={isAdmin || currentUserRole === "cs" || currentUserRole === "consultant" || currentUserRole === "rh"}
               userRole={currentUserRole}
+            />
+          </TabsContent>
+
+          <TabsContent value="board">
+            <ClientVirtualBoard
+              projectId={projectId!}
+              companyId={project.onboarding_company_id || undefined}
+              companyName={project.onboarding_company?.name}
             />
           </TabsContent>
 
