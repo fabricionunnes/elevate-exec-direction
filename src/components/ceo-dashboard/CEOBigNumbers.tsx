@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   TrendingUp, 
@@ -10,10 +9,9 @@ import {
   Target, 
   Wallet,
   BarChart3,
-  PiggyBank,
+  ThumbsUp,
   AlertTriangle
 } from "lucide-react";
-import { format, startOfMonth, startOfYear } from "date-fns";
 
 interface BigNumber {
   label: string;
@@ -22,6 +20,8 @@ interface BigNumber {
   trend: "up" | "down" | "stable";
   trendValue?: string;
   icon: React.ReactNode;
+  colorClass: string;
+  bgClass: string;
 }
 
 export function CEOBigNumbers() {
@@ -80,54 +80,72 @@ export function CEOBigNumbers() {
             value: formatCurrency(totalMRR),
             trend: "up",
             trendValue: "+8.2%",
-            icon: <DollarSign className="h-5 w-5" />
+            icon: <DollarSign className="h-5 w-5" />,
+            colorClass: "text-emerald-700",
+            bgClass: "bg-emerald-50 border-emerald-200"
           },
           {
             label: "Receita YTD",
             value: formatCurrency(totalMRR * 12 * 0.85),
             trend: "up",
             trendValue: "+12.4%",
-            icon: <BarChart3 className="h-5 w-5" />
+            icon: <BarChart3 className="h-5 w-5" />,
+            colorClass: "text-blue-700",
+            bgClass: "bg-blue-50 border-blue-200"
           },
           {
             label: "Clientes Ativos",
             value: clientCount.toString(),
             trend: "up",
             trendValue: "+3",
-            icon: <Users className="h-5 w-5" />
+            icon: <Users className="h-5 w-5" />,
+            colorClass: "text-violet-700",
+            bgClass: "bg-violet-50 border-violet-200"
           },
           {
             label: "Ticket Médio",
             value: formatCurrency(avgTicket),
             trend: "stable",
             trendValue: "0%",
-            icon: <Target className="h-5 w-5" />
+            icon: <Target className="h-5 w-5" />,
+            colorClass: "text-amber-700",
+            bgClass: "bg-amber-50 border-amber-200"
           },
           {
             label: "Churn Rate",
             value: `${churnRate}%`,
             trend: Number(churnRate) > 5 ? "down" : "up",
-            trendValue: Number(churnRate) > 5 ? `+${churnRate}%` : `-${churnRate}%`,
-            icon: <AlertTriangle className="h-5 w-5" />
+            trendValue: `${Number(churnRate) > 5 ? '+' : '-'}${churnRate}%`,
+            icon: <AlertTriangle className="h-5 w-5" />,
+            colorClass: "text-rose-700",
+            bgClass: "bg-rose-50 border-rose-200"
           },
           {
             label: "NPS Médio",
             value: avgNPS,
             trend: Number(avgNPS) >= 50 ? "up" : "down",
-            icon: <PiggyBank className="h-5 w-5" />
+            trendValue: avgNPS !== "N/A" ? `${Number(avgNPS) >= 50 ? '+' : ''}${avgNPS}` : undefined,
+            icon: <ThumbsUp className="h-5 w-5" />,
+            colorClass: "text-cyan-700",
+            bgClass: "bg-cyan-50 border-cyan-200"
           },
           {
             label: "Pipeline",
             value: formatCurrency(totalMRR * 2.5),
             trend: "up",
             trendValue: "+15%",
-            icon: <Wallet className="h-5 w-5" />
+            icon: <Wallet className="h-5 w-5" />,
+            colorClass: "text-indigo-700",
+            bgClass: "bg-indigo-50 border-indigo-200"
           },
           {
             label: "Crescimento",
             value: "+8.2%",
             trend: "up",
-            icon: <TrendingUp className="h-5 w-5" />
+            trendValue: "vs mês anterior",
+            icon: <TrendingUp className="h-5 w-5" />,
+            colorClass: "text-teal-700",
+            bgClass: "bg-teal-50 border-teal-200"
           },
         ]);
       } catch (error) {
@@ -143,61 +161,65 @@ export function CEOBigNumbers() {
   const getTrendIcon = (trend: "up" | "down" | "stable") => {
     switch (trend) {
       case "up":
-        return <TrendingUp className="h-4 w-4 text-green-500" />;
+        return <TrendingUp className="h-3.5 w-3.5" />;
       case "down":
-        return <TrendingDown className="h-4 w-4 text-red-500" />;
+        return <TrendingDown className="h-3.5 w-3.5" />;
       default:
-        return <Minus className="h-4 w-4 text-muted-foreground" />;
+        return <Minus className="h-3.5 w-3.5" />;
     }
   };
 
-  const getTrendColor = (trend: "up" | "down" | "stable") => {
+  const getTrendColorClass = (trend: "up" | "down" | "stable") => {
     switch (trend) {
       case "up":
-        return "text-green-500";
+        return "text-emerald-600 bg-emerald-100";
       case "down":
-        return "text-red-500";
+        return "text-rose-600 bg-rose-100";
       default:
-        return "text-muted-foreground";
+        return "text-slate-600 bg-slate-100";
     }
   };
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-8">
         {Array.from({ length: 8 }).map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-4">
-              <div className="h-16 bg-muted rounded" />
-            </CardContent>
-          </Card>
+          <div key={i} className="h-28 bg-muted/50 rounded-xl animate-pulse" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
+    <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-8">
       {metrics.map((metric, index) => (
-        <Card key={index} className="relative overflow-hidden">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                {metric.icon}
-              </div>
+        <div 
+          key={index} 
+          className={`relative rounded-xl border p-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${metric.bgClass}`}
+        >
+          {/* Icon */}
+          <div className={`inline-flex p-2 rounded-lg ${metric.colorClass} bg-white/80 shadow-sm mb-3`}>
+            {metric.icon}
+          </div>
+          
+          {/* Value */}
+          <p className={`text-xl font-bold tracking-tight ${metric.colorClass}`}>
+            {metric.value}
+          </p>
+          
+          {/* Label */}
+          <p className="text-xs font-medium text-slate-600 mt-0.5">
+            {metric.label}
+          </p>
+          
+          {/* Trend Badge */}
+          {metric.trendValue && (
+            <div className={`inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${getTrendColorClass(metric.trend)}`}>
               {getTrendIcon(metric.trend)}
+              <span>{metric.trendValue}</span>
             </div>
-            <div className="mt-3">
-              <p className="text-2xl font-bold">{metric.value}</p>
-              <p className="text-xs text-muted-foreground">{metric.label}</p>
-              {metric.trendValue && (
-                <p className={`text-xs mt-1 ${getTrendColor(metric.trend)}`}>
-                  {metric.trendValue} vs mês anterior
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
       ))}
     </div>
   );

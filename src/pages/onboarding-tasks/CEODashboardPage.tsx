@@ -1,7 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Brain, FileText, MapPin, Trophy, Users, Calculator, ArrowLeft, Activity } from "lucide-react";
+import { 
+  Loader2, 
+  Brain, 
+  FileText, 
+  MapPin, 
+  Trophy, 
+  Users, 
+  Calculator, 
+  ArrowLeft, 
+  Activity,
+  Heart,
+  CheckSquare,
+  Calendar,
+  StickyNote,
+  TrendingUp
+} from "lucide-react";
 import { CEOBigNumbers } from "@/components/ceo-dashboard/CEOBigNumbers";
 import { CEOBusinessHealth } from "@/components/ceo-dashboard/CEOBusinessHealth";
 import { CEODecisions } from "@/components/ceo-dashboard/CEODecisions";
@@ -19,8 +34,27 @@ import { CEOVirtualBoard } from "@/components/ceo-dashboard/CEOVirtualBoard";
 import { CEODecisionSimulator } from "@/components/ceo-dashboard/CEODecisionSimulator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 const CEO_EMAIL = "fabricio@universidadevendas.com.br";
+
+const mainTabs = [
+  { value: "ai", label: "IA do CEO", icon: Brain, color: "text-violet-600" },
+  { value: "board", label: "Board Virtual", icon: Users, color: "text-blue-600" },
+  { value: "score", label: "Score", icon: Trophy, color: "text-amber-600" },
+  { value: "weekly", label: "Relatório Semanal", icon: FileText, color: "text-emerald-600" },
+  { value: "decision-map", label: "Mapa de Decisões", icon: MapPin, color: "text-rose-600" },
+  { value: "simulator", label: "Simulador", icon: Calculator, color: "text-cyan-600" },
+];
+
+const secondaryTabs = [
+  { value: "health", label: "Saúde", icon: Heart, color: "text-rose-500" },
+  { value: "decisions", label: "Decisões", icon: CheckSquare, color: "text-indigo-500" },
+  { value: "agenda", label: "Agenda", icon: Calendar, color: "text-blue-500" },
+  { value: "tasks", label: "Tarefas", icon: CheckSquare, color: "text-emerald-500" },
+  { value: "notes", label: "Anotações", icon: StickyNote, color: "text-amber-500" },
+  { value: "planning", label: "Planejamento", icon: TrendingUp, color: "text-violet-500" },
+];
 
 export default function CEODashboardPage() {
   const navigate = useNavigate();
@@ -80,7 +114,7 @@ export default function CEODashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -91,8 +125,8 @@ export default function CEODashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="space-y-6 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -100,13 +134,15 @@ export default function CEODashboardPage() {
               variant="outline" 
               size="icon"
               onClick={() => navigate("/onboarding-tasks")}
-              className="h-10 w-10"
+              className="h-10 w-10 bg-white shadow-sm"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">CEO Dashboard</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+                CEO Dashboard
+              </h1>
+              <p className="text-slate-500">
                 Painel de Comando Estratégico
               </p>
             </div>
@@ -114,7 +150,7 @@ export default function CEODashboardPage() {
           <Button 
             variant="outline"
             onClick={() => navigate("/onboarding-tasks/executive")}
-            className="gap-2"
+            className="gap-2 bg-white shadow-sm"
           >
             <Activity className="h-4 w-4" />
             Dashboard Executivo
@@ -128,88 +164,90 @@ export default function CEODashboardPage() {
         <CEOBigNumbers />
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="ai" className="space-y-6">
-          <TabsList className="flex flex-wrap gap-1">
-            <TabsTrigger value="ai" className="gap-2">
-              <Brain className="h-4 w-4" />
-              IA do CEO
-            </TabsTrigger>
-            <TabsTrigger value="board" className="gap-2">
-              <Users className="h-4 w-4" />
-              Board Virtual
-            </TabsTrigger>
-            <TabsTrigger value="score" className="gap-2">
-              <Trophy className="h-4 w-4" />
-              Score
-            </TabsTrigger>
-            <TabsTrigger value="weekly" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Relatório Semanal
-            </TabsTrigger>
-            <TabsTrigger value="decision-map" className="gap-2">
-              <MapPin className="h-4 w-4" />
-              Mapa de Decisões
-            </TabsTrigger>
-            <TabsTrigger value="simulator" className="gap-2">
-              <Calculator className="h-4 w-4" />
-              Simulador
-            </TabsTrigger>
-            <TabsTrigger value="health">Saúde</TabsTrigger>
-            <TabsTrigger value="decisions">Decisões</TabsTrigger>
-            <TabsTrigger value="agenda">Agenda</TabsTrigger>
-            <TabsTrigger value="tasks">Tarefas</TabsTrigger>
-            <TabsTrigger value="notes">Anotações</TabsTrigger>
-            <TabsTrigger value="planning">Planejamento</TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="ai" className="space-y-4">
+          {/* Primary Navigation - Main Features */}
+          <div className="bg-white rounded-xl shadow-sm border p-1.5">
+            <ScrollArea className="w-full">
+              <TabsList className="inline-flex h-auto gap-1 bg-transparent p-0 w-max">
+                {mainTabs.map((tab) => (
+                  <TabsTrigger 
+                    key={tab.value}
+                    value={tab.value} 
+                    className="gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                  >
+                    <tab.icon className={`h-4 w-4 ${tab.color}`} />
+                    <span className="font-medium">{tab.label}</span>
+                  </TabsTrigger>
+                ))}
+                
+                {/* Divider */}
+                <div className="w-px h-8 bg-slate-200 mx-2 self-center" />
+                
+                {/* Secondary tabs inline */}
+                {secondaryTabs.map((tab) => (
+                  <TabsTrigger 
+                    key={tab.value}
+                    value={tab.value} 
+                    className="gap-1.5 px-3 py-2 rounded-lg text-slate-600 hover:text-slate-900 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 transition-all text-sm"
+                  >
+                    <tab.icon className={`h-3.5 w-3.5 ${tab.color}`} />
+                    <span>{tab.label}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              <ScrollBar orientation="horizontal" className="invisible" />
+            </ScrollArea>
+          </div>
 
-          <TabsContent value="ai" className="space-y-6">
+          {/* Tab Contents */}
+          <TabsContent value="ai" className="space-y-6 mt-6">
             <CEOAIAssistant />
           </TabsContent>
 
-          <TabsContent value="board" className="space-y-6">
+          <TabsContent value="board" className="space-y-6 mt-6">
             <CEOVirtualBoard />
           </TabsContent>
 
-          <TabsContent value="score" className="space-y-6">
+          <TabsContent value="score" className="space-y-6 mt-6">
             <CEOScoreCard />
           </TabsContent>
 
-          <TabsContent value="weekly" className="space-y-6">
+          <TabsContent value="weekly" className="space-y-6 mt-6">
             <CEOWeeklyReport />
           </TabsContent>
 
-          <TabsContent value="decision-map" className="space-y-6">
+          <TabsContent value="decision-map" className="space-y-6 mt-6">
             <CEODecisionMap />
           </TabsContent>
 
-          <TabsContent value="simulator" className="space-y-6">
+          <TabsContent value="simulator" className="space-y-6 mt-6">
             <CEODecisionSimulator />
           </TabsContent>
 
-          <TabsContent value="health" className="space-y-6">
+          <TabsContent value="health" className="space-y-6 mt-6">
             <CEOBusinessHealth />
           </TabsContent>
 
-          <TabsContent value="decisions" className="space-y-6">
+          <TabsContent value="decisions" className="space-y-6 mt-6">
             <div className="grid gap-6 lg:grid-cols-2">
               <CEODecisions />
               <CEODecisionResults />
             </div>
           </TabsContent>
 
-          <TabsContent value="agenda" className="space-y-6">
+          <TabsContent value="agenda" className="space-y-6 mt-6">
             <CEOAgenda />
           </TabsContent>
 
-          <TabsContent value="tasks" className="space-y-6">
+          <TabsContent value="tasks" className="space-y-6 mt-6">
             <CEOTasks />
           </TabsContent>
 
-          <TabsContent value="notes" className="space-y-6">
+          <TabsContent value="notes" className="space-y-6 mt-6">
             <CEONotes />
           </TabsContent>
 
-          <TabsContent value="planning" className="space-y-6">
+          <TabsContent value="planning" className="space-y-6 mt-6">
             <CEOFuturePlanning />
           </TabsContent>
         </Tabs>
