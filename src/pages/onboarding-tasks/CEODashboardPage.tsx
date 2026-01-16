@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, Brain } from "lucide-react";
 import { CEOBigNumbers } from "@/components/ceo-dashboard/CEOBigNumbers";
 import { CEOBusinessHealth } from "@/components/ceo-dashboard/CEOBusinessHealth";
 import { CEODecisions } from "@/components/ceo-dashboard/CEODecisions";
@@ -11,6 +11,7 @@ import { CEOTasks } from "@/components/ceo-dashboard/CEOTasks";
 import { CEONotes } from "@/components/ceo-dashboard/CEONotes";
 import { CEOAlerts } from "@/components/ceo-dashboard/CEOAlerts";
 import { CEOFuturePlanning } from "@/components/ceo-dashboard/CEOFuturePlanning";
+import { CEOAIAssistant } from "@/components/ceo-dashboard/CEOAIAssistant";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const CEO_EMAIL = "fabricio@universidadevendas.com.br";
@@ -103,8 +104,12 @@ export default function CEODashboardPage() {
         <CEOBigNumbers />
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="health" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:grid-cols-none lg:flex">
+        <Tabs defaultValue="ai" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:grid-cols-none lg:flex">
+            <TabsTrigger value="ai" className="gap-2">
+              <Brain className="h-4 w-4" />
+              IA do CEO
+            </TabsTrigger>
             <TabsTrigger value="health">Saúde</TabsTrigger>
             <TabsTrigger value="decisions">Decisões</TabsTrigger>
             <TabsTrigger value="agenda">Agenda</TabsTrigger>
@@ -112,6 +117,10 @@ export default function CEODashboardPage() {
             <TabsTrigger value="notes">Anotações</TabsTrigger>
             <TabsTrigger value="planning">Planejamento</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="ai" className="space-y-6">
+            <CEOAIAssistant />
+          </TabsContent>
 
           <TabsContent value="health" className="space-y-6">
             <CEOBusinessHealth />

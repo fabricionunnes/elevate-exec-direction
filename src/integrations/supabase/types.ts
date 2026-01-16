@@ -226,6 +226,72 @@ export type Database = {
         }
         Relationships: []
       }
+      ceo_ai_chat: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: []
+      }
+      ceo_ai_recommendations: {
+        Row: {
+          area: string | null
+          category: string
+          created_at: string
+          data_sources: string[] | null
+          executed_at: string | null
+          id: string
+          insight: string
+          notes: string | null
+          status: string | null
+          suggested_action: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          area?: string | null
+          category: string
+          created_at?: string
+          data_sources?: string[] | null
+          executed_at?: string | null
+          id?: string
+          insight: string
+          notes?: string | null
+          status?: string | null
+          suggested_action?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string | null
+          category?: string
+          created_at?: string
+          data_sources?: string[] | null
+          executed_at?: string | null
+          id?: string
+          insight?: string
+          notes?: string | null
+          status?: string | null
+          suggested_action?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ceo_alerts: {
         Row: {
           alert_type: string
