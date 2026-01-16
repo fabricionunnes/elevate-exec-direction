@@ -73,7 +73,7 @@ export function CEONotes() {
       setDecisions(decisionsData || []);
 
       // Fetch companies for dropdown
-      const { data: companiesData } = await supabase
+      const { data: companiesData } = await (supabase as any)
         .from("onboarding_companies")
         .select("id, name")
         .eq("is_active", true)
