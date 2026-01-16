@@ -19,13 +19,16 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Upload, FileText, X } from "lucide-react";
-import { JobOpening } from "../types";
+interface JobOption {
+  id: string;
+  title: string;
+}
 
 interface CandidateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  jobs: JobOpening[];
+  jobs: JobOption[];
   isStaff: boolean;
   onSuccess: () => void;
 }
