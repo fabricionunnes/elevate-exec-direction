@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -358,20 +359,31 @@ export default function KPIEntryPage() {
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    {kpi.kpi_type === "monetary" && (
-                      <span className="text-muted-foreground">R$</span>
-                    )}
-                    <Input
-                      type="number"
-                      step={kpi.kpi_type === "monetary" ? "0.01" : "1"}
-                      min="0"
-                      value={values[kpi.id] || ""}
-                      onChange={(e) => setValues({ ...values, [kpi.id]: parseFloat(e.target.value) || 0 })}
-                      placeholder={formatPlaceholder(kpi.kpi_type)}
-                      className="flex-1"
-                    />
-                    {kpi.kpi_type === "percentage" && (
-                      <span className="text-muted-foreground">%</span>
+                    {kpi.kpi_type === "monetary" ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-muted-foreground">R$</span>
+                        <CurrencyInput
+                          value={values[kpi.id] || 0}
+                          onChange={(val) => setValues({ ...values, [kpi.id]: val })}
+                          placeholder="0,00"
+                          className="flex-1"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 flex-1">
+                        <Input
+                          type="number"
+                          step={kpi.kpi_type === "percentage" ? "0.01" : "1"}
+                          min="0"
+                          value={values[kpi.id] || ""}
+                          onChange={(e) => setValues({ ...values, [kpi.id]: parseFloat(e.target.value) || 0 })}
+                          placeholder={formatPlaceholder(kpi.kpi_type)}
+                          className="flex-1"
+                        />
+                        {kpi.kpi_type === "percentage" && (
+                          <span className="text-muted-foreground">%</span>
+                        )}
+                      </div>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
