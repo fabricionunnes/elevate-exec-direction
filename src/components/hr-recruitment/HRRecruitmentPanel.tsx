@@ -7,7 +7,9 @@ import {
   ClipboardCheck, 
   MessageSquare, 
   FileText, 
-  Settings 
+  Settings,
+  BarChart3,
+  UserCheck
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { JobOpeningsTab } from "./tabs/JobOpeningsTab";
@@ -17,6 +19,8 @@ import { DISCEvaluationsTab } from "./tabs/DISCEvaluationsTab";
 import { InterviewsTab } from "./tabs/InterviewsTab";
 import { ResumesTab } from "./tabs/ResumesTab";
 import { HRSettingsTab } from "./tabs/HRSettingsTab";
+import { HRDashboardTab } from "./tabs/HRDashboardTab";
+import { TalentPoolTab } from "./tabs/TalentPoolTab";
 
 interface HRRecruitmentPanelProps {
   projectId: string;
@@ -31,7 +35,7 @@ export function HRRecruitmentPanel({
   isStaff, 
   canEdit 
 }: HRRecruitmentPanelProps) {
-  const [activeTab, setActiveTab] = useState("jobs");
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [stats, setStats] = useState({
     openJobs: 0,
     activeCandidates: 0,
@@ -110,6 +114,10 @@ export function HRRecruitmentPanel({
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1">
+          <TabsTrigger value="dashboard" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Dashboard</span>
+          </TabsTrigger>
           <TabsTrigger value="jobs" className="gap-2">
             <Briefcase className="h-4 w-4" />
             <span className="hidden sm:inline">Vagas</span>
@@ -134,6 +142,10 @@ export function HRRecruitmentPanel({
             <FileText className="h-4 w-4" />
             <span className="hidden sm:inline">Currículos</span>
           </TabsTrigger>
+          <TabsTrigger value="talent-pool" className="gap-2">
+            <UserCheck className="h-4 w-4" />
+            <span className="hidden sm:inline">Banco de Talentos</span>
+          </TabsTrigger>
           {canEdit && (
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="h-4 w-4" />
@@ -141,6 +153,10 @@ export function HRRecruitmentPanel({
             </TabsTrigger>
           )}
         </TabsList>
+
+        <TabsContent value="dashboard" className="mt-6">
+          <HRDashboardTab projectId={projectId} />
+        </TabsContent>
 
         <TabsContent value="jobs" className="mt-6">
           <JobOpeningsTab 
@@ -187,6 +203,13 @@ export function HRRecruitmentPanel({
             projectId={projectId} 
             canEdit={canEdit}
             isStaff={isStaff}
+          />
+        </TabsContent>
+
+        <TabsContent value="talent-pool" className="mt-6">
+          <TalentPoolTab 
+            projectId={projectId} 
+            canEdit={canEdit}
           />
         </TabsContent>
 

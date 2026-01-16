@@ -116,3 +116,6 @@ verify_jwt = false
 
 [functions.ceo-decision-simulator]
 verify_jwt = false
+
+[functions.hr-ai-analysis]
+verify_jwt = false

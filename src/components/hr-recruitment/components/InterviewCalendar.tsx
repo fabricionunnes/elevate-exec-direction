@@ -14,33 +14,24 @@ import { ptBR } from "date-fns/locale";
 
 interface Interview {
   id: string;
-  candidate_id: string;
-  interview_type: string;
-  scheduled_at: string | null;
+  candidateName: string;
+  type: string;
+  scheduledAt: string | null;
   status: string;
-  candidate: {
-    full_name: string;
-  };
-  interviewer?: {
-    name: string;
-  } | null;
-  interviewer_name?: string | null;
+  interviewerName?: string;
 }
 
 interface InterviewCalendarProps {
   interviews: Interview[];
-  view: 'week' | 'month';
-  onViewChange: (view: 'week' | 'month') => void;
-  onInterviewClick?: (interview: Interview) => void;
+  onInterviewClick?: (id: string) => void;
 }
 
 export function InterviewCalendar({ 
   interviews, 
-  view, 
-  onViewChange,
   onInterviewClick 
 }: InterviewCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<'week' | 'month'>('week');
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -82,7 +73,7 @@ export function InterviewCalendar({
 
   const getInterviewsForDay = (date: Date) => {
     return interviews.filter(i => 
-      i.scheduled_at && isSameDay(new Date(i.scheduled_at), date)
+      i.scheduledAt && isSameDay(new Date(i.scheduledAt), date)
     );
   };
 
@@ -119,7 +110,7 @@ export function InterviewCalendar({
               <Button
                 variant={view === 'week' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => onViewChange('week')}
+                onClick={() => setView('week')}
                 className="rounded-r-none"
               >
                 Semana
@@ -127,7 +118,7 @@ export function InterviewCalendar({
               <Button
                 variant={view === 'month' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => onViewChange('month')}
+                onClick={() => setView('month')}
                 className="rounded-l-none"
               >
                 Mês
@@ -189,14 +180,14 @@ export function InterviewCalendar({
                   {dayInterviews.map(interview => (
                     <div
                       key={interview.id}
-                      className={`${getTypeColor(interview.interview_type)} text-white text-xs p-1.5 rounded mb-1 cursor-pointer hover:opacity-90 transition-opacity`}
-                      onClick={() => onInterviewClick?.(interview)}
+                      className={`${getTypeColor(interview.type)} text-white text-xs p-1.5 rounded mb-1 cursor-pointer hover:opacity-90 transition-opacity`}
+                      onClick={() => onInterviewClick?.(interview.id)}
                     >
                       <div className="font-medium truncate">
-                        {format(new Date(interview.scheduled_at!), "HH:mm")}
+                        {format(new Date(interview.scheduledAt!), "HH:mm")}
                       </div>
                       <div className="truncate opacity-90">
-                        {interview.candidate.full_name}
+                        {interview.candidateName}
                       </div>
                     </div>
                   ))}
@@ -233,10 +224,10 @@ export function InterviewCalendar({
                   {dayInterviews.slice(0, 2).map(interview => (
                     <div
                       key={interview.id}
-                      className={`${getTypeColor(interview.interview_type)} text-white text-[10px] p-1 rounded mb-0.5 cursor-pointer truncate`}
-                      onClick={() => onInterviewClick?.(interview)}
+                      className={`${getTypeColor(interview.type)} text-white text-[10px] p-1 rounded mb-0.5 cursor-pointer truncate`}
+                      onClick={() => onInterviewClick?.(interview.id)}
                     >
-                      {format(new Date(interview.scheduled_at!), "HH:mm")} {interview.candidate.full_name.split(' ')[0]}
+                      {format(new Date(interview.scheduledAt!), "HH:mm")} {interview.candidateName.split(' ')[0]}
                     </div>
                   ))}
                   {dayInterviews.length > 2 && (
