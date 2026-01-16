@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -20,12 +21,17 @@ import {
   Star,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  List,
+  CalendarDays,
+  ClipboardList
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { InterviewDialog } from "../dialogs/InterviewDialog";
+import { InterviewCalendar } from "../components/InterviewCalendar";
+import { InterviewScorecardDialog } from "../dialogs/InterviewScorecardDialog";
 
 interface InterviewWithCandidate {
   id: string;
@@ -63,6 +69,9 @@ export function InterviewsTab({ projectId, canEdit }: InterviewsTabProps) {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showDialog, setShowDialog] = useState(false);
   const [editingInterview, setEditingInterview] = useState<InterviewWithCandidate | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [showScorecardDialog, setShowScorecardDialog] = useState(false);
+  const [selectedInterviewForScorecard, setSelectedInterviewForScorecard] = useState<string | null>(null);
 
   useEffect(() => {
     fetchInterviews();
@@ -141,136 +150,210 @@ export function InterviewsTab({ projectId, canEdit }: InterviewsTabProps) {
     }
   };
 
+  const handleOpenScorecard = (interviewId: string) => {
+    setSelectedInterviewForScorecard(interviewId);
+    setShowScorecardDialog(true);
+  };
+
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por candidato..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+      {/* View Mode Toggle & Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="flex gap-2">
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "calendar")}>
+            <TabsList>
+              <TabsTrigger value="list" className="gap-2">
+                <List className="h-4 w-4" />
+                Lista
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="gap-2">
+                <CalendarDays className="h-4 w-4" />
+                Calendário
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="scheduled">Agendadas</SelectItem>
-            <SelectItem value="completed">Realizadas</SelectItem>
-            <SelectItem value="cancelled">Canceladas</SelectItem>
-          </SelectContent>
-        </Select>
+
+        <div className="flex flex-col sm:flex-row gap-4 flex-1 justify-end">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por candidato..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="scheduled">Agendadas</SelectItem>
+              <SelectItem value="completed">Realizadas</SelectItem>
+              <SelectItem value="cancelled">Canceladas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
+      {/* Calendar View */}
+      {viewMode === "calendar" && (
+        <InterviewCalendar
+          interviews={filteredInterviews.map(i => ({
+            id: i.id,
+            candidateName: i.candidate.full_name,
+            type: i.interview_type,
+            scheduledAt: i.scheduled_at,
+            status: i.status,
+            interviewerName: i.interviewer?.name || i.interviewer_name || undefined
+          }))}
+          onInterviewClick={(id) => {
+            const interview = interviews.find(i => i.id === id);
+            if (interview && canEdit) {
+              setEditingInterview(interview);
+              setShowDialog(true);
+            }
+          }}
+        />
+      )}
+
       {/* Interviews List */}
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-4">
-                <div className="h-20 bg-muted rounded" />
-              </CardContent>
+      {viewMode === "list" && (
+        <>
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-4">
+                    <div className="h-20 bg-muted rounded" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filteredInterviews.length === 0 ? (
+            <Card className="p-12 text-center">
+              <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">Nenhuma entrevista encontrada</h3>
+              <p className="text-muted-foreground">
+                Agende entrevistas através do detalhe do candidato
+              </p>
             </Card>
-          ))}
-        </div>
-      ) : filteredInterviews.length === 0 ? (
-        <Card className="p-12 text-center">
-          <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">Nenhuma entrevista encontrada</h3>
-          <p className="text-muted-foreground">
-            Agende entrevistas através do detalhe do candidato
-          </p>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {filteredInterviews.map((interview) => (
-            <Card 
-              key={interview.id} 
-              className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => {
-                if (canEdit) {
-                  setEditingInterview(interview);
-                  setShowDialog(true);
-                }
-              }}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {getInitials(interview.candidate.full_name)}
-                    </AvatarFallback>
-                  </Avatar>
+          ) : (
+            <div className="space-y-3">
+              {filteredInterviews.map((interview) => (
+                <Card 
+                  key={interview.id} 
+                  className="hover:shadow-md transition-shadow"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      <Avatar 
+                        className="h-12 w-12 cursor-pointer"
+                        onClick={() => {
+                          if (canEdit) {
+                            setEditingInterview(interview);
+                            setShowDialog(true);
+                          }
+                        }}
+                      >
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {getInitials(interview.candidate.full_name)}
+                        </AvatarFallback>
+                      </Avatar>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium">{interview.candidate.full_name}</h4>
-                      <Badge variant="outline">{getTypeLabel(interview.interview_type)}</Badge>
-                    </div>
-                    
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                      {interview.scheduled_at && (
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3.5 w-3.5" />
-                          {format(new Date(interview.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </span>
-                      )}
-                      {(interview.interviewer?.name || interview.interviewer_name) && (
-                        <span>
-                          Entrevistador: {interview.interviewer?.name || interview.interviewer_name}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 
+                            className="font-medium cursor-pointer hover:text-primary"
+                            onClick={() => {
+                              if (canEdit) {
+                                setEditingInterview(interview);
+                                setShowDialog(true);
+                              }
+                            }}
+                          >
+                            {interview.candidate.full_name}
+                          </h4>
+                          <Badge variant="outline">{getTypeLabel(interview.interview_type)}</Badge>
+                        </div>
+                        
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                          {interview.scheduled_at && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5" />
+                              {format(new Date(interview.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            </span>
+                          )}
+                          {(interview.interviewer?.name || interview.interviewer_name) && (
+                            <span>
+                              Entrevistador: {interview.interviewer?.name || interview.interviewer_name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                  <div className="flex flex-col items-end gap-2">
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(interview.status)}
-                      <span className="text-sm">{getStatusLabel(interview.status)}</span>
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(interview.status)}
+                          <span className="text-sm">{getStatusLabel(interview.status)}</span>
+                        </div>
+
+                        {interview.score !== null && (
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                            <span className="font-medium">{interview.score}/10</span>
+                          </div>
+                        )}
+
+                        {getRecommendationBadge(interview.recommendation)}
+
+                        {canEdit && interview.status === 'completed' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenScorecard(interview.id);
+                            }}
+                          >
+                            <ClipboardList className="h-3.5 w-3.5" />
+                            Scorecard
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
-                    {interview.score !== null && (
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                        <span className="font-medium">{interview.score}/10</span>
+                    {interview.status === 'completed' && (
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {interview.strengths && (
+                          <div className="p-3 bg-green-500/10 rounded-lg">
+                            <p className="text-xs font-medium text-green-600 mb-1">Pontos Fortes</p>
+                            <p className="text-sm">{interview.strengths}</p>
+                          </div>
+                        )}
+                        {interview.concerns && (
+                          <div className="p-3 bg-yellow-500/10 rounded-lg">
+                            <p className="text-xs font-medium text-yellow-600 mb-1">Pontos de Atenção</p>
+                            <p className="text-sm">{interview.concerns}</p>
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {getRecommendationBadge(interview.recommendation)}
-                  </div>
-                </div>
-
-                {interview.status === 'completed' && (
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {interview.strengths && (
-                      <div className="p-3 bg-green-500/10 rounded-lg">
-                        <p className="text-xs font-medium text-green-600 mb-1">Pontos Fortes</p>
-                        <p className="text-sm">{interview.strengths}</p>
+                    {interview.detailed_feedback && (
+                      <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+                        <p className="text-sm">{interview.detailed_feedback}</p>
                       </div>
                     )}
-                    {interview.concerns && (
-                      <div className="p-3 bg-yellow-500/10 rounded-lg">
-                        <p className="text-xs font-medium text-yellow-600 mb-1">Pontos de Atenção</p>
-                        <p className="text-sm">{interview.concerns}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {interview.detailed_feedback && (
-                  <div className="mt-3 p-3 bg-muted/50 rounded-lg">
-                    <p className="text-sm">{interview.detailed_feedback}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Dialog for editing */}
@@ -284,6 +367,21 @@ export function InterviewsTab({ projectId, canEdit }: InterviewsTabProps) {
           setEditingInterview(null);
         }}
       />
+
+      {/* Scorecard Dialog */}
+      {selectedInterviewForScorecard && (
+        <InterviewScorecardDialog
+          open={showScorecardDialog}
+          onOpenChange={setShowScorecardDialog}
+          interviewId={selectedInterviewForScorecard}
+          projectId={projectId}
+          onSuccess={() => {
+            fetchInterviews();
+            setShowScorecardDialog(false);
+            setSelectedInterviewForScorecard(null);
+          }}
+        />
+      )}
     </div>
   );
 }

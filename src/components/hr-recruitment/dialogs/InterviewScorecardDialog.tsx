@@ -33,7 +33,6 @@ interface InterviewScorecardDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   interviewId: string;
-  jobOpeningId: string | null;
   projectId: string;
   onSuccess?: () => void;
 }
@@ -42,7 +41,6 @@ export function InterviewScorecardDialog({
   open,
   onOpenChange,
   interviewId,
-  jobOpeningId,
   projectId,
   onSuccess
 }: InterviewScorecardDialogProps) {
@@ -50,6 +48,7 @@ export function InterviewScorecardDialog({
   const [scores, setScores] = useState<Record<string, ScorecardScore>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [jobOpeningId, setJobOpeningId] = useState<string | null>(null);
   
   // For adding new criteria
   const [showAddCriteria, setShowAddCriteria] = useState(false);
@@ -65,14 +64,29 @@ export function InterviewScorecardDialog({
   const fetchData = async () => {
     setLoading(true);
 
-    // Fetch criteria for this job or project
-    const { data: criteriaData } = await supabase
-      .from("interview_scorecard_criteria")
-      .select("*")
-      .or(`job_opening_id.eq.${jobOpeningId},and(job_opening_id.is.null,project_id.eq.${projectId})`)
-      .eq("is_active", true)
-      .order("sort_order");
+    // First, get the interview to find the job_opening_id through the candidate
+    const { data: interviewData } = await supabase
+      .from("interviews")
+      .select("candidate:candidates(job_opening_id)")
+      .eq("id", interviewId)
+      .single();
 
+    const fetchedJobOpeningId = (interviewData?.candidate as any)?.job_opening_id || null;
+    setJobOpeningId(fetchedJobOpeningId);
+
+    // Fetch criteria for this job or project
+    let query = supabase
+      .from("interview_scorecard_criteria")
+      .select("*");
+    
+    if (fetchedJobOpeningId) {
+      query = query.or(`job_opening_id.eq.${fetchedJobOpeningId},and(job_opening_id.is.null,project_id.eq.${projectId})`);
+    } else {
+      query = query.eq("project_id", projectId).is("job_opening_id", null);
+    }
+    
+    const { data: criteriaData } = await query.order("sort_order");
+    
     setCriteria(criteriaData || []);
 
     // Fetch existing scores for this interview
