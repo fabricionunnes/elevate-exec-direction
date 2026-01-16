@@ -51,6 +51,12 @@ if (publicParam) {
     forceHashRoute("/360", window.location.search);
   } else if (publicParam === "disc") {
     forceHashRoute("/disc", window.location.search);
+  } else if (publicParam === "hr-disc") {
+    // expects token=...
+    const token = urlSearch.get("token");
+    if (token) {
+      forceHashRoute(`/hr-disc/${encodeURIComponent(token)}`, "");
+    }
   } else if (publicParam === "points") {
     // expects company=... (optional)
     forceHashRoute("/points", window.location.search);
