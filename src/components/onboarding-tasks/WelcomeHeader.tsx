@@ -65,18 +65,19 @@ export const WelcomeHeader = ({ className, showAvatar = false }: WelcomeHeaderPr
   };
 
   return (
-    <div className={`flex items-center gap-2 ${className || ""}`}>
+    <div className={`flex items-center gap-3 ${className || ""}`}>
       {showAvatar && (
-        <Avatar className="h-8 w-8">
+        <Avatar className="h-9 w-9 ring-2 ring-primary/20">
           <AvatarImage src={avatarUrl || undefined} alt={userName} />
-          <AvatarFallback className="text-xs bg-primary/10 text-primary">
+          <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
             {getInitials(userName)}
           </AvatarFallback>
         </Avatar>
       )}
-      <span>
-        Bem-vindo, <strong>{firstName}</strong>
-      </span>
+      <div className="flex flex-col">
+        <span className="text-xs text-muted-foreground">Bem-vindo(a)</span>
+        <span className="font-semibold leading-tight">{firstName}</span>
+      </div>
     </div>
   );
 };
