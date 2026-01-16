@@ -88,6 +88,26 @@ serve(async (req) => {
         .order("created_at", { ascending: false })
         .limit(200);
 
+      // Board Virtual data
+      const { data: boardSessions } = await supabase
+        .from("ceo_board_sessions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      const { data: boardOpinions } = await supabase
+        .from("ceo_board_opinions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      // Simulator data
+      const { data: simulations } = await supabase
+        .from("ceo_simulations")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
       // Calculate metrics
       const activeProjects = projects?.filter(p => p.status === "active") || [];
       const churnedProjects = projects?.filter(p => p.status === "churned") || [];
@@ -99,6 +119,14 @@ serve(async (req) => {
 
       const atRiskClients = healthScores?.filter(h => h.risk_level === "high" || h.risk_level === "critical") || [];
 
+      // Board and Simulator metrics
+      const completedBoardSessions = boardSessions?.filter(s => s.status === "completed") || [];
+      const executedSimulations = simulations?.filter(s => s.status === "executed") || [];
+      const simulationsWithPredictionError = simulations?.filter(s => s.prediction_error !== null) || [];
+      const avgPredictionError = simulationsWithPredictionError.length > 0
+        ? simulationsWithPredictionError.reduce((acc, s) => acc + Math.abs(s.prediction_error || 0), 0) / simulationsWithPredictionError.length
+        : null;
+
       return {
         metrics: {
           totalActiveClients: activeProjects.length,
@@ -109,6 +137,9 @@ serve(async (req) => {
           pendingTasks: tasks?.length || 0,
           activeAlerts: alerts?.length || 0,
           activeGoals: goals?.length || 0,
+          boardSessionsCompleted: completedBoardSessions.length,
+          simulationsExecuted: executedSimulations.length,
+          avgSimulationAccuracy: avgPredictionError !== null ? (100 - avgPredictionError).toFixed(1) : null,
         },
         decisions: decisions || [],
         decisionResults: decisionResults || [],
@@ -117,6 +148,9 @@ serve(async (req) => {
         goals: goals || [],
         healthScores: healthScores || [],
         leads: leads || [],
+        boardSessions: boardSessions || [],
+        boardOpinions: boardOpinions || [],
+        simulations: simulations || [],
       };
     };
 
@@ -152,13 +186,34 @@ ${JSON.stringify(businessData.planning.slice(0, 6), null, 2)}
 CLIENTES EM RISCO:
 ${businessData.healthScores.filter(h => h.risk_level === "high" || h.risk_level === "critical").length} clientes em alto risco
 
+BOARD VIRTUAL (Sessões recentes do conselho virtual):
+${JSON.stringify(businessData.boardSessions.slice(0, 5).map(s => ({
+  titulo: s.decision_title,
+  decisao_ceo: s.ceo_decision,
+  recomendacao: s.final_recommendation,
+  riscos_criticos: s.critical_risks,
+  data: s.created_at
+})), null, 2)}
+
+SIMULAÇÕES DE DECISÕES:
+${JSON.stringify(businessData.simulations.slice(0, 5).map(s => ({
+  titulo: s.title,
+  tipo: s.decision_type,
+  status: s.status,
+  impacto_realista: s.realistic_revenue_impact,
+  erro_previsao: s.prediction_error,
+  data: s.created_at
+})), null, 2)}
+
 INSTRUÇÕES:
 1. Analise os dados e forneça insights estratégicos
 2. Identifique riscos críticos e oportunidades
 3. Sugira ações específicas e priorizadas
 4. Conecte decisões passadas com resultados
-5. Sempre indique a urgência (crítico, importante, oportunidade)
-6. Responda em português brasileiro`;
+5. Considere as análises do Board Virtual e Simulações
+6. Avalie a precisão das simulações passadas
+7. Sempre indique a urgência (crítico, importante, oportunidade)
+8. Responda em português brasileiro`;
 
     if (action === "generate-insights") {
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
