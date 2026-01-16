@@ -99,24 +99,30 @@ export function JobOpeningDialog({
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      let staffId = null;
-      
-      if (user) {
-        const { data: staff } = await supabase
-          .from("onboarding_staff")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("is_active", true)
-          .single();
-        staffId = staff?.id;
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        toast.error("Você precisa estar logado para salvar a vaga");
+        return;
       }
+
+      // If the logged user is staff, keep created_by filled.
+      // For client users, created_by stays null (allowed by schema).
+      const { data: staff } = await supabase
+        .from("onboarding_staff")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
 
       const payload = {
         ...formData,
         project_id: projectId,
         company_id: companyId || null,
-        created_by: staffId,
+        created_by: staff?.id ?? null,
       };
 
       if (job) {
@@ -128,18 +134,30 @@ export function JobOpeningDialog({
         if (error) throw error;
         toast.success("Vaga atualizada com sucesso");
       } else {
-        const { error } = await supabase
-          .from("job_openings")
-          .insert(payload);
+        const { error } = await supabase.from("job_openings").insert(payload);
 
         if (error) throw error;
         toast.success("Vaga criada com sucesso");
       }
 
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving job:", error);
-      toast.error("Erro ao salvar vaga");
+
+      const message =
+        typeof error?.message === "string" ? error.message : "Erro ao salvar vaga";
+
+      if (message.includes("row-level security") || error?.code === "42501") {
+        toast.error("Sem permissão para salvar a vaga", {
+          description:
+            "Confirme se você está logado e possui acesso a este projeto.",
+        });
+        return;
+      }
+
+      toast.error("Erro ao salvar vaga", {
+        description: message,
+      });
     } finally {
       setLoading(false);
     }
