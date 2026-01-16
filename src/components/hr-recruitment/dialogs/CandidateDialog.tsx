@@ -94,50 +94,67 @@ export function CandidateDialog({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
+      if (!user) {
+        toast.error("Usuário não autenticado");
+        setLoading(false);
+        return;
+      }
+
       let staffId = null;
       let userId = null;
 
-      if (user) {
-        if (isStaff) {
-          const { data: staff } = await supabase
-            .from("onboarding_staff")
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("is_active", true)
-            .single();
-          staffId = staff?.id;
-        } else {
-          const { data: onbUser } = await supabase
-            .from("onboarding_users")
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("project_id", projectId)
-            .single();
-          userId = onbUser?.id;
-        }
+      // Try to get staff or user ID based on isStaff prop
+      if (isStaff) {
+        const { data: staff } = await supabase
+          .from("onboarding_staff")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+        staffId = staff?.id;
+      } else {
+        const { data: onbUser } = await supabase
+          .from("onboarding_users")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("project_id", projectId)
+          .maybeSingle();
+        userId = onbUser?.id;
       }
 
-      // Create candidate
+      // Create candidate with the available IDs
+      const candidatePayload = {
+        project_id: projectId,
+        full_name: formData.full_name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone || null,
+        cpf: formData.cpf || null,
+        linkedin_url: formData.linkedin_url || null,
+        job_opening_id: formData.job_opening_id || null,
+        notes: formData.notes || null,
+        source: isStaff ? 'hr' : 'client',
+        current_stage: 'received',
+        status: 'active',
+        created_by_staff_id: staffId,
+        created_by_user_id: userId,
+      };
+
       const { data: candidate, error: candidateError } = await supabase
         .from("candidates")
-        .insert({
-          project_id: projectId,
-          full_name: formData.full_name.trim(),
-          email: formData.email.trim().toLowerCase(),
-          phone: formData.phone || null,
-          cpf: formData.cpf || null,
-          linkedin_url: formData.linkedin_url || null,
-          job_opening_id: formData.job_opening_id || null,
-          notes: formData.notes || null,
-          source: isStaff ? 'hr' : 'client',
-          current_stage: 'received',
-          created_by_staff_id: staffId,
-          created_by_user_id: userId,
-        })
+        .insert(candidatePayload)
         .select()
         .single();
 
-      if (candidateError) throw candidateError;
+      if (candidateError) {
+        console.error("Error creating candidate:", candidateError);
+        if (candidateError.code === '42501' || candidateError.message?.includes('row-level security')) {
+          toast.error("Sem permissão para cadastrar candidato neste projeto");
+        } else {
+          toast.error(`Erro ao cadastrar: ${candidateError.message}`);
+        }
+        setLoading(false);
+        return;
+      }
 
       // Upload resume if provided
       if (resumeFile && candidate) {
@@ -152,10 +169,6 @@ export function CandidateDialog({
           console.error("Error uploading resume:", uploadError);
           toast.error("Candidato criado, mas erro ao enviar currículo");
         } else {
-          const { data: { publicUrl } } = supabase.storage
-            .from('resumes')
-            .getPublicUrl(filePath);
-
           await supabase.from("candidate_resumes").insert({
             candidate_id: candidate.id,
             file_name: resumeFile.name,
@@ -169,21 +182,26 @@ export function CandidateDialog({
         }
       }
 
-      // Add history entry
-      await supabase.from("hiring_history").insert({
-        candidate_id: candidate.id,
-        action: 'created',
-        new_value: 'received',
-        description: `Candidato cadastrado via ${isStaff ? 'RH' : 'cliente'}`,
-        performed_by_staff_id: staffId,
-        performed_by_user_id: userId,
-      });
+      // Add history entry (using try-catch to not fail the whole operation)
+      try {
+        await supabase.from("hiring_history").insert({
+          candidate_id: candidate.id,
+          action: 'created',
+          new_value: 'received',
+          description: `Candidato cadastrado via ${isStaff ? 'RH' : 'cliente'}`,
+          performed_by_staff_id: staffId,
+          performed_by_user_id: userId,
+        });
+      } catch (historyError) {
+        console.error("Error adding history:", historyError);
+        // Non-critical error, don't show to user
+      }
 
       toast.success("Candidato cadastrado com sucesso!");
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating candidate:", error);
-      toast.error("Erro ao cadastrar candidato");
+      toast.error(error.message || "Erro ao cadastrar candidato");
     } finally {
       setLoading(false);
     }
