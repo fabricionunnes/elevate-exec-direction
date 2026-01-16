@@ -58,7 +58,7 @@ export function HRSettingsTab({ projectId }: HRSettingsTabProps) {
         stage_key: s.key,
         sort_order: i,
         color: s.color,
-        is_default: true,
+        is_default: false, // Allow deletion of all stages
       }));
       setStages(defaultStages as CustomStage[]);
     }
@@ -81,7 +81,7 @@ export function HRSettingsTab({ projectId }: HRSettingsTabProps) {
         stage_key: s.stage_key,
         sort_order: i,
         color: s.color,
-        is_default: s.is_default,
+        is_default: false, // All stages can be deleted
       }));
 
       const { error } = await supabase
@@ -185,7 +185,7 @@ export function HRSettingsTab({ projectId }: HRSettingsTabProps) {
                 ))}
               </div>
 
-              {!stage.is_default && (
+              {stages.length > 1 && (
                 <Button
                   variant="ghost"
                   size="icon"

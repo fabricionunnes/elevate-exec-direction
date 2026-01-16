@@ -38,6 +38,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
+import { usePipelineStages } from "../hooks/usePipelineStages";
 import {
   Candidate,
   HiringHistory,
@@ -73,6 +74,8 @@ export function CandidateDetailSheet({
   const [interviewDialogOpen, setInterviewDialogOpen] = useState(false);
   const [interviewFeedbackOpen, setInterviewFeedbackOpen] = useState(false);
   const [editingInterview, setEditingInterview] = useState<Interview | null>(null);
+
+  const { stages: pipelineStages } = usePipelineStages(projectId);
 
   useEffect(() => {
     if (candidate && open) {
@@ -172,7 +175,8 @@ export function CandidateDetailSheet({
 
   if (!candidate) return null;
 
-  const currentStage = PIPELINE_STAGES.find(s => s.key === candidate.current_stage);
+  const currentStage = pipelineStages.find(s => s.key === candidate.current_stage) || 
+    PIPELINE_STAGES.find(s => s.key === candidate.current_stage);
   const getInitials = (name: string) => name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
 
   return (
@@ -237,8 +241,8 @@ export function CandidateDetailSheet({
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    {PIPELINE_STAGES.map((stage) => (
+                <SelectContent>
+                    {pipelineStages.map((stage) => (
                       <SelectItem key={stage.key} value={stage.key}>
                         <div className="flex items-center gap-2">
                           <div 
