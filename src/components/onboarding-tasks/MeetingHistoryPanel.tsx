@@ -806,14 +806,15 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
         const errorMsg = response.data?.error || response.error?.message || "";
         console.log("ElevenLabs transcription failed:", errorMsg);
         
-        // If file is too large for ElevenLabs, try AssemblyAI which handles larger files
-        if (errorMsg.includes("too large") || errorMsg.includes("not configured")) {
-          toast.info("Tentando com serviço alternativo...", { duration: 5000 });
+        // If file is too large for ElevenLabs, try AssemblyAI which handles larger files via streaming
+        if (errorMsg.includes("too large") || errorMsg.includes("not configured") || errorMsg.includes("Maximum")) {
+          toast.info("Arquivo grande detectado. Tentando com serviço alternativo (pode levar vários minutos)...", { duration: 15000 });
           
           response = await supabase.functions.invoke("transcribe-assemblyai", {
             body: { 
               audioUrl: meeting.recording_link,
-              staffId: currentStaffId 
+              staffId: currentStaffId,
+              meetingId: meeting.id
             },
           });
         }
