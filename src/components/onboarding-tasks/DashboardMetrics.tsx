@@ -29,6 +29,9 @@ import {
 import { format, isBefore, startOfDay, isWithinInterval, eachDayOfInterval, parseISO, eachMonthOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
+import { toast } from "sonner";
+import { Copy, ExternalLink } from "lucide-react";
 import { 
   PieChart, 
   Pie, 
@@ -147,8 +150,10 @@ const DashboardMetrics = ({
   const [tasksDialogType, setTasksDialogType] = useState<"overdue" | "today" | "status">("overdue");
   const [tasksDialogIds, setTasksDialogIds] = useState<string[]>([]);
   const [tasksDialogStatus, setTasksDialogStatus] = useState<"completed" | "pending" | "in_progress" | null>(null);
-  const [npsDetailType, setNpsDetailType] = useState<"promoters" | "detractors" | "neutrals" | "all" | null>(null);
+  const [npsDetailType, setNpsDetailType] = useState<"promoters" | "detractors" | "neutrals" | "all" | "not_responded" | null>(null);
   const [npsDetailPage, setNpsDetailPage] = useState(1);
+  const [npsNotRespondedPage, setNpsNotRespondedPage] = useState(1);
+  const npsNotRespondedPerPage = 10;
   const [showCompaniesWithoutTasks, setShowCompaniesWithoutTasks] = useState(false);
   const [healthHistoryDialogOpen, setHealthHistoryDialogOpen] = useState(false);
   const npsPerPage = 10;
@@ -548,7 +553,10 @@ const DashboardMetrics = ({
     const promoters = filteredResponses.filter(r => r.score >= 9).length;
     const detractors = filteredResponses.filter(r => r.score <= 6).length;
     const neutrals = filteredResponses.filter(r => r.score >= 7 && r.score <= 8).length;
-    return { averageNps, promoters, detractors, neutrals, totalResponses, respondedCount, notRespondedCount, responseRate, totalProjects: totalFilteredProjects };
+    // List of projects without NPS responses
+    const notRespondedProjects = projects.filter(p => !projectsWithResponse.has(p.id));
+    
+    return { averageNps, promoters, detractors, neutrals, totalResponses, respondedCount, notRespondedCount, responseRate, totalProjects: totalFilteredProjects, notRespondedProjects };
   }, [projects, npsResponses]);
 
   const healthMetrics = useMemo(() => {
@@ -681,10 +689,25 @@ const DashboardMetrics = ({
 
   const isCardActive = (type: string, value: string) => activeMetricFilter?.type === type && activeMetricFilter?.value === value;
 
-  const handleNpsCardClick = (type: "promoters" | "detractors" | "neutrals") => {
-    const newValue = npsDetailType === type ? "all" : type;
-    setNpsDetailType(newValue);
-    setNpsDetailPage(1);
+  const handleNpsCardClick = (type: "promoters" | "detractors" | "neutrals" | "not_responded") => {
+    if (type === "not_responded") {
+      const newValue = npsDetailType === "not_responded" ? null : "not_responded";
+      setNpsDetailType(newValue);
+      setNpsNotRespondedPage(1);
+    } else {
+      const newValue = npsDetailType === type ? "all" : type;
+      setNpsDetailType(newValue);
+      setNpsDetailPage(1);
+    }
+  };
+
+  const getNpsLink = (projectId: string) => {
+    return `${getPublicBaseUrl()}/#/nps?project=${projectId}`;
+  };
+
+  const copyNpsLink = (projectId: string) => {
+    navigator.clipboard.writeText(getNpsLink(projectId));
+    toast.success("Link NPS copiado!");
   };
 
   const getFilteredNpsResponses = (type: "promoters" | "detractors" | "neutrals" | "all" | null) => {
@@ -1114,13 +1137,89 @@ const DashboardMetrics = ({
             <Card><CardContent className="p-2 sm:p-3 text-center"><p className={cn("text-lg sm:text-xl font-bold", npsMetrics.averageNps === null ? "text-muted-foreground" : npsMetrics.averageNps >= 9 ? "text-green-500" : npsMetrics.averageNps >= 7 ? "text-yellow-500" : "text-red-500")}>{npsMetrics.averageNps ?? "—"}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Média</p></CardContent></Card>
             <Card><CardContent className="p-2 sm:p-3 text-center"><p className={cn("text-lg sm:text-xl font-bold", npsMetrics.responseRate >= 70 ? "text-green-500" : npsMetrics.responseRate >= 40 ? "text-yellow-500" : "text-orange-500")}>{npsMetrics.responseRate}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Taxa</p></CardContent></Card>
             <Card className={cn("cursor-pointer", isCardActive("nps", "responded") && "ring-2 ring-blue-500")} onClick={() => handleCardClick("nps", "responded")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-blue-500">{npsMetrics.respondedCount}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Respond.</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("nps", "not_responded") && "ring-2 ring-gray-500")} onClick={() => handleCardClick("nps", "not_responded")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-gray-500">{npsMetrics.notRespondedCount}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Não Resp.</p></CardContent></Card>
+            <Card className={cn("cursor-pointer hidden lg:block hover:shadow-md transition-all", npsDetailType === "not_responded" && "ring-2 ring-gray-500")} onClick={() => handleNpsCardClick("not_responded")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-gray-500">{npsMetrics.notRespondedCount}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Não Resp.</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden lg:block hover:shadow-md transition-all", npsDetailType === "promoters" && "ring-2 ring-green-500")} onClick={() => handleNpsCardClick("promoters")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-green-500">{npsMetrics.promoters}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Promotores</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden lg:block hover:shadow-md transition-all", npsDetailType === "neutrals" && "ring-2 ring-yellow-500")} onClick={() => handleNpsCardClick("neutrals")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-yellow-500">{npsMetrics.neutrals}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Neutros</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden lg:block hover:shadow-md transition-all", npsDetailType === "detractors" && "ring-2 ring-red-500")} onClick={() => handleNpsCardClick("detractors")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{npsMetrics.detractors}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Detratores</p></CardContent></Card>
           </div>
           
-          {npsDetailType && (() => {
+          {npsDetailType === "not_responded" && (() => {
+            const notRespondedProjects = npsMetrics.notRespondedProjects || [];
+            const totalPages = Math.ceil(notRespondedProjects.length / npsNotRespondedPerPage);
+            const paginatedProjects = notRespondedProjects.slice((npsNotRespondedPage - 1) * npsNotRespondedPerPage, npsNotRespondedPage * npsNotRespondedPerPage);
+            
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <UserX className="h-4 w-4 text-gray-500" />
+                    Clientes sem Resposta NPS
+                    <span className="text-muted-foreground">({notRespondedProjects.length})</span>
+                  </h4>
+                  <button onClick={() => setNpsDetailType(null)} className="text-xs text-muted-foreground hover:text-foreground">Fechar</button>
+                </div>
+                <div className="grid gap-2">
+                  {paginatedProjects.map((project) => (
+                    <Card key={project.id} className="border-l-4 border-l-gray-400">
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              <span className="font-medium text-sm truncate">{getCompanyName(project.id)}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 bg-muted rounded">{project.product_name}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => copyNpsLink(project.id)}
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                              title="Copiar link NPS"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                              Copiar Link
+                            </button>
+                            <a
+                              href={getNpsLink(project.id)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground border rounded-md hover:bg-muted transition-colors"
+                              title="Abrir pesquisa NPS"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 pt-2">
+                    <button 
+                      onClick={() => setNpsNotRespondedPage(p => Math.max(1, p - 1))} 
+                      disabled={npsNotRespondedPage === 1}
+                      className="px-3 py-1 text-xs rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
+                    >
+                      Anterior
+                    </button>
+                    <span className="text-xs text-muted-foreground">
+                      Página {npsNotRespondedPage} de {totalPages}
+                    </span>
+                    <button 
+                      onClick={() => setNpsNotRespondedPage(p => Math.min(totalPages, p + 1))} 
+                      disabled={npsNotRespondedPage === totalPages}
+                      className="px-3 py-1 text-xs rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
+                    >
+                      Próxima
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {npsDetailType && npsDetailType !== "not_responded" && (() => {
             const allResponses = getFilteredNpsResponses(npsDetailType);
             const totalPages = Math.ceil(allResponses.length / npsPerPage);
             const paginatedResponses = allResponses.slice((npsDetailPage - 1) * npsPerPage, npsDetailPage * npsPerPage);
