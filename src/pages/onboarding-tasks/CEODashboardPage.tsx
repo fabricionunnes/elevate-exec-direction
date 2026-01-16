@@ -165,10 +165,10 @@ export default function CEODashboardPage() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="ai" className="space-y-4">
-          {/* Navigation in Two Rows */}
-          <div className="bg-white rounded-xl shadow-sm border p-3 space-y-2">
-            {/* Primary tabs - First Row */}
+          {/* Navigation - All tabs in one fluid container */}
+          <div className="bg-white rounded-xl shadow-sm border p-3">
             <TabsList className="flex flex-wrap h-auto gap-1.5 bg-transparent p-0 w-full justify-start">
+              {/* Primary tabs */}
               {mainTabs.map((tab) => (
                 <TabsTrigger 
                   key={tab.value}
@@ -179,13 +179,13 @@ export default function CEODashboardPage() {
                   <span className="font-medium">{tab.label}</span>
                 </TabsTrigger>
               ))}
-            </TabsList>
-            
-            {/* Divider */}
-            <div className="h-px bg-slate-200 w-full" />
-            
-            {/* Secondary tabs - Second Row */}
-            <TabsList className="flex flex-wrap h-auto gap-1.5 bg-transparent p-0 w-full justify-start">
+              
+              {/* Visual separator */}
+              <div className="hidden sm:flex items-center px-1">
+                <div className="w-px h-6 bg-slate-200" />
+              </div>
+              
+              {/* Secondary tabs */}
               {secondaryTabs.map((tab) => (
                 <TabsTrigger 
                   key={tab.value}
