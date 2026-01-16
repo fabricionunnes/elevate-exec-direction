@@ -331,6 +331,33 @@ export type Database = {
         }
         Relationships: []
       }
+      ceo_decision_insights: {
+        Row: {
+          area: string | null
+          created_at: string
+          id: string
+          insight: string
+          insight_type: string
+          supporting_data: Json | null
+        }
+        Insert: {
+          area?: string | null
+          created_at?: string
+          id?: string
+          insight: string
+          insight_type: string
+          supporting_data?: Json | null
+        }
+        Update: {
+          area?: string | null
+          created_at?: string
+          id?: string
+          insight?: string
+          insight_type?: string
+          supporting_data?: Json | null
+        }
+        Relationships: []
+      }
       ceo_decision_results: {
         Row: {
           created_at: string
@@ -377,36 +404,60 @@ export type Database = {
       }
       ceo_decisions: {
         Row: {
+          actual_impact: number | null
+          ai_analysis: string | null
           area: string
           created_at: string
           decision_date: string
           description: string | null
+          estimated_impact: number | null
+          evaluation_end_date: string | null
+          evaluation_period: number | null
+          evaluation_start_date: string | null
+          final_result: string | null
           hypothesis: string | null
           id: string
+          linked_kpis: string[] | null
           status: string
           title: string
           type: string
           updated_at: string
         }
         Insert: {
+          actual_impact?: number | null
+          ai_analysis?: string | null
           area: string
           created_at?: string
           decision_date?: string
           description?: string | null
+          estimated_impact?: number | null
+          evaluation_end_date?: string | null
+          evaluation_period?: number | null
+          evaluation_start_date?: string | null
+          final_result?: string | null
           hypothesis?: string | null
           id?: string
+          linked_kpis?: string[] | null
           status?: string
           title: string
           type: string
           updated_at?: string
         }
         Update: {
+          actual_impact?: number | null
+          ai_analysis?: string | null
           area?: string
           created_at?: string
           decision_date?: string
           description?: string | null
+          estimated_impact?: number | null
+          evaluation_end_date?: string | null
+          evaluation_period?: number | null
+          evaluation_start_date?: string | null
+          final_result?: string | null
           hypothesis?: string | null
           id?: string
+          linked_kpis?: string[] | null
           status?: string
           title?: string
           type?: string

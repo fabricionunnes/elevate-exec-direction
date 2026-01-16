@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Brain, FileText } from "lucide-react";
+import { Loader2, Brain, FileText, MapPin } from "lucide-react";
 import { CEOBigNumbers } from "@/components/ceo-dashboard/CEOBigNumbers";
 import { CEOBusinessHealth } from "@/components/ceo-dashboard/CEOBusinessHealth";
 import { CEODecisions } from "@/components/ceo-dashboard/CEODecisions";
@@ -13,6 +13,7 @@ import { CEOAlerts } from "@/components/ceo-dashboard/CEOAlerts";
 import { CEOFuturePlanning } from "@/components/ceo-dashboard/CEOFuturePlanning";
 import { CEOAIAssistant } from "@/components/ceo-dashboard/CEOAIAssistant";
 import { CEOWeeklyReport } from "@/components/ceo-dashboard/CEOWeeklyReport";
+import { CEODecisionMap } from "@/components/ceo-dashboard/CEODecisionMap";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const CEO_EMAIL = "fabricio@universidadevendas.com.br";
@@ -106,7 +107,7 @@ export default function CEODashboardPage() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="ai" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:grid-cols-none lg:flex">
+          <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:grid-cols-none lg:flex">
             <TabsTrigger value="ai" className="gap-2">
               <Brain className="h-4 w-4" />
               IA do CEO
@@ -114,6 +115,10 @@ export default function CEODashboardPage() {
             <TabsTrigger value="weekly" className="gap-2">
               <FileText className="h-4 w-4" />
               Relatório Semanal
+            </TabsTrigger>
+            <TabsTrigger value="decision-map" className="gap-2">
+              <MapPin className="h-4 w-4" />
+              Mapa de Decisões
             </TabsTrigger>
             <TabsTrigger value="health">Saúde</TabsTrigger>
             <TabsTrigger value="decisions">Decisões</TabsTrigger>
@@ -129,6 +134,10 @@ export default function CEODashboardPage() {
 
           <TabsContent value="weekly" className="space-y-6">
             <CEOWeeklyReport />
+          </TabsContent>
+
+          <TabsContent value="decision-map" className="space-y-6">
+            <CEODecisionMap />
           </TabsContent>
 
           <TabsContent value="health" className="space-y-6">
