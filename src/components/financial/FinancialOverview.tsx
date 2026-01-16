@@ -138,12 +138,14 @@ export function FinancialOverview() {
       let mrr = 0;
       
       // MRR from onboarding_companies (main source)
+      // Logic: contract_value is the TOTAL contract value
+      // - "monthly" payment method means contract_value IS the monthly value
+      // - "card" or other methods typically mean annual payment, so divide by 12
       companies?.forEach((c) => {
         const value = Number(c.contract_value) || 0;
         const paymentMethod = c.payment_method?.toLowerCase() || "";
         
-        // Only include recurring payment methods in MRR
-        // Monthly payments = full value as MRR
+        // Monthly payments = value is already monthly
         if (paymentMethod === "monthly" || paymentMethod === "mensal" || paymentMethod === "recorrente") {
           mrr += value;
         }
@@ -155,12 +157,24 @@ export function FinancialOverview() {
         else if (paymentMethod === "semiannual" || paymentMethod === "semestral") {
           mrr += value / 6;
         }
-        // Annual = value / 12
-        else if (paymentMethod === "annual" || paymentMethod === "anual") {
+        // Annual or card (typically annual payments) = value / 12
+        else if (paymentMethod === "annual" || paymentMethod === "anual" || paymentMethod === "card" || paymentMethod === "cartao" || paymentMethod === "cartão") {
           mrr += value / 12;
         }
-        // If payment_method is not specified but contract has value, assume monthly
-        else if (value > 0 && !paymentMethod.includes("vista") && !paymentMethod.includes("unico") && !paymentMethod.includes("único")) {
+        // Boleto or pix could be annual too
+        else if (paymentMethod === "boleto" || paymentMethod === "pix") {
+          mrr += value / 12;
+        }
+        // Skip one-time payments (à vista, único)
+        else if (paymentMethod.includes("vista") || paymentMethod.includes("unico") || paymentMethod.includes("único")) {
+          // Don't add to MRR - one-time payment
+        }
+        // Unknown payment method with value > 1000 assume annual
+        else if (value > 1000) {
+          mrr += value / 12;
+        }
+        // Small values without payment method, assume monthly
+        else if (value > 0) {
           mrr += value;
         }
       });
