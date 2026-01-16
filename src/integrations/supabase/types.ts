@@ -627,6 +627,45 @@ export type Database = {
         }
         Relationships: []
       }
+      ceo_weekly_reports: {
+        Row: {
+          ceo_notes: string | null
+          classification: string | null
+          classification_reason: string | null
+          created_at: string
+          generated_at: string
+          id: string
+          report_data: Json
+          updated_at: string
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          ceo_notes?: string | null
+          classification?: string | null
+          classification_reason?: string | null
+          created_at?: string
+          generated_at?: string
+          id?: string
+          report_data?: Json
+          updated_at?: string
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          ceo_notes?: string | null
+          classification?: string | null
+          classification_reason?: string | null
+          created_at?: string
+          generated_at?: string
+          id?: string
+          report_data?: Json
+          updated_at?: string
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       chat_advisor_leads: {
         Row: {
           created_at: string
