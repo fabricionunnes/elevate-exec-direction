@@ -459,16 +459,16 @@ export default function ExecutiveDashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {isLeadershipUser && (
-            <Button 
-              variant="outline"
-              onClick={() => navigate("/onboarding-tasks/ceo")}
-              className="gap-2"
-            >
-              <Activity className="h-4 w-4" />
-              CEO Dashboard
-            </Button>
-          )}
+            {isLeadershipUser && (
+              <Button 
+                variant="outline"
+                onClick={() => navigate("/onboarding-tasks/ceo")}
+                className="gap-2"
+              >
+                <Activity className="h-4 w-4" />
+                Painel do CEO
+              </Button>
+            )}
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[150px]">
               <Calendar className="h-4 w-4 mr-2" />

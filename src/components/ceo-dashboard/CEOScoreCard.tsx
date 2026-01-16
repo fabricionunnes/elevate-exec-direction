@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,7 @@ const getClassification = (score: number) => {
 };
 
 export const CEOScoreCard = () => {
+  const navigate = useNavigate();
   const [scores, setScores] = useState<CEOScore[]>([]);
   const [currentScore, setCurrentScore] = useState<CEOScore | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -90,6 +92,13 @@ export const CEOScoreCard = () => {
   const calculateScore = async () => {
     setIsCalculating(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente.");
+        navigate("/onboarding-tasks/login");
+        return;
+      }
+
       // Fetch all necessary data
       const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
       const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });

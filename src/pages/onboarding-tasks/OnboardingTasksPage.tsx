@@ -1149,7 +1149,7 @@ const OnboardingTasksPage = () => {
                         <>
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/ceo")}>
                             <Crown className="h-4 w-4 mr-2" />
-                            CEO Dashboard
+                            Painel do CEO
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
                             <Calculator className="h-4 w-4 mr-2" />
@@ -1430,7 +1430,7 @@ const OnboardingTasksPage = () => {
                         <>
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/ceo")}>
                             <Crown className="h-4 w-4 mr-2" />
-                            CEO Dashboard
+                            Painel do CEO
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
                             <Calculator className="h-4 w-4 mr-2" />
