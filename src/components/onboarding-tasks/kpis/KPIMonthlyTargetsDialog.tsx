@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import {
   Dialog,
   DialogContent,
@@ -534,24 +535,41 @@ export const KPIMonthlyTargetsDialog = ({
               {targetLevels.map((level) => (
                 <TableCell key={level.id}>
                   <div className="flex items-center gap-1">
-                    {kpi.kpi_type === "monetary" && (
-                      <span className="text-muted-foreground text-xs">R$</span>
-                    )}
-                    <Input
-                      type="number"
-                      value={targets[kpi.id]?.[level.name] ?? ""}
-                      onChange={(e) =>
-                        updateTarget(
-                          kpi.id,
-                          level.name,
-                          e.target.value === "" ? undefined : parseFloat(e.target.value) || 0
-                        )
-                      }
-                      className="w-24 h-8 text-sm"
-                      placeholder={kpi.target_value.toString()}
-                    />
-                    {kpi.kpi_type === "percentage" && (
-                      <span className="text-muted-foreground text-xs">%</span>
+                    {kpi.kpi_type === "monetary" ? (
+                      <>
+                        <span className="text-muted-foreground text-xs">R$</span>
+                        <CurrencyInput
+                          value={targets[kpi.id]?.[level.name]}
+                          onChange={(value) =>
+                            updateTarget(
+                              kpi.id,
+                              level.name,
+                              value === 0 ? undefined : value
+                            )
+                          }
+                          className="w-28 h-8 text-sm"
+                          placeholder={formatValue(kpi.target_value, kpi.kpi_type).replace("R$", "").trim()}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <Input
+                          type="number"
+                          value={targets[kpi.id]?.[level.name] ?? ""}
+                          onChange={(e) =>
+                            updateTarget(
+                              kpi.id,
+                              level.name,
+                              e.target.value === "" ? undefined : parseFloat(e.target.value) || 0
+                            )
+                          }
+                          className="w-24 h-8 text-sm"
+                          placeholder={kpi.target_value.toString()}
+                        />
+                        {kpi.kpi_type === "percentage" && (
+                          <span className="text-muted-foreground text-xs">%</span>
+                        )}
+                      </>
                     )}
                   </div>
                 </TableCell>
