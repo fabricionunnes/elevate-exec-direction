@@ -567,6 +567,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ceo_scores: {
+        Row: {
+          calculated_at: string
+          clarity_score: number
+          classification: string
+          consistency_score: number
+          created_at: string
+          execution_score: number
+          focus_score: number
+          id: string
+          insights: string[] | null
+          metrics_breakdown: Json | null
+          total_score: number
+        }
+        Insert: {
+          calculated_at?: string
+          clarity_score: number
+          classification: string
+          consistency_score: number
+          created_at?: string
+          execution_score: number
+          focus_score: number
+          id?: string
+          insights?: string[] | null
+          metrics_breakdown?: Json | null
+          total_score: number
+        }
+        Update: {
+          calculated_at?: string
+          clarity_score?: number
+          classification?: string
+          consistency_score?: number
+          created_at?: string
+          execution_score?: number
+          focus_score?: number
+          id?: string
+          insights?: string[] | null
+          metrics_breakdown?: Json | null
+          total_score?: number
+        }
+        Relationships: []
+      }
       ceo_snapshots: {
         Row: {
           created_at: string

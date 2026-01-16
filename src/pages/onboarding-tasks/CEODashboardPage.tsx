@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Brain, FileText, MapPin } from "lucide-react";
+import { Loader2, Brain, FileText, MapPin, Trophy } from "lucide-react";
 import { CEOBigNumbers } from "@/components/ceo-dashboard/CEOBigNumbers";
 import { CEOBusinessHealth } from "@/components/ceo-dashboard/CEOBusinessHealth";
 import { CEODecisions } from "@/components/ceo-dashboard/CEODecisions";
@@ -14,6 +14,7 @@ import { CEOFuturePlanning } from "@/components/ceo-dashboard/CEOFuturePlanning"
 import { CEOAIAssistant } from "@/components/ceo-dashboard/CEOAIAssistant";
 import { CEOWeeklyReport } from "@/components/ceo-dashboard/CEOWeeklyReport";
 import { CEODecisionMap } from "@/components/ceo-dashboard/CEODecisionMap";
+import { CEOScoreCard } from "@/components/ceo-dashboard/CEOScoreCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const CEO_EMAIL = "fabricio@universidadevendas.com.br";
@@ -107,10 +108,14 @@ export default function CEODashboardPage() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="ai" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:grid-cols-none lg:flex">
+          <TabsList className="grid w-full grid-cols-10 lg:w-auto lg:grid-cols-none lg:flex">
             <TabsTrigger value="ai" className="gap-2">
               <Brain className="h-4 w-4" />
               IA do CEO
+            </TabsTrigger>
+            <TabsTrigger value="score" className="gap-2">
+              <Trophy className="h-4 w-4" />
+              Score
             </TabsTrigger>
             <TabsTrigger value="weekly" className="gap-2">
               <FileText className="h-4 w-4" />
@@ -130,6 +135,10 @@ export default function CEODashboardPage() {
 
           <TabsContent value="ai" className="space-y-6">
             <CEOAIAssistant />
+          </TabsContent>
+
+          <TabsContent value="score" className="space-y-6">
+            <CEOScoreCard />
           </TabsContent>
 
           <TabsContent value="weekly" className="space-y-6">
