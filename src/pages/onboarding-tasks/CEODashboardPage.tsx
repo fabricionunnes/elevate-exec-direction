@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Brain, FileText, MapPin, Trophy, Users, Calculator, ArrowLeft } from "lucide-react";
+import { Loader2, Brain, FileText, MapPin, Trophy, Users, Calculator, ArrowLeft, Activity } from "lucide-react";
 import { CEOBigNumbers } from "@/components/ceo-dashboard/CEOBigNumbers";
 import { CEOBusinessHealth } from "@/components/ceo-dashboard/CEOBusinessHealth";
 import { CEODecisions } from "@/components/ceo-dashboard/CEODecisions";
@@ -111,6 +111,14 @@ export default function CEODashboardPage() {
               </p>
             </div>
           </div>
+          <Button 
+            variant="outline"
+            onClick={() => navigate("/onboarding-tasks/executive")}
+            className="gap-2"
+          >
+            <Activity className="h-4 w-4" />
+            Dashboard Executivo
+          </Button>
         </div>
 
         {/* Alerts Section */}
