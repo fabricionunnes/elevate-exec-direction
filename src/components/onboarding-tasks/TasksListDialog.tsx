@@ -91,6 +91,13 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
       return;
     }
 
+    // For overdue and today, use the taskIds that were already calculated correctly in the parent
+    if ((type === "overdue" || type === "today") && taskIds.length > 0) {
+      fetchTasksDetails();
+      return;
+    }
+
+    // Fallback: if no taskIds provided but type is overdue/today, use date filter query
     if (type === "overdue" || type === "today") {
       fetchTasksByDateFilter();
       return;
