@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -348,12 +349,24 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
 
                 <div>
                   <Label>Meta Alvo</Label>
-                  <Input
-                    type="number"
-                    value={formData.target_value}
-                    onChange={(e) => setFormData({ ...formData, target_value: parseFloat(e.target.value) || 0 })}
-                    placeholder="0"
-                  />
+                  {formData.kpi_type === "monetary" ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">R$</span>
+                      <CurrencyInput
+                        value={formData.target_value}
+                        onChange={(value) => setFormData({ ...formData, target_value: value })}
+                        placeholder="0,00"
+                        className="flex-1"
+                      />
+                    </div>
+                  ) : (
+                    <Input
+                      type="number"
+                      value={formData.target_value}
+                      onChange={(e) => setFormData({ ...formData, target_value: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                    />
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between">
