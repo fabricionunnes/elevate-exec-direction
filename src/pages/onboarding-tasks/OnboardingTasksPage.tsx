@@ -922,10 +922,21 @@ const OnboardingTasksPage = () => {
   // Filtered projects for dashboard metrics (respects consultant, service, and status filters)
   // IMPORTANT: Always exclude closed/completed projects from metrics - their tasks are no longer actionable
   const filteredProjects = useMemo(() => {
-    // Always exclude closed/completed projects from metrics
-    const actionableProjects = allProjects.filter(p => 
-      p.status !== "closed" && p.status !== "completed"
+    // Get IDs of active companies (exclude inactive and closed)
+    const activeCompanyIds = new Set(
+      companies.filter(c => c.status !== "inactive" && c.status !== "closed").map(c => c.id)
     );
+    
+    // Always exclude closed/completed projects AND projects from inactive companies
+    const actionableProjects = allProjects.filter(p => {
+      if (p.status === "closed" || p.status === "completed") return false;
+      
+      // Filter out projects from inactive/closed companies
+      const companyId = getProjectCompanyId(p);
+      if (companyId && !activeCompanyIds.has(companyId)) return false;
+      
+      return true;
+    });
 
     if (filterConsultant === "all" && filterService === "all" && filterStatus === "all") {
       return actionableProjects;
