@@ -1358,6 +1358,21 @@ const OnboardingTasksPage = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
+                  {/* CEO Panel - First item for CEO */}
+                  {currentUserEmail === "fabricio@universidadevendas.com.br" && (
+                    <>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/ceo")}>
+                        <Crown className="h-4 w-4 mr-2" />
+                        Painel do CEO
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
+                        <Calculator className="h-4 w-4 mr-2" />
+                        Módulo Financeiro
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+
                   {/* Análises - Available to Admin, CS, and Consultants */}
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
@@ -1450,18 +1465,6 @@ const OnboardingTasksPage = () => {
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
 
-                      {currentUserEmail === "fabricio@universidadevendas.com.br" && (
-                        <>
-                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/ceo")}>
-                            <Crown className="h-4 w-4 mr-2" />
-                            Painel do CEO
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
-                            <Calculator className="h-4 w-4 mr-2" />
-                            Módulo Financeiro
-                          </DropdownMenuItem>
-                        </>
-                      )}
 
                       {isAdmin && (
                         <>
