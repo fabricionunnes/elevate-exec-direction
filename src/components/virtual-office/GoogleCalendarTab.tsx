@@ -90,6 +90,9 @@ interface CalendarEvent {
   end: string;
   meetingLink?: string;
   calendarLink: string;
+  isOrganizer?: boolean;
+  isAttendee?: boolean;
+  attendeeEmails?: string[];
 }
 
 interface StaffMember {
@@ -311,7 +314,19 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
       }
 
       if (data?.events) {
-        setEvents(data.events);
+        // Filter events: only show if user is organizer or attendee
+        // This prevents showing events that user created in someone else's calendar
+        // unless they added their own email as attendee
+        const filteredEvents = data.events.filter((event: CalendarEvent) => {
+          // If viewing own calendar: show only if organizer or attendee
+          // If viewing another's calendar (CS/Admin): show all events
+          if (selectedStaffUserId && selectedStaffUserId !== currentStaff?.user_id) {
+            return true; // Show all for target calendar
+          }
+          // For own calendar: must be organizer or attendee
+          return event.isOrganizer === true || event.isAttendee === true;
+        });
+        setEvents(filteredEvents);
       }
     } catch (error) {
       console.error("Fetch events error:", error);

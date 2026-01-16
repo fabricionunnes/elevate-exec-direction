@@ -24,6 +24,9 @@ interface CalendarEvent {
   end: string;
   meetingLink?: string | null;
   calendarLink?: string;
+  isOrganizer?: boolean;
+  isAttendee?: boolean;
+  attendeeEmails?: string[];
 }
 
 export function CEOAgenda() {
@@ -68,7 +71,12 @@ export function CEOAgenda() {
 
       setIsConnected(true);
       if (data?.events) {
-        setEvents(data.events);
+        // Filter events: only show if user is organizer or attendee
+        // This prevents showing events that user created in someone else's calendar
+        const filteredEvents = data.events.filter((event: CalendarEvent) => {
+          return event.isOrganizer === true || event.isAttendee === true;
+        });
+        setEvents(filteredEvents);
       }
     } catch (error) {
       console.error("Fetch events error:", error);

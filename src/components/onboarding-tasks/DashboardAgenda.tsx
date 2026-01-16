@@ -24,6 +24,9 @@ interface CalendarEvent {
   end: string;
   meetingLink?: string;
   calendarLink: string;
+  isOrganizer?: boolean;
+  isAttendee?: boolean;
+  attendeeEmails?: string[];
 }
 
 interface Task {
@@ -159,7 +162,18 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
       if (error) throw error;
 
       if (data?.events) {
-        setCalendarEvents(data.events);
+        // Filter events: only show if user is organizer or attendee
+        // This prevents showing events that user created in someone else's calendar
+        // unless they added their own email as attendee
+        const filteredEvents = data.events.filter((event: CalendarEvent) => {
+          // If viewing another's calendar (via consultant filter): show all
+          if (targetCalendarUserId) {
+            return true;
+          }
+          // For own calendar: must be organizer or attendee
+          return event.isOrganizer === true || event.isAttendee === true;
+        });
+        setCalendarEvents(filteredEvents);
       }
     } catch (error) {
       console.error("Error fetching calendar events:", error);
