@@ -9,6 +9,7 @@ import { Search, Send, Copy, ExternalLink, User } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface DISCWithCandidate {
   id: string;
@@ -65,7 +66,7 @@ export function DISCEvaluationsTab({ projectId, canEdit }: DISCEvaluationsTabPro
   };
 
   const copyLink = (token: string) => {
-    const url = `${window.location.origin}/?public=hr-disc&token=${encodeURIComponent(token)}`;
+    const url = `${getPublicBaseUrl()}/?public=hr-disc&token=${encodeURIComponent(token)}`;
     navigator.clipboard.writeText(url);
     toast.success("Link copiado!");
   };
@@ -185,7 +186,9 @@ export function DISCEvaluationsTab({ projectId, canEdit }: DISCEvaluationsTabPro
                             size="icon"
                             onClick={() =>
                               window.open(
-                                `/?public=hr-disc&token=${encodeURIComponent(disc.access_token)}`,
+                                `${getPublicBaseUrl()}/?public=hr-disc&token=${encodeURIComponent(
+                                  disc.access_token
+                                )}`,
                                 "_blank"
                               )
                             }

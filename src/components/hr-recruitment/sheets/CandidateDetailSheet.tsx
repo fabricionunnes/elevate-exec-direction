@@ -18,11 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  Mail, 
-  Phone, 
-  Linkedin, 
-  FileText, 
+import {
+  Mail,
+  Phone,
+  Linkedin,
+  FileText,
   Clock,
   User,
   Users,
@@ -30,20 +30,22 @@ import {
   Download,
   Brain,
   MessageSquare,
-  Calendar
+  Calendar,
 } from "lucide-react";
 import { ScheduleInterviewDialog } from "../dialogs/ScheduleInterviewDialog";
+import { InterviewDialog } from "../dialogs/InterviewDialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { 
-  Candidate, 
-  HiringHistory, 
-  Interview, 
-  DISCResult, 
+import { getPublicBaseUrl } from "@/lib/publicDomain";
+import {
+  Candidate,
+  HiringHistory,
+  Interview,
+  DISCResult,
   AIEvaluation,
-  PIPELINE_STAGES, 
-  SOURCE_LABELS 
+  PIPELINE_STAGES,
+  SOURCE_LABELS,
 } from "../types";
 
 interface CandidateDetailSheetProps {
@@ -69,6 +71,8 @@ export function CandidateDetailSheet({
   const [aiEvaluations, setAiEvaluations] = useState<AIEvaluation[]>([]);
   const [loading, setLoading] = useState(false);
   const [interviewDialogOpen, setInterviewDialogOpen] = useState(false);
+  const [interviewFeedbackOpen, setInterviewFeedbackOpen] = useState(false);
+  const [editingInterview, setEditingInterview] = useState<Interview | null>(null);
 
   useEffect(() => {
     if (candidate && open) {
@@ -156,7 +160,7 @@ export function CandidateDetailSheet({
     if (error) {
       toast.error("Erro ao criar avaliação DISC");
     } else {
-      const discUrl = `${window.location.origin}/?public=hr-disc&token=${encodeURIComponent(
+      const discUrl = `${getPublicBaseUrl()}/?public=hr-disc&token=${encodeURIComponent(
         data.access_token
       )}`;
       await navigator.clipboard.writeText(discUrl);
@@ -421,7 +425,28 @@ export function CandidateDetailSheet({
                 ) : (
                   <div className="space-y-4">
                     {interviews.map((interview) => (
-                      <div key={interview.id} className="p-4 border rounded-lg space-y-3">
+                      <div
+                        key={interview.id}
+                        className={
+                          "p-4 border rounded-lg space-y-3 " +
+                          (canEdit ? "cursor-pointer hover:bg-muted/30 transition-colors" : "")
+                        }
+                        onClick={() => {
+                          if (!canEdit) return;
+                          setEditingInterview(interview);
+                          setInterviewFeedbackOpen(true);
+                        }}
+                        role={canEdit ? "button" : undefined}
+                        tabIndex={canEdit ? 0 : -1}
+                        onKeyDown={(e) => {
+                          if (!canEdit) return;
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setEditingInterview(interview);
+                            setInterviewFeedbackOpen(true);
+                          }
+                        }}
+                      >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline">
@@ -470,6 +495,7 @@ export function CandidateDetailSheet({
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="text-sm text-primary hover:underline flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             🔗 Link do Google Meet
                           </a>
@@ -514,6 +540,21 @@ export function CandidateDetailSheet({
                         )}
                       </div>
                     ))}
+
+                    <InterviewDialog
+                      open={interviewFeedbackOpen}
+                      onOpenChange={(open) => {
+                        setInterviewFeedbackOpen(open);
+                        if (!open) setEditingInterview(null);
+                      }}
+                      interview={editingInterview}
+                      onSuccess={() => {
+                        fetchCandidateData();
+                        setInterviewFeedbackOpen(false);
+                        setEditingInterview(null);
+                        toast.success("Feedback da entrevista salvo!");
+                      }}
+                    />
                   </div>
                 )}
               </TabsContent>
