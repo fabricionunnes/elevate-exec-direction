@@ -20,6 +20,7 @@ const publicRoutes = [
   "/cac-form",
   "/points",
   "/points-salesperson",
+  "/hr-disc",
 ];
 
 const urlSearch = new URLSearchParams(window.location.search);
