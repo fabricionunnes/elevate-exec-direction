@@ -1238,6 +1238,82 @@ export type Database = {
           },
         ]
       }
+      client_referrals: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          notified_at: string | null
+          nps_response_id: string | null
+          referred_name: string
+          referred_phone: string
+          referrer_company_id: string | null
+          referrer_name: string | null
+          referrer_project_id: string | null
+          reward_value: number | null
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          notified_at?: string | null
+          nps_response_id?: string | null
+          referred_name: string
+          referred_phone: string
+          referrer_company_id?: string | null
+          referrer_name?: string | null
+          referrer_project_id?: string | null
+          reward_value?: number | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          notified_at?: string | null
+          nps_response_id?: string | null
+          referred_name?: string
+          referred_phone?: string
+          referrer_company_id?: string | null
+          referrer_name?: string | null
+          referrer_project_id?: string | null
+          reward_value?: number | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_referrals_nps_response_id_fkey"
+            columns: ["nps_response_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_nps_responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_referrals_referrer_company_id_fkey"
+            columns: ["referrer_company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_referrals_referrer_project_id_fkey"
+            columns: ["referrer_project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       climate_survey_responses: {
         Row: {
           adequate_recognition: boolean | null

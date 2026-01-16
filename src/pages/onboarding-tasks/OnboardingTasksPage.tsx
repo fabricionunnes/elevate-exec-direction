@@ -1442,6 +1442,10 @@ const OnboardingTasksPage = () => {
                       {isAdmin && (
                         <>
                           <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setActiveDashboardTab("referrals")}>
+                            <Gift className="h-4 w-4 mr-2" />
+                            Indicações
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
                             <MessageSquare className="h-4 w-4 mr-2" />
                             WhatsApp Admin
