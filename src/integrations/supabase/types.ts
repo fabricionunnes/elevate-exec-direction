@@ -5635,20 +5635,25 @@ export type Database = {
           area: string
           closed_at: string | null
           company_id: string | null
+          consultant_id: string | null
           contract_model: string | null
           created_at: string
           created_by: string | null
           description: string | null
           differentials: string | null
           id: string
+          internal_notes: string | null
           is_remote: boolean | null
           job_type: string
           location: string | null
           project_id: string
           requirements: string | null
+          responsible_rh_id: string | null
           salary_range: string | null
           seniority: string | null
+          sla_days: number | null
           status: string
+          target_date: string | null
           title: string
           updated_at: string
         }
@@ -5656,20 +5661,25 @@ export type Database = {
           area: string
           closed_at?: string | null
           company_id?: string | null
+          consultant_id?: string | null
           contract_model?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           differentials?: string | null
           id?: string
+          internal_notes?: string | null
           is_remote?: boolean | null
           job_type: string
           location?: string | null
           project_id: string
           requirements?: string | null
+          responsible_rh_id?: string | null
           salary_range?: string | null
           seniority?: string | null
+          sla_days?: number | null
           status?: string
+          target_date?: string | null
           title: string
           updated_at?: string
         }
@@ -5677,20 +5687,25 @@ export type Database = {
           area?: string
           closed_at?: string | null
           company_id?: string | null
+          consultant_id?: string | null
           contract_model?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           differentials?: string | null
           id?: string
+          internal_notes?: string | null
           is_remote?: boolean | null
           job_type?: string
           location?: string | null
           project_id?: string
           requirements?: string | null
+          responsible_rh_id?: string | null
           salary_range?: string | null
           seniority?: string | null
+          sla_days?: number | null
           status?: string
+          target_date?: string | null
           title?: string
           updated_at?: string
         }
@@ -5700,6 +5715,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_openings_consultant_id_fkey"
+            columns: ["consultant_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
             referencedColumns: ["id"]
           },
           {
@@ -5714,6 +5736,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_openings_responsible_rh_id_fkey"
+            columns: ["responsible_rh_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
             referencedColumns: ["id"]
           },
         ]

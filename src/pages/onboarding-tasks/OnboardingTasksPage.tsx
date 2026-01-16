@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase } from "lucide-react";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
@@ -1320,6 +1320,18 @@ const OnboardingTasksPage = () => {
               >
                 <BarChart3 className="h-4 w-4" />
                 Resultados
+              </Button>
+            )}
+            {/* Vagas (RH) button - visible for admin, cs, consultant, rh */}
+            {(isAdmin || isCS || currentUserRole === "consultant" || currentUserRole === "rh") && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate("/onboarding-tasks/vagas")}
+                className="gap-2"
+              >
+                <Briefcase className="h-4 w-4" />
+                Vagas (RH)
               </Button>
             )}
             {/* CRM Comercial button - visible for admin, head_comercial, closer, sdr */}
