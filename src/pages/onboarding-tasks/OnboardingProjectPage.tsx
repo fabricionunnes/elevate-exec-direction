@@ -1518,6 +1518,7 @@ const OnboardingProjectPage = () => {
               companyId={project.onboarding_company_id}
               isStaff={currentUserRole !== "client"}
               canEdit={isAdmin || currentUserRole === "cs" || currentUserRole === "consultant" || currentUserRole === "rh"}
+              userRole={currentUserRole}
             />
           </TabsContent>
 

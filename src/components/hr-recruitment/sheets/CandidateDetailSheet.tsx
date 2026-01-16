@@ -66,6 +66,7 @@ interface CandidateDetailSheetProps {
   onOpenChange: (open: boolean) => void;
   candidate: Candidate | null;
   canEdit: boolean;
+  canDelete?: boolean;
   projectId: string;
   onUpdate: () => void;
 }
@@ -75,6 +76,7 @@ export function CandidateDetailSheet({
   onOpenChange,
   candidate,
   canEdit,
+  canDelete = false,
   projectId,
   onUpdate,
 }: CandidateDetailSheetProps) {
@@ -287,49 +289,51 @@ export function CandidateDetailSheet({
                   Agendar Entrevista
                 </Button>
                 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" disabled={deleting}>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Excluir
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir candidato?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Esta ação não pode ser desfeita. Todos os dados do candidato, 
-                        incluindo histórico, entrevistas e avaliações, serão removidos permanentemente.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={async () => {
-                          if (!candidate) return;
-                          setDeleting(true);
-                          const { error } = await supabase
-                            .from("candidates")
-                            .delete()
-                            .eq("id", candidate.id);
-                          
-                          if (error) {
-                            toast.error("Erro ao excluir candidato");
-                            console.error(error);
-                          } else {
-                            toast.success("Candidato excluído com sucesso");
-                            onOpenChange(false);
-                            onUpdate();
-                          }
-                          setDeleting(false);
-                        }}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
+                {canDelete && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" disabled={deleting}>
+                        <Trash2 className="h-4 w-4 mr-2" />
                         Excluir
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir candidato?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta ação não pode ser desfeita. Todos os dados do candidato, 
+                          incluindo histórico, entrevistas e avaliações, serão removidos permanentemente.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={async () => {
+                            if (!candidate) return;
+                            setDeleting(true);
+                            const { error } = await supabase
+                              .from("candidates")
+                              .delete()
+                              .eq("id", candidate.id);
+                            
+                            if (error) {
+                              toast.error("Erro ao excluir candidato");
+                              console.error(error);
+                            } else {
+                              toast.success("Candidato excluído com sucesso");
+                              onOpenChange(false);
+                              onUpdate();
+                            }
+                            setDeleting(false);
+                          }}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
             )}
 

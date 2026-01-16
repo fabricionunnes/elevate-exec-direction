@@ -27,13 +27,15 @@ interface HRRecruitmentPanelProps {
   companyId?: string;
   isStaff: boolean;
   canEdit: boolean;
+  userRole?: string;
 }
 
 export function HRRecruitmentPanel({ 
   projectId, 
   companyId, 
   isStaff, 
-  canEdit 
+  canEdit,
+  userRole = ''
 }: HRRecruitmentPanelProps) {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [stats, setStats] = useState({
@@ -172,6 +174,7 @@ export function HRRecruitmentPanel({
             projectId={projectId} 
             canEdit={canEdit}
             isStaff={isStaff}
+            userRole={userRole}
             onUpdate={fetchStats}
           />
         </TabsContent>
