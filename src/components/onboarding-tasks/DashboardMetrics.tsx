@@ -112,6 +112,7 @@ interface DashboardMetricsProps {
   externalKpiEntries?: { company_id: string; kpi_id: string; value: number; entry_date: string }[];
   externalContractRenewals?: { company_id: string; renewal_date: string }[];
   externalHealthScores?: { project_id: string; total_score: number; risk_level: string | null }[];
+  consultants?: { id: string; name: string; role: string; user_id?: string }[];
 }
 
 const DashboardMetrics = ({ 
@@ -135,7 +136,8 @@ const DashboardMetrics = ({
   externalCompanyKpis,
   externalKpiEntries,
   externalContractRenewals,
-  externalHealthScores
+  externalHealthScores,
+  consultants
 }: DashboardMetricsProps) => {
   const navigate = useNavigate();
   const [internalTasks, setInternalTasks] = useState<Task[]>([]);
@@ -281,10 +283,7 @@ const DashboardMetrics = ({
     }
   };
 
-  // When the user changes the company/project filters, refresh health scores so the card doesn't show stale values
-  useEffect(() => {
-    fetchHealthScores();
-  }, [projects]);
+  // OPTIMIZATION: Removed duplicate health scores fetch - data is now passed via externalHealthScores prop
 
   // Project IDs for filtering
   const filteredProjectIds = useMemo(() => new Set(projects.map(p => p.id)), [projects]);
@@ -975,6 +974,7 @@ const DashboardMetrics = ({
             }}
             currentStaffUserId={currentStaffUserId}
             selectedConsultantStaffId={selectedConsultantStaffId}
+            consultants={consultants}
           />
         </TabsContent>
 
