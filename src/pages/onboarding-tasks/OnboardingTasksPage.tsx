@@ -1678,10 +1678,21 @@ const OnboardingTasksPage = () => {
                               </>
                             ) : null}
                           </div>
-                          {/* Mobile: Show CS/Consultant, Health and Goal % inline */}
+                          {/* Mobile: Show CS/Consultant, Health, Goal % and Contract inline */}
                           <div className="flex sm:hidden flex-wrap items-center gap-x-2 text-[10px] text-muted-foreground mt-1">
                             <span>CS: {company.cs?.name || "—"}</span>
                             <span>Cons: {company.consultant?.name || "—"}</span>
+                            {/* Contract info */}
+                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-100">
+                              <Calendar className="h-2.5 w-2.5 text-slate-600" />
+                              <span className="font-medium text-slate-700">
+                                {company.contract_end_date 
+                                  ? format(new Date(company.contract_end_date), "dd/MM/yy")
+                                  : company.payment_method === 'monthly' || company.payment_method === 'card'
+                                    ? 'Recorr.'
+                                    : '—'}
+                              </span>
+                            </span>
                             {companyHealthData && (
                               <span className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${companyHealthData.riskInfo.bg}`}>
                                 <Heart className={`h-2.5 w-2.5 ${companyHealthData.riskInfo.color}`} />
@@ -1760,6 +1771,17 @@ const OnboardingTasksPage = () => {
                                   : 'text-red-600'
                           }`}>
                             {companyGoalPercent === null || companyGoalPercent === undefined ? 'N/A' : `${companyGoalPercent}%`}
+                          </span>
+                        </div>
+                        {/* Contract End Date / Recurring */}
+                        <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-100">
+                          <Calendar className="h-3.5 w-3.5 text-slate-600" />
+                          <span className="text-sm font-medium text-slate-700">
+                            {company.contract_end_date 
+                              ? format(new Date(company.contract_end_date), "dd/MM/yyyy")
+                              : company.payment_method === 'monthly' || company.payment_method === 'card'
+                                ? 'Recorrente'
+                                : '—'}
                           </span>
                         </div>
                         {/* Desktop: Show CS/Consultant */}
