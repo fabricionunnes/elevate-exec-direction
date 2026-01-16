@@ -375,7 +375,10 @@ export function ReceivablesPanel() {
   };
 
   const filteredReceivables = receivables.filter((r) => {
-    const matchesSearch = 
+    // Only show recurring receivables (from clients without end date and monthly payment)
+    if (!r.is_recurring) return false;
+    
+    const matchesSearch =
       r.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.company?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || r.status === statusFilter;
