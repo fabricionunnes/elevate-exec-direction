@@ -94,6 +94,12 @@ export function CEOVirtualBoard() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [ceoNotes, setCeoNotes] = useState('');
+  const [activeTab, setActiveTab] = useState('submit');
+
+  const selectSession = (session: BoardSession) => {
+    setCurrentSession(session);
+    setActiveTab('analysis');
+  };
 
   useEffect(() => {
     fetchSessions();
@@ -262,7 +268,7 @@ export function CEOVirtualBoard() {
           </p>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="submit" className="space-y-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList>
               <TabsTrigger value="submit" className="flex items-center gap-2">
                 <Send className="h-4 w-4" />
@@ -552,7 +558,7 @@ export function CEOVirtualBoard() {
                       className={`cursor-pointer transition-all hover:shadow-md ${
                         currentSession?.id === session.id ? 'ring-2 ring-primary' : ''
                       }`}
-                      onClick={() => setCurrentSession(session)}
+                      onClick={() => selectSession(session)}
                     >
                       <CardContent className="pt-4">
                         <div className="flex justify-between items-start">
