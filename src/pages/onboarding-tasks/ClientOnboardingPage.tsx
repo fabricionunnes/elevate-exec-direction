@@ -18,6 +18,7 @@ import {
   Building2,
   Check,
   Gift,
+  Users,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,6 +36,7 @@ import { ClientMeetingsView } from "@/components/client-portal/ClientMeetingsVie
 import { ClientAssessmentsView } from "@/components/client-portal/ClientAssessmentsView";
 import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
 import { ClientReferralsPanel } from "@/components/client-portal/ClientReferralsPanel";
+import { ClientHRView } from "@/components/client-portal/ClientHRView";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,7 +86,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -359,6 +361,7 @@ const ClientOnboardingPage = () => {
     { id: "tickets" as ViewType, icon: MessageSquare, label: "Chamados" },
     { id: "meetings" as ViewType, icon: Video, label: "Reuniões" },
     { id: "assessments" as ViewType, icon: ClipboardCheck, label: "Testes" },
+    { id: "rh" as ViewType, icon: Users, label: "RH" },
     { id: "referrals" as ViewType, icon: Gift, label: "Indicar" },
   ];
 
@@ -654,6 +657,17 @@ const ClientOnboardingPage = () => {
                 projectId={projectId || ""} 
                 userName={currentUser?.name || ""} 
               />
+            </motion.div>
+          )}
+
+          {activeView === "rh" && (
+            <motion.div
+              key="rh"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientHRView projectId={projectId || ""} />
             </motion.div>
           )}
         </AnimatePresence>
