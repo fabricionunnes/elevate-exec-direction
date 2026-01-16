@@ -24,6 +24,7 @@ import {
   Eye,
   TrendingUp,
   Calendar,
+  Trash2,
 } from "lucide-react";
 import {
   Select,
@@ -333,6 +334,27 @@ const GlobalJobOpeningsPage = () => {
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error("Erro ao atualizar status");
+    }
+  };
+
+  const handleDeleteJob = async (jobId: string, jobTitle: string) => {
+    if (!confirm(`Tem certeza que deseja excluir a vaga "${jobTitle}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from("job_openings")
+        .delete()
+        .eq("id", jobId);
+
+      if (error) throw error;
+      
+      toast.success("Vaga excluída com sucesso");
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting job:", error);
+      toast.error("Erro ao excluir vaga");
     }
   };
 
@@ -788,6 +810,15 @@ const GlobalJobOpeningsPage = () => {
                                   <ExternalLink className="h-4 w-4 mr-2" />
                                   Ir para projeto
                                 </DropdownMenuItem>
+                                {canEdit && (
+                                  <DropdownMenuItem 
+                                    onClick={() => handleDeleteJob(job.id, job.title)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Excluir vaga
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
