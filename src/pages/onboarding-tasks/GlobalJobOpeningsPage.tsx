@@ -438,6 +438,7 @@ const GlobalJobOpeningsPage = () => {
   const rhStaff = staff.filter((s) => s.role === "rh");
 
   const canEdit = currentUserRole === "admin" || currentUserRole === "rh" || currentUserRole === "cs" || currentUserRole === "consultant";
+  const canDelete = currentUserRole === "admin" || currentUserRole === "cs";
 
   if (loading) {
     return (
@@ -872,7 +873,7 @@ const GlobalJobOpeningsPage = () => {
                                   <ExternalLink className="h-4 w-4 mr-2" />
                                   Ir para projeto
                                 </DropdownMenuItem>
-                                {canEdit && (
+                                {canDelete && (
                                   <DropdownMenuItem 
                                     onClick={() => handleDeleteJob(job.id, job.title)}
                                     className="text-destructive focus:text-destructive"
