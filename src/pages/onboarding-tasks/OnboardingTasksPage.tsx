@@ -51,6 +51,7 @@ interface Staff {
   id: string;
   name: string;
   role: string;
+  user_id?: string;
 }
 
 interface OnboardingProject {
@@ -242,7 +243,20 @@ const OnboardingTasksPage = () => {
         supabase
           .from("onboarding_companies")
           .select(`
-            *,
+            id,
+            name,
+            status,
+            segment,
+            cs_id,
+            consultant_id,
+            kickoff_date,
+            contract_start_date,
+            contract_end_date,
+            contract_value,
+            payment_method,
+            status_changed_at,
+            created_at,
+            instagram,
             cs:onboarding_staff!onboarding_companies_cs_id_fkey(id, name, role),
             consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(id, name, role)
           `)
@@ -447,10 +461,10 @@ const OnboardingTasksPage = () => {
 
   const fetchFiltersData = async () => {
     try {
-      // Fetch consultants
+      // Fetch consultants with user_id for calendar optimization
       const { data: consultantsData } = await supabase
         .from("onboarding_staff")
-        .select("id, name, role")
+        .select("id, name, role, user_id")
         .eq("role", "consultant")
         .eq("is_active", true)
         .order("name");
@@ -477,7 +491,20 @@ const OnboardingTasksPage = () => {
         supabase
           .from("onboarding_companies")
           .select(`
-            *,
+            id,
+            name,
+            status,
+            segment,
+            cs_id,
+            consultant_id,
+            kickoff_date,
+            contract_start_date,
+            contract_end_date,
+            contract_value,
+            payment_method,
+            status_changed_at,
+            created_at,
+            instagram,
             cs:onboarding_staff!onboarding_companies_cs_id_fkey(id, name, role),
             consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(id, name, role)
           `)
@@ -1752,6 +1779,7 @@ const OnboardingTasksPage = () => {
           externalKpiEntries={kpiEntries}
           externalContractRenewals={contractRenewals}
           externalHealthScores={healthScoresArray}
+          consultants={consultants}
         />
 
         {/* Referrals Panel - Shown when on referrals tab */}

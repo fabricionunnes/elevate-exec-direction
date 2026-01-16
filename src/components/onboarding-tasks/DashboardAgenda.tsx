@@ -54,9 +54,10 @@ interface DashboardAgendaProps {
   onTaskAdded?: () => void;
   currentStaffUserId?: string | null;
   selectedConsultantStaffId?: string | null;
+  consultants?: { id: string; name: string; role: string; user_id?: string }[];
 }
 
-export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds, onTaskAdded, currentStaffUserId, selectedConsultantStaffId }: DashboardAgendaProps) => {
+export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds, onTaskAdded, currentStaffUserId, selectedConsultantStaffId, consultants }: DashboardAgendaProps) => {
   const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -74,34 +75,44 @@ export const DashboardAgenda = ({ tasks, projects, companies, filteredProjectIds
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [targetCalendarUserId, setTargetCalendarUserId] = useState<string | null>(null);
 
-  // Get the user_id for the selected consultant (for viewing their calendar)
+  // OPTIMIZATION: Get the user_id for the selected consultant from the passed consultants prop instead of making a query
   useEffect(() => {
-    const fetchConsultantUserId = async () => {
-      if (selectedConsultantStaffId && selectedConsultantStaffId !== "all") {
-        try {
-          const { data } = await supabase
-            .from("onboarding_staff")
-            .select("user_id")
-            .eq("id", selectedConsultantStaffId)
-            .single();
-          
-          if (data?.user_id) {
-            setTargetCalendarUserId(data.user_id);
-          } else {
-            setTargetCalendarUserId(null);
-          }
-        } catch (error) {
-          console.error("Error fetching consultant user_id:", error);
+    if (selectedConsultantStaffId && selectedConsultantStaffId !== "all") {
+      // Try to find the consultant in the passed prop first
+      if (consultants && consultants.length > 0) {
+        const consultant = consultants.find(c => c.id === selectedConsultantStaffId);
+        if (consultant?.user_id) {
+          setTargetCalendarUserId(consultant.user_id);
+        } else {
           setTargetCalendarUserId(null);
         }
       } else {
-        // No consultant selected, use current user's calendar
-        setTargetCalendarUserId(null);
+        // Fallback: if consultants prop is not available, make the query (for backward compatibility)
+        const fetchConsultantUserId = async () => {
+          try {
+            const { data } = await supabase
+              .from("onboarding_staff")
+              .select("user_id")
+              .eq("id", selectedConsultantStaffId)
+              .single();
+            
+            if (data?.user_id) {
+              setTargetCalendarUserId(data.user_id);
+            } else {
+              setTargetCalendarUserId(null);
+            }
+          } catch (error) {
+            console.error("Error fetching consultant user_id:", error);
+            setTargetCalendarUserId(null);
+          }
+        };
+        fetchConsultantUserId();
       }
-    };
-
-    fetchConsultantUserId();
-  }, [selectedConsultantStaffId]);
+    } else {
+      // No consultant selected, use current user's calendar
+      setTargetCalendarUserId(null);
+    }
+  }, [selectedConsultantStaffId, consultants]);
 
   // Check calendar connection whenever target user changes
   useEffect(() => {
