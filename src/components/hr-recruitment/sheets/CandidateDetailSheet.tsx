@@ -28,8 +28,10 @@ import {
   Send,
   Download,
   Brain,
-  MessageSquare
+  MessageSquare,
+  Calendar
 } from "lucide-react";
+import { ScheduleInterviewDialog } from "../dialogs/ScheduleInterviewDialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -65,6 +67,7 @@ export function CandidateDetailSheet({
   const [discResults, setDiscResults] = useState<DISCResult[]>([]);
   const [aiEvaluations, setAiEvaluations] = useState<AIEvaluation[]>([]);
   const [loading, setLoading] = useState(false);
+  const [interviewDialogOpen, setInterviewDialogOpen] = useState(false);
 
   useEffect(() => {
     if (candidate && open) {
@@ -251,11 +254,31 @@ export function CandidateDetailSheet({
                   <Send className="h-4 w-4 mr-2" />
                   Enviar DISC
                 </Button>
-                <Button variant="outline" size="sm">
-                  <MessageSquare className="h-4 w-4 mr-2" />
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setInterviewDialogOpen(true)}
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
                   Agendar Entrevista
                 </Button>
               </div>
+            )}
+
+            {/* Interview Dialog */}
+            {candidate && (
+              <ScheduleInterviewDialog
+                open={interviewDialogOpen}
+                onOpenChange={setInterviewDialogOpen}
+                candidateId={candidate.id}
+                candidateName={candidate.full_name}
+                candidateEmail={candidate.email}
+                projectId={projectId}
+                onSuccess={() => {
+                  fetchCandidateData();
+                  onUpdate();
+                }}
+              />
             )}
 
             {/* Tabs */}
