@@ -87,10 +87,16 @@ export function FinancialOverview() {
         .select("current_balance")
         .eq("is_active", true);
 
-      // Load active contracts
+      // Load active contracts from financial_contracts
       const { data: contracts } = await supabase
         .from("financial_contracts")
         .select("contract_value, billing_cycle")
+        .eq("status", "active");
+
+      // Load active companies with recurring payments (main MRR source)
+      const { data: companies } = await supabase
+        .from("onboarding_companies")
+        .select("contract_value, payment_method")
         .eq("status", "active");
 
       // Calculate summary
@@ -127,10 +133,39 @@ export function FinancialOverview() {
       });
 
       const totalCash = banks?.reduce((sum, b) => sum + (Number(b.current_balance) || 0), 0) || 0;
-      const activeContracts = contracts?.length || 0;
-
-      // Calculate MRR
+      
+      // Calculate MRR from active companies with recurring payments
       let mrr = 0;
+      
+      // MRR from onboarding_companies (main source)
+      companies?.forEach((c) => {
+        const value = Number(c.contract_value) || 0;
+        const paymentMethod = c.payment_method?.toLowerCase() || "";
+        
+        // Only include recurring payment methods in MRR
+        // Monthly payments = full value as MRR
+        if (paymentMethod === "monthly" || paymentMethod === "mensal" || paymentMethod === "recorrente") {
+          mrr += value;
+        }
+        // Quarterly = value / 3
+        else if (paymentMethod === "quarterly" || paymentMethod === "trimestral") {
+          mrr += value / 3;
+        }
+        // Semiannual = value / 6
+        else if (paymentMethod === "semiannual" || paymentMethod === "semestral") {
+          mrr += value / 6;
+        }
+        // Annual = value / 12
+        else if (paymentMethod === "annual" || paymentMethod === "anual") {
+          mrr += value / 12;
+        }
+        // If payment_method is not specified but contract has value, assume monthly
+        else if (value > 0 && !paymentMethod.includes("vista") && !paymentMethod.includes("unico") && !paymentMethod.includes("único")) {
+          mrr += value;
+        }
+      });
+
+      // Also add MRR from financial_contracts if any
       contracts?.forEach((c) => {
         const value = Number(c.contract_value) || 0;
         switch (c.billing_cycle) {
@@ -148,6 +183,8 @@ export function FinancialOverview() {
             break;
         }
       });
+
+      const activeContracts = (companies?.length || 0) + (contracts?.length || 0);
 
       // Projected cash
       const monthlyNet = mrr - (totalPayables / 6);
