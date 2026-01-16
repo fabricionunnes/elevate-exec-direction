@@ -64,47 +64,39 @@ export default function CEODashboardPage() {
   useEffect(() => {
     const checkAccess = async () => {
       try {
-        // Check Supabase auth
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user?.email === CEO_EMAIL) {
-          setIsAuthorized(true);
+        // Require an authenticated session; otherwise RLS will block actions like saving scores
+        const { data: { user }, error } = await supabase.auth.getUser();
+
+        if (error) {
+          console.error("Error checking CEO access:", error);
+        }
+
+        if (!user) {
+          setIsAuthorized(false);
           setIsLoading(false);
+          navigate("/onboarding-tasks/login");
           return;
         }
 
-        // Check onboarding_staff table
-        const { data: staffData } = await supabase
-          .from("onboarding_staff")
-          .select("email")
-          .single();
-
-        if (staffData?.email === CEO_EMAIL) {
-          setIsAuthorized(true);
+        if (user.email?.toLowerCase() !== CEO_EMAIL) {
+          setIsAuthorized(false);
           setIsLoading(false);
+          navigate("/onboarding-tasks");
           return;
         }
 
-        // Check localStorage
-        const storedEmail = localStorage.getItem("staff_email");
-        if (storedEmail === CEO_EMAIL) {
-          setIsAuthorized(true);
-          setIsLoading(false);
-          return;
-        }
-
-        // Not authorized
+        setIsAuthorized(true);
+        setIsLoading(false);
+      } catch (err) {
+        console.error("Error checking CEO access:", err);
         setIsAuthorized(false);
         setIsLoading(false);
-      } catch (error) {
-        console.error("Error checking CEO access:", error);
-        setIsAuthorized(false);
-        setIsLoading(false);
+        navigate("/onboarding-tasks/login");
       }
     };
 
     checkAccess();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     if (isAuthorized === false) {
