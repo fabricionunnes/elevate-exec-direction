@@ -103,6 +103,12 @@ interface DashboardMetricsProps {
   onNpsDetailChange?: (isShowingDetail: boolean) => void;
   onActiveTabChange?: (tab: string) => void;
   staffRole?: string | null;
+  // New props to eliminate duplicate queries
+  externalNpsResponses?: { id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[];
+  externalCompanyKpis?: { id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number }[];
+  externalKpiEntries?: { company_id: string; kpi_id: string; value: number; entry_date: string }[];
+  externalContractRenewals?: { company_id: string; renewal_date: string }[];
+  externalHealthScores?: { project_id: string; total_score: number; risk_level: string | null }[];
 }
 
 const DashboardMetrics = ({ 
@@ -120,15 +126,21 @@ const DashboardMetrics = ({
   selectedConsultantStaffId,
   onNpsDetailChange,
   onActiveTabChange,
-  staffRole
+  staffRole,
+  // New external data props to eliminate duplicate queries
+  externalNpsResponses,
+  externalCompanyKpis,
+  externalKpiEntries,
+  externalContractRenewals,
+  externalHealthScores
 }: DashboardMetricsProps) => {
   const navigate = useNavigate();
   const [internalTasks, setInternalTasks] = useState<Task[]>([]);
-  const [npsResponses, setNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
-  const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
-  const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number }[]>([]);
-  const [contractRenewals, setContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
-  const [healthScores, setHealthScores] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
+  const [internalNpsResponses, setInternalNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
+  const [internalKpiEntries, setInternalKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
+  const [internalCompanyKpis, setInternalCompanyKpis] = useState<{ id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number }[]>([]);
+  const [internalContractRenewals, setInternalContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
+  const [internalHealthScores, setInternalHealthScores] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [recalculatingHealth, setRecalculatingHealth] = useState(false);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
@@ -141,15 +153,27 @@ const DashboardMetrics = ({
   const [healthHistoryDialogOpen, setHealthHistoryDialogOpen] = useState(false);
   const npsPerPage = 10;
 
-  // Use external tasks if provided, otherwise fetch internally
+  // Use external data if provided, otherwise use internal state
   const allTasks = externalTasks || internalTasks;
+  const npsResponses = externalNpsResponses || internalNpsResponses;
+  const companyKpis = externalCompanyKpis || internalCompanyKpis;
+  const kpiEntries = externalKpiEntries || internalKpiEntries;
+  const contractRenewals = externalContractRenewals || internalContractRenewals;
+  const healthScores = externalHealthScores || internalHealthScores;
   
   // Use allProjects (with closed/completed) for churn metrics, fallback to projects
   const allProjectsForChurn = externalAllProjects || projects;
 
+  // Only fetch data internally if external data is not provided
+  const needsInternalFetch = !externalNpsResponses || !externalCompanyKpis || !externalKpiEntries || !externalContractRenewals || !externalHealthScores;
+
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (needsInternalFetch) {
+      fetchData();
+    } else {
+      setLoading(false);
+    }
+  }, [needsInternalFetch]);
 
   const fetchData = async () => {
     try {
@@ -174,25 +198,45 @@ const DashboardMetrics = ({
         setInternalTasks(allTasksData);
       }
 
+      // Only fetch data that wasn't provided externally - run all needed fetches in parallel
       const [npsResult, kpisResult, entriesResult, renewalsResult, healthResult] = await Promise.all([
-        supabase.from("onboarding_nps_responses").select("id, project_id, score, feedback, what_can_improve, would_recommend_why, respondent_name, respondent_email, created_at").order("created_at", { ascending: false }),
-        supabase.from("company_kpis").select("id, company_id, kpi_type, periodicity, target_value").eq("is_active", true),
-        supabase.from("kpi_entries").select("company_id, kpi_id, value, entry_date"),
-        supabase.from("onboarding_contract_renewals").select("company_id, renewal_date"),
-        supabase.from("client_health_scores").select("project_id, total_score, risk_level"),
+        !externalNpsResponses 
+          ? supabase.from("onboarding_nps_responses").select("id, project_id, score, feedback, what_can_improve, would_recommend_why, respondent_name, respondent_email, created_at").order("created_at", { ascending: false })
+          : Promise.resolve({ data: null, error: null }),
+        !externalCompanyKpis
+          ? supabase.from("company_kpis").select("id, company_id, kpi_type, periodicity, target_value").eq("is_active", true)
+          : Promise.resolve({ data: null, error: null }),
+        !externalKpiEntries
+          ? supabase.from("kpi_entries").select("company_id, kpi_id, value, entry_date")
+          : Promise.resolve({ data: null, error: null }),
+        !externalContractRenewals
+          ? supabase.from("onboarding_contract_renewals").select("company_id, renewal_date")
+          : Promise.resolve({ data: null, error: null }),
+        !externalHealthScores
+          ? supabase.from("client_health_scores").select("project_id, total_score, risk_level")
+          : Promise.resolve({ data: null, error: null }),
       ]);
 
-      if (npsResult.error) throw npsResult.error;
-      if (kpisResult.error) throw kpisResult.error;
-      if (entriesResult.error) throw entriesResult.error;
-      if (renewalsResult.error) throw renewalsResult.error;
-      if (healthResult.error) throw healthResult.error;
-
-      setNpsResponses(npsResult.data || []);
-      setCompanyKpis(kpisResult.data || []);
-      setKpiEntries(entriesResult.data || []);
-      setContractRenewals((renewalsResult.data as any) || []);
-      setHealthScores(healthResult.data || []);
+      if (!externalNpsResponses && npsResult.data) {
+        if (npsResult.error) throw npsResult.error;
+        setInternalNpsResponses(npsResult.data);
+      }
+      if (!externalCompanyKpis && kpisResult.data) {
+        if (kpisResult.error) throw kpisResult.error;
+        setInternalCompanyKpis(kpisResult.data);
+      }
+      if (!externalKpiEntries && entriesResult.data) {
+        if (entriesResult.error) throw entriesResult.error;
+        setInternalKpiEntries(entriesResult.data);
+      }
+      if (!externalContractRenewals && renewalsResult.data) {
+        if (renewalsResult.error) throw renewalsResult.error;
+        setInternalContractRenewals((renewalsResult.data as any));
+      }
+      if (!externalHealthScores && healthResult.data) {
+        if (healthResult.error) throw healthResult.error;
+        setInternalHealthScores(healthResult.data);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -211,7 +255,7 @@ const DashboardMetrics = ({
       return;
     }
 
-    setHealthScores(data || []);
+    setInternalHealthScores(data || []);
   };
 
   const recalculateAllHealthScores = async () => {

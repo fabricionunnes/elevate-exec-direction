@@ -9486,9 +9486,32 @@ export type Database = {
         Args: { days_to_add: number; start_date: string }
         Returns: string
       }
+      get_pending_and_overdue_tasks: {
+        Args: never
+        Returns: {
+          completed_at: string
+          due_date: string
+          id: string
+          project_id: string
+          responsible_staff_id: string
+          status: string
+          title: string
+        }[]
+      }
       get_portal_company_id: {
         Args: { check_user_id: string }
         Returns: string
+      }
+      get_task_metrics_by_project: {
+        Args: never
+        Returns: {
+          completed_tasks: number
+          in_progress_tasks: number
+          overdue_tasks: number
+          pending_tasks: number
+          project_id: string
+          total_tasks: number
+        }[]
       }
       has_crm_access: { Args: never; Returns: boolean }
       has_hr_edit_access: {
