@@ -66,6 +66,7 @@ interface ClientVirtualBoardProps {
   projectId: string;
   companyId?: string;
   companyName?: string;
+  isClientView?: boolean; // true = client portal (only sees own sessions), false = staff view (sees all)
 }
 
 // Advisor configs with colors adapted for client context
@@ -77,7 +78,7 @@ const ADVISOR_CONFIG: Record<string, { icon: any; color: string; bg: string }> =
   'CEO Virtual': { icon: Brain, color: 'text-rose-600', bg: 'bg-rose-100 dark:bg-rose-900/30' },
 };
 
-export function ClientVirtualBoard({ projectId, companyId, companyName }: ClientVirtualBoardProps) {
+export function ClientVirtualBoard({ projectId, companyId, companyName, isClientView = false }: ClientVirtualBoardProps) {
   const [sessions, setSessions] = useState<BoardSession[]>([]);
   const [currentSession, setCurrentSession] = useState<BoardSession | null>(null);
   const [opinions, setOpinions] = useState<BoardOpinion[]>([]);
@@ -107,11 +108,17 @@ export function ClientVirtualBoard({ projectId, companyId, companyName }: Client
   const fetchSessions = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('client_board_sessions')
         .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
+        .eq('project_id', projectId);
+      
+      // If client view, only show sessions created by client
+      if (isClientView) {
+        query = query.eq('created_by_client', true);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
       setSessions(data || []);
@@ -153,7 +160,8 @@ export function ClientVirtualBoard({ projectId, companyId, companyName }: Client
           project_id: projectId,
           decision_title: decisionTitle,
           decision_description: decisionDescription,
-          status: 'pending'
+          status: 'pending',
+          created_by_client: isClientView // Mark if created by client
         })
         .select()
         .single();

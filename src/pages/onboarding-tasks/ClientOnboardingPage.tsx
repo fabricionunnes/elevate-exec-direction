@@ -37,6 +37,7 @@ import { ClientAssessmentsView } from "@/components/client-portal/ClientAssessme
 import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
 import { ClientReferralsPanel } from "@/components/client-portal/ClientReferralsPanel";
 import { ClientHRView } from "@/components/client-portal/ClientHRView";
+import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualBoard";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +46,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { Brain } from "lucide-react";
 
 interface UserProject {
   id: string;
@@ -86,7 +88,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -362,6 +364,7 @@ const ClientOnboardingPage = () => {
     { id: "meetings" as ViewType, icon: Video, label: "Reuniões" },
     { id: "assessments" as ViewType, icon: ClipboardCheck, label: "Testes" },
     { id: "rh" as ViewType, icon: Users, label: "RH" },
+    { id: "board" as ViewType, icon: Brain, label: "Board" },
     { id: "referrals" as ViewType, icon: Gift, label: "Indicar" },
   ];
 
@@ -669,6 +672,22 @@ const ClientOnboardingPage = () => {
               exit={{ opacity: 0, x: 20 }}
             >
               <ClientHRView projectId={projectId || ""} />
+            </motion.div>
+          )}
+
+          {activeView === "board" && (
+            <motion.div
+              key="board"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientVirtualBoard 
+                projectId={projectId || ""} 
+                companyId={companyId || ""}
+                companyName={company?.name || ""}
+                isClientView={true}
+              />
             </motion.div>
           )}
         </AnimatePresence>
