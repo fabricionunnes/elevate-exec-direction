@@ -331,6 +331,110 @@ export type Database = {
         }
         Relationships: []
       }
+      ceo_board_opinions: {
+        Row: {
+          advisor_name: string
+          advisor_role: string
+          created_at: string
+          id: string
+          opinion: string
+          opportunities: string[] | null
+          recommendation: string | null
+          risks: string[] | null
+          session_id: string
+          suggested_adjustments: string[] | null
+        }
+        Insert: {
+          advisor_name: string
+          advisor_role: string
+          created_at?: string
+          id?: string
+          opinion: string
+          opportunities?: string[] | null
+          recommendation?: string | null
+          risks?: string[] | null
+          session_id: string
+          suggested_adjustments?: string[] | null
+        }
+        Update: {
+          advisor_name?: string
+          advisor_role?: string
+          created_at?: string
+          id?: string
+          opinion?: string
+          opportunities?: string[] | null
+          recommendation?: string | null
+          risks?: string[] | null
+          session_id?: string
+          suggested_adjustments?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ceo_board_opinions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ceo_board_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ceo_board_sessions: {
+        Row: {
+          board_summary: string | null
+          ceo_decision: string | null
+          ceo_notes: string | null
+          completed_at: string | null
+          consensus_points: string[] | null
+          context_data: Json | null
+          created_at: string
+          critical_risks: string[] | null
+          decision_description: string
+          decision_title: string
+          divergence_points: string[] | null
+          final_recommendation: string | null
+          id: string
+          opportunities: string[] | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          board_summary?: string | null
+          ceo_decision?: string | null
+          ceo_notes?: string | null
+          completed_at?: string | null
+          consensus_points?: string[] | null
+          context_data?: Json | null
+          created_at?: string
+          critical_risks?: string[] | null
+          decision_description: string
+          decision_title: string
+          divergence_points?: string[] | null
+          final_recommendation?: string | null
+          id?: string
+          opportunities?: string[] | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          board_summary?: string | null
+          ceo_decision?: string | null
+          ceo_notes?: string | null
+          completed_at?: string | null
+          consensus_points?: string[] | null
+          context_data?: Json | null
+          created_at?: string
+          critical_risks?: string[] | null
+          decision_description?: string
+          decision_title?: string
+          divergence_points?: string[] | null
+          final_recommendation?: string | null
+          id?: string
+          opportunities?: string[] | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ceo_decision_insights: {
         Row: {
           area: string | null
