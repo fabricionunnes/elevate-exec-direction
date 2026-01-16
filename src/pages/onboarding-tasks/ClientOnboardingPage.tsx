@@ -34,6 +34,7 @@ import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistor
 import { ClientMeetingsView } from "@/components/client-portal/ClientMeetingsView";
 import { ClientAssessmentsView } from "@/components/client-portal/ClientAssessmentsView";
 import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
+import { ClientReferralsPanel } from "@/components/client-portal/ClientReferralsPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -83,7 +84,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -358,6 +359,7 @@ const ClientOnboardingPage = () => {
     { id: "tickets" as ViewType, icon: MessageSquare, label: "Chamados" },
     { id: "meetings" as ViewType, icon: Video, label: "Reuniões" },
     { id: "assessments" as ViewType, icon: ClipboardCheck, label: "Testes" },
+    { id: "referrals" as ViewType, icon: Gift, label: "Indicar" },
   ];
 
   // Get company ID for customer points link
@@ -637,6 +639,21 @@ const ClientOnboardingPage = () => {
               exit={{ opacity: 0, x: 20 }}
             >
               <ClientAssessmentsView projectId={project.id} />
+            </motion.div>
+          )}
+
+          {activeView === "referrals" && (
+            <motion.div
+              key="referrals"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientReferralsPanel 
+                companyId={companyId || ""} 
+                projectId={projectId || ""} 
+                userName={currentUser?.name || ""} 
+              />
             </motion.div>
           )}
         </AnimatePresence>
