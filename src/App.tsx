@@ -225,6 +225,7 @@ const App = () => (
             <Route path="/360" element={<Assessment360Page />} />
             <Route path="/avaliacao" element={<UnifiedAssessmentPage />} />
             <Route path="/hr-disc/:token" element={<HrCandidateDiscPage />} />
+            <Route path="/job-application" element={<PublicJobApplicationPage />} />
             <Route path="/onboarding-tasks/:projectId/reports" element={<AssessmentReportsPage />} />
             
             {/* Customer Points - Public */}
