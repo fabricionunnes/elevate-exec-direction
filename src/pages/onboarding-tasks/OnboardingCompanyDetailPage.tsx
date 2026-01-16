@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -86,6 +87,7 @@ interface CompanyForm {
   stakeholders: Stakeholder[];
   status: string;
   notes: string;
+  is_simulator: boolean;
 }
 
 interface Project {
@@ -133,6 +135,7 @@ const OnboardingCompanyDetailPage = () => {
     stakeholders: [],
     status: "active",
     notes: "",
+    is_simulator: false,
   });
 
   useEffect(() => {
@@ -225,6 +228,7 @@ const OnboardingCompanyDetailPage = () => {
         stakeholders: stakeholdersData,
         status: data.status || "active",
         notes: data.notes || "",
+        is_simulator: data.is_simulator || false,
       });
     } catch (error: any) {
       console.error("Error fetching company:", error);
@@ -272,6 +276,7 @@ const OnboardingCompanyDetailPage = () => {
         stakeholders: JSON.parse(JSON.stringify(form.stakeholders)),
         status: form.status,
         notes: form.notes || null,
+        is_simulator: form.is_simulator,
       };
 
       if (isNew) {
@@ -555,6 +560,25 @@ const OnboardingCompanyDetailPage = () => {
                       </p>
                     )}
                   </div>
+                  
+                  {/* Simulator Toggle - Admin only */}
+                  {currentUserRole === "admin" && (
+                    <div className="flex items-center justify-between rounded-lg border p-4 bg-amber-50 dark:bg-amber-950/20">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="is_simulator" className="text-base font-medium">
+                          Empresa Simuladora
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Empresas simuladoras não contabilizam nas métricas do sistema (NPS, Churn, Metas, Health Score, etc.)
+                        </p>
+                      </div>
+                      <Switch
+                        id="is_simulator"
+                        checked={form.is_simulator}
+                        onCheckedChange={(checked) => setForm({ ...form, is_simulator: checked })}
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

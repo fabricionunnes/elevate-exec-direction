@@ -87,6 +87,7 @@ interface Company {
   created_at: string;
   payment_method?: string | null;
   consultant_id?: string | null;
+  is_simulator?: boolean;
 }
 
 interface DashboardMetricsProps {
@@ -332,25 +333,50 @@ const DashboardMetrics = ({
     });
   }, [filteredTasks, dateRange]);
 
+  const getProjectCompanyId = (p: Project) => p.onboarding_company_id ?? p.company_id ?? null;
+
+  // Get IDs of simulator companies to exclude their projects from metrics
+  const simulatorCompanyIds = useMemo(
+    () => new Set(companies.filter(c => c.is_simulator).map(c => c.id)),
+    [companies]
+  );
+
+  // Filter projects to exclude those belonging to simulator companies
+  const nonSimulatorProjects = useMemo(
+    () => projects.filter(p => {
+      const companyId = getProjectCompanyId(p);
+      return !companyId || !simulatorCompanyIds.has(companyId);
+    }),
+    [projects, simulatorCompanyIds]
+  );
+
+  // Filter allProjectsForChurn to exclude simulator companies too
+  const nonSimulatorAllProjects = useMemo(
+    () => allProjectsForChurn.filter(p => {
+      const companyId = getProjectCompanyId(p);
+      return !companyId || !simulatorCompanyIds.has(companyId);
+    }),
+    [allProjectsForChurn, simulatorCompanyIds]
+  );
+
   const projectMetrics = useMemo(() => {
-    const activeProjects = projects.filter(p => p.status === "active").length;
-    const cancellationSignaled = projects.filter(p => p.status === "cancellation_signaled").length;
-    const noticePeriod = projects.filter(p => p.status === "notice_period").length;
-    const closedProjects = projects.filter(p => p.status === "closed" || p.status === "completed").length;
-    const reactivatedInPeriod = projects.filter(p => {
+    const activeProjects = nonSimulatorProjects.filter(p => p.status === "active").length;
+    const cancellationSignaled = nonSimulatorProjects.filter(p => p.status === "cancellation_signaled").length;
+    const noticePeriod = nonSimulatorProjects.filter(p => p.status === "notice_period").length;
+    const closedProjects = nonSimulatorProjects.filter(p => p.status === "closed" || p.status === "completed").length;
+    const reactivatedInPeriod = nonSimulatorProjects.filter(p => {
       if (!p.reactivated_at) return false;
       return isWithinInterval(new Date(p.reactivated_at), { start: dateRange.start, end: dateRange.end });
     }).length;
     return { activeProjects, cancellationSignaled, noticePeriod, closedProjects, churnSignaled: cancellationSignaled + noticePeriod, reactivatedInPeriod };
-  }, [projects, dateRange]);
-
-  const getProjectCompanyId = (p: Project) => p.onboarding_company_id ?? p.company_id ?? null;
+  }, [nonSimulatorProjects, dateRange]);
 
   const filteredCompanyIds = useMemo(
-    () => new Set(projects.map(getProjectCompanyId).filter(Boolean) as string[]),
-    [projects]
+    () => new Set(nonSimulatorProjects.map(getProjectCompanyId).filter(Boolean) as string[]),
+    [nonSimulatorProjects]
   );
-  const filteredCompanies = useMemo(() => companies.filter(c => filteredCompanyIds.has(c.id) && c.status !== "inactive" && c.status !== "closed"), [companies, filteredCompanyIds]);
+  // Filter out simulator companies from metrics calculations
+  const filteredCompanies = useMemo(() => companies.filter(c => filteredCompanyIds.has(c.id) && c.status !== "inactive" && c.status !== "closed" && !c.is_simulator), [companies, filteredCompanyIds]);
 
   // Calculate companies without pending tasks
   const companiesWithoutPendingTasks = useMemo(() => {
@@ -438,12 +464,12 @@ const DashboardMetrics = ({
       return new Date(dateOnly + "T12:00:00");
     };
 
-    // Use allProjectsForChurn to include closed/completed projects
-    const closedInPeriod = allProjectsForChurn.filter(
+    // Use nonSimulatorAllProjects to include closed/completed projects but exclude simulators
+    const closedInPeriod = nonSimulatorAllProjects.filter(
       p => (p.status === "closed" || p.status === "completed") && isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end })
     ).length;
 
-    const signaledInPeriod = allProjectsForChurn.filter(
+    const signaledInPeriod = nonSimulatorAllProjects.filter(
       p => (p.status === "cancellation_signaled" || p.status === "notice_period") && isWithinInterval(new Date(p.updated_at), { start: dateRange.start, end: dateRange.end })
     ).length;
 
@@ -452,7 +478,7 @@ const DashboardMetrics = ({
 
     // Count unique companies with closed projects in the period
     const closedCompanyIds = new Set(
-      allProjectsForChurn
+      nonSimulatorAllProjects
         .filter(p => (p.status === "closed" || p.status === "completed") && isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end }))
         .map(getProjectCompanyId)
         .filter(Boolean) as string[]
@@ -460,7 +486,7 @@ const DashboardMetrics = ({
     const closedCompaniesInPeriod = closedCompanyIds.size;
 
     return { closedInPeriod, signaledInPeriod, churnRate, closedCompaniesInPeriod };
-  }, [allProjectsForChurn, dateRange, projectMetrics]);
+  }, [nonSimulatorAllProjects, dateRange, projectMetrics]);
 
   const monthlyChurnData = useMemo(() => {
     const currentYear = dateRange.start.getFullYear();
@@ -469,7 +495,7 @@ const DashboardMetrics = ({
       const monthStart = startOfMonth(monthDate);
       const monthEnd = endOfMonth(monthDate);
       // Usa churn_date como referência para determinar o mês do churn
-      const closedInMonth = allProjectsForChurn.filter(p => {
+      const closedInMonth = nonSimulatorAllProjects.filter(p => {
         if (p.status !== "closed" && p.status !== "completed") return false;
         // Prioriza churn_date, depois updated_at como fallback
         const churnDateStr = p.churn_date || p.updated_at;
@@ -478,7 +504,7 @@ const DashboardMetrics = ({
         const churnDate = new Date(dateOnly + "T12:00:00");
         return isWithinInterval(churnDate, { start: monthStart, end: monthEnd });
       }).length;
-      const activeAtMonthStart = allProjectsForChurn.filter(p => {
+      const activeAtMonthStart = nonSimulatorAllProjects.filter(p => {
         if (new Date(p.created_at) > monthEnd) return false;
         if (p.status === "closed" || p.status === "completed") {
           // Usa churn_date como referência
@@ -492,7 +518,7 @@ const DashboardMetrics = ({
       const churnRate = activeAtMonthStart > 0 ? Math.round((closedInMonth / activeAtMonthStart) * 100 * 10) / 10 : 0;
       return { month: format(monthDate, "MMM", { locale: ptBR }), churn: churnRate };
     });
-  }, [allProjectsForChurn, dateRange]);
+  }, [nonSimulatorAllProjects, dateRange]);
 
   const ltvMetrics = useMemo(() => {
     const today = new Date();
@@ -539,7 +565,7 @@ const DashboardMetrics = ({
   }, [filteredCompanies]);
 
   const npsMetrics = useMemo(() => {
-    const filteredProjectIds = new Set(projects.map(p => p.id));
+    const filteredProjectIds = new Set(nonSimulatorProjects.map(p => p.id));
     const totalFilteredProjects = filteredProjectIds.size;
     const filteredResponses = npsResponses.filter(r => filteredProjectIds.has(r.project_id));
     const totalResponses = filteredResponses.length;
@@ -553,16 +579,16 @@ const DashboardMetrics = ({
     const detractors = filteredResponses.filter(r => r.score <= 6).length;
     const neutrals = filteredResponses.filter(r => r.score >= 7 && r.score <= 8).length;
     // List of projects without NPS responses
-    const notRespondedProjects = projects.filter(p => !projectsWithResponse.has(p.id));
+    const notRespondedProjects = nonSimulatorProjects.filter(p => !projectsWithResponse.has(p.id));
     
     return { averageNps, promoters, detractors, neutrals, totalResponses, respondedCount, notRespondedCount, responseRate, totalProjects: totalFilteredProjects, notRespondedProjects };
-  }, [projects, npsResponses]);
+  }, [nonSimulatorProjects, npsResponses]);
 
   const healthMetrics = useMemo(() => {
     // Exclude only truly closed/completed projects from health average
     // Keep active + cancellation_signaled + notice_period (they're still "in progress")
     const relevantProjectIds = new Set(
-      projects
+      nonSimulatorProjects
         .filter(p => !["closed", "completed"].includes(p.status))
         .map(p => p.id)
     );
@@ -579,7 +605,7 @@ const DashboardMetrics = ({
     const excellent = filteredScores.filter(h => h.risk_level === "excellent" || h.risk_level === "low").length;
     
     return { averageScore, critical, warning, healthy, excellent, totalWithScore: filteredScores.length };
-  }, [projects, healthScores]);
+  }, [nonSimulatorProjects, healthScores]);
 
   const goalsMetrics = useMemo(() => {
     const periodMonth = dateRange.start.getMonth() + 1;
