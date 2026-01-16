@@ -51,6 +51,9 @@ verify_jwt = true
 [functions.transcribe-assemblyai]
 verify_jwt = true
 
+[functions.transcribe-lovableai]
+verify_jwt = true
+
 [functions.kpi-analysis]
 verify_jwt = true
 
