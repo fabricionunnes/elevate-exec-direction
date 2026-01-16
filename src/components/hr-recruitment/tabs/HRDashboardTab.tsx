@@ -91,31 +91,51 @@ export function HRDashboardTab({ projectId }: HRDashboardTabProps) {
     const dateFrom = new Date();
     dateFrom.setDate(dateFrom.getDate() - parseInt(period));
 
-    // Fetch candidates
-    const { data: candidates } = await supabase
-      .from("candidates")
-      .select("id, current_stage, source, status, created_at, updated_at")
-      .eq("project_id", projectId);
-
-    // Fetch jobs
+    // First fetch active jobs to filter candidates
     const { data: jobs } = await supabase
       .from("job_openings")
       .select("id, status, created_at")
       .eq("project_id", projectId);
 
-    // Fetch interviews
-    const { data: interviews } = await supabase
+    const activeJobIds = (jobs || []).map(j => j.id);
+
+    // Fetch candidates - only those with existing jobs OR in talent pool
+    const { data: allCandidates } = await supabase
+      .from("candidates")
+      .select("id, current_stage, source, status, created_at, updated_at, job_opening_id")
+      .eq("project_id", projectId);
+
+    // Filter candidates: only include those with valid job_opening_id (job exists) 
+    // OR those in talent pool (no job required)
+    const candidates = (allCandidates || []).filter(c => 
+      c.current_stage === 'talent_pool' || 
+      c.job_opening_id === null || 
+      activeJobIds.includes(c.job_opening_id)
+    );
+
+    // Fetch interviews - only for candidates with existing jobs
+    const { data: allInterviews } = await supabase
       .from("interviews")
-      .select("id, status, candidate:candidates!inner(project_id)")
+      .select("id, status, candidate_id, candidate:candidates!inner(project_id, job_opening_id)")
       .eq("candidate.project_id", projectId)
       .eq("status", "completed");
 
-    // Fetch DISC results
-    const { data: discResults } = await supabase
+    const interviews = (allInterviews || []).filter(i => {
+      const candidateJobId = (i.candidate as any)?.job_opening_id;
+      return candidateJobId === null || activeJobIds.includes(candidateJobId);
+    });
+
+    // Fetch DISC results - only for candidates with existing jobs
+    const { data: allDiscResults } = await supabase
       .from("candidate_disc_results")
-      .select("id, status, candidate:candidates!inner(project_id)")
+      .select("id, status, candidate_id, candidate:candidates!inner(project_id, job_opening_id)")
       .eq("candidate.project_id", projectId)
       .eq("status", "completed");
+
+    const discResults = (allDiscResults || []).filter(d => {
+      const candidateJobId = (d.candidate as any)?.job_opening_id;
+      return candidateJobId === null || activeJobIds.includes(candidateJobId);
+    });
 
     // Calculate pipeline data
     const pipelineCounts: Record<string, number> = {};
