@@ -5541,6 +5541,7 @@ export type Database = {
       }
       interviews: {
         Row: {
+          calendar_event_id: string | null
           candidate_id: string
           concerns: string | null
           conducted_at: string | null
@@ -5551,6 +5552,8 @@ export type Database = {
           interviewer_id: string | null
           interviewer_name: string | null
           job_opening_id: string | null
+          meet_link: string | null
+          notes: string | null
           recommendation: string | null
           scheduled_at: string | null
           score: number | null
@@ -5559,6 +5562,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          calendar_event_id?: string | null
           candidate_id: string
           concerns?: string | null
           conducted_at?: string | null
@@ -5569,6 +5573,8 @@ export type Database = {
           interviewer_id?: string | null
           interviewer_name?: string | null
           job_opening_id?: string | null
+          meet_link?: string | null
+          notes?: string | null
           recommendation?: string | null
           scheduled_at?: string | null
           score?: number | null
@@ -5577,6 +5583,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          calendar_event_id?: string | null
           candidate_id?: string
           concerns?: string | null
           conducted_at?: string | null
@@ -5587,6 +5594,8 @@ export type Database = {
           interviewer_id?: string | null
           interviewer_name?: string | null
           job_opening_id?: string | null
+          meet_link?: string | null
+          notes?: string | null
           recommendation?: string | null
           scheduled_at?: string | null
           score?: number | null

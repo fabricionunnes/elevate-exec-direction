@@ -149,43 +149,35 @@ export function ResumesTab({ projectId, canEdit, isStaff }: ResumesTabProps) {
 
     setAnalyzingId(resume.id);
     try {
-      // Get job details
-      const { data: job } = await supabase
-        .from("job_openings")
-        .select("*")
-        .eq("id", resume.candidate.job_opening_id)
-        .single();
+      // Call real AI evaluation edge function
+      const { data, error } = await supabase.functions.invoke("analyze-resume", {
+        body: {
+          resumeId: resume.id,
+          jobOpeningId: resume.candidate.job_opening_id,
+        },
+      });
 
-      if (!job) {
-        toast.error("Vaga não encontrada");
+      if (error) {
+        console.error("Edge function error:", error);
+        throw new Error(error.message || "Erro na análise da IA");
+      }
+
+      if (data?.error) {
+        if (data.error.includes("Rate limit") || data.error.includes("429")) {
+          toast.error("Limite de requisições excedido, tente novamente em alguns minutos");
+        } else if (data.error.includes("402") || data.error.includes("Créditos")) {
+          toast.error("Créditos de IA insuficientes");
+        } else {
+          toast.error(data.error);
+        }
         return;
       }
 
-      // Call AI evaluation edge function (to be implemented)
-      // For now, create a mock evaluation
-      const mockScore = Math.floor(Math.random() * 40) + 60;
-      const classification = mockScore >= 80 ? 'high_fit' : mockScore >= 60 ? 'medium_fit' : 'low_fit';
-
-      const { error } = await supabase.from("candidate_ai_evaluations").insert({
-        candidate_id: resume.candidate_id,
-        resume_id: resume.id,
-        job_opening_id: resume.candidate.job_opening_id,
-        compatibility_score: mockScore,
-        classification,
-        strengths: ['Experiência relevante', 'Boa formação'],
-        concerns: ['Verificar disponibilidade'],
-        recommendation: mockScore >= 70 ? 'advance' : 'evaluate_carefully',
-        full_analysis: `Análise automática baseada no currículo. Score de compatibilidade: ${mockScore}%`,
-        model_used: 'gemini-2.5-flash',
-      });
-
-      if (error) throw error;
-
       toast.success("Análise da IA concluída!");
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error analyzing resume:", error);
-      toast.error("Erro na análise da IA");
+      toast.error(error?.message || "Erro na análise da IA");
     } finally {
       setAnalyzingId(null);
     }
