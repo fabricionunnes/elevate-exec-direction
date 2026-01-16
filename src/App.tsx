@@ -93,6 +93,7 @@ import ChurnPredictionPage from "./pages/onboarding-tasks/ChurnPredictionPage";
 import CohortRetentionPage from "./pages/onboarding-tasks/CohortRetentionPage";
 import ConsultantEngagementPage from "./pages/onboarding-tasks/ConsultantEngagementPage";
 import ExecutiveDashboardPage from "./pages/onboarding-tasks/ExecutiveDashboardPage";
+import CEODashboardPage from "./pages/onboarding-tasks/CEODashboardPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
 // CRM Pages
@@ -209,6 +210,9 @@ const App = () => (
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
             </Route>
+            
+            {/* CEO Dashboard - Exclusive Access */}
+            <Route path="/onboarding-tasks/ceo" element={<CEODashboardPage />} />
             
             <Route path="/onboarding-client/:projectId" element={<ClientOnboardingPage />} />
             <Route path="/cac-form/:projectId" element={<CACFormPage />} />
