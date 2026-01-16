@@ -105,6 +105,7 @@ const GlobalJobOpeningsPage = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -123,7 +124,6 @@ const GlobalJobOpeningsPage = () => {
 
   useEffect(() => {
     checkPermissions();
-    fetchData();
   }, []);
 
   const checkPermissions = async () => {
@@ -132,18 +132,22 @@ const GlobalJobOpeningsPage = () => {
       if (user) {
         const { data: staffMember } = await supabase
           .from("onboarding_staff")
-          .select("role")
+          .select("id, role")
           .eq("user_id", user.id)
           .single();
 
         if (staffMember) {
           const role = (staffMember.role || "").trim().toLowerCase();
           setCurrentUserRole(role);
+          setCurrentStaffId(staffMember.id);
           
           // Redirect if not authorized
           if (!["admin", "cs", "consultant", "rh"].includes(role)) {
             toast.error("Você não tem permissão para acessar esta página");
             navigate("/onboarding-tasks");
+          } else {
+            // Fetch data after we know user role
+            fetchData(role, staffMember.id);
           }
         } else {
           navigate("/onboarding-tasks/login");
@@ -156,41 +160,88 @@ const GlobalJobOpeningsPage = () => {
     }
   };
 
-  const fetchData = async () => {
+  const fetchData = async (role?: string, staffId?: string) => {
     setLoading(true);
     try {
-      // Fetch all data in parallel
-      const [jobsResult, companiesResult, staffResult] = await Promise.all([
-        supabase
-          .from("job_openings")
-          .select(`
-            *,
-            candidates:candidates(count),
-            project:onboarding_projects!job_openings_project_id_fkey(
-              id, 
-              product_name,
-              onboarding_company:onboarding_companies!onboarding_projects_onboarding_company_id_fkey(id, name)
-            ),
-            company:onboarding_companies!job_openings_company_id_fkey(id, name),
-            responsible_rh:onboarding_staff!job_openings_responsible_rh_id_fkey(id, name),
-            consultant:onboarding_staff!job_openings_consultant_id_fkey(id, name)
-          `)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("onboarding_companies")
-          .select("id, name")
-          .neq("status", "inactive")
-          .order("name"),
-        supabase
-          .from("onboarding_staff")
-          .select("id, name, role")
-          .eq("is_active", true)
-          .order("name"),
-      ]);
+      const userRole = role || currentUserRole;
+      const userStaffId = staffId || currentStaffId;
+      const isConsultant = userRole === "consultant";
 
-      if (jobsResult.error) throw jobsResult.error;
-      if (companiesResult.error) throw companiesResult.error;
+      // Fetch staff first (needed for all)
+      const staffResult = await supabase
+        .from("onboarding_staff")
+        .select("id, name, role")
+        .eq("is_active", true)
+        .order("name");
+
       if (staffResult.error) throw staffResult.error;
+
+      // For consultants, first get the projects they are linked to
+      let allowedProjectIds: string[] = [];
+      if (isConsultant && userStaffId) {
+        const { data: linkedProjects } = await supabase
+          .from("onboarding_projects")
+          .select("id")
+          .or(`consultant_id.eq.${userStaffId},cs_id.eq.${userStaffId}`);
+        
+        allowedProjectIds = (linkedProjects || []).map(p => p.id);
+      }
+
+      // Fetch jobs
+      let jobsQuery = supabase
+        .from("job_openings")
+        .select(`
+          *,
+          candidates:candidates(count),
+          project:onboarding_projects!job_openings_project_id_fkey(
+            id, 
+            product_name,
+            consultant_id,
+            cs_id,
+            onboarding_company:onboarding_companies!onboarding_projects_onboarding_company_id_fkey(id, name)
+          ),
+          company:onboarding_companies!job_openings_company_id_fkey(id, name),
+          responsible_rh:onboarding_staff!job_openings_responsible_rh_id_fkey(id, name),
+          consultant:onboarding_staff!job_openings_consultant_id_fkey(id, name)
+        `)
+        .order("created_at", { ascending: false });
+
+      // If consultant, filter by allowed projects
+      if (isConsultant && allowedProjectIds.length > 0) {
+        jobsQuery = jobsQuery.in("project_id", allowedProjectIds);
+      } else if (isConsultant && allowedProjectIds.length === 0) {
+        // Consultant with no linked projects - show empty
+        setJobs([]);
+        setCompanies([]);
+        setStaff(staffResult.data || []);
+        setLoading(false);
+        return;
+      }
+
+      const jobsResult = await jobsQuery;
+      if (jobsResult.error) throw jobsResult.error;
+
+      // Get unique company IDs from jobs for filtering (for consultants, show only their companies)
+      const jobCompanyIds = new Set<string>();
+      (jobsResult.data || []).forEach((job: any) => {
+        const compId = job.company_id || job.project?.onboarding_company?.id;
+        if (compId) jobCompanyIds.add(compId);
+      });
+
+      // Fetch companies based on role
+      let companiesQuery = supabase
+        .from("onboarding_companies")
+        .select("id, name")
+        .neq("status", "inactive")
+        .order("name");
+
+      // For consultants, only show companies from their jobs
+      if (isConsultant && jobCompanyIds.size > 0) {
+        companiesQuery = companiesQuery.in("id", Array.from(jobCompanyIds));
+      }
+
+      const companiesResult = await companiesQuery;
+      if (companiesResult.error) throw companiesResult.error;
 
       const jobsWithDetails = (jobsResult.data || []).map((job: any) => {
         // Prioritize job.company, fallback to project's onboarding_company
@@ -341,7 +392,7 @@ const GlobalJobOpeningsPage = () => {
       if (error) throw error;
       
       toast.success("Status atualizado");
-      fetchData();
+      fetchData(currentUserRole || undefined, currentStaffId || undefined);
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error("Erro ao atualizar status");
@@ -362,7 +413,7 @@ const GlobalJobOpeningsPage = () => {
       if (error) throw error;
       
       toast.success("Vaga excluída com sucesso");
-      fetchData();
+      fetchData(currentUserRole || undefined, currentStaffId || undefined);
     } catch (error) {
       console.error("Error deleting job:", error);
       toast.error("Erro ao excluir vaga");
@@ -852,7 +903,7 @@ const GlobalJobOpeningsPage = () => {
           job={selectedJob}
           staff={staff}
           canEdit={canEdit}
-          onUpdate={fetchData}
+          onUpdate={() => fetchData(currentUserRole || undefined, currentStaffId || undefined)}
         />
       )}
 
@@ -867,7 +918,7 @@ const GlobalJobOpeningsPage = () => {
           onSuccess={() => {
             setShowEditDialog(false);
             setEditingJobId(null);
-            fetchData();
+            fetchData(currentUserRole || undefined, currentStaffId || undefined);
           }}
         />
       )}
