@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -117,6 +118,7 @@ interface DecisionInsight {
 }
 
 export function CEODecisionMap() {
+  const navigate = useNavigate();
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [insights, setInsights] = useState<DecisionInsight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -185,6 +187,13 @@ export function CEODecisionMap() {
     }
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente.");
+        navigate("/onboarding-tasks/login");
+        return;
+      }
+
       const evaluationStartDate = new Date();
       const evaluationEndDate = addDays(evaluationStartDate, formData.evaluation_period);
 
@@ -220,9 +229,9 @@ export function CEODecisionMap() {
         estimated_impact: 0,
       });
       fetchData();
-    } catch (error) {
-      console.error('Error creating decision:', error);
-      toast.error('Erro ao criar decisão');
+    } catch (err: any) {
+      console.error('Error creating decision:', err);
+      toast.error(err?.message || 'Erro ao criar decisão');
     }
   };
 
