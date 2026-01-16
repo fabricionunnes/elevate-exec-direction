@@ -93,7 +93,10 @@ export function ReceivablesPanel() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isGeneratingRecurring, setIsGeneratingRecurring] = useState(false);
   const [selectedReceivable, setSelectedReceivable] = useState<Receivable | null>(null);
+  const [editDueDate, setEditDueDate] = useState("");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -241,6 +244,99 @@ export function ReceivablesPanel() {
     }
   };
 
+  const handleEditDueDate = async () => {
+    if (!selectedReceivable || !editDueDate) return;
+
+    try {
+      const { error } = await supabase
+        .from("financial_receivables")
+        .update({ due_date: editDueDate })
+        .eq("id", selectedReceivable.id);
+
+      if (error) throw error;
+
+      toast.success("Vencimento atualizado com sucesso!");
+      setIsEditDialogOpen(false);
+      setSelectedReceivable(null);
+      loadData();
+    } catch (error) {
+      console.error("Error updating due date:", error);
+      toast.error("Erro ao atualizar vencimento");
+    }
+  };
+
+  const generateRecurringReceivables = async () => {
+    setIsGeneratingRecurring(true);
+    try {
+      // Get active companies with contract value
+      const { data: activeCompanies, error: companiesError } = await supabase
+        .from("onboarding_companies")
+        .select("id, name, contract_value")
+        .eq("status", "active")
+        .gt("contract_value", 0);
+
+      if (companiesError) throw companiesError;
+
+      if (!activeCompanies || activeCompanies.length === 0) {
+        toast.info("Nenhum cliente recorrente encontrado");
+        setIsGeneratingRecurring(false);
+        return;
+      }
+
+      const currentMonth = format(new Date(), "yyyy-MM");
+      const defaultPaymentDay = 10;
+      
+      // Check which companies already have receivables for this month
+      const { data: existingReceivables } = await supabase
+        .from("financial_receivables")
+        .select("company_id")
+        .eq("reference_month", currentMonth)
+        .eq("is_recurring", true);
+
+      const existingCompanyIds = new Set(existingReceivables?.map(r => r.company_id) || []);
+
+      // Filter companies that don't have receivables yet
+      const companiesToGenerate = activeCompanies.filter(c => !existingCompanyIds.has(c.id));
+
+      if (companiesToGenerate.length === 0) {
+        toast.info("Todas as contas recorrentes já foram geradas para este mês");
+        setIsGeneratingRecurring(false);
+        return;
+      }
+
+      // Generate receivables for each company
+      const receivablesToInsert = companiesToGenerate.map(company => {
+        const dueDate = new Date();
+        dueDate.setDate(defaultPaymentDay);
+        
+        return {
+          company_id: company.id,
+          description: `Mensalidade ${format(new Date(), "MMMM/yyyy", { locale: ptBR })} - ${company.name}`,
+          amount: Number(company.contract_value),
+          due_date: format(dueDate, "yyyy-MM-dd"),
+          status: "pending",
+          is_recurring: true,
+          reference_month: currentMonth,
+          payment_method: "pix"
+        };
+      });
+
+      const { error: insertError } = await supabase
+        .from("financial_receivables")
+        .insert(receivablesToInsert);
+
+      if (insertError) throw insertError;
+
+      toast.success(`${companiesToGenerate.length} contas recorrentes geradas com sucesso!`);
+      loadData();
+    } catch (error) {
+      console.error("Error generating recurring receivables:", error);
+      toast.error("Erro ao gerar contas recorrentes");
+    } finally {
+      setIsGeneratingRecurring(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       company_id: "",
@@ -311,6 +407,18 @@ export function ReceivablesPanel() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={generateRecurringReceivables}
+            disabled={isGeneratingRecurring}
+          >
+            {isGeneratingRecurring ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Gerar Recorrentes
+          </Button>
           <Button variant="outline" size="sm" onClick={loadData}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Atualizar
@@ -562,19 +670,31 @@ export function ReceivablesPanel() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {receivable.status !== "paid" && receivable.status !== "cancelled" && (
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedReceivable(receivable);
-                                setPaymentData({
-                                  paid_date: format(new Date(), "yyyy-MM-dd"),
-                                  paid_amount: String(receivable.amount)
-                                });
-                                setIsPayDialogOpen(true);
-                              }}
-                            >
-                              <CheckCircle2 className="h-4 w-4 mr-2" />
-                              Marcar como Pago
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedReceivable(receivable);
+                                  setPaymentData({
+                                    paid_date: format(new Date(), "yyyy-MM-dd"),
+                                    paid_amount: String(receivable.amount)
+                                  });
+                                  setIsPayDialogOpen(true);
+                                }}
+                              >
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                Dar Baixa
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedReceivable(receivable);
+                                  setEditDueDate(receivable.due_date);
+                                  setIsEditDialogOpen(true);
+                                }}
+                              >
+                                <Clock className="h-4 w-4 mr-2" />
+                                Editar Vencimento
+                              </DropdownMenuItem>
+                            </>
                           )}
                           {receivable.payment_link && (
                             <DropdownMenuItem
@@ -645,6 +765,41 @@ export function ReceivablesPanel() {
               </Button>
               <Button onClick={handleMarkAsPaid}>
                 Confirmar Pagamento
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Due Date Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Vencimento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="font-medium">{selectedReceivable?.description}</p>
+              <p className="text-sm text-muted-foreground">
+                {selectedReceivable?.company?.name}
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Nova Data de Vencimento</Label>
+              <Input
+                type="date"
+                value={editDueDate}
+                onChange={(e) => setEditDueDate(e.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleEditDueDate}>
+                Salvar
               </Button>
             </div>
           </div>
