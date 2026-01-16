@@ -121,11 +121,15 @@ const OnboardingTasksPage = () => {
   const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null; completed_at: string | null }[]>([]);
   const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null; company_id: string | null; churn_date: string | null }[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
+  // Full NPS responses for DashboardMetrics (eliminates duplicate query)
+  const [fullNpsResponses, setFullNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
   const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; target_value: number; kpi_type: string; periodicity: string }[]>([]);
   const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
   const [contractRenewals, setContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
   const [healthScoresByProject, setHealthScoresByProject] = useState<Map<string, { total_score: number; risk_level: string }>>(new Map());
+  // Health scores array for DashboardMetrics (eliminates duplicate query)
+  const [healthScoresArray, setHealthScoresArray] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
   
   // Announcement dialog state
   const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
@@ -170,8 +174,39 @@ const OnboardingTasksPage = () => {
 
   const fetchAllTasks = async () => {
     try {
-      // IMPORTANT: PostgREST has a default max of 1000 rows per request.
-      // Use pagination to guarantee we load the full dataset used by dashboard metrics.
+      // OPTIMIZATION: Use RPC function to get only relevant tasks (pending/in_progress + completed in last 90 days)
+      // This reduces data transfer from 11k+ to ~1-2k records
+      const { data: optimizedTasks, error: rpcError } = await supabase.rpc('get_pending_and_overdue_tasks');
+      
+      if (rpcError) {
+        // Fallback to old method if RPC fails
+        console.warn("RPC failed, falling back to paginated fetch:", rpcError);
+        await fetchAllTasksFallback();
+        return;
+      }
+
+      const tasks = (optimizedTasks || []).map((t: any) => ({
+        id: t.id,
+        status: t.status,
+        due_date: t.due_date,
+        project_id: t.project_id,
+        responsible_staff_id: t.responsible_staff_id,
+        completed_at: t.completed_at
+      }));
+
+      setAllTasks(tasks);
+      
+      // After tasks are loaded, fetch companies with task metrics from SQL function
+      await fetchCompaniesWithMetrics();
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      setLoading(false);
+    }
+  };
+
+  // Fallback method for when RPC is not available
+  const fetchAllTasksFallback = async () => {
+    try {
       const pageSize = 1000;
       let from = 0;
       let all: { id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null; completed_at: string | null }[] = [];
@@ -192,23 +227,115 @@ const OnboardingTasksPage = () => {
       }
 
       setAllTasks(all);
-      
-      // After tasks are loaded, fetch companies (which will use task counts from allTasks)
       await fetchCompanies(all);
     } catch (error) {
-      console.error("Error fetching tasks:", error);
+      console.error("Error in fallback fetch:", error);
+      setLoading(false);
+    }
+  };
+
+  // New optimized company fetch using SQL function for task metrics
+  const fetchCompaniesWithMetrics = async () => {
+    try {
+      // Fetch companies, projects, and task metrics in parallel
+      const [companiesResult, projectsResult, metricsResult] = await Promise.all([
+        supabase
+          .from("onboarding_companies")
+          .select(`
+            *,
+            cs:onboarding_staff!onboarding_companies_cs_id_fkey(id, name, role),
+            consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(id, name, role)
+          `)
+          .order("contract_start_date", { ascending: false, nullsFirst: false }),
+        supabase
+          .from("onboarding_projects")
+          .select("*")
+          .order("created_at", { ascending: false }),
+        supabase.rpc('get_task_metrics_by_project')
+      ]);
+
+      if (companiesResult.error) throw companiesResult.error;
+      if (projectsResult.error) throw projectsResult.error;
+
+      const companiesData = companiesResult.data || [];
+      const projectsData = projectsResult.data || [];
+      
+      // Use metrics from SQL function if available, otherwise use empty map
+      const metricsMap = new Map<string, { total: number; completed: number }>();
+      if (!metricsResult.error && metricsResult.data) {
+        (metricsResult.data as any[]).forEach((m: any) => {
+          metricsMap.set(m.project_id, { 
+            total: Number(m.total_tasks) || 0, 
+            completed: Number(m.completed_tasks) || 0 
+          });
+        });
+      }
+
+      // Add counts to projects
+      const projectsWithCounts = projectsData.map(project => {
+        const counts = metricsMap.get(project.id) || { total: 0, completed: 0 };
+        return {
+          ...project,
+          tasks_count: counts.total,
+          completed_count: counts.completed,
+        };
+      });
+
+      // Group projects by company
+      const getProjectCompanyId = (p: any) => p.onboarding_company_id ?? p.company_id ?? null;
+
+      const companiesWithProjects = companiesData.map((company) => {
+        const companyProjects = projectsWithCounts.filter(
+          (p) => getProjectCompanyId(p) === company.id
+        );
+        const totalTasks = companyProjects.reduce((acc, p) => acc + (p.tasks_count || 0), 0);
+        const completedTasks = companyProjects.reduce((acc, p) => acc + (p.completed_count || 0), 0);
+
+        return {
+          ...company,
+          projects: companyProjects,
+          total_tasks: totalTasks,
+          completed_tasks: completedTasks,
+        };
+      });
+
+      // Store all projects for dashboard metrics
+      setAllProjects(projectsData.map(p => ({
+        id: p.id,
+        product_id: p.product_id,
+        product_name: p.product_name,
+        status: p.status,
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+        consultant_id: p.consultant_id,
+        reactivated_at: p.reactivated_at,
+        onboarding_company_id: p.onboarding_company_id,
+        company_id: p.company_id,
+        churn_date: p.churn_date,
+      })));
+
+      setCompanies(companiesWithProjects);
+    } catch (error: any) {
+      console.error("Error fetching companies with metrics:", error);
+      toast.error("Erro ao carregar empresas");
+    } finally {
       setLoading(false);
     }
   };
 
   const fetchNpsResponses = async () => {
     try {
+      // Fetch full NPS data for DashboardMetrics to avoid duplicate query
       const { data, error } = await supabase
         .from("onboarding_nps_responses")
-        .select("project_id, score");
+        .select("id, project_id, score, feedback, what_can_improve, would_recommend_why, respondent_name, respondent_email, created_at")
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setNpsResponses(data || []);
+      // Store full data for DashboardMetrics
+      setFullNpsResponses(data || []);
+      // Also store simplified version for backward compatibility
+      setNpsResponses((data || []).map(d => ({ project_id: d.project_id, score: d.score })));
     } catch (error) {
       console.error("Error fetching NPS responses:", error);
     }
@@ -269,6 +396,9 @@ const OnboardingTasksPage = () => {
         .select("project_id, total_score, risk_level");
 
       if (error) throw error;
+      
+      // Store array for DashboardMetrics (eliminates duplicate query)
+      setHealthScoresArray(data || []);
       
       const scoresMap = new Map<string, { total_score: number; risk_level: string }>();
       (data || []).forEach(score => {
@@ -1616,6 +1746,12 @@ const OnboardingTasksPage = () => {
           selectedConsultantStaffId={filterConsultant !== "all" ? filterConsultant : undefined}
           onActiveTabChange={setActiveDashboardTab}
           staffRole={currentUserRole}
+          // Pass data to eliminate duplicate queries in DashboardMetrics
+          externalNpsResponses={fullNpsResponses}
+          externalCompanyKpis={companyKpis}
+          externalKpiEntries={kpiEntries}
+          externalContractRenewals={contractRenewals}
+          externalHealthScores={healthScoresArray}
         />
 
         {/* Referrals Panel - Shown when on referrals tab */}
