@@ -29,6 +29,7 @@ interface Company {
   kickoff_date: string | null;
   created_at: string;
   hasGoal?: boolean;
+  hasOpenJob?: boolean;
 }
 
 const OnboardingCompaniesPage = () => {
@@ -116,14 +117,36 @@ const OnboardingCompaniesPage = () => {
       const companiesWithGoals = new Set(
         projectsWithGoals?.map(p => p.company_id) || []
       );
+
+      // Fetch open job openings to check which companies have open positions
+      const { data: openJobs } = await supabase
+        .from("job_openings")
+        .select("project_id")
+        .eq("status", "open");
+
+      // Get company IDs from projects with open jobs
+      const projectIdsWithOpenJobs = openJobs?.map(j => j.project_id).filter(Boolean) || [];
       
-      // Mark companies with/without goals
-      const companiesWithGoalFlag = (data || []).map(company => ({
+      let companiesWithOpenJobs = new Set<string>();
+      if (projectIdsWithOpenJobs.length > 0) {
+        const { data: projectsWithOpenJobs } = await supabase
+          .from("onboarding_projects")
+          .select("company_id")
+          .in("id", projectIdsWithOpenJobs);
+        
+        companiesWithOpenJobs = new Set(
+          projectsWithOpenJobs?.map(p => p.company_id) || []
+        );
+      }
+      
+      // Mark companies with/without goals and open jobs
+      const companiesWithFlags = (data || []).map(company => ({
         ...company,
-        hasGoal: companiesWithGoals.has(company.id)
+        hasGoal: companiesWithGoals.has(company.id),
+        hasOpenJob: companiesWithOpenJobs.has(company.id)
       }));
       
-      setCompanies(companiesWithGoalFlag);
+      setCompanies(companiesWithFlags);
     } catch (error: any) {
       console.error("Error fetching companies:", error);
       toast.error("Erro ao carregar empresas");
@@ -266,6 +289,11 @@ const OnboardingCompaniesPage = () => {
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-lg">{company.name}</CardTitle>
                     <div className="flex flex-wrap gap-1">
+                      {company.hasOpenJob && (
+                        <Badge className="bg-blue-500 hover:bg-blue-600 text-white">
+                          Vaga em aberto
+                        </Badge>
+                      )}
                       {!company.hasGoal && company.status === "active" && (
                         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
                           Sem Meta
