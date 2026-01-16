@@ -160,15 +160,20 @@ Deno.serve(async (req) => {
 
     console.log(`File: ${metadata.name}, Size: ${Math.round(fileSize / 1024 / 1024)}MB`);
 
-    if (fileSize > maxSize) {
-      return new Response(
-        JSON.stringify({ 
-          error: `File too large for transcription (${Math.round(fileSize / 1024 / 1024)}MB). Maximum is 25MB. Use manual transcription.`,
-          fileSizeMB: Math.round(fileSize / 1024 / 1024)
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+     if (fileSize > maxSize) {
+       // IMPORTANT: return 200 with a structured error so the client can fallback cleanly
+       // without treating this as a runtime exception.
+       return new Response(
+         JSON.stringify({
+           error: "FILE_TOO_LARGE",
+           message: `File too large for transcription (${Math.round(fileSize / 1024 / 1024)}MB). Maximum is 25MB.`,
+           fileSizeMB: Math.round(fileSize / 1024 / 1024),
+           canFallback: true,
+           suggestedAction: "use_fallback",
+         }),
+         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+       );
+     }
 
     // Download the file
     console.log("Downloading recording...");
