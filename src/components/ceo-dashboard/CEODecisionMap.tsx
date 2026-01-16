@@ -32,7 +32,9 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Filter
+  Filter,
+  Edit,
+  Trash2
 } from "lucide-react";
 import {
   LineChart,
@@ -126,6 +128,8 @@ export function CEODecisionMap() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedArea, setSelectedArea] = useState<string>("all");
   const [selectedResult, setSelectedResult] = useState<string>("all");
+  const [editingDecision, setEditingDecision] = useState<Decision | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -137,6 +141,21 @@ export function CEODecisionMap() {
     linked_kpis: [] as string[],
     evaluation_period: 30,
     estimated_impact: 0,
+  });
+  
+  // Edit form state
+  const [editFormData, setEditFormData] = useState({
+    title: "",
+    description: "",
+    area: "",
+    type: "",
+    hypothesis: "",
+    linked_kpis: [] as string[],
+    evaluation_period: 30,
+    estimated_impact: 0,
+    actual_impact: 0,
+    status: "",
+    final_result: "" as string | null,
   });
 
   useEffect(() => {
@@ -232,6 +251,83 @@ export function CEODecisionMap() {
     } catch (err: any) {
       console.error('Error creating decision:', err);
       toast.error(err?.message || 'Erro ao criar decisão');
+    }
+  };
+
+  const handleOpenEditDialog = (decision: Decision) => {
+    setEditingDecision(decision);
+    setEditFormData({
+      title: decision.title,
+      description: decision.description || "",
+      area: decision.area,
+      type: decision.type,
+      hypothesis: decision.hypothesis || "",
+      linked_kpis: decision.linked_kpis || [],
+      evaluation_period: decision.evaluation_period || 30,
+      estimated_impact: decision.estimated_impact || 0,
+      actual_impact: decision.actual_impact || 0,
+      status: decision.status,
+      final_result: decision.final_result,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateDecision = async () => {
+    if (!editingDecision) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente.");
+        navigate("/onboarding-tasks/login");
+        return;
+      }
+
+      const { error } = await supabase
+        .from('ceo_decisions')
+        .update({
+          title: editFormData.title,
+          description: editFormData.description || null,
+          area: editFormData.area,
+          type: editFormData.type,
+          hypothesis: editFormData.hypothesis || null,
+          linked_kpis: editFormData.linked_kpis,
+          evaluation_period: editFormData.evaluation_period,
+          estimated_impact: editFormData.estimated_impact,
+          actual_impact: editFormData.actual_impact || null,
+          status: editFormData.status,
+          final_result: editFormData.final_result || null,
+        })
+        .eq('id', editingDecision.id);
+
+      if (error) throw error;
+
+      toast.success('Decisão atualizada!');
+      setIsEditDialogOpen(false);
+      setEditingDecision(null);
+      fetchData();
+    } catch (err: any) {
+      console.error('Error updating decision:', err);
+      toast.error(err?.message || 'Erro ao atualizar decisão');
+    }
+  };
+
+  const handleDeleteDecision = async (decisionId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta decisão?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('ceo_decisions')
+        .delete()
+        .eq('id', decisionId);
+
+      if (error) throw error;
+
+      toast.success('Decisão excluída!');
+      fetchData();
+    } catch (err: any) {
+      console.error('Error deleting decision:', err);
+      toast.error(err?.message || 'Erro ao excluir decisão');
     }
   };
 
@@ -579,6 +675,159 @@ Foque em:
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Edit Decision Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Editar Decisão</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>Título</Label>
+                  <Input
+                    value={editFormData.title}
+                    onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Área</Label>
+                    <Select value={editFormData.area} onValueChange={(v) => setEditFormData({ ...editFormData, area: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AREA_OPTIONS.map(area => (
+                          <SelectItem key={area.value} value={area.value}>{area.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label>Tipo</Label>
+                    <Select value={editFormData.type} onValueChange={(v) => setEditFormData({ ...editFormData, type: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TYPE_OPTIONS.map(type => (
+                          <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label>Descrição</Label>
+                  <Textarea
+                    value={editFormData.description}
+                    onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                    rows={2}
+                  />
+                </div>
+                
+                <div>
+                  <Label>Hipótese</Label>
+                  <Input
+                    value={editFormData.hypothesis}
+                    onChange={(e) => setEditFormData({ ...editFormData, hypothesis: e.target.value })}
+                  />
+                </div>
+                
+                <div>
+                  <Label>KPIs Vinculados</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {KPI_OPTIONS.map(kpi => (
+                      <Badge
+                        key={kpi.value}
+                        variant={editFormData.linked_kpis.includes(kpi.value) ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => {
+                          const newKpis = editFormData.linked_kpis.includes(kpi.value)
+                            ? editFormData.linked_kpis.filter(k => k !== kpi.value)
+                            : [...editFormData.linked_kpis, kpi.value];
+                          setEditFormData({ ...editFormData, linked_kpis: newKpis });
+                        }}
+                      >
+                        {kpi.label}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Status</Label>
+                    <Select value={editFormData.status} onValueChange={(v) => setEditFormData({ ...editFormData, status: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="em_execucao">Em Execução</SelectItem>
+                        <SelectItem value="concluida">Concluída</SelectItem>
+                        <SelectItem value="cancelada">Cancelada</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label>Resultado Final</Label>
+                    <Select 
+                      value={editFormData.final_result || "none"} 
+                      onValueChange={(v) => setEditFormData({ ...editFormData, final_result: v === "none" ? null : v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem resultado</SelectItem>
+                        <SelectItem value="positive">Positivo</SelectItem>
+                        <SelectItem value="neutral">Neutro</SelectItem>
+                        <SelectItem value="negative">Negativo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Impacto Estimado (R$)</Label>
+                    <Input
+                      type="number"
+                      value={editFormData.estimated_impact}
+                      onChange={(e) => setEditFormData({ ...editFormData, estimated_impact: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Impacto Real (R$)</Label>
+                    <Input
+                      type="number"
+                      value={editFormData.actual_impact}
+                      onChange={(e) => setEditFormData({ ...editFormData, actual_impact: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button onClick={handleUpdateDecision} className="flex-1">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Salvar Alterações
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={() => editingDecision && handleDeleteDecision(editingDecision.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -765,34 +1014,48 @@ Foque em:
                           {getResultBadge(decision.final_result)}
                         </TableCell>
                         <TableCell>
-                          {!decision.final_result && (
-                            <div className="flex gap-1">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7"
-                                onClick={() => updateDecisionResult(decision.id, 'positive')}
-                              >
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7"
-                                onClick={() => updateDecisionResult(decision.id, 'neutral')}
-                              >
-                                <Minus className="h-4 w-4 text-yellow-500" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7"
-                                onClick={() => updateDecisionResult(decision.id, 'negative')}
-                              >
-                                <XCircle className="h-4 w-4 text-red-500" />
-                              </Button>
-                            </div>
-                          )}
+                          <div className="flex gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={() => handleOpenEditDialog(decision)}
+                              title="Editar decisão"
+                            >
+                              <Edit className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                            {!decision.final_result && (
+                              <>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => updateDecisionResult(decision.id, 'positive')}
+                                  title="Marcar como positivo"
+                                >
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => updateDecisionResult(decision.id, 'neutral')}
+                                  title="Marcar como neutro"
+                                >
+                                  <Minus className="h-4 w-4 text-yellow-500" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => updateDecisionResult(decision.id, 'negative')}
+                                  title="Marcar como negativo"
+                                >
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
