@@ -199,16 +199,21 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
 
   const fetchAll = async () => {
     setLoading(true);
+
+    // We need staff context first to correctly apply visibility rules
+    const staffInfo = await fetchCurrentStaff();
+
     await Promise.all([
-      fetchCurrentStaff(),
-      fetchMeetings(),
+      fetchMeetings(staffInfo),
       fetchCSATSurveys(),
       fetchMeetingSentiments(),
       fetchMeetingBriefings(),
     ]);
+
     // Fetch consultant info and then sync calendar with the returned values
     const consultantInfo = await fetchProjectConsultant();
     await syncCalendarEvents(consultantInfo?.consultantUserId, consultantInfo?.companyName);
+
     // Get product ID for phase creation
     await fetchProductId();
     setLoading(false);
@@ -259,94 +264,39 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
         .single();
       
       if (project?.product_id) {
-        // Check if product_id is a UUID or a product name
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(project.product_id);
-        
-        if (isUUID) {
-          setProductId(project.product_id);
-        } else {
-          // product_id is a name, look up the service by name
-          const { data: service } = await supabase
-            .from("onboarding_services")
-            .select("id")
-            .ilike("name", `%${project.product_id}%`)
-            .single();
-          
-          if (service?.id) {
-            setProductId(service.id);
-          }
-        }
+        setProductId(project.product_id);
       }
     } catch (error) {
       console.error("Error fetching product ID:", error);
     }
   };
 
-  const fetchCSATSurveys = async () => {
-    try {
-      const { data } = await supabase
-        .from("csat_surveys")
-        .select(`
-          id,
-          meeting_id,
-          access_token,
-          status,
-          csat_responses (score)
-        `)
-        .eq("project_id", projectId);
-      
-      setCsatSurveys((data as unknown as CSATSurvey[]) || []);
-    } catch (error) {
-      console.error("Error fetching CSAT surveys:", error);
-    }
-  };
-
-  const getCSATSurveyForMeeting = (meetingId: string) => {
-    return csatSurveys.find(s => s.meeting_id === meetingId);
-  };
-
-  const copyCSATLink = (survey: CSATSurvey) => {
-    const link = `${getPublicBaseUrl()}/#/csat?token=${survey.access_token}`;
-    navigator.clipboard.writeText(link);
-    toast.success("Link CSAT copiado para a área de transferência");
-  };
-
   const fetchProjectConsultant = async (): Promise<{ consultantUserId: string | null; companyName: string | null }> => {
     try {
-      // Get the project's consultant and company info
+      // Get project + company
       const { data: project } = await supabase
         .from("onboarding_projects")
-        .select("consultant_id, onboarding_company_id")
+        .select("onboarding_company_id, product_name")
         .eq("id", projectId)
         .single();
 
-      if (!project) return { consultantUserId: null, companyName: null };
+      const companyId = project?.onboarding_company_id ?? null;
+      const fallbackName = project?.product_name ?? null;
 
-      let consultantStaffId = project.consultant_id;
-      let fetchedCompanyName: string | null = null;
+      if (!companyId) return { consultantUserId: null, companyName: fallbackName };
 
-      // Get company name for filtering calendar events
-      if (project.onboarding_company_id) {
-        const { data: company } = await supabase
-          .from("onboarding_companies")
-          .select("name, consultant_id")
-          .eq("id", project.onboarding_company_id)
-          .single();
-        
-        if (company?.name) {
-          fetchedCompanyName = company.name;
-          setCompanyName(company.name);
-        }
-        
-        // If no project-level consultant, use company-level
-        if (!consultantStaffId && company?.consultant_id) {
-          consultantStaffId = company.consultant_id;
-        }
-      }
+      const { data: company } = await supabase
+        .from("onboarding_companies")
+        .select("name, consultant_id")
+        .eq("id", companyId)
+        .single();
 
+      const fetchedCompanyName = company?.name ?? fallbackName;
+      setCompanyName(fetchedCompanyName);
+
+      const consultantStaffId = company?.consultant_id ?? null;
       if (!consultantStaffId) return { consultantUserId: null, companyName: fetchedCompanyName };
 
-      // Get the user_id for this consultant
       const { data: consultant } = await supabase
         .from("onboarding_staff")
         .select("user_id")
@@ -357,7 +307,7 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
         setProjectConsultantUserId(consultant.user_id);
         return { consultantUserId: consultant.user_id, companyName: fetchedCompanyName };
       }
-      
+
       return { consultantUserId: null, companyName: fetchedCompanyName };
     } catch (error) {
       console.error("Error fetching project consultant:", error);
@@ -365,9 +315,9 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
     }
   };
 
-  const fetchCurrentStaff = async () => {
+  const fetchCurrentStaff = async (): Promise<{ staffId: string | null; role: string | null }> => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) return { staffId: null, role: null };
 
     const { data } = await supabase
       .from("onboarding_staff")
@@ -379,14 +329,22 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
       setCurrentStaffId(data.id);
       setIsAdmin(data.role === "admin");
       setIsCS(data.role === "cs");
+      return { staffId: data.id, role: data.role };
     }
+
+    return { staffId: null, role: null };
   };
 
-  const fetchMeetings = async () => {
+  const fetchMeetings = async (staffOverride?: { staffId: string | null; role: string | null }) => {
     try {
+      const effectiveStaffId = staffOverride?.staffId ?? currentStaffId;
+      const effectiveRole = staffOverride?.role ?? (isAdmin ? "admin" : isCS ? "cs" : null);
+      const canSeeAll = effectiveRole === "admin" || effectiveRole === "cs";
+
       const { data, error } = await supabase
         .from("onboarding_meeting_notes")
-        .select(`
+        .select(
+          `
           *,
           staff:onboarding_staff!staff_id (
             id,
@@ -396,23 +354,62 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
             id,
             name
           )
-        `)
+        `
+        )
         .eq("project_id", projectId)
         .order("meeting_date", { ascending: false });
 
       if (error) throw error;
 
-      const nextMeetings = data || [];
-      setMeetings(nextMeetings);
+      const allMeetings = (data || []) as MeetingNote[];
 
-      // If a detail dialog is open, keep it in sync with fresh DB data
+      // Requested visibility rule:
+      // - Admin/CS can see everything.
+      // - Other staff should only see meetings that belong to their calendar (calendar_owner_id).
+      // - Keep legacy rows (calendar_owner_id null) visible.
+      const visibleMeetings = canSeeAll
+        ? allMeetings
+        : allMeetings.filter((m) => !m.calendar_owner_id || m.calendar_owner_id === effectiveStaffId);
+
+      setMeetings(visibleMeetings);
+
       if (selectedMeeting) {
-        const updated = nextMeetings.find((m) => m.id === selectedMeeting.id);
+        const updated = visibleMeetings.find((m) => m.id === selectedMeeting.id);
         if (updated) setSelectedMeeting(updated);
       }
     } catch (error) {
       console.error("Error fetching meetings:", error);
     }
+  };
+
+  const fetchCSATSurveys = async () => {
+    try {
+      const client = supabase as any;
+      const { data, error } = await client
+        .from("csat_surveys")
+        .select("id, meeting_id, access_token, status, csat_responses(score)")
+        .eq("project_id", projectId);
+
+      if (error) throw error;
+      setCsatSurveys(data || []);
+    } catch (error) {
+      console.error("Error fetching CSAT surveys:", error);
+    }
+  };
+
+  const getCSATSurveyForMeeting = (meetingId: string) => {
+    return csatSurveys.find((s) => s.meeting_id === meetingId);
+  };
+
+  const copyCSATLink = async (survey: CSATSurvey) => {
+    if (!survey?.access_token) {
+      toast.error("CSAT ainda não disponível para esta reunião");
+      return;
+    }
+
+    const link = `${getPublicBaseUrl()}/#/csat?token=${survey.access_token}`;
+    await navigator.clipboard.writeText(link);
+    toast.success("Link CSAT copiado!");
   };
 
   const syncCalendarEvents = async (consultantUserId?: string | null, clientCompanyName?: string | null) => {
