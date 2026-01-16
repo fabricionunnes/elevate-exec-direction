@@ -23,8 +23,12 @@ import {
   Linkedin,
   Users,
   Calendar,
-  X
+  X,
+  Copy,
+  ExternalLink,
+  Link
 } from "lucide-react";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { toast } from "sonner";
 import { Candidate, PIPELINE_STAGES, SOURCE_LABELS, STATUS_LABELS } from "../types";
 import { usePipelineStages } from "../hooks/usePipelineStages";
@@ -161,6 +165,48 @@ export function CandidatesTab({ projectId, canEdit, isStaff, onUpdate }: Candida
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Public Application Links for Staff */}
+      {isStaff && jobs.length > 0 && (
+        <Card className="bg-muted/50 border-dashed">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Link className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Links públicos para candidatura</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {jobs.map((job) => (
+                <div key={job.id} className="flex items-center gap-1 bg-background rounded-md border px-2 py-1">
+                  <span className="text-sm truncate max-w-[150px]">{job.title}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={async () => {
+                      const url = `${getPublicBaseUrl()}/#/job-application?job=${job.id}`;
+                      await navigator.clipboard.writeText(url);
+                      toast.success("Link copiado!");
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => {
+                      const url = `${getPublicBaseUrl()}/#/job-application?job=${job.id}`;
+                      window.open(url, "_blank");
+                    }}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Filters */}
