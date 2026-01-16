@@ -39,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ReferralsPanel } from "@/components/onboarding-tasks/ReferralsPanel";
 
 interface Service {
   id: string;
@@ -1591,8 +1592,13 @@ const OnboardingTasksPage = () => {
           staffRole={currentUserRole}
         />
 
-        {/* Companies List - Hidden when on NPS tab */}
-        {activeDashboardTab === "nps" ? null : filteredCompanies.length === 0 ? (
+        {/* Referrals Panel - Shown when on referrals tab */}
+        {activeDashboardTab === "referrals" && (
+          <ReferralsPanel />
+        )}
+
+        {/* Companies List - Hidden when on NPS or Referrals tab */}
+        {activeDashboardTab === "nps" || activeDashboardTab === "referrals" ? null : filteredCompanies.length === 0 ? (
           <Card className="p-12 text-center">
             <Building2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">Nenhuma empresa encontrada</h3>
