@@ -139,8 +139,8 @@ export default function CEODashboardPage() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
-                CEO Dashboard
+            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+                Painel do CEO
               </h1>
               <p className="text-slate-500">
                 Painel de Comando Estratégico
