@@ -95,17 +95,21 @@ export const CEOScoreCard = () => {
       const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
       const last30Days = subDays(new Date(), 30);
 
-      const [tasksResult, decisionsResult, agendaResult, previousScoresResult] = await Promise.all([
+      const [tasksResult, decisionsResult, agendaResult, previousScoresResult, boardSessionsResult, simulationsResult] = await Promise.all([
         supabase.from('ceo_tasks').select('*').gte('created_at', last30Days.toISOString()),
         supabase.from('ceo_decisions').select('*').gte('created_at', last30Days.toISOString()),
         supabase.from('ceo_agenda').select('*').gte('start_time', weekStart.toISOString()).lte('start_time', weekEnd.toISOString()),
-        supabase.from('ceo_scores').select('total_score').order('calculated_at', { ascending: false }).limit(4)
+        supabase.from('ceo_scores').select('total_score').order('calculated_at', { ascending: false }).limit(4),
+        supabase.from('ceo_board_sessions').select('*').gte('created_at', last30Days.toISOString()),
+        supabase.from('ceo_simulations').select('*').gte('created_at', last30Days.toISOString())
       ]);
 
       const tasks = tasksResult.data || [];
       const decisions = decisionsResult.data || [];
       const agenda = agendaResult.data || [];
       const previousScores = previousScoresResult.data || [];
+      const boardSessions = (boardSessionsResult.data || []) as any[];
+      const simulations = (simulationsResult.data || []) as any[];
 
       // ================== A) FOCO (25%) ==================
       const strategicTasks = tasks.filter(t => t.is_strategic);
@@ -162,16 +166,26 @@ export const CEOScoreCard = () => {
       const decisionsWithKPIs = decisions.filter(d => d.linked_kpis && (d.linked_kpis as string[]).length > 0);
       const reviewedDecisions = decisions.filter(d => d.final_result);
       
+      // Include Board Virtual and Simulator usage for strategic clarity
+      const completedBoardSessions = boardSessions.filter((s: any) => s.status === 'completed');
+      const decisionsWithBoardAnalysis = boardSessions.filter((s: any) => s.ceo_decision);
+      const executedSimulations = simulations.filter((s: any) => s.status === 'executed');
+      const simulatedDecisions = simulations.filter((s: any) => s.status === 'simulated' || s.status === 'executed');
+      
       const clarityMetrics = {
         hypothesisPercent: decisions.length > 0 ? (decisionsWithHypothesis.length / decisions.length) * 100 : 50,
         kpisPercent: decisions.length > 0 ? (decisionsWithKPIs.length / decisions.length) * 100 : 50,
-        reviewedPercent: decisions.length > 0 ? (reviewedDecisions.length / decisions.length) * 100 : 50
+        reviewedPercent: decisions.length > 0 ? (reviewedDecisions.length / decisions.length) * 100 : 50,
+        boardUsagePercent: Math.min(completedBoardSessions.length * 20, 100),
+        simulatorUsagePercent: Math.min(simulatedDecisions.length * 20, 100)
       };
       
       const clarityScore = Math.round(
-        (clarityMetrics.hypothesisPercent * 0.35) +
-        (clarityMetrics.kpisPercent * 0.35) +
-        (clarityMetrics.reviewedPercent * 0.3)
+        (clarityMetrics.hypothesisPercent * 0.25) +
+        (clarityMetrics.kpisPercent * 0.25) +
+        (clarityMetrics.reviewedPercent * 0.2) +
+        (clarityMetrics.boardUsagePercent * 0.15) +
+        (clarityMetrics.simulatorUsagePercent * 0.15)
       );
 
       // ================== D) CONSISTÊNCIA (25%) ==================
@@ -228,6 +242,18 @@ export const CEOScoreCard = () => {
       }
       if (totalScore < 50 && previousScores.length > 0 && previousScores[0].total_score > totalScore) {
         insights.push("Score em queda. Revise suas prioridades e realinhe o foco.");
+      }
+      // Board Virtual insights
+      if (completedBoardSessions.length === 0) {
+        insights.push("Utilize o Board Virtual para decisões estratégicas importantes.");
+      } else if (completedBoardSessions.length >= 3) {
+        insights.push("Excelente uso do Board Virtual. Decisões mais bem fundamentadas.");
+      }
+      // Simulator insights
+      if (simulatedDecisions.length === 0) {
+        insights.push("Simule decisões antes de executá-las para reduzir riscos.");
+      } else if (executedSimulations.length >= 2) {
+        insights.push("Bom uso do Simulador. Suas decisões têm base analítica.");
       }
 
       const classification = getClassification(totalScore).label;
