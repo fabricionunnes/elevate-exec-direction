@@ -19,6 +19,11 @@ export interface JobOpening {
   updated_at: string;
   closed_at: string | null;
   candidates_count?: number;
+  target_date: string | null;
+  sla_days: number | null;
+  responsible_rh_id: string | null;
+  consultant_id: string | null;
+  internal_notes: string | null;
 }
 
 export interface Candidate {
