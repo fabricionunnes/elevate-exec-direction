@@ -44,17 +44,62 @@ const ADVISORS = [
   }
 ];
 
+// Helper to calculate MRR from companies
+const calculateMRRFromCompanies = (companies: any[]): number => {
+  let mrr = 0;
+  
+  companies?.forEach((c) => {
+    const value = Number(c.contract_value) || 0;
+    const paymentMethod = c.payment_method?.toLowerCase() || "";
+    
+    // Monthly payments = value is already monthly
+    if (paymentMethod === "monthly" || paymentMethod === "mensal" || paymentMethod === "recorrente") {
+      mrr += value;
+    }
+    // Quarterly = value / 3
+    else if (paymentMethod === "quarterly" || paymentMethod === "trimestral") {
+      mrr += value / 3;
+    }
+    // Semiannual = value / 6
+    else if (paymentMethod === "semiannual" || paymentMethod === "semestral") {
+      mrr += value / 6;
+    }
+    // Annual or card (typically annual payments) = value / 12
+    else if (paymentMethod === "annual" || paymentMethod === "anual" || paymentMethod === "card" || paymentMethod === "cartao" || paymentMethod === "cartão") {
+      mrr += value / 12;
+    }
+    // Boleto or pix could be annual too
+    else if (paymentMethod === "boleto" || paymentMethod === "pix") {
+      mrr += value / 12;
+    }
+    // Skip one-time payments (à vista, único)
+    else if (paymentMethod.includes("vista") || paymentMethod.includes("unico") || paymentMethod.includes("único")) {
+      // Don't add to MRR - one-time payment
+    }
+    // Unknown payment method with value > 1000 assume annual
+    else if (value > 1000) {
+      mrr += value / 12;
+    }
+    // Small values without payment method, assume monthly
+    else if (value > 0) {
+      mrr += value;
+    }
+  });
+  
+  return mrr;
+};
+
 async function fetchBusinessContext(supabase: any) {
-  // Fetch financial/business data
+  // Fetch companies and financial/business data
   const [
-    { data: projects },
+    { data: companies },
     { data: healthScores },
     { data: csatResponses },
     { data: decisions },
     { data: planning },
     { data: goals }
   ] = await Promise.all([
-    supabase.from('onboarding_projects').select('id, status, monthly_value').limit(100),
+    supabase.from('onboarding_companies').select('id, contract_value, payment_method, status').eq('status', 'active'),
     supabase.from('client_health_scores').select('total_score, risk_level').limit(100),
     supabase.from('csat_responses').select('score').limit(100),
     supabase.from('ceo_decisions').select('*').order('created_at', { ascending: false }).limit(20),
@@ -62,17 +107,22 @@ async function fetchBusinessContext(supabase: any) {
     supabase.from('ceo_strategic_goals').select('*').limit(20)
   ]);
 
-  // Calculate metrics
-  const activeClients = projects?.filter((p: any) => p.status === 'Ativo')?.length || 0;
-  const totalMRR = projects?.filter((p: any) => p.status === 'Ativo')?.reduce((sum: number, p: any) => sum + (p.monthly_value || 0), 0) || 0;
+  // Calculate MRR from active companies
+  const activeClients = companies?.length || 0;
+  const totalMRR = calculateMRRFromCompanies(companies || []);
+  const formattedMRR = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalMRR);
+  
   const avgHealth = healthScores?.length ? healthScores.reduce((sum: number, h: any) => sum + (h.total_score || 0), 0) / healthScores.length : 0;
-  const atRiskClients = healthScores?.filter((h: any) => h.risk_level === 'alto' || h.risk_level === 'crítico')?.length || 0;
+  const atRiskClients = healthScores?.filter((h: any) => 
+    h.risk_level === 'alto' || h.risk_level === 'crítico' || h.risk_level === 'high' || h.risk_level === 'critical'
+  )?.length || 0;
   const avgCSAT = csatResponses?.length ? csatResponses.reduce((sum: number, c: any) => sum + (c.score || 0), 0) / csatResponses.length : 0;
 
   return {
     metrics: {
       activeClients,
       totalMRR,
+      formattedMRR,
       avgHealth: Math.round(avgHealth),
       atRiskClients,
       avgCSAT: avgCSAT.toFixed(1)
@@ -99,7 +149,7 @@ Você faz parte de um Board Virtual que aconselha o CEO antes de decisões impor
 
 CONTEXTO DO NEGÓCIO:
 - Clientes ativos: ${context.metrics.activeClients}
-- MRR estimado: R$ ${context.metrics.totalMRR?.toLocaleString('pt-BR')}
+- MRR Atual: ${context.metrics.formattedMRR}
 - Health Score médio: ${context.metrics.avgHealth}/100
 - Clientes em risco: ${context.metrics.atRiskClients}
 - CSAT médio: ${context.metrics.avgCSAT}

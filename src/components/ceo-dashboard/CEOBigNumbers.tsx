@@ -24,6 +24,51 @@ interface BigNumber {
   bgClass: string;
 }
 
+// Helper to calculate MRR from companies
+const calculateMRRFromCompanies = (companies: any[]): number => {
+  let mrr = 0;
+  
+  companies?.forEach((c) => {
+    const value = Number(c.contract_value) || 0;
+    const paymentMethod = c.payment_method?.toLowerCase() || "";
+    
+    // Monthly payments = value is already monthly
+    if (paymentMethod === "monthly" || paymentMethod === "mensal" || paymentMethod === "recorrente") {
+      mrr += value;
+    }
+    // Quarterly = value / 3
+    else if (paymentMethod === "quarterly" || paymentMethod === "trimestral") {
+      mrr += value / 3;
+    }
+    // Semiannual = value / 6
+    else if (paymentMethod === "semiannual" || paymentMethod === "semestral") {
+      mrr += value / 6;
+    }
+    // Annual or card (typically annual payments) = value / 12
+    else if (paymentMethod === "annual" || paymentMethod === "anual" || paymentMethod === "card" || paymentMethod === "cartao" || paymentMethod === "cartão") {
+      mrr += value / 12;
+    }
+    // Boleto or pix could be annual too
+    else if (paymentMethod === "boleto" || paymentMethod === "pix") {
+      mrr += value / 12;
+    }
+    // Skip one-time payments (à vista, único)
+    else if (paymentMethod.includes("vista") || paymentMethod.includes("unico") || paymentMethod.includes("único")) {
+      // Don't add to MRR - one-time payment
+    }
+    // Unknown payment method with value > 1000 assume annual
+    else if (value > 1000) {
+      mrr += value / 12;
+    }
+    // Small values without payment method, assume monthly
+    else if (value > 0) {
+      mrr += value;
+    }
+  });
+  
+  return mrr;
+};
+
 export function CEOBigNumbers() {
   const [metrics, setMetrics] = useState<BigNumber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,16 +76,16 @@ export function CEOBigNumbers() {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        // Fetch active clients count
-        const { data: activeProjects, error: projectsError } = await supabase
-          .from("onboarding_projects")
-          .select("id, status")
-          .in("status", ["onboarding", "active"]);
+        // Fetch active companies with contract values (main MRR source)
+        const { data: companies, error: companiesError } = await supabase
+          .from("onboarding_companies")
+          .select("id, contract_value, payment_method, status")
+          .eq("status", "active");
 
-        if (projectsError) throw projectsError;
+        if (companiesError) throw companiesError;
 
-        const clientCount = activeProjects?.length || 0;
-        const totalMRR = clientCount * 5000; // Estimated MRR
+        const clientCount = companies?.length || 0;
+        const totalMRR = calculateMRRFromCompanies(companies || []);
 
         // Fetch health scores for churn calculation
         const { data: healthScores } = await supabase
@@ -129,24 +174,6 @@ export function CEOBigNumbers() {
             colorClass: "text-cyan-700",
             bgClass: "bg-cyan-50 border-cyan-200"
           },
-          {
-            label: "Pipeline",
-            value: formatCurrency(totalMRR * 2.5),
-            trend: "up",
-            trendValue: "+15%",
-            icon: <Wallet className="h-5 w-5" />,
-            colorClass: "text-indigo-700",
-            bgClass: "bg-indigo-50 border-indigo-200"
-          },
-          {
-            label: "Crescimento",
-            value: "+8.2%",
-            trend: "up",
-            trendValue: "vs mês anterior",
-            icon: <TrendingUp className="h-5 w-5" />,
-            colorClass: "text-teal-700",
-            bgClass: "bg-teal-50 border-teal-200"
-          },
         ]);
       } catch (error) {
         console.error("Error fetching CEO metrics:", error);
@@ -161,64 +188,71 @@ export function CEOBigNumbers() {
   const getTrendIcon = (trend: "up" | "down" | "stable") => {
     switch (trend) {
       case "up":
-        return <TrendingUp className="h-3.5 w-3.5" />;
+        return <TrendingUp className="h-3 w-3" />;
       case "down":
-        return <TrendingDown className="h-3.5 w-3.5" />;
+        return <TrendingDown className="h-3 w-3" />;
       default:
-        return <Minus className="h-3.5 w-3.5" />;
+        return <Minus className="h-3 w-3" />;
     }
   };
 
-  const getTrendColorClass = (trend: "up" | "down" | "stable") => {
+  const getTrendColorClass = (trend: "up" | "down" | "stable", label: string) => {
+    // For churn rate, invert the colors (down is good)
+    if (label === "Churn Rate") {
+      switch (trend) {
+        case "up":
+          return "text-rose-600 bg-rose-50";
+        case "down":
+          return "text-emerald-600 bg-emerald-50";
+        default:
+          return "text-slate-500 bg-slate-50";
+      }
+    }
+    
     switch (trend) {
       case "up":
-        return "text-emerald-600 bg-emerald-100";
+        return "text-emerald-600 bg-emerald-50";
       case "down":
-        return "text-rose-600 bg-rose-100";
+        return "text-rose-600 bg-rose-50";
       default:
-        return "text-slate-600 bg-slate-100";
+        return "text-slate-500 bg-slate-50";
     }
   };
 
   if (isLoading) {
     return (
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-8">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-28 bg-muted/50 rounded-xl animate-pulse" />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="h-28 bg-slate-100 rounded-xl animate-pulse" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-8">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
       {metrics.map((metric, index) => (
-        <div 
-          key={index} 
-          className={`relative rounded-xl border p-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${metric.bgClass}`}
+        <div
+          key={index}
+          className={`p-4 rounded-xl border-2 ${metric.bgClass} transition-all duration-200 hover:shadow-lg hover:scale-[1.02]`}
         >
-          {/* Icon */}
-          <div className={`inline-flex p-2 rounded-lg ${metric.colorClass} bg-white/80 shadow-sm mb-3`}>
-            {metric.icon}
-          </div>
-          
-          {/* Value */}
-          <p className={`text-xl font-bold tracking-tight ${metric.colorClass}`}>
-            {metric.value}
-          </p>
-          
-          {/* Label */}
-          <p className="text-xs font-medium text-slate-600 mt-0.5">
-            {metric.label}
-          </p>
-          
-          {/* Trend Badge */}
-          {metric.trendValue && (
-            <div className={`inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${getTrendColorClass(metric.trend)}`}>
-              {getTrendIcon(metric.trend)}
-              <span>{metric.trendValue}</span>
+          <div className="flex items-start justify-between mb-2">
+            <div className={`p-2 rounded-lg bg-white shadow-sm ${metric.colorClass}`}>
+              {metric.icon}
             </div>
-          )}
+            {metric.trendValue && (
+              <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${getTrendColorClass(metric.trend, metric.label)}`}>
+                {getTrendIcon(metric.trend)}
+                {metric.trendValue}
+              </span>
+            )}
+          </div>
+          <div className={`text-xl font-bold ${metric.colorClass} mb-1`}>
+            {metric.value}
+          </div>
+          <div className="text-xs text-slate-600 font-medium">
+            {metric.label}
+          </div>
         </div>
       ))}
     </div>
