@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
@@ -264,13 +265,15 @@ export function ClientsContractsPanel() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Valor *</Label>
-          <Input
-            type="number"
-            step="0.01"
-            value={contractForm.contract_value}
-            onChange={(e) => setContractForm({ ...contractForm, contract_value: e.target.value })}
-            placeholder="0,00"
-          />
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">R$</span>
+            <CurrencyInput
+              value={contractForm.contract_value ? parseFloat(contractForm.contract_value) : undefined}
+              onChange={(value) => setContractForm({ ...contractForm, contract_value: value.toString() })}
+              placeholder="0,00"
+              className="flex-1"
+            />
+          </div>
         </div>
         <div className="space-y-2">
           <Label>Ciclo de Cobrança</Label>

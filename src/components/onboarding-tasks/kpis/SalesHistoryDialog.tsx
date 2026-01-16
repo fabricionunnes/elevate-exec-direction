@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -295,23 +296,27 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange,
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               <div>
                 <Label className="text-[10px] sm:text-xs text-muted-foreground">Faturamento (R$) *</Label>
-                <Input
-                  type="number"
-                  value={revenue}
-                  onChange={(e) => setRevenue(e.target.value)}
-                  placeholder="0,00"
-                  className="mt-1 h-8 sm:h-10 text-xs sm:text-sm"
-                />
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="text-muted-foreground text-xs">R$</span>
+                  <CurrencyInput
+                    value={revenue ? parseFloat(revenue) : undefined}
+                    onChange={(value) => setRevenue(value.toString())}
+                    placeholder="0,00"
+                    className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
+                  />
+                </div>
               </div>
               <div>
                 <Label className="text-[10px] sm:text-xs text-muted-foreground">Meta (R$)</Label>
-                <Input
-                  type="number"
-                  value={targetRevenue}
-                  onChange={(e) => setTargetRevenue(e.target.value)}
-                  placeholder="Opcional"
-                  className="mt-1 h-8 sm:h-10 text-xs sm:text-sm"
-                />
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="text-muted-foreground text-xs">R$</span>
+                  <CurrencyInput
+                    value={targetRevenue ? parseFloat(targetRevenue) : undefined}
+                    onChange={(value) => setTargetRevenue(value.toString())}
+                    placeholder="Opcional"
+                    className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
+                  />
+                </div>
               </div>
               <div>
                 <Label className="text-[10px] sm:text-xs text-muted-foreground">Qtd. Vendas</Label>

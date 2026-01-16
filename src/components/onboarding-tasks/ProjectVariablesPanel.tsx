@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -269,13 +270,16 @@ export const ProjectVariablesPanel = ({ projectId, productId, isAdmin }: Project
         );
       case 'currency':
         return (
-          <Input
-            type="number"
-            value={value || ''}
-            onChange={(e) => updateProductVariable(field.key, e.target.value ? Number(e.target.value) : null)}
-            placeholder="R$"
-            disabled={!isAdmin}
-          />
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">R$</span>
+            <CurrencyInput
+              value={value || undefined}
+              onChange={(newValue) => updateProductVariable(field.key, newValue || null)}
+              placeholder="0,00"
+              disabled={!isAdmin}
+              className="flex-1"
+            />
+          </div>
         );
       case 'boolean':
         return (
