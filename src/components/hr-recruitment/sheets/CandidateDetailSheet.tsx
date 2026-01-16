@@ -31,7 +31,19 @@ import {
   Brain,
   MessageSquare,
   Calendar,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ScheduleInterviewDialog } from "../dialogs/ScheduleInterviewDialog";
 import { InterviewDialog } from "../dialogs/InterviewDialog";
 import { format } from "date-fns";
@@ -71,6 +83,7 @@ export function CandidateDetailSheet({
   const [discResults, setDiscResults] = useState<DISCResult[]>([]);
   const [aiEvaluations, setAiEvaluations] = useState<AIEvaluation[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [interviewDialogOpen, setInterviewDialogOpen] = useState(false);
   const [interviewFeedbackOpen, setInterviewFeedbackOpen] = useState(false);
   const [editingInterview, setEditingInterview] = useState<Interview | null>(null);
@@ -273,6 +286,50 @@ export function CandidateDetailSheet({
                   <Calendar className="h-4 w-4 mr-2" />
                   Agendar Entrevista
                 </Button>
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={deleting}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir candidato?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação não pode ser desfeita. Todos os dados do candidato, 
+                        incluindo histórico, entrevistas e avaliações, serão removidos permanentemente.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={async () => {
+                          if (!candidate) return;
+                          setDeleting(true);
+                          const { error } = await supabase
+                            .from("candidates")
+                            .delete()
+                            .eq("id", candidate.id);
+                          
+                          if (error) {
+                            toast.error("Erro ao excluir candidato");
+                            console.error(error);
+                          } else {
+                            toast.success("Candidato excluído com sucesso");
+                            onOpenChange(false);
+                            onUpdate();
+                          }
+                          setDeleting(false);
+                        }}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             )}
 
