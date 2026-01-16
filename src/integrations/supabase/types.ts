@@ -5547,6 +5547,7 @@ export type Database = {
           conducted_at: string | null
           created_at: string
           detailed_feedback: string | null
+          group_session_id: string | null
           id: string
           interview_type: string
           interviewer_id: string | null
@@ -5568,6 +5569,7 @@ export type Database = {
           conducted_at?: string | null
           created_at?: string
           detailed_feedback?: string | null
+          group_session_id?: string | null
           id?: string
           interview_type: string
           interviewer_id?: string | null
@@ -5589,6 +5591,7 @@ export type Database = {
           conducted_at?: string | null
           created_at?: string
           detailed_feedback?: string | null
+          group_session_id?: string | null
           id?: string
           interview_type?: string
           interviewer_id?: string | null

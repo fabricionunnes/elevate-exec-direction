@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -19,12 +20,16 @@ import {
   Phone,
   FileText,
   Eye,
-  Linkedin
+  Linkedin,
+  Users,
+  Calendar,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 import { Candidate, PIPELINE_STAGES, SOURCE_LABELS, STATUS_LABELS } from "../types";
 import { CandidateDialog } from "../dialogs/CandidateDialog";
 import { CandidateDetailSheet } from "../sheets/CandidateDetailSheet";
+import { ScheduleGroupInterviewDialog } from "../dialogs/ScheduleGroupInterviewDialog";
 
 interface CandidatesTabProps {
   projectId: string;
@@ -43,6 +48,11 @@ export function CandidatesTab({ projectId, canEdit, isStaff, onUpdate }: Candida
   const [showDialog, setShowDialog] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
+  
+  // Multi-select for group interview
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set());
+  const [showGroupInterviewDialog, setShowGroupInterviewDialog] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -99,8 +109,56 @@ export function CandidatesTab({ projectId, canEdit, isStaff, onUpdate }: Candida
       .toUpperCase();
   };
 
+  const toggleCandidateSelection = (candidateId: string) => {
+    const newSet = new Set(selectedCandidateIds);
+    if (newSet.has(candidateId)) {
+      newSet.delete(candidateId);
+    } else {
+      newSet.add(candidateId);
+    }
+    setSelectedCandidateIds(newSet);
+  };
+
+  const clearSelection = () => {
+    setSelectedCandidateIds(new Set());
+    setSelectionMode(false);
+  };
+
+  const selectedCandidatesData = candidates.filter(c => selectedCandidateIds.has(c.id)).map(c => ({
+    id: c.id,
+    full_name: c.full_name,
+    email: c.email,
+  }));
+
   return (
     <div className="space-y-4">
+      {/* Selection Mode Bar */}
+      {selectionMode && (
+        <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">
+              {selectedCandidateIds.size} candidato{selectedCandidateIds.size !== 1 ? "s" : ""} selecionado{selectedCandidateIds.size !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => setShowGroupInterviewDialog(true)}
+              disabled={selectedCandidateIds.size < 2}
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Agendar Entrevista em Grupo
+            </Button>
+            <Button size="sm" variant="ghost" onClick={clearSelection}>
+              <X className="h-4 w-4 mr-1" />
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -138,6 +196,12 @@ export function CandidatesTab({ projectId, canEdit, isStaff, onUpdate }: Candida
             ))}
           </SelectContent>
         </Select>
+        {canEdit && !selectionMode && (
+          <Button variant="outline" onClick={() => setSelectionMode(true)}>
+            <Users className="h-4 w-4 mr-2" />
+            Entrevista em Grupo
+          </Button>
+        )}
         {(canEdit || !isStaff) && (
           <Button onClick={() => setShowDialog(true)}>
             <Plus className="h-4 w-4 mr-2" />
@@ -177,17 +241,31 @@ export function CandidatesTab({ projectId, canEdit, isStaff, onUpdate }: Candida
         <div className="space-y-3">
           {filteredCandidates.map((candidate) => {
             const stageInfo = getStageInfo(candidate.current_stage);
+            const isSelected = selectedCandidateIds.has(candidate.id);
             return (
               <Card 
                 key={candidate.id} 
-                className="hover:shadow-md transition-shadow cursor-pointer"
+                className={`hover:shadow-md transition-shadow cursor-pointer ${
+                  isSelected ? "ring-2 ring-primary bg-primary/5" : ""
+                }`}
                 onClick={() => {
-                  setSelectedCandidate(candidate);
-                  setShowDetailSheet(true);
+                  if (selectionMode) {
+                    toggleCandidateSelection(candidate.id);
+                  } else {
+                    setSelectedCandidate(candidate);
+                    setShowDetailSheet(true);
+                  }
                 }}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
+                    {selectionMode && (
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleCandidateSelection(candidate.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    )}
                     <Avatar className="h-12 w-12">
                       <AvatarFallback className="bg-primary/10 text-primary">
                         {getInitials(candidate.full_name)}
@@ -236,17 +314,19 @@ export function CandidatesTab({ projectId, canEdit, isStaff, onUpdate }: Candida
                       </Badge>
                     </div>
 
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedCandidate(candidate);
-                        setShowDetailSheet(true);
-                      }}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    {!selectionMode && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedCandidate(candidate);
+                          setShowDetailSheet(true);
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -278,6 +358,23 @@ export function CandidatesTab({ projectId, canEdit, isStaff, onUpdate }: Candida
         onUpdate={() => {
           fetchData();
           onUpdate();
+        }}
+      />
+
+      <ScheduleGroupInterviewDialog
+        open={showGroupInterviewDialog}
+        onOpenChange={(open) => {
+          setShowGroupInterviewDialog(open);
+          if (!open) {
+            clearSelection();
+          }
+        }}
+        candidates={selectedCandidatesData}
+        projectId={projectId}
+        onSuccess={() => {
+          fetchData();
+          onUpdate();
+          clearSelection();
         }}
       />
     </div>
