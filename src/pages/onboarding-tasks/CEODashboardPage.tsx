@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Brain, FileText, MapPin, Trophy, Users } from "lucide-react";
+import { Loader2, Brain, FileText, MapPin, Trophy, Users, Calculator } from "lucide-react";
 import { CEOBigNumbers } from "@/components/ceo-dashboard/CEOBigNumbers";
 import { CEOBusinessHealth } from "@/components/ceo-dashboard/CEOBusinessHealth";
 import { CEODecisions } from "@/components/ceo-dashboard/CEODecisions";
@@ -16,6 +16,7 @@ import { CEOWeeklyReport } from "@/components/ceo-dashboard/CEOWeeklyReport";
 import { CEODecisionMap } from "@/components/ceo-dashboard/CEODecisionMap";
 import { CEOScoreCard } from "@/components/ceo-dashboard/CEOScoreCard";
 import { CEOVirtualBoard } from "@/components/ceo-dashboard/CEOVirtualBoard";
+import { CEODecisionSimulator } from "@/components/ceo-dashboard/CEODecisionSimulator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const CEO_EMAIL = "fabricio@universidadevendas.com.br";
@@ -130,6 +131,10 @@ export default function CEODashboardPage() {
               <MapPin className="h-4 w-4" />
               Mapa de Decisões
             </TabsTrigger>
+            <TabsTrigger value="simulator" className="gap-2">
+              <Calculator className="h-4 w-4" />
+              Simulador
+            </TabsTrigger>
             <TabsTrigger value="health">Saúde</TabsTrigger>
             <TabsTrigger value="decisions">Decisões</TabsTrigger>
             <TabsTrigger value="agenda">Agenda</TabsTrigger>
@@ -156,6 +161,10 @@ export default function CEODashboardPage() {
 
           <TabsContent value="decision-map" className="space-y-6">
             <CEODecisionMap />
+          </TabsContent>
+
+          <TabsContent value="simulator" className="space-y-6">
+            <CEODecisionSimulator />
           </TabsContent>
 
           <TabsContent value="health" className="space-y-6">
