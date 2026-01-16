@@ -713,6 +713,173 @@ export type Database = {
         }
         Relationships: []
       }
+      ceo_simulation_learning: {
+        Row: {
+          adjustment_factors: Json | null
+          avg_prediction_error: number | null
+          created_at: string
+          decision_type: string
+          id: string
+          insights: string[] | null
+          total_executed: number | null
+          total_simulations: number | null
+          updated_at: string
+        }
+        Insert: {
+          adjustment_factors?: Json | null
+          avg_prediction_error?: number | null
+          created_at?: string
+          decision_type: string
+          id?: string
+          insights?: string[] | null
+          total_executed?: number | null
+          total_simulations?: number | null
+          updated_at?: string
+        }
+        Update: {
+          adjustment_factors?: Json | null
+          avg_prediction_error?: number | null
+          created_at?: string
+          decision_type?: string
+          id?: string
+          insights?: string[] | null
+          total_executed?: number | null
+          total_simulations?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ceo_simulations: {
+        Row: {
+          accuracy_notes: string | null
+          actual_cash_impact: number | null
+          actual_churn_impact: number | null
+          actual_ebitda_impact: number | null
+          actual_revenue_impact: number | null
+          aggressive_analysis: string | null
+          aggressive_cash_impact: number | null
+          aggressive_churn_impact: number | null
+          aggressive_ebitda_impact: number | null
+          aggressive_probability: number | null
+          aggressive_revenue_impact: number | null
+          base_data: Json | null
+          conservative_analysis: string | null
+          conservative_cash_impact: number | null
+          conservative_churn_impact: number | null
+          conservative_ebitda_impact: number | null
+          conservative_probability: number | null
+          conservative_revenue_impact: number | null
+          created_at: string
+          decision_type: string
+          description: string | null
+          executed_at: string | null
+          executed_decision_id: string | null
+          id: string
+          prediction_error: number | null
+          realistic_analysis: string | null
+          realistic_cash_impact: number | null
+          realistic_churn_impact: number | null
+          realistic_ebitda_impact: number | null
+          realistic_probability: number | null
+          realistic_revenue_impact: number | null
+          risk_alerts: string[] | null
+          simulated_at: string | null
+          status: string | null
+          timeline_projection: Json | null
+          title: string
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          accuracy_notes?: string | null
+          actual_cash_impact?: number | null
+          actual_churn_impact?: number | null
+          actual_ebitda_impact?: number | null
+          actual_revenue_impact?: number | null
+          aggressive_analysis?: string | null
+          aggressive_cash_impact?: number | null
+          aggressive_churn_impact?: number | null
+          aggressive_ebitda_impact?: number | null
+          aggressive_probability?: number | null
+          aggressive_revenue_impact?: number | null
+          base_data?: Json | null
+          conservative_analysis?: string | null
+          conservative_cash_impact?: number | null
+          conservative_churn_impact?: number | null
+          conservative_ebitda_impact?: number | null
+          conservative_probability?: number | null
+          conservative_revenue_impact?: number | null
+          created_at?: string
+          decision_type: string
+          description?: string | null
+          executed_at?: string | null
+          executed_decision_id?: string | null
+          id?: string
+          prediction_error?: number | null
+          realistic_analysis?: string | null
+          realistic_cash_impact?: number | null
+          realistic_churn_impact?: number | null
+          realistic_ebitda_impact?: number | null
+          realistic_probability?: number | null
+          realistic_revenue_impact?: number | null
+          risk_alerts?: string[] | null
+          simulated_at?: string | null
+          status?: string | null
+          timeline_projection?: Json | null
+          title: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          accuracy_notes?: string | null
+          actual_cash_impact?: number | null
+          actual_churn_impact?: number | null
+          actual_ebitda_impact?: number | null
+          actual_revenue_impact?: number | null
+          aggressive_analysis?: string | null
+          aggressive_cash_impact?: number | null
+          aggressive_churn_impact?: number | null
+          aggressive_ebitda_impact?: number | null
+          aggressive_probability?: number | null
+          aggressive_revenue_impact?: number | null
+          base_data?: Json | null
+          conservative_analysis?: string | null
+          conservative_cash_impact?: number | null
+          conservative_churn_impact?: number | null
+          conservative_ebitda_impact?: number | null
+          conservative_probability?: number | null
+          conservative_revenue_impact?: number | null
+          created_at?: string
+          decision_type?: string
+          description?: string | null
+          executed_at?: string | null
+          executed_decision_id?: string | null
+          id?: string
+          prediction_error?: number | null
+          realistic_analysis?: string | null
+          realistic_cash_impact?: number | null
+          realistic_churn_impact?: number | null
+          realistic_ebitda_impact?: number | null
+          realistic_probability?: number | null
+          realistic_revenue_impact?: number | null
+          risk_alerts?: string[] | null
+          simulated_at?: string | null
+          status?: string | null
+          timeline_projection?: Json | null
+          title?: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ceo_simulations_executed_decision_id_fkey"
+            columns: ["executed_decision_id"]
+            isOneToOne: false
+            referencedRelation: "ceo_decisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ceo_snapshots: {
         Row: {
           created_at: string

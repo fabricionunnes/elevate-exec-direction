@@ -113,3 +113,6 @@ verify_jwt = false
 
 [functions.ceo-virtual-board]
 verify_jwt = false
+
+[functions.ceo-decision-simulator]
+verify_jwt = false
