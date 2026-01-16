@@ -6,6 +6,51 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper to calculate MRR from companies
+const calculateMRRFromCompanies = (companies: any[]): number => {
+  let mrr = 0;
+  
+  companies?.forEach((c) => {
+    const value = Number(c.contract_value) || 0;
+    const paymentMethod = c.payment_method?.toLowerCase() || "";
+    
+    // Monthly payments = value is already monthly
+    if (paymentMethod === "monthly" || paymentMethod === "mensal" || paymentMethod === "recorrente") {
+      mrr += value;
+    }
+    // Quarterly = value / 3
+    else if (paymentMethod === "quarterly" || paymentMethod === "trimestral") {
+      mrr += value / 3;
+    }
+    // Semiannual = value / 6
+    else if (paymentMethod === "semiannual" || paymentMethod === "semestral") {
+      mrr += value / 6;
+    }
+    // Annual or card (typically annual payments) = value / 12
+    else if (paymentMethod === "annual" || paymentMethod === "anual" || paymentMethod === "card" || paymentMethod === "cartao" || paymentMethod === "cartão") {
+      mrr += value / 12;
+    }
+    // Boleto or pix could be annual too
+    else if (paymentMethod === "boleto" || paymentMethod === "pix") {
+      mrr += value / 12;
+    }
+    // Skip one-time payments (à vista, único)
+    else if (paymentMethod.includes("vista") || paymentMethod.includes("unico") || paymentMethod.includes("único")) {
+      // Don't add to MRR - one-time payment
+    }
+    // Unknown payment method with value > 1000 assume annual
+    else if (value > 1000) {
+      mrr += value / 12;
+    }
+    // Small values without payment method, assume monthly
+    else if (value > 0) {
+      mrr += value;
+    }
+  });
+  
+  return mrr;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -28,6 +73,12 @@ serve(async (req) => {
 
     // Fetch all relevant data for CEO analysis
     const fetchBusinessData = async () => {
+      // Fetch active companies with contract values (main MRR source)
+      const { data: companies } = await supabase
+        .from("onboarding_companies")
+        .select("id, contract_value, payment_method, status")
+        .eq("status", "active");
+
       // Projects and health
       const { data: projects } = await supabase
         .from("onboarding_projects")
@@ -108,10 +159,13 @@ serve(async (req) => {
         .order("created_at", { ascending: false })
         .limit(20);
 
+      // Calculate MRR from active companies
+      const currentMRR = calculateMRRFromCompanies(companies || []);
+      const activeClients = companies?.length || 0;
+
       // Calculate metrics
       const activeProjects = projects?.filter(p => p.status === "active") || [];
       const churnedProjects = projects?.filter(p => p.status === "churned") || [];
-      const estimatedMRR = activeProjects.length * 5000;
 
       const avgCSAT = csatResponses?.length 
         ? csatResponses.reduce((acc, r) => acc + r.score, 0) / csatResponses.length 
@@ -129,9 +183,11 @@ serve(async (req) => {
 
       return {
         metrics: {
-          totalActiveClients: activeProjects.length,
+          totalActiveClients: activeClients,
+          totalActiveProjects: activeProjects.length,
           churnedClients: churnedProjects.length,
-          estimatedMRR,
+          currentMRR,
+          formattedMRR: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(currentMRR),
           avgCSAT: avgCSAT.toFixed(1),
           atRiskClients: atRiskClients.length,
           pendingTasks: tasks?.length || 0,
@@ -166,7 +222,18 @@ PERFIL DE COMUNICAÇÃO:
 - Priorize impacto no negócio
 
 DADOS ATUAIS DO NEGÓCIO:
-${JSON.stringify(businessData.metrics, null, 2)}
+- MRR Atual: ${businessData.metrics.formattedMRR}
+- Clientes Ativos: ${businessData.metrics.totalActiveClients}
+- Projetos Ativos: ${businessData.metrics.totalActiveProjects}
+- Clientes Churned: ${businessData.metrics.churnedClients}
+- CSAT Médio: ${businessData.metrics.avgCSAT}
+- Clientes em Risco: ${businessData.metrics.atRiskClients}
+- Tarefas Pendentes: ${businessData.metrics.pendingTasks}
+- Alertas Ativos: ${businessData.metrics.activeAlerts}
+- Metas Ativas: ${businessData.metrics.activeGoals}
+- Sessões do Board Completadas: ${businessData.metrics.boardSessionsCompleted}
+- Simulações Executadas: ${businessData.metrics.simulationsExecuted}
+${businessData.metrics.avgSimulationAccuracy ? `- Precisão Média das Simulações: ${businessData.metrics.avgSimulationAccuracy}%` : ""}
 
 DECISÕES RECENTES DO CEO:
 ${JSON.stringify(businessData.decisions.slice(0, 5), null, 2)}

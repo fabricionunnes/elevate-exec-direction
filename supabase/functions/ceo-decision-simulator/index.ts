@@ -6,16 +6,61 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper to calculate MRR from companies
+const calculateMRRFromCompanies = (companies: any[]): number => {
+  let mrr = 0;
+  
+  companies?.forEach((c) => {
+    const value = Number(c.contract_value) || 0;
+    const paymentMethod = c.payment_method?.toLowerCase() || "";
+    
+    // Monthly payments = value is already monthly
+    if (paymentMethod === "monthly" || paymentMethod === "mensal" || paymentMethod === "recorrente") {
+      mrr += value;
+    }
+    // Quarterly = value / 3
+    else if (paymentMethod === "quarterly" || paymentMethod === "trimestral") {
+      mrr += value / 3;
+    }
+    // Semiannual = value / 6
+    else if (paymentMethod === "semiannual" || paymentMethod === "semestral") {
+      mrr += value / 6;
+    }
+    // Annual or card (typically annual payments) = value / 12
+    else if (paymentMethod === "annual" || paymentMethod === "anual" || paymentMethod === "card" || paymentMethod === "cartao" || paymentMethod === "cartão") {
+      mrr += value / 12;
+    }
+    // Boleto or pix could be annual too
+    else if (paymentMethod === "boleto" || paymentMethod === "pix") {
+      mrr += value / 12;
+    }
+    // Skip one-time payments (à vista, único)
+    else if (paymentMethod.includes("vista") || paymentMethod.includes("unico") || paymentMethod.includes("único")) {
+      // Don't add to MRR - one-time payment
+    }
+    // Unknown payment method with value > 1000 assume annual
+    else if (value > 1000) {
+      mrr += value / 12;
+    }
+    // Small values without payment method, assume monthly
+    else if (value > 0) {
+      mrr += value;
+    }
+  });
+  
+  return mrr;
+};
+
 async function fetchBusinessData(supabase: any) {
   const [
-    { data: projects },
+    { data: companies },
     { data: healthScores },
     { data: salesHistory },
     { data: decisions },
     { data: planning },
     { data: simulations }
   ] = await Promise.all([
-    supabase.from('onboarding_projects').select('id, status, monthly_value, created_at').limit(200),
+    supabase.from('onboarding_companies').select('id, contract_value, payment_method, status').eq('status', 'active'),
     supabase.from('client_health_scores').select('total_score, risk_level').limit(200),
     supabase.from('company_sales_history').select('revenue, month_year, target_revenue').limit(24),
     supabase.from('ceo_decisions').select('*').order('created_at', { ascending: false }).limit(30),
@@ -23,19 +68,18 @@ async function fetchBusinessData(supabase: any) {
     supabase.from('ceo_simulations').select('*').eq('status', 'executed').limit(20)
   ]);
 
-  const activeProjects = projects?.filter((p: any) => p.status === 'Ativo') || [];
-  const currentMRR = activeProjects.reduce((sum: number, p: any) => sum + (p.monthly_value || 0), 0);
+  const activeClients = companies?.length || 0;
+  const currentMRR = calculateMRRFromCompanies(companies || []);
+  
   const avgHealth = healthScores?.length 
     ? healthScores.reduce((sum: number, h: any) => sum + (h.total_score || 0), 0) / healthScores.length 
     : 70;
   const atRiskClients = healthScores?.filter((h: any) => 
-    h.risk_level === 'alto' || h.risk_level === 'crítico'
+    h.risk_level === 'alto' || h.risk_level === 'crítico' || h.risk_level === 'high' || h.risk_level === 'critical'
   )?.length || 0;
   
-  // Calculate churn rate from last 12 months
-  const churnedProjects = projects?.filter((p: any) => p.status === 'Churn')?.length || 0;
-  const totalProjects = projects?.length || 1;
-  const churnRate = (churnedProjects / totalProjects) * 100;
+  // Calculate churn rate from health scores (at risk / total)
+  const churnRate = activeClients > 0 ? (atRiskClients / activeClients) * 100 : 0;
 
   // Calculate avg revenue growth
   const recentSales = salesHistory?.slice(0, 6) || [];
@@ -56,7 +100,8 @@ async function fetchBusinessData(supabase: any) {
 
   return {
     currentMRR,
-    activeClients: activeProjects.length,
+    formattedMRR: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(currentMRR),
+    activeClients,
     avgHealth,
     atRiskClients,
     churnRate,
@@ -77,7 +122,7 @@ async function runSimulation(
   const systemPrompt = `Você é um simulador de decisões estratégicas altamente preciso para uma empresa de consultoria em vendas B2B.
 
 DADOS ATUAIS DO NEGÓCIO:
-- MRR Atual: R$ ${businessData.currentMRR?.toLocaleString('pt-BR')}
+- MRR Atual: ${businessData.formattedMRR}
 - Clientes Ativos: ${businessData.activeClients}
 - Health Score Médio: ${businessData.avgHealth?.toFixed(1)}%
 - Clientes em Risco: ${businessData.atRiskClients}
@@ -245,7 +290,7 @@ serve(async (req) => {
 
     // Fetch business data
     const businessData = await fetchBusinessData(supabase);
-    console.log('Business data fetched:', { mrr: businessData.currentMRR, clients: businessData.activeClients });
+    console.log('Business data fetched:', { mrr: businessData.currentMRR, formattedMRR: businessData.formattedMRR, clients: businessData.activeClients });
 
     // Run AI simulation
     const results = await runSimulation(simulation, businessData, lovableApiKey);
