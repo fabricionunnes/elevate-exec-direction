@@ -84,7 +84,7 @@ interface TaskDetailsDialogProps {
   companyId?: string;
   projectId?: string;
   onDelete?: (taskId: string) => void;
-  currentUserRole?: "admin" | "cs" | "consultant" | "client" | null;
+  currentUserRole?: "admin" | "cs" | "consultant" | "client" | "rh" | null;
   currentUserId?: string | null;
   taskCreatedBy?: string | null;
 }

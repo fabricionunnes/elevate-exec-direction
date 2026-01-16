@@ -78,10 +78,11 @@ import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel"
 import { CSATConfigPanel } from "@/components/onboarding-tasks/CSATConfigPanel";
 import { HealthScoreWidget } from "@/components/onboarding-tasks/health-score/HealthScoreWidget";
 import { HealthScoreDetailPanel } from "@/components/onboarding-tasks/health-score/HealthScoreDetailPanel";
-import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star, Heart, Trophy } from "lucide-react";
+import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star, Heart, Trophy, Briefcase } from "lucide-react";
 import { GoogleDriveConnect } from "@/components/onboarding-tasks/GoogleDriveConnect";
 import { Label } from "@/components/ui/label";
 import { Ticket } from "lucide-react";
+import { HRRecruitmentPanel } from "@/components/hr-recruitment/HRRecruitmentPanel";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
@@ -205,7 +206,7 @@ const OnboardingProjectPage = () => {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("kpis");
-  const [currentUserRole, setCurrentUserRole] = useState<"admin" | "cs" | "consultant" | "client" | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<"admin" | "cs" | "consultant" | "client" | "rh" | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [isStaffAdmin, setIsStaffAdmin] = useState(false);
@@ -388,7 +389,7 @@ const OnboardingProjectPage = () => {
             setIsStaffAdmin(true);
             setCurrentUserRole("admin");
           } else {
-            setCurrentUserRole(staffMember.role as "cs" | "consultant");
+            setCurrentUserRole(staffMember.role as "cs" | "consultant" | "rh");
           }
         } else {
           const { data: onboardingUser } = await supabase
@@ -400,7 +401,7 @@ const OnboardingProjectPage = () => {
           
           if (onboardingUser) {
             setCurrentUserId(onboardingUser.id);
-            setCurrentUserRole(onboardingUser.role as "admin" | "cs" | "consultant" | "client");
+            setCurrentUserRole(onboardingUser.role as "admin" | "cs" | "consultant" | "client" | "rh");
           }
         }
       }
@@ -1308,6 +1309,10 @@ const OnboardingProjectPage = () => {
                   <Heart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Saúde
                 </TabsTrigger>
+                <TabsTrigger value="hr" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Briefcase className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  RH
+                </TabsTrigger>
               </TabsList>
             </div>
           </div>
@@ -1504,6 +1509,15 @@ const OnboardingProjectPage = () => {
               projectId={projectId}
               isStaff={currentUserRole === "admin" || currentUserRole === "cs" || currentUserRole === "consultant"}
               defaultTab={kpiDefaultTab}
+            />
+          </TabsContent>
+
+          <TabsContent value="hr">
+            <HRRecruitmentPanel
+              projectId={projectId!}
+              companyId={project.onboarding_company_id}
+              isStaff={currentUserRole !== "client"}
+              canEdit={isAdmin || currentUserRole === "cs" || currentUserRole === "consultant" || currentUserRole === "rh"}
             />
           </TabsContent>
 

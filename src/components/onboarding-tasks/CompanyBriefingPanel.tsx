@@ -135,7 +135,7 @@ interface SalesHistoryData {
 interface CompanyBriefingPanelProps {
   companyId: string;
   projectId?: string;
-  userRole?: "admin" | "cs" | "consultant" | "client" | null;
+  userRole?: "admin" | "cs" | "consultant" | "client" | "rh" | null;
   isStaffAdmin?: boolean;
 }
 
