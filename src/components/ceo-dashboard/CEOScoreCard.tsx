@@ -258,15 +258,25 @@ export const CEOScoreCard = () => {
 
       const classification = getClassification(totalScore).label;
 
-      // Save score
+      console.log('[CEOScoreCard] Saving score with values:', {
+        totalScore,
+        focusScore,
+        executionScore,
+        clarityScore,
+        consistencyScore,
+        classification,
+        insights
+      });
+
+      // Save score - ensure all values are integers
       const { data: newScore, error } = await supabase
         .from('ceo_scores')
         .insert({
-          total_score: totalScore,
-          focus_score: focusScore,
-          execution_score: executionScore,
-          clarity_score: clarityScore,
-          consistency_score: consistencyScore,
+          total_score: Math.round(totalScore),
+          focus_score: Math.round(focusScore),
+          execution_score: Math.round(executionScore),
+          clarity_score: Math.round(clarityScore),
+          consistency_score: Math.round(consistencyScore),
           classification,
           insights,
           metrics_breakdown: {
@@ -279,7 +289,10 @@ export const CEOScoreCard = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[CEOScoreCard] Error saving score:', error);
+        throw error;
+      }
 
       const typedNewScore = {
         ...newScore,
