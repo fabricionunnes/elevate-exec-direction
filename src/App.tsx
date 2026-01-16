@@ -87,6 +87,7 @@ import Assessment360Page from "./pages/assessments/Assessment360Page";
 import AssessmentReportsPage from "./pages/assessments/AssessmentReportsPage";
 import UnifiedAssessmentPage from "./pages/assessments/UnifiedAssessmentPage";
 import HrCandidateDiscPage from "./pages/hr-recruitment/HrCandidateDiscPage";
+import PublicJobApplicationPage from "./pages/hr-recruitment/PublicJobApplicationPage";
 import HealthScorePage from "./pages/onboarding-tasks/HealthScorePage";
 import FinancialModulePage from "./pages/onboarding-tasks/FinancialModulePage";
 import WhatsAppAdminPage from "./pages/onboarding-tasks/WhatsAppAdminPage";
