@@ -19,6 +19,16 @@ interface CalendarEvent {
     }>;
   };
   htmlLink: string;
+  attendees?: Array<{
+    email: string;
+    self?: boolean;
+    organizer?: boolean;
+    responseStatus?: string;
+  }>;
+  organizer?: {
+    email: string;
+    self?: boolean;
+  };
 }
 
 // Helper function to transcribe recording using AssemblyAI
@@ -441,6 +451,13 @@ Deno.serve(async (req) => {
           }
         }
 
+        // Check if current user is an attendee (not just organizer)
+        const isOrganizer = event.organizer?.self === true;
+        const isAttendee = event.attendees?.some((a) => a.self === true) || false;
+        
+        // Extract attendee emails for filtering on frontend
+        const attendeeEmails = event.attendees?.map((a) => a.email) || [];
+
         return {
           id: event.id,
           title: event.summary || "(Sem título)",
@@ -449,6 +466,9 @@ Deno.serve(async (req) => {
           end: event.end.dateTime || event.end.date,
           meetingLink,
           calendarLink: event.htmlLink,
+          isOrganizer,
+          isAttendee,
+          attendeeEmails,
         };
       });
 
