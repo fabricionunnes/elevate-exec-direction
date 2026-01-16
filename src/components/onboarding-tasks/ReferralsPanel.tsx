@@ -41,6 +41,7 @@ import {
   RefreshCw,
   Gift,
   TrendingUp,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -83,6 +84,25 @@ export function ReferralsPanel() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [editingReferral, setEditingReferral] = useState<Referral | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: staff } = await supabase
+        .from("onboarding_staff")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .single();
+
+      setIsAdmin(staff?.role === "admin");
+    };
+
+    checkAdminRole();
+  }, []);
 
   const fetchReferrals = async () => {
     try {
@@ -154,6 +174,32 @@ export function ReferralsPanel() {
     } catch (error) {
       console.error("Error updating referral:", error);
       toast.error("Erro ao atualizar indicação");
+    }
+  };
+
+  const handleDeleteReferral = async (referralId: string) => {
+    if (!isAdmin) {
+      toast.error("Apenas administradores podem excluir indicações");
+      return;
+    }
+
+    if (!confirm("Tem certeza que deseja excluir esta indicação?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("client_referrals")
+        .delete()
+        .eq("id", referralId);
+
+      if (error) throw error;
+
+      toast.success("Indicação excluída com sucesso!");
+      setShowEditDialog(false);
+      setEditingReferral(null);
+      fetchReferrals();
+    } catch (error) {
+      console.error("Error deleting referral:", error);
+      toast.error("Erro ao excluir indicação");
     }
   };
 
@@ -435,11 +481,24 @@ export function ReferralsPanel() {
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleUpdateReferral}>Salvar</Button>
+          <DialogFooter className="flex justify-between sm:justify-between">
+            <div>
+              {isAdmin && editingReferral && (
+                <Button
+                  variant="destructive"
+                  onClick={() => handleDeleteReferral(editingReferral.id)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleUpdateReferral}>Salvar</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
