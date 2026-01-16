@@ -61,14 +61,18 @@ const KPI_OPTIONS = [
 ];
 
 const AREA_OPTIONS = [
-  "Vendas",
-  "Marketing",
-  "Financeiro",
-  "Operações",
-  "Produto",
-  "Pessoas",
-  "Tecnologia",
-  "Estratégia"
+  { value: "vendas", label: "Vendas" },
+  { value: "marketing", label: "Marketing" },
+  { value: "financeiro", label: "Financeiro" },
+  { value: "operacoes", label: "Operações" },
+  { value: "produto", label: "Produto" },
+  { value: "pessoas", label: "Pessoas" },
+];
+
+const TYPE_OPTIONS = [
+  { value: "estrategica", label: "Estratégica" },
+  { value: "operacional", label: "Operacional" },
+  { value: "tatica", label: "Tática" },
 ];
 
 interface Decision {
@@ -126,7 +130,7 @@ export function CEODecisionMap() {
     title: "",
     description: "",
     area: "",
-    type: "strategic",
+    type: "estrategica",
     hypothesis: "",
     linked_kpis: [] as string[],
     evaluation_period: 30,
@@ -198,7 +202,7 @@ export function CEODecisionMap() {
           evaluation_start_date: evaluationStartDate.toISOString().split('T')[0],
           evaluation_end_date: evaluationEndDate.toISOString().split('T')[0],
           decision_date: new Date().toISOString().split('T')[0],
-          status: 'em_avaliacao'
+          status: 'em_execucao'
         });
 
       if (error) throw error;
@@ -209,7 +213,7 @@ export function CEODecisionMap() {
         title: "",
         description: "",
         area: "",
-        type: "strategic",
+        type: "estrategica",
         hypothesis: "",
         linked_kpis: [],
         evaluation_period: 30,
@@ -468,7 +472,7 @@ Foque em:
                       </SelectTrigger>
                       <SelectContent>
                         {AREA_OPTIONS.map(area => (
-                          <SelectItem key={area} value={area}>{area}</SelectItem>
+                          <SelectItem key={area.value} value={area.value}>{area.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -481,9 +485,9 @@ Foque em:
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="strategic">Estratégica</SelectItem>
-                        <SelectItem value="operational">Operacional</SelectItem>
-                        <SelectItem value="tactical">Tática</SelectItem>
+                        {TYPE_OPTIONS.map(type => (
+                          <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -672,7 +676,7 @@ Foque em:
               <SelectContent>
                 <SelectItem value="all">Todas Áreas</SelectItem>
                 {AREA_OPTIONS.map(area => (
-                  <SelectItem key={area} value={area}>{area}</SelectItem>
+                  <SelectItem key={area.value} value={area.value}>{area.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
