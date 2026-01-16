@@ -26,6 +26,7 @@ import {
   SENIORITY_LEVELS, 
   CONTRACT_MODELS 
 } from "../types";
+import { addDays, format, isBefore, startOfDay } from "date-fns";
 
 interface JobOpeningDialogProps {
   open: boolean;
@@ -45,6 +46,7 @@ export function JobOpeningDialog({
   onSuccess,
 }: JobOpeningDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [isStaff, setIsStaff] = useState<boolean | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     area: "",
@@ -57,7 +59,30 @@ export function JobOpeningDialog({
     salary_range: "",
     location: "",
     is_remote: false,
+    target_date: "",
   });
+
+  // Check if user is staff or client
+  useEffect(() => {
+    const checkUserType = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsStaff(false);
+        return;
+      }
+      
+      const { data: staff } = await supabase
+        .from("onboarding_staff")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      
+      setIsStaff(!!staff);
+    };
+    
+    checkUserType();
+  }, []);
 
   useEffect(() => {
     if (job) {
@@ -73,6 +98,7 @@ export function JobOpeningDialog({
         salary_range: job.salary_range || "",
         location: job.location || "",
         is_remote: job.is_remote || false,
+        target_date: job.target_date ? format(new Date(job.target_date), "yyyy-MM-dd") : "",
       });
     } else {
       setFormData({
@@ -87,13 +113,45 @@ export function JobOpeningDialog({
         salary_range: "",
         location: "",
         is_remote: false,
+        target_date: "",
       });
     }
   }, [job, open]);
 
+  // Minimum date for target_date (15 days for clients, today for staff)
+  const getMinDate = () => {
+    const today = startOfDay(new Date());
+    if (isStaff === false) {
+      // Client users: minimum 15 days from now
+      return format(addDays(today, 15), "yyyy-MM-dd");
+    }
+    // Staff users: can select any future date
+    return format(today, "yyyy-MM-dd");
+  };
+
+  // Validate target_date for client users
+  const validateTargetDate = (date: string): boolean => {
+    if (!date) return true; // Optional field
+    
+    const selectedDate = startOfDay(new Date(date));
+    const minDate = startOfDay(new Date(getMinDate()));
+    
+    if (isStaff === false && isBefore(selectedDate, minDate)) {
+      toast.error("Data de conclusão deve ser no mínimo 15 dias a partir de hoje");
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleSubmit = async () => {
     if (!formData.title.trim() || !formData.area || !formData.job_type) {
       toast.error("Preencha os campos obrigatórios");
+      return;
+    }
+
+    // Validate target_date for clients
+    if (!validateTargetDate(formData.target_date)) {
       return;
     }
 
@@ -120,6 +178,7 @@ export function JobOpeningDialog({
 
       const payload = {
         ...formData,
+        target_date: formData.target_date || null,
         project_id: projectId,
         company_id: companyId || null,
         created_by: staff?.id ?? null,
@@ -281,13 +340,28 @@ export function JobOpeningDialog({
               />
             </div>
 
-            <div className="flex items-center gap-3 pt-6">
-              <Switch
-                checked={formData.is_remote}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_remote: checked })}
+            <div className="space-y-2">
+              <Label>
+                Data de Conclusão Prevista
+                {isStaff === false && (
+                  <span className="text-xs text-muted-foreground ml-1">(mínimo 15 dias)</span>
+                )}
+              </Label>
+              <Input
+                type="date"
+                value={formData.target_date}
+                onChange={(e) => setFormData({ ...formData, target_date: e.target.value })}
+                min={getMinDate()}
               />
-              <Label>Vaga Remota</Label>
             </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={formData.is_remote}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_remote: checked })}
+            />
+            <Label>Vaga Remota</Label>
           </div>
 
           <div className="space-y-2">
