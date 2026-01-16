@@ -187,6 +187,289 @@ export type Database = {
           },
         ]
       }
+      candidate_ai_evaluations: {
+        Row: {
+          candidate_id: string
+          classification: string | null
+          compatibility_score: number | null
+          concerns: string[] | null
+          created_at: string
+          full_analysis: string | null
+          id: string
+          job_opening_id: string | null
+          model_used: string | null
+          recommendation: string | null
+          resume_id: string | null
+          strengths: string[] | null
+        }
+        Insert: {
+          candidate_id: string
+          classification?: string | null
+          compatibility_score?: number | null
+          concerns?: string[] | null
+          created_at?: string
+          full_analysis?: string | null
+          id?: string
+          job_opening_id?: string | null
+          model_used?: string | null
+          recommendation?: string | null
+          resume_id?: string | null
+          strengths?: string[] | null
+        }
+        Update: {
+          candidate_id?: string
+          classification?: string | null
+          compatibility_score?: number | null
+          concerns?: string[] | null
+          created_at?: string
+          full_analysis?: string | null
+          id?: string
+          job_opening_id?: string | null
+          model_used?: string | null
+          recommendation?: string | null
+          resume_id?: string | null
+          strengths?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_ai_evaluations_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_ai_evaluations_job_opening_id_fkey"
+            columns: ["job_opening_id"]
+            isOneToOne: false
+            referencedRelation: "job_openings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_ai_evaluations_resume_id_fkey"
+            columns: ["resume_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_resumes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_disc_results: {
+        Row: {
+          access_token: string
+          c_score: number | null
+          candidate_id: string
+          completed_at: string | null
+          created_at: string
+          d_score: number | null
+          dominant_profile: string | null
+          i_score: number | null
+          id: string
+          interpretation: string | null
+          raw_responses: Json | null
+          s_score: number | null
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+        }
+        Insert: {
+          access_token?: string
+          c_score?: number | null
+          candidate_id: string
+          completed_at?: string | null
+          created_at?: string
+          d_score?: number | null
+          dominant_profile?: string | null
+          i_score?: number | null
+          id?: string
+          interpretation?: string | null
+          raw_responses?: Json | null
+          s_score?: number | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+        }
+        Update: {
+          access_token?: string
+          c_score?: number | null
+          candidate_id?: string
+          completed_at?: string | null
+          created_at?: string
+          d_score?: number | null
+          dominant_profile?: string | null
+          i_score?: number | null
+          id?: string
+          interpretation?: string | null
+          raw_responses?: Json | null
+          s_score?: number | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_disc_results_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_disc_results_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_resumes: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          is_primary: boolean | null
+          uploaded_by_staff_id: string | null
+          uploaded_by_user_id: string | null
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          is_primary?: boolean | null
+          uploaded_by_staff_id?: string | null
+          uploaded_by_user_id?: string | null
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          is_primary?: boolean | null
+          uploaded_by_staff_id?: string | null
+          uploaded_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_resumes_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_resumes_uploaded_by_staff_id_fkey"
+            columns: ["uploaded_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_resumes_uploaded_by_user_id_fkey"
+            columns: ["uploaded_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidates: {
+        Row: {
+          cpf: string | null
+          created_at: string
+          created_by_staff_id: string | null
+          created_by_user_id: string | null
+          current_stage: string
+          email: string
+          full_name: string
+          id: string
+          job_opening_id: string | null
+          linkedin_url: string | null
+          notes: string | null
+          phone: string | null
+          project_id: string
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cpf?: string | null
+          created_at?: string
+          created_by_staff_id?: string | null
+          created_by_user_id?: string | null
+          current_stage?: string
+          email: string
+          full_name: string
+          id?: string
+          job_opening_id?: string | null
+          linkedin_url?: string | null
+          notes?: string | null
+          phone?: string | null
+          project_id: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cpf?: string | null
+          created_at?: string
+          created_by_staff_id?: string | null
+          created_by_user_id?: string | null
+          current_stage?: string
+          email?: string
+          full_name?: string
+          id?: string
+          job_opening_id?: string | null
+          linkedin_url?: string | null
+          notes?: string | null
+          phone?: string | null
+          project_id?: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidates_created_by_staff_id_fkey"
+            columns: ["created_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidates_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidates_job_opening_id_fkey"
+            columns: ["job_opening_id"]
+            isOneToOne: false
+            referencedRelation: "job_openings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ceo_agenda: {
         Row: {
           attendees: string[] | null
@@ -5154,6 +5437,275 @@ export type Database = {
           },
         ]
       }
+      hiring_history: {
+        Row: {
+          action: string
+          candidate_id: string
+          created_at: string
+          description: string | null
+          id: string
+          metadata: Json | null
+          new_value: string | null
+          performed_by_staff_id: string | null
+          performed_by_user_id: string | null
+          previous_value: string | null
+        }
+        Insert: {
+          action: string
+          candidate_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          new_value?: string | null
+          performed_by_staff_id?: string | null
+          performed_by_user_id?: string | null
+          previous_value?: string | null
+        }
+        Update: {
+          action?: string
+          candidate_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          new_value?: string | null
+          performed_by_staff_id?: string | null
+          performed_by_user_id?: string | null
+          previous_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hiring_history_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hiring_history_performed_by_staff_id_fkey"
+            columns: ["performed_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hiring_history_performed_by_user_id_fkey"
+            columns: ["performed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hiring_pipeline_stages: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_default: boolean | null
+          name: string
+          project_id: string
+          sort_order: number
+          stage_key: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name: string
+          project_id: string
+          sort_order?: number
+          stage_key: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          project_id?: string
+          sort_order?: number
+          stage_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hiring_pipeline_stages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interviews: {
+        Row: {
+          candidate_id: string
+          concerns: string | null
+          conducted_at: string | null
+          created_at: string
+          detailed_feedback: string | null
+          id: string
+          interview_type: string
+          interviewer_id: string | null
+          interviewer_name: string | null
+          job_opening_id: string | null
+          recommendation: string | null
+          scheduled_at: string | null
+          score: number | null
+          status: string
+          strengths: string | null
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          concerns?: string | null
+          conducted_at?: string | null
+          created_at?: string
+          detailed_feedback?: string | null
+          id?: string
+          interview_type: string
+          interviewer_id?: string | null
+          interviewer_name?: string | null
+          job_opening_id?: string | null
+          recommendation?: string | null
+          scheduled_at?: string | null
+          score?: number | null
+          status?: string
+          strengths?: string | null
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          concerns?: string | null
+          conducted_at?: string | null
+          created_at?: string
+          detailed_feedback?: string | null
+          id?: string
+          interview_type?: string
+          interviewer_id?: string | null
+          interviewer_name?: string | null
+          job_opening_id?: string | null
+          recommendation?: string | null
+          scheduled_at?: string | null
+          score?: number | null
+          status?: string
+          strengths?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interviews_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interviews_interviewer_id_fkey"
+            columns: ["interviewer_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interviews_job_opening_id_fkey"
+            columns: ["job_opening_id"]
+            isOneToOne: false
+            referencedRelation: "job_openings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_openings: {
+        Row: {
+          area: string
+          closed_at: string | null
+          company_id: string | null
+          contract_model: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          differentials: string | null
+          id: string
+          is_remote: boolean | null
+          job_type: string
+          location: string | null
+          project_id: string
+          requirements: string | null
+          salary_range: string | null
+          seniority: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          area: string
+          closed_at?: string | null
+          company_id?: string | null
+          contract_model?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          differentials?: string | null
+          id?: string
+          is_remote?: boolean | null
+          job_type: string
+          location?: string | null
+          project_id: string
+          requirements?: string | null
+          salary_range?: string | null
+          seniority?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string
+          closed_at?: string | null
+          company_id?: string | null
+          contract_model?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          differentials?: string | null
+          id?: string
+          is_remote?: boolean | null
+          job_type?: string
+          location?: string | null
+          project_id?: string
+          requirements?: string | null
+          salary_range?: string | null
+          seniority?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_openings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_openings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_openings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kpi_entries: {
         Row: {
           company_id: string
@@ -8703,6 +9255,14 @@ export type Database = {
         Returns: string
       }
       has_crm_access: { Args: never; Returns: boolean }
+      has_hr_edit_access: {
+        Args: { check_project_id: string }
+        Returns: boolean
+      }
+      has_hr_view_access: {
+        Args: { check_project_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
