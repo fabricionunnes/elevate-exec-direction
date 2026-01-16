@@ -383,16 +383,16 @@ export function ClientVirtualBoard({ projectId, companyId, companyName }: Client
                             </div>
                           </CardHeader>
                           <CardContent className="pt-0 space-y-3">
-                            <p className="text-sm line-clamp-4">{opinion.opinion}</p>
+                            <p className="text-sm">{opinion.opinion}</p>
                             
                             {opinion.risks && opinion.risks.length > 0 && (
                               <div>
                                 <p className="text-xs font-medium text-red-600 mb-1">Riscos:</p>
-                                <ul className="text-xs space-y-0.5">
-                                  {opinion.risks.slice(0, 2).map((risk, i) => (
+                                <ul className="text-xs space-y-1">
+                                  {opinion.risks.map((risk, i) => (
                                     <li key={i} className="flex items-start gap-1">
-                                      <span className="text-red-500">•</span>
-                                      <span className="line-clamp-1">{risk}</span>
+                                      <span className="text-red-500 shrink-0">•</span>
+                                      <span>{risk}</span>
                                     </li>
                                   ))}
                                 </ul>
@@ -402,11 +402,11 @@ export function ClientVirtualBoard({ projectId, companyId, companyName }: Client
                             {opinion.opportunities && opinion.opportunities.length > 0 && (
                               <div>
                                 <p className="text-xs font-medium text-green-600 mb-1">Oportunidades:</p>
-                                <ul className="text-xs space-y-0.5">
-                                  {opinion.opportunities.slice(0, 2).map((opp, i) => (
+                                <ul className="text-xs space-y-1">
+                                  {opinion.opportunities.map((opp, i) => (
                                     <li key={i} className="flex items-start gap-1">
-                                      <span className="text-green-500">•</span>
-                                      <span className="line-clamp-1">{opp}</span>
+                                      <span className="text-green-500 shrink-0">•</span>
+                                      <span>{opp}</span>
                                     </li>
                                   ))}
                                 </ul>
