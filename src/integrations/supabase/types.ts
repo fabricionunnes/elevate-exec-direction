@@ -384,14 +384,64 @@ export type Database = {
           },
         ]
       }
+      candidate_tags: {
+        Row: {
+          added_by: string | null
+          candidate_id: string | null
+          created_at: string | null
+          id: string
+          tag_id: string | null
+        }
+        Insert: {
+          added_by?: string | null
+          candidate_id?: string | null
+          created_at?: string | null
+          id?: string
+          tag_id?: string | null
+        }
+        Update: {
+          added_by?: string | null
+          candidate_id?: string | null
+          created_at?: string | null
+          id?: string
+          tag_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_tags_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_tags_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "talent_pool_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidates: {
         Row: {
+          ai_match_score: number | null
+          ai_summary: string | null
+          availability_date: string | null
           cpf: string | null
           created_at: string
           created_by_staff_id: string | null
           created_by_user_id: string | null
           current_stage: string
           email: string
+          expected_salary_range: string | null
           full_name: string
           id: string
           job_opening_id: string | null
@@ -401,15 +451,21 @@ export type Database = {
           project_id: string
           source: string
           status: string
+          talent_pool_added_at: string | null
+          talent_pool_notes: string | null
           updated_at: string
         }
         Insert: {
+          ai_match_score?: number | null
+          ai_summary?: string | null
+          availability_date?: string | null
           cpf?: string | null
           created_at?: string
           created_by_staff_id?: string | null
           created_by_user_id?: string | null
           current_stage?: string
           email: string
+          expected_salary_range?: string | null
           full_name: string
           id?: string
           job_opening_id?: string | null
@@ -419,15 +475,21 @@ export type Database = {
           project_id: string
           source?: string
           status?: string
+          talent_pool_added_at?: string | null
+          talent_pool_notes?: string | null
           updated_at?: string
         }
         Update: {
+          ai_match_score?: number | null
+          ai_summary?: string | null
+          availability_date?: string | null
           cpf?: string | null
           created_at?: string
           created_by_staff_id?: string | null
           created_by_user_id?: string | null
           current_stage?: string
           email?: string
+          expected_salary_range?: string | null
           full_name?: string
           id?: string
           job_opening_id?: string | null
@@ -437,6 +499,8 @@ export type Database = {
           project_id?: string
           source?: string
           status?: string
+          talent_pool_added_at?: string | null
+          talent_pool_notes?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -5539,6 +5603,102 @@ export type Database = {
           },
         ]
       }
+      interview_scorecard_criteria: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          job_opening_id: string | null
+          name: string
+          project_id: string | null
+          sort_order: number | null
+          updated_at: string | null
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          job_opening_id?: string | null
+          name: string
+          project_id?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          job_opening_id?: string | null
+          name?: string
+          project_id?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_scorecard_criteria_job_opening_id_fkey"
+            columns: ["job_opening_id"]
+            isOneToOne: false
+            referencedRelation: "job_openings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_scorecard_criteria_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_scorecard_scores: {
+        Row: {
+          created_at: string | null
+          criteria_id: string | null
+          id: string
+          interview_id: string | null
+          notes: string | null
+          score: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          criteria_id?: string | null
+          id?: string
+          interview_id?: string | null
+          notes?: string | null
+          score?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          criteria_id?: string | null
+          id?: string
+          interview_id?: string | null
+          notes?: string | null
+          score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_scorecard_scores_criteria_id_fkey"
+            columns: ["criteria_id"]
+            isOneToOne: false
+            referencedRelation: "interview_scorecard_criteria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_scorecard_scores_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interviews: {
         Row: {
           calendar_event_id: string | null
@@ -8744,6 +8904,41 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      talent_pool_tags: {
+        Row: {
+          category: string | null
+          color: string | null
+          created_at: string | null
+          id: string
+          name: string
+          project_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          project_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "talent_pool_tags_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
             referencedColumns: ["id"]
           },
         ]
