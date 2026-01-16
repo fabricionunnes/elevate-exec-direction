@@ -374,9 +374,15 @@ export function ReceivablesPanel() {
     }
   };
 
+  // Only show recurring receivables from January 2025 onwards
+  const minDate = "2025-01";
+  
   const filteredReceivables = receivables.filter((r) => {
     // Only show recurring receivables (from clients without end date and monthly payment)
     if (!r.is_recurring) return false;
+    
+    // Only show receivables from January 2025 onwards
+    if (r.due_date < minDate) return false;
     
     const matchesSearch =
       r.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -386,11 +392,12 @@ export function ReceivablesPanel() {
     return matchesSearch && matchesStatus && matchesMonth;
   });
 
-  // Calculate totals
+  // Calculate totals only for recurring receivables from January 2025 onwards
+  const recurringFromJan = receivables.filter(r => r.is_recurring && r.due_date >= minDate);
   const totals = {
-    pending: receivables.filter(r => r.status === "pending").reduce((sum, r) => sum + Number(r.amount), 0),
-    overdue: receivables.filter(r => r.status === "overdue").reduce((sum, r) => sum + Number(r.amount), 0),
-    paid: receivables.filter(r => r.status === "paid").reduce((sum, r) => sum + Number(r.paid_amount || r.amount), 0)
+    pending: recurringFromJan.filter(r => r.status === "pending").reduce((sum, r) => sum + Number(r.amount), 0),
+    overdue: recurringFromJan.filter(r => r.status === "overdue").reduce((sum, r) => sum + Number(r.amount), 0),
+    paid: recurringFromJan.filter(r => r.status === "paid").reduce((sum, r) => sum + Number(r.paid_amount || r.amount), 0)
   };
 
   if (isLoading) {
