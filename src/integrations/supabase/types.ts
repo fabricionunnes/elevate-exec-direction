@@ -6633,6 +6633,7 @@ export type Database = {
           has_structured_process: string | null
           id: string
           instagram: string | null
+          is_simulator: boolean
           key_results: string | null
           kickoff_date: string | null
           main_challenges: string | null
@@ -6690,6 +6691,7 @@ export type Database = {
           has_structured_process?: string | null
           id?: string
           instagram?: string | null
+          is_simulator?: boolean
           key_results?: string | null
           kickoff_date?: string | null
           main_challenges?: string | null
@@ -6747,6 +6749,7 @@ export type Database = {
           has_structured_process?: string | null
           id?: string
           instagram?: string | null
+          is_simulator?: boolean
           key_results?: string | null
           kickoff_date?: string | null
           main_challenges?: string | null

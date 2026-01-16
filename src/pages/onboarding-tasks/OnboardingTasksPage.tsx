@@ -91,6 +91,7 @@ interface Company {
   projects?: OnboardingProject[];
   total_tasks?: number;
   completed_tasks?: number;
+  is_simulator?: boolean;
 }
 
 const OnboardingTasksPage = () => {
@@ -257,6 +258,7 @@ const OnboardingTasksPage = () => {
             status_changed_at,
             created_at,
             instagram,
+            is_simulator,
             cs:onboarding_staff!onboarding_companies_cs_id_fkey(id, name, role),
             consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(id, name, role)
           `)
@@ -757,9 +759,9 @@ const OnboardingTasksPage = () => {
     const currentDay = isCurrentMonth ? today.getDate() : daysInMonth;
     const timeElapsedPercent = currentDay / daysInMonth;
     
-    // Get active company IDs (exclude inactive/closed companies)
+    // Get active company IDs (exclude inactive/closed companies AND simulator companies)
     const activeCompanyIds = new Set(
-      companies.filter(c => c.status !== "inactive" && c.status !== "closed").map(c => c.id)
+      companies.filter(c => c.status !== "inactive" && c.status !== "closed" && !c.is_simulator).map(c => c.id)
     );
     
     // We need to fetch kpi_entries - use the state that should be set
