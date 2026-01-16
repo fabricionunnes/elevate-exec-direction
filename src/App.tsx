@@ -86,6 +86,7 @@ import LegacyDiscRedirect from "./pages/assessments/LegacyDiscRedirect";
 import Assessment360Page from "./pages/assessments/Assessment360Page";
 import AssessmentReportsPage from "./pages/assessments/AssessmentReportsPage";
 import UnifiedAssessmentPage from "./pages/assessments/UnifiedAssessmentPage";
+import HrCandidateDiscPage from "./pages/hr-recruitment/HrCandidateDiscPage";
 import HealthScorePage from "./pages/onboarding-tasks/HealthScorePage";
 import FinancialModulePage from "./pages/onboarding-tasks/FinancialModulePage";
 import WhatsAppAdminPage from "./pages/onboarding-tasks/WhatsAppAdminPage";
@@ -223,6 +224,7 @@ const App = () => (
             <Route path="/disc" element={<LegacyDiscRedirect />} />
             <Route path="/360" element={<Assessment360Page />} />
             <Route path="/avaliacao" element={<UnifiedAssessmentPage />} />
+            <Route path="/hr-disc/:token" element={<HrCandidateDiscPage />} />
             <Route path="/onboarding-tasks/:projectId/reports" element={<AssessmentReportsPage />} />
             
             {/* Customer Points - Public */}
