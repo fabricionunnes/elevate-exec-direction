@@ -862,11 +862,11 @@ export default function OnboardingCompaniesReportPage() {
 
           <ScrollArea className="h-[calc(100vh-520px)] md:h-[calc(100vh-480px)] min-h-[320px] md:min-h-[420px]">
             <div className="overflow-x-auto">
-              <Table className="min-w-[900px] lg:min-w-[1100px]">
+              <Table className="min-w-[780px] md:min-w-[900px] lg:min-w-[1100px]">
                 <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                   <TableRow className="border-b">
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
+                      className="cursor-pointer hover:bg-muted/50 text-[10px] md:text-xs lg:text-sm whitespace-nowrap"
                       onClick={() => handleSort("name")}
                     >
                       <div className="flex items-center">
@@ -875,7 +875,7 @@ export default function OnboardingCompaniesReportPage() {
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
+                      className="cursor-pointer hover:bg-muted/50 text-[10px] md:text-xs lg:text-sm whitespace-nowrap hidden md:table-cell"
                       onClick={() => handleSort("consultant_name")}
                     >
                       <div className="flex items-center">
@@ -884,7 +884,7 @@ export default function OnboardingCompaniesReportPage() {
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
+                      className="cursor-pointer hover:bg-muted/50 text-[10px] md:text-xs lg:text-sm whitespace-nowrap"
                       onClick={() => handleSort("contract_start_date")}
                     >
                       <div className="flex items-center">
@@ -893,7 +893,7 @@ export default function OnboardingCompaniesReportPage() {
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
+                      className="cursor-pointer hover:bg-muted/50 text-[10px] md:text-xs lg:text-sm whitespace-nowrap"
                       onClick={() => handleSort("contract_end_date")}
                     >
                       <div className="flex items-center">
@@ -902,7 +902,7 @@ export default function OnboardingCompaniesReportPage() {
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap"
+                      className="cursor-pointer hover:bg-muted/50 text-right text-[10px] md:text-xs lg:text-sm whitespace-nowrap hidden lg:table-cell"
                       onClick={() => handleSort("contract_months")}
                     >
                       <div className="flex items-center justify-end">
@@ -914,16 +914,16 @@ export default function OnboardingCompaniesReportPage() {
                     {!isCS && (
                       <>
                         <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap"
+                          className="cursor-pointer hover:bg-muted/50 text-right text-[10px] md:text-xs lg:text-sm whitespace-nowrap"
                           onClick={() => handleSort("total_paid")}
                         >
                           <div className="flex items-center justify-end">
-                            Valor Total
+                            <span className="hidden md:inline">Valor </span>Total
                             <SortIcon field="total_paid" />
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 text-right text-xs sm:text-sm whitespace-nowrap"
+                          className="cursor-pointer hover:bg-muted/50 text-right text-[10px] md:text-xs lg:text-sm whitespace-nowrap"
                           onClick={() => handleSort("avg_ticket")}
                         >
                           <div className="flex items-center justify-end">
@@ -934,7 +934,7 @@ export default function OnboardingCompaniesReportPage() {
                       </>
                     )}
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
+                      className="cursor-pointer hover:bg-muted/50 text-[10px] md:text-xs lg:text-sm whitespace-nowrap hidden lg:table-cell"
                       onClick={() => handleSort("status")}
                     >
                       <div className="flex items-center">
@@ -943,7 +943,7 @@ export default function OnboardingCompaniesReportPage() {
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
+                      className="cursor-pointer hover:bg-muted/50 text-[10px] md:text-xs lg:text-sm whitespace-nowrap hidden lg:table-cell"
                       onClick={() => handleSort("health_score")}
                     >
                       <div className="flex items-center">
@@ -953,7 +953,7 @@ export default function OnboardingCompaniesReportPage() {
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 text-xs sm:text-sm whitespace-nowrap"
+                      className="cursor-pointer hover:bg-muted/50 text-[10px] md:text-xs lg:text-sm whitespace-nowrap hidden lg:table-cell"
                       onClick={() => handleSort("payment_method")}
                     >
                       <div className="flex items-center">
@@ -961,7 +961,7 @@ export default function OnboardingCompaniesReportPage() {
                         <SortIcon field="payment_method" />
                       </div>
                     </TableHead>
-                    <TableHead className="w-12"></TableHead>
+                    <TableHead className="w-8 lg:w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
 
@@ -1008,23 +1008,23 @@ export default function OnboardingCompaniesReportPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-xs sm:text-sm py-3">{company.consultant_name || "—"}</TableCell>
-                        <TableCell className="text-xs sm:text-sm py-3">{formatDate(company.contract_start_date)}</TableCell>
-                        <TableCell className="text-xs sm:text-sm py-3">{company.payment_method === "monthly" ? "—" : formatDate(company.contract_end_date)}</TableCell>
-                        <TableCell className="text-right text-xs sm:text-sm py-3">{company.contract_months}</TableCell>
+                        <TableCell className="text-[10px] md:text-xs lg:text-sm py-2 md:py-3 hidden md:table-cell">{company.consultant_name || "—"}</TableCell>
+                        <TableCell className="text-[10px] md:text-xs lg:text-sm py-2 md:py-3">{formatDate(company.contract_start_date)}</TableCell>
+                        <TableCell className="text-[10px] md:text-xs lg:text-sm py-2 md:py-3">{company.payment_method === "monthly" ? "—" : formatDate(company.contract_end_date)}</TableCell>
+                        <TableCell className="text-right text-[10px] md:text-xs lg:text-sm py-2 md:py-3 hidden lg:table-cell">{company.contract_months}</TableCell>
                         {/* Hide financial cells for CS */}
                         {!isCS && (
                           <>
-                            <TableCell className="text-right font-medium text-green-500 text-xs sm:text-sm py-3">
+                            <TableCell className="text-right font-medium text-green-500 text-[10px] md:text-xs lg:text-sm py-2 md:py-3">
                               {formatCurrency(company.total_paid)}
                             </TableCell>
-                            <TableCell className="text-right text-blue-500 text-xs sm:text-sm py-3">
-                              {formatCurrency(company.avg_ticket)}/mês
+                            <TableCell className="text-right text-blue-500 text-[10px] md:text-xs lg:text-sm py-2 md:py-3 whitespace-nowrap">
+                              {formatCurrency(company.avg_ticket)}<span className="hidden md:inline">/mês</span>
                             </TableCell>
                           </>
                         )}
-                        <TableCell className="py-3">{getStatusBadge(company.status)}</TableCell>
-                        <TableCell className="py-3">
+                        <TableCell className="py-2 md:py-3 hidden lg:table-cell">{getStatusBadge(company.status)}</TableCell>
+                        <TableCell className="py-2 md:py-3 hidden lg:table-cell">
                           {company.health_score !== null ? (
                             <div className="flex items-center gap-1.5">
                               <Heart 
@@ -1049,29 +1049,29 @@ export default function OnboardingCompaniesReportPage() {
                             <span className="text-muted-foreground text-xs">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="py-3">
+                        <TableCell className="py-2 md:py-3 hidden lg:table-cell">
                           {company.payment_method === "card" ? (
-                            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-[10px] sm:text-xs">Cartão</Badge>
+                            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-[10px]">Cartão</Badge>
                           ) : company.payment_method === "monthly" ? (
-                            <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-[10px] sm:text-xs">Recorrência</Badge>
+                            <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-[10px]">Recorr.</Badge>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
                         {/* Hide edit button for CS */}
                         {isAdmin && (
-                          <TableCell className="py-3">
+                          <TableCell className="py-2 md:py-3">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8"
+                              className="h-7 w-7 md:h-8 md:w-8"
                               onClick={(e) => openEditDialog(company, e)}
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Pencil className="h-3.5 w-3.5 md:h-4 md:w-4" />
                             </Button>
                           </TableCell>
                         )}
-                        {isCS && <TableCell className="py-3" />}
+                        {isCS && <TableCell className="py-2 md:py-3" />}
                       </TableRow>
                     ))
                   )}
