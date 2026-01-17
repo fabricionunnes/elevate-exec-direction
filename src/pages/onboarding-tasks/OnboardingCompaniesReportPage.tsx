@@ -855,14 +855,14 @@ export default function OnboardingCompaniesReportPage() {
 
         {/* Table */}
         <Card className="overflow-hidden">
-          {/* Mobile hint for horizontal scrolling */}
-          <div className="sm:hidden px-4 py-2 text-[11px] text-muted-foreground border-b bg-muted/20">
+          {/* Mobile/Tablet hint for horizontal scrolling */}
+          <div className="lg:hidden px-4 py-2 text-[11px] text-muted-foreground border-b bg-muted/20">
             Arraste a tabela para o lado para ver todas as colunas →
           </div>
 
-          <ScrollArea className="h-[calc(100vh-520px)] sm:h-[calc(100vh-480px)] min-h-[320px] sm:min-h-[420px]">
+          <ScrollArea className="h-[calc(100vh-520px)] md:h-[calc(100vh-480px)] min-h-[320px] md:min-h-[420px]">
             <div className="overflow-x-auto">
-              <Table className="min-w-[1100px]">
+              <Table className="min-w-[900px] lg:min-w-[1100px]">
                 <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                   <TableRow className="border-b">
                     <TableHead 
@@ -979,9 +979,9 @@ export default function OnboardingCompaniesReportPage() {
                         className={`cursor-pointer ${idx % 2 === 0 ? "bg-muted/10" : "bg-background"} hover:bg-muted/40 transition-colors`}
                         onClick={() => navigate(`/onboarding-tasks/companies/${company.id}`)}
                       >
-                        <TableCell className="font-medium text-xs sm:text-sm py-3">
+                        <TableCell className="font-medium text-xs sm:text-sm py-3 max-w-[200px] md:max-w-[280px] lg:max-w-[360px]">
                           <div className="flex flex-col gap-1">
-                            <span className="truncate max-w-[360px]">{company.name}</span>
+                            <span className="break-words leading-tight">{company.name}</span>
                             <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                               <span>{company.consultant_name || "—"}</span>
                               <span>•</span>
