@@ -268,8 +268,10 @@ export default function OnboardingCompaniesReportPage() {
       // Total paid = monthly value * months active
       const totalPaid = monthlyValue * contractMonths;
 
-      // Average ticket = monthly value
-      const avgTicket = monthlyValue;
+      // Average ticket:
+      // - If there's an end date: monthly value (total / duration)
+      // - If there's NO end date: billing_amount (what client pays)
+      const avgTicket = endDate ? monthlyValue : contractValue;
 
       // Get health score from projects - only count active projects
       let healthScore: number | null = null;
