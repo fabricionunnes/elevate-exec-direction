@@ -54,6 +54,18 @@ import { ptBR } from "date-fns/locale";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import type { FinancialReceivable, FinancialCategory, FinancialPaymentMethod } from "./types";
 
+// Parse date string (YYYY-MM-DD) to local Date without timezone shift
+const parseDateLocal = (dateStr: string): Date => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
+// Format Date to display string without timezone shift
+const formatDateDisplay = (dateStr: string): string => {
+  const date = parseDateLocal(dateStr);
+  return format(date, "dd/MM/yyyy");
+};
+
 interface Props {
   projectId: string;
   canEdit: boolean;
@@ -473,7 +485,7 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
                       {formatCurrency(item.amount)}
                     </TableCell>
                     <TableCell>
-                      {format(new Date(item.due_date), "dd/MM/yyyy")}
+                      {formatDateDisplay(item.due_date)}
                     </TableCell>
                     <TableCell>{getStatusBadge(item.status)}</TableCell>
                     {canEdit && (
