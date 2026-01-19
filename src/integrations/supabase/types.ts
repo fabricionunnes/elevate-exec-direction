@@ -678,6 +678,44 @@ export type Database = {
         }
         Relationships: []
       }
+      ceo_board_chat: {
+        Row: {
+          advisor_name: string | null
+          advisor_role: string | null
+          created_at: string
+          id: string
+          message: string
+          role: string
+          session_id: string
+        }
+        Insert: {
+          advisor_name?: string | null
+          advisor_role?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          role: string
+          session_id: string
+        }
+        Update: {
+          advisor_name?: string | null
+          advisor_role?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ceo_board_chat_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ceo_board_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ceo_board_opinions: {
         Row: {
           advisor_name: string
