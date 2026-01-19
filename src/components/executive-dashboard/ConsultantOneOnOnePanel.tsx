@@ -196,7 +196,7 @@ export function ConsultantOneOnOnePanel() {
           .from("onboarding_projects")
           .select(`
             id,
-            company_id,
+            onboarding_company_id,
             status,
             onboarding_companies(name, segment),
             client_health_scores(total_score, risk_level, goals_score)
@@ -284,7 +284,7 @@ export function ConsultantOneOnOnePanel() {
               : undefined;
 
             // Fetch KPIs for this company
-            const companyId = project.company_id;
+            const companyId = project.onboarding_company_id;
             const kpisData: KPIData[] = [];
             
             if (companyId) {
@@ -351,6 +351,7 @@ export function ConsultantOneOnOnePanel() {
             // Calculate goal projection: use onboarding_monthly_goals if available,
             // otherwise calculate from KPIs average percentage
             let finalGoalProjection = goalProjection;
+            
             if (finalGoalProjection === undefined && kpisData.length > 0) {
               // Filter KPIs that have targets > 0 to calculate meaningful average
               const kpisWithTargets = kpisData.filter(k => k.target > 0);
