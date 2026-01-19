@@ -356,22 +356,23 @@ export function ConsultantOneOnOnePanel() {
             const companyName = project.onboarding_companies?.name || "Empresa";
 
             // Calculate goal projection: use onboarding_monthly_goals if available,
-            // otherwise derive from KPIs (prefer the main monetary goal KPI when present)
+            // otherwise derive from KPIs (ONLY consider monetary KPIs with targets > 0)
             let finalGoalProjection = goalProjection;
 
             if (finalGoalProjection === undefined && kpisData.length > 0) {
-              const kpisWithTargets = kpisData.filter(k => k.target > 0);
+              // ONLY use monetary KPIs with target > 0 for goal projection
+              // This prevents showing >100% based on non-monetary KPIs (like "Follow up")
+              const monetaryKpisWithTargets = kpisData.filter(
+                k => k.target > 0 && (k.kpiType === "monetary" || /meta|faturamento|vendas|receita/i.test(k.name))
+              );
 
-              // Prefer a monetary KPI as "Meta" when available (ex: "Meta mensal")
-              const primaryGoalKpi = kpisWithTargets.find(k => k.kpiType === "monetary")
-                ?? kpisWithTargets.find(k => /meta/i.test(k.name));
-
-              if (primaryGoalKpi) {
+              if (monetaryKpisWithTargets.length > 0) {
+                // Prefer the main monetary goal KPI
+                const primaryGoalKpi = monetaryKpisWithTargets.find(k => k.kpiType === "monetary")
+                  ?? monetaryKpisWithTargets[0];
                 finalGoalProjection = primaryGoalKpi.percentage;
-              } else if (kpisWithTargets.length > 0) {
-                // Fallback: meaningful average
-                finalGoalProjection = kpisWithTargets.reduce((sum, k) => sum + k.percentage, 0) / kpisWithTargets.length;
               }
+              // If no monetary KPIs with targets, leave finalGoalProjection as undefined (shows as 0%)
             }
 
             briefings.push({
