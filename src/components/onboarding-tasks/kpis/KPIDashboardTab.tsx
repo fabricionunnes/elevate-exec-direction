@@ -31,6 +31,7 @@ import { SalesHistoryDialog } from "./SalesHistoryDialog";
 import { SalesComparisonChart } from "./SalesComparisonChart";
 import { KPIEntriesHistoryDialog } from "./KPIEntriesHistoryDialog";
 import { SalespeopleComparisonTable } from "./SalespeopleComparisonTable";
+import { MonthlySalesChart } from "./MonthlySalesChart";
 
 interface KPI {
   id: string;
@@ -996,6 +997,12 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
         entries={entries}
         units={units}
         selectedUnit={selectedUnit}
+      />
+
+      {/* Monthly Sales Chart with AI Analysis */}
+      <MonthlySalesChart 
+        companyId={companyId}
+        projectId={projectId}
       />
 
       {/* Sales Comparison Chart - Before vs After UNV */}
