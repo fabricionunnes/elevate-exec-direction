@@ -466,9 +466,9 @@ const DashboardMetrics = ({
       return isWithinInterval(endDate, { start, end });
     });
 
-    // Not renewed = contract ending in period AND already decided not to renew (renewal_status = 'encerrado')
+    // Not renewed = contract ending in period AND already decided not to renew (renewal_status = 'nao_renovado')
     const notRenewedCompanies = companiesWithContractEndingInPeriod.filter(
-      c => c.renewal_status === 'encerrado'
+      c => c.renewal_status === 'nao_renovado'
     );
 
     return { 
