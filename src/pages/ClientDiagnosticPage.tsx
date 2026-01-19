@@ -664,6 +664,7 @@ export default function ClientDiagnosticPage() {
         urgency: formData.urgency,
         recommended_product: productNames,
         why_diagnostic: formData.whyDiagnostic || null,
+        ownership_type: formData.ownershipType === "unico" ? "single" : formData.ownershipType === "socios" ? "partners" : null,
         notes: `Tráfego: ${formData.hasTraffic === "sim" ? (formData.trafficSatisfied === "sim" ? "Sim, satisfeito" : "Sim, insatisfeito") : "Não"}. Social: ${formData.hasSocialMedia === "sim" ? (formData.socialSatisfied === "sim" ? "Sim, satisfeito" : "Sim, insatisfeito") : "Não"}. ${formData.goals ? "Objetivos: " + formData.goals : ""}`,
         status: "pending"
       });
