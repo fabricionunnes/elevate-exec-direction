@@ -158,6 +158,7 @@ const DashboardMetrics = ({
   const [npsNotRespondedPage, setNpsNotRespondedPage] = useState(1);
   const npsNotRespondedPerPage = 10;
   const [showCompaniesWithoutTasks, setShowCompaniesWithoutTasks] = useState(false);
+  const [showNotRenewedCompanies, setShowNotRenewedCompanies] = useState(false);
   const [healthHistoryDialogOpen, setHealthHistoryDialogOpen] = useState(false);
   const npsPerPage = 10;
 
@@ -454,7 +455,28 @@ const DashboardMetrics = ({
     ).length;
     const renewedPercent = activeCompaniesCount > 0 ? Math.round((renewedClientsCount / activeCompaniesCount) * 100) : 0;
 
-    return { renewalsCount, renewedClientsCount, renewedPercent };
+    // Companies with contract ending in period that have NOT renewed yet
+    // Only include non-recurring contracts (not monthly payment)
+    const companiesWithContractEndingInPeriod = filteredCompanies.filter(c => {
+      if (c.status === "inactive" || c.status === "closed") return false;
+      if (c.payment_method === "monthly") return false; // Exclude recurring contracts
+      if (!c.contract_end_date) return false;
+      const endDate = new Date(c.contract_end_date);
+      return isWithinInterval(endDate, { start, end });
+    });
+
+    // Not renewed = contract ending in period but no renewal registered for this company
+    const notRenewedCompanies = companiesWithContractEndingInPeriod.filter(
+      c => !renewedCompanyIds.has(c.id)
+    );
+
+    return { 
+      renewalsCount, 
+      renewedClientsCount, 
+      renewedPercent, 
+      notRenewedCompanies,
+      notRenewedCount: notRenewedCompanies.length
+    };
   }, [contractRenewals, dateRange, filteredCompanies]);
 
   const churnMetrics = useMemo(() => {
@@ -945,7 +967,7 @@ const DashboardMetrics = ({
         </TabsList>
 
         <TabsContent value="empresas" className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-9 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 gap-1.5 sm:gap-2">
             <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "all") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "all")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold">{filteredCompanies.length}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Total</p></CardContent></Card>
             <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("company", "no_consultant") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("company", "no_consultant")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-amber-500">{companyMetrics.activeWithoutConsultant}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Sem Consultor</p></CardContent></Card>
             <Card className={cn("cursor-pointer", isCardActive("status", "notice_period") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("status", "notice_period")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-orange-500">{projectMetrics.noticePeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Aviso</p></CardContent></Card>
@@ -953,9 +975,65 @@ const DashboardMetrics = ({
             <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "ending") && "ring-2 ring-purple-500")} onClick={() => handleCardClick("contracts", "ending")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-purple-500">{companyMetrics.contractsEndingInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencendo</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "expired") && "ring-2 ring-rose-500")} onClick={() => handleCardClick("contracts", "expired")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-rose-500">{companyMetrics.expiredContracts}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencidos</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "renewed") && "ring-2 ring-emerald-500")} onClick={() => handleCardClick("contracts", "renewed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-emerald-500">{renewalMetrics.renewedPercent}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Renovados ({renewalMetrics.renewedClientsCount})</p></CardContent></Card>
+            <Card 
+              className={cn(
+                "cursor-pointer hidden sm:block transition-all hover:shadow-md", 
+                showNotRenewedCompanies && "ring-2 ring-red-400"
+              )} 
+              onClick={() => setShowNotRenewedCompanies(!showNotRenewedCompanies)}
+            >
+              <CardContent className="p-2 sm:p-3 text-center">
+                <p className="text-lg sm:text-xl font-bold text-red-400">{renewalMetrics.notRenewedCount}</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Não Renovadas</p>
+              </CardContent>
+            </Card>
             <Card className={cn("cursor-pointer hidden lg:block", isCardActive("status", "reactivated") && "ring-2 ring-cyan-500")} onClick={() => handleCardClick("status", "reactivated")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-cyan-500">{projectMetrics.reactivatedInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Revertidos</p></CardContent></Card>
             <Card className="hidden lg:block"><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{churnMetrics.churnRate}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Churn</p></CardContent></Card>
           </div>
+
+          {/* List of companies not renewed in period */}
+          {showNotRenewedCompanies && renewalMetrics.notRenewedCompanies.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2 pt-3 px-4">
+                <CardTitle className="text-xs font-medium flex items-center gap-2">
+                  <RotateCcw className="h-4 w-4 text-red-400" />
+                  Empresas não renovadas no período ({renewalMetrics.notRenewedCompanies.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {renewalMetrics.notRenewedCompanies.map(company => {
+                    const companyProjects = projects.filter(p => getProjectCompanyId(p) === company.id && p.status === "active");
+                    const firstProject = companyProjects[0];
+                    return (
+                      <div 
+                        key={company.id} 
+                        className={cn(
+                          "flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors",
+                          firstProject && "cursor-pointer"
+                        )}
+                        onClick={() => {
+                          if (firstProject) {
+                            navigate(`/onboarding-tasks/${firstProject.id}`);
+                          }
+                        }}
+                      >
+                        <div className="h-8 w-8 rounded-full bg-red-400/10 flex items-center justify-center shrink-0">
+                          <Building2 className="h-4 w-4 text-red-400" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{company.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            Vence: {company.contract_end_date ? format(new Date(company.contract_end_date), "dd/MM/yyyy") : "-"}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
             <Card>
               <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium flex items-center gap-1 sm:gap-1.5"><Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-indigo-500" />{staffRole === "admin" ? "LTV & Retenção" : "Retenção"}</CardTitle></CardHeader>
