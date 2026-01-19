@@ -91,13 +91,13 @@ export function BoardChat({ sessionId, sessionTitle }: BoardChatProps) {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('ceo_board_chat')
+        .from('ceo_board_chat' as any)
         .select('*')
         .eq('session_id', sessionId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages((data || []) as ChatMessage[]);
+      setMessages((data as unknown as ChatMessage[]) || []);
     } catch (error) {
       console.error('Error fetching chat messages:', error);
     } finally {
@@ -114,7 +114,7 @@ export function BoardChat({ sessionId, sessionTitle }: BoardChatProps) {
 
     // Optimistically add user message
     const tempUserMessage: ChatMessage = {
-      id: `temp-${Date.now()}`,
+      id: `temp-user-${Date.now()}`,
       session_id: sessionId,
       role: 'user',
       message: userMessage,
