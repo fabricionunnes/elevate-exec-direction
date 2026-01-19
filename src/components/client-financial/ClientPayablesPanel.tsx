@@ -631,7 +631,7 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
                 <Label>Valor *</Label>
                 <CurrencyInput
                   value={formData.amount}
-                  onValueChange={(value) => setFormData({ ...formData, amount: value })}
+                  onChange={(value) => setFormData({ ...formData, amount: value })}
                 />
               </div>
               <div>
@@ -735,7 +735,7 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
                 <Label>Valor *</Label>
                 <CurrencyInput
                   value={formData.amount}
-                  onValueChange={(value) => setFormData({ ...formData, amount: value })}
+                  onChange={(value) => setFormData({ ...formData, amount: value })}
                 />
               </div>
               <div>
@@ -831,7 +831,7 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
               <Label>Valor Pago</Label>
               <CurrencyInput
                 value={payData.paid_amount}
-                onValueChange={(value) => setPayData({ ...payData, paid_amount: value })}
+                onChange={(value) => setPayData({ ...payData, paid_amount: value })}
               />
             </div>
           </div>
