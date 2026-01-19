@@ -267,113 +267,104 @@ export function ConsultantOneOnOnePanel() {
               .limit(1)
               .single();
 
-            // Get goal projection from monthly goals
+            // Calculate goal achievement to match the KPI Dashboard (Atingimento de Metas)
             const currentDate = new Date();
             const currentMonth = currentDate.getMonth() + 1;
             const currentYear = currentDate.getFullYear();
-            const { data: goalData } = await supabase
-              .from("onboarding_monthly_goals")
-              .select("sales_target, sales_result")
-              .eq("project_id", project.id)
-              .eq("month", currentMonth)
-              .eq("year", currentYear)
-              .maybeSingle();
-            
-            // Only use explicit monthly goal projection when there's a recorded result.
-            // If sales_result is null, fall back to KPI-based projection (prevents showing 0% when the KPI is already > 0%).
-            const goalProjection =
-              goalData &&
-              goalData.sales_target &&
-              goalData.sales_target > 0 &&
-              goalData.sales_result !== null &&
-              goalData.sales_result !== undefined
-                ? (Number(goalData.sales_result) / Number(goalData.sales_target)) * 100
-                : undefined;
+
+            const startOfMonthStr = new Date(currentYear, currentMonth - 1, 1).toISOString().split("T")[0];
+            // KPI Dashboard defaults to a date range; for 1:1 we use month-to-date
+            const endDateStr = today;
+
+            const startDateObj = new Date(startOfMonthStr);
+            const endDateObj = new Date(endDateStr);
+            const daysDiff =
+              Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
             // Fetch KPIs for this company
             const companyId = project.onboarding_company_id;
             const kpisData: KPIData[] = [];
-            
+
+            let overallRealized = 0;
+            let overallTarget = 0;
+
             if (companyId) {
-              // Get company KPIs
+              // Get company KPIs (same base set as KPI dashboard: all active)
               const { data: kpis } = await supabase
                 .from("company_kpis")
-                .select("id, name, target_value, kpi_type")
+                .select("id, name, target_value, kpi_type, periodicity")
                 .eq("company_id", companyId)
                 .eq("is_active", true)
                 .order("sort_order")
-                .limit(5);
+                .limit(100);
 
               if (kpis && kpis.length > 0) {
-                // Get current month entries for each KPI
-                const startOfMonth = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
-                const endOfMonth = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
-                const monthYear = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+                const monthYear = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
 
                 for (const kpi of kpis) {
-                  // Fetch entries for this KPI
+                  // Fetch entries for this KPI (month-to-date)
                   const { data: entries } = await supabase
                     .from("kpi_entries")
                     .select("value")
                     .eq("kpi_id", kpi.id)
-                    .gte("entry_date", startOfMonth)
-                    .lte("entry_date", endOfMonth);
+                    .gte("entry_date", startOfMonthStr)
+                    .lte("entry_date", endDateStr);
 
-                  // Fetch monthly target if available (get first/main level target)
-                  const { data: monthlyTarget } = await supabase
+                  // Fetch monthly targets for company scope (prefer level "Meta")
+                  const { data: monthlyTargets } = await supabase
                     .from("kpi_monthly_targets")
-                    .select("target_value")
+                    .select("target_value, level_name, level_order")
                     .eq("kpi_id", kpi.id)
                     .eq("month_year", monthYear)
-                    .order("level_order", { ascending: true })
-                    .limit(1)
-                    .maybeSingle();
+                    .is("unit_id", null)
+                    .is("team_id", null)
+                    .is("salesperson_id", null)
+                    .order("level_order", { ascending: true });
+
+                  const preferredMonthlyTarget =
+                    monthlyTargets?.find(t => t.level_name === "Meta") ?? monthlyTargets?.[0];
+
+                  const baseTarget = preferredMonthlyTarget?.target_value
+                    ? Number(preferredMonthlyTarget.target_value)
+                    : Number(kpi.target_value) || 0;
+
+                  // Match KPI dashboard target logic for the selected date range
+                  let targetForPeriod = baseTarget;
+                  if (kpi.periodicity === "daily") {
+                    targetForPeriod = baseTarget * daysDiff;
+                  } else if (kpi.periodicity === "weekly") {
+                    targetForPeriod = baseTarget * Math.ceil(daysDiff / 7);
+                  }
 
                   const totalValue = entries?.reduce((sum, e) => sum + (Number(e.value) || 0), 0) || 0;
-                  // Use monthly target if available, otherwise fall back to KPI base target
-                  const target = monthlyTarget?.target_value 
-                    ? Number(monthlyTarget.target_value) 
-                    : Number(kpi.target_value) || 0;
-                  const percentage = target > 0 ? (totalValue / target) * 100 : 0;
+                  const percentage = targetForPeriod > 0 ? (totalValue / targetForPeriod) * 100 : 0;
 
                   kpisData.push({
                     name: kpi.name,
-                    target,
+                    target: targetForPeriod,
                     result: totalValue,
                     percentage,
-                    kpiType: kpi.kpi_type
+                    kpiType: kpi.kpi_type,
                   });
+
+                  // Overall achievement sums only KPIs that actually have targets
+                  if (targetForPeriod > 0) {
+                    overallRealized += totalValue;
+                    overallTarget += targetForPeriod;
+                  }
                 }
               }
             }
+
+            const finalGoalProjection = overallTarget > 0 ? (overallRealized / overallTarget) * 100 : 0;
 
             const daysSinceMeeting = lastMeeting?.meeting_date
               ? differenceInDays(new Date(), new Date(lastMeeting.meeting_date))
               : undefined;
 
             const healthScore = project.client_health_scores?.total_score || 50;
-            const riskLevel = project.client_health_scores?.risk_level || 'medium';
+            const riskLevel = project.client_health_scores?.risk_level || "medium";
             const companyName = project.onboarding_companies?.name || "Empresa";
-
-            // Calculate goal projection: use onboarding_monthly_goals if available,
-            // otherwise derive from KPIs (ONLY consider monetary KPIs with targets > 0)
-            let finalGoalProjection = goalProjection;
-
-            if (finalGoalProjection === undefined && kpisData.length > 0) {
-              // ONLY use monetary KPIs with target > 0 for goal projection
-              // This prevents showing >100% based on non-monetary KPIs (like "Follow up")
-              const monetaryKpisWithTargets = kpisData.filter(
-                k => k.target > 0 && (k.kpiType === "monetary" || /meta|faturamento|vendas|receita/i.test(k.name))
-              );
-
-              if (monetaryKpisWithTargets.length > 0) {
-                // Prefer the main monetary goal KPI
-                const primaryGoalKpi = monetaryKpisWithTargets.find(k => k.kpiType === "monetary")
-                  ?? monetaryKpisWithTargets[0];
-                finalGoalProjection = primaryGoalKpi.percentage;
-              }
-              // If no monetary KPIs with targets, leave finalGoalProjection as undefined (shows as 0%)
-            }
 
             briefings.push({
               id: project.id,
@@ -397,33 +388,37 @@ export function ConsultantOneOnOnePanel() {
                 company: companyName,
                 projectId: project.id,
                 reason: `Health Score crítico (${healthScore})`,
-                healthScore
+                healthScore,
               });
-            } else if (healthScore < 60 || (overdueCount && overdueCount > 3) || (daysSinceMeeting && daysSinceMeeting > 14)) {
+            } else if (
+              healthScore < 60 ||
+              (overdueCount && overdueCount > 3) ||
+              (daysSinceMeeting && daysSinceMeeting > 14)
+            ) {
               const reasons = [];
               if (healthScore < 60) reasons.push(`Health Score ${healthScore}`);
               if (overdueCount && overdueCount > 3) reasons.push(`${overdueCount} tarefas atrasadas`);
               if (daysSinceMeeting && daysSinceMeeting > 14) reasons.push(`${daysSinceMeeting}d sem reunião`);
-              
+
               attention.push({
                 company: companyName,
                 projectId: project.id,
-                reason: reasons.join(' • '),
-                healthScore
+                reason: reasons.join(" • "),
+                healthScore,
               });
             } else if (healthScore >= 80 && latestNps?.score && latestNps.score >= 9) {
               celebrate.push({
                 company: companyName,
                 projectId: project.id,
                 reason: `Health ${healthScore} • NPS ${latestNps.score}`,
-                healthScore
+                healthScore,
               });
             } else {
               discuss.push({
                 company: companyName,
                 projectId: project.id,
-                reason: goalProjection ? `Meta ${goalProjection.toFixed(0)}%` : 'Alinhamento geral',
-                healthScore
+                reason: finalGoalProjection > 0 ? `Meta ${finalGoalProjection.toFixed(0)}%` : "Alinhamento geral",
+                healthScore,
               });
             }
           }
