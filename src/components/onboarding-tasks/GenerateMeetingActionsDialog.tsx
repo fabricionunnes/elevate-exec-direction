@@ -81,6 +81,10 @@ export const GenerateMeetingActionsDialog = ({
       if (fnError) throw fnError;
 
       if (data?.error) {
+        // Check for AI credits exhausted error
+        if (data.error.includes("Créditos de IA esgotados") || data.error.includes("402")) {
+          throw new Error("⚠️ Créditos de IA esgotados. Acesse Configurações → Workspace → Uso para adicionar mais créditos.");
+        }
         throw new Error(data.error);
       }
 
