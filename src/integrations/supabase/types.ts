@@ -7618,6 +7618,7 @@ export type Database = {
           id: string
           is_finalized: boolean
           is_no_show: boolean | null
+          live_notes: string | null
           meeting_date: string
           meeting_link: string | null
           meeting_title: string
@@ -7639,6 +7640,7 @@ export type Database = {
           id?: string
           is_finalized?: boolean
           is_no_show?: boolean | null
+          live_notes?: string | null
           meeting_date: string
           meeting_link?: string | null
           meeting_title: string
@@ -7660,6 +7662,7 @@ export type Database = {
           id?: string
           is_finalized?: boolean
           is_no_show?: boolean | null
+          live_notes?: string | null
           meeting_date?: string
           meeting_link?: string | null
           meeting_title?: string
