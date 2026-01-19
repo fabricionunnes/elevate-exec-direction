@@ -27,6 +27,7 @@ interface FormData {
   has_sales_process: boolean;
   biggest_challenge: string;
   urgency: string;
+  ownership_type: string;
 }
 
 interface Recommendation {
@@ -178,6 +179,7 @@ export function ClientDiagnosticForm({ onClose }: ClientDiagnosticFormProps) {
     has_sales_process: false,
     biggest_challenge: "",
     urgency: "normal",
+    ownership_type: "",
   });
 
   const updateField = (field: keyof FormData, value: string | boolean) => {
@@ -187,7 +189,7 @@ export function ClientDiagnosticForm({ onClose }: ClientDiagnosticFormProps) {
   const canProceed = () => {
     switch (step) {
       case 1:
-        return formData.company_name && formData.contact_name && formData.whatsapp;
+        return formData.company_name && formData.contact_name && formData.whatsapp && formData.ownership_type;
       case 2:
         return formData.revenue && formData.team_size;
       case 3:
@@ -220,6 +222,7 @@ export function ClientDiagnosticForm({ onClose }: ClientDiagnosticFormProps) {
           biggest_challenge: formData.biggest_challenge || null,
           urgency: formData.urgency,
           recommended_product: rec.product,
+          ownership_type: formData.ownership_type === "unico" ? "single" : formData.ownership_type === "socios" ? "partners" : null,
         });
       
       if (error) throw error;
@@ -321,6 +324,19 @@ export function ClientDiagnosticForm({ onClose }: ClientDiagnosticFormProps) {
                 onChange={(e) => updateField("email", e.target.value)}
                 placeholder="seu@email.com"
               />
+            </div>
+            
+            <div>
+              <Label>Você é o único proprietário ou tem sócio(s)? *</Label>
+              <Select value={formData.ownership_type} onValueChange={(v) => updateField("ownership_type", v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unico">Sou o único proprietário</SelectItem>
+                  <SelectItem value="socios">Tenho sócio(s)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
