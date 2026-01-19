@@ -301,8 +301,10 @@ export function ConsultantOneOnOnePanel() {
                 // Get current month entries for each KPI
                 const startOfMonth = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
                 const endOfMonth = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
+                const monthYear = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
                 for (const kpi of kpis) {
+                  // Fetch entries for this KPI
                   const { data: entries } = await supabase
                     .from("kpi_entries")
                     .select("value")
@@ -310,8 +312,21 @@ export function ConsultantOneOnOnePanel() {
                     .gte("entry_date", startOfMonth)
                     .lte("entry_date", endOfMonth);
 
+                  // Fetch monthly target if available (get first/main level target)
+                  const { data: monthlyTarget } = await supabase
+                    .from("kpi_monthly_targets")
+                    .select("target_value")
+                    .eq("kpi_id", kpi.id)
+                    .eq("month_year", monthYear)
+                    .order("level_order", { ascending: true })
+                    .limit(1)
+                    .maybeSingle();
+
                   const totalValue = entries?.reduce((sum, e) => sum + (Number(e.value) || 0), 0) || 0;
-                  const target = Number(kpi.target_value) || 0;
+                  // Use monthly target if available, otherwise fall back to KPI base target
+                  const target = monthlyTarget?.target_value 
+                    ? Number(monthlyTarget.target_value) 
+                    : Number(kpi.target_value) || 0;
                   const percentage = target > 0 ? (totalValue / target) * 100 : 0;
 
                   kpisData.push({
@@ -333,12 +348,24 @@ export function ConsultantOneOnOnePanel() {
             const riskLevel = project.client_health_scores?.risk_level || 'medium';
             const companyName = project.onboarding_companies?.name || "Empresa";
 
+            // Calculate goal projection: use onboarding_monthly_goals if available,
+            // otherwise calculate from KPIs average percentage
+            let finalGoalProjection = goalProjection;
+            if (finalGoalProjection === undefined && kpisData.length > 0) {
+              // Filter KPIs that have targets > 0 to calculate meaningful average
+              const kpisWithTargets = kpisData.filter(k => k.target > 0);
+              if (kpisWithTargets.length > 0) {
+                const avgKpiPercentage = kpisWithTargets.reduce((sum, k) => sum + k.percentage, 0) / kpisWithTargets.length;
+                finalGoalProjection = avgKpiPercentage;
+              }
+            }
+
             briefings.push({
               id: project.id,
               company_name: companyName,
               health_score: healthScore,
               risk_level: riskLevel,
-              goal_projection: goalProjection,
+              goal_projection: finalGoalProjection,
               last_meeting_date: lastMeeting?.meeting_date,
               overdue_tasks: overdueCount || 0,
               nps_score: latestNps?.score,
