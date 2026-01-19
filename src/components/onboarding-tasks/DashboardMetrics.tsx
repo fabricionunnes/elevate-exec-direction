@@ -88,6 +88,7 @@ interface Company {
   payment_method?: string | null;
   consultant_id?: string | null;
   is_simulator?: boolean;
+  renewal_status?: string | null;
 }
 
 interface DashboardMetricsProps {
@@ -465,9 +466,9 @@ const DashboardMetrics = ({
       return isWithinInterval(endDate, { start, end });
     });
 
-    // Not renewed = contract ending in period but no renewal registered for this company
+    // Not renewed = contract ending in period AND already decided not to renew (renewal_status = 'encerrado')
     const notRenewedCompanies = companiesWithContractEndingInPeriod.filter(
-      c => !renewedCompanyIds.has(c.id)
+      c => c.renewal_status === 'encerrado'
     );
 
     return { 
