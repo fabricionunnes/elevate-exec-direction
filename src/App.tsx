@@ -96,6 +96,7 @@ import CohortRetentionPage from "./pages/onboarding-tasks/CohortRetentionPage";
 import ConsultantEngagementPage from "./pages/onboarding-tasks/ConsultantEngagementPage";
 import ExecutiveDashboardPage from "./pages/onboarding-tasks/ExecutiveDashboardPage";
 import CEODashboardPage from "./pages/onboarding-tasks/CEODashboardPage";
+import LeaderDashboardPage from "./pages/onboarding-tasks/LeaderDashboardPage";
 import GlobalJobOpeningsPage from "./pages/onboarding-tasks/GlobalJobOpeningsPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
@@ -214,6 +215,9 @@ const App = () => (
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
             </Route>
+            
+            {/* Leader Dashboard - Admin Access (except CEO) */}
+            <Route path="/onboarding-tasks/leader" element={<LeaderDashboardPage />} />
             
             {/* CEO Dashboard - Exclusive Access */}
             <Route path="/onboarding-tasks/ceo" element={<CEODashboardPage />} />
