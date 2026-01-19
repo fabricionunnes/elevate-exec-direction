@@ -455,23 +455,20 @@ const DashboardMetrics = ({
     ).length;
     const renewedPercent = activeCompaniesCount > 0 ? Math.round((renewedClientsCount / activeCompaniesCount) * 100) : 0;
 
-    // Companies that were actually closed/ended in the period (not pending)
-    // Get company IDs from projects that are closed or completed in the period
-    const closedProjectCompanyIds = new Set(
-      nonSimulatorAllProjects
-        .filter(p => {
-          if (p.status !== "closed" && p.status !== "completed") return false;
-          const churnDateStr = p.churn_date || p.updated_at;
-          const closedDate = new Date(churnDateStr.substring(0, 10) + "T12:00:00");
-          return isWithinInterval(closedDate, { start, end });
-        })
-        .map(p => p.onboarding_company_id)
-        .filter(Boolean)
-    );
+    // Companies with contract ending in period that have NOT renewed yet
+    // Only include non-recurring contracts (not monthly payment)
+    const companiesWithContractEndingInPeriod = filteredCompanies.filter(c => {
+      if (c.status === "inactive" || c.status === "closed") return false;
+      if (c.payment_method === "monthly") return false; // Exclude recurring contracts
+      if (!c.contract_end_date) return false;
+      const endDate = new Date(c.contract_end_date);
+      return isWithinInterval(endDate, { start, end });
+    });
 
-    // Not renewed = companies that were closed in period and didn't renew
-    const notRenewedCompanies = companies
-      .filter(c => closedProjectCompanyIds.has(c.id) && !renewedCompanyIds.has(c.id));
+    // Not renewed = contract ending in period but no renewal registered for this company
+    const notRenewedCompanies = companiesWithContractEndingInPeriod.filter(
+      c => !renewedCompanyIds.has(c.id)
+    );
 
     return { 
       renewalsCount, 
