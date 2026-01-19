@@ -965,7 +965,7 @@ export function DailyLeadershipAgenda() {
                 </p>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {upcomingRenewals
                   .filter(r => r.days_until_renewal <= renewalsFilter)
                   .map((renewal, i) => {
@@ -978,23 +978,25 @@ export function DailyLeadershipAgenda() {
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.7 + i * 0.05 }}
-                        className={`p-4 rounded-xl border hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02] ${
+                        className={`p-3 sm:p-4 rounded-xl border shadow-sm hover:shadow-lg transition-all cursor-pointer active:scale-[0.98] sm:hover:scale-[1.02] ${
                           isUrgent 
                             ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-700' 
                             : isWarning 
                             ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700'
-                            : 'bg-background border-amber-200 dark:border-amber-800'
+                            : 'bg-card border-amber-200 dark:border-amber-800'
                         }`}
                         onClick={() => navigate(`/onboarding-tasks/${renewal.id}`)}
                       >
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-foreground truncate">{renewal.company_name}</h4>
-                            <p className="text-xs text-muted-foreground">{renewal.consultant_name}</p>
+                        <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-sm sm:text-base text-foreground break-words leading-tight">
+                              {renewal.company_name}
+                            </h4>
+                            <p className="text-xs text-muted-foreground mt-0.5">{renewal.consultant_name}</p>
                           </div>
                           <Badge 
                             variant="outline" 
-                            className={`text-xs shrink-0 ${
+                            className={`text-xs shrink-0 ml-1 ${
                               isUrgent 
                                 ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 border-red-300 dark:border-red-600' 
                                 : isWarning
@@ -1006,26 +1008,26 @@ export function DailyLeadershipAgenda() {
                           </Badge>
                         </div>
                         
-                        <div className="space-y-2">
+                        <div className="space-y-1.5 sm:space-y-2">
                           {/* Contract End Date */}
                           <div className="flex items-center gap-2">
-                            <Calendar className={`h-4 w-4 ${
+                            <Calendar className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 ${
                               isUrgent ? 'text-red-500' : isWarning ? 'text-amber-500' : 'text-green-500'
                             }`} />
-                            <span className="text-xs text-muted-foreground">Término:</span>
-                            <span className="text-sm font-medium text-foreground">
+                            <span className="text-[11px] sm:text-xs text-muted-foreground">Término:</span>
+                            <span className="text-xs sm:text-sm font-medium text-foreground">
                               {format(new Date(renewal.contract_end_date), "dd/MM/yyyy", { locale: ptBR })}
                             </span>
                           </div>
 
                           {/* Health Score */}
                           <div className="flex items-center gap-2">
-                            <Activity className={`h-4 w-4 ${
+                            <Activity className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 ${
                               renewal.health_score >= 70 ? 'text-green-500' :
                               renewal.health_score >= 40 ? 'text-yellow-500' : 'text-red-500'
                             }`} />
-                            <span className="text-xs text-muted-foreground">Saúde:</span>
-                            <span className={`text-sm font-bold ${
+                            <span className="text-[11px] sm:text-xs text-muted-foreground">Saúde:</span>
+                            <span className={`text-xs sm:text-sm font-bold ${
                               renewal.health_score >= 70 ? 'text-green-600 dark:text-green-400' :
                               renewal.health_score >= 40 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                             }`}>
@@ -1036,9 +1038,9 @@ export function DailyLeadershipAgenda() {
                           {/* Contract Value */}
                           {renewal.contract_value > 0 && (
                             <div className="flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">Valor:</span>
-                              <span className="text-sm font-medium text-foreground">
+                              <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-muted-foreground" />
+                              <span className="text-[11px] sm:text-xs text-muted-foreground">Valor:</span>
+                              <span className="text-xs sm:text-sm font-medium text-foreground">
                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(renewal.contract_value)}
                               </span>
                             </div>
