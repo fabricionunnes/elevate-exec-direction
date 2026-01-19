@@ -443,8 +443,8 @@ export default function ChurnPredictionContent() {
                       <div className="pt-2">
                         <GeneratePlaybookButton
                           projectId={prediction.project_id}
-                          existingStatus={playbookStatuses[prediction.project_id]}
-                          onGenerated={() => {
+                          churnPredictionId={prediction.id}
+                          onSuccess={() => {
                             fetchPlaybookStatuses();
                             setSelectedPlaybookProjectId(prediction.project_id);
                             setSelectedPlaybookCompanyName(prediction.company_name || "");
