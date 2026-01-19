@@ -349,15 +349,21 @@ export function ConsultantOneOnOnePanel() {
             const companyName = project.onboarding_companies?.name || "Empresa";
 
             // Calculate goal projection: use onboarding_monthly_goals if available,
-            // otherwise calculate from KPIs average percentage
+            // otherwise derive from KPIs (prefer the main monetary goal KPI when present)
             let finalGoalProjection = goalProjection;
-            
+
             if (finalGoalProjection === undefined && kpisData.length > 0) {
-              // Filter KPIs that have targets > 0 to calculate meaningful average
               const kpisWithTargets = kpisData.filter(k => k.target > 0);
-              if (kpisWithTargets.length > 0) {
-                const avgKpiPercentage = kpisWithTargets.reduce((sum, k) => sum + k.percentage, 0) / kpisWithTargets.length;
-                finalGoalProjection = avgKpiPercentage;
+
+              // Prefer a monetary KPI as "Meta" when available (ex: "Meta mensal")
+              const primaryGoalKpi = kpisWithTargets.find(k => k.kpiType === "monetary")
+                ?? kpisWithTargets.find(k => /meta/i.test(k.name));
+
+              if (primaryGoalKpi) {
+                finalGoalProjection = primaryGoalKpi.percentage;
+              } else if (kpisWithTargets.length > 0) {
+                // Fallback: meaningful average
+                finalGoalProjection = kpisWithTargets.reduce((sum, k) => sum + k.percentage, 0) / kpisWithTargets.length;
               }
             }
 
