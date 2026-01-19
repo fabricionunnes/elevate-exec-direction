@@ -36,7 +36,8 @@ import {
   Lightbulb,
   Copy,
   Check,
-  NotebookPen
+  NotebookPen,
+  Plus
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInDays } from "date-fns";
@@ -47,6 +48,7 @@ import { CompanyBriefingCard } from "./CompanyBriefingCard";
 import { toast } from "sonner";
 import { LeadershipMeetingNotesDialog } from "./LeadershipMeetingNotesDialog";
 import { NewCompanyCard } from "./NewCompanyCard";
+import { AddTaskDialog } from "@/components/onboarding-tasks/AddTaskDialog";
 
 interface Consultant {
   id: string;
@@ -127,6 +129,34 @@ export function ConsultantOneOnOnePanel() {
   const [newCompanies, setNewCompanies] = useState<NewCompany[]>([]);
   const [newCompaniesFilter, setNewCompaniesFilter] = useState<30 | 60 | 90>(30);
   const [copied, setCopied] = useState(false);
+  
+  // State for internal task creation dialog
+  const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [selectedCompanyName, setSelectedCompanyName] = useState<string>("");
+  const [staffList, setStaffList] = useState<Array<{ id: string; name: string; role: string }>>([]);
+
+  // Handler to open task dialog
+  const handleOpenTaskDialog = (projectId: string, companyName: string) => {
+    setSelectedProjectId(projectId);
+    setSelectedCompanyName(companyName);
+    setShowAddTaskDialog(true);
+  };
+
+  // Fetch staff list when dialog opens
+  useEffect(() => {
+    if (showAddTaskDialog && staffList.length === 0) {
+      const fetchStaff = async () => {
+        const { data } = await supabase
+          .from("onboarding_staff")
+          .select("id, name, role")
+          .eq("is_active", true)
+          .order("name");
+        if (data) setStaffList(data);
+      };
+      fetchStaff();
+    }
+  }, [showAddTaskDialog, staffList.length]);
 
   // Load consultants - only show role='consultant'
   useEffect(() => {
@@ -760,23 +790,43 @@ export function ConsultantOneOnOnePanel() {
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: sectionIndex * 0.1 + i * 0.05 }}
-                              className="flex items-center gap-3 p-3 rounded-lg bg-background hover:bg-muted transition-colors cursor-pointer group border"
-                              onClick={() => navigate(`/onboarding-tasks/${item.projectId}`)}
+                              className="flex items-center gap-3 p-3 rounded-lg bg-background hover:bg-muted transition-colors group border"
                             >
-                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm ${
-                                item.healthScore < 40 ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' :
-                                item.healthScore < 70 ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300' :
-                                'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
-                              }`}>
+                              <div 
+                                className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm cursor-pointer ${
+                                  item.healthScore < 40 ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' :
+                                  item.healthScore < 70 ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300' :
+                                  'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
+                                }`}
+                                onClick={() => navigate(`/onboarding-tasks/${item.projectId}`)}
+                              >
                                 {item.healthScore}
                               </div>
-                              <div className="flex-1 min-w-0">
+                              <div 
+                                className="flex-1 min-w-0 cursor-pointer"
+                                onClick={() => navigate(`/onboarding-tasks/${item.projectId}`)}
+                              >
                                 <p className="font-medium text-sm truncate text-foreground group-hover:text-primary transition-colors">
                                   {item.company}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate">{item.reason}</p>
                               </div>
-                              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenTaskDialog(item.projectId, item.company);
+                                }}
+                                title="Criar tarefa interna"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                              <ChevronRight 
+                                className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors cursor-pointer" 
+                                onClick={() => navigate(`/onboarding-tasks/${item.projectId}`)}
+                              />
                             </motion.div>
                           ))}
                         </div>
@@ -837,6 +887,7 @@ export function ConsultantOneOnOnePanel() {
                           company={company}
                           index={i}
                           onClick={() => navigate(`/onboarding-tasks/${company.id}`)}
+                          onCreateInternalTask={handleOpenTaskDialog}
                         />
                       ))}
                     </div>
@@ -867,6 +918,7 @@ export function ConsultantOneOnOnePanel() {
                     project={project} 
                     index={index}
                     expanded={true}
+                    onCreateInternalTask={handleOpenTaskDialog}
                   />
                 ))}
               </div>
@@ -874,6 +926,19 @@ export function ConsultantOneOnOnePanel() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Internal Task Dialog */}
+      <AddTaskDialog
+        open={showAddTaskDialog}
+        onOpenChange={setShowAddTaskDialog}
+        projectId={selectedProjectId}
+        staffList={staffList}
+        onTaskAdded={() => {
+          setShowAddTaskDialog(false);
+          toast.success(`Tarefa interna criada para ${selectedCompanyName}!`);
+        }}
+        forceInternal={true}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
-import { Activity, CheckCircle2, Calendar, TrendingUp, TrendingDown, Minus, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Activity, CheckCircle2, Calendar, TrendingUp, TrendingDown, Minus, User, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -18,9 +19,10 @@ interface NewCompanyCardProps {
   };
   index: number;
   onClick: () => void;
+  onCreateInternalTask?: (projectId: string, companyName: string) => void;
 }
 
-export function NewCompanyCard({ company, index, onClick }: NewCompanyCardProps) {
+export function NewCompanyCard({ company, index, onClick, onCreateInternalTask }: NewCompanyCardProps) {
   const progressPercent = company.total_tasks > 0 
     ? Math.round((company.completed_tasks / company.total_tasks) * 100) 
     : 0;
@@ -176,6 +178,22 @@ export function NewCompanyCard({ company, index, onClick }: NewCompanyCardProps)
           </Badge>
         )}
       </div>
+
+      {/* Create Internal Task Button */}
+      {onCreateInternalTask && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full mt-2"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCreateInternalTask(company.id, company.company_name);
+          }}
+        >
+          <Plus className="h-3.5 w-3.5 mr-1.5" />
+          Tarefa Interna
+        </Button>
+      )}
     </motion.div>
   );
 }
