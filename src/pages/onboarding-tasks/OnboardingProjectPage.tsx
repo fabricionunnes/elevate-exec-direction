@@ -84,6 +84,8 @@ import { Label } from "@/components/ui/label";
 import { Ticket } from "lucide-react";
 import { HRRecruitmentPanel } from "@/components/hr-recruitment/HRRecruitmentPanel";
 import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualBoard";
+import { ClientFinancialModule } from "@/components/client-financial/ClientFinancialModule";
+import { Wallet } from "lucide-react";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
@@ -1318,6 +1320,10 @@ const OnboardingProjectPage = () => {
                   <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Board
                 </TabsTrigger>
+                <TabsTrigger value="financial" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Financeiro
+                </TabsTrigger>
               </TabsList>
             </div>
           </div>
@@ -1532,6 +1538,13 @@ const OnboardingProjectPage = () => {
               projectId={projectId!}
               companyId={project.onboarding_company_id || undefined}
               companyName={project.onboarding_company?.name}
+            />
+          </TabsContent>
+
+          <TabsContent value="financial">
+            <ClientFinancialModule 
+              projectId={projectId!} 
+              userRole={currentUserRole || 'staff'}
             />
           </TabsContent>
 
