@@ -201,11 +201,26 @@ export const CampaignForm = ({ companyId, projectId, campaignId, onClose }: Camp
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      
+      // Try to get staff member first
       const { data: staffMember } = await supabase
         .from("onboarding_staff")
         .select("id")
         .eq("user_id", user?.id)
-        .single();
+        .maybeSingle();
+
+      // If not staff, try to get client user
+      let createdById = staffMember?.id || null;
+      if (!createdById) {
+        const { data: clientUser } = await supabase
+          .from("onboarding_users")
+          .select("id")
+          .eq("user_id", user?.id)
+          .eq("project_id", projectId)
+          .maybeSingle();
+        
+        createdById = clientUser?.id || null;
+      }
 
       const campaignData = {
         company_id: companyId,
@@ -224,7 +239,7 @@ export const CampaignForm = ({ companyId, projectId, campaignId, onClose }: Camp
         has_prizes: hasPrizes,
         prize_model: hasPrizes ? prizeModel : null,
         all_salespeople: allSalespeople,
-        created_by: staffMember?.id,
+        created_by: createdById,
       };
 
       let savedCampaignId = campaignId;
