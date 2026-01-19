@@ -299,6 +299,33 @@ const GlobalJobOpeningsPage = () => {
     return differenceInDays(endDate, startDate);
   };
 
+  // Get companies linked to the selected consultant
+  const filteredCompanies = useMemo(() => {
+    if (filterConsultant === "all") {
+      return companies;
+    }
+    
+    // Get unique company IDs from jobs that belong to the selected consultant
+    const consultantCompanyIds = new Set<string>();
+    jobs.forEach((job) => {
+      if (job.consultant_id === filterConsultant && job.company_id) {
+        consultantCompanyIds.add(job.company_id);
+      }
+    });
+    
+    return companies.filter((c) => consultantCompanyIds.has(c.id));
+  }, [companies, jobs, filterConsultant]);
+
+  // Reset company filter when consultant changes and selected company is not in the new list
+  useEffect(() => {
+    if (filterConsultant !== "all" && filterCompany !== "all") {
+      const companyStillValid = filteredCompanies.some((c) => c.id === filterCompany);
+      if (!companyStillValid) {
+        setFilterCompany("all");
+      }
+    }
+  }, [filterConsultant, filteredCompanies, filterCompany]);
+
   // Filter jobs
   const filteredJobs = useMemo(() => {
     return jobs.filter((job) => {
@@ -643,8 +670,8 @@ const GlobalJobOpeningsPage = () => {
                   <SelectValue placeholder="Empresa" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas empresas</SelectItem>
-                  {companies.map((c) => (
+                  <SelectItem value="all">Todas empresas{filterConsultant !== "all" ? ` (${filteredCompanies.length})` : ""}</SelectItem>
+                  {filteredCompanies.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
