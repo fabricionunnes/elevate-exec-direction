@@ -30,6 +30,7 @@ import { GamificationDashboardWidget } from "../gamification/GamificationDashboa
 import { SalesHistoryDialog } from "./SalesHistoryDialog";
 import { SalesComparisonChart } from "./SalesComparisonChart";
 import { KPIEntriesHistoryDialog } from "./KPIEntriesHistoryDialog";
+import { SalespeopleComparisonTable } from "./SalespeopleComparisonTable";
 
 interface KPI {
   id: string;
@@ -1522,6 +1523,15 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
           </Table>
         </CardContent>
       </Card>
+
+      {/* Salespeople Comparison Table */}
+      <SalespeopleComparisonTable
+        kpis={kpis}
+        salespeople={salespeople}
+        entries={entries}
+        units={units}
+        selectedUnit={selectedUnit}
+      />
 
       {/* Endomarketing Campaigns Widget */}
       {projectId && (
