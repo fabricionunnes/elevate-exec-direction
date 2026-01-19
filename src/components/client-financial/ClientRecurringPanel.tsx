@@ -474,7 +474,7 @@ export function ClientRecurringPanel({ projectId, canEdit }: Props) {
                 <Label>Valor *</Label>
                 <CurrencyInput
                   value={formData.amount}
-                  onValueChange={(value) => setFormData({ ...formData, amount: value })}
+                  onChange={(value) => setFormData({ ...formData, amount: value })}
                 />
               </div>
               <div>
@@ -597,7 +597,7 @@ export function ClientRecurringPanel({ projectId, canEdit }: Props) {
                 <Label>Valor *</Label>
                 <CurrencyInput
                   value={formData.amount}
-                  onValueChange={(value) => setFormData({ ...formData, amount: value })}
+                  onChange={(value) => setFormData({ ...formData, amount: value })}
                 />
               </div>
               <div>
