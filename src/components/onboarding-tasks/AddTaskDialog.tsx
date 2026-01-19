@@ -286,8 +286,8 @@ export const AddTaskDialog = ({
         recurrence: recurrence,
         sort_order: currentSortOrder + 1,
         status: "pending",
-        google_meet_link: meetLink,
-        is_internal: forceInternal || false, // Mark as internal if forceInternal is true
+        meeting_link: meetLink || null,
+        is_internal: forceInternal || false,
       };
 
       const { data: taskData, error } = await supabase
