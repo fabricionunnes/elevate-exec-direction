@@ -1539,6 +1539,12 @@ const OnboardingTasksPage = () => {
                       Análises
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent className="w-48">
+                      {isAdmin && (
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/executive")}>
+                          <Activity className="h-4 w-4 mr-2" />
+                          Dashboard Executivo
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/churn-prediction")}>
                         <TrendingDown className="h-4 w-4 mr-2" />
                         Previsão de Churn
@@ -1583,12 +1589,6 @@ const OnboardingTasksPage = () => {
                           Relatórios
                         </DropdownMenuSubTrigger>
                         <DropdownMenuSubContent className="w-52">
-                          {isAdmin && (
-                            <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/executive")}>
-                              <Activity className="h-4 w-4 mr-2" />
-                              Dashboard Executivo
-                            </DropdownMenuItem>
-                          )}
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies-report")}>
                             <FileBarChart className="h-4 w-4 mr-2" />
                             Relatório de Empresas
