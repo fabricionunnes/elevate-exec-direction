@@ -19,6 +19,7 @@ import {
   Check,
   Gift,
   Users,
+  Wallet,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,6 +39,7 @@ import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel"
 import { ClientReferralsPanel } from "@/components/client-portal/ClientReferralsPanel";
 import { ClientHRView } from "@/components/client-portal/ClientHRView";
 import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualBoard";
+import { ClientFinancialModule } from "@/components/client-financial/ClientFinancialModule";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,7 +90,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -360,6 +362,7 @@ const ClientOnboardingPage = () => {
     { id: "trail" as ViewType, icon: Map, label: "Trilha" },
     { id: "timeline" as ViewType, icon: Calendar, label: "Cronograma" },
     { id: "list" as ViewType, icon: List, label: "Lista" },
+    { id: "financial" as ViewType, icon: Wallet, label: "Financeiro" },
     { id: "tickets" as ViewType, icon: MessageSquare, label: "Chamados" },
     { id: "meetings" as ViewType, icon: Video, label: "Reuniões" },
     { id: "assessments" as ViewType, icon: ClipboardCheck, label: "Testes" },
@@ -687,6 +690,20 @@ const ClientOnboardingPage = () => {
                 companyId={companyId || ""}
                 companyName={company?.name || ""}
                 isClientView={true}
+              />
+            </motion.div>
+          )}
+
+          {activeView === "financial" && (
+            <motion.div
+              key="financial"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientFinancialModule 
+                projectId={projectId || ""} 
+                userRole={currentUser?.role}
               />
             </motion.div>
           )}

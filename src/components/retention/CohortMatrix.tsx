@@ -35,41 +35,44 @@ export function CohortMatrix({ segmentFilter, consultantFilter, monthsToShow = 6
     setLoading(true);
     try {
       // Get all projects with their start dates and current status
-      let query = supabase
+      const { data: projectsData, error } = await supabase
         .from('onboarding_projects')
-        .select(`
-          id,
-          status,
-          start_date,
-          end_date,
-          created_at,
-          onboarding_companies(
-            id,
-            name,
-            segment
-          ),
-          onboarding_services!inner(name),
-          onboarding_staff(name)
-        `)
-        .not('start_date', 'is', null);
+        .select('id, status, start_date, end_date, created_at, consultant_id, onboarding_company_id');
+
+      if (error) throw error;
+
+      const projectsList = (projectsData || []) as any[];
+      const projectsWithStartDate = projectsList.filter(p => p.start_date);
+
+      // Fetch companies separately to avoid deep type instantiation
+      const companyIds = [...new Set(projectsWithStartDate.map(p => p.onboarding_company_id).filter(Boolean))];
+      const { data: companies } = await supabase
+        .from('onboarding_companies')
+        .select('id, name, segment')
+        .in('id', companyIds.length > 0 ? companyIds : ['']);
+
+      const companiesMap = new Map((companies || []).map(c => [c.id, c]));
+
+      // Filter by segment and consultant
+      let filteredProjects = projectsWithStartDate.map(p => ({
+        ...p,
+        company: companiesMap.get(p.onboarding_company_id)
+      }));
 
       if (segmentFilter && segmentFilter !== 'all') {
-        query = query.eq('onboarding_companies.segment', segmentFilter);
+        filteredProjects = filteredProjects.filter(p => p.company?.segment === segmentFilter);
       }
 
       if (consultantFilter && consultantFilter !== 'all') {
-        query = query.eq('consultant_id', consultantFilter);
+        filteredProjects = filteredProjects.filter(p => p.consultant_id === consultantFilter);
       }
-
-      const { data: projects, error } = await query;
-      if (error) throw error;
 
       // Group projects by start month (cohort)
       const cohorts: { [key: string]: any[] } = {};
       const now = new Date();
       const startPeriod = subMonths(now, periodMonths);
 
-      (projects || []).forEach((project: any) => {
+      filteredProjects.forEach((project: any) => {
         const startDate = project.start_date ? parseISO(project.start_date) : new Date(project.created_at);
         if (startDate < startPeriod) return;
         
