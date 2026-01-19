@@ -158,8 +158,8 @@ export const MonthlySalesChart = ({
   const hasPositiveTrend = trendPercent > 0;
 
   const generateAIAnalysis = async () => {
-    if (chartData.length < 3) {
-      setAiAnalysis("Preciso de pelo menos 3 meses de dados para gerar uma análise significativa.");
+    if (chartData.length < 1) {
+      setAiAnalysis("Preciso de pelo menos 1 mês de dados para gerar uma análise.");
       setAnalysisGenerated(true);
       return;
     }
@@ -421,14 +421,14 @@ Empresa: "${companyName || 'cliente'}".`;
                       size="sm"
                       onClick={generateAIAnalysis}
                       className="gap-2"
-                      disabled={chartData.length < 3}
+                      disabled={chartData.length < 1}
                     >
                       <Sparkles className="h-3 w-3" />
                       Gerar Análise
                     </Button>
-                    {chartData.length < 3 && (
+                    {chartData.length < 1 && (
                       <p className="text-xs text-muted-foreground">
-                        Mínimo de 3 meses de dados necessários
+                        Necessário pelo menos 1 mês de dados
                       </p>
                     )}
                   </div>
