@@ -948,6 +948,7 @@ export default function DiagnosticResponsesPage() {
                         <TableHead>Empresa</TableHead>
                         <TableHead>Contato</TableHead>
                         <TableHead>Perfil</TableHead>
+                        <TableHead>Sociedade</TableHead>
                         <TableHead>Dor</TableHead>
                         <TableHead>Produto</TableHead>
                         <TableHead>Status</TableHead>
@@ -993,6 +994,23 @@ export default function DiagnosticResponsesPage() {
                                   <CheckCircle className="h-3 w-3 mr-1" />
                                   Tem processo
                                 </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 text-sm">
+                              {response.ownership_type === 'single' ? (
+                                <Badge variant="outline" className="text-xs">
+                                  <Users className="h-3 w-3 mr-1" />
+                                  Único
+                                </Badge>
+                              ) : response.ownership_type === 'partners' ? (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Users className="h-3 w-3 mr-1" />
+                                  Sócios
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">-</span>
                               )}
                             </div>
                           </TableCell>
