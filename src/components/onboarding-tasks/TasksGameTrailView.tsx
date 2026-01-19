@@ -355,29 +355,26 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                               key={task.id}
                               role="button"
                               tabIndex={0}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                onTaskClick(task);
-                              }}
+                              onClick={() => onTaskClick(task)}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
-                                  e.stopPropagation();
                                   e.preventDefault();
                                   onTaskClick(task);
                                 }
                               }}
                               className={`
                                 group flex items-center gap-3 p-3 md:p-4 rounded-xl cursor-pointer transition-all
+                                hover:ring-2 hover:ring-primary/30 active:scale-[0.99]
                                 ${taskCompleted
-                                  ? "bg-emerald-500/5 border border-emerald-500/20"
+                                  ? "bg-emerald-500/5 border border-emerald-500/20 hover:bg-emerald-500/10"
                                   : taskActive
-                                  ? "bg-amber-500/5 border border-amber-500/30"
+                                  ? "bg-amber-500/5 border border-amber-500/30 hover:bg-amber-500/15"
                                   : overdue
                                   ? "bg-red-500/5 border border-red-500/30 hover:bg-red-500/10"
                                   : dueToday
                                   ? "bg-amber-500/5 border border-amber-500/20 hover:bg-amber-500/10"
                                   : "bg-muted/30 border border-transparent hover:bg-muted/50 hover:border-border"
+                                }
                                 }
                               `}
                             >
