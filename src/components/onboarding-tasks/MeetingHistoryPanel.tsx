@@ -203,20 +203,31 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
     // We need staff context first to correctly apply visibility rules
     const staffInfo = await fetchCurrentStaff();
 
+    // Load local data first (fast) - show UI immediately
     await Promise.all([
       fetchMeetings(staffInfo),
       fetchCSATSurveys(),
       fetchMeetingSentiments(),
       fetchMeetingBriefings(),
+      fetchProductId(),
     ]);
 
-    // Fetch consultant info and then sync calendar with the returned values
-    const consultantInfo = await fetchProjectConsultant();
-    await syncCalendarEvents(consultantInfo?.consultantUserId, consultantInfo?.companyName);
-
-    // Get product ID for phase creation
-    await fetchProductId();
+    // Mark loading complete immediately so UI is responsive
     setLoading(false);
+
+    // Sync calendar in background (slow) - don't block UI
+    const consultantInfo = await fetchProjectConsultant();
+    syncCalendarEventsInBackground(consultantInfo?.consultantUserId, consultantInfo?.companyName);
+  };
+
+  // Background calendar sync - doesn't block UI
+  const syncCalendarEventsInBackground = async (consultantUserId?: string | null, clientCompanyName?: string | null) => {
+    setSyncing(true);
+    try {
+      await syncCalendarEvents(consultantUserId, clientCompanyName);
+    } finally {
+      setSyncing(false);
+    }
   };
   
   const fetchMeetingSentiments = async () => {
