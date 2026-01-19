@@ -989,6 +989,15 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
         </Card>
       )}
 
+      {/* Salespeople Comparison Table */}
+      <SalespeopleComparisonTable
+        kpis={kpis}
+        salespeople={salespeople}
+        entries={entries}
+        units={units}
+        selectedUnit={selectedUnit}
+      />
+
       {/* Sales Comparison Chart - Before vs After UNV */}
       <SalesComparisonChart 
         companyId={companyId}
@@ -1523,15 +1532,6 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
           </Table>
         </CardContent>
       </Card>
-
-      {/* Salespeople Comparison Table */}
-      <SalespeopleComparisonTable
-        kpis={kpis}
-        salespeople={salespeople}
-        entries={entries}
-        units={units}
-        selectedUnit={selectedUnit}
-      />
 
       {/* Endomarketing Campaigns Widget */}
       {projectId && (
