@@ -57,27 +57,30 @@ const AdvancedRichTextarea = React.forwardRef<HTMLDivElement, AdvancedRichTextar
     const editorRef = React.useRef<HTMLDivElement>(null);
     const [showColorPicker, setShowColorPicker] = React.useState(false);
     const [showFontSizePicker, setShowFontSizePicker] = React.useState(false);
-    const isInternalUpdate = React.useRef(false);
-    const lastExternalValue = React.useRef(value);
+    const lastEmittedValue = React.useRef(value);
 
-    // Only sync content from value prop when it changes externally (not from user input)
+    // Sync content from value prop only when it comes from outside (e.g. loading/saving),
+    // and never while the user is actively editing (focused).
     React.useEffect(() => {
-      if (editorRef.current && !isInternalUpdate.current && value !== lastExternalValue.current) {
-        // Only update if the editor doesn't have focus or if it's truly a different value
-        if (document.activeElement !== editorRef.current) {
-          editorRef.current.innerHTML = value || "";
-        }
-        lastExternalValue.current = value;
+      if (!editorRef.current) return;
+
+      const isFocused = document.activeElement === editorRef.current;
+      const editorHtml = editorRef.current.innerHTML;
+
+      // If value differs from what the editor has AND user isn't editing, update editor.
+      if (!isFocused && value !== editorHtml) {
+        editorRef.current.innerHTML = value || "";
       }
-      isInternalUpdate.current = false;
+
+      // Track last value seen from props to avoid unnecessary churn.
+      lastEmittedValue.current = value;
     }, [value]);
 
     const handleInput = () => {
-      if (editorRef.current) {
-        isInternalUpdate.current = true;
-        lastExternalValue.current = editorRef.current.innerHTML;
-        onChange(editorRef.current.innerHTML);
-      }
+      if (!editorRef.current) return;
+      const html = editorRef.current.innerHTML;
+      lastEmittedValue.current = html;
+      onChange(html);
     };
 
     const execCommand = (command: string, commandValue?: string) => {
