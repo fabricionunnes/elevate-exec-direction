@@ -96,7 +96,7 @@ export const MeetingLiveNotesEditor = ({
     return () => clearTimeout(timer);
   }, [notes, hasUnsavedChanges]);
 
-  const NotesContent = () => (
+  const renderNotesContent = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -172,7 +172,7 @@ export const MeetingLiveNotesEditor = ({
             <p className="text-sm text-muted-foreground">{meetingTitle}</p>
           </SheetHeader>
           <div className="mt-6">
-            <NotesContent />
+            {renderNotesContent()}
           </div>
         </SheetContent>
       </Sheet>
@@ -206,7 +206,7 @@ export const MeetingLiveNotesEditor = ({
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent className="pt-0">
-              <NotesContent />
+              {renderNotesContent()}
             </CardContent>
           </CollapsibleContent>
         </Card>
@@ -224,7 +224,7 @@ export const MeetingLiveNotesEditor = ({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <NotesContent />
+        {renderNotesContent()}
       </CardContent>
     </Card>
   );
