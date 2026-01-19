@@ -59,6 +59,7 @@ import { MeetingSentimentBadge } from "./meeting-sentiment/MeetingSentimentBadge
 import { MeetingSentimentDialog } from "./meeting-sentiment/MeetingSentimentDialog";
 import { MeetingBriefingSheet } from "./meeting-briefing/MeetingBriefingSheet";
 import { BriefingBadge } from "./meeting-briefing/BriefingBadge";
+import { MeetingLiveNotesEditor } from "./meetings/MeetingLiveNotesEditor";
 
 interface MeetingNote {
   id: string;
@@ -68,6 +69,7 @@ interface MeetingNote {
   notes: string | null;
   transcript: string | null;
   manual_transcript?: string | null;
+  live_notes?: string | null;
   attendees: string | null;
   meeting_link: string | null;
   recording_link: string | null;
@@ -1090,6 +1092,19 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
                             Link da reunião
                           </Button>
                         )}
+                        
+                        {/* Live Notes Editor */}
+                        <div className="mt-3">
+                          <MeetingLiveNotesEditor
+                            meetingId={meeting.id}
+                            meetingTitle={meeting.subject}
+                            meetingDate={meeting.meeting_date}
+                            initialNotes={meeting.live_notes}
+                            isFinalized={false}
+                            onNotesUpdated={() => fetchMeetings()}
+                            variant="collapsible"
+                          />
+                        </div>
                       </div>
                       <div className="flex flex-col gap-2">
                         <Button 
@@ -1185,6 +1200,12 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
                                 setSentimentDialogOpen(true);
                               }}
                             />
+                            {meeting.live_notes && meeting.live_notes.length > 0 && (
+                              <Badge variant="outline" className="shrink-0 text-xs border-primary/50 text-primary">
+                                <FileText className="h-3 w-3 mr-1" />
+                                Anotações
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground mb-1 flex-wrap">
                             <span className="flex items-center gap-1">
@@ -1716,6 +1737,22 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
                 <div className="mt-2 p-4 bg-background border rounded-lg max-h-[250px] overflow-y-auto">
                   <p className="text-sm whitespace-pre-wrap">{selectedMeeting.notes}</p>
                 </div>
+              </div>
+
+              {/* Live Notes Section */}
+              <div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-2">
+                  Anotações ao Vivo
+                </span>
+                <MeetingLiveNotesEditor
+                  meetingId={selectedMeeting.id}
+                  meetingTitle={selectedMeeting.subject}
+                  meetingDate={selectedMeeting.meeting_date}
+                  initialNotes={selectedMeeting.live_notes}
+                  isFinalized={selectedMeeting.is_finalized}
+                  onNotesUpdated={() => fetchMeetings()}
+                  variant="inline"
+                />
               </div>
 
 

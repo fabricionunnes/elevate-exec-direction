@@ -594,17 +594,20 @@ ${notifications.slice(0, 10).map(n => {
       : "";
 
     // Meetings context (critical for understanding what was discussed)
-    // Include FULL transcript and manual_transcript content
+    // Include FULL transcript, manual_transcript and live_notes content
     const meetingsContext = meetingNotes && meetingNotes.length > 0
       ? `
-## REUNIÕES REALIZADAS (O que foi tratado + Transcrições)
+## REUNIÕES REALIZADAS (O que foi tratado + Transcrições + Anotações ao Vivo)
 ${meetingNotes.filter(m => m.is_finalized).map(m => {
   const date = new Date(m.meeting_date).toLocaleDateString('pt-BR');
   const transcriptText = m.transcript || m.manual_transcript || null;
+  const liveNotesText = m.live_notes || null;
   return `### ${m.meeting_title || 'Reunião'} - ${date}
 **Participantes:** ${m.attendees || 'Não informados'}
 ${m.notes ? `**O que foi tratado:**
 ${m.notes}` : ''}
+${liveNotesText ? `**ANOTAÇÕES AO VIVO (feitas durante a reunião):**
+${liveNotesText.replace(/<[^>]*>/g, ' ').substring(0, 4000)}${liveNotesText.length > 4000 ? '... [anotações truncadas]' : ''}` : ''}
 ${transcriptText ? `**TRANSCRIÇÃO DA REUNIÃO:**
 ${transcriptText.substring(0, 8000)}${transcriptText.length > 8000 ? '... [transcrição truncada para contexto]' : ''}` : ''}
 `;
