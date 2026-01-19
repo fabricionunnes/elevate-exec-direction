@@ -156,7 +156,7 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
         due_date: formData.due_date,
         payment_method_id: formData.payment_method_id || null,
         notes: formData.notes || null,
-        status: new Date(formData.due_date) < new Date() ? "overdue" : "open",
+        status: parseDateLocal(formData.due_date) < new Date(new Date().setHours(0, 0, 0, 0)) ? "overdue" : "open",
       });
 
       if (error) throw error;
