@@ -1598,6 +1598,7 @@ export type Database = {
           id: string
           main_pain: string
           notes: string | null
+          ownership_type: string | null
           recommended_product: string | null
           revenue: string
           status: string
@@ -1616,6 +1617,7 @@ export type Database = {
           id?: string
           main_pain: string
           notes?: string | null
+          ownership_type?: string | null
           recommended_product?: string | null
           revenue: string
           status?: string
@@ -1634,6 +1636,7 @@ export type Database = {
           id?: string
           main_pain?: string
           notes?: string | null
+          ownership_type?: string | null
           recommended_product?: string | null
           revenue?: string
           status?: string

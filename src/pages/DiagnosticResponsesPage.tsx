@@ -78,6 +78,7 @@ interface DiagnosticResponse {
   status: string;
   notes: string | null;
   why_diagnostic: string | null;
+  ownership_type: string | null;
 }
 
 interface CloserDiagnostic {
@@ -1513,7 +1514,7 @@ export default function DiagnosticResponsesPage() {
               {/* Perfil */}
               <div>
                 <h4 className="text-sm font-semibold text-foreground mb-3">Perfil da Empresa</h4>
-                <div className="grid sm:grid-cols-3 gap-3">
+                <div className="grid sm:grid-cols-4 gap-3">
                   <div className="bg-secondary/50 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground mb-1">Faturamento</p>
                     <p className="font-medium text-foreground">{revenueLabels[selectedResponse.revenue] || selectedResponse.revenue}</p>
@@ -1525,6 +1526,14 @@ export default function DiagnosticResponsesPage() {
                   <div className="bg-secondary/50 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground mb-1">Processo</p>
                     <p className="font-medium text-foreground">{selectedResponse.has_sales_process ? "Tem processo" : "Sem processo"}</p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Sociedade</p>
+                    <p className="font-medium text-foreground">
+                      {selectedResponse.ownership_type === 'unico' ? 'Único proprietário' : 
+                       selectedResponse.ownership_type === 'socios' ? 'Tem sócio(s)' : 
+                       'Não informado'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1584,6 +1593,9 @@ export default function DiagnosticResponsesPage() {
                     <p className="text-sm text-foreground mb-2">
                       <span className="font-semibold">Perfil:</span> {revenueLabels[selectedResponse.revenue] || selectedResponse.revenue} de faturamento, 
                       {teamLabels[selectedResponse.team_size]?.toLowerCase() || selectedResponse.team_size}
+                      {selectedResponse.ownership_type && (
+                        <>, {selectedResponse.ownership_type === 'unico' ? 'único proprietário' : 'com sócio(s)'}</>
+                      )}
                     </p>
                     {selectedResponse.why_diagnostic && (
                       <div className="mt-2 bg-background/50 rounded p-2">
