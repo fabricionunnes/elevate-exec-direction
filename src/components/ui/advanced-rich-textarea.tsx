@@ -57,22 +57,31 @@ const AdvancedRichTextarea = React.forwardRef<HTMLDivElement, AdvancedRichTextar
     const editorRef = React.useRef<HTMLDivElement>(null);
     const [showColorPicker, setShowColorPicker] = React.useState(false);
     const [showFontSizePicker, setShowFontSizePicker] = React.useState(false);
+    const isInternalUpdate = React.useRef(false);
+    const lastExternalValue = React.useRef(value);
 
-    // Sync content from value prop
+    // Only sync content from value prop when it changes externally (not from user input)
     React.useEffect(() => {
-      if (editorRef.current && editorRef.current.innerHTML !== value) {
-        editorRef.current.innerHTML = value || "";
+      if (editorRef.current && !isInternalUpdate.current && value !== lastExternalValue.current) {
+        // Only update if the editor doesn't have focus or if it's truly a different value
+        if (document.activeElement !== editorRef.current) {
+          editorRef.current.innerHTML = value || "";
+        }
+        lastExternalValue.current = value;
       }
+      isInternalUpdate.current = false;
     }, [value]);
 
     const handleInput = () => {
       if (editorRef.current) {
+        isInternalUpdate.current = true;
+        lastExternalValue.current = editorRef.current.innerHTML;
         onChange(editorRef.current.innerHTML);
       }
     };
 
-    const execCommand = (command: string, value?: string) => {
-      document.execCommand(command, false, value);
+    const execCommand = (command: string, commandValue?: string) => {
+      document.execCommand(command, false, commandValue);
       editorRef.current?.focus();
       handleInput();
     };
