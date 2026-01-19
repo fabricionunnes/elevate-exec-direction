@@ -1647,6 +1647,500 @@ export type Database = {
         }
         Relationships: []
       }
+      client_financial_audit_log: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          project_id: string
+          record_id: string
+          table_name: string
+          user_role: string | null
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          project_id: string
+          record_id: string
+          table_name: string
+          user_role?: string | null
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          project_id?: string
+          record_id?: string
+          table_name?: string
+          user_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_financial_audit_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_financial_cashflow_snapshots: {
+        Row: {
+          closing_balance: number | null
+          created_at: string
+          id: string
+          opening_balance: number | null
+          project_id: string
+          snapshot_date: string
+          total_expense: number | null
+          total_income: number | null
+        }
+        Insert: {
+          closing_balance?: number | null
+          created_at?: string
+          id?: string
+          opening_balance?: number | null
+          project_id: string
+          snapshot_date: string
+          total_expense?: number | null
+          total_income?: number | null
+        }
+        Update: {
+          closing_balance?: number | null
+          created_at?: string
+          id?: string
+          opening_balance?: number | null
+          project_id?: string
+          snapshot_date?: string
+          total_expense?: number | null
+          total_income?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_financial_cashflow_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_financial_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          project_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          project_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          project_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_financial_categories_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_financial_cost_centers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_financial_cost_centers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_financial_payables: {
+        Row: {
+          amount: number
+          attachment_url: string | null
+          category_id: string | null
+          cost_center_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string
+          id: string
+          installment_number: number | null
+          notes: string | null
+          paid_amount: number | null
+          paid_at: string | null
+          parent_id: string | null
+          payment_method_id: string | null
+          project_id: string
+          status: string
+          supplier_name: string
+          total_installments: number | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          attachment_url?: string | null
+          category_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date: string
+          id?: string
+          installment_number?: number | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          parent_id?: string | null
+          payment_method_id?: string | null
+          project_id: string
+          status?: string
+          supplier_name: string
+          total_installments?: number | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          attachment_url?: string | null
+          category_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string
+          id?: string
+          installment_number?: number | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          parent_id?: string | null
+          payment_method_id?: string | null
+          project_id?: string
+          status?: string
+          supplier_name?: string
+          total_installments?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_financial_payables_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_payables_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_payables_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_payables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_payables_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_payables_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_financial_payment_methods: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_financial_payment_methods_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_financial_receivables: {
+        Row: {
+          amount: number
+          attachment_url: string | null
+          category_id: string | null
+          client_name: string
+          cost_center_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string
+          id: string
+          notes: string | null
+          paid_amount: number | null
+          paid_at: string | null
+          payment_method_id: string | null
+          project_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          attachment_url?: string | null
+          category_id?: string | null
+          client_name: string
+          cost_center_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date: string
+          id?: string
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          payment_method_id?: string | null
+          project_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          attachment_url?: string | null
+          category_id?: string | null
+          client_name?: string
+          cost_center_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string
+          id?: string
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          payment_method_id?: string | null
+          project_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_financial_receivables_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_receivables_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_receivables_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_receivables_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_financial_recurring_rules: {
+        Row: {
+          amount: number
+          category_id: string | null
+          client_or_supplier_name: string | null
+          cost_center_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          due_day: number
+          end_date: string | null
+          frequency: string
+          id: string
+          is_active: boolean | null
+          last_generated_date: string | null
+          payment_method_id: string | null
+          project_id: string
+          start_date: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          client_or_supplier_name?: string | null
+          cost_center_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description: string
+          due_day: number
+          end_date?: string | null
+          frequency: string
+          id?: string
+          is_active?: boolean | null
+          last_generated_date?: string | null
+          payment_method_id?: string | null
+          project_id: string
+          start_date: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          client_or_supplier_name?: string | null
+          cost_center_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          due_day?: number
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          last_generated_date?: string | null
+          payment_method_id?: string | null
+          project_id?: string
+          start_date?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_financial_recurring_rules_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_recurring_rules_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_recurring_rules_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_recurring_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_health_scores: {
         Row: {
           commercial_score: number | null
@@ -9683,6 +10177,10 @@ export type Database = {
       staff_has_company_access: {
         Args: { check_company_id: string }
         Returns: boolean
+      }
+      update_client_financial_overdue_status: {
+        Args: never
+        Returns: undefined
       }
     }
     Enums: {

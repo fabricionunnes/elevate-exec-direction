@@ -43,7 +43,7 @@ export function CohortMatrix({ segmentFilter, consultantFilter, monthsToShow = 6
           start_date,
           end_date,
           created_at,
-          onboarding_companies!inner(
+          onboarding_companies(
             id,
             name,
             segment
