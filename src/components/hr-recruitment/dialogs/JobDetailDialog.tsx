@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -82,7 +82,7 @@ export function JobDetailDialog({
   const [loadingCandidates, setLoadingCandidates] = useState(true);
 
   // Load candidates by stage
-  useState(() => {
+  useEffect(() => {
     const loadCandidates = async () => {
       try {
         const { data, error } = await supabase
@@ -105,7 +105,7 @@ export function JobDetailDialog({
       }
     };
     loadCandidates();
-  });
+  }, [job.id]);
 
   const handleSave = async () => {
     setSaving(true);
