@@ -375,7 +375,6 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                                   ? "bg-amber-500/5 border border-amber-500/20 hover:bg-amber-500/10"
                                   : "bg-muted/30 border border-transparent hover:bg-muted/50 hover:border-border"
                                 }
-                                }
                               `}
                             >
                               {/* Status Button */}
