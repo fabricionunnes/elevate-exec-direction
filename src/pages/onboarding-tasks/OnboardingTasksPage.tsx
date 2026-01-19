@@ -1532,6 +1532,17 @@ const OnboardingTasksPage = () => {
                     </>
                   )}
 
+                  {/* Leader Panel - For admins except CEO */}
+                  {isAdmin && currentUserEmail !== "fabricio@universidadevendas.com.br" && (
+                    <>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/leader")}>
+                        <Activity className="h-4 w-4 mr-2" />
+                        Painel do Líder
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+
                   {/* Análises - Available to Admin, CS, and Consultants */}
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
