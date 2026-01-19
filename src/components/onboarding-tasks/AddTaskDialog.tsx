@@ -34,6 +34,7 @@ interface AddTaskDialogProps {
   staffList: StaffMember[];
   onTaskAdded: () => void;
   currentSortOrder?: number;
+  forceInternal?: boolean; // When true, task is always created as internal (hidden from client)
 }
 
 const TASK_PHASES = [
@@ -68,6 +69,7 @@ export const AddTaskDialog = ({
   staffList,
   onTaskAdded,
   currentSortOrder = 0,
+  forceInternal = false,
 }: AddTaskDialogProps) => {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState("");
@@ -285,6 +287,7 @@ export const AddTaskDialog = ({
         sort_order: currentSortOrder + 1,
         status: "pending",
         google_meet_link: meetLink,
+        is_internal: forceInternal || false, // Mark as internal if forceInternal is true
       };
 
       const { data: taskData, error } = await supabase
@@ -337,7 +340,15 @@ export const AddTaskDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isMeeting ? "Nova Reunião" : "Nova Tarefa"}</DialogTitle>
+          <DialogTitle>
+            {isMeeting ? "Nova Reunião" : forceInternal ? "Nova Tarefa Interna" : "Nova Tarefa"}
+          </DialogTitle>
+          {forceInternal && (
+            <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-amber-500" />
+              Esta tarefa será visível apenas para a equipe interna
+            </p>
+          )}
         </DialogHeader>
 
         <div className="space-y-4 py-4">

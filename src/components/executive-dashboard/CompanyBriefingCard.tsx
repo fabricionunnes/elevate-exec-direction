@@ -21,7 +21,8 @@ import {
   ArrowRight,
   Flag,
   Zap,
-  BarChart3
+  BarChart3,
+  Plus
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -61,9 +62,10 @@ interface CompanyBriefingCardProps {
   };
   index: number;
   expanded?: boolean;
+  onCreateInternalTask?: (projectId: string, companyName: string) => void;
 }
 
-export function CompanyBriefingCard({ project, index, expanded = true }: CompanyBriefingCardProps) {
+export function CompanyBriefingCard({ project, index, expanded = true, onCreateInternalTask }: CompanyBriefingCardProps) {
   const navigate = useNavigate();
 
   const getHealthColor = (score: number) => {
@@ -647,16 +649,32 @@ export function CompanyBriefingCard({ project, index, expanded = true }: Company
             </>
           )}
 
-          {/* Action Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={() => navigate(`/onboarding-tasks/${project.id}`)}
-          >
-            Ver Projeto Completo
-            <ExternalLink className="h-3.5 w-3.5 ml-2" />
-          </Button>
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            {onCreateInternalTask && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCreateInternalTask(project.id, project.company_name);
+                }}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                Tarefa Interna
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className={onCreateInternalTask ? "flex-1" : "w-full"}
+              onClick={() => navigate(`/onboarding-tasks/${project.id}`)}
+            >
+              Ver Projeto
+              <ExternalLink className="h-3.5 w-3.5 ml-2" />
+            </Button>
+          </div>
         </div>
       </Card>
     </motion.div>
