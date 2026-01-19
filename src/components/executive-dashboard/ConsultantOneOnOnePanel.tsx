@@ -279,9 +279,16 @@ export function ConsultantOneOnOnePanel() {
               .eq("year", currentYear)
               .maybeSingle();
             
-            const goalProjection = goalData && goalData.sales_target && goalData.sales_target > 0
-              ? (goalData.sales_result / goalData.sales_target) * 100
-              : undefined;
+            // Only use explicit monthly goal projection when there's a recorded result.
+            // If sales_result is null, fall back to KPI-based projection (prevents showing 0% when the KPI is already > 0%).
+            const goalProjection =
+              goalData &&
+              goalData.sales_target &&
+              goalData.sales_target > 0 &&
+              goalData.sales_result !== null &&
+              goalData.sales_result !== undefined
+                ? (Number(goalData.sales_result) / Number(goalData.sales_target)) * 100
+                : undefined;
 
             // Fetch KPIs for this company
             const companyId = project.onboarding_company_id;
