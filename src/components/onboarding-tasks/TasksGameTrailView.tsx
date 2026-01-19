@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { format, isBefore, startOfDay, isToday } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-
 interface OnboardingTask {
   id: string;
   title: string;
@@ -415,10 +414,14 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                                 transition={{ delay: taskIndex * 0.05 }}
                                 role="button"
                                 tabIndex={0}
-                                onClick={() => onTaskClick(task)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onTaskClick(task);
+                                }}
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
+                                  if (e.key === "Enter" || e.key === " ") {
                                     e.preventDefault();
+                                    e.stopPropagation();
                                     onTaskClick(task);
                                   }
                                 }}
