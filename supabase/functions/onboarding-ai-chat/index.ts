@@ -820,10 +820,25 @@ INSTRUÇÕES:
         );
       }
       
-      throw new Error(`AI Gateway error: ${response.status}`);
+      throw new Error(`AI Gateway error: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json();
+    // Get response text first to handle empty responses
+    const responseText = await response.text();
+    
+    if (!responseText || responseText.trim() === "") {
+      console.error("AI Gateway returned empty response");
+      throw new Error("AI Gateway returned empty response");
+    }
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Failed to parse AI response:", responseText.substring(0, 500));
+      throw new Error("Invalid JSON response from AI Gateway");
+    }
+
     const aiResponse = data.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua pergunta.";
 
     console.log("AI response received successfully");
