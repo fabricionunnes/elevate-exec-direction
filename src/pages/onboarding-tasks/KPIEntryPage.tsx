@@ -174,13 +174,10 @@ export default function KPIEntryPage() {
 
       if (kpisError) throw kpisError;
 
-      // Filter KPIs based on scope - only show KPIs that match the salesperson's context
-      // A salesperson should see:
-      // 1. KPIs with scope="company" (or no scope) that have no unit/sector restrictions
-      // 2. KPIs that match their sector
-      // 3. KPIs that match their team  
-      // 4. KPIs that are specifically assigned to them
-      // 5. KPIs that match their unit
+      // Filter KPIs based on scope - show KPIs that match the salesperson's context
+      // Logic: A salesperson sees a KPI if:
+      // 1. The KPI has NO specific scope restrictions (company-wide)
+      // 2. The KPI's scope matches the salesperson's context (same sector/team/unit/salesperson)
       let filteredKpis = (allKpisData || []) as KPI[];
       
       console.log("[KPIEntry] Filtering KPIs for salesperson:", {
@@ -192,40 +189,55 @@ export default function KPIEntryPage() {
       });
       
       filteredKpis = filteredKpis.filter(kpi => {
-        // Salesperson-specific KPIs - only show to that specific salesperson
-        if (kpi.scope === 'salesperson' && kpi.salesperson_id) {
+        // Check if KPI has any specific scope restriction
+        const hasSpecificScope = kpi.scope && kpi.scope !== 'company';
+        const hasSectorRestriction = !!kpi.sector_id;
+        const hasTeamRestriction = !!kpi.team_id;
+        const hasUnitRestriction = !!kpi.unit_id;
+        const hasSalespersonRestriction = !!kpi.salesperson_id;
+        
+        // If KPI is salesperson-specific, only that salesperson sees it
+        if (kpi.scope === 'salesperson' && hasSalespersonRestriction) {
           return kpi.salesperson_id === salespersonData.id;
         }
         
-        // Team-specific KPIs - only show if salesperson belongs to that team
-        if (kpi.scope === 'team' && kpi.team_id) {
-          return kpi.team_id === salespersonData.team_id;
+        // If KPI is team-specific, only salespeople in that team see it
+        if (kpi.scope === 'team' && hasTeamRestriction) {
+          return salespersonData.team_id === kpi.team_id;
         }
         
-        // Sector-specific KPIs - only show if salesperson belongs to that sector
-        if (kpi.scope === 'sector' && kpi.sector_id) {
-          return sectorIds.includes(kpi.sector_id);
+        // If KPI is sector-specific, only salespeople in that sector see it
+        if (kpi.scope === 'sector' && hasSectorRestriction) {
+          return sectorIds.includes(kpi.sector_id!);
         }
         
-        // Unit-specific check: if KPI has a unit_id but no scope restriction, salesperson must match
-        if (kpi.unit_id && (!kpi.scope || kpi.scope === 'company')) {
-          // If salesperson has no unit, don't filter by unit
-          if (!salespersonData.unit_id) return true;
-          return kpi.unit_id === salespersonData.unit_id;
+        // For company scope or no scope, check if there are additional restrictions
+        // If KPI has a unit restriction, salesperson must match (or have no unit)
+        if (hasUnitRestriction) {
+          if (salespersonData.unit_id && kpi.unit_id !== salespersonData.unit_id) {
+            return false;
+          }
         }
         
-        // Backward compatibility: if KPI has sector_id but no scope, check sector match
-        if (kpi.sector_id && (!kpi.scope || kpi.scope === 'company')) {
-          // If salesperson has no sectors, show the KPI anyway (legacy behavior)
-          if (sectorIds.length === 0) return true;
-          return sectorIds.includes(kpi.sector_id);
+        // Legacy: If KPI has sector_id without explicit scope, respect sector restriction
+        if (hasSectorRestriction && !hasSpecificScope) {
+          if (sectorIds.length > 0 && !sectorIds.includes(kpi.sector_id!)) {
+            return false;
+          }
         }
         
-        // Company-wide KPIs with no restrictions - show to everyone
+        // Legacy: If KPI has team_id without explicit scope, respect team restriction
+        if (hasTeamRestriction && !hasSpecificScope) {
+          if (salespersonData.team_id && kpi.team_id !== salespersonData.team_id) {
+            return false;
+          }
+        }
+        
+        // KPI passes all filters - show it
         return true;
       });
       
-      console.log("[KPIEntry] Filtered KPIs:", filteredKpis.length);
+      console.log("[KPIEntry] Filtered KPIs:", filteredKpis.length, filteredKpis.map(k => k.name));
 
       setKpis(filteredKpis);
 
