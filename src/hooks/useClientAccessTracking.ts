@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AccessTrackingOptions {
@@ -12,11 +12,13 @@ interface AccessTrackingOptions {
 /**
  * Hook para rastrear o acesso do cliente ao sistema
  * Registra login, logout e calcula duração da sessão
+ * Retorna o sessionId para vincular atividades
  */
 export const useClientAccessTracking = (options: AccessTrackingOptions | null) => {
   const sessionIdRef = useRef<string | null>(null);
   const startTimeRef = useRef<Date | null>(null);
   const isMounted = useRef(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     isMounted.current = true;
@@ -37,6 +39,7 @@ export const useClientAccessTracking = (options: AccessTrackingOptions | null) =
             is_active: true,
             user_agent: navigator.userAgent,
           })
+          .select("id")
           .single();
 
         const data = (result.data as unknown) as { id: string } | null;
@@ -50,6 +53,7 @@ export const useClientAccessTracking = (options: AccessTrackingOptions | null) =
         if (data && isMounted.current) {
           sessionIdRef.current = data.id;
           startTimeRef.current = new Date();
+          setSessionId(data.id);
         }
       } catch (error) {
         console.warn("Error in access tracking:", error);
@@ -115,4 +119,6 @@ export const useClientAccessTracking = (options: AccessTrackingOptions | null) =
       }
     };
   }, [options?.userId, options?.projectId, options?.companyId]);
+
+  return { sessionId };
 };

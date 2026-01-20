@@ -1570,6 +1570,66 @@ export type Database = {
           },
         ]
       }
+      client_activity_logs: {
+        Row: {
+          access_log_id: string | null
+          action_description: string
+          action_type: string
+          created_at: string
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json | null
+          page_path: string | null
+          project_id: string | null
+          user_id: string
+        }
+        Insert: {
+          access_log_id?: string | null
+          action_description: string
+          action_type: string
+          created_at?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          page_path?: string | null
+          project_id?: string | null
+          user_id: string
+        }
+        Update: {
+          access_log_id?: string | null
+          action_description?: string
+          action_type?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          page_path?: string | null
+          project_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_activity_logs_access_log_id_fkey"
+            columns: ["access_log_id"]
+            isOneToOne: false
+            referencedRelation: "client_access_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_activity_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_board_opinions: {
         Row: {
           advisor_name: string
