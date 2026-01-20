@@ -779,9 +779,21 @@ const OnboardingTasksPage = () => {
     const noEntriesIds = new Set<string>(); // Has KPI but no entries in month
     const hasEntriesIds = new Set<string>(); // Has KPI AND entries in month
     
-    // Companies with monetary KPI configured with target_value > 0 (same logic as DashboardMetrics)
+    // Helper to get KPIs for a company - prioritizes is_main_goal, falls back to monetary
+    const getCompanyKpisList = (companyId: string) => {
+      const allCompanyKpis = companyKpis.filter(k => k.company_id === companyId);
+      const mainGoalKpis = allCompanyKpis.filter(k => k.is_main_goal === true);
+      return mainGoalKpis.length > 0 
+        ? mainGoalKpis 
+        : allCompanyKpis.filter(k => k.kpi_type === "monetary");
+    };
+    
+    // Companies with KPI configured with target_value > 0 (same logic as DashboardMetrics)
     const companiesWithAnyKpiIds = new Set(
-      companyKpis.filter(k => activeCompanyIds.has(k.company_id) && k.kpi_type === "monetary" && k.target_value > 0).map(k => k.company_id)
+      Array.from(activeCompanyIds).filter(companyId => {
+        const kpis = getCompanyKpisList(companyId);
+        return kpis.some(k => k.target_value > 0);
+      })
     );
     
     // Companies without goals (no KPI configured)
@@ -796,8 +808,8 @@ const OnboardingTasksPage = () => {
     activeCompanyIds.forEach(companyId => {
       if (!companyId) return;
       
-      // Get KPIs for this company (only monetary for main goals tracking - same as DashboardMetrics)
-      const companyKpisList = companyKpis.filter(k => k.company_id === companyId && k.kpi_type === "monetary");
+      // Get KPIs for this company - prioritizes is_main_goal, falls back to monetary
+      const companyKpisList = getCompanyKpisList(companyId);
       
       if (companyKpisList.length === 0) return;
       
@@ -858,7 +870,7 @@ const OnboardingTasksPage = () => {
     activeCompanyIds.forEach(companyId => {
       if (!companyId) return;
       
-      const companyKpisList = companyKpis.filter(k => k.company_id === companyId && k.kpi_type === "monetary");
+      const companyKpisList = getCompanyKpisList(companyId);
       
       if (companyKpisList.length === 0) {
         realizedPercentByCompany.set(companyId, null); // No KPI configured
