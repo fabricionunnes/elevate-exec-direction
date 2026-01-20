@@ -495,7 +495,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
                   Novo KPI
                 </Button>
               </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingKpi ? "Editar KPI" : "Novo KPI"}</DialogTitle>
               </DialogHeader>
