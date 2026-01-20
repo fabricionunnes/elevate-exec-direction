@@ -34,6 +34,7 @@ import {
   Heart,
 } from "lucide-react";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
+import CompaniesReportPDF from "./CompaniesReportPDF";
 
 interface Staff {
   id: string;
@@ -410,7 +411,7 @@ export default function CompaniesReportContent() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-4 items-center">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -454,6 +455,20 @@ export default function CompaniesReportContent() {
             <SelectItem value="none">Não informado</SelectItem>
           </SelectContent>
         </Select>
+        
+        {/* PDF Export Button */}
+        <div className="ml-auto">
+          <CompaniesReportPDF
+            companies={filteredCompanies}
+            summaryMetrics={summaryMetrics}
+            filters={{
+              consultant: filterConsultant,
+              status: filterStatus,
+              paymentMethod: filterPaymentMethod,
+              searchTerm: searchTerm,
+            }}
+          />
+        </div>
       </div>
 
       {/* Table */}
