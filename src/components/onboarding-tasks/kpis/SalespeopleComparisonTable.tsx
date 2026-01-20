@@ -16,6 +16,7 @@ interface KPI {
   name: string;
   kpi_type: "numeric" | "monetary" | "percentage";
   is_individual: boolean;
+  is_main_goal?: boolean;
 }
 
 interface Salesperson {
@@ -58,9 +59,10 @@ export const SalespeopleComparisonTable = ({
     return salespeople.filter((sp) => sp.unit_id === selectedUnit);
   }, [salespeople, selectedUnit]);
 
-  // Get only monetary KPIs (revenue) for the comparison
-  const revenueKpi = useMemo(() => {
-    return kpis.find((k) => k.kpi_type === "monetary");
+  // Get the main goal KPI for the comparison (or fallback to monetary)
+  const mainGoalKpi = useMemo(() => {
+    const mainGoal = kpis.find((k) => k.is_main_goal);
+    return mainGoal || kpis.find((k) => k.kpi_type === "monetary");
   }, [kpis]);
 
   // Get sales count KPI
@@ -76,10 +78,10 @@ export const SalespeopleComparisonTable = ({
     const data = filteredSalespeople.map((sp) => {
       const spEntries = entries.filter((e) => e.salesperson_id === sp.id);
 
-      // Revenue total
-      const revenueTotal = revenueKpi
+      // Main goal total
+      const mainGoalTotal = mainGoalKpi
         ? spEntries
-            .filter((e) => e.kpi_id === revenueKpi.id)
+            .filter((e) => e.kpi_id === mainGoalKpi.id)
             .reduce((sum, e) => sum + e.value, 0)
         : 0;
 
@@ -99,7 +101,7 @@ export const SalespeopleComparisonTable = ({
       });
 
       // Calculate average ticket
-      const avgTicket = salesTotal > 0 ? revenueTotal / salesTotal : 0;
+      const avgTicket = salesTotal > 0 ? mainGoalTotal / salesTotal : 0;
 
       // Get unit name
       const unit = units.find((u) => u.id === sp.unit_id);
@@ -108,37 +110,51 @@ export const SalespeopleComparisonTable = ({
         id: sp.id,
         name: sp.name,
         unitName: unit?.name || "-",
-        revenue: revenueTotal,
+        mainGoalValue: mainGoalTotal,
         salesCount: salesTotal,
         avgTicket,
         kpiTotals,
       };
     });
 
-    // Sort by revenue descending
-    return data.sort((a, b) => b.revenue - a.revenue);
-  }, [filteredSalespeople, entries, kpis, revenueKpi, salesKpi, units]);
+    // Sort by main goal value descending
+    return data.sort((a, b) => b.mainGoalValue - a.mainGoalValue);
+  }, [filteredSalespeople, entries, kpis, mainGoalKpi, salesKpi, units]);
 
   // Calculate team averages for comparison
   const teamAverages = useMemo(() => {
     const total = salespeopleData.length;
-    if (total === 0) return { revenue: 0, salesCount: 0, avgTicket: 0 };
+    if (total === 0) return { mainGoalValue: 0, salesCount: 0, avgTicket: 0 };
 
     const totals = salespeopleData.reduce(
       (acc, sp) => ({
-        revenue: acc.revenue + sp.revenue,
+        mainGoalValue: acc.mainGoalValue + sp.mainGoalValue,
         salesCount: acc.salesCount + sp.salesCount,
         avgTicket: acc.avgTicket + sp.avgTicket,
       }),
-      { revenue: 0, salesCount: 0, avgTicket: 0 }
+      { mainGoalValue: 0, salesCount: 0, avgTicket: 0 }
     );
 
     return {
-      revenue: totals.revenue / total,
+      mainGoalValue: totals.mainGoalValue / total,
       salesCount: totals.salesCount / total,
       avgTicket: totals.avgTicket / total,
     };
   }, [salespeopleData]);
+
+  const formatValue = (value: number, kpiType?: string) => {
+    if (kpiType === "monetary") {
+      return new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(value);
+    } else if (kpiType === "percentage") {
+      return `${value.toFixed(1)}%`;
+    }
+    return new Intl.NumberFormat("pt-BR").format(value);
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -240,7 +256,7 @@ export const SalespeopleComparisonTable = ({
                 <TableHead className="w-[60px]">Rank</TableHead>
                 <TableHead>Vendedor</TableHead>
                 {selectedUnit === "all" && <TableHead>Unidade</TableHead>}
-                <TableHead className="text-right">Faturamento</TableHead>
+                <TableHead className="text-right">{mainGoalKpi?.name || "Meta Principal"}</TableHead>
                 <TableHead className="text-right">Vendas</TableHead>
                 <TableHead className="text-right">Ticket Médio</TableHead>
                 <TableHead className="text-center">vs. Média</TableHead>
@@ -257,7 +273,7 @@ export const SalespeopleComparisonTable = ({
                     </TableCell>
                   )}
                   <TableCell className="text-right font-bold">
-                    {formatCurrency(sp.revenue)}
+                    {formatValue(sp.mainGoalValue, mainGoalKpi?.kpi_type)}
                   </TableCell>
                   <TableCell className="text-right">
                     {formatNumber(sp.salesCount)}
@@ -266,7 +282,7 @@ export const SalespeopleComparisonTable = ({
                     {formatCurrency(sp.avgTicket)}
                   </TableCell>
                   <TableCell className="text-center">
-                    {getComparisonBadge(sp.revenue, teamAverages.revenue)}
+                    {getComparisonBadge(sp.mainGoalValue, teamAverages.mainGoalValue)}
                   </TableCell>
                 </TableRow>
               ))}
@@ -276,7 +292,7 @@ export const SalespeopleComparisonTable = ({
                 <TableCell>Média da Equipe</TableCell>
                 {selectedUnit === "all" && <TableCell>-</TableCell>}
                 <TableCell className="text-right">
-                  {formatCurrency(teamAverages.revenue)}
+                  {formatValue(teamAverages.mainGoalValue, mainGoalKpi?.kpi_type)}
                 </TableCell>
                 <TableCell className="text-right">
                   {formatNumber(teamAverages.salesCount)}
