@@ -2732,6 +2732,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           is_individual: boolean | null
+          is_main_goal: boolean | null
           is_required: boolean | null
           kpi_type: string
           name: string
@@ -2751,6 +2752,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_individual?: boolean | null
+          is_main_goal?: boolean | null
           is_required?: boolean | null
           kpi_type: string
           name: string
@@ -2770,6 +2772,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_individual?: boolean | null
+          is_main_goal?: boolean | null
           is_required?: boolean | null
           kpi_type?: string
           name?: string

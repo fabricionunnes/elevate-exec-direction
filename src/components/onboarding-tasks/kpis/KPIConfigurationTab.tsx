@@ -48,6 +48,7 @@ interface KPI {
   team_id: string | null;
   salesperson_id: string | null;
   unit_id: string | null;
+  is_main_goal: boolean;
 }
 
 interface Sector {
@@ -105,6 +106,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
     team_id: "",
     salesperson_id: "",
     unit_id: "",
+    is_main_goal: false,
   });
 
   useEffect(() => {
@@ -211,6 +213,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
         team_id: formData.scope === "team" ? formData.team_id : null,
         salesperson_id: formData.scope === "salesperson" ? formData.salesperson_id : null,
         unit_id: formData.unit_id || null,
+        is_main_goal: formData.is_main_goal,
       };
 
       if (editingKpi) {
@@ -290,6 +293,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
       team_id: "",
       salesperson_id: "",
       unit_id: "",
+      is_main_goal: false,
     });
   };
 
@@ -307,6 +311,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
       team_id: kpi.team_id || "",
       salesperson_id: kpi.salesperson_id || "",
       unit_id: kpi.unit_id || "",
+      is_main_goal: kpi.is_main_goal || false,
     });
     setShowDialog(true);
   };
@@ -456,6 +461,19 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
                   <Switch
                     checked={formData.is_required}
                     onCheckedChange={(v) => setFormData({ ...formData, is_required: v })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between border-t pt-4">
+                  <div>
+                    <Label className="text-primary font-semibold">Meta Principal</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Usar este KPI como referência para projeções do dashboard
+                    </p>
+                  </div>
+                  <Switch
+                    checked={formData.is_main_goal}
+                    onCheckedChange={(v) => setFormData({ ...formData, is_main_goal: v })}
                   />
                 </div>
 
