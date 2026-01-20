@@ -156,17 +156,16 @@ const OnboardingResultsPage = () => {
       setServices(servicesRes.data || []);
       setProjects(projectsRes.data || []);
       
-      // Fetch companies with ANY KPI configured (not just monthly targets with value > 0)
-      // Filter to only MONETARY KPIs for goal tracking (same as dashboard)
+      // Fetch companies with KPI marked as "Meta Principal" (is_main_goal)
       const { data: kpisData } = await supabase
         .from("company_kpis")
-        .select("id, company_id, kpi_type, target_value, periodicity")
+        .select("id, company_id, kpi_type, target_value, periodicity, is_main_goal")
         .eq("is_active", true);
       
-      // Create set of company IDs that have any KPI configured
+      // Create set of company IDs that have a KPI marked as "Meta Principal"
       const companyIdsWithGoals = new Set<string>();
       (kpisData || []).forEach(k => {
-        if (k.company_id) companyIdsWithGoals.add(k.company_id);
+        if (k.company_id && k.is_main_goal) companyIdsWithGoals.add(k.company_id);
       });
       setCompaniesWithGoals(companyIdsWithGoals);
       
