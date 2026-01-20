@@ -131,9 +131,9 @@ export default function DiagnosticPDFReport({ formData, recommendations }: Diagn
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Botão de Download */}
-      <div className="flex justify-center">
+      <div className="flex justify-center sticky top-0 z-10 bg-background/95 backdrop-blur py-3">
         <Button
           onClick={generatePDF}
           size="lg"
@@ -145,12 +145,13 @@ export default function DiagnosticPDFReport({ formData, recommendations }: Diagn
       </div>
 
       {/* Relatório para impressão com scroll */}
-      <ScrollArea className="h-[70vh] rounded-2xl">
-        <div 
-          ref={reportRef} 
-          className="bg-[#0f172a] text-white p-8 md:p-12 rounded-2xl"
-          style={{ minWidth: "800px" }}
-        >
+      <div className="relative border border-border rounded-2xl overflow-hidden">
+        <ScrollArea className="h-[60vh]">
+          <div 
+            ref={reportRef} 
+            className="bg-[#0f172a] text-white p-8 md:p-12"
+            style={{ minWidth: "800px" }}
+          >
         {/* Header do Relatório */}
         <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-8">
           <div className="flex items-center gap-4">
@@ -365,8 +366,9 @@ export default function DiagnosticPDFReport({ formData, recommendations }: Diagn
             Este relatório foi gerado automaticamente com base nas suas respostas.
           </p>
         </div>
+        </div>
+        </ScrollArea>
       </div>
-      </ScrollArea>
     </div>
   );
 }
