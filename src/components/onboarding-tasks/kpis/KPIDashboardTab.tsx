@@ -44,6 +44,10 @@ interface KPI {
   is_individual: boolean;
   is_active: boolean;
   sector_id?: string | null;
+  scope?: "company" | "sector" | "team" | "salesperson" | null;
+  team_id?: string | null;
+  salesperson_id?: string | null;
+  unit_id?: string | null;
 }
 
 interface Sector {
@@ -349,10 +353,69 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
   // Filter entries based on selected unit, team, sector, and salesperson
   const getFilteredEntries = () => entries.filter(matchesActiveFilters);
 
-  // Filter KPIs based on selected sector (show KPIs that belong to this sector or have no sector - shared KPIs)
+  // Filter KPIs based on selected filters and KPI scope
+  // A KPI should only appear if its scope matches the active filter level
   const getFilteredKpis = () => {
-    if (selectedSector === "all") return kpis;
-    return kpis.filter(kpi => kpi.sector_id === selectedSector || kpi.sector_id === null);
+    return kpis.filter(kpi => {
+      const scope = kpi.scope || "company";
+      
+      // If filtering by salesperson, show:
+      // - KPIs scoped to that specific salesperson
+      // - KPIs scoped to company (shared across all)
+      if (selectedSalesperson !== "all") {
+        if (scope === "salesperson") {
+          return kpi.salesperson_id === selectedSalesperson;
+        }
+        // Also show company-scoped KPIs when viewing a salesperson
+        return scope === "company";
+      }
+      
+      // If filtering by team, show:
+      // - KPIs scoped to that specific team
+      // - KPIs scoped to company (shared across all)
+      if (selectedTeam !== "all") {
+        if (scope === "team") {
+          return kpi.team_id === selectedTeam;
+        }
+        // Also show company-scoped KPIs when viewing a team
+        return scope === "company";
+      }
+      
+      // If filtering by sector, show:
+      // - KPIs scoped to that specific sector
+      // - KPIs scoped to company (shared across all)
+      if (selectedSector !== "all") {
+        if (scope === "sector") {
+          return kpi.sector_id === selectedSector;
+        }
+        // Also show company-scoped KPIs when viewing a sector
+        return scope === "company";
+      }
+      
+      // If filtering by unit only, show:
+      // - KPIs scoped to company (all shared KPIs)
+      // - KPIs scoped to that unit specifically (if unit_id matches)
+      if (selectedUnit !== "all") {
+        if (scope === "company") return true;
+        // Show sector/team/salesperson KPIs that belong to this unit
+        if (scope === "sector" && kpi.sector_id) {
+          const sector = sectors.find(s => s.id === kpi.sector_id);
+          return sector?.unit_id === selectedUnit;
+        }
+        if (scope === "team" && kpi.team_id) {
+          const team = teams.find(t => t.id === kpi.team_id);
+          return team?.unit_id === selectedUnit;
+        }
+        if (scope === "salesperson" && kpi.salesperson_id) {
+          const sp = salespeople.find(s => s.id === kpi.salesperson_id);
+          return sp?.unit_id === selectedUnit;
+        }
+        return kpi.unit_id === selectedUnit;
+      }
+      
+      // No filters - show all KPIs
+      return true;
+    });
   };
 
   // Calculate KPI summaries
