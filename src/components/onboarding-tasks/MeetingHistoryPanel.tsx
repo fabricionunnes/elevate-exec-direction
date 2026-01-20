@@ -376,18 +376,11 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
 
       const allMeetings = (data || []) as MeetingNote[];
 
-      // Requested visibility rule:
-      // - Admin/CS can see everything.
-      // - Other staff should only see meetings that belong to their calendar (calendar_owner_id).
-      // - Keep legacy rows (calendar_owner_id null) visible.
-      const visibleMeetings = canSeeAll
-        ? allMeetings
-        : allMeetings.filter((m) => !m.calendar_owner_id || m.calendar_owner_id === effectiveStaffId);
-
-      setMeetings(visibleMeetings);
+      // All users can see all meetings for the project
+      setMeetings(allMeetings);
 
       if (selectedMeeting) {
-        const updated = visibleMeetings.find((m) => m.id === selectedMeeting.id);
+        const updated = allMeetings.find((m) => m.id === selectedMeeting.id);
         if (updated) setSelectedMeeting(updated);
       }
     } catch (error) {
