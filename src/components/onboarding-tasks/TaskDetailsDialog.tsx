@@ -150,18 +150,15 @@ export const TaskDetailsDialog = ({
   // Only admin can delete
   const canDelete = isAdmin;
   
-  // For assignee selection: staff can only assign to themselves, admin can assign to anyone
-  // Staff users are in staffList, not users array
-  const currentStaffMember = staffList.find(s => s.id === currentUserId);
-  const selfAsAssignee = currentStaffMember 
-    ? [{ id: currentStaffMember.id, name: currentStaffMember.name, email: '', role: currentStaffMember.role as "admin" | "cs" | "consultant" | "client" }]
-    : [];
+  // For assignee selection: staff (consultants, CS) can now delegate to any user in the system
+  // This allows consultants to delegate their tasks to other team members
+  const allSystemUsers = [
+    ...users,
+    ...staffList.map(s => ({ id: s.id, name: s.name, email: '', role: s.role as "admin" | "cs" | "consultant" | "client" }))
+  ];
   
-  const availableAssignees = isAdmin 
-    ? [...users, ...staffList.map(s => ({ id: s.id, name: s.name, email: '', role: s.role as "admin" | "cs" | "consultant" | "client" }))]
-    : isStaffRole 
-      ? selfAsAssignee
-      : [];
+  // Both admin and staff roles can assign tasks to any user
+  const availableAssignees = (isAdmin || isStaffRole) ? allSystemUsers : [];
 
   const [historyKey, setHistoryKey] = useState(0);
 
