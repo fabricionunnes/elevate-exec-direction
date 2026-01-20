@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle2, Calendar, User, DollarSign, Percent, Hash, AlertCircle, Building2 } from "lucide-react";
+import { CheckCircle2, Calendar, User, DollarSign, Percent, Hash, AlertCircle, Building2, Users, Layers } from "lucide-react";
 
 interface KPI {
   id: string;
@@ -21,6 +21,7 @@ interface KPI {
   periodicity: string;
   target_value: number;
   is_required: boolean;
+  sector_id: string | null;
 }
 
 interface Salesperson {
@@ -29,6 +30,7 @@ interface Salesperson {
   access_code: string;
   company_id: string;
   unit_id: string | null;
+  team_id: string | null;
 }
 
 interface Company {
@@ -37,6 +39,16 @@ interface Company {
 }
 
 interface Unit {
+  id: string;
+  name: string;
+}
+
+interface Sector {
+  id: string;
+  name: string;
+}
+
+interface Team {
   id: string;
   name: string;
 }
@@ -52,6 +64,9 @@ export default function KPIEntryPage() {
   const [company, setCompany] = useState<Company | null>(null);
   const [units, setUnits] = useState<Unit[]>([]);
   const [selectedUnit, setSelectedUnit] = useState<string>("");
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [salespersonSectors, setSalespersonSectors] = useState<string[]>([]);
+  const [team, setTeam] = useState<Team | null>(null);
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [entryDate, setEntryDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [values, setValues] = useState<Record<string, number>>({});
@@ -98,6 +113,34 @@ export default function KPIEntryPage() {
 
       setCompany(companyData);
 
+      // Fetch team if salesperson has one
+      if (salespersonData.team_id) {
+        const { data: teamData } = await supabase
+          .from("company_teams")
+          .select("id, name")
+          .eq("id", salespersonData.team_id)
+          .single();
+        setTeam(teamData);
+      }
+
+      // Fetch salesperson's sectors (many-to-many relationship)
+      const { data: spSectorsData } = await supabase
+        .from("salesperson_sectors")
+        .select("sector_id")
+        .eq("salesperson_id", salespersonData.id);
+
+      const sectorIds = (spSectorsData || []).map((s: any) => s.sector_id);
+      setSalespersonSectors(sectorIds);
+
+      // Fetch sector details if salesperson has sectors
+      if (sectorIds.length > 0) {
+        const { data: sectorsData } = await supabase
+          .from("company_sectors")
+          .select("id, name")
+          .in("id", sectorIds);
+        setSectors(sectorsData || []);
+      }
+
       // Fetch units
       const { data: unitsData } = await supabase
         .from("company_units")
@@ -114,20 +157,32 @@ export default function KPIEntryPage() {
       } else if (unitsData && unitsData.length > 0) {
         setSelectedUnit(unitsData[0].id);
       }
-      // Fetch active KPIs
-      const { data: kpisData, error: kpisError } = await supabase
+
+      // Fetch active KPIs - filter by salesperson's sectors
+      let kpisQuery = supabase
         .from("company_kpis")
         .select("*")
         .eq("company_id", companyId)
         .eq("is_active", true)
         .order("sort_order");
 
+      const { data: allKpisData, error: kpisError } = await kpisQuery;
+
       if (kpisError) throw kpisError;
-      setKpis((kpisData || []) as KPI[]);
+
+      // Filter KPIs: show only KPIs that belong to salesperson's sectors OR have no sector (shared KPIs)
+      let filteredKpis = (allKpisData || []) as KPI[];
+      if (sectorIds.length > 0) {
+        filteredKpis = filteredKpis.filter(kpi => 
+          kpi.sector_id === null || sectorIds.includes(kpi.sector_id)
+        );
+      }
+
+      setKpis(filteredKpis);
 
       // Initialize values
       const initialValues: Record<string, number> = {};
-      kpisData?.forEach(kpi => {
+      filteredKpis.forEach(kpi => {
         initialValues[kpi.id] = 0;
       });
       setValues(initialValues);
@@ -191,7 +246,7 @@ export default function KPIEntryPage() {
         .eq("salesperson_id", salesperson.id)
         .eq("entry_date", entryDate);
 
-      // Insert new entries
+      // Insert new entries with team_id and sector_id
       const entries = kpis.map(kpi => ({
         company_id: companyId,
         salesperson_id: salesperson.id,
@@ -199,7 +254,9 @@ export default function KPIEntryPage() {
         entry_date: entryDate,
         value: values[kpi.id] || 0,
         observations: observations,
-        unit_id: selectedUnit || null,
+        unit_id: selectedUnit || salesperson.unit_id || null,
+        team_id: salesperson.team_id || null,
+        sector_id: kpi.sector_id || (salespersonSectors.length === 1 ? salespersonSectors[0] : null),
       }));
 
       const { error } = await supabase.from("kpi_entries").insert(entries);
@@ -294,15 +351,29 @@ export default function KPIEntryPage() {
       <div className="max-w-2xl mx-auto">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <CardTitle>Lançamento de Vendas</CardTitle>
                 <CardDescription>{company?.name}</CardDescription>
               </div>
-              <Badge variant="secondary" className="gap-1">
-                <User className="h-3 w-3" />
-                {salesperson?.name}
-              </Badge>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary" className="gap-1">
+                  <User className="h-3 w-3" />
+                  {salesperson?.name}
+                </Badge>
+                {team && (
+                  <Badge variant="outline" className="gap-1">
+                    <Users className="h-3 w-3" />
+                    {team.name}
+                  </Badge>
+                )}
+                {sectors.length > 0 && (
+                  <Badge variant="outline" className="gap-1">
+                    <Layers className="h-3 w-3" />
+                    {sectors.map(s => s.name).join(", ")}
+                  </Badge>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
