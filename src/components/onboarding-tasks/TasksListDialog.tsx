@@ -129,6 +129,13 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
         staffId = staff?.id || null;
       }
 
+      // Get task with meeting_link before updating
+      const { data: taskWithMeetingLink } = await supabase
+        .from("onboarding_tasks")
+        .select("meeting_link, project_id")
+        .eq("id", task.id)
+        .maybeSingle();
+
       const { error } = await supabase
         .from("onboarding_tasks")
         .update({ 
@@ -148,6 +155,26 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
         old_value: task.status,
         new_value: "completed",
       });
+
+      // Sync: If task has a meeting_link, finalize the associated meeting
+      if (taskWithMeetingLink?.meeting_link && taskWithMeetingLink?.project_id) {
+        const { data: meetingToFinalize } = await supabase
+          .from("onboarding_meeting_notes")
+          .select("id, is_finalized")
+          .eq("project_id", taskWithMeetingLink.project_id)
+          .eq("meeting_link", taskWithMeetingLink.meeting_link)
+          .maybeSingle();
+
+        if (meetingToFinalize && !meetingToFinalize.is_finalized) {
+          await supabase
+            .from("onboarding_meeting_notes")
+            .update({
+              is_finalized: true,
+              notes: "Reunião finalizada automaticamente ao concluir tarefa.",
+            })
+            .eq("id", meetingToFinalize.id);
+        }
+      }
 
       // Remove completed task from list
       setTasks(prev => prev.filter(t => t.id !== task.id));
