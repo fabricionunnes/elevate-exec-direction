@@ -169,7 +169,7 @@ export function CEOVirtualBoard() {
       toast.info('Convocando o Board Virtual...');
 
       // Call edge function to get advisor opinions
-      const { data: authData } = await supabase.auth.getSession();
+      console.log('Calling ceo-virtual-board with sessionId:', session.id);
       const response = await supabase.functions.invoke('ceo-virtual-board', {
         body: {
           sessionId: session.id,
@@ -177,8 +177,17 @@ export function CEOVirtualBoard() {
         }
       });
 
+      console.log('Response from ceo-virtual-board:', response);
+
       if (response.error) {
-        throw new Error(response.error.message);
+        console.error('Edge function error:', response.error);
+        throw new Error(response.error.message || 'Erro na função do Board');
+      }
+
+      // Check if response data indicates an error
+      if (response.data?.error) {
+        console.error('Edge function returned error:', response.data.error);
+        throw new Error(response.data.error);
       }
 
       toast.success('Board Virtual concluiu a análise!');
