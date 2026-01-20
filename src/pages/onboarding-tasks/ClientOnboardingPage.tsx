@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useClientAccessTracking } from "@/hooks/useClientAccessTracking";
+import { useClientActivityTracking } from "@/hooks/useClientActivityTracking";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
@@ -232,10 +233,10 @@ const ClientOnboardingPage = () => {
   }, [projectId, navigate, fetchTasks, fetchUsers]);
 
   // Track client access
-  useClientAccessTracking(
+  const { sessionId } = useClientAccessTracking(
     currentUser && project
       ? {
-          userId: currentUser.user_id,
+          userId: currentUser.user_id!,
           userEmail: currentUser.email,
           userName: currentUser.name,
           projectId: project.id,
@@ -243,6 +244,46 @@ const ClientOnboardingPage = () => {
         }
       : null
   );
+
+  // Track client activities
+  const { trackPageView, trackTabChanged, trackTaskCompleted } = useClientActivityTracking(
+    currentUser && project
+      ? {
+          userId: currentUser.user_id!,
+          projectId: project.id,
+          accessLogId: sessionId,
+        }
+      : null
+  );
+
+  // Track page view on load
+  useEffect(() => {
+    if (currentUser && project && sessionId) {
+      trackPageView("Portal do Cliente", window.location.hash);
+    }
+  }, [currentUser, project, sessionId, trackPageView]);
+
+  // Track tab changes
+  useEffect(() => {
+    if (currentUser && project && sessionId && activeView) {
+      const viewNames: Record<ViewType, string> = {
+        kpis: "KPIs e Metas",
+        trail: "Jornada",
+        timeline: "Calendário",
+        list: "Lista de Tarefas",
+        metrics: "Métricas",
+        tickets: "Chamados",
+        supports: "Suporte",
+        meetings: "Reuniões",
+        assessments: "Avaliações",
+        referrals: "Indicações",
+        rh: "RH",
+        board: "Board Virtual",
+        financial: "Financeiro",
+      };
+      trackTabChanged(viewNames[activeView] || activeView);
+    }
+  }, [activeView, currentUser, project, sessionId, trackTabChanged]);
 
   // Real-time subscriptions
   useEffect(() => {
