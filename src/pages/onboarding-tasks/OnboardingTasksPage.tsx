@@ -1621,6 +1621,10 @@ const OnboardingTasksPage = () => {
                             <Award className="h-4 w-4 mr-2" />
                             Ranking de Engajamento
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/client-access")}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Acessos dos Clientes
+                          </DropdownMenuItem>
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
 
