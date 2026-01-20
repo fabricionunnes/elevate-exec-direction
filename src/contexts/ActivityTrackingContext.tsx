@@ -13,6 +13,8 @@ interface ActivityTrackingContextType {
   trackNpsSubmitted: ReturnType<typeof useClientActivityTracking>['trackNpsSubmitted'];
   trackTabChanged: ReturnType<typeof useClientActivityTracking>['trackTabChanged'];
   trackButtonClicked: ReturnType<typeof useClientActivityTracking>['trackButtonClicked'];
+  trackJobOpeningCreated: ReturnType<typeof useClientActivityTracking>['trackJobOpeningCreated'];
+  trackCandidateAdded: ReturnType<typeof useClientActivityTracking>['trackCandidateAdded'];
   setTrackingOptions: (options: { userId: string; projectId: string; accessLogId?: string | null }) => void;
 }
 
@@ -30,6 +32,8 @@ const ActivityTrackingContext = createContext<ActivityTrackingContextType>({
   trackNpsSubmitted: defaultNoOp,
   trackTabChanged: defaultNoOp,
   trackButtonClicked: defaultNoOp,
+  trackJobOpeningCreated: defaultNoOp,
+  trackCandidateAdded: defaultNoOp,
   setTrackingOptions: () => {},
 });
 
