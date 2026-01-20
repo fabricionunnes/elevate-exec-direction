@@ -560,6 +560,34 @@ const OnboardingProjectPage = () => {
         });
       }
 
+      // Sync: If task is completed, check if it has a meeting_link and finalize the associated meeting
+      if (newStatus === "completed") {
+        const { data: taskWithMeetingLink } = await supabase
+          .from("onboarding_tasks")
+          .select("meeting_link")
+          .eq("id", taskId)
+          .maybeSingle();
+
+        if (taskWithMeetingLink?.meeting_link) {
+          const { data: meetingToFinalize } = await supabase
+            .from("onboarding_meeting_notes")
+            .select("id, is_finalized")
+            .eq("project_id", projectId)
+            .eq("meeting_link", taskWithMeetingLink.meeting_link)
+            .maybeSingle();
+
+          if (meetingToFinalize && !meetingToFinalize.is_finalized) {
+            await supabase
+              .from("onboarding_meeting_notes")
+              .update({
+                is_finalized: true,
+                notes: "Reunião finalizada automaticamente ao concluir tarefa.",
+              })
+              .eq("id", meetingToFinalize.id);
+          }
+        }
+      }
+
       fetchProjectData();
 
       if (task?.recurrence && newStatus === "completed") {
