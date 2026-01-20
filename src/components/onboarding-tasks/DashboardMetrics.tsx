@@ -343,13 +343,22 @@ const DashboardMetrics = ({
     [companies]
   );
 
-  // Filter projects to exclude those belonging to simulator companies
+  // Get IDs of inactive/closed companies to exclude from most metrics
+  const inactiveCompanyIds = useMemo(
+    () => new Set(companies.filter(c => c.status === "inactive" || c.status === "closed").map(c => c.id)),
+    [companies]
+  );
+
+  // Filter projects to exclude those belonging to simulator companies AND inactive/closed companies
+  // This ensures all metrics only show data from active companies
   const nonSimulatorProjects = useMemo(
     () => projects.filter(p => {
       const companyId = getProjectCompanyId(p);
-      return !companyId || !simulatorCompanyIds.has(companyId);
+      if (!companyId) return true;
+      // Exclude simulators and inactive/closed companies
+      return !simulatorCompanyIds.has(companyId) && !inactiveCompanyIds.has(companyId);
     }),
-    [projects, simulatorCompanyIds]
+    [projects, simulatorCompanyIds, inactiveCompanyIds]
   );
 
   // Filter allProjectsForChurn to exclude simulator companies too
@@ -362,16 +371,18 @@ const DashboardMetrics = ({
   );
 
   const projectMetrics = useMemo(() => {
+    // Active projects - only from active companies (nonSimulatorProjects already excludes inactive/closed companies)
     const activeProjects = nonSimulatorProjects.filter(p => p.status === "active").length;
     const cancellationSignaled = nonSimulatorProjects.filter(p => p.status === "cancellation_signaled").length;
     const noticePeriod = nonSimulatorProjects.filter(p => p.status === "notice_period").length;
-    const closedProjects = nonSimulatorProjects.filter(p => p.status === "closed" || p.status === "completed").length;
+    // Closed projects count uses nonSimulatorAllProjects to include all closed projects (for churn/encerradas metrics)
+    const closedProjects = nonSimulatorAllProjects.filter(p => p.status === "closed" || p.status === "completed").length;
     const reactivatedInPeriod = nonSimulatorProjects.filter(p => {
       if (!p.reactivated_at) return false;
       return isWithinInterval(new Date(p.reactivated_at), { start: dateRange.start, end: dateRange.end });
     }).length;
     return { activeProjects, cancellationSignaled, noticePeriod, closedProjects, churnSignaled: cancellationSignaled + noticePeriod, reactivatedInPeriod };
-  }, [nonSimulatorProjects, dateRange]);
+  }, [nonSimulatorProjects, nonSimulatorAllProjects, dateRange]);
 
   const filteredCompanyIds = useMemo(
     () => new Set(nonSimulatorProjects.map(getProjectCompanyId).filter(Boolean) as string[]),
