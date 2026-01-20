@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -179,9 +179,9 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       // Store all monthly targets for later filtering by unit/salesperson
       setAllMonthlyTargets((monthlyTargetsRes.data || []) as MonthlyTarget[]);
 
-      // Build initial map of monthly targets (company-level only, no unit/salesperson filter)
+      // Build initial map of monthly targets (company-level only, no unit/team/salesperson filter)
       const companyLevelTargets = (monthlyTargetsRes.data || []).filter(
-        (mt: any) => mt.unit_id === null && mt.salesperson_id === null
+        (mt: any) => mt.unit_id === null && mt.team_id === null && mt.salesperson_id === null
       );
       const monthlyTargetMap: Record<string, Record<string, number>> = {};
       companyLevelTargets.forEach((mt: any) => {
@@ -315,16 +315,39 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     }
   };
 
-  // Filter entries based on selected unit, team, sector, and salesperson
-  const getFilteredEntries = () => {
-    return entries.filter(e => {
-      if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
-      if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
-      if (selectedSector !== "all" && e.sector_id !== selectedSector) return false;
-      if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
-      return true;
-    });
+  const salespeopleById = useMemo(() => {
+    return new Map(salespeople.map((sp) => [sp.id, sp] as const));
+  }, [salespeople]);
+
+  const kpisById = useMemo(() => {
+    return new Map(kpis.map((k) => [k.id, k] as const));
+  }, [kpis]);
+
+  // Normalize entry dimensions because legacy kpi_entries may not have unit_id/team_id/sector_id filled.
+  const getEntryDimensions = (e: Entry) => {
+    const sp = salespeopleById.get(e.salesperson_id);
+    const kpi = kpisById.get(e.kpi_id);
+
+    return {
+      unit_id: e.unit_id ?? sp?.unit_id ?? null,
+      team_id: e.team_id ?? sp?.team_id ?? null,
+      // sector is primarily tied to KPI; fallback to entry.sector_id if present
+      sector_id: e.sector_id ?? kpi?.sector_id ?? null,
+      salesperson_id: e.salesperson_id,
+    };
   };
+
+  const matchesActiveFilters = (e: Entry) => {
+    const d = getEntryDimensions(e);
+    if (selectedUnit !== "all" && d.unit_id !== selectedUnit) return false;
+    if (selectedTeam !== "all" && d.team_id !== selectedTeam) return false;
+    if (selectedSector !== "all" && d.sector_id !== selectedSector) return false;
+    if (selectedSalesperson !== "all" && d.salesperson_id !== selectedSalesperson) return false;
+    return true;
+  };
+
+  // Filter entries based on selected unit, team, sector, and salesperson
+  const getFilteredEntries = () => entries.filter(matchesActiveFilters);
 
   // Filter KPIs based on selected sector (show KPIs that belong to this sector or have no sector - shared KPIs)
   const getFilteredKpis = () => {
@@ -372,13 +395,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
     const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
     const allMonthEntries = entries.filter(e => e.entry_date >= monthStart && e.entry_date <= monthEnd);
-    const monthEntries = allMonthEntries.filter(e => {
-      if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
-      if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
-      if (selectedSector !== "all" && e.sector_id !== selectedSector) return false;
-      if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
-      return true;
-    });
+    const monthEntries = allMonthEntries.filter(matchesActiveFilters);
 
     // Sum all entries and targets for monetary KPIs (main revenue KPIs)
     let totalRealized = 0;
