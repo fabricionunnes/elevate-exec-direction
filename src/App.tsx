@@ -98,6 +98,7 @@ import ExecutiveDashboardPage from "./pages/onboarding-tasks/ExecutiveDashboardP
 import CEODashboardPage from "./pages/onboarding-tasks/CEODashboardPage";
 import LeaderDashboardPage from "./pages/onboarding-tasks/LeaderDashboardPage";
 import GlobalJobOpeningsPage from "./pages/onboarding-tasks/GlobalJobOpeningsPage";
+import ClientAccessReportPage from "./pages/onboarding-tasks/ClientAccessReportPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
 // CRM Pages
@@ -212,6 +213,7 @@ const App = () => (
               <Route path="/onboarding-tasks/engagement" element={<ConsultantEngagementPage />} />
               <Route path="/onboarding-tasks/executive" element={<ExecutiveDashboardPage />} />
               <Route path="/onboarding-tasks/vagas" element={<GlobalJobOpeningsPage />} />
+              <Route path="/onboarding-tasks/client-access" element={<ClientAccessReportPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
             </Route>
