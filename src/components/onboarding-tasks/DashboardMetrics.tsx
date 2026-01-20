@@ -110,7 +110,7 @@ interface DashboardMetricsProps {
   staffRole?: string | null;
   // New props to eliminate duplicate queries
   externalNpsResponses?: { id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[];
-  externalCompanyKpis?: { id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number }[];
+  externalCompanyKpis?: { id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number; is_main_goal?: boolean }[];
   externalKpiEntries?: { company_id: string; kpi_id: string; value: number; entry_date: string }[];
   externalContractRenewals?: { company_id: string; renewal_date: string }[];
   externalHealthScores?: { project_id: string; total_score: number; risk_level: string | null }[];
@@ -145,7 +145,7 @@ const DashboardMetrics = ({
   const [internalTasks, setInternalTasks] = useState<Task[]>([]);
   const [internalNpsResponses, setInternalNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
   const [internalKpiEntries, setInternalKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
-  const [internalCompanyKpis, setInternalCompanyKpis] = useState<{ id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number }[]>([]);
+  const [internalCompanyKpis, setInternalCompanyKpis] = useState<{ id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number; is_main_goal?: boolean }[]>([]);
   const [internalContractRenewals, setInternalContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
   const [internalHealthScores, setInternalHealthScores] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -214,7 +214,7 @@ const DashboardMetrics = ({
           ? supabase.from("onboarding_nps_responses").select("id, project_id, score, feedback, what_can_improve, would_recommend_why, respondent_name, respondent_email, created_at").order("created_at", { ascending: false })
           : Promise.resolve({ data: null, error: null }),
         !externalCompanyKpis
-          ? supabase.from("company_kpis").select("id, company_id, kpi_type, periodicity, target_value").eq("is_active", true)
+          ? supabase.from("company_kpis").select("id, company_id, kpi_type, periodicity, target_value, is_main_goal").eq("is_active", true)
           : Promise.resolve({ data: null, error: null }),
         !externalKpiEntries
           ? supabase.from("kpi_entries").select("company_id, kpi_id, value, entry_date")
@@ -663,8 +663,17 @@ const DashboardMetrics = ({
     filteredCompanyIds.forEach(companyId => {
       if (!companyId) return;
 
-      // Get KPIs for this company (only monetary for main goals tracking)
-      const companyKpisList = companyKpis.filter(k => k.company_id === companyId && k.kpi_type === "monetary");
+      // Get KPIs for this company
+      // Priority: Main Goal KPIs first, then fallback to monetary KPIs
+      const allCompanyKpis = companyKpis.filter(k => k.company_id === companyId);
+      
+      // Check if company has any Main Goal KPIs
+      const mainGoalKpis = allCompanyKpis.filter(k => k.is_main_goal === true);
+      
+      // Use Main Goal KPIs if available, otherwise use all monetary KPIs
+      const companyKpisList = mainGoalKpis.length > 0 
+        ? mainGoalKpis 
+        : allCompanyKpis.filter(k => k.kpi_type === "monetary");
       
       if (companyKpisList.length === 0) return;
 
@@ -680,7 +689,7 @@ const DashboardMetrics = ({
         }
       });
 
-      // Get entries for this company in the period
+      // Get entries for this company in the period (only for the selected KPIs)
       const companyEntries = kpiEntries.filter(e => 
         e.company_id === companyId &&
         e.entry_date >= monthStart &&
