@@ -2,6 +2,7 @@ import { useRef } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Download, CheckCircle, Target, Lightbulb, Sparkles, Building2, User, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoUnv from "@/assets/logo-unv.png";
@@ -143,12 +144,13 @@ export default function DiagnosticPDFReport({ formData, recommendations }: Diagn
         </Button>
       </div>
 
-      {/* Relatório para impressão */}
-      <div 
-        ref={reportRef} 
-        className="bg-[#0f172a] text-white p-8 md:p-12 rounded-2xl overflow-hidden"
-        style={{ minWidth: "800px" }}
-      >
+      {/* Relatório para impressão com scroll */}
+      <ScrollArea className="h-[70vh] rounded-2xl">
+        <div 
+          ref={reportRef} 
+          className="bg-[#0f172a] text-white p-8 md:p-12 rounded-2xl"
+          style={{ minWidth: "800px" }}
+        >
         {/* Header do Relatório */}
         <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-8">
           <div className="flex items-center gap-4">
@@ -364,6 +366,7 @@ export default function DiagnosticPDFReport({ formData, recommendations }: Diagn
           </p>
         </div>
       </div>
+      </ScrollArea>
     </div>
   );
 }
