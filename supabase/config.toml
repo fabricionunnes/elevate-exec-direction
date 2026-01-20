@@ -122,3 +122,9 @@ verify_jwt = false
 
 [functions.ceo-board-chat]
 verify_jwt = false
+
+[functions.notify-referral]
+verify_jwt = false
+
+[functions.nps-public]
+verify_jwt = false

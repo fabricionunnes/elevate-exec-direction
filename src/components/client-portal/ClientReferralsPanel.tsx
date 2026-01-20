@@ -144,6 +144,24 @@ export function ClientReferralsPanel({ companyId, projectId, userName }: ClientR
 
       if (error) throw error;
 
+      // Notify admins and CS about each referral
+      for (const referral of validReferrals) {
+        try {
+          await supabase.functions.invoke("notify-referral", {
+            body: {
+              referrerName: userName || null,
+              referredName: referral.name.trim(),
+              referredPhone: referral.phone.trim(),
+              companyId: companyId,
+              projectId: projectId,
+              source: "portal",
+            },
+          });
+        } catch (notifyErr) {
+          console.error("Failed to notify referral:", notifyErr);
+        }
+      }
+
       toast.success("Indicação(ões) enviada(s) com sucesso!");
       setNewReferrals([{ name: "", phone: "" }]);
       fetchReferrals();

@@ -112,6 +112,24 @@ serve(async (req) => {
       if (referralError) {
         // Don't fail the whole submission for referral errors.
         console.log("NPS submit: referral insert failed", { referralError });
+      } else {
+        // Notify admins and CS about each referral
+        for (const referral of validReferrals) {
+          try {
+            await supabase.functions.invoke("notify-referral", {
+              body: {
+                referrerName: body.respondentName ?? null,
+                referredName: referral.name,
+                referredPhone: referral.phone,
+                companyId: project.onboarding_company_id,
+                projectId: body.projectId,
+                source: "nps",
+              },
+            });
+          } catch (notifyErr) {
+            console.log("NPS submit: notify-referral failed", { notifyErr });
+          }
+        }
       }
     }
 
