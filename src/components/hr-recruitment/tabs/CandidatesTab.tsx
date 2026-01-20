@@ -406,6 +406,8 @@ export function CandidatesTab({ projectId, canEdit, isStaff, userRole = '', onUp
         candidate={selectedCandidate}
         canEdit={canEdit}
         canDelete={userRole === 'admin' || userRole === 'cs'}
+        canManageResumes={['admin', 'cs', 'rh'].includes(userRole)}
+        userRole={userRole}
         projectId={projectId}
         onUpdate={() => {
           fetchData();

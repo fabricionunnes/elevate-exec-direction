@@ -32,6 +32,7 @@ import {
   MessageSquare,
   Calendar,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -46,6 +47,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ScheduleInterviewDialog } from "../dialogs/ScheduleInterviewDialog";
 import { InterviewDialog } from "../dialogs/InterviewDialog";
+import { EditCandidateDialog } from "../dialogs/EditCandidateDialog";
+import { CandidateResumesManager } from "../components/CandidateResumesManager";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -53,6 +56,7 @@ import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { usePipelineStages } from "../hooks/usePipelineStages";
 import {
   Candidate,
+  CandidateResume,
   HiringHistory,
   Interview,
   DISCResult,
@@ -67,6 +71,8 @@ interface CandidateDetailSheetProps {
   candidate: Candidate | null;
   canEdit: boolean;
   canDelete?: boolean;
+  canManageResumes?: boolean;
+  userRole?: string;
   projectId: string;
   onUpdate: () => void;
 }
@@ -77,6 +83,8 @@ export function CandidateDetailSheet({
   candidate,
   canEdit,
   canDelete = false,
+  canManageResumes = false,
+  userRole = '',
   projectId,
   onUpdate,
 }: CandidateDetailSheetProps) {
@@ -84,24 +92,31 @@ export function CandidateDetailSheet({
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [discResults, setDiscResults] = useState<DISCResult[]>([]);
   const [aiEvaluations, setAiEvaluations] = useState<AIEvaluation[]>([]);
+  const [resumes, setResumes] = useState<CandidateResume[]>([]);
+  const [jobs, setJobs] = useState<{ id: string; title: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [interviewDialogOpen, setInterviewDialogOpen] = useState(false);
   const [interviewFeedbackOpen, setInterviewFeedbackOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingInterview, setEditingInterview] = useState<Interview | null>(null);
 
   const { stages: pipelineStages } = usePipelineStages(projectId);
 
+  // Check if user can manage resumes (admin, cs, rh)
+  const canManage = canManageResumes || ['admin', 'cs', 'rh'].includes(userRole);
+
   useEffect(() => {
     if (candidate && open) {
       fetchCandidateData();
+      fetchJobs();
     }
   }, [candidate, open]);
 
   const fetchCandidateData = async () => {
     if (!candidate) return;
 
-    const [historyRes, interviewsRes, discRes, aiRes] = await Promise.all([
+    const [historyRes, interviewsRes, discRes, aiRes, resumesRes] = await Promise.all([
       supabase
         .from("hiring_history")
         .select("*, staff:onboarding_staff(name)")
@@ -122,12 +137,27 @@ export function CandidateDetailSheet({
         .select("*")
         .eq("candidate_id", candidate.id)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("candidate_resumes")
+        .select("*")
+        .eq("candidate_id", candidate.id)
+        .order("created_at", { ascending: false }),
     ]);
 
     setHistory(historyRes.data || []);
     setInterviews(interviewsRes.data || []);
     setDiscResults(discRes.data || []);
     setAiEvaluations(aiRes.data || []);
+    setResumes(resumesRes.data || []);
+  };
+
+  const fetchJobs = async () => {
+    const { data } = await supabase
+      .from("job_openings")
+      .select("id, title")
+      .eq("project_id", projectId)
+      .in("status", ["open", "in_progress"]);
+    setJobs(data || []);
   };
 
   const handleStageChange = async (newStage: string) => {
@@ -276,6 +306,12 @@ export function CandidateDetailSheet({
             {/* Actions */}
             {canEdit && (
               <div className="flex flex-wrap gap-2">
+                {canManage && (
+                  <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={handleSendDISC} disabled={loading}>
                   <Send className="h-4 w-4 mr-2" />
                   Enviar DISC
@@ -352,6 +388,29 @@ export function CandidateDetailSheet({
                 }}
               />
             )}
+
+            {/* Edit Candidate Dialog */}
+            <EditCandidateDialog
+              open={editDialogOpen}
+              onOpenChange={setEditDialogOpen}
+              candidate={candidate}
+              jobs={jobs}
+              onSuccess={() => {
+                fetchCandidateData();
+                onUpdate();
+              }}
+            />
+
+            {/* Resumes Section */}
+            <div className="border-t pt-4">
+              <CandidateResumesManager
+                candidateId={candidate.id}
+                projectId={projectId}
+                resumes={resumes}
+                canManage={canManage}
+                onUpdate={fetchCandidateData}
+              />
+            </div>
 
             {/* Tabs */}
             <Tabs defaultValue="history" className="mt-6">
