@@ -331,6 +331,71 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
     }
   };
 
+  // Drag and drop state
+  const [draggedKpiId, setDraggedKpiId] = useState<string | null>(null);
+  const [dragOverKpiId, setDragOverKpiId] = useState<string | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, kpiId: string) => {
+    setDraggedKpiId(kpiId);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", kpiId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, kpiId: string) => {
+    e.preventDefault();
+    if (draggedKpiId !== kpiId) {
+      setDragOverKpiId(kpiId);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverKpiId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedKpiId(null);
+    setDragOverKpiId(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetKpiId: string) => {
+    e.preventDefault();
+    setDragOverKpiId(null);
+    
+    if (!draggedKpiId || draggedKpiId === targetKpiId) {
+      setDraggedKpiId(null);
+      return;
+    }
+
+    const draggedIndex = kpis.findIndex(k => k.id === draggedKpiId);
+    const targetIndex = kpis.findIndex(k => k.id === targetKpiId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const draggedKpi = kpis[draggedIndex];
+    const targetKpi = kpis[targetIndex];
+
+    try {
+      // Swap sort_order values
+      await Promise.all([
+        supabase
+          .from("company_kpis")
+          .update({ sort_order: targetKpi.sort_order })
+          .eq("id", draggedKpi.id),
+        supabase
+          .from("company_kpis")
+          .update({ sort_order: draggedKpi.sort_order })
+          .eq("id", targetKpi.id),
+      ]);
+      
+      fetchData();
+    } catch (error) {
+      console.error("Error reordering KPIs:", error);
+      toast.error("Erro ao reordenar KPIs");
+    }
+    
+    setDraggedKpiId(null);
+  };
+
   const resetForm = () => {
     setEditingKpi(null);
     setFormData({
@@ -713,11 +778,20 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
             </TableHeader>
             <TableBody>
               {kpis.map((kpi, index) => (
-                <TableRow key={kpi.id} className={!kpi.is_active ? "opacity-50" : ""}>
+                <TableRow 
+                  key={kpi.id} 
+                  className={`${!kpi.is_active ? "opacity-50" : ""} ${draggedKpiId === kpi.id ? "opacity-50 bg-muted" : ""} ${dragOverKpiId === kpi.id ? "border-t-2 border-primary" : ""}`}
+                  draggable={isAdmin}
+                  onDragStart={(e) => handleDragStart(e, kpi.id)}
+                  onDragOver={(e) => handleDragOver(e, kpi.id)}
+                  onDragLeave={handleDragLeave}
+                  onDragEnd={handleDragEnd}
+                  onDrop={(e) => handleDrop(e, kpi.id)}
+                >
                   {isAdmin && (
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <GripVertical className="h-4 w-4 text-muted-foreground" />
+                        <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
                         <Button 
                           variant="ghost" 
                           size="icon" 
