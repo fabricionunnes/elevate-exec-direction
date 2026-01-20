@@ -30,7 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Calendar, Building2, Users, Layers, User } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar, Building2, Users, Layers, User, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
 import { KPIMonthlyTargetsDialog } from "./KPIMonthlyTargetsDialog";
 
 interface KPI {
@@ -276,6 +276,58 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
     } catch (error) {
       console.error("Error toggling KPI:", error);
       toast.error("Erro ao atualizar KPI");
+    }
+  };
+
+  const handleMoveUp = async (kpi: KPI) => {
+    const currentIndex = kpis.findIndex(k => k.id === kpi.id);
+    if (currentIndex <= 0) return;
+    
+    const prevKpi = kpis[currentIndex - 1];
+    
+    try {
+      // Swap sort_order values
+      await Promise.all([
+        supabase
+          .from("company_kpis")
+          .update({ sort_order: prevKpi.sort_order })
+          .eq("id", kpi.id),
+        supabase
+          .from("company_kpis")
+          .update({ sort_order: kpi.sort_order })
+          .eq("id", prevKpi.id),
+      ]);
+      
+      fetchData();
+    } catch (error) {
+      console.error("Error moving KPI:", error);
+      toast.error("Erro ao reordenar KPI");
+    }
+  };
+
+  const handleMoveDown = async (kpi: KPI) => {
+    const currentIndex = kpis.findIndex(k => k.id === kpi.id);
+    if (currentIndex >= kpis.length - 1) return;
+    
+    const nextKpi = kpis[currentIndex + 1];
+    
+    try {
+      // Swap sort_order values
+      await Promise.all([
+        supabase
+          .from("company_kpis")
+          .update({ sort_order: nextKpi.sort_order })
+          .eq("id", kpi.id),
+        supabase
+          .from("company_kpis")
+          .update({ sort_order: kpi.sort_order })
+          .eq("id", nextKpi.id),
+      ]);
+      
+      fetchData();
+    } catch (error) {
+      console.error("Error moving KPI:", error);
+      toast.error("Erro ao reordenar KPI");
     }
   };
 
@@ -648,6 +700,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
           <Table>
             <TableHeader>
               <TableRow>
+                {isAdmin && <TableHead className="w-[80px]">Ordem</TableHead>}
                 <TableHead>Nome</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Periodicidade</TableHead>
@@ -659,8 +712,33 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
               </TableRow>
             </TableHeader>
             <TableBody>
-              {kpis.map((kpi) => (
+              {kpis.map((kpi, index) => (
                 <TableRow key={kpi.id} className={!kpi.is_active ? "opacity-50" : ""}>
+                  {isAdmin && (
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <GripVertical className="h-4 w-4 text-muted-foreground" />
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6"
+                          onClick={() => handleMoveUp(kpi)}
+                          disabled={index === 0}
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6"
+                          onClick={() => handleMoveDown(kpi)}
+                          disabled={index === kpis.length - 1}
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium">
                     {kpi.name}
                     {kpi.is_required && (
