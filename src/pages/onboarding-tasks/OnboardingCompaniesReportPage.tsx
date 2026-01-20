@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 import RenewalsPanel from "@/components/onboarding-tasks/RenewalsPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
+import CompaniesReportPDFExport from "@/components/onboarding-tasks/CompaniesReportPDFExport";
 
 interface Staff {
   id: string;
@@ -569,6 +570,21 @@ export default function OnboardingCompaniesReportPage() {
             <NexusHeader title="Relatório de Empresas" />
           </div>
           <div className="flex items-center gap-2">
+            <CompaniesReportPDFExport
+              companies={filteredCompanies}
+              summaryMetrics={summaryMetrics}
+              filters={{
+                consultant: filterConsultant,
+                status: filterStatus,
+                paymentMethod: filterPaymentMethod,
+                searchTerm: searchTerm,
+                endDateFrom: filterEndDateFrom,
+                endDateTo: filterEndDateTo,
+                healthMin: filterHealthMin,
+                healthMax: filterHealthMax,
+              }}
+              isCS={isCS}
+            />
             <Button
               onClick={() => setRenewalsPanelOpen(true)}
               className="bg-primary"
