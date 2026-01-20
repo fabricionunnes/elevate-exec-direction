@@ -20,6 +20,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { 
   RefreshCw, 
   Search, 
@@ -1014,27 +1020,93 @@ export default function DiagnosticResponsesPage() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <Badge variant="secondary" className="text-xs">
-                                {painLabels[response.main_pain] || response.main_pain}
-                              </Badge>
-                              <Badge 
-                                variant="outline" 
-                                className={cn(
-                                  "text-xs block w-fit",
-                                  response.urgency === "imediata" && "border-destructive text-destructive",
-                                  response.urgency === "alta" && "border-orange-500 text-orange-500"
-                                )}
-                              >
-                                {urgencyLabels[response.urgency] || response.urgency}
-                              </Badge>
-                            </div>
+                          <TableCell className="max-w-[180px]">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="space-y-1 cursor-help">
+                                    {(() => {
+                                      const pains = response.main_pain?.split(',').map(p => p.trim()).filter(Boolean) || [];
+                                      const visiblePains = pains.slice(0, 2);
+                                      const hiddenCount = pains.length - 2;
+                                      return (
+                                        <>
+                                          {visiblePains.map((pain, idx) => (
+                                            <Badge key={idx} variant="secondary" className="text-xs mr-1 mb-1">
+                                              {painLabels[pain] || pain}
+                                            </Badge>
+                                          ))}
+                                          {hiddenCount > 0 && (
+                                            <Badge variant="outline" className="text-xs">
+                                              +{hiddenCount}
+                                            </Badge>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
+                                    <Badge 
+                                      variant="outline" 
+                                      className={cn(
+                                        "text-xs block w-fit",
+                                        response.urgency === "imediata" && "border-destructive text-destructive",
+                                        response.urgency === "alta" && "border-orange-500 text-orange-500"
+                                      )}
+                                    >
+                                      {urgencyLabels[response.urgency] || response.urgency}
+                                    </Badge>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="max-w-[300px] p-3">
+                                  <p className="font-semibold text-xs mb-2">Todas as dores:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {response.main_pain?.split(',').map((pain, idx) => (
+                                      <Badge key={idx} variant="secondary" className="text-xs">
+                                        {painLabels[pain.trim()] || pain.trim()}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </TableCell>
-                          <TableCell>
-                            <Badge className="bg-accent text-accent-foreground">
-                              {response.recommended_product}
-                            </Badge>
+                          <TableCell className="max-w-[150px]">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="cursor-help">
+                                    {(() => {
+                                      const products = response.recommended_product?.split(',').map(p => p.trim()).filter(Boolean) || [];
+                                      const visibleProducts = products.slice(0, 2);
+                                      const hiddenCount = products.length - 2;
+                                      return (
+                                        <div className="flex flex-wrap gap-1">
+                                          {visibleProducts.map((product, idx) => (
+                                            <Badge key={idx} className="bg-accent text-accent-foreground text-xs">
+                                              {product}
+                                            </Badge>
+                                          ))}
+                                          {hiddenCount > 0 && (
+                                            <Badge variant="outline" className="text-xs">
+                                              +{hiddenCount}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="max-w-[300px] p-3">
+                                  <p className="font-semibold text-xs mb-2">Produtos recomendados:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {response.recommended_product?.split(',').map((product, idx) => (
+                                      <Badge key={idx} className="bg-accent text-accent-foreground text-xs">
+                                        {product.trim()}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </TableCell>
                           <TableCell>
                             <select
