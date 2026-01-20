@@ -30,7 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Calendar } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar, Building2, Users, Layers, User } from "lucide-react";
 import { KPIMonthlyTargetsDialog } from "./KPIMonthlyTargetsDialog";
 
 interface KPI {
@@ -43,10 +43,35 @@ interface KPI {
   is_required: boolean;
   is_active: boolean;
   sort_order: number;
+  scope: "company" | "sector" | "team" | "salesperson";
   sector_id: string | null;
+  team_id: string | null;
+  salesperson_id: string | null;
+  unit_id: string | null;
 }
 
 interface Sector {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  unit_id: string | null;
+  is_active: boolean;
+}
+
+interface Salesperson {
+  id: string;
+  name: string;
+  unit_id: string | null;
+  team_id: string | null;
+  is_active: boolean;
+}
+
+interface Unit {
   id: string;
   name: string;
   is_active: boolean;
@@ -61,6 +86,9 @@ interface KPIConfigurationTabProps {
 export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KPIConfigurationTabProps) => {
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [showMonthlyTargets, setShowMonthlyTargets] = useState(false);
@@ -72,7 +100,11 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
     target_value: 0,
     is_individual: true,
     is_required: true,
+    scope: "company" as "company" | "sector" | "team" | "salesperson",
     sector_id: "",
+    team_id: "",
+    salesperson_id: "",
+    unit_id: "",
   });
 
   useEffect(() => {
@@ -81,7 +113,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
 
   const fetchData = async () => {
     try {
-      const [kpisRes, sectorsRes] = await Promise.all([
+      const [kpisRes, sectorsRes, teamsRes, salespeopleRes, unitsRes] = await Promise.all([
         supabase
           .from("company_kpis")
           .select("*")
@@ -93,13 +125,33 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
           .eq("company_id", companyId)
           .eq("is_active", true)
           .order("name"),
+        supabase
+          .from("company_teams")
+          .select("id, name, unit_id, is_active")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name"),
+        supabase
+          .from("company_salespeople")
+          .select("id, name, unit_id, team_id, is_active")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name"),
+        supabase
+          .from("company_units")
+          .select("id, name, is_active")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name"),
       ]);
 
       if (kpisRes.error) throw kpisRes.error;
-      if (sectorsRes.error) throw sectorsRes.error;
 
       setKpis((kpisRes.data || []) as KPI[]);
       setSectors(sectorsRes.data || []);
+      setTeams(teamsRes.data || []);
+      setSalespeople(salespeopleRes.data || []);
+      setUnits(unitsRes.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Erro ao carregar dados");
@@ -132,19 +184,39 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
       return;
     }
 
+    // Validate scope-specific fields
+    if (formData.scope === "sector" && !formData.sector_id) {
+      toast.error("Selecione um setor para KPIs de escopo Setor");
+      return;
+    }
+    if (formData.scope === "team" && !formData.team_id) {
+      toast.error("Selecione uma equipe para KPIs de escopo Equipe");
+      return;
+    }
+    if (formData.scope === "salesperson" && !formData.salesperson_id) {
+      toast.error("Selecione um vendedor para KPIs de escopo Vendedor");
+      return;
+    }
+
     try {
+      const kpiData = {
+        name: formData.name,
+        kpi_type: formData.kpi_type,
+        periodicity: formData.periodicity,
+        target_value: formData.target_value,
+        is_individual: formData.is_individual,
+        is_required: formData.is_required,
+        scope: formData.scope,
+        sector_id: formData.scope === "sector" ? formData.sector_id : null,
+        team_id: formData.scope === "team" ? formData.team_id : null,
+        salesperson_id: formData.scope === "salesperson" ? formData.salesperson_id : null,
+        unit_id: formData.unit_id || null,
+      };
+
       if (editingKpi) {
         const { error } = await supabase
           .from("company_kpis")
-          .update({
-            name: formData.name,
-            kpi_type: formData.kpi_type,
-            periodicity: formData.periodicity,
-            target_value: formData.target_value,
-            is_individual: formData.is_individual,
-            is_required: formData.is_required,
-            sector_id: formData.sector_id || null,
-          })
+          .update(kpiData)
           .eq("id", editingKpi.id);
 
         if (error) throw error;
@@ -153,13 +225,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
         const maxOrder = Math.max(...kpis.map(k => k.sort_order), 0);
         const { error } = await supabase.from("company_kpis").insert({
           company_id: companyId,
-          name: formData.name,
-          kpi_type: formData.kpi_type,
-          periodicity: formData.periodicity,
-          target_value: formData.target_value,
-          is_individual: formData.is_individual,
-          is_required: formData.is_required,
-          sector_id: formData.sector_id || null,
+          ...kpiData,
           sort_order: maxOrder + 1,
         });
 
@@ -219,7 +285,11 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
       target_value: 0,
       is_individual: true,
       is_required: true,
+      scope: "company",
       sector_id: "",
+      team_id: "",
+      salesperson_id: "",
+      unit_id: "",
     });
   };
 
@@ -232,7 +302,11 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
       target_value: kpi.target_value,
       is_individual: kpi.is_individual,
       is_required: kpi.is_required,
+      scope: kpi.scope || "company",
       sector_id: kpi.sector_id || "",
+      team_id: kpi.team_id || "",
+      salesperson_id: kpi.salesperson_id || "",
+      unit_id: kpi.unit_id || "",
     });
     setShowDialog(true);
   };
@@ -385,18 +459,73 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
                   />
                 </div>
 
-                {sectors.length > 0 && (
+                {/* Scope Selection */}
+                <div>
+                  <Label>Escopo do Lançamento</Label>
+                  <Select
+                    value={formData.scope}
+                    onValueChange={(v) => setFormData({ 
+                      ...formData, 
+                      scope: v as any,
+                      // Reset scope-specific fields when changing scope
+                      sector_id: v === "sector" ? formData.sector_id : "",
+                      team_id: v === "team" ? formData.team_id : "",
+                      salesperson_id: v === "salesperson" ? formData.salesperson_id : "",
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="company">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          Empresa (todos lançam)
+                        </div>
+                      </SelectItem>
+                      {sectors.length > 0 && (
+                        <SelectItem value="sector">
+                          <div className="flex items-center gap-2">
+                            <Layers className="h-4 w-4" />
+                            Setor específico
+                          </div>
+                        </SelectItem>
+                      )}
+                      {teams.length > 0 && (
+                        <SelectItem value="team">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            Equipe específica
+                          </div>
+                        </SelectItem>
+                      )}
+                      {salespeople.length > 0 && (
+                        <SelectItem value="salesperson">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            Vendedor específico
+                          </div>
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Define quem pode/deve lançar este KPI
+                  </p>
+                </div>
+
+                {/* Sector Selection - when scope is 'sector' */}
+                {formData.scope === "sector" && sectors.length > 0 && (
                   <div>
-                    <Label>Setor (opcional)</Label>
+                    <Label>Setor *</Label>
                     <Select
                       value={formData.sector_id}
-                      onValueChange={(v) => setFormData({ ...formData, sector_id: v === "all" ? "" : v })}
+                      onValueChange={(v) => setFormData({ ...formData, sector_id: v })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Todos os setores" />
+                        <SelectValue placeholder="Selecione o setor" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos os setores</SelectItem>
                         {sectors.map((sector) => (
                           <SelectItem key={sector.id} value={sector.id}>
                             {sector.name}
@@ -405,7 +534,57 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Vincule a um setor para que apenas vendedores desse setor lancem este KPI
+                      Apenas vendedores deste setor lançarão este KPI
+                    </p>
+                  </div>
+                )}
+
+                {/* Team Selection - when scope is 'team' */}
+                {formData.scope === "team" && teams.length > 0 && (
+                  <div>
+                    <Label>Equipe *</Label>
+                    <Select
+                      value={formData.team_id}
+                      onValueChange={(v) => setFormData({ ...formData, team_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a equipe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teams.map((team) => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Apenas vendedores desta equipe lançarão este KPI
+                    </p>
+                  </div>
+                )}
+
+                {/* Salesperson Selection - when scope is 'salesperson' */}
+                {formData.scope === "salesperson" && salespeople.length > 0 && (
+                  <div>
+                    <Label>Vendedor *</Label>
+                    <Select
+                      value={formData.salesperson_id}
+                      onValueChange={(v) => setFormData({ ...formData, salesperson_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o vendedor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {salespeople.map((sp) => (
+                          <SelectItem key={sp.id} value={sp.id}>
+                            {sp.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Apenas este vendedor lançará este KPI
                     </p>
                   </div>
                 )}

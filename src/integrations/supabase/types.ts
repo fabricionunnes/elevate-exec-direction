@@ -2736,9 +2736,13 @@ export type Database = {
           kpi_type: string
           name: string
           periodicity: string
+          salesperson_id: string | null
+          scope: string | null
           sector_id: string | null
           sort_order: number | null
           target_value: number
+          team_id: string | null
+          unit_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -2751,9 +2755,13 @@ export type Database = {
           kpi_type: string
           name: string
           periodicity: string
+          salesperson_id?: string | null
+          scope?: string | null
           sector_id?: string | null
           sort_order?: number | null
           target_value?: number
+          team_id?: string | null
+          unit_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -2766,9 +2774,13 @@ export type Database = {
           kpi_type?: string
           name?: string
           periodicity?: string
+          salesperson_id?: string | null
+          scope?: string | null
           sector_id?: string | null
           sort_order?: number | null
           target_value?: number
+          team_id?: string | null
+          unit_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -2780,10 +2792,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "company_kpis_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "company_salespeople"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "company_kpis_sector_id_fkey"
             columns: ["sector_id"]
             isOneToOne: false
             referencedRelation: "company_sectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_kpis_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "company_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_kpis_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "company_units"
             referencedColumns: ["id"]
           },
         ]
