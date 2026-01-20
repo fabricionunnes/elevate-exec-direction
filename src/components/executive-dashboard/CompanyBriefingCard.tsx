@@ -575,19 +575,22 @@ export function CompanyBriefingCard({ project, index, expanded = true, onCreateI
 
                   {/* KPI Cards */}
                   {project.kpis && project.kpis.slice(0, 3).map((kpi, i) => {
-                    const getKPIColor = (pct: number) => {
+                    const hasTarget = kpi.target > 0;
+                    const getKPIColor = (pct: number, hasTarget: boolean) => {
+                      if (!hasTarget) return 'text-blue-600 dark:text-blue-400';
                       if (pct >= 100) return 'text-green-600 dark:text-green-400';
                       if (pct >= 70) return 'text-yellow-600 dark:text-yellow-400';
                       return 'text-red-600 dark:text-red-400';
                     };
-                    const getKPIBg = (pct: number) => {
+                    const getKPIBg = (pct: number, hasTarget: boolean) => {
+                      if (!hasTarget) return 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800';
                       if (pct >= 100) return 'bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-800';
                       if (pct >= 70) return 'bg-yellow-50 dark:bg-yellow-950/50 border-yellow-200 dark:border-yellow-800';
                       return 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800';
                     };
                     const formatValue = (val: number, type: string) => {
                       if (type === 'monetary') {
-                        return val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val.toFixed(0);
+                        return val >= 1000 ? `R$ ${(val / 1000).toFixed(1)}k` : `R$ ${val.toFixed(0)}`;
                       }
                       return val.toFixed(0);
                     };
@@ -598,25 +601,35 @@ export function CompanyBriefingCard({ project, index, expanded = true, onCreateI
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.25 + i * 0.05 }}
-                        className={`p-2.5 rounded-lg border ${getKPIBg(kpi.percentage)}`}
+                        className={`p-2.5 rounded-lg border ${getKPIBg(kpi.percentage, hasTarget)}`}
                       >
                         <p className="text-[10px] font-medium text-muted-foreground truncate mb-1">
                           {kpi.name}
                         </p>
                         <div className="flex items-baseline gap-1">
-                          <span className={`text-lg font-bold ${getKPIColor(kpi.percentage)}`}>
-                            {kpi.percentage.toFixed(0)}%
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            ({formatValue(kpi.result, kpi.kpiType)}/{formatValue(kpi.target, kpi.kpiType)})
-                          </span>
+                          {hasTarget ? (
+                            <>
+                              <span className={`text-lg font-bold ${getKPIColor(kpi.percentage, hasTarget)}`}>
+                                {kpi.percentage.toFixed(0)}%
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                ({formatValue(kpi.result, kpi.kpiType)}/{formatValue(kpi.target, kpi.kpiType)})
+                              </span>
+                            </>
+                          ) : (
+                            <span className={`text-lg font-bold ${getKPIColor(kpi.percentage, hasTarget)}`}>
+                              {formatValue(kpi.result, kpi.kpiType)}
+                            </span>
+                          )}
                         </div>
-                        <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all ${kpi.percentage >= 100 ? 'bg-green-500' : kpi.percentage >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                            style={{ width: `${Math.min(kpi.percentage, 100)}%` }}
-                          />
-                        </div>
+                        {hasTarget && (
+                          <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all ${kpi.percentage >= 100 ? 'bg-green-500' : kpi.percentage >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                              style={{ width: `${Math.min(kpi.percentage, 100)}%` }}
+                            />
+                          </div>
+                        )}
                       </motion.div>
                     );
                   })}
