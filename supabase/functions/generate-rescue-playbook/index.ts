@@ -6,6 +6,51 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Brazilian holidays (2024-2028)
+const BRAZILIAN_HOLIDAYS: Record<number, string[]> = {
+  2024: ["2024-01-01","2024-02-12","2024-02-13","2024-03-29","2024-04-21","2024-05-01","2024-05-30","2024-09-07","2024-10-12","2024-11-02","2024-11-15","2024-11-20","2024-12-25"],
+  2025: ["2025-01-01","2025-03-03","2025-03-04","2025-04-18","2025-04-21","2025-05-01","2025-06-19","2025-09-07","2025-10-12","2025-11-02","2025-11-15","2025-11-20","2025-12-25"],
+  2026: ["2026-01-01","2026-02-16","2026-02-17","2026-04-03","2026-04-21","2026-05-01","2026-06-04","2026-09-07","2026-10-12","2026-11-02","2026-11-15","2026-11-20","2026-12-25"],
+  2027: ["2027-01-01","2027-02-08","2027-02-09","2027-03-26","2027-04-21","2027-05-01","2027-05-27","2027-09-07","2027-10-12","2027-11-02","2027-11-15","2027-11-20","2027-12-25"],
+  2028: ["2028-01-01","2028-02-28","2028-02-29","2028-04-14","2028-04-21","2028-05-01","2028-06-15","2028-09-07","2028-10-12","2028-11-02","2028-11-15","2028-11-20","2028-12-25"],
+};
+
+function isWeekend(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+function isHoliday(date: Date): boolean {
+  const year = date.getFullYear();
+  const dateStr = date.toISOString().split("T")[0];
+  const holidays = BRAZILIAN_HOLIDAYS[year] || [];
+  return holidays.includes(dateStr);
+}
+
+function isBusinessDay(date: Date): boolean {
+  return !isWeekend(date) && !isHoliday(date);
+}
+
+function ensureBusinessDay(date: Date): Date {
+  const result = new Date(date);
+  while (!isBusinessDay(result)) {
+    result.setDate(result.getDate() + 1);
+  }
+  return result;
+}
+
+function addBusinessDays(startDate: Date, days: number): Date {
+  let currentDate = new Date(startDate);
+  let addedDays = 0;
+  while (addedDays < days) {
+    currentDate.setDate(currentDate.getDate() + 1);
+    if (isBusinessDay(currentDate)) {
+      addedDays++;
+    }
+  }
+  return currentDate;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -249,10 +294,12 @@ Gere um playbook personalizado com tarefas específicas para reverter essa situa
       throw new Error('Failed to create playbook');
     }
 
-    // Create tasks from playbook
+    // Create tasks from playbook - using business days to avoid weekends/holidays
+    const baseDate = ensureBusinessDay(new Date());
     const tasksToCreate = (playbook.tasks || []).map((task: PlaybookTask, index: number) => {
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + (task.due_days || 7));
+      // Calculate due date using business days
+      const dueDays = task.due_days || 7;
+      const dueDate = dueDays > 0 ? addBusinessDays(baseDate, dueDays) : baseDate;
 
       return {
         project_id: projectId,
@@ -260,7 +307,7 @@ Gere um playbook personalizado com tarefas específicas para reverter essa situa
         description: task.description,
         status: 'pending',
         priority: task.priority || 'high',
-        due_date: dueDate.toISOString(),
+        due_date: dueDate.toISOString().split('T')[0],
         category: task.category || 'task',
         created_by: 'system',
         metadata: {

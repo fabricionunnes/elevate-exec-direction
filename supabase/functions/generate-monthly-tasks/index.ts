@@ -5,6 +5,51 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Brazilian holidays (2024-2028)
+const BRAZILIAN_HOLIDAYS: Record<number, string[]> = {
+  2024: ["2024-01-01","2024-02-12","2024-02-13","2024-03-29","2024-04-21","2024-05-01","2024-05-30","2024-09-07","2024-10-12","2024-11-02","2024-11-15","2024-11-20","2024-12-25"],
+  2025: ["2025-01-01","2025-03-03","2025-03-04","2025-04-18","2025-04-21","2025-05-01","2025-06-19","2025-09-07","2025-10-12","2025-11-02","2025-11-15","2025-11-20","2025-12-25"],
+  2026: ["2026-01-01","2026-02-16","2026-02-17","2026-04-03","2026-04-21","2026-05-01","2026-06-04","2026-09-07","2026-10-12","2026-11-02","2026-11-15","2026-11-20","2026-12-25"],
+  2027: ["2027-01-01","2027-02-08","2027-02-09","2027-03-26","2027-04-21","2027-05-01","2027-05-27","2027-09-07","2027-10-12","2027-11-02","2027-11-15","2027-11-20","2027-12-25"],
+  2028: ["2028-01-01","2028-02-28","2028-02-29","2028-04-14","2028-04-21","2028-05-01","2028-06-15","2028-09-07","2028-10-12","2028-11-02","2028-11-15","2028-11-20","2028-12-25"],
+};
+
+function isWeekend(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+function isHoliday(date: Date): boolean {
+  const year = date.getFullYear();
+  const dateStr = date.toISOString().split("T")[0];
+  const holidays = BRAZILIAN_HOLIDAYS[year] || [];
+  return holidays.includes(dateStr);
+}
+
+function isBusinessDay(date: Date): boolean {
+  return !isWeekend(date) && !isHoliday(date);
+}
+
+function ensureBusinessDay(date: Date): Date {
+  const result = new Date(date);
+  while (!isBusinessDay(result)) {
+    result.setDate(result.getDate() + 1);
+  }
+  return result;
+}
+
+function addBusinessDays(startDate: Date, days: number): Date {
+  let currentDate = new Date(startDate);
+  let addedDays = 0;
+  while (addedDays < days) {
+    currentDate.setDate(currentDate.getDate() + 1);
+    if (isBusinessDay(currentDate)) {
+      addedDays++;
+    }
+  }
+  return currentDate;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -110,13 +155,17 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (!existingTask) {
+          // Calculate due date (day 5) and ensure it's a business day
+          const rawDueDate = new Date(currentYear, today.getMonth(), 5);
+          const dueDate = ensureBusinessDay(rawDueDate);
+          
           const { error: taskError } = await supabase
             .from("onboarding_tasks")
             .insert({
               project_id: project.id,
               title: taskTitle,
               description: `Definir a meta de vendas do mês de ${getMonthName(currentMonth)} para ${companyName}. Acesse a aba "Metas" para registrar o valor.`,
-              due_date: new Date(currentYear, today.getMonth(), 5).toISOString().split('T')[0], // Due on day 5
+              due_date: dueDate.toISOString().split('T')[0],
               priority: "high",
               tags: ["Gestão de Metas", "0"],
               responsible_staff_id: consultantId,
@@ -143,13 +192,17 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (!existingTask) {
+          // Calculate due date (day 3 of next month) and ensure it's a business day
+          const rawDueDate = new Date(currentYear, today.getMonth() + 1, 3);
+          const dueDate = ensureBusinessDay(rawDueDate);
+          
           const { error: taskError } = await supabase
             .from("onboarding_tasks")
             .insert({
               project_id: project.id,
               title: taskTitle,
               description: `Registrar o resultado de vendas do mês de ${getMonthName(currentMonth)} para ${companyName}. Acesse a aba "Metas" para registrar o valor alcançado.`,
-              due_date: new Date(currentYear, today.getMonth() + 1, 3).toISOString().split('T')[0], // Due on day 3 of next month
+              due_date: dueDate.toISOString().split('T')[0],
               priority: "high",
               tags: ["Gestão de Metas", "0"],
               responsible_staff_id: consultantId,
