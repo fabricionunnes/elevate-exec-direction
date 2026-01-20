@@ -127,7 +127,7 @@ const OnboardingTasksPage = () => {
   // Full NPS responses for DashboardMetrics (eliminates duplicate query)
   const [fullNpsResponses, setFullNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
-  const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; target_value: number; kpi_type: string; periodicity: string }[]>([]);
+  const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; target_value: number; kpi_type: string; periodicity: string; is_main_goal: boolean }[]>([]);
   const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
   const [contractRenewals, setContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
   const [healthScoresByProject, setHealthScoresByProject] = useState<Map<string, { total_score: number; risk_level: string }>>(new Map());
@@ -379,7 +379,7 @@ const OnboardingTasksPage = () => {
       const [kpisResult, entriesResult] = await Promise.all([
         supabase
           .from("company_kpis")
-          .select("id, company_id, target_value, kpi_type, periodicity")
+          .select("id, company_id, target_value, kpi_type, periodicity, is_main_goal")
           .eq("is_active", true),
         supabase
           .from("kpi_entries")
