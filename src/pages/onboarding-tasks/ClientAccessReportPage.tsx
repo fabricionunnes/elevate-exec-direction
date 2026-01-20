@@ -46,9 +46,11 @@ import {
   BarChart3,
   UserCheck,
   Briefcase,
+  History,
 } from "lucide-react";
 import { format, formatDistanceToNow, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { fetchLegacyActivities, type LegacyActivity } from "@/utils/legacyActivityFetcher";
 
 interface AccessLog {
   id: string;
@@ -74,6 +76,8 @@ interface ActivityLog {
   entity_name: string | null;
   page_path: string | null;
   created_at: string;
+  is_legacy?: boolean;
+  source_table?: string;
 }
 
 interface Company {
@@ -123,6 +127,9 @@ const ClientAccessReportPage = () => {
   const [consultantFilter, setConsultantFilter] = useState("all");
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [loadingActivities, setLoadingActivities] = useState<Set<string>>(new Set());
+  const [showLegacyActivities, setShowLegacyActivities] = useState(false);
+  const [legacyActivities, setLegacyActivities] = useState<LegacyActivity[]>([]);
+  const [loadingLegacy, setLoadingLegacy] = useState(false);
   
   const [stats, setStats] = useState({
     totalSessions: 0,
@@ -133,6 +140,7 @@ const ClientAccessReportPage = () => {
     totalTimeMinutes: 0,
     companiesWithAccess: 0,
     avgSessionsPerUser: 0,
+    legacyActivities: 0,
   });
 
   useEffect(() => {
@@ -234,11 +242,64 @@ const ClientAccessReportPage = () => {
         totalTimeMinutes: totalMinutes,
         companiesWithAccess: uniqueCompanyIds.size,
         avgSessionsPerUser,
+        legacyActivities: 0, // Will be updated when fetching legacy
       });
     } catch (error) {
       console.error("Error fetching access data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLegacyData = async () => {
+    setLoadingLegacy(true);
+    try {
+      const daysAgo = parseInt(dateFilter);
+      const startDate = subDays(new Date(), daysAgo).toISOString();
+      
+      // Fetch legacy activities from all projects
+      const allLegacy: LegacyActivity[] = [];
+      
+      // Get all projects
+      const { data: projects } = await supabase
+        .from("onboarding_projects")
+        .select("id")
+        .limit(100);
+      
+      if (projects) {
+        // Fetch legacy for each project in parallel (limited)
+        const projectIds = companyFilter !== "all" 
+          ? projects.filter(async (p) => {
+              const { data } = await supabase
+                .from("onboarding_projects")
+                .select("company_id")
+                .eq("id", p.id)
+                .single();
+              return data?.company_id === companyFilter;
+            }).map(p => p.id)
+          : projects.slice(0, 20).map(p => p.id);
+        
+        for (const projectId of projectIds) {
+          const legacy = await fetchLegacyActivities({
+            projectId,
+            startDate,
+            limit: 50,
+          });
+          allLegacy.push(...legacy);
+        }
+      }
+      
+      // Sort by date
+      allLegacy.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      
+      setLegacyActivities(allLegacy.slice(0, 200));
+      setStats(prev => ({ ...prev, legacyActivities: allLegacy.length }));
+    } catch (error) {
+      console.error("Error fetching legacy activities:", error);
+    } finally {
+      setLoadingLegacy(false);
     }
   };
 
@@ -450,6 +511,89 @@ const ClientAccessReportPage = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Legacy Activities Section */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <History className="h-5 w-5 text-amber-500" />
+                Atividades Anteriores ao Tracking
+                {stats.legacyActivities > 0 && (
+                  <Badge variant="outline" className="ml-2 text-amber-600 border-amber-500">
+                    {stats.legacyActivities} registros
+                  </Badge>
+                )}
+              </CardTitle>
+              <Button
+                variant={showLegacyActivities ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  if (!showLegacyActivities && legacyActivities.length === 0) {
+                    fetchLegacyData();
+                  }
+                  setShowLegacyActivities(!showLegacyActivities);
+                }}
+                disabled={loadingLegacy}
+                className="gap-2"
+              >
+                {loadingLegacy ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <History className="h-4 w-4" />
+                )}
+                {showLegacyActivities ? "Ocultar" : "Carregar Histórico"}
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Ações realizadas antes da implementação do sistema de tracking (vagas criadas, candidatos adicionados, tarefas completadas, NPS, chamados)
+            </p>
+          </CardHeader>
+          {showLegacyActivities && (
+            <CardContent>
+              {loadingLegacy ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                  <span className="ml-2 text-muted-foreground">Carregando histórico legado...</span>
+                </div>
+              ) : legacyActivities.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Nenhuma atividade legada encontrada no período
+                </p>
+              ) : (
+                <ScrollArea className="h-[300px]">
+                  <div className="space-y-2">
+                    {legacyActivities.map((activity) => (
+                      <div
+                        key={activity.id}
+                        className="flex items-start gap-3 p-3 rounded-lg border bg-amber-50/50 dark:bg-amber-950/10 border-amber-200/50 dark:border-amber-800/30"
+                      >
+                        <div className="mt-0.5">
+                          {getActionIcon(activity.action_type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground">
+                            {activity.action_description}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(activity.created_at), "dd/MM/yyyy 'às' HH:mm", {
+                                locale: ptBR,
+                              })}
+                            </p>
+                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-amber-600 border-amber-400">
+                              {activity.source_table}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          )}
+        </Card>
 
         {/* Filters */}
         <Card>

@@ -27,9 +27,13 @@ import {
   MousePointer,
   Eye,
   Layers,
+  Briefcase,
+  UserCheck,
+  History,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { fetchLegacyActivities, countLegacyActivities, type LegacyActivity } from "@/utils/legacyActivityFetcher";
 
 interface AccessLog {
   id: string;
@@ -53,6 +57,7 @@ interface ActivityLog {
   entity_name: string | null;
   page_path: string | null;
   created_at: string;
+  is_legacy?: boolean;
 }
 
 interface ClientAccessHistoryProps {
@@ -77,6 +82,8 @@ const actionTypeIcons: Record<string, React.ReactNode> = {
   button_clicked: <MousePointer className="h-3.5 w-3.5 text-gray-500" />,
   tab_changed: <Layers className="h-3.5 w-3.5 text-slate-500" />,
   export_generated: <FileText className="h-3.5 w-3.5 text-emerald-500" />,
+  job_opening_created: <Briefcase className="h-3.5 w-3.5 text-violet-500" />,
+  candidate_added: <UserCheck className="h-3.5 w-3.5 text-pink-500" />,
 };
 
 export function ClientAccessHistory({ projectId, companyId }: ClientAccessHistoryProps) {
@@ -85,12 +92,15 @@ export function ClientAccessHistory({ projectId, companyId }: ClientAccessHistor
   const [loading, setLoading] = useState(true);
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [loadingActivities, setLoadingActivities] = useState<Set<string>>(new Set());
+  const [legacyActivities, setLegacyActivities] = useState<LegacyActivity[]>([]);
+  const [showLegacy, setShowLegacy] = useState(false);
   const [stats, setStats] = useState({
     totalSessions: 0,
     avgDuration: 0,
     activeNow: 0,
     lastAccess: null as string | null,
     totalActivities: 0,
+    legacyActivities: 0,
   });
 
   useEffect(() => {
@@ -129,6 +139,15 @@ export function ClientAccessHistory({ projectId, companyId }: ClientAccessHistor
 
       const { count: activityCount } = await activityQuery;
 
+      // Fetch legacy activities count
+      const legacyCount = projectId ? await countLegacyActivities(projectId) : 0;
+
+      // Fetch legacy activities
+      if (projectId) {
+        const legacy = await fetchLegacyActivities({ projectId, limit: 100 });
+        setLegacyActivities(legacy);
+      }
+
       // Calcular estatísticas
       const totalSessions = logs.length;
       const completedSessions = logs.filter((l) => l.session_duration_minutes);
@@ -150,6 +169,7 @@ export function ClientAccessHistory({ projectId, companyId }: ClientAccessHistor
         activeNow, 
         lastAccess,
         totalActivities: activityCount || 0,
+        legacyActivities: legacyCount,
       });
     } catch (error) {
       console.error("Error fetching access logs:", error);
@@ -242,7 +262,7 @@ export function ClientAccessHistory({ projectId, companyId }: ClientAccessHistor
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <p className="text-2xl font-bold text-foreground">{stats.totalSessions}</p>
             <p className="text-xs text-muted-foreground">Total de Acessos</p>
@@ -250,6 +270,10 @@ export function ClientAccessHistory({ projectId, companyId }: ClientAccessHistor
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <p className="text-2xl font-bold text-foreground">{stats.totalActivities}</p>
             <p className="text-xs text-muted-foreground">Atividades</p>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-3 text-center">
+            <p className="text-2xl font-bold text-foreground">{stats.legacyActivities}</p>
+            <p className="text-xs text-muted-foreground">Histórico Legado</p>
           </div>
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <p className="text-2xl font-bold text-foreground">{formatDuration(stats.avgDuration)}</p>
@@ -279,6 +303,63 @@ export function ClientAccessHistory({ projectId, companyId }: ClientAccessHistor
             <p className="text-xs text-muted-foreground">Último Acesso</p>
           </div>
         </div>
+
+        {/* Legacy Activities Toggle */}
+        {stats.legacyActivities > 0 && (
+          <Button
+            variant={showLegacy ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowLegacy(!showLegacy)}
+            className="gap-2"
+          >
+            <History className="h-4 w-4" />
+            {showLegacy ? "Ocultar" : "Ver"} Histórico Anterior ({stats.legacyActivities})
+          </Button>
+        )}
+
+        {/* Legacy Activities Section */}
+        {showLegacy && legacyActivities.length > 0 && (
+          <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/10">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <History className="h-4 w-4 text-amber-600" />
+                Atividades Anteriores ao Sistema de Tracking
+                <Badge variant="outline" className="ml-2 text-amber-600 border-amber-500">
+                  Histórico
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[200px]">
+                <div className="space-y-1">
+                  {legacyActivities.map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-start gap-3 p-2 rounded-md hover:bg-amber-100/50 dark:hover:bg-amber-900/20 transition-colors"
+                    >
+                      <div className="mt-0.5">
+                        {getActionIcon(activity.action_type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground">
+                          {activity.action_description}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(activity.created_at), "dd/MM/yyyy 'às' HH:mm", {
+                            locale: ptBR,
+                          })}
+                          <Badge variant="outline" className="ml-2 text-[10px] py-0 px-1">
+                            {activity.source_table}
+                          </Badge>
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Access Logs List with Activities */}
         <ScrollArea className="h-[400px]">
