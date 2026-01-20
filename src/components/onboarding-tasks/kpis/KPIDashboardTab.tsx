@@ -48,6 +48,7 @@ interface KPI {
   team_id?: string | null;
   salesperson_id?: string | null;
   unit_id?: string | null;
+  is_main_goal?: boolean;
 }
 
 interface Sector {
@@ -460,12 +461,17 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     const allMonthEntries = entries.filter(e => e.entry_date >= monthStart && e.entry_date <= monthEnd);
     const monthEntries = allMonthEntries.filter(matchesActiveFilters);
 
-    // Sum all entries and targets for monetary KPIs (main revenue KPIs)
+    // Sum entries and targets for main goal KPIs (or fallback to monetary KPIs)
     let totalRealized = 0;
     let totalTarget = 0;
 
     const filteredKpis = getFilteredKpis();
-    filteredKpis.forEach(kpi => {
+    
+    // Check if there's a main goal KPI configured
+    const mainGoalKpis = filteredKpis.filter(kpi => kpi.is_main_goal);
+    const kpisForProjection = mainGoalKpis.length > 0 ? mainGoalKpis : filteredKpis.filter(kpi => kpi.kpi_type === "monetary");
+    
+    kpisForProjection.forEach(kpi => {
       const kpiEntries = monthEntries.filter(e => e.kpi_id === kpi.id);
       const kpiTotal = kpiEntries.reduce((sum, e) => sum + e.value, 0);
       
@@ -478,11 +484,8 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
         monthlyTarget = baseTarget * Math.ceil(daysInMonth / 7);
       }
 
-      // Only sum monetary KPIs for the main projection (faturamento)
-      if (kpi.kpi_type === "monetary") {
-        totalRealized += kpiTotal;
-        totalTarget += monthlyTarget;
-      }
+      totalRealized += kpiTotal;
+      totalTarget += monthlyTarget;
     });
 
     // Calculate projection: (realized / target) / time_progress * 100
