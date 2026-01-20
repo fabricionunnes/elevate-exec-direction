@@ -101,6 +101,13 @@ interface ScoreDetails {
   projectionBonus: number;
   renewalBonus: number;
   cancellationPenalty: number;
+  // Client access engagement metrics
+  clientAccessCount: number;
+  clientAccessBonus: number;
+  totalClientSessionMinutes: number;
+  daysSinceLastAccess: number;
+  clientActivityCount: number;
+  clientActivityBonus: number;
 }
 
 async function calculateProjectHealthScore(
@@ -127,6 +134,13 @@ async function calculateProjectHealthScore(
     projectionBonus: 0,
     renewalBonus: 0,
     cancellationPenalty: 0,
+    // Client access engagement metrics
+    clientAccessCount: 0,
+    clientAccessBonus: 0,
+    totalClientSessionMinutes: 0,
+    daysSinceLastAccess: 60,
+    clientActivityCount: 0,
+    clientActivityBonus: 0,
   };
 
   // Get weights for this project
@@ -415,8 +429,69 @@ async function calculateProjectHealthScore(
     }
   }
 
+  // Get client access data - NEW: Client portal access contributes to engagement
+  const { data: clientAccess } = await supabase
+    .from("client_access_logs")
+    .select("id, login_at, session_duration_minutes")
+    .eq("project_id", projectId)
+    .gte("login_at", thirtyDaysAgo.toISOString());
+
+  details.clientAccessCount = 0;
+  details.clientAccessBonus = 0;
+  details.totalClientSessionMinutes = 0;
+  details.daysSinceLastAccess = 60; // Default to max penalty
+
+  if (clientAccess && clientAccess.length > 0) {
+    details.clientAccessCount = clientAccess.length;
+    
+    // Calculate total session time
+    const totalMinutes = clientAccess.reduce((acc: number, a: any) => {
+      return acc + (a.session_duration_minutes || 0);
+    }, 0);
+    details.totalClientSessionMinutes = totalMinutes;
+    
+    // Bonus for client portal access: +3 points per access in last 30 days (max +15)
+    details.clientAccessBonus = Math.min(15, clientAccess.length * 3);
+    
+    // Additional bonus for significant time spent: +1 point per 30 min (max +10)
+    const timeBonus = Math.min(10, Math.floor(totalMinutes / 30));
+    details.clientAccessBonus += timeBonus;
+    
+    // Days since last access
+    const lastAccessDate = clientAccess
+      .map((a: any) => new Date(a.login_at))
+      .sort((a: Date, b: Date) => b.getTime() - a.getTime())[0];
+    
+    details.daysSinceLastAccess = Math.floor((today.getTime() - lastAccessDate.getTime()) / (1000 * 60 * 60 * 24));
+  }
+
+  // Get client activity data - More specific actions get extra bonus
+  const { data: clientActivities } = await supabase
+    .from("client_activity_logs")
+    .select("action_type")
+    .eq("project_id", projectId)
+    .gte("created_at", thirtyDaysAgo.toISOString());
+
+  details.clientActivityCount = 0;
+  details.clientActivityBonus = 0;
+
+  if (clientActivities && clientActivities.length > 0) {
+    details.clientActivityCount = clientActivities.length;
+    
+    // Count high-value actions (creating jobs, adding candidates, etc.)
+    const highValueActions = clientActivities.filter((a: any) => 
+      ['job_opening_created', 'candidate_added', 'task_completed', 'nps_submitted'].includes(a.action_type)
+    ).length;
+    
+    // Bonus for activities: +1 point per 5 activities (max +10)
+    details.clientActivityBonus = Math.min(10, Math.floor(clientActivities.length / 5));
+    
+    // Extra bonus for high-value actions: +2 points per action (max +10)
+    details.clientActivityBonus += Math.min(10, highValueActions * 2);
+  }
+
   // Apply engagement bonuses and penalties
-  engagementScore = engagementScore - details.overduePenalty + details.completedTasksBonus + details.meetingBonus;
+  engagementScore = engagementScore - details.overduePenalty + details.completedTasksBonus + details.meetingBonus + details.clientAccessBonus + details.clientActivityBonus;
   engagementScore = Math.min(100, Math.max(0, engagementScore));
 
   // Inactivity penalty based on days since last task
