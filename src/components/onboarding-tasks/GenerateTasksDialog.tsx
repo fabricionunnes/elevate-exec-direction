@@ -161,7 +161,8 @@ export const GenerateTasksDialog = ({
     setAiLoading(true);
 
     try {
-      const today = new Date();
+      // Ensure base date is a business day before calculating offsets
+      const today = ensureBusinessDay(new Date());
       const tasksToInsert = Array.from(selectedAiTasks).map((index, i) => {
         const task = aiTasks[index];
         // Use business days: start 7 business days from now, stagger by 3 business days
@@ -202,7 +203,8 @@ export const GenerateTasksDialog = ({
     setLoading(true);
 
     try {
-      const today = new Date();
+      // Ensure base date is a business day before calculating offsets
+      const today = ensureBusinessDay(new Date());
 
       if (replaceExisting) {
         const { error: delError } = await supabase
@@ -225,13 +227,10 @@ export const GenerateTasksDialog = ({
       }
 
       const tasksToInsert = templates.map((tpl, idx) => {
-        let dueDate: string | null = null;
         const offset = (tpl.default_days_offset ?? 0) + (tpl.duration_days ?? 0);
-        if (offset > 0) {
-          // Use business days to avoid weekends and holidays
-          const due = addBusinessDays(today, offset);
-          dueDate = due.toISOString().split("T")[0];
-        }
+        // Always calculate due date using business days (even for offset 0, use today which is guaranteed to be a business day)
+        const due = offset > 0 ? addBusinessDays(today, offset) : today;
+        const dueDate = due.toISOString().split("T")[0];
 
         return {
           project_id: projectId,

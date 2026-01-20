@@ -25,7 +25,7 @@ import {
   AlertCircle,
   ListTodo,
 } from "lucide-react";
-import { addBusinessDays } from "@/lib/businessDays";
+import { addBusinessDays, ensureBusinessDay } from "@/lib/businessDays";
 
 interface GeneratedAction {
   id: string;
@@ -181,9 +181,11 @@ export const GenerateMeetingActionsDialog = ({
       }
 
       // Create tasks with the phase - using business days to avoid weekends/holidays
-      const today = new Date();
+      // Ensure base date is a business day before calculating offsets
+      const today = ensureBusinessDay(new Date());
       const tasksToCreate = selectedActions.map((action, index) => {
-        const dueDate = addBusinessDays(today, action.due_days);
+        // For due_days of 0, use today (already guaranteed business day), otherwise add business days
+        const dueDate = action.due_days > 0 ? addBusinessDays(today, action.due_days) : today;
         return {
           project_id: projectId,
           title: action.title,
