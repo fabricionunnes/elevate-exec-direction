@@ -308,6 +308,13 @@ export default function DiagnosticResponsesPage() {
   const [selectedPortalPlan, setSelectedPortalPlan] = useState<PortalPlanDiagnostic | null>(null);
   const [activeTab, setActiveTab] = useState("clients");
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [closerPage, setCloserPage] = useState(1);
+  const [chatPage, setChatPage] = useState(1);
+  const [portalPage, setPortalPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+  
   // Auth state
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -809,6 +816,86 @@ export default function DiagnosticResponsesPage() {
     );
   });
 
+  // Paginated data
+  const totalClientPages = Math.ceil(filteredResponses.length / ITEMS_PER_PAGE);
+  const paginatedResponses = filteredResponses.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const totalCloserPages = Math.ceil(filteredCloserDiagnostics.length / ITEMS_PER_PAGE);
+  const paginatedCloserDiagnostics = filteredCloserDiagnostics.slice(
+    (closerPage - 1) * ITEMS_PER_PAGE,
+    closerPage * ITEMS_PER_PAGE
+  );
+
+  const totalChatPages = Math.ceil(filteredChatLeads.length / ITEMS_PER_PAGE);
+  const paginatedChatLeads = filteredChatLeads.slice(
+    (chatPage - 1) * ITEMS_PER_PAGE,
+    chatPage * ITEMS_PER_PAGE
+  );
+
+  const totalPortalPages = Math.ceil(filteredPortalPlans.length / ITEMS_PER_PAGE);
+  const paginatedPortalPlans = filteredPortalPlans.slice(
+    (portalPage - 1) * ITEMS_PER_PAGE,
+    portalPage * ITEMS_PER_PAGE
+  );
+
+  // Reset pages when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+    setCloserPage(1);
+    setChatPage(1);
+    setPortalPage(1);
+  }, [search]);
+
+  // Pagination component
+  const Pagination = ({ 
+    currentPage, 
+    totalPages, 
+    onPageChange,
+    totalItems
+  }: { 
+    currentPage: number; 
+    totalPages: number; 
+    onPageChange: (page: number) => void;
+    totalItems: number;
+  }) => {
+    if (totalPages <= 1) return null;
+    
+    const startItem = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+    const endItem = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
+    
+    return (
+      <div className="flex items-center justify-between mt-4 px-2">
+        <p className="text-sm text-muted-foreground">
+          Mostrando {startItem}-{endItem} de {totalItems}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Anterior
+          </Button>
+          <span className="text-sm text-muted-foreground px-2">
+            {currentPage} / {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Próximo
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   // Loading state
   if (authLoading) {
     return (
@@ -962,7 +1049,7 @@ export default function DiagnosticResponsesPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredResponses.map((response) => (
+                      {paginatedResponses.map((response) => (
                         <TableRow key={response.id}>
                           <TableCell className="whitespace-nowrap">
                             <div className="flex items-center gap-2 text-sm">
@@ -1189,6 +1276,12 @@ export default function DiagnosticResponsesPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  <Pagination 
+                    currentPage={currentPage}
+                    totalPages={totalClientPages}
+                    onPageChange={setCurrentPage}
+                    totalItems={filteredResponses.length}
+                  />
                 </div>
               )}
             </TabsContent>
@@ -1219,7 +1312,7 @@ export default function DiagnosticResponsesPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredCloserDiagnostics.map((diagnostic) => (
+                      {paginatedCloserDiagnostics.map((diagnostic) => (
                         <TableRow key={diagnostic.id}>
                           <TableCell className="whitespace-nowrap">
                             <div className="flex items-center gap-2 text-sm">
@@ -1339,6 +1432,12 @@ export default function DiagnosticResponsesPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  <Pagination 
+                    currentPage={closerPage}
+                    totalPages={totalCloserPages}
+                    onPageChange={setCloserPage}
+                    totalItems={filteredCloserDiagnostics.length}
+                  />
                 </div>
               )}
             </TabsContent>
@@ -1368,7 +1467,7 @@ export default function DiagnosticResponsesPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredChatLeads.map((lead) => (
+                      {paginatedChatLeads.map((lead) => (
                         <TableRow key={lead.id}>
                           <TableCell className="whitespace-nowrap">
                             <div className="flex items-center gap-2 text-sm">
@@ -1447,6 +1546,12 @@ export default function DiagnosticResponsesPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  <Pagination 
+                    currentPage={chatPage}
+                    totalPages={totalChatPages}
+                    onPageChange={setChatPage}
+                    totalItems={filteredChatLeads.length}
+                  />
                 </div>
               )}
             </TabsContent>
@@ -1477,7 +1582,7 @@ export default function DiagnosticResponsesPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredPortalPlans.map((plan) => (
+                      {paginatedPortalPlans.map((plan) => (
                         <TableRow key={plan.id}>
                           <TableCell className="whitespace-nowrap">
                             <div className="flex items-center gap-2 text-sm">
@@ -1564,6 +1669,12 @@ export default function DiagnosticResponsesPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  <Pagination 
+                    currentPage={portalPage}
+                    totalPages={totalPortalPages}
+                    onPageChange={setPortalPage}
+                    totalItems={filteredPortalPlans.length}
+                  />
                 </div>
               )}
             </TabsContent>
