@@ -471,6 +471,11 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     const mainGoalKpis = filteredKpis.filter(kpi => kpi.is_main_goal);
     const kpisForProjection = mainGoalKpis.length > 0 ? mainGoalKpis : filteredKpis.filter(kpi => kpi.kpi_type === "monetary");
     
+    // Determine the display type based on the KPIs used for projection
+    const displayType = mainGoalKpis.length > 0 
+      ? mainGoalKpis[0].kpi_type 
+      : "monetary";
+    
     kpisForProjection.forEach(kpi => {
       const kpiEntries = monthEntries.filter(e => e.kpi_id === kpi.id);
       const kpiTotal = kpiEntries.reduce((sum, e) => sum + e.value, 0);
@@ -506,6 +511,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       daysInMonth,
       daysRemaining,
       timeProgress: timeProgress * 100,
+      displayType,
     };
   };
 
@@ -1028,15 +1034,15 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
             <div className="grid gap-4 md:grid-cols-4">
               <div>
                 <p className="text-sm text-muted-foreground">Realizado</p>
-                <p className="text-2xl font-bold">{formatValue(projection.realized, "monetary")}</p>
+                <p className="text-2xl font-bold">{formatValue(projection.realized, projection.displayType)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Meta do Mês</p>
-                <p className="text-2xl font-bold">{formatValue(projection.target, "monetary")}</p>
+                <p className="text-2xl font-bold">{formatValue(projection.target, projection.displayType)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Valor Projetado</p>
-                <p className="text-2xl font-bold">{formatValue(projection.projectedValue, "monetary")}</p>
+                <p className="text-2xl font-bold">{formatValue(projection.projectedValue, projection.displayType)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Projeção</p>
