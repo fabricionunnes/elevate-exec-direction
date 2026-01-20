@@ -1332,6 +1332,11 @@ const OnboardingTasksPage = () => {
                           </DropdownMenuItem>
                         </>
                       )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setShowAccessControlPanel(true)}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Controle de Acesso
+                      </DropdownMenuItem>
                     </>
                   )}
                   {/* Resultados for CS and consultants in mobile menu */}
@@ -2213,6 +2218,18 @@ const OnboardingTasksPage = () => {
       <CSATGlobalDialog
         open={showCSATGlobalDialog}
         onOpenChange={setShowCSATGlobalDialog}
+      />
+
+      {/* Global Access Control Panel */}
+      <GlobalAccessControlPanel
+        open={showAccessControlPanel}
+        onOpenChange={setShowAccessControlPanel}
+      />
+
+      {/* Staff Settings Sheet */}
+      <StaffSettingsSheet
+        open={showStaffSettings}
+        onOpenChange={setShowStaffSettings}
       />
     </div>
   );
