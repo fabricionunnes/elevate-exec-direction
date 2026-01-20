@@ -175,40 +175,42 @@ export default function KPIEntryPage() {
       if (kpisError) throw kpisError;
 
       // Filter KPIs based on scope - only show KPIs that match the salesperson's context
+      // A salesperson should ONLY see:
+      // 1. KPIs with scope="company" and no specific sector/unit/team restrictions
+      // 2. KPIs that match their sector (if they have one)
+      // 3. KPIs that match their team
+      // 4. KPIs that are specifically assigned to them
+      // 5. KPIs that match their unit
       let filteredKpis = (allKpisData || []) as KPI[];
       
       filteredKpis = filteredKpis.filter(kpi => {
-        // Company-wide KPIs (no specific scope) - show to everyone
-        if (!kpi.scope || kpi.scope === 'company') {
-          // But still check sector_id for backward compatibility
-          if (kpi.sector_id) {
-            return sectorIds.length === 0 || sectorIds.includes(kpi.sector_id);
-          }
-          return true;
-        }
-        
-        // Sector-specific KPIs - only show if salesperson belongs to that sector
-        if (kpi.scope === 'sector' && kpi.sector_id) {
-          return sectorIds.includes(kpi.sector_id);
+        // Salesperson-specific KPIs - only show to that specific salesperson
+        if (kpi.scope === 'salesperson') {
+          return kpi.salesperson_id === salespersonData.id;
         }
         
         // Team-specific KPIs - only show if salesperson belongs to that team
-        if (kpi.scope === 'team' && kpi.team_id) {
-          return salespersonData.team_id === kpi.team_id;
+        if (kpi.scope === 'team') {
+          return kpi.team_id === salespersonData.team_id;
         }
         
-        // Salesperson-specific KPIs - only show to that specific salesperson
-        if (kpi.scope === 'salesperson' && kpi.salesperson_id) {
-          return salespersonData.id === kpi.salesperson_id;
+        // Sector-specific KPIs - only show if salesperson belongs to that sector
+        if (kpi.scope === 'sector') {
+          return sectorIds.includes(kpi.sector_id || '');
         }
         
-        // Unit-specific KPIs - only show if salesperson belongs to that unit
+        // Unit-specific check: if KPI has a unit_id, salesperson must match
         if (kpi.unit_id) {
-          return salespersonData.unit_id === kpi.unit_id;
+          return kpi.unit_id === salespersonData.unit_id;
         }
         
-        // Default: show KPIs without specific restrictions
-        return true;
+        // Backward compatibility: if KPI has sector_id but no scope, check sector match
+        if (kpi.sector_id) {
+          return sectorIds.includes(kpi.sector_id);
+        }
+        
+        // Company-wide KPIs with no restrictions - show to everyone
+        return !kpi.scope || kpi.scope === 'company';
       });
 
       setKpis(filteredKpis);
