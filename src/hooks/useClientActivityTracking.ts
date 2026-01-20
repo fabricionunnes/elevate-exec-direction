@@ -181,6 +181,27 @@ export const useClientActivityTracking = (options: ActivityTrackingOptions | nul
     });
   }, [trackActivity]);
 
+  const trackJobOpeningCreated = useCallback((jobId: string, jobTitle: string) => {
+    trackActivity({
+      actionType: 'job_opening_created',
+      actionDescription: `Criou a vaga: ${jobTitle}`,
+      entityType: 'job_opening',
+      entityId: jobId,
+      entityName: jobTitle,
+    });
+  }, [trackActivity]);
+
+  const trackCandidateAdded = useCallback((candidateId: string, candidateName: string, jobTitle?: string) => {
+    trackActivity({
+      actionType: 'candidate_added',
+      actionDescription: `Adicionou candidato: ${candidateName}${jobTitle ? ` para a vaga ${jobTitle}` : ''}`,
+      entityType: 'candidate',
+      entityId: candidateId,
+      entityName: candidateName,
+      metadata: jobTitle ? { job_title: jobTitle } : undefined,
+    });
+  }, [trackActivity]);
+
   return {
     trackActivity,
     trackPageView,
@@ -193,5 +214,7 @@ export const useClientActivityTracking = (options: ActivityTrackingOptions | nul
     trackNpsSubmitted,
     trackTabChanged,
     trackButtonClicked,
+    trackJobOpeningCreated,
+    trackCandidateAdded,
   };
 };

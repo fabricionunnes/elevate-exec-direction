@@ -25,6 +25,7 @@ import { ClientCandidateDetailSheet } from "./ClientCandidateDetailSheet";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { JobOpeningDialog } from "@/components/hr-recruitment/dialogs/JobOpeningDialog";
 import { CandidateDialog } from "@/components/hr-recruitment/dialogs/CandidateDialog";
+import { useActivityTracking } from "@/contexts/ActivityTrackingContext";
 
 interface JobOpening {
   id: string;
@@ -64,6 +65,7 @@ export function ClientHRView({ projectId }: ClientHRViewProps) {
   const [showCandidateDialog, setShowCandidateDialog] = useState(false);
   
   const { stages: pipelineStages } = usePipelineStages(projectId);
+  const { trackJobOpeningCreated, trackCandidateAdded } = useActivityTracking();
 
   useEffect(() => {
     fetchData();
@@ -323,7 +325,20 @@ export function ClientHRView({ projectId }: ClientHRViewProps) {
         onOpenChange={setShowJobDialog}
         projectId={projectId}
         job={null}
-        onSuccess={() => {
+        onSuccess={async () => {
+          // Track job creation - fetch the latest created job to get its ID and title
+          const { data: latestJob } = await supabase
+            .from("job_openings")
+            .select("id, title")
+            .eq("project_id", projectId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (latestJob) {
+            trackJobOpeningCreated(latestJob.id, latestJob.title);
+          }
+          
           fetchData();
           setShowJobDialog(false);
         }}
@@ -335,7 +350,21 @@ export function ClientHRView({ projectId }: ClientHRViewProps) {
         projectId={projectId}
         jobs={jobsForCandidateDialog}
         isStaff={false}
-        onSuccess={() => {
+        onSuccess={async () => {
+          // Track candidate creation - fetch the latest created candidate to get its details
+          const { data: latestCandidate } = await supabase
+            .from("candidates")
+            .select("id, full_name, job_opening:job_openings(title)")
+            .eq("project_id", projectId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (latestCandidate) {
+            const jobTitle = (latestCandidate.job_opening as any)?.title;
+            trackCandidateAdded(latestCandidate.id, latestCandidate.full_name, jobTitle);
+          }
+          
           fetchData();
           setShowCandidateDialog(false);
         }}
