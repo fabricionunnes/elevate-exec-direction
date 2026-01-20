@@ -187,9 +187,11 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange,
   };
 
   const handleEdit = (entry: SalesHistoryEntry) => {
-    const date = new Date(entry.month_year);
-    setSelectedMonth(String(date.getMonth() + 1).padStart(2, '0'));
-    setSelectedYear(String(date.getFullYear()));
+    // Parse the date string directly to avoid timezone issues
+    // Format is "yyyy-MM-dd", so we can split it
+    const [year, month] = entry.month_year.split('-');
+    setSelectedMonth(month);
+    setSelectedYear(year);
     setRevenue(entry.revenue.toString());
     setTargetRevenue(entry.target_revenue?.toString() || "");
     setSalesCount(entry.sales_count?.toString() || "");
