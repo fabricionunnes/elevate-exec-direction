@@ -32,6 +32,8 @@ import { SalesComparisonChart } from "./SalesComparisonChart";
 import { KPIEntriesHistoryDialog } from "./KPIEntriesHistoryDialog";
 import { SalespeopleComparisonTable } from "./SalespeopleComparisonTable";
 import { MonthlySalesChart } from "./MonthlySalesChart";
+import { KPIAdminEntryDialog } from "./KPIAdminEntryDialog";
+import { Plus } from "lucide-react";
 
 interface KPI {
   id: string;
@@ -124,6 +126,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
   const [selectedSector, setSelectedSector] = useState<string>("all");
   const [salesHistoryRefreshKey, setSalesHistoryRefreshKey] = useState(0);
   const [contractStartDate, setContractStartDate] = useState<string | null>(null);
+  const [showAdminEntryDialog, setShowAdminEntryDialog] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -921,7 +924,12 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2 sm:col-span-1 flex items-end gap-2">
+            <div className="col-span-2 sm:col-span-1 flex items-end gap-2 flex-wrap">
+              <Button onClick={() => setShowAdminEntryDialog(true)} size="sm" className="gap-1">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Lançar KPI</span>
+                <span className="sm:hidden">Lançar</span>
+              </Button>
               <SalesHistoryDialog 
                 companyId={companyId} 
                 contractStartDate={contractStartDate}
@@ -1582,6 +1590,14 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       {projectId && (
         <GamificationDashboardWidget companyId={companyId} projectId={projectId} />
       )}
+
+      {/* Admin Entry Dialog */}
+      <KPIAdminEntryDialog
+        open={showAdminEntryDialog}
+        onOpenChange={setShowAdminEntryDialog}
+        companyId={companyId}
+        onSuccess={fetchData}
+      />
     </div>
   );
 };
