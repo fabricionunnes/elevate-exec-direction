@@ -22,6 +22,10 @@ interface KPI {
   target_value: number;
   is_required: boolean;
   sector_id: string | null;
+  scope: "company" | "sector" | "team" | "salesperson" | null;
+  team_id: string | null;
+  unit_id: string | null;
+  salesperson_id: string | null;
 }
 
 interface Salesperson {
@@ -170,13 +174,42 @@ export default function KPIEntryPage() {
 
       if (kpisError) throw kpisError;
 
-      // Filter KPIs: show only KPIs that belong to salesperson's sectors OR have no sector (shared KPIs)
+      // Filter KPIs based on scope - only show KPIs that match the salesperson's context
       let filteredKpis = (allKpisData || []) as KPI[];
-      if (sectorIds.length > 0) {
-        filteredKpis = filteredKpis.filter(kpi => 
-          kpi.sector_id === null || sectorIds.includes(kpi.sector_id)
-        );
-      }
+      
+      filteredKpis = filteredKpis.filter(kpi => {
+        // Company-wide KPIs (no specific scope) - show to everyone
+        if (!kpi.scope || kpi.scope === 'company') {
+          // But still check sector_id for backward compatibility
+          if (kpi.sector_id) {
+            return sectorIds.length === 0 || sectorIds.includes(kpi.sector_id);
+          }
+          return true;
+        }
+        
+        // Sector-specific KPIs - only show if salesperson belongs to that sector
+        if (kpi.scope === 'sector' && kpi.sector_id) {
+          return sectorIds.includes(kpi.sector_id);
+        }
+        
+        // Team-specific KPIs - only show if salesperson belongs to that team
+        if (kpi.scope === 'team' && kpi.team_id) {
+          return salespersonData.team_id === kpi.team_id;
+        }
+        
+        // Salesperson-specific KPIs - only show to that specific salesperson
+        if (kpi.scope === 'salesperson' && kpi.salesperson_id) {
+          return salespersonData.id === kpi.salesperson_id;
+        }
+        
+        // Unit-specific KPIs - only show if salesperson belongs to that unit
+        if (kpi.unit_id) {
+          return salespersonData.unit_id === kpi.unit_id;
+        }
+        
+        // Default: show KPIs without specific restrictions
+        return true;
+      });
 
       setKpis(filteredKpis);
 
