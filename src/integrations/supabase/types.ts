@@ -1507,6 +1507,69 @@ export type Database = {
           },
         ]
       }
+      client_access_logs: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          is_active: boolean | null
+          login_at: string
+          logout_at: string | null
+          project_id: string | null
+          session_duration_minutes: number | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          login_at?: string
+          logout_at?: string | null
+          project_id?: string | null
+          session_duration_minutes?: number | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          login_at?: string
+          logout_at?: string | null
+          project_id?: string | null
+          session_duration_minutes?: number | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_access_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_access_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_board_opinions: {
         Row: {
           advisor_name: string

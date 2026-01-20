@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useClientAccessTracking } from "@/hooks/useClientAccessTracking";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
@@ -81,6 +82,7 @@ interface OnboardingUser {
   name: string;
   email: string;
   role: "admin" | "cs" | "consultant" | "client";
+  user_id?: string;
 }
 
 interface TaskPhase {
@@ -228,6 +230,19 @@ const ClientOnboardingPage = () => {
       isMounted = false;
     };
   }, [projectId, navigate, fetchTasks, fetchUsers]);
+
+  // Track client access
+  useClientAccessTracking(
+    currentUser && project
+      ? {
+          userId: currentUser.user_id,
+          userEmail: currentUser.email,
+          userName: currentUser.name,
+          projectId: project.id,
+          companyId: project.onboarding_company_id || undefined,
+        }
+      : null
+  );
 
   // Real-time subscriptions
   useEffect(() => {
