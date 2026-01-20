@@ -219,7 +219,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     }
   };
 
-  // Helper function to get targets based on current filter (unit, team, or salesperson)
+  // Helper function to get targets based on current filter (unit, team, sector, or salesperson)
   const getFilteredTargetsForKpi = (kpiId: string): Record<string, number> => {
     // Priority: salesperson > team > unit > company > sum of units/salespeople
     let relevantTargets: MonthlyTarget[] = [];
@@ -252,16 +252,24 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       );
     }
     
-    // If still no targets and we're showing "all", sum all unit targets
-    if (relevantTargets.length === 0 && selectedUnit === "all" && selectedSalesperson === "all") {
-      const unitTargets = allMonthlyTargets.filter(
-        mt => mt.kpi_id === kpiId && mt.unit_id !== null && mt.salesperson_id === null
+    // If still no targets and we're showing "all", sum targets based on active filters
+    if (relevantTargets.length === 0 && selectedUnit === "all" && selectedTeam === "all" && selectedSalesperson === "all") {
+      // Sum all unit-level targets (or team-level if no unit targets)
+      let targetsToSum = allMonthlyTargets.filter(
+        mt => mt.kpi_id === kpiId && mt.unit_id !== null && mt.team_id === null && mt.salesperson_id === null
       );
       
-      if (unitTargets.length > 0) {
+      // If no unit targets, try team targets
+      if (targetsToSum.length === 0) {
+        targetsToSum = allMonthlyTargets.filter(
+          mt => mt.kpi_id === kpiId && mt.team_id !== null && mt.salesperson_id === null
+        );
+      }
+      
+      if (targetsToSum.length > 0) {
         // Sum targets by level_name
         const sumByLevel: Record<string, number> = {};
-        unitTargets.forEach(mt => {
+        targetsToSum.forEach(mt => {
           if (!sumByLevel[mt.level_name]) {
             sumByLevel[mt.level_name] = 0;
           }
@@ -811,7 +819,13 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
             {units.length > 0 && (
               <div className="space-y-1">
                 <Label className="text-xs sm:text-sm">Unidade</Label>
-                <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                <Select value={selectedUnit} onValueChange={(value) => {
+                  setSelectedUnit(value);
+                  // Reset dependent filters when unit changes
+                  setSelectedTeam("all");
+                  setSelectedSector("all");
+                  setSelectedSalesperson("all");
+                }}>
                   <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
@@ -853,6 +867,8 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
                 <Label className="text-xs sm:text-sm">Setor</Label>
                 <Select value={selectedSector} onValueChange={(value) => {
                   setSelectedSector(value);
+                  // Reset salesperson when sector changes
+                  setSelectedSalesperson("all");
                 }}>
                   <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue />
