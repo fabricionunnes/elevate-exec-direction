@@ -43,7 +43,7 @@ interface KPI {
   is_required: boolean;
   is_active: boolean;
   sort_order: number;
-  scope: "company" | "sector" | "team" | "salesperson";
+  scope: "company" | "sector" | "team" | "salesperson" | "unit";
   sector_id: string | null;
   team_id: string | null;
   salesperson_id: string | null;
@@ -101,7 +101,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
     target_value: 0,
     is_individual: true,
     is_required: true,
-    scope: "company" as "company" | "sector" | "team" | "salesperson",
+    scope: "company" as "company" | "sector" | "team" | "salesperson" | "unit",
     sector_id: "",
     team_id: "",
     salesperson_id: "",
@@ -187,6 +187,10 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
     }
 
     // Validate scope-specific fields
+    if (formData.scope === "unit" && !formData.unit_id) {
+      toast.error("Selecione uma unidade para KPIs de escopo Unidade");
+      return;
+    }
     if (formData.scope === "sector" && !formData.sector_id) {
       toast.error("Selecione um setor para KPIs de escopo Setor");
       return;
@@ -212,7 +216,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
         sector_id: formData.scope === "sector" ? formData.sector_id : null,
         team_id: formData.scope === "team" ? formData.team_id : null,
         salesperson_id: formData.scope === "salesperson" ? formData.salesperson_id : null,
-        unit_id: formData.unit_id || null,
+        unit_id: formData.scope === "unit" ? formData.unit_id : null,
         is_main_goal: formData.is_main_goal,
       };
 
@@ -439,6 +443,24 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
     return sector ? sector.name : null;
   };
 
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId) return null;
+    const unit = units.find(u => u.id === unitId);
+    return unit ? unit.name : null;
+  };
+
+  const getTeamName = (teamId: string | null) => {
+    if (!teamId) return null;
+    const team = teams.find(t => t.id === teamId);
+    return team ? team.name : null;
+  };
+
+  const getSalespersonName = (salespersonId: string | null) => {
+    if (!salespersonId) return null;
+    const sp = salespeople.find(s => s.id === salespersonId);
+    return sp ? sp.name : null;
+  };
+
   const getTypeLabel = (type: string) => {
     switch (type) {
       case "numeric": return "Numérico";
@@ -606,6 +628,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
                       sector_id: v === "sector" ? formData.sector_id : "",
                       team_id: v === "team" ? formData.team_id : "",
                       salesperson_id: v === "salesperson" ? formData.salesperson_id : "",
+                      unit_id: v === "unit" ? formData.unit_id : "",
                     })}
                   >
                     <SelectTrigger>
@@ -618,6 +641,14 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
                           Empresa (todos lançam)
                         </div>
                       </SelectItem>
+                      {units.length > 0 && (
+                        <SelectItem value="unit">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            Unidade específica
+                          </div>
+                        </SelectItem>
+                      )}
                       {sectors.length > 0 && (
                         <SelectItem value="sector">
                           <div className="flex items-center gap-2">
@@ -648,6 +679,31 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
                     Define quem pode/deve lançar este KPI
                   </p>
                 </div>
+
+                {/* Unit Selection - when scope is 'unit' */}
+                {formData.scope === "unit" && units.length > 0 && (
+                  <div>
+                    <Label>Unidade *</Label>
+                    <Select
+                      value={formData.unit_id}
+                      onValueChange={(v) => setFormData({ ...formData, unit_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a unidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {units.map((unit) => (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            {unit.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Apenas vendedores desta unidade lançarão este KPI
+                    </p>
+                  </div>
+                )}
 
                 {/* Sector Selection - when scope is 'sector' */}
                 {formData.scope === "sector" && sectors.length > 0 && (
@@ -771,7 +827,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
                 <TableHead>Periodicidade</TableHead>
                 <TableHead>Meta</TableHead>
                 <TableHead>Escopo</TableHead>
-                {sectors.length > 0 && <TableHead>Setor</TableHead>}
+                <TableHead>Vínculo</TableHead>
                 <TableHead>Status</TableHead>
                 {isAdmin && <TableHead className="w-[100px]">Ações</TableHead>}
               </TableRow>
@@ -827,17 +883,31 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
                       {kpi.is_individual ? "Individual" : "Coletivo"}
                     </Badge>
                   </TableCell>
-                  {sectors.length > 0 && (
-                    <TableCell>
-                      {getSectorName(kpi.sector_id) ? (
-                        <Badge variant="outline" className="gap-1">
-                          {getSectorName(kpi.sector_id)}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">Todos</span>
-                      )}
-                    </TableCell>
-                  )}
+                  <TableCell>
+                    {kpi.scope === "unit" && getUnitName(kpi.unit_id) ? (
+                      <Badge variant="outline" className="gap-1">
+                        <Building2 className="h-3 w-3" />
+                        {getUnitName(kpi.unit_id)}
+                      </Badge>
+                    ) : kpi.scope === "sector" && getSectorName(kpi.sector_id) ? (
+                      <Badge variant="outline" className="gap-1">
+                        <Layers className="h-3 w-3" />
+                        {getSectorName(kpi.sector_id)}
+                      </Badge>
+                    ) : kpi.scope === "team" && getTeamName(kpi.team_id) ? (
+                      <Badge variant="outline" className="gap-1">
+                        <Users className="h-3 w-3" />
+                        {getTeamName(kpi.team_id)}
+                      </Badge>
+                    ) : kpi.scope === "salesperson" && getSalespersonName(kpi.salesperson_id) ? (
+                      <Badge variant="outline" className="gap-1">
+                        <User className="h-3 w-3" />
+                        {getSalespersonName(kpi.salesperson_id)}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">Empresa (todos)</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {isAdmin ? (
                       <Switch
