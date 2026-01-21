@@ -126,6 +126,11 @@ export default function HotseatFormPage() {
                 Preencha o formulário abaixo para participar de uma sessão exclusiva
               </CardDescription>
             </CardHeader>
+            <div className="mx-6 mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-900 leading-relaxed">
+                <strong>Importante:</strong> O Hotseat será de 20 minutos para cada cliente de forma INDIVIDUAL com o Fabrício Nunnes, por isso é importante você enviar suas dúvidas todas aqui que o Fabrício já vai chegar preparado para a reunião com base nas informações que ele já tem da sua empresa. Nosso time de CS vai entrar em contato e avisar sobre qual será o horário que ele vai falar com você no dia. É muito importante que preencha este formulário sempre até um dia antes do hotseat, para garantir sua vaga e participação.
+              </p>
+            </div>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Nome */}
