@@ -420,14 +420,14 @@ export function ClientSalesPanel({ projectId, canEdit }: Props) {
                   <div className="space-y-2">
                     <Label>Vendedor</Label>
                     <Select
-                      value={formData.salesperson_id}
-                      onValueChange={(value) => setFormData({ ...formData, salesperson_id: value })}
+                      value={formData.salesperson_id || "none"}
+                      onValueChange={(value) => setFormData({ ...formData, salesperson_id: value === "none" ? "" : value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o vendedor" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Sem vendedor</SelectItem>
+                        <SelectItem value="none">Sem vendedor</SelectItem>
                         {salespeople.map((sp) => (
                           <SelectItem key={sp.id} value={sp.id}>
                             {sp.name}
@@ -439,14 +439,14 @@ export function ClientSalesPanel({ projectId, canEdit }: Props) {
                   <div className="space-y-2">
                     <Label>Forma de Pagamento</Label>
                     <Select
-                      value={formData.payment_method_id}
-                      onValueChange={(value) => setFormData({ ...formData, payment_method_id: value })}
+                      value={formData.payment_method_id || "none"}
+                      onValueChange={(value) => setFormData({ ...formData, payment_method_id: value === "none" ? "" : value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Não informado</SelectItem>
+                        <SelectItem value="none">Não informado</SelectItem>
                         {paymentMethods.map((pm) => (
                           <SelectItem key={pm.id} value={pm.id}>
                             {pm.name}
