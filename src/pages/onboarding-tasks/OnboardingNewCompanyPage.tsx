@@ -137,7 +137,7 @@ const OnboardingNewCompanyPage = () => {
   }
 
   const csList = staffList.filter((s) => s.role === "cs" || s.role === "admin");
-  const consultantList = staffList.filter((s) => s.role === "consultant");
+  const consultantList = staffList.filter((s) => s.role === "consultant" || s.role === "admin" || s.role === "cs");
 
   return (
     <div className="min-h-screen bg-background">
