@@ -7867,6 +7867,62 @@ export type Database = {
           },
         ]
       }
+      hotseat_recordings: {
+        Row: {
+          companies_mentioned: Json | null
+          created_at: string
+          created_by_staff_id: string | null
+          error_message: string | null
+          id: string
+          recording_date: string
+          recording_link: string
+          status: string
+          summarized_at: string | null
+          summary: string | null
+          transcribed_at: string | null
+          transcript: string | null
+          updated_at: string
+        }
+        Insert: {
+          companies_mentioned?: Json | null
+          created_at?: string
+          created_by_staff_id?: string | null
+          error_message?: string | null
+          id?: string
+          recording_date?: string
+          recording_link: string
+          status?: string
+          summarized_at?: string | null
+          summary?: string | null
+          transcribed_at?: string | null
+          transcript?: string | null
+          updated_at?: string
+        }
+        Update: {
+          companies_mentioned?: Json | null
+          created_at?: string
+          created_by_staff_id?: string | null
+          error_message?: string | null
+          id?: string
+          recording_date?: string
+          recording_link?: string
+          status?: string
+          summarized_at?: string | null
+          summary?: string | null
+          transcribed_at?: string | null
+          transcript?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotseat_recordings_created_by_staff_id_fkey"
+            columns: ["created_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotseat_responses: {
         Row: {
           company_name: string

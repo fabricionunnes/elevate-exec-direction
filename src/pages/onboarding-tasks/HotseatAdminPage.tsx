@@ -25,6 +25,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { HotseatResponseDialog } from "@/components/hotseat/HotseatResponseDialog";
+import { HotseatRecordingSection } from "@/components/hotseat/HotseatRecordingSection";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface HotseatResponse {
@@ -49,6 +50,7 @@ export default function HotseatAdminPage() {
   const [selectedResponse, setSelectedResponse] = useState<HotseatResponse | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAccess();
@@ -76,6 +78,7 @@ export default function HotseatAdminPage() {
       }
 
       setCurrentUserRole(staff.role);
+      setCurrentStaffId(staff.id);
       fetchResponses();
     } catch (error) {
       console.error("Error checking access:", error);
@@ -250,6 +253,11 @@ export default function HotseatAdminPage() {
 
       {/* Content */}
       <div className="container mx-auto px-4 py-6">
+        {/* Recording Section */}
+        <div className="mb-6">
+          <HotseatRecordingSection currentStaffId={currentStaffId} />
+        </div>
+
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4 mb-6">
           <Card>
