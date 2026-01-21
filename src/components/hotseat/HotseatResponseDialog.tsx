@@ -94,6 +94,8 @@ interface Project {
   id: string;
   product_name: string;
   onboarding_company_id: string | null;
+  consultant_id: string | null;
+  consultant_name?: string;
 }
 
 interface Note {
@@ -227,13 +229,27 @@ export function HotseatResponseDialog({
         .order("name");
       setCompanies(companiesData || []);
 
-      // Fetch projects
+      // Fetch projects with consultant
       const { data: projectsData } = await supabase
         .from("onboarding_projects")
-        .select("id, product_name, onboarding_company_id")
+        .select(`
+          id, 
+          product_name, 
+          onboarding_company_id,
+          consultant_id,
+          consultant:consultant_id (name)
+        `)
         .eq("status", "active")
         .order("product_name");
-      setProjects(projectsData || []);
+      
+      const projectsWithConsultant = (projectsData || []).map((p: any) => ({
+        id: p.id,
+        product_name: p.product_name,
+        onboarding_company_id: p.onboarding_company_id,
+        consultant_id: p.consultant_id,
+        consultant_name: p.consultant?.name || null,
+      }));
+      setProjects(projectsWithConsultant);
 
       // Fetch staff
       const { data: staffData } = await supabase
@@ -764,6 +780,18 @@ export function HotseatResponseDialog({
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Consultant Info */}
+                {selectedProjectId && (() => {
+                  const selectedProject = projects.find(p => p.id === selectedProjectId);
+                  return selectedProject?.consultant_name ? (
+                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Consultor:</span>
+                      <span className="text-sm font-medium">{selectedProject.consultant_name}</span>
+                    </div>
+                  ) : null;
+                })()}
 
                 {/* Schedule */}
                 <div className="space-y-2">
