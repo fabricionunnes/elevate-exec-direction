@@ -135,8 +135,11 @@ export const TaskDetailsDialog = ({
   const isStaffRole = isConsultant || isCS;
   const isTaskCreatedByCurrentUser = taskCreatedBy === currentUserId;
   
-  // CS and Consultant can edit dates and assignee (but only assign to themselves)
-  const canEditDatesAndAssignee = isAdmin || isStaffRole;
+  // Only Admin and CS can edit dates - consultants cannot modify due dates
+  const canEditDates = isAdmin || isCS;
+  
+  // CS and Consultant can edit assignee
+  const canEditAssignee = isAdmin || isStaffRole;
   
   // CS and Consultant can change status and observations
   const canEditStatusAndObservations = isAdmin || isStaffRole;
@@ -392,12 +395,14 @@ export const TaskDetailsDialog = ({
         }
       }
 
-      if (canEditDatesAndAssignee) {
+      if (canEditDates) {
         if (editedTask.due_date !== task.due_date && !updates.due_date) {
           historyPromises.push(logHistory("edit", "data de execução", task.due_date || "", editedTask.due_date || ""));
           updates.due_date = editedTask.due_date;
         }
-        
+      }
+      
+      if (canEditAssignee) {
         // Handle assignee changes
         // Staff (CS/Consultant) assigns to responsible_staff_id, Admin can do both
         if (editedTask.assignee_id !== task.assignee_id && !updates.responsible_staff_id) {
@@ -580,7 +585,7 @@ export const TaskDetailsDialog = ({
                         "w-full justify-start text-left font-normal",
                         !editedTask.due_date && "text-muted-foreground"
                       )}
-                      disabled={!canEditDatesAndAssignee}
+                      disabled={!canEditDates}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {editedTask.due_date
@@ -613,7 +618,7 @@ export const TaskDetailsDialog = ({
                 onValueChange={(value) =>
                   setEditedTask({ ...editedTask, assignee_id: value === "none" ? null : value })
                 }
-                disabled={!canEditDatesAndAssignee}
+                disabled={!canEditAssignee}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar responsável" />
