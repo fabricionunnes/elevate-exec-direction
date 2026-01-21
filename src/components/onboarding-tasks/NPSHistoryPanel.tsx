@@ -83,7 +83,8 @@ export function NPSHistoryPanel({ projectId, currentNps, userRole }: NPSHistoryP
   };
 
   const getNpsLink = () => {
-    return `${getPublicBaseUrl()}/#/nps?project=${projectId}`;
+    // Use query-based public link so it works even when apps (WhatsApp/Instagram) drop the hash.
+    return `${getPublicBaseUrl()}/?public=nps&project=${encodeURIComponent(projectId)}`;
   };
 
   const copyNpsLink = () => {

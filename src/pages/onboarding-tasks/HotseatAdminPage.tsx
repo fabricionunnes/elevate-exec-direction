@@ -24,6 +24,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { HotseatResponseDialog } from "@/components/hotseat/HotseatResponseDialog";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface HotseatResponse {
   id: string;
@@ -38,10 +39,6 @@ interface HotseatResponse {
   created_at: string;
   updated_at: string;
 }
-
-const getPublicBaseUrl = () => {
-  return "https://unvholdings.com.br";
-};
 
 export default function HotseatAdminPage() {
   const navigate = useNavigate();

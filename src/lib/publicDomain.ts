@@ -8,7 +8,9 @@
  *
  * Therefore we prefer the canonical public domain in production.
  */
-export const PUBLIC_DOMAIN = "https://unvholdings.com.br";
+// Canonical public domain used in production links.
+// If you later connect a custom domain, update this constant to match it.
+export const PUBLIC_DOMAIN = "https://elevate-exec-direction.lovable.app";
 
 export const getPublicBaseUrl = (): string => {
   if (typeof window === "undefined") return PUBLIC_DOMAIN;
