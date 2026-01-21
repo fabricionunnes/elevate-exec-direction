@@ -13,9 +13,11 @@ import {
   DollarSign,
   RefreshCw,
   BarChart3,
+  Bell,
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { StockAlertsCard } from "./StockAlertsCard";
 
 interface Props {
   projectId: string;
@@ -292,6 +294,9 @@ export function ClientInventoryDashboard({ projectId }: Props) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Stock Alerts */}
+      <StockAlertsCard projectId={projectId} />
 
       {/* Lists */}
       <div className="grid md:grid-cols-2 gap-4">

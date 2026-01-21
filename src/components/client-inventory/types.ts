@@ -246,14 +246,14 @@ export interface InventoryAlert {
 export type InventoryViewType =
   | 'dashboard'
   | 'products'
+  | 'customers'
   | 'purchases'
   | 'suppliers'
   | 'budgets'
+  | 'sale_budgets'
   | 'movements'
   | 'reports'
   | 'settings'
-  | 'customers'
-  | 'sale-budgets'
   | 'alerts';
 
 export const BASE_UNITS = [
