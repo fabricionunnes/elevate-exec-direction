@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Clock,
   RefreshCw,
+  ShoppingCart,
 } from "lucide-react";
 import { format, addDays, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -39,6 +40,8 @@ interface DashboardData {
   monthlyResult: number;
   overdueReceivables: number;
   overduePayables: number;
+  monthlySales: number;
+  monthlySalesCount: number;
 }
 
 const COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#6366f1'];
@@ -52,6 +55,8 @@ export function ClientFinancialDashboard({ projectId }: Props) {
     monthlyResult: 0,
     overdueReceivables: 0,
     overduePayables: 0,
+    monthlySales: 0,
+    monthlySalesCount: 0,
   });
   const [cashFlowData, setCashFlowData] = useState<any[]>([]);
   const [categoryData, setCategoryData] = useState<{ income: any[]; expense: any[] }>({ income: [], expense: [] });
@@ -80,9 +85,17 @@ export function ClientFinancialDashboard({ projectId }: Props) {
         .select("*, category:client_financial_categories(*)")
         .eq("project_id", projectId);
 
+      // Fetch sales
+      const { data: sales } = await supabase
+        .from("client_financial_sales")
+        .select("*")
+        .eq("project_id", projectId)
+        .eq("status", "completed");
+
       // Calculate metrics
       const receivablesArr = receivables || [];
       const payablesArr = payables || [];
+      const salesArr = sales || [];
 
       // 30-day receivables (open + overdue)
       const totalReceivables30Days = receivablesArr
@@ -100,8 +113,8 @@ export function ClientFinancialDashboard({ projectId }: Props) {
         )
         .reduce((sum, p) => sum + Number(p.amount), 0);
 
-      // Monthly result (paid this month)
-      const monthlyIncome = receivablesArr
+      // Monthly result from receivables (paid this month)
+      const monthlyIncomeReceivables = receivablesArr
         .filter(r => 
           r.status === 'paid' && 
           r.paid_at && 
@@ -109,6 +122,17 @@ export function ClientFinancialDashboard({ projectId }: Props) {
           new Date(r.paid_at) <= monthEnd
         )
         .reduce((sum, r) => sum + Number(r.paid_amount || r.amount), 0);
+
+      // Monthly sales (completed this month)
+      const monthlySalesData = salesArr.filter(s => {
+        const saleDate = new Date(s.sale_date);
+        return saleDate >= monthStart && saleDate <= monthEnd;
+      });
+      const monthlySales = monthlySalesData.reduce((sum, s) => sum + Number(s.total_amount), 0);
+      const monthlySalesCount = monthlySalesData.length;
+
+      // Total monthly income = receivables paid + sales completed
+      const monthlyIncome = monthlyIncomeReceivables + monthlySales;
 
       const monthlyExpense = payablesArr
         .filter(p => 
@@ -130,7 +154,10 @@ export function ClientFinancialDashboard({ projectId }: Props) {
         .filter(p => p.status === 'overdue')
         .reduce((sum, p) => sum + Number(p.amount), 0);
 
-      // Calculate current balance (simplified: sum of all paid - all paid out)
+      // Total sales revenue (all completed sales)
+      const totalSalesRevenue = salesArr.reduce((sum, s) => sum + Number(s.total_amount), 0);
+
+      // Calculate current balance (receivables paid + sales - payables paid)
       const totalPaidIn = receivablesArr
         .filter(r => r.status === 'paid')
         .reduce((sum, r) => sum + Number(r.paid_amount || r.amount), 0);
@@ -139,7 +166,7 @@ export function ClientFinancialDashboard({ projectId }: Props) {
         .filter(p => p.status === 'paid')
         .reduce((sum, p) => sum + Number(p.paid_amount || p.amount), 0);
 
-      const currentBalance = totalPaidIn - totalPaidOut;
+      const currentBalance = totalPaidIn + totalSalesRevenue - totalPaidOut;
 
       setData({
         currentBalance,
@@ -148,6 +175,8 @@ export function ClientFinancialDashboard({ projectId }: Props) {
         monthlyResult,
         overdueReceivables,
         overduePayables,
+        monthlySales,
+        monthlySalesCount,
       });
 
       // Generate cash flow projection data (next 90 days)
@@ -252,8 +281,22 @@ export function ClientFinancialDashboard({ projectId }: Props) {
         </Button>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <ShoppingCart className="h-4 w-4 text-blue-500" />
+              <span className="text-xs text-muted-foreground">Vendas do Mês</span>
+            </div>
+            <p className="text-lg font-bold text-blue-600">
+              {formatCurrency(data.monthlySales)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {data.monthlySalesCount} venda{data.monthlySalesCount !== 1 ? 's' : ''}
+            </p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-2">
