@@ -945,25 +945,45 @@ export function HotseatResponseDialog({
                       
                       {/* Chat Messages */}
                       {chatMessages.length > 0 && (
-                        <ScrollArea className="h-[200px]">
-                          <div className="space-y-3 pr-4">
+                        <ScrollArea className="h-[200px] border rounded-lg">
+                          <div className="space-y-4 p-3">
                             {chatMessages.map((msg, idx) => (
                               <div
                                 key={idx}
                                 className={cn(
-                                  "rounded-lg p-3 text-sm",
-                                  msg.role === "user"
-                                    ? "bg-primary text-primary-foreground ml-8"
-                                    : "bg-muted mr-8"
+                                  "flex gap-3",
+                                  msg.role === "user" ? "flex-row-reverse" : "flex-row"
                                 )}
                               >
-                                {msg.role === "assistant" ? (
-                                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                                  </div>
-                                ) : (
-                                  msg.content
-                                )}
+                                {/* Avatar */}
+                                <div className={cn(
+                                  "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
+                                  msg.role === "user" 
+                                    ? "bg-primary text-primary-foreground" 
+                                    : "bg-gradient-to-br from-violet-500 to-purple-600 text-white"
+                                )}>
+                                  {msg.role === "user" ? (
+                                    <User className="h-4 w-4" />
+                                  ) : (
+                                    <Bot className="h-4 w-4" />
+                                  )}
+                                </div>
+                                
+                                {/* Message bubble */}
+                                <div className={cn(
+                                  "rounded-2xl px-4 py-3 max-w-[85%]",
+                                  msg.role === "user"
+                                    ? "bg-primary text-primary-foreground rounded-tr-sm"
+                                    : "bg-muted border rounded-tl-sm"
+                                )}>
+                                  {msg.role === "assistant" ? (
+                                    <div className="prose prose-sm dark:prose-invert max-w-none text-sm [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:my-1 [&_li]:my-0.5">
+                                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm">{msg.content}</p>
+                                  )}
+                                </div>
                               </div>
                             ))}
                             <div ref={chatEndRef} />
