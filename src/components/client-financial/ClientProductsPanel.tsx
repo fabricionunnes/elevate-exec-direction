@@ -98,6 +98,7 @@ export function ClientProductsPanel({ projectId, canEdit }: Props) {
           .from("client_financial_categories")
           .select("*")
           .eq("project_id", projectId)
+          .eq("type", "product")
           .eq("is_active", true)
           .order("name"),
       ]);
