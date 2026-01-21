@@ -52,7 +52,10 @@ export default function HotseatFormPage() {
       return;
     }
 
-    setIsSubmitting(true);
+    if (!description.trim()) {
+      toast.error("Por favor, descreva brevemente sua situação");
+      return;
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke("hotseat-public", {
