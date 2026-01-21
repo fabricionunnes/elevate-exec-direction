@@ -361,13 +361,17 @@ const DashboardMetrics = ({
     [projects, simulatorCompanyIds, inactiveCompanyIds]
   );
 
-  // Filter allProjectsForChurn to exclude simulator companies too
+  // Filter allProjectsForChurn to exclude simulator companies AND apply consultant filter
   const nonSimulatorAllProjects = useMemo(
     () => allProjectsForChurn.filter(p => {
       const companyId = getProjectCompanyId(p);
-      return !companyId || !simulatorCompanyIds.has(companyId);
+      // Exclude simulators
+      if (companyId && simulatorCompanyIds.has(companyId)) return false;
+      // Apply consultant filter if selected
+      if (selectedConsultantStaffId && p.consultant_id !== selectedConsultantStaffId) return false;
+      return true;
     }),
-    [allProjectsForChurn, simulatorCompanyIds]
+    [allProjectsForChurn, simulatorCompanyIds, selectedConsultantStaffId]
   );
 
   const projectMetrics = useMemo(() => {
