@@ -69,7 +69,56 @@ serve(async (req) => {
       });
     }
 
-    // Insert the hotseat response
+    // Try to find matching company by name (case-insensitive, partial match)
+    const companyNameNormalized = body.companyName.trim().toLowerCase();
+    
+    const { data: companies } = await supabase
+      .from("onboarding_companies")
+      .select("id, name")
+      .eq("status", "active");
+
+    let matchedCompanyId: string | null = null;
+    let matchedProjectId: string | null = null;
+
+    if (companies && companies.length > 0) {
+      // Try exact match first (case-insensitive)
+      let matchedCompany = companies.find(
+        (c) => c.name.toLowerCase() === companyNameNormalized
+      );
+
+      // If no exact match, try partial match (company name contains input or input contains company name)
+      if (!matchedCompany) {
+        matchedCompany = companies.find(
+          (c) =>
+            c.name.toLowerCase().includes(companyNameNormalized) ||
+            companyNameNormalized.includes(c.name.toLowerCase())
+        );
+      }
+
+      if (matchedCompany) {
+        matchedCompanyId = matchedCompany.id;
+        console.log("hotseat-public: matched company", { 
+          input: body.companyName, 
+          matched: matchedCompany.name,
+          id: matchedCompanyId 
+        });
+
+        // Try to find active project for this company
+        const { data: projects } = await supabase
+          .from("onboarding_projects")
+          .select("id")
+          .eq("onboarding_company_id", matchedCompanyId)
+          .eq("status", "active")
+          .limit(1);
+
+        if (projects && projects.length > 0) {
+          matchedProjectId = projects[0].id;
+          console.log("hotseat-public: matched project", { id: matchedProjectId });
+        }
+      }
+    }
+
+    // Insert the hotseat response with matched company/project if found
     const { data: hotseatResponse, error: insertError } = await supabase
       .from("hotseat_responses")
       .insert({
@@ -78,6 +127,8 @@ serve(async (req) => {
         subjects: body.subjects,
         description: body.description?.trim() || null,
         status: "pending",
+        linked_company_id: matchedCompanyId,
+        linked_project_id: matchedProjectId,
       })
       .select("id")
       .single();
@@ -90,9 +141,17 @@ serve(async (req) => {
       });
     }
 
-    console.log("hotseat-public: response created", { id: hotseatResponse.id });
+    console.log("hotseat-public: response created", { 
+      id: hotseatResponse.id,
+      linkedCompany: matchedCompanyId,
+      linkedProject: matchedProjectId,
+    });
 
-    return new Response(JSON.stringify({ ok: true, id: hotseatResponse.id }), {
+    return new Response(JSON.stringify({ 
+      ok: true, 
+      id: hotseatResponse.id,
+      autoLinked: !!matchedCompanyId,
+    }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
