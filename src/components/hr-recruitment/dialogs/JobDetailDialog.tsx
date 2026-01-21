@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -29,9 +30,8 @@ import {
   Clock,
   Users,
   AlertTriangle,
-  Save,
-  MapPin,
   FileText,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { JOB_STATUS_LABELS, PIPELINE_STAGES } from "../types";
@@ -71,16 +71,9 @@ export function JobDetailDialog({
   canEdit,
   onUpdate,
 }: JobDetailDialogProps) {
-  const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState(job.status);
-  const [targetDate, setTargetDate] = useState(job.target_date || "");
-  const [slaDays, setSlaDays] = useState(job.sla_days?.toString() || "");
-  const [responsibleRhId, setResponsibleRhId] = useState(job.responsible_rh_id || "");
-  const [consultantId, setConsultantId] = useState(job.consultant_id || "");
-  const [internalNotes, setInternalNotes] = useState(job.internal_notes || "");
+  const navigate = useNavigate();
   const [candidatesByStage, setCandidatesByStage] = useState<Record<string, number>>({});
   const [loadingCandidates, setLoadingCandidates] = useState(true);
-
   // Load candidates by stage
   useEffect(() => {
     const loadCandidates = async () => {
@@ -107,39 +100,12 @@ export function JobDetailDialog({
     loadCandidates();
   }, [job.id]);
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from("job_openings")
-        .update({
-          status,
-          target_date: targetDate || null,
-          sla_days: slaDays ? parseInt(slaDays) : null,
-          responsible_rh_id: responsibleRhId || null,
-          consultant_id: consultantId || null,
-          internal_notes: internalNotes || null,
-          closed_at: status === "closed" ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", job.id);
-
-      if (error) throw error;
-
-      toast.success("Vaga atualizada com sucesso");
-      onUpdate();
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error saving job:", error);
-      toast.error("Erro ao salvar alterações");
-    } finally {
-      setSaving(false);
-    }
+  const handleGoToProject = () => {
+    onOpenChange(false);
+    navigate(`/onboarding-tasks/projeto/${job.project_id}?tab=rh`);
   };
 
   const daysOpen = differenceInDays(new Date(), new Date(job.created_at));
-  const consultants = staff.filter((s) => s.role === "consultant");
-  const rhStaff = staff.filter((s) => s.role === "rh");
 
   const getStatusColor = (s: string) => {
     switch (s) {
@@ -284,6 +250,13 @@ export function JobDetailDialog({
           </TabsContent>
 
         </Tabs>
+
+        <div className="pt-4 border-t">
+          <Button onClick={handleGoToProject} variant="outline" className="w-full">
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Ir para o projeto (RH)
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
