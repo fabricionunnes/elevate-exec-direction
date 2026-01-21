@@ -293,6 +293,8 @@ Deno.serve(async (req) => {
         mrr: company.mrr_value,
         status: company.status,
         notes: company.notes,
+        paymentMethod: company.payment_method,
+        isRecurring: company.payment_method === "monthly",
       },
       project: activeProject ? {
         name: activeProject.product_name,
@@ -389,9 +391,11 @@ Deno.serve(async (req) => {
       contractStatus: {
         startDate: company.contract_start_date,
         endDate: company.contract_end_date,
-        daysUntilExpiry: company.contract_end_date ? 
+        paymentMethod: company.payment_method,
+        isRecurring: company.payment_method === "monthly",
+        daysUntilExpiry: company.contract_end_date && company.payment_method !== "monthly" ? 
           Math.ceil((new Date(company.contract_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null,
-        isExpiringSoon: company.contract_end_date ? 
+        isExpiringSoon: company.contract_end_date && company.payment_method !== "monthly" ? 
           Math.ceil((new Date(company.contract_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) <= 60 : false,
         renewalStatus: company.renewal_status,
         renewalMeetingDate: company.renewal_meeting_date,
@@ -440,9 +444,10 @@ ${JSON.stringify(contextData, null, 2)}`;
 
 ## ⚠️ Alertas Importantes
 [Liste APENAS se houver algum destes casos - use emojis de alerta 🔴🟡🟢:]
+- Se contractStatus.isRecurring = true: "📋 Contrato Recorrente" (NÃO mencione vencimento)
 - 🔴 Se churn_probability > 60%: "RISCO ALTO DE CHURN: X% de probabilidade"
-- 🔴 Se contrato expira em ≤30 dias: "CONTRATO EXPIRA EM X DIAS!"
-- 🟡 Se contrato expira em ≤60 dias: "Renovação próxima: X dias"
+- 🔴 Se contrato NÃO é recorrente E expira em ≤30 dias: "CONTRATO EXPIRA EM X DIAS!"
+- 🟡 Se contrato NÃO é recorrente E expira em ≤60 dias: "Renovação próxima: X dias"
 - 🟢 Se foi retido recentemente: "Cliente RETIDO recentemente ✓"
 - 🟡 Se health score < 60: "Saúde do cliente baixa"
 - 🟡 Se NPS < 7: "NPS precisa de atenção"
