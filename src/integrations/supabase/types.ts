@@ -2332,6 +2332,7 @@ export type Database = {
       }
       client_financial_products: {
         Row: {
+          abc_curve: string | null
           category_id: string | null
           cost_price: number | null
           created_at: string
@@ -2346,6 +2347,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          abc_curve?: string | null
           category_id?: string | null
           cost_price?: number | null
           created_at?: string
@@ -2360,6 +2362,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          abc_curve?: string | null
           category_id?: string | null
           cost_price?: number | null
           created_at?: string

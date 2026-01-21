@@ -58,6 +58,7 @@ interface FormData {
   cost_price: number;
   category_id: string;
   is_active: boolean;
+  abc_curve: string;
 }
 
 const initialFormData: FormData = {
@@ -68,6 +69,7 @@ const initialFormData: FormData = {
   cost_price: 0,
   category_id: "",
   is_active: true,
+  abc_curve: "",
 };
 
 export function ClientProductsPanel({ projectId, canEdit }: Props) {
@@ -132,6 +134,7 @@ export function ClientProductsPanel({ projectId, canEdit }: Props) {
         cost_price: formData.cost_price,
         category_id: formData.category_id || null,
         is_active: formData.is_active,
+        abc_curve: formData.abc_curve || null,
       };
 
       if (selectedProduct) {
@@ -194,6 +197,7 @@ export function ClientProductsPanel({ projectId, canEdit }: Props) {
       cost_price: product.cost_price,
       category_id: product.category_id || "",
       is_active: product.is_active,
+      abc_curve: product.abc_curve || "",
     });
     setDialogOpen(true);
   };
@@ -331,6 +335,24 @@ export function ClientProductsPanel({ projectId, canEdit }: Props) {
                   </Select>
                 </div>
 
+                <div className="space-y-2">
+                  <Label>Curva ABC</Label>
+                  <Select
+                    value={formData.abc_curve || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, abc_curve: value === "none" ? "" : value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a curva" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Não definido</SelectItem>
+                      <SelectItem value="A">Curva A</SelectItem>
+                      <SelectItem value="B">Curva B</SelectItem>
+                      <SelectItem value="C">Curva C</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={formData.is_active}
@@ -416,6 +438,7 @@ export function ClientProductsPanel({ projectId, canEdit }: Props) {
                 <TableHead>Produto</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Categoria</TableHead>
+                <TableHead>Curva</TableHead>
                 <TableHead className="text-right">Preço</TableHead>
                 <TableHead className="text-right">Custo</TableHead>
                 <TableHead className="text-right">Margem</TableHead>
@@ -426,7 +449,7 @@ export function ClientProductsPanel({ projectId, canEdit }: Props) {
             <TableBody>
               {filteredProducts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={canEdit ? 8 : 7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={canEdit ? 9 : 8} className="text-center py-8 text-muted-foreground">
                     {searchTerm ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
                   </TableCell>
                 </TableRow>
@@ -449,6 +472,17 @@ export function ClientProductsPanel({ projectId, canEdit }: Props) {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{product.sku || "-"}</TableCell>
                       <TableCell>{product.category?.name || "-"}</TableCell>
+                      <TableCell>
+                        {product.abc_curve ? (
+                          <Badge
+                            variant={product.abc_curve === "A" ? "default" : product.abc_curve === "B" ? "secondary" : "outline"}
+                          >
+                            {product.abc_curve}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(product.unit_price)}
                       </TableCell>
