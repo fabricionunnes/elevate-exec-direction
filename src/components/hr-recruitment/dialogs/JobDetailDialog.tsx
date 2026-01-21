@@ -102,7 +102,7 @@ export function JobDetailDialog({
 
   const handleGoToProject = () => {
     onOpenChange(false);
-    navigate(`/onboarding-tasks/projeto/${job.project_id}?tab=rh`);
+    navigate(`/onboarding-tasks/${job.project_id}?tab=rh`);
   };
 
   const daysOpen = differenceInDays(new Date(), new Date(job.created_at));
