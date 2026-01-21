@@ -183,17 +183,16 @@ ${JSON.stringify(contextData, null, 2)}`;
     if (isChat) {
       userPrompt = message;
     } else {
-      userPrompt = `Gere um resumo executivo desta empresa para análise rápida. Inclua:
+      userPrompt = `Gere um resumo CURTO e OBJETIVO desta empresa (máximo 150 palavras). Use formato de lista com bullets para ser mais conciso:
 
-1. **Resumo Geral**: Uma visão geral da empresa em 2-3 frases
-2. **Nicho/Segmento**: Qual é o nicho de atuação
-3. **Situação Atual**: Health Score, NPS médio, status geral
-4. **Resultados**: Progresso nas metas, principais conquistas
-5. **O que foi feito**: Tarefas concluídas, reuniões realizadas
-6. **O que falta fazer**: Tarefas pendentes, próximos passos
-7. **Pontos de Atenção**: Alertas ou riscos identificados
+• **Nicho**: [segmento de atuação]
+• **Health Score**: [score] | **NPS**: [valor ou N/A]
+• **Status**: [situação em 1 linha]
+• **Tarefas**: [X concluídas / Y pendentes]
+• **Próximos passos**: [2-3 prioridades principais]
+• **Atenção**: [alertas se houver, senão omitir]
 
-Seja conciso mas informativo. Use emojis para destacar pontos importantes.`;
+Seja extremamente conciso. Não escreva parágrafos longos.`;
     }
 
     // Call Lovable AI Gateway
