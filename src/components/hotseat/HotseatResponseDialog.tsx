@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -160,8 +160,18 @@ export function HotseatResponseDialog({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isSendingChat, setIsSendingChat] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = currentStaffRole === "admin";
+
+  // Auto-scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    if (chatMessages.length > 0) {
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  }, [chatMessages]);
 
   useEffect(() => {
     if (open) {
@@ -935,27 +945,30 @@ export function HotseatResponseDialog({
                       
                       {/* Chat Messages */}
                       {chatMessages.length > 0 && (
-                        <div className="space-y-3 max-h-[200px] overflow-y-auto">
-                          {chatMessages.map((msg, idx) => (
-                            <div
-                              key={idx}
-                              className={cn(
-                                "rounded-lg p-3 text-sm",
-                                msg.role === "user"
-                                  ? "bg-primary text-primary-foreground ml-8"
-                                  : "bg-muted mr-8"
-                              )}
-                            >
-                              {msg.role === "assistant" ? (
-                                <div className="prose prose-sm dark:prose-invert max-w-none">
-                                  <ReactMarkdown>{msg.content}</ReactMarkdown>
-                                </div>
-                              ) : (
-                                msg.content
-                              )}
-                            </div>
-                          ))}
-                        </div>
+                        <ScrollArea className="h-[200px]">
+                          <div className="space-y-3 pr-4">
+                            {chatMessages.map((msg, idx) => (
+                              <div
+                                key={idx}
+                                className={cn(
+                                  "rounded-lg p-3 text-sm",
+                                  msg.role === "user"
+                                    ? "bg-primary text-primary-foreground ml-8"
+                                    : "bg-muted mr-8"
+                                )}
+                              >
+                                {msg.role === "assistant" ? (
+                                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                  </div>
+                                ) : (
+                                  msg.content
+                                )}
+                              </div>
+                            ))}
+                            <div ref={chatEndRef} />
+                          </div>
+                        </ScrollArea>
                       )}
                       
                       {/* Chat Input */}
