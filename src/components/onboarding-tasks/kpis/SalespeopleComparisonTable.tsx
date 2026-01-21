@@ -97,13 +97,22 @@ export const SalespeopleComparisonTable = ({
       const spEntries = entries.filter((e) => e.salesperson_id === sp.id);
 
       // Find the correct monetary KPI for this salesperson's unit
+      // Normalize unit_id (treat undefined as null for Map lookup)
+      const spUnitIdNormalized = sp.unit_id ?? null;
+      
       // Try unit-specific first, then fallback to company-wide (null unit_id)
-      const spMonetaryKpi = monetaryKpisByUnit.get(sp.unit_id) || monetaryKpisByUnit.get(null) || mainGoalKpi;
+      let spMonetaryKpi = monetaryKpisByUnit.get(spUnitIdNormalized);
+      if (!spMonetaryKpi) {
+        spMonetaryKpi = monetaryKpisByUnit.get(null);
+      }
+      if (!spMonetaryKpi) {
+        spMonetaryKpi = mainGoalKpi;
+      }
 
       // Main goal total - use the unit-specific monetary KPI
       const mainGoalTotal = spMonetaryKpi
         ? spEntries
-            .filter((e) => e.kpi_id === spMonetaryKpi.id)
+            .filter((e) => e.kpi_id === spMonetaryKpi!.id)
             .reduce((sum, e) => sum + e.value, 0)
         : 0;
 
