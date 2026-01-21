@@ -36,6 +36,19 @@ serve(async (req) => {
   try {
     console.log("Starting health score calculation for all projects...");
 
+    // Get all simulator companies to exclude
+    const { data: simulatorCompanies, error: simError } = await supabase
+      .from("onboarding_companies")
+      .select("id")
+      .eq("is_simulator", true);
+
+    if (simError) {
+      console.error("Error fetching simulator companies:", simError);
+    }
+
+    const simulatorCompanyIds = new Set((simulatorCompanies || []).map((c: any) => c.id));
+    console.log(`Found ${simulatorCompanyIds.size} simulator companies to exclude`);
+
     // Get all active projects
     const { data: projects, error: projectsError } = await supabase
       .from("onboarding_projects")
@@ -46,25 +59,68 @@ serve(async (req) => {
       throw new Error(`Failed to fetch projects: ${projectsError.message}`);
     }
 
-    console.log(`Found ${projects?.length || 0} projects to process`);
+    // Filter out projects from simulator companies
+    const nonSimulatorProjects = (projects || []).filter(
+      (p: any) => !p.onboarding_company_id || !simulatorCompanyIds.has(p.onboarding_company_id)
+    );
+
+    console.log(`Found ${projects?.length || 0} total projects, ${nonSimulatorProjects.length} non-simulator projects to process`);
 
     const results = {
       processed: 0,
       errors: 0,
       details: [] as { projectId: string; score: number | null; error?: string }[],
+      scores: [] as number[],
     };
 
-    for (const project of projects || []) {
+    for (const project of nonSimulatorProjects) {
       try {
         const score = await calculateProjectHealthScore(supabase, project.id, project.onboarding_company_id, project.status);
         results.processed++;
         results.details.push({ projectId: project.id, score });
+        results.scores.push(score);
         console.log(`Project ${project.id}: Score ${score}`);
       } catch (error: unknown) {
         results.errors++;
         const message = error instanceof Error ? error.message : "Unknown error";
         results.details.push({ projectId: project.id, score: null, error: message });
         console.error(`Error processing project ${project.id}:`, message);
+      }
+    }
+
+    // Calculate and save daily average (only from non-simulator companies)
+    if (results.scores.length > 0) {
+      const avgScore = results.scores.reduce((sum, s) => sum + s, 0) / results.scores.length;
+      const today = new Date().toISOString().split('T')[0];
+
+      // Count health distribution
+      const healthScoresWithRisk = results.details
+        .filter(d => d.score !== null)
+        .map(d => ({
+          score: d.score!,
+          riskLevel: d.score! >= 70 ? 'low' : d.score! >= 50 ? 'medium' : 'high'
+        }));
+
+      const healthyCount = healthScoresWithRisk.filter(h => h.riskLevel === 'low').length;
+      const attentionCount = healthScoresWithRisk.filter(h => h.riskLevel === 'medium').length;
+      const riskCount = healthScoresWithRisk.filter(h => h.riskLevel === 'high').length;
+
+      // Upsert daily average
+      const { error: upsertError } = await supabase
+        .from("daily_average_health_scores")
+        .upsert({
+          snapshot_date: today,
+          average_score: Math.round(avgScore * 100) / 100,
+          total_active_companies: results.scores.length,
+          healthy_count: healthyCount,
+          attention_count: attentionCount,
+          risk_count: riskCount,
+        }, { onConflict: 'snapshot_date' });
+
+      if (upsertError) {
+        console.error("Error saving daily average:", upsertError);
+      } else {
+        console.log(`Daily average saved: ${avgScore.toFixed(2)} from ${results.scores.length} companies`);
       }
     }
 
