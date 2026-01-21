@@ -58,10 +58,10 @@ Deno.serve(async (req) => {
     if (activeProject) {
       const { data: tasksData } = await supabase
         .from("onboarding_tasks")
-        .select("id, title, status, priority, due_date, completed_at")
+        .select("id, title, status, priority, due_date, completed_at, description")
         .eq("project_id", activeProject.id)
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(100);
       tasks = tasksData || [];
     }
 
@@ -70,10 +70,10 @@ Deno.serve(async (req) => {
     if (activeProject) {
       const { data: meetingsData } = await supabase
         .from("project_meetings")
-        .select("id, title, meeting_date, notes, status")
+        .select("id, title, meeting_date, notes, status, live_notes")
         .eq("project_id", activeProject.id)
         .order("meeting_date", { ascending: false })
-        .limit(10);
+        .limit(20);
       meetings = meetingsData || [];
     }
 
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
         .select("score, feedback, created_at")
         .eq("project_id", activeProject.id)
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10);
       npsResponses = npsData || [];
     }
 
@@ -108,9 +108,100 @@ Deno.serve(async (req) => {
         .select("*")
         .eq("project_id", activeProject.id)
         .order("goal_month", { ascending: false })
-        .limit(6);
+        .limit(12);
       monthlyGoals = goalsData || [];
     }
+
+    // Fetch KPIs from company_kpis
+    let companyKpis: any[] = [];
+    const { data: kpisData } = await supabase
+      .from("company_kpis")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("is_active", true)
+      .order("is_main_goal", { ascending: false });
+    companyKpis = kpisData || [];
+
+    // Fetch KPI entries for the current month
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    let kpiEntries: any[] = [];
+    if (companyKpis.length > 0) {
+      const kpiIds = companyKpis.map(k => k.id);
+      const startOfMonth = `${currentMonth}-01`;
+      const { data: entriesData } = await supabase
+        .from("kpi_entries")
+        .select("*")
+        .in("kpi_id", kpiIds)
+        .gte("entry_date", startOfMonth)
+        .order("entry_date", { ascending: false });
+      kpiEntries = entriesData || [];
+    }
+
+    // Fetch KPI monthly targets
+    let kpiMonthlyTargets: any[] = [];
+    if (companyKpis.length > 0) {
+      const kpiIds = companyKpis.map(k => k.id);
+      const { data: targetsData } = await supabase
+        .from("kpi_monthly_targets")
+        .select("*")
+        .in("kpi_id", kpiIds)
+        .eq("month_year", currentMonth);
+      kpiMonthlyTargets = targetsData || [];
+    }
+
+    // Fetch financial data - receivables
+    let receivables: any[] = [];
+    if (activeProject) {
+      const { data: recData } = await supabase
+        .from("client_financial_receivables")
+        .select("id, client_name, amount, due_date, status, paid_amount")
+        .eq("project_id", activeProject.id)
+        .order("due_date", { ascending: false })
+        .limit(20);
+      receivables = recData || [];
+    }
+
+    // Fetch financial data - payables
+    let payables: any[] = [];
+    if (activeProject) {
+      const { data: payData } = await supabase
+        .from("client_financial_payables")
+        .select("id, supplier_name, amount, due_date, status, paid_amount")
+        .eq("project_id", activeProject.id)
+        .order("due_date", { ascending: false })
+        .limit(20);
+      payables = payData || [];
+    }
+
+    // Fetch staff info for context
+    let consultantName = null;
+    let csName = null;
+    if (activeProject?.consultant_staff_id) {
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("name")
+        .eq("id", activeProject.consultant_staff_id)
+        .single();
+      consultantName = staffData?.name;
+    }
+    if (activeProject?.cs_staff_id) {
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("name")
+        .eq("id", activeProject.cs_staff_id)
+        .single();
+      csName = staffData?.name;
+    }
+
+    // Fetch hotseat history for this company
+    let hotseatHistory: any[] = [];
+    const { data: hotseatData } = await supabase
+      .from("hotseat_responses")
+      .select("id, subjects, description, status, scheduled_at, created_at")
+      .eq("linked_company_id", companyId)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    hotseatHistory = hotseatData || [];
 
     // Build context
     const taskStats = {
@@ -130,6 +221,44 @@ Deno.serve(async (req) => {
       ? Math.round((latestGoal.sales_result / latestGoal.sales_target) * 100)
       : null;
 
+    // Calculate KPI summaries
+    const mainGoalKpis = companyKpis.filter(k => k.is_main_goal);
+    const kpiSummaries = companyKpis.map(kpi => {
+      const entries = kpiEntries.filter(e => e.kpi_id === kpi.id);
+      const totalValue = entries.reduce((sum, e) => sum + (e.value || 0), 0);
+      const monthlyTarget = kpiMonthlyTargets.find(t => t.kpi_id === kpi.id);
+      const target = monthlyTarget?.target_value || kpi.target_value;
+      const progress = target > 0 ? Math.round((totalValue / target) * 100) : 0;
+      return {
+        name: kpi.name,
+        type: kpi.kpi_type,
+        isMainGoal: kpi.is_main_goal,
+        target,
+        currentValue: totalValue,
+        progress,
+        periodicity: kpi.periodicity,
+        scope: kpi.scope,
+      };
+    });
+
+    // Financial summaries
+    const financialSummary = {
+      receivables: {
+        total: receivables.length,
+        pending: receivables.filter(r => r.status === "pending").length,
+        overdue: receivables.filter(r => r.status === "pending" && new Date(r.due_date) < new Date()).length,
+        totalAmount: receivables.reduce((sum, r) => sum + (r.amount || 0), 0),
+        paidAmount: receivables.reduce((sum, r) => sum + (r.paid_amount || 0), 0),
+      },
+      payables: {
+        total: payables.length,
+        pending: payables.filter(p => p.status === "pending").length,
+        overdue: payables.filter(p => p.status === "pending" && new Date(p.due_date) < new Date()).length,
+        totalAmount: payables.reduce((sum, p) => sum + (p.amount || 0), 0),
+        paidAmount: payables.reduce((sum, p) => sum + (p.paid_amount || 0), 0),
+      },
+    };
+
     const contextData = {
       company: {
         name: company.name,
@@ -138,43 +267,106 @@ Deno.serve(async (req) => {
         contractEnd: company.contract_end_date,
         mrr: company.mrr_value,
         status: company.status,
+        notes: company.notes,
       },
       project: activeProject ? {
         name: activeProject.product_name,
         status: activeProject.status,
-        consultant: activeProject.consultant_staff_id,
-        cs: activeProject.cs_staff_id,
+        consultant: consultantName,
+        cs: csName,
+        startDate: activeProject.start_date,
+        expectedEndDate: activeProject.expected_end_date,
       } : null,
       tasks: taskStats,
-      recentTasks: tasks.slice(0, 10).map(t => ({ title: t.title, status: t.status, priority: t.priority })),
+      recentTasks: tasks.slice(0, 15).map(t => ({ 
+        title: t.title, 
+        status: t.status, 
+        priority: t.priority,
+        dueDate: t.due_date,
+      })),
+      highPriorityTasks: tasks.filter(t => t.priority === "high" && t.status !== "completed").slice(0, 10).map(t => ({
+        title: t.title,
+        status: t.status,
+        dueDate: t.due_date,
+      })),
       meetings: {
         total: meetings.length,
-        recent: meetings.slice(0, 3).map(m => ({ title: m.title, date: m.meeting_date, notes: m.notes?.substring(0, 200) })),
+        completed: meetings.filter(m => m.status === "completed").length,
+        scheduled: meetings.filter(m => m.status === "scheduled").length,
+        recent: meetings.slice(0, 5).map(m => ({ 
+          title: m.title, 
+          date: m.meeting_date, 
+          status: m.status,
+          notes: m.notes?.substring(0, 300),
+        })),
       },
       nps: {
         average: avgNps,
-        recent: npsResponses.slice(0, 3),
+        count: npsResponses.length,
+        recent: npsResponses.slice(0, 5).map(n => ({
+          score: n.score,
+          feedback: n.feedback,
+          date: n.created_at,
+        })),
       },
       healthScore: healthScore ? {
         total: healthScore.total_score,
         risk: healthScore.risk_level,
         engagement: healthScore.engagement_score,
         satisfaction: healthScore.satisfaction_score,
+        lastUpdated: healthScore.updated_at,
       } : null,
-      goals: {
+      monthlyGoals: {
         latest: latestGoal ? {
           month: latestGoal.goal_month,
-          target: latestGoal.sales_target,
-          result: latestGoal.sales_result,
+          salesTarget: latestGoal.sales_target,
+          salesResult: latestGoal.sales_result,
           progress: goalProgress,
+          projectGoal: latestGoal.project_goal,
+          observations: latestGoal.observations,
         } : null,
+        history: monthlyGoals.slice(0, 6).map(g => ({
+          month: g.goal_month,
+          target: g.sales_target,
+          result: g.sales_result,
+          progress: g.sales_target ? Math.round((g.sales_result || 0) / g.sales_target * 100) : 0,
+        })),
       },
+      kpis: {
+        total: companyKpis.length,
+        mainGoals: mainGoalKpis.length,
+        summaries: kpiSummaries,
+      },
+      financial: financialSummary,
+      hotseatHistory: hotseatHistory.map(h => ({
+        subjects: h.subjects,
+        status: h.status,
+        scheduledAt: h.scheduled_at,
+        createdAt: h.created_at,
+      })),
     };
 
     // Build prompt for AI
     const systemPrompt = `Você é um assistente especializado em análise de clientes da Universidade Nacional de Vendas.
-Você tem acesso completo aos dados desta empresa e deve responder de forma precisa e útil.
-Seja direto, use dados concretos quando disponíveis, e forneça insights acionáveis.
+Você tem acesso COMPLETO aos dados desta empresa, incluindo:
+- Informações da empresa e projeto
+- Tarefas (pendentes, concluídas, atrasadas, prioridade alta)
+- Reuniões realizadas e agendadas
+- NPS e feedback dos clientes
+- Health Score e nível de risco
+- METAS MENSAIS (monthly goals) com target e resultado
+- KPIs configurados com metas e progresso atual
+- Dados financeiros (contas a receber e pagar)
+- Histórico de Hotseats
+
+IMPORTANTE:
+- Sempre responda com base nos dados fornecidos no contexto
+- Se perguntarem sobre metas, use os dados de "monthlyGoals" e "kpis"
+- Se perguntarem sobre tarefas, use "tasks" e "recentTasks"
+- Se perguntarem sobre reuniões, use "meetings"
+- Se perguntarem sobre saúde/risco, use "healthScore"
+- Seja preciso e use números concretos dos dados
+- Se um dado não estiver disponível, diga claramente que não há registro
 
 Contexto da empresa:
 ${JSON.stringify(contextData, null, 2)}`;
