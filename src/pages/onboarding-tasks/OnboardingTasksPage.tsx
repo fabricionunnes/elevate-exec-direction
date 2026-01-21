@@ -1488,6 +1488,15 @@ const OnboardingTasksPage = () => {
                   <MessageSquareHeart className="h-4 w-4" />
                   CSAT
                 </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigate("/onboarding-tasks/hotseat")}
+                  className="gap-2 border-orange-300 text-orange-600 hover:bg-orange-50"
+                >
+                  <Heart className="h-4 w-4" />
+                  Hotseat
+                </Button>
               </>
             )}
             {/* Resultados button - visible for all staff (admin, cs, consultant) */}

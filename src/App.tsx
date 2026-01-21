@@ -98,6 +98,8 @@ import ExecutiveDashboardPage from "./pages/onboarding-tasks/ExecutiveDashboardP
 import CEODashboardPage from "./pages/onboarding-tasks/CEODashboardPage";
 import LeaderDashboardPage from "./pages/onboarding-tasks/LeaderDashboardPage";
 import GlobalJobOpeningsPage from "./pages/onboarding-tasks/GlobalJobOpeningsPage";
+import HotseatAdminPage from "./pages/onboarding-tasks/HotseatAdminPage";
+import HotseatFormPage from "./pages/HotseatFormPage";
 import ClientAccessReportPage from "./pages/onboarding-tasks/ClientAccessReportPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
@@ -213,6 +215,7 @@ const App = () => (
               <Route path="/onboarding-tasks/engagement" element={<ConsultantEngagementPage />} />
               <Route path="/onboarding-tasks/executive" element={<ExecutiveDashboardPage />} />
               <Route path="/onboarding-tasks/vagas" element={<GlobalJobOpeningsPage />} />
+              <Route path="/onboarding-tasks/hotseat" element={<HotseatAdminPage />} />
               <Route path="/onboarding-tasks/client-access" element={<ClientAccessReportPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
@@ -223,6 +226,9 @@ const App = () => (
             
             {/* CEO Dashboard - Exclusive Access */}
             <Route path="/onboarding-tasks/ceo" element={<CEODashboardPage />} />
+            
+            {/* Hotseat Public Form */}
+            <Route path="/hotseat" element={<HotseatFormPage />} />
             
             <Route path="/onboarding-client/:projectId" element={<ClientOnboardingPage />} />
             <Route path="/cac-form/:projectId" element={<CACFormPage />} />

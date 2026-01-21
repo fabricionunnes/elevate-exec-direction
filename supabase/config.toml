@@ -128,3 +128,6 @@ verify_jwt = false
 
 [functions.nps-public]
 verify_jwt = false
+
+[functions.hotseat-public]
+verify_jwt = false

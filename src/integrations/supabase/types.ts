@@ -6448,6 +6448,105 @@ export type Database = {
           },
         ]
       }
+      hotseat_notes: {
+        Row: {
+          content: string
+          created_at: string
+          created_by_staff_id: string | null
+          hotseat_response_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by_staff_id?: string | null
+          hotseat_response_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by_staff_id?: string | null
+          hotseat_response_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotseat_notes_created_by_staff_id_fkey"
+            columns: ["created_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hotseat_notes_hotseat_response_id_fkey"
+            columns: ["hotseat_response_id"]
+            isOneToOne: false
+            referencedRelation: "hotseat_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hotseat_responses: {
+        Row: {
+          company_name: string
+          created_at: string
+          description: string | null
+          id: string
+          linked_company_id: string | null
+          linked_project_id: string | null
+          respondent_name: string
+          scheduled_at: string | null
+          status: string
+          subjects: string[]
+          updated_at: string
+        }
+        Insert: {
+          company_name: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          linked_company_id?: string | null
+          linked_project_id?: string | null
+          respondent_name: string
+          scheduled_at?: string | null
+          status?: string
+          subjects?: string[]
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          linked_company_id?: string | null
+          linked_project_id?: string | null
+          respondent_name?: string
+          scheduled_at?: string | null
+          status?: string
+          subjects?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotseat_responses_linked_company_id_fkey"
+            columns: ["linked_company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hotseat_responses_linked_project_id_fkey"
+            columns: ["linked_project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interview_scorecard_criteria: {
         Row: {
           created_at: string | null
