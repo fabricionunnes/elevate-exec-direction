@@ -81,10 +81,16 @@ interface SaleItem {
   product?: InventoryProduct;
 }
 
+interface Salesperson {
+  id: string;
+  name: string;
+}
+
 export function ClientSalesModule({ projectId, userRole }: Props) {
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<InventoryProduct[]>([]);
+  const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showDialog, setShowDialog] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -97,6 +103,7 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
     discount_amount: 0,
     notes: "",
     is_paid: true,
+    seller_id: "",
     seller_name: "",
   });
   const [items, setItems] = useState<SaleItem[]>([]);
@@ -110,6 +117,15 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
   const loadData = async () => {
     setLoading(true);
     try {
+      // Get company_id from project
+      const { data: project } = await supabase
+        .from("onboarding_projects")
+        .select("onboarding_company_id")
+        .eq("id", projectId)
+        .single();
+
+      const companyId = project?.onboarding_company_id;
+
       const [salesRes, productsRes] = await Promise.all([
         supabase
           .from("client_inventory_sales")
@@ -123,6 +139,17 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
           .eq("is_active", true)
           .order("name"),
       ]);
+
+      // Fetch salespeople if we have company_id
+      if (companyId) {
+        const { data: salespeopleData } = await supabase
+          .from("company_salespeople")
+          .select("id, name")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name");
+        setSalespeople(salespeopleData || []);
+      }
 
       setSales(salesRes.data || []);
       setProducts(productsRes.data || []);
@@ -143,6 +170,7 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
       discount_amount: 0,
       notes: "",
       is_paid: true,
+      seller_id: "",
       seller_name: "",
     });
     setItems([]);
@@ -233,6 +261,7 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
           customer_document: formData.customer_document || null,
           sale_date: formData.sale_date,
           payment_method: formData.payment_method || null,
+          seller_id: formData.seller_id || null,
           seller_name: formData.seller_name || null,
           notes: formData.notes || null,
           total_amount: subtotal,
@@ -537,11 +566,34 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
 
               <div>
                 <Label>Vendedor</Label>
-                <Input
-                  value={formData.seller_name}
-                  onChange={(e) => setFormData({ ...formData, seller_name: e.target.value })}
-                  placeholder="Nome do vendedor"
-                />
+                <Select
+                  value={formData.seller_id}
+                  onValueChange={(v) => {
+                    const salesperson = salespeople.find((sp) => sp.id === v);
+                    setFormData({
+                      ...formData,
+                      seller_id: v,
+                      seller_name: salesperson?.name || "",
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o vendedor..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {salespeople.length === 0 ? (
+                      <SelectItem value="__empty" disabled>
+                        Nenhum vendedor cadastrado
+                      </SelectItem>
+                    ) : (
+                      salespeople.map((sp) => (
+                        <SelectItem key={sp.id} value={sp.id}>
+                          {sp.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
