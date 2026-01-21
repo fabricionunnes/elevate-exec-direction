@@ -251,6 +251,10 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
       toast.error("Selecione a conta bancária");
       return;
     }
+    if (!formData.payment_method) {
+      toast.error("Selecione a forma de pagamento");
+      return;
+    }
 
     // Check stock availability
     for (const item of items) {
