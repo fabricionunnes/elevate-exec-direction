@@ -131,3 +131,6 @@ verify_jwt = false
 
 [functions.hotseat-public]
 verify_jwt = false
+
+[functions.hotseat-company-summary]
+verify_jwt = true
