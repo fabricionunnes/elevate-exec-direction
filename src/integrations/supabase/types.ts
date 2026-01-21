@@ -2555,6 +2555,724 @@ export type Database = {
           },
         ]
       }
+      client_inventory_audit_log: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          project_id: string
+          record_id: string
+          table_name: string
+          user_role: string | null
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          project_id: string
+          record_id: string
+          table_name: string
+          user_role?: string | null
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          project_id?: string
+          record_id?: string
+          table_name?: string
+          user_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_inventory_audit_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_inventory_budget_items: {
+        Row: {
+          budget_id: string
+          created_at: string
+          estimated_total: number
+          estimated_unit_cost: number
+          id: string
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          budget_id: string
+          created_at?: string
+          estimated_total: number
+          estimated_unit_cost: number
+          id?: string
+          product_id: string
+          quantity: number
+        }
+        Update: {
+          budget_id?: string
+          created_at?: string
+          estimated_total?: number
+          estimated_unit_cost?: number
+          id?: string
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_inventory_budget_items_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_budgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_budget_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_inventory_budgets: {
+        Row: {
+          budget_date: string
+          converted_purchase_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          project_id: string
+          status: string
+          supplier_id: string | null
+          total_amount: number
+          updated_at: string
+          validity_date: string | null
+        }
+        Insert: {
+          budget_date?: string
+          converted_purchase_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          project_id: string
+          status?: string
+          supplier_id?: string | null
+          total_amount?: number
+          updated_at?: string
+          validity_date?: string | null
+        }
+        Update: {
+          budget_date?: string
+          converted_purchase_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          project_id?: string
+          status?: string
+          supplier_id?: string | null
+          total_amount?: number
+          updated_at?: string
+          validity_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_inventory_budgets_converted_purchase_id_fkey"
+            columns: ["converted_purchase_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_budgets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_budgets_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_inventory_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_inventory_categories_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_inventory_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          movement_type: string
+          notes: string | null
+          product_id: string
+          project_id: string
+          quantity: number
+          quantity_after: number
+          quantity_before: number
+          reference_id: string | null
+          reference_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movement_type: string
+          notes?: string | null
+          product_id: string
+          project_id: string
+          quantity: number
+          quantity_after: number
+          quantity_before: number
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movement_type?: string
+          notes?: string | null
+          product_id?: string
+          project_id?: string
+          quantity?: number
+          quantity_after?: number
+          quantity_before?: number
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_inventory_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_movements_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_inventory_products: {
+        Row: {
+          allow_fractional: boolean | null
+          allow_negative_stock: boolean | null
+          average_cost: number | null
+          base_unit: string
+          category_id: string | null
+          conversion_factor: number | null
+          created_at: string
+          created_by: string | null
+          current_stock: number
+          description: string | null
+          id: string
+          is_active: boolean | null
+          min_stock: number | null
+          name: string
+          notes: string | null
+          project_id: string
+          sale_price: number | null
+          sale_unit: string | null
+          sku: string | null
+          updated_at: string
+        }
+        Insert: {
+          allow_fractional?: boolean | null
+          allow_negative_stock?: boolean | null
+          average_cost?: number | null
+          base_unit?: string
+          category_id?: string | null
+          conversion_factor?: number | null
+          created_at?: string
+          created_by?: string | null
+          current_stock?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          min_stock?: number | null
+          name: string
+          notes?: string | null
+          project_id: string
+          sale_price?: number | null
+          sale_unit?: string | null
+          sku?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allow_fractional?: boolean | null
+          allow_negative_stock?: boolean | null
+          average_cost?: number | null
+          base_unit?: string
+          category_id?: string | null
+          conversion_factor?: number | null
+          created_at?: string
+          created_by?: string | null
+          current_stock?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          min_stock?: number | null
+          name?: string
+          notes?: string | null
+          project_id?: string
+          sale_price?: number | null
+          sale_unit?: string | null
+          sku?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_inventory_products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_products_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_inventory_purchase_items: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          purchase_id: string
+          quantity: number
+          total_cost: number
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          purchase_id: string
+          quantity: number
+          total_cost: number
+          unit_cost: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          purchase_id?: string
+          quantity?: number
+          total_cost?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_inventory_purchase_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_inventory_purchases: {
+        Row: {
+          attachment_url: string | null
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          invoice_number: string | null
+          notes: string | null
+          payable_id: string | null
+          payment_method: string | null
+          project_id: string
+          purchase_date: string
+          status: string
+          supplier_id: string | null
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          payable_id?: string | null
+          payment_method?: string | null
+          project_id: string
+          purchase_date?: string
+          status?: string
+          supplier_id?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          attachment_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          payable_id?: string | null
+          payment_method?: string | null
+          project_id?: string
+          purchase_date?: string
+          status?: string
+          supplier_id?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_inventory_purchases_payable_id_fkey"
+            columns: ["payable_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_payables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_purchases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_inventory_sale_items: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          quantity: number
+          quantity_base: number
+          sale_id: string
+          total_cost: number
+          total_price: number
+          unit_cost: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity: number
+          quantity_base: number
+          sale_id: string
+          total_cost: number
+          total_price: number
+          unit_cost: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity?: number
+          quantity_base?: number
+          sale_id?: string
+          total_cost?: number
+          total_price?: number
+          unit_cost?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_inventory_sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_inventory_sales: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_document: string | null
+          customer_name: string | null
+          discount_amount: number | null
+          final_amount: number
+          gross_profit: number | null
+          id: string
+          notes: string | null
+          payment_method: string | null
+          profit_margin: number | null
+          project_id: string
+          receivable_id: string | null
+          sale_date: string
+          status: string
+          total_amount: number
+          total_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_document?: string | null
+          customer_name?: string | null
+          discount_amount?: number | null
+          final_amount?: number
+          gross_profit?: number | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          profit_margin?: number | null
+          project_id: string
+          receivable_id?: string | null
+          sale_date?: string
+          status?: string
+          total_amount?: number
+          total_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_document?: string | null
+          customer_name?: string | null
+          discount_amount?: number | null
+          final_amount?: number
+          gross_profit?: number | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          profit_margin?: number | null
+          project_id?: string
+          receivable_id?: string | null
+          sale_date?: string
+          status?: string
+          total_amount?: number
+          total_cost?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_inventory_sales_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_sales_receivable_id_fkey"
+            columns: ["receivable_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_receivables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_inventory_settings: {
+        Row: {
+          alerts_enabled: boolean | null
+          allow_negative_stock: boolean | null
+          created_at: string
+          id: string
+          loss_category_id: string | null
+          project_id: string
+          purchase_category_id: string | null
+          sale_category_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          alerts_enabled?: boolean | null
+          allow_negative_stock?: boolean | null
+          created_at?: string
+          id?: string
+          loss_category_id?: string | null
+          project_id: string
+          purchase_category_id?: string | null
+          sale_category_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alerts_enabled?: boolean | null
+          allow_negative_stock?: boolean | null
+          created_at?: string
+          id?: string
+          loss_category_id?: string | null
+          project_id?: string
+          purchase_category_id?: string | null
+          sale_category_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_inventory_settings_loss_category_id_fkey"
+            columns: ["loss_category_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_settings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_settings_purchase_category_id_fkey"
+            columns: ["purchase_category_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_settings_sale_category_id_fkey"
+            columns: ["sale_category_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_inventory_suppliers: {
+        Row: {
+          address: string | null
+          contact_name: string | null
+          created_at: string
+          created_by: string | null
+          document: string | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          notes: string | null
+          phone: string | null
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          document?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          document?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_inventory_suppliers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_referrals: {
         Row: {
           closed_at: string | null
@@ -10698,6 +11416,10 @@ export type Database = {
       }
       is_portal_company_member: {
         Args: { check_company_id: string; check_user_id: string }
+        Returns: boolean
+      }
+      is_project_client: {
+        Args: { check_project_id: string }
         Returns: boolean
       }
       staff_has_company_access: {
