@@ -180,7 +180,6 @@ export type InventoryViewType =
   | 'purchases'
   | 'suppliers'
   | 'budgets'
-  | 'sales'
   | 'movements'
   | 'reports'
   | 'settings';

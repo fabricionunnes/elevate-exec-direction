@@ -3086,6 +3086,7 @@ export type Database = {
           id: string
           notes: string | null
           payment_method: string | null
+          payment_status: string | null
           profit_margin: number | null
           project_id: string
           receivable_id: string | null
@@ -3106,6 +3107,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string | null
+          payment_status?: string | null
           profit_margin?: number | null
           project_id: string
           receivable_id?: string | null
@@ -3126,6 +3128,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string | null
+          payment_status?: string | null
           profit_margin?: number | null
           project_id?: string
           receivable_id?: string | null

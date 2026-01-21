@@ -23,6 +23,7 @@ import {
   Users,
   Wallet,
   Package,
+  ShoppingBag,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -44,6 +45,7 @@ import { ClientHRView } from "@/components/client-portal/ClientHRView";
 import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualBoard";
 import { ClientFinancialModule } from "@/components/client-financial/ClientFinancialModule";
 import { ClientInventoryModule } from "@/components/client-inventory/ClientInventoryModule";
+import { ClientSalesModule } from "@/components/client-sales/ClientSalesModule";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -95,7 +97,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -283,6 +285,7 @@ const ClientOnboardingPage = () => {
         board: "Board Virtual",
         financial: "Financeiro",
         inventory: "Estoque & Compras",
+        sales: "Vendas",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
@@ -421,6 +424,7 @@ const ClientOnboardingPage = () => {
     { id: "trail" as ViewType, icon: Map, label: "Trilha" },
     { id: "timeline" as ViewType, icon: Calendar, label: "Cronograma" },
     { id: "list" as ViewType, icon: List, label: "Lista" },
+    { id: "sales" as ViewType, icon: ShoppingBag, label: "Vendas" },
     { id: "financial" as ViewType, icon: Wallet, label: "Financeiro" },
     { id: "inventory" as ViewType, icon: Package, label: "Estoque" },
     { id: "tickets" as ViewType, icon: MessageSquare, label: "Chamados" },
@@ -776,6 +780,20 @@ const ClientOnboardingPage = () => {
               exit={{ opacity: 0, x: 20 }}
             >
               <ClientInventoryModule 
+                projectId={projectId || ""} 
+                userRole={currentUser?.role}
+              />
+            </motion.div>
+          )}
+
+          {activeView === "sales" && (
+            <motion.div
+              key="sales"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientSalesModule 
                 projectId={projectId || ""} 
                 userRole={currentUser?.role}
               />
