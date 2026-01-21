@@ -191,6 +191,14 @@ export function ConsultantOneOnOnePanel() {
       setLoadingProjects(true);
       
       try {
+        const today = format(new Date(), "yyyy-MM-dd");
+        const weekAgo = format(new Date(Date.now() - 7 * 86400000), "yyyy-MM-dd");
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const currentYear = currentDate.getFullYear();
+        const startOfMonthStr = new Date(currentYear, currentMonth - 1, 1).toISOString().split("T")[0];
+        const monthYear = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
+
         // Fetch projects for this consultant
         const { data: projectsData } = await supabase
           .from("onboarding_projects")
@@ -204,350 +212,397 @@ export function ConsultantOneOnOnePanel() {
           .or(`consultant_id.eq.${selectedConsultant},cs_id.eq.${selectedConsultant}`)
           .in("status", ["active", "implementation", "ongoing", "expansion"]);
 
-        if (projectsData) {
-          // Calculate metrics
-          let criticalCount = 0;
-          let atRiskCount = 0;
-          let healthyCount = 0;
-          let totalOverdue = 0;
-          let totalGoalProjection = 0;
-          let goalsCount = 0;
+        if (!projectsData || projectsData.length === 0) {
+          setMetrics({
+            totalProjects: 0,
+            criticalProjects: 0,
+            atRiskProjects: 0,
+            healthyProjects: 0,
+            avgHealthScore: 0,
+            engagementScore: 0,
+            retentionRate: 0,
+            overdueTasksTotal: 0,
+            meetingsThisWeek: 0,
+            avgGoalProjection: 0
+          });
+          setProjects([]);
+          setAgendaSections([]);
+          setNewCompanies([]);
+          setLoadingProjects(false);
+          return;
+        }
 
-          const scores = projectsData
-            .filter(p => p.client_health_scores?.total_score)
-            .map(p => {
-              const score = p.client_health_scores!.total_score;
-              if (score < 40) criticalCount++;
-              else if (score < 70) atRiskCount++;
-              else healthyCount++;
-              return score;
-            });
+        const projectIds = projectsData.map(p => p.id);
+        const companyIds = [...new Set(projectsData.map(p => p.onboarding_company_id).filter(Boolean))] as string[];
+
+        // Fetch all related data in parallel (batch queries instead of N+1)
+        const [
+          overdueTasksResult,
+          lastMeetingsResult,
+          latestNpsResult,
+          kpisResult,
+          meetingsCountResult,
+          engagementResult
+        ] = await Promise.all([
+          // Overdue tasks for all projects at once
+          supabase
+            .from("onboarding_tasks")
+            .select("project_id")
+            .in("project_id", projectIds)
+            .lt("due_date", today)
+            .neq("status", "completed"),
           
-          const avgHealth = scores.length > 0 
-            ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-            : 0;
-
-          // Fetch additional data for each project
-          const briefings: ProjectBriefing[] = [];
-          const urgent: AgendaSection['items'] = [];
-          const attention: AgendaSection['items'] = [];
-          const celebrate: AgendaSection['items'] = [];
-          const discuss: AgendaSection['items'] = [];
-
-          const today = format(new Date(), "yyyy-MM-dd");
-          const weekAgo = format(new Date(Date.now() - 7 * 86400000), "yyyy-MM-dd");
+          // Last meetings for all projects at once
+          supabase
+            .from("onboarding_meeting_notes")
+            .select("project_id, meeting_date")
+            .in("project_id", projectIds)
+            .eq("is_finalized", true)
+            .order("meeting_date", { ascending: false }),
           
-          for (const project of projectsData) {
-            // Get overdue tasks count
-            const { count: overdueCount } = await supabase
-              .from("onboarding_tasks")
-              .select("id", { count: "exact", head: true })
-              .eq("project_id", project.id)
-              .lt("due_date", today)
-              .neq("status", "completed");
-
-            totalOverdue += overdueCount || 0;
-
-            // Get last meeting
-            const { data: lastMeeting } = await supabase
-              .from("onboarding_meeting_notes")
-              .select("meeting_date")
-              .eq("project_id", project.id)
-              .eq("is_finalized", true)
-              .order("meeting_date", { ascending: false })
-              .limit(1)
-              .single();
-
-            // Get latest NPS with feedback
-            const { data: latestNps } = await supabase
-              .from("onboarding_nps_responses")
-              .select("score, feedback")
-              .eq("project_id", project.id)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .single();
-
-            // Calculate goal achievement to match the KPI Dashboard (Atingimento de Metas)
-            const currentDate = new Date();
-            const currentMonth = currentDate.getMonth() + 1;
-            const currentYear = currentDate.getFullYear();
-
-            const startOfMonthStr = new Date(currentYear, currentMonth - 1, 1).toISOString().split("T")[0];
-            // KPI Dashboard defaults to a date range; for 1:1 we use month-to-date
-            const endDateStr = today;
-
-            const startDateObj = new Date(startOfMonthStr);
-            const endDateObj = new Date(endDateStr);
-            const daysDiff =
-              Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-            // Fetch KPIs for this company
-            const companyId = project.onboarding_company_id;
-            const kpisData: KPIData[] = [];
-
-            let overallRealized = 0;
-            let overallTarget = 0;
-
-            if (companyId) {
-              // Get company KPIs (same base set as KPI dashboard: all active)
-              const { data: kpis } = await supabase
-                .from("company_kpis")
-                .select("id, name, target_value, kpi_type, periodicity")
-                .eq("company_id", companyId)
-                .eq("is_active", true)
-                .order("sort_order")
-                .limit(100);
-
-              if (kpis && kpis.length > 0) {
-                const monthYear = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
-
-                for (const kpi of kpis) {
-                  // Fetch entries for this KPI (month-to-date)
-                  const { data: entries } = await supabase
-                    .from("kpi_entries")
-                    .select("value")
-                    .eq("kpi_id", kpi.id)
-                    .gte("entry_date", startOfMonthStr)
-                    .lte("entry_date", endDateStr);
-
-                  // Fetch monthly targets for company scope (prefer level "Meta")
-                  const { data: monthlyTargets } = await supabase
-                    .from("kpi_monthly_targets")
-                    .select("target_value, level_name, level_order")
-                    .eq("kpi_id", kpi.id)
-                    .eq("month_year", monthYear)
-                    .is("unit_id", null)
-                    .is("team_id", null)
-                    .is("salesperson_id", null)
-                    .order("level_order", { ascending: true });
-
-                  const preferredMonthlyTarget =
-                    monthlyTargets?.find(t => t.level_name === "Meta") ?? monthlyTargets?.[0];
-
-                  const baseTarget = preferredMonthlyTarget?.target_value
-                    ? Number(preferredMonthlyTarget.target_value)
-                    : Number(kpi.target_value) || 0;
-
-                  // Match KPI dashboard target logic for the selected date range
-                  let targetForPeriod = baseTarget;
-                  if (kpi.periodicity === "daily") {
-                    targetForPeriod = baseTarget * daysDiff;
-                  } else if (kpi.periodicity === "weekly") {
-                    targetForPeriod = baseTarget * Math.ceil(daysDiff / 7);
-                  }
-
-                  const totalValue = entries?.reduce((sum, e) => sum + (Number(e.value) || 0), 0) || 0;
-                  const percentage = targetForPeriod > 0 ? (totalValue / targetForPeriod) * 100 : 0;
-
-                  kpisData.push({
-                    name: kpi.name,
-                    target: targetForPeriod,
-                    result: totalValue,
-                    percentage,
-                    kpiType: kpi.kpi_type,
-                  });
-
-                  // Overall achievement sums only KPIs that actually have targets
-                  if (targetForPeriod > 0) {
-                    overallRealized += totalValue;
-                    overallTarget += targetForPeriod;
-                  }
-                }
-              }
-            }
-
-            const finalGoalProjection = overallTarget > 0 ? (overallRealized / overallTarget) * 100 : 0;
-
-            const daysSinceMeeting = lastMeeting?.meeting_date
-              ? differenceInDays(new Date(), new Date(lastMeeting.meeting_date))
-              : undefined;
-
-            const healthScore = project.client_health_scores?.total_score || 50;
-            const riskLevel = project.client_health_scores?.risk_level || "medium";
-            const companyName = project.onboarding_companies?.name || "Empresa";
-
-            briefings.push({
-              id: project.id,
-              company_name: companyName,
-              health_score: healthScore,
-              risk_level: riskLevel,
-              goal_projection: finalGoalProjection,
-              last_meeting_date: lastMeeting?.meeting_date,
-              overdue_tasks: overdueCount || 0,
-              nps_score: latestNps?.score,
-              days_since_meeting: daysSinceMeeting,
-              segment: project.onboarding_companies?.segment,
-              last_nps_feedback: latestNps?.feedback,
-              company_id: companyId,
-              kpis: kpisData
-            });
-
-            // Categorize for agenda
-            if (healthScore < 40) {
-              urgent.push({
-                company: companyName,
-                projectId: project.id,
-                reason: `Health Score crítico (${healthScore})`,
-                healthScore,
-              });
-            } else if (
-              healthScore < 60 ||
-              (overdueCount && overdueCount > 3) ||
-              (daysSinceMeeting && daysSinceMeeting > 14)
-            ) {
-              const reasons = [];
-              if (healthScore < 60) reasons.push(`Health Score ${healthScore}`);
-              if (overdueCount && overdueCount > 3) reasons.push(`${overdueCount} tarefas atrasadas`);
-              if (daysSinceMeeting && daysSinceMeeting > 14) reasons.push(`${daysSinceMeeting}d sem reunião`);
-
-              attention.push({
-                company: companyName,
-                projectId: project.id,
-                reason: reasons.join(" • "),
-                healthScore,
-              });
-            } else if (healthScore >= 80 && latestNps?.score && latestNps.score >= 9) {
-              celebrate.push({
-                company: companyName,
-                projectId: project.id,
-                reason: `Health ${healthScore} • NPS ${latestNps.score}`,
-                healthScore,
-              });
-            } else {
-              discuss.push({
-                company: companyName,
-                projectId: project.id,
-                reason: finalGoalProjection > 0 ? `Meta ${finalGoalProjection.toFixed(0)}%` : "Alinhamento geral",
-                healthScore,
-              });
-            }
-          }
-
-          // Count meetings this week
-          const { count: meetingsCount } = await supabase
+          // Latest NPS for all projects at once
+          supabase
+            .from("onboarding_nps_responses")
+            .select("project_id, score, feedback, created_at")
+            .in("project_id", projectIds)
+            .order("created_at", { ascending: false }),
+          
+          // All KPIs for all companies at once
+          companyIds.length > 0 ? supabase
+            .from("company_kpis")
+            .select("id, company_id, name, target_value, kpi_type, periodicity")
+            .in("company_id", companyIds)
+            .eq("is_active", true)
+            .order("sort_order")
+            .limit(500) : Promise.resolve({ data: [] }),
+          
+          // Meetings count this week
+          supabase
             .from("onboarding_meeting_notes")
             .select("id", { count: "exact", head: true })
             .eq("staff_id", selectedConsultant)
             .gte("meeting_date", weekAgo)
             .lte("meeting_date", today)
-            .eq("is_finalized", true);
+            .eq("is_finalized", true),
+          
+          // Engagement score
+          supabase
+            .from("consultant_engagement_scores")
+            .select("total_score, retention_score")
+            .eq("staff_id", selectedConsultant)
+            .order("calculation_date", { ascending: false })
+            .limit(1)
+            .single()
+        ]);
 
-          setMetrics({
-            totalProjects: projectsData.length,
-            criticalProjects: criticalCount,
-            atRiskProjects: atRiskCount,
-            healthyProjects: healthyCount,
-            avgHealthScore: avgHealth,
-            engagementScore: 0,
-            retentionRate: 0,
-            overdueTasksTotal: totalOverdue,
-            meetingsThisWeek: meetingsCount || 0,
-            avgGoalProjection: goalsCount > 0 ? Math.round(totalGoalProjection / goalsCount) : 0
+        // Build lookup maps from batch results
+        const overdueCountByProject = new Map<string, number>();
+        (overdueTasksResult.data || []).forEach(t => {
+          overdueCountByProject.set(t.project_id, (overdueCountByProject.get(t.project_id) || 0) + 1);
+        });
+
+        const lastMeetingByProject = new Map<string, string>();
+        (lastMeetingsResult.data || []).forEach(m => {
+          if (!lastMeetingByProject.has(m.project_id)) {
+            lastMeetingByProject.set(m.project_id, m.meeting_date);
+          }
+        });
+
+        const latestNpsByProject = new Map<string, { score: number; feedback: string | null }>();
+        (latestNpsResult.data || []).forEach(n => {
+          if (!latestNpsByProject.has(n.project_id)) {
+            latestNpsByProject.set(n.project_id, { score: n.score, feedback: n.feedback });
+          }
+        });
+
+        const kpisByCompany = new Map<string, typeof kpisResult.data>();
+        (kpisResult.data || []).forEach(k => {
+          if (!kpisByCompany.has(k.company_id)) {
+            kpisByCompany.set(k.company_id, []);
+          }
+          kpisByCompany.get(k.company_id)!.push(k);
+        });
+
+        // Fetch KPI entries and targets in batch if there are KPIs
+        const allKpiIds = (kpisResult.data || []).map(k => k.id);
+        let kpiEntriesMap = new Map<string, number>();
+        let kpiMonthlyTargetsMap = new Map<string, { target_value: number; level_name: string }[]>();
+
+        if (allKpiIds.length > 0) {
+          const [entriesResult, targetsResult] = await Promise.all([
+            supabase
+              .from("kpi_entries")
+              .select("kpi_id, value")
+              .in("kpi_id", allKpiIds)
+              .gte("entry_date", startOfMonthStr)
+              .lte("entry_date", today),
+            supabase
+              .from("kpi_monthly_targets")
+              .select("kpi_id, target_value, level_name, level_order")
+              .in("kpi_id", allKpiIds)
+              .eq("month_year", monthYear)
+              .is("unit_id", null)
+              .is("team_id", null)
+              .is("salesperson_id", null)
+              .order("level_order", { ascending: true })
+          ]);
+
+          // Aggregate entries by KPI
+          (entriesResult.data || []).forEach(e => {
+            kpiEntriesMap.set(e.kpi_id, (kpiEntriesMap.get(e.kpi_id) || 0) + (Number(e.value) || 0));
           });
 
-          // Build agenda sections
-          const sections: AgendaSection[] = [];
-          if (urgent.length > 0) sections.push({ type: 'urgent', title: '🚨 Urgente - Intervenção Necessária', items: urgent });
-          if (attention.length > 0) sections.push({ type: 'attention', title: '⚠️ Atenção - Monitoramento Próximo', items: attention });
-          if (celebrate.length > 0) sections.push({ type: 'celebrate', title: '🎉 Celebrar - Cases de Sucesso', items: celebrate });
-          if (discuss.length > 0) sections.push({ type: 'discuss', title: '💬 Alinhamento Geral', items: discuss.slice(0, 3) });
+          // Group targets by KPI
+          (targetsResult.data || []).forEach(t => {
+            if (!kpiMonthlyTargetsMap.has(t.kpi_id)) {
+              kpiMonthlyTargetsMap.set(t.kpi_id, []);
+            }
+            kpiMonthlyTargetsMap.get(t.kpi_id)!.push({
+              target_value: Number(t.target_value),
+              level_name: t.level_name
+            });
+          });
+        }
+
+        // Calculate days in period for target adjustment
+        const startDateObj = new Date(startOfMonthStr);
+        const endDateObj = new Date(today);
+        const daysDiff = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+        // Process projects with pre-fetched data
+        let criticalCount = 0;
+        let atRiskCount = 0;
+        let healthyCount = 0;
+        let totalOverdue = 0;
+
+        const briefings: ProjectBriefing[] = [];
+        const urgent: AgendaSection['items'] = [];
+        const attention: AgendaSection['items'] = [];
+        const celebrate: AgendaSection['items'] = [];
+        const discuss: AgendaSection['items'] = [];
+
+        for (const project of projectsData) {
+          const healthScore = project.client_health_scores?.total_score || 50;
           
-          setAgendaSections(sections);
+          if (healthScore < 40) criticalCount++;
+          else if (healthScore < 70) atRiskCount++;
+          else healthyCount++;
 
-          // Sort by health score (worst first)
-          briefings.sort((a, b) => a.health_score - b.health_score);
-          setProjects(briefings);
+          const overdueCount = overdueCountByProject.get(project.id) || 0;
+          totalOverdue += overdueCount;
 
-          // Fetch new companies (started within last 90 days) for this consultant
-          const ninetyDaysAgo = new Date();
-          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-          
-          const { data: newProjectsData } = await supabase
-            .from("onboarding_projects")
-            .select(`
-              id,
-              created_at,
-              onboarding_companies(name, contract_start_date),
-              client_health_scores(total_score)
-            `)
-            .or(`consultant_id.eq.${selectedConsultant},cs_id.eq.${selectedConsultant}`)
-            .in("status", ["active", "implementation", "ongoing"])
-            .gte("created_at", ninetyDaysAgo.toISOString());
+          const lastMeetingDate = lastMeetingByProject.get(project.id);
+          const daysSinceMeeting = lastMeetingDate
+            ? differenceInDays(new Date(), new Date(lastMeetingDate))
+            : undefined;
 
-          if (newProjectsData && newProjectsData.length > 0) {
-            const projectIds = newProjectsData.map(p => p.id);
+          const npsData = latestNpsByProject.get(project.id);
+          const companyId = project.onboarding_company_id;
+          const companyName = project.onboarding_companies?.name || "Empresa";
+          const riskLevel = project.client_health_scores?.risk_level || "medium";
+
+          // Calculate KPI goal projection using pre-fetched data
+          const kpisData: KPIData[] = [];
+          let overallRealized = 0;
+          let overallTarget = 0;
+
+          if (companyId) {
+            const companyKpis = kpisByCompany.get(companyId) || [];
             
-            const { data: taskCounts } = await supabase
-              .from("onboarding_tasks")
-              .select("project_id, status")
-              .in("project_id", projectIds);
+            for (const kpi of companyKpis) {
+              const monthlyTargets = kpiMonthlyTargetsMap.get(kpi.id) || [];
+              const preferredMonthlyTarget = monthlyTargets.find(t => t.level_name === "Meta") ?? monthlyTargets[0];
 
-            const { data: meetingsData } = await supabase
-              .from("onboarding_meeting_notes")
-              .select("project_id, meeting_date")
-              .in("project_id", projectIds)
-              .order("meeting_date", { ascending: false });
+              const baseTarget = preferredMonthlyTarget?.target_value
+                ? Number(preferredMonthlyTarget.target_value)
+                : Number(kpi.target_value) || 0;
 
-            const taskCountMap = new Map<string, { completed: number; total: number }>();
-            if (taskCounts) {
-              taskCounts.forEach(t => {
-                if (!taskCountMap.has(t.project_id)) {
-                  taskCountMap.set(t.project_id, { completed: 0, total: 0 });
-                }
-                const counts = taskCountMap.get(t.project_id)!;
-                counts.total++;
-                if (t.status === 'completed') counts.completed++;
+              let targetForPeriod = baseTarget;
+              if (kpi.periodicity === "daily") {
+                targetForPeriod = baseTarget * daysDiff;
+              } else if (kpi.periodicity === "weekly") {
+                targetForPeriod = baseTarget * Math.ceil(daysDiff / 7);
+              }
+
+              const totalValue = kpiEntriesMap.get(kpi.id) || 0;
+              const percentage = targetForPeriod > 0 ? (totalValue / targetForPeriod) * 100 : 0;
+
+              kpisData.push({
+                name: kpi.name,
+                target: targetForPeriod,
+                result: totalValue,
+                percentage,
+                kpiType: kpi.kpi_type,
               });
+
+              if (targetForPeriod > 0) {
+                overallRealized += totalValue;
+                overallTarget += targetForPeriod;
+              }
             }
+          }
 
-            const meetingMap = new Map<string, string>();
-            if (meetingsData) {
-              meetingsData.forEach(m => {
-                if (!meetingMap.has(m.project_id)) {
-                  meetingMap.set(m.project_id, m.meeting_date);
-                }
-              });
-            }
+          const finalGoalProjection = overallTarget > 0 ? (overallRealized / overallTarget) * 100 : 0;
 
-            const newCompaniesData: NewCompany[] = newProjectsData.map(p => {
-              const startDate = p.onboarding_companies?.contract_start_date 
-                ? new Date(p.onboarding_companies.contract_start_date)
-                : new Date(p.created_at);
-              const daysSince = Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-              const tasks = taskCountMap.get(p.id) || { completed: 0, total: 0 };
-              
-              return {
-                id: p.id,
-                company_name: p.onboarding_companies?.name || "Empresa",
-                days_since_start: daysSince,
-                health_score: p.client_health_scores?.total_score || 50,
-                completed_tasks: tasks.completed,
-                total_tasks: tasks.total,
-                last_meeting_date: meetingMap.get(p.id)
-              };
-            }).sort((a, b) => a.days_since_start - b.days_since_start);
+          briefings.push({
+            id: project.id,
+            company_name: companyName,
+            health_score: healthScore,
+            risk_level: riskLevel,
+            goal_projection: finalGoalProjection,
+            last_meeting_date: lastMeetingDate,
+            overdue_tasks: overdueCount,
+            nps_score: npsData?.score,
+            days_since_meeting: daysSinceMeeting,
+            segment: project.onboarding_companies?.segment,
+            last_nps_feedback: npsData?.feedback,
+            company_id: companyId,
+            kpis: kpisData
+          });
 
-            setNewCompanies(newCompaniesData);
+          // Categorize for agenda
+          if (healthScore < 40) {
+            urgent.push({
+              company: companyName,
+              projectId: project.id,
+              reason: `Health Score crítico (${healthScore})`,
+              healthScore,
+            });
+          } else if (
+            healthScore < 60 ||
+            overdueCount > 3 ||
+            (daysSinceMeeting && daysSinceMeeting > 14)
+          ) {
+            const reasons = [];
+            if (healthScore < 60) reasons.push(`Health Score ${healthScore}`);
+            if (overdueCount > 3) reasons.push(`${overdueCount} tarefas atrasadas`);
+            if (daysSinceMeeting && daysSinceMeeting > 14) reasons.push(`${daysSinceMeeting}d sem reunião`);
+
+            attention.push({
+              company: companyName,
+              projectId: project.id,
+              reason: reasons.join(" • "),
+              healthScore,
+            });
+          } else if (healthScore >= 80 && npsData?.score && npsData.score >= 9) {
+            celebrate.push({
+              company: companyName,
+              projectId: project.id,
+              reason: `Health ${healthScore} • NPS ${npsData.score}`,
+              healthScore,
+            });
           } else {
-            setNewCompanies([]);
+            discuss.push({
+              company: companyName,
+              projectId: project.id,
+              reason: finalGoalProjection > 0 ? `Meta ${finalGoalProjection.toFixed(0)}%` : "Alinhamento geral",
+              healthScore,
+            });
           }
         }
 
-        // Fetch engagement score
-        const { data: engagementData } = await supabase
-          .from("consultant_engagement_scores")
-          .select("total_score, retention_score")
-          .eq("staff_id", selectedConsultant)
-          .order("calculation_date", { ascending: false })
-          .limit(1)
-          .single();
+        const scores = projectsData
+          .filter(p => p.client_health_scores?.total_score)
+          .map(p => p.client_health_scores!.total_score);
+        const avgHealth = scores.length > 0
+          ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+          : 0;
 
-        if (engagementData) {
-          setMetrics(prev => prev ? {
-            ...prev,
-            engagementScore: engagementData.total_score || 0,
-            retentionRate: engagementData.retention_score || 0
-          } : null);
+        setMetrics({
+          totalProjects: projectsData.length,
+          criticalProjects: criticalCount,
+          atRiskProjects: atRiskCount,
+          healthyProjects: healthyCount,
+          avgHealthScore: avgHealth,
+          engagementScore: engagementResult.data?.total_score || 0,
+          retentionRate: engagementResult.data?.retention_score || 0,
+          overdueTasksTotal: totalOverdue,
+          meetingsThisWeek: meetingsCountResult.count || 0,
+          avgGoalProjection: 0
+        });
+
+        // Build agenda sections
+        const sections: AgendaSection[] = [];
+        if (urgent.length > 0) sections.push({ type: 'urgent', title: '🚨 Urgente - Intervenção Necessária', items: urgent });
+        if (attention.length > 0) sections.push({ type: 'attention', title: '⚠️ Atenção - Monitoramento Próximo', items: attention });
+        if (celebrate.length > 0) sections.push({ type: 'celebrate', title: '🎉 Celebrar - Cases de Sucesso', items: celebrate });
+        if (discuss.length > 0) sections.push({ type: 'discuss', title: '💬 Alinhamento Geral', items: discuss.slice(0, 3) });
+
+        setAgendaSections(sections);
+
+        // Sort by health score (worst first)
+        briefings.sort((a, b) => a.health_score - b.health_score);
+        setProjects(briefings);
+
+        // Fetch new companies (started within last 90 days) for this consultant
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+        const { data: newProjectsData } = await supabase
+          .from("onboarding_projects")
+          .select(`
+            id,
+            created_at,
+            onboarding_companies(name, contract_start_date),
+            client_health_scores(total_score)
+          `)
+          .or(`consultant_id.eq.${selectedConsultant},cs_id.eq.${selectedConsultant}`)
+          .in("status", ["active", "implementation", "ongoing"])
+          .gte("created_at", ninetyDaysAgo.toISOString());
+
+        if (newProjectsData && newProjectsData.length > 0) {
+          const newProjectIds = newProjectsData.map(p => p.id);
+
+          const [taskCountsResult, meetingsDataResult] = await Promise.all([
+            supabase
+              .from("onboarding_tasks")
+              .select("project_id, status")
+              .in("project_id", newProjectIds),
+            supabase
+              .from("onboarding_meeting_notes")
+              .select("project_id, meeting_date")
+              .in("project_id", newProjectIds)
+              .order("meeting_date", { ascending: false })
+          ]);
+
+          const taskCountMap = new Map<string, { completed: number; total: number }>();
+          (taskCountsResult.data || []).forEach(t => {
+            if (!taskCountMap.has(t.project_id)) {
+              taskCountMap.set(t.project_id, { completed: 0, total: 0 });
+            }
+            const counts = taskCountMap.get(t.project_id)!;
+            counts.total++;
+            if (t.status === 'completed') counts.completed++;
+          });
+
+          const meetingMap = new Map<string, string>();
+          (meetingsDataResult.data || []).forEach(m => {
+            if (!meetingMap.has(m.project_id)) {
+              meetingMap.set(m.project_id, m.meeting_date);
+            }
+          });
+
+          const newCompaniesData: NewCompany[] = newProjectsData.map(p => {
+            const startDate = p.onboarding_companies?.contract_start_date
+              ? new Date(p.onboarding_companies.contract_start_date)
+              : new Date(p.created_at);
+            const daysSince = Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+            const tasks = taskCountMap.get(p.id) || { completed: 0, total: 0 };
+
+            return {
+              id: p.id,
+              company_name: p.onboarding_companies?.name || "Empresa",
+              days_since_start: daysSince,
+              health_score: p.client_health_scores?.total_score || 50,
+              completed_tasks: tasks.completed,
+              total_tasks: tasks.total,
+              last_meeting_date: meetingMap.get(p.id)
+            };
+          }).sort((a, b) => a.days_since_start - b.days_since_start);
+
+          setNewCompanies(newCompaniesData);
+        } else {
+          setNewCompanies([]);
         }
 
       } catch (error) {
