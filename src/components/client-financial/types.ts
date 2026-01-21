@@ -107,6 +107,7 @@ export type FinancialViewType =
   | 'dashboard' 
   | 'receivables' 
   | 'payables' 
+  | 'banks'
   | 'recurring' 
   | 'cashflow' 
   | 'reports' 
