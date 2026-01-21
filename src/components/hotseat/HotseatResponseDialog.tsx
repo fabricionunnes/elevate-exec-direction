@@ -35,7 +35,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, CalendarIcon } from "lucide-react";
 import {
   Tabs,
   TabsContent,
@@ -67,6 +67,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ScheduleMeetingDialog } from "@/components/onboarding-tasks/ScheduleMeetingDialog";
 import ReactMarkdown from "react-markdown";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 interface HotseatResponse {
   id: string;
@@ -140,8 +141,8 @@ export function HotseatResponseDialog({
   const [status, setStatus] = useState<string>(response.status);
   
   const [newNote, setNewNote] = useState("");
-  const [tasksList, setTasksList] = useState<{ title: string; assigneeId: string }[]>([
-    { title: "", assigneeId: "" }
+  const [tasksList, setTasksList] = useState<{ title: string; assigneeId: string; dueDate: Date | null }[]>([
+    { title: "", assigneeId: "", dueDate: null }
   ]);
   
   const [isSaving, setIsSaving] = useState(false);
@@ -400,16 +401,20 @@ export function HotseatResponseDialog({
   };
 
   const addTask = () => {
-    setTasksList([...tasksList, { title: "", assigneeId: "" }]);
+    setTasksList([...tasksList, { title: "", assigneeId: "", dueDate: null }]);
   };
 
   const removeTask = (index: number) => {
     setTasksList(tasksList.filter((_, i) => i !== index));
   };
 
-  const updateTask = (index: number, field: "title" | "assigneeId", value: string) => {
+  const updateTask = (index: number, field: "title" | "assigneeId" | "dueDate", value: string | Date | null) => {
     const updated = [...tasksList];
-    updated[index][field] = value;
+    if (field === "dueDate") {
+      updated[index][field] = value as Date | null;
+    } else {
+      updated[index][field] = value as string;
+    }
     setTasksList(updated);
   };
 
@@ -435,6 +440,7 @@ export function HotseatResponseDialog({
         status: "pending" as const,
         priority: "high" as const,
         responsible_staff_id: task.assigneeId || null,
+        due_date: task.dueDate ? format(task.dueDate, "yyyy-MM-dd") : null,
       }));
 
       const { error } = await supabase
@@ -444,7 +450,7 @@ export function HotseatResponseDialog({
       if (error) throw error;
 
       toast.success(`${validTasks.length} tarefa(s) criada(s) com sucesso!`);
-      setTasksList([{ title: "", assigneeId: "" }]);
+      setTasksList([{ title: "", assigneeId: "", dueDate: null }]);
     } catch (error) {
       console.error("Error creating tasks:", error);
       toast.error("Erro ao criar tarefas");
@@ -801,21 +807,46 @@ export function HotseatResponseDialog({
                           value={task.title}
                           onChange={(e) => updateTask(index, "title", e.target.value)}
                         />
-                        <Select 
-                          value={task.assigneeId} 
-                          onValueChange={(v) => updateTask(index, "assigneeId", v)}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Atribuir a..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {staffList.map((staff) => (
-                              <SelectItem key={staff.id} value={staff.id}>
-                                {staff.name} ({staff.role})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Select 
+                            value={task.assigneeId} 
+                            onValueChange={(v) => updateTask(index, "assigneeId", v)}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Atribuir a..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {staffList.map((staff) => (
+                                <SelectItem key={staff.id} value={staff.id}>
+                                  {staff.name} ({staff.role})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "h-9 justify-start text-left font-normal",
+                                  !task.dueDate && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {task.dueDate ? format(task.dueDate, "dd/MM/yyyy", { locale: ptBR }) : "Data execução"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <CalendarComponent
+                                mode="single"
+                                selected={task.dueDate || undefined}
+                                onSelect={(date) => updateTask(index, "dueDate", date || null)}
+                                initialFocus
+                                locale={ptBR}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                       </div>
                       {tasksList.length > 1 && (
                         <Button
