@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard,
   ArrowDownCircle,
@@ -10,6 +9,9 @@ import {
   FileText,
   Settings,
   Lock,
+  Package,
+  ShoppingCart,
+  BarChart3,
 } from "lucide-react";
 import { useClientFinancialPermissions } from "./useClientFinancialPermissions";
 import { ClientFinancialDashboard } from "./ClientFinancialDashboard";
@@ -19,6 +21,9 @@ import { ClientRecurringPanel } from "./ClientRecurringPanel";
 import { ClientCashFlowPanel } from "./ClientCashFlowPanel";
 import { ClientFinancialReportsPanel } from "./ClientFinancialReportsPanel";
 import { ClientFinancialSettingsPanel } from "./ClientFinancialSettingsPanel";
+import { ClientProductsPanel } from "./ClientProductsPanel";
+import { ClientSalesPanel } from "./ClientSalesPanel";
+import { ClientSalesAnalyticsPanel } from "./ClientSalesAnalyticsPanel";
 import type { FinancialViewType } from "./types";
 
 interface Props {
@@ -32,6 +37,9 @@ export function ClientFinancialModule({ projectId, userRole }: Props) {
 
   const tabs = [
     { id: "dashboard" as FinancialViewType, label: "Visão Geral", icon: LayoutDashboard },
+    { id: "products" as FinancialViewType, label: "Produtos", icon: Package },
+    { id: "sales" as FinancialViewType, label: "Vendas", icon: ShoppingCart },
+    { id: "analytics" as FinancialViewType, label: "Análise", icon: BarChart3 },
     { id: "receivables" as FinancialViewType, label: "A Receber", icon: ArrowDownCircle },
     { id: "payables" as FinancialViewType, label: "A Pagar", icon: ArrowUpCircle },
     { id: "recurring" as FinancialViewType, label: "Recorrências", icon: RefreshCw },
@@ -42,7 +50,6 @@ export function ClientFinancialModule({ projectId, userRole }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Read-only indicator for non-client users */}
       {isReadOnly && (
         <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
           <Lock className="h-4 w-4 text-amber-500" />
@@ -53,7 +60,6 @@ export function ClientFinancialModule({ projectId, userRole }: Props) {
       )}
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FinancialViewType)} className="space-y-4">
-        {/* Tabs Navigation - Scrollable on mobile */}
         <div className="overflow-x-auto pb-2 -mx-4 px-4">
           <TabsList className="inline-flex h-auto p-1 bg-muted/50 min-w-max">
             {tabs.map((tab) => {
@@ -72,9 +78,20 @@ export function ClientFinancialModule({ projectId, userRole }: Props) {
           </TabsList>
         </div>
 
-        {/* Tab Contents */}
         <TabsContent value="dashboard" className="mt-0">
           <ClientFinancialDashboard projectId={projectId} />
+        </TabsContent>
+
+        <TabsContent value="products" className="mt-0">
+          <ClientProductsPanel projectId={projectId} canEdit={canEdit} />
+        </TabsContent>
+
+        <TabsContent value="sales" className="mt-0">
+          <ClientSalesPanel projectId={projectId} canEdit={canEdit} />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="mt-0">
+          <ClientSalesAnalyticsPanel projectId={projectId} />
         </TabsContent>
 
         <TabsContent value="receivables" className="mt-0">

@@ -2121,6 +2121,66 @@ export type Database = {
           },
         ]
       }
+      client_financial_products: {
+        Row: {
+          category_id: string | null
+          cost_price: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          project_id: string
+          sku: string | null
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          cost_price?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          project_id: string
+          sku?: string | null
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          cost_price?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          project_id?: string
+          sku?: string | null
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_financial_products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_products_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_financial_receivables: {
         Row: {
           amount: number
@@ -2298,6 +2358,140 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_financial_sale_items: {
+        Row: {
+          cost_price: number | null
+          created_at: string
+          discount: number | null
+          id: string
+          product_id: string
+          quantity: number
+          sale_id: string
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          cost_price?: number | null
+          created_at?: string
+          discount?: number | null
+          id?: string
+          product_id: string
+          quantity?: number
+          sale_id: string
+          total: number
+          unit_price: number
+        }
+        Update: {
+          cost_price?: number | null
+          created_at?: string
+          discount?: number | null
+          id?: string
+          product_id?: string
+          quantity?: number
+          sale_id?: string
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_financial_sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_financial_sales: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_name: string | null
+          discount: number | null
+          id: string
+          notes: string | null
+          payment_method_id: string | null
+          project_id: string
+          receivable_id: string | null
+          sale_date: string
+          salesperson_id: string | null
+          status: string
+          total_amount: number
+          total_cost: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          discount?: number | null
+          id?: string
+          notes?: string | null
+          payment_method_id?: string | null
+          project_id: string
+          receivable_id?: string | null
+          sale_date?: string
+          salesperson_id?: string | null
+          status?: string
+          total_amount?: number
+          total_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          discount?: number | null
+          id?: string
+          notes?: string | null
+          payment_method_id?: string | null
+          project_id?: string
+          receivable_id?: string | null
+          sale_date?: string
+          salesperson_id?: string | null
+          status?: string
+          total_amount?: number
+          total_cost?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_financial_sales_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_sales_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_sales_receivable_id_fkey"
+            columns: ["receivable_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_receivables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_sales_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "company_salespeople"
             referencedColumns: ["id"]
           },
         ]
