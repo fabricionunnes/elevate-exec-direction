@@ -22,42 +22,67 @@ export function CEOBusinessHealth() {
   useEffect(() => {
     const fetchHealthMetrics = async () => {
       try {
-        // Fetch health scores
-        const { data: healthScores } = await supabase
-          .from("client_health_scores")
-          .select("*");
+        // First, try to get the latest daily average (calculated at 5AM excluding simulators)
+        const { data: dailyAvg } = await supabase
+          .from("daily_average_health_scores")
+          .select("*")
+          .order("snapshot_date", { ascending: false })
+          .limit(1)
+          .single();
 
-        const healthy = healthScores?.filter(h => h.risk_level === "low" || h.risk_level === "healthy").length || 0;
-        const attention = healthScores?.filter(h => h.risk_level === "medium" || h.risk_level === "attention").length || 0;
-        const risk = healthScores?.filter(h => h.risk_level === "high" || h.risk_level === "critical").length || 0;
-        const total = healthScores?.length || 1;
-        const avgScore = healthScores?.reduce((sum, h) => sum + (h.total_score || 0), 0) / total || 0;
+        if (dailyAvg) {
+          // Use pre-calculated data from daily snapshot
+          setMetrics({
+            overallScore: Math.round(dailyAvg.average_score),
+            healthyClients: dailyAvg.healthy_count,
+            attentionClients: dailyAvg.attention_count,
+            riskClients: dailyAvg.risk_count,
+            avgCSAT: 0,
+            avgNPS: 0,
+            goalDeliveryRate: 78,
+            defaultRate: 4.2,
+          });
+        } else {
+          // Fallback to live calculation if no snapshot exists
+          const { data: healthScores } = await supabase
+            .from("client_health_scores")
+            .select("*");
 
-        // Fetch CSAT (use for both metrics)
+          const healthy = healthScores?.filter(h => h.risk_level === "low" || h.risk_level === "healthy").length || 0;
+          const attention = healthScores?.filter(h => h.risk_level === "medium" || h.risk_level === "attention").length || 0;
+          const risk = healthScores?.filter(h => h.risk_level === "high" || h.risk_level === "critical").length || 0;
+          const total = healthScores?.length || 1;
+          const avgScore = healthScores?.reduce((sum, h) => sum + (h.total_score || 0), 0) / total || 0;
+
+          setMetrics({
+            overallScore: Math.round(avgScore),
+            healthyClients: healthy,
+            attentionClients: attention,
+            riskClients: risk,
+            avgCSAT: 0,
+            avgNPS: 0,
+            goalDeliveryRate: 78,
+            defaultRate: 4.2,
+          });
+        }
+
+        // Fetch CSAT separately
         const { data: csatData } = await supabase
           .from("csat_responses")
           .select("score")
           .order("created_at", { ascending: false })
           .limit(50);
 
-        const avgNPS = csatData && csatData.length > 0
-          ? (csatData.reduce((sum, n) => sum + n.score, 0) / csatData.length) * 10
-          : 0;
-
-        const avgCSAT = csatData && csatData.length > 0
-          ? (csatData.reduce((sum, c) => sum + c.score, 0) / csatData.length) * 20
-          : 0;
-
-        setMetrics({
-          overallScore: Math.round(avgScore),
-          healthyClients: healthy,
-          attentionClients: attention,
-          riskClients: risk,
-          avgCSAT: Math.round(avgCSAT),
-          avgNPS: Math.round(avgNPS),
-          goalDeliveryRate: 78,
-          defaultRate: 4.2,
-        });
+        if (csatData && csatData.length > 0) {
+          const avgNPS = (csatData.reduce((sum, n) => sum + n.score, 0) / csatData.length) * 10;
+          const avgCSAT = (csatData.reduce((sum, c) => sum + c.score, 0) / csatData.length) * 20;
+          
+          setMetrics(prev => prev ? {
+            ...prev,
+            avgCSAT: Math.round(avgCSAT),
+            avgNPS: Math.round(avgNPS),
+          } : prev);
+        }
       } catch (error) {
         console.error("Error fetching health metrics:", error);
       } finally {

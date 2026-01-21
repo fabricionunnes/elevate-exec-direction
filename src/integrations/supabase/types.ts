@@ -4294,6 +4294,39 @@ export type Database = {
           },
         ]
       }
+      daily_average_health_scores: {
+        Row: {
+          attention_count: number
+          average_score: number
+          created_at: string
+          healthy_count: number
+          id: string
+          risk_count: number
+          snapshot_date: string
+          total_active_companies: number
+        }
+        Insert: {
+          attention_count?: number
+          average_score: number
+          created_at?: string
+          healthy_count?: number
+          id?: string
+          risk_count?: number
+          snapshot_date: string
+          total_active_companies?: number
+        }
+        Update: {
+          attention_count?: number
+          average_score?: number
+          created_at?: string
+          healthy_count?: number
+          id?: string
+          risk_count?: number
+          snapshot_date?: string
+          total_active_companies?: number
+        }
+        Relationships: []
+      }
       disc_responses: {
         Row: {
           completed_at: string
