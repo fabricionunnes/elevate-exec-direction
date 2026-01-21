@@ -133,6 +133,7 @@ export type FinancialViewType =
   | 'recurring' 
   | 'cashflow' 
   | 'reports' 
+  | 'products'
   | 'settings';
 
 export interface FinancialProduct {
