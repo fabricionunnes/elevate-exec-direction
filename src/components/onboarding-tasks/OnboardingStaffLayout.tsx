@@ -91,7 +91,7 @@ export const OnboardingStaffLayout = () => {
     };
   }, [location.pathname, navigate]);
 
-  // Se está na página de login, não mostra notificações
+  // Se está na página de login, permite acesso
   if (location.pathname.includes('/login')) {
     return <Outlet />;
   }
@@ -101,6 +101,28 @@ export const OnboardingStaffLayout = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  // SECURITY: Block access if user is not staff
+  // Client users should only access /onboarding-client/:projectId routes
+  if (!isStaff) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 p-6">
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl font-bold text-destructive">Acesso Negado</h1>
+          <p className="text-muted-foreground max-w-md">
+            Você não tem permissão para acessar esta área. 
+            Esta seção é exclusiva para a equipe interna.
+          </p>
+        </div>
+        <button 
+          onClick={() => navigate("/onboarding-tasks/login")}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+        >
+          Ir para Login
+        </button>
       </div>
     );
   }
