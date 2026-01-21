@@ -903,21 +903,23 @@ export function HotseatResponseDialog({
                         </Button>
                       </div>
                       
-                      <div className="bg-muted/50 rounded-lg p-4 min-h-[150px]">
-                        {isLoadingSummary ? (
-                          <div className="flex items-center justify-center h-[150px]">
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                          </div>
-                        ) : companySummary ? (
-                          <div className="prose prose-sm dark:prose-invert max-w-none">
-                            <ReactMarkdown>{companySummary}</ReactMarkdown>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center h-[150px] text-muted-foreground">
-                            <p>Clique em "Atualizar" para gerar o resumo</p>
-                          </div>
-                        )}
-                      </div>
+                      <ScrollArea className="h-[200px] rounded-lg">
+                        <div className="bg-muted/50 rounded-lg p-4">
+                          {isLoadingSummary ? (
+                            <div className="flex items-center justify-center h-[150px]">
+                              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : companySummary ? (
+                            <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
+                              <ReactMarkdown>{companySummary}</ReactMarkdown>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center h-[150px] text-muted-foreground">
+                              <p>Clique em "Atualizar" para gerar o resumo</p>
+                            </div>
+                          )}
+                        </div>
+                      </ScrollArea>
                     </div>
 
                     <Separator />
