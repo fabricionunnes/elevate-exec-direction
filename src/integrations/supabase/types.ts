@@ -1855,6 +1855,134 @@ export type Database = {
           },
         ]
       }
+      client_financial_bank_accounts: {
+        Row: {
+          account_number: string | null
+          account_type: string | null
+          agency: string | null
+          bank_name: string | null
+          color: string | null
+          created_at: string
+          created_by: string | null
+          current_balance: number | null
+          id: string
+          initial_balance: number | null
+          is_active: boolean | null
+          is_default: boolean | null
+          name: string
+          notes: string | null
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string | null
+          account_type?: string | null
+          agency?: string | null
+          bank_name?: string | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_balance?: number | null
+          id?: string
+          initial_balance?: number | null
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name: string
+          notes?: string | null
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string | null
+          account_type?: string | null
+          agency?: string | null
+          bank_name?: string | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_balance?: number | null
+          id?: string
+          initial_balance?: number | null
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name?: string
+          notes?: string | null
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_financial_bank_accounts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_financial_bank_transactions: {
+        Row: {
+          amount: number
+          balance_after: number | null
+          balance_before: number | null
+          bank_account_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          project_id: string
+          reference_id: string | null
+          reference_type: string | null
+          transaction_date: string
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          balance_after?: number | null
+          balance_before?: number | null
+          bank_account_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          project_id: string
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_date?: string
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number | null
+          balance_before?: number | null
+          bank_account_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          project_id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_date?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_financial_bank_transactions_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_bank_transactions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_financial_cashflow_snapshots: {
         Row: {
           closing_balance: number | null
@@ -1988,6 +2116,7 @@ export type Database = {
         Row: {
           amount: number
           attachment_url: string | null
+          bank_account_id: string | null
           category_id: string | null
           cost_center_id: string | null
           created_at: string
@@ -2010,6 +2139,7 @@ export type Database = {
         Insert: {
           amount: number
           attachment_url?: string | null
+          bank_account_id?: string | null
           category_id?: string | null
           cost_center_id?: string | null
           created_at?: string
@@ -2032,6 +2162,7 @@ export type Database = {
         Update: {
           amount?: number
           attachment_url?: string | null
+          bank_account_id?: string | null
           category_id?: string | null
           cost_center_id?: string | null
           created_at?: string
@@ -2052,6 +2183,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "client_financial_payables_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_bank_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_financial_payables_category_id_fkey"
             columns: ["category_id"]
@@ -2185,6 +2323,7 @@ export type Database = {
         Row: {
           amount: number
           attachment_url: string | null
+          bank_account_id: string | null
           category_id: string | null
           client_name: string
           cost_center_id: string | null
@@ -2204,6 +2343,7 @@ export type Database = {
         Insert: {
           amount: number
           attachment_url?: string | null
+          bank_account_id?: string | null
           category_id?: string | null
           client_name: string
           cost_center_id?: string | null
@@ -2223,6 +2363,7 @@ export type Database = {
         Update: {
           amount?: number
           attachment_url?: string | null
+          bank_account_id?: string | null
           category_id?: string | null
           client_name?: string
           cost_center_id?: string | null
@@ -2240,6 +2381,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "client_financial_receivables_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_bank_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_financial_receivables_category_id_fkey"
             columns: ["category_id"]

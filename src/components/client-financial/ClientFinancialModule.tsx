@@ -9,6 +9,7 @@ import {
   FileText,
   Settings,
   Lock,
+  Building2,
 } from "lucide-react";
 import { useClientFinancialPermissions } from "./useClientFinancialPermissions";
 import { ClientFinancialDashboard } from "./ClientFinancialDashboard";
@@ -18,6 +19,7 @@ import { ClientRecurringPanel } from "./ClientRecurringPanel";
 import { ClientCashFlowPanel } from "./ClientCashFlowPanel";
 import { ClientFinancialReportsPanel } from "./ClientFinancialReportsPanel";
 import { ClientFinancialSettingsPanel } from "./ClientFinancialSettingsPanel";
+import { ClientBankAccountsPanel } from "./ClientBankAccountsPanel";
 import type { FinancialViewType } from "./types";
 
 interface Props {
@@ -33,6 +35,7 @@ export function ClientFinancialModule({ projectId, userRole }: Props) {
     { id: "dashboard" as FinancialViewType, label: "Visão Geral", icon: LayoutDashboard },
     { id: "receivables" as FinancialViewType, label: "A Receber", icon: ArrowDownCircle },
     { id: "payables" as FinancialViewType, label: "A Pagar", icon: ArrowUpCircle },
+    { id: "banks" as FinancialViewType, label: "Bancos", icon: Building2 },
     { id: "recurring" as FinancialViewType, label: "Recorrências", icon: RefreshCw },
     { id: "cashflow" as FinancialViewType, label: "Fluxo de Caixa", icon: TrendingUp },
     { id: "reports" as FinancialViewType, label: "Relatórios", icon: FileText },
@@ -79,6 +82,10 @@ export function ClientFinancialModule({ projectId, userRole }: Props) {
 
         <TabsContent value="payables" className="mt-0">
           <ClientPayablesPanel projectId={projectId} canEdit={canEdit} />
+        </TabsContent>
+
+        <TabsContent value="banks" className="mt-0">
+          <ClientBankAccountsPanel projectId={projectId} canEdit={canEdit} />
         </TabsContent>
 
         <TabsContent value="recurring" className="mt-0">
