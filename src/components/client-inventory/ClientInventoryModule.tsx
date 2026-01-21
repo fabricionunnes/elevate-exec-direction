@@ -6,7 +6,6 @@ import {
   ShoppingCart,
   Truck,
   FileText,
-  ClipboardList,
   ArrowRightLeft,
   BarChart3,
   Settings,
@@ -18,7 +17,6 @@ import { ClientInventoryProductsPanel } from "./ClientInventoryProductsPanel";
 import { ClientInventoryPurchasesPanel } from "./ClientInventoryPurchasesPanel";
 import { ClientInventorySuppliersPanel } from "./ClientInventorySuppliersPanel";
 import { ClientInventoryBudgetsPanel } from "./ClientInventoryBudgetsPanel";
-import { ClientInventorySalesPanel } from "./ClientInventorySalesPanel";
 import { ClientInventoryMovementsPanel } from "./ClientInventoryMovementsPanel";
 import { ClientInventoryReportsPanel } from "./ClientInventoryReportsPanel";
 import { ClientInventorySettingsPanel } from "./ClientInventorySettingsPanel";
@@ -39,7 +37,6 @@ export function ClientInventoryModule({ projectId, userRole }: Props) {
     { id: "purchases" as InventoryViewType, label: "Compras", icon: ShoppingCart },
     { id: "suppliers" as InventoryViewType, label: "Fornecedores", icon: Truck },
     { id: "budgets" as InventoryViewType, label: "Orçamentos", icon: FileText },
-    { id: "sales" as InventoryViewType, label: "Vendas", icon: ClipboardList },
     { id: "movements" as InventoryViewType, label: "Movimentações", icon: ArrowRightLeft },
     { id: "reports" as InventoryViewType, label: "Relatórios", icon: BarChart3 },
     { id: "settings" as InventoryViewType, label: "Configurações", icon: Settings },
@@ -93,10 +90,6 @@ export function ClientInventoryModule({ projectId, userRole }: Props) {
 
         <TabsContent value="budgets" className="mt-0">
           <ClientInventoryBudgetsPanel projectId={projectId} canEdit={canEdit} />
-        </TabsContent>
-
-        <TabsContent value="sales" className="mt-0">
-          <ClientInventorySalesPanel projectId={projectId} canEdit={canEdit} />
         </TabsContent>
 
         <TabsContent value="movements" className="mt-0">
