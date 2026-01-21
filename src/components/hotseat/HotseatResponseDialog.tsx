@@ -585,12 +585,14 @@ export function HotseatResponseDialog({
                         variant="outline"
                         role="combobox"
                         aria-expanded={companySearchOpen}
-                        className="w-full justify-between font-normal"
+                        className="w-full justify-between font-normal h-auto min-h-10 py-2"
                       >
-                        {selectedCompanyId
-                          ? companies.find((c) => c.id === selectedCompanyId)?.name || "Selecione..."
-                          : "Nenhuma"}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        <span className="truncate text-left flex-1 mr-2">
+                          {selectedCompanyId
+                            ? companies.find((c) => c.id === selectedCompanyId)?.name || "Selecione..."
+                            : "Nenhuma"}
+                        </span>
+                        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[400px] p-0" align="start">
