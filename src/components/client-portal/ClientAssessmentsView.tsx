@@ -152,6 +152,7 @@ export function ClientAssessmentsView({ projectId }: ClientAssessmentsViewProps)
           onOpenChange={setIsReportsOpen}
           cycleId={selectedCycle.id}
           cycleTitle={selectedCycle.title}
+          projectId={projectId}
         />
       )}
     </div>

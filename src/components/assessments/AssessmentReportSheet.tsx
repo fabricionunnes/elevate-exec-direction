@@ -39,12 +39,14 @@ import {
 } from "recharts";
 import { discProfiles } from "@/data/discQuestions";
 import { cn } from "@/lib/utils";
+import { AssessmentAIReportGenerator } from "./AssessmentAIReportGenerator";
 
 interface AssessmentReportSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   cycleId: string;
   cycleTitle: string;
+  projectId?: string;
 }
 
 interface Participant {
@@ -126,6 +128,7 @@ export function AssessmentReportSheet({
   onOpenChange,
   cycleId,
   cycleTitle,
+  projectId,
 }: AssessmentReportSheetProps) {
   const [loading, setLoading] = useState(true);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -339,10 +342,17 @@ export function AssessmentReportSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-3xl p-0 overflow-hidden">
         <SheetHeader className="p-6 pb-4 border-b bg-background sticky top-0 z-10">
-          <SheetTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-primary" />
-            Relatório: {cycleTitle}
-          </SheetTitle>
+          <div className="flex items-center justify-between">
+            <SheetTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Relatório: {cycleTitle}
+            </SheetTitle>
+            <AssessmentAIReportGenerator
+              cycleId={cycleId}
+              cycleTitle={cycleTitle}
+              projectId={projectId}
+            />
+          </div>
 
           {/* Filter by participant */}
           <div className="flex items-center gap-2 mt-4">

@@ -134,3 +134,6 @@ verify_jwt = false
 
 [functions.hotseat-company-summary]
 verify_jwt = true
+
+[functions.assessment-ai-report]
+verify_jwt = true

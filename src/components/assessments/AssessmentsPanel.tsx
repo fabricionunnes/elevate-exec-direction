@@ -517,6 +517,7 @@ export function AssessmentsPanel({ projectId }: Props) {
           onOpenChange={setIsReportsOpen}
           cycleId={reportCycleId}
           cycleTitle={reportCycleTitle}
+          projectId={projectId}
         />
       )}
     </div>
