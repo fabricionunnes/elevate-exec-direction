@@ -137,3 +137,6 @@ verify_jwt = true
 
 [functions.assessment-ai-report]
 verify_jwt = true
+
+[functions.process-hotseat-recording]
+verify_jwt = true
