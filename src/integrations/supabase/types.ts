@@ -1748,6 +1748,74 @@ export type Database = {
           },
         ]
       }
+      client_customers: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string | null
+          credit_limit: number | null
+          current_balance: number | null
+          document: string | null
+          document_type: string | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          notes: string | null
+          phone: string | null
+          postal_code: string | null
+          project_id: string
+          state: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          credit_limit?: number | null
+          current_balance?: number | null
+          document?: string | null
+          document_type?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          project_id: string
+          state?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          credit_limit?: number | null
+          current_balance?: number | null
+          document?: string | null
+          document_type?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          project_id?: string
+          state?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_customers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_diagnostics: {
         Row: {
           biggest_challenge: string | null
@@ -2329,15 +2397,19 @@ export type Database = {
           cost_center_id: string | null
           created_at: string
           created_by: string | null
+          customer_id: string | null
           description: string | null
           due_date: string
           id: string
+          installment_number: number | null
           notes: string | null
           paid_amount: number | null
           paid_at: string | null
+          parent_id: string | null
           payment_method_id: string | null
           project_id: string
           status: string
+          total_installments: number | null
           updated_at: string
         }
         Insert: {
@@ -2349,15 +2421,19 @@ export type Database = {
           cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
+          customer_id?: string | null
           description?: string | null
           due_date: string
           id?: string
+          installment_number?: number | null
           notes?: string | null
           paid_amount?: number | null
           paid_at?: string | null
+          parent_id?: string | null
           payment_method_id?: string | null
           project_id: string
           status?: string
+          total_installments?: number | null
           updated_at?: string
         }
         Update: {
@@ -2369,15 +2445,19 @@ export type Database = {
           cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
+          customer_id?: string | null
           description?: string | null
           due_date?: string
           id?: string
+          installment_number?: number | null
           notes?: string | null
           paid_amount?: number | null
           paid_at?: string | null
+          parent_id?: string | null
           payment_method_id?: string | null
           project_id?: string
           status?: string
+          total_installments?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -2400,6 +2480,20 @@ export type Database = {
             columns: ["cost_center_id"]
             isOneToOne: false
             referencedRelation: "client_financial_cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_receivables_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "client_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_financial_receivables_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "client_financial_receivables"
             referencedColumns: ["id"]
           },
           {
@@ -2698,6 +2792,54 @@ export type Database = {
             foreignKeyName: "client_health_scores_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_inventory_alerts: {
+        Row: {
+          alert_type: string | null
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          is_resolved: boolean | null
+          product_id: string
+          project_id: string
+          resolved_at: string | null
+        }
+        Insert: {
+          alert_type?: string | null
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          is_resolved?: boolean | null
+          product_id: string
+          project_id: string
+          resolved_at?: string | null
+        }
+        Update: {
+          alert_type?: string | null
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          is_resolved?: boolean | null
+          product_id?: string
+          project_id?: string
+          resolved_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_inventory_alerts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inventory_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "onboarding_projects"
             referencedColumns: ["id"]
           },
@@ -3227,6 +3369,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           customer_document: string | null
+          customer_id: string | null
           customer_name: string | null
           discount_amount: number | null
           final_amount: number
@@ -3250,6 +3393,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_document?: string | null
+          customer_id?: string | null
           customer_name?: string | null
           discount_amount?: number | null
           final_amount?: number
@@ -3273,6 +3417,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_document?: string | null
+          customer_id?: string | null
           customer_name?: string | null
           discount_amount?: number | null
           final_amount?: number
@@ -3293,6 +3438,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "client_inventory_sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "client_customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_inventory_sales_project_id_fkey"
             columns: ["project_id"]
@@ -3500,6 +3652,136 @@ export type Database = {
           {
             foreignKeyName: "client_referrals_referrer_project_id_fkey"
             columns: ["referrer_project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_sale_budget_items: {
+        Row: {
+          budget_id: string
+          created_at: string | null
+          id: string
+          product_id: string
+          quantity: number
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          budget_id: string
+          created_at?: string | null
+          id?: string
+          product_id: string
+          quantity: number
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          budget_id?: string
+          created_at?: string | null
+          id?: string
+          product_id?: string
+          quantity?: number
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_sale_budget_items_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "client_sale_budgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sale_budget_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_sale_budgets: {
+        Row: {
+          budget_date: string
+          budget_number: string | null
+          converted_sale_id: string | null
+          created_at: string | null
+          created_by: string | null
+          customer_id: string | null
+          customer_name: string | null
+          discount_amount: number | null
+          final_amount: number | null
+          id: string
+          notes: string | null
+          project_id: string
+          seller_id: string | null
+          seller_name: string | null
+          status: string | null
+          total_amount: number | null
+          updated_at: string | null
+          validity_date: string | null
+        }
+        Insert: {
+          budget_date?: string
+          budget_number?: string | null
+          converted_sale_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          discount_amount?: number | null
+          final_amount?: number | null
+          id?: string
+          notes?: string | null
+          project_id: string
+          seller_id?: string | null
+          seller_name?: string | null
+          status?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+          validity_date?: string | null
+        }
+        Update: {
+          budget_date?: string
+          budget_number?: string | null
+          converted_sale_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          discount_amount?: number | null
+          final_amount?: number | null
+          id?: string
+          notes?: string | null
+          project_id?: string
+          seller_id?: string | null
+          seller_name?: string | null
+          status?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+          validity_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_sale_budgets_converted_sale_id_fkey"
+            columns: ["converted_sale_id"]
+            isOneToOne: false
+            referencedRelation: "client_inventory_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sale_budgets_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "client_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sale_budgets_project_id_fkey"
+            columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onboarding_projects"
             referencedColumns: ["id"]
