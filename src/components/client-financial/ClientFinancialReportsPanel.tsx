@@ -98,8 +98,16 @@ export function ClientFinancialReportsPanel({ projectId }: Props) {
         .eq("project_id", projectId)
         .eq("status", "paid");
 
+      // Fetch sales
+      const { data: sales } = await supabase
+        .from("client_financial_sales")
+        .select("*")
+        .eq("project_id", projectId)
+        .eq("status", "completed");
+
       const recArr = receivables || [];
       const payArr = payables || [];
+      const salesArr = sales || [];
 
       // Filter by month for DRE
       const monthReceivables = recArr.filter(r => 
@@ -110,15 +118,28 @@ export function ClientFinancialReportsPanel({ projectId }: Props) {
         p.paid_at && new Date(p.paid_at) >= monthStart && new Date(p.paid_at) <= monthEnd
       );
 
+      const monthSales = salesArr.filter(s => {
+        const saleDate = new Date(s.sale_date);
+        return saleDate >= monthStart && saleDate <= monthEnd;
+      });
+
       // Calculate DRE
       const revenueByCategory: Record<string, number> = {};
       let totalRevenue = 0;
 
+      // Add receivables revenue
       monthReceivables.forEach(r => {
         const amount = Number(r.paid_amount || r.amount);
         totalRevenue += amount;
         const catName = r.category?.name || "Sem categoria";
         revenueByCategory[catName] = (revenueByCategory[catName] || 0) + amount;
+      });
+
+      // Add sales revenue
+      monthSales.forEach(s => {
+        const amount = Number(s.total_amount);
+        totalRevenue += amount;
+        revenueByCategory["Vendas"] = (revenueByCategory["Vendas"] || 0) + amount;
       });
 
       const expensesByCategory: Record<string, number> = {};
@@ -147,14 +168,21 @@ export function ClientFinancialReportsPanel({ projectId }: Props) {
         .filter(r => r.paid_at && new Date(r.paid_at) < monthStart)
         .reduce((sum, r) => sum + Number(r.paid_amount || r.amount), 0);
 
+      const totalSalesBefore = salesArr
+        .filter(s => new Date(s.sale_date) < monthStart)
+        .reduce((sum, s) => sum + Number(s.total_amount), 0);
+
       const totalPaidOutBefore = payArr
         .filter(p => p.paid_at && new Date(p.paid_at) < monthStart)
         .reduce((sum, p) => sum + Number(p.paid_amount || p.amount), 0);
 
-      const openingBalance = totalPaidInBefore - totalPaidOutBefore;
+      const openingBalance = totalPaidInBefore + totalSalesBefore - totalPaidOutBefore;
 
       // Categorize flows (simplified)
-      const operationalIncome = monthReceivables.reduce((sum, r) => sum + Number(r.paid_amount || r.amount), 0);
+      const operationalIncomeReceivables = monthReceivables.reduce((sum, r) => sum + Number(r.paid_amount || r.amount), 0);
+      const operationalIncomeSales = monthSales.reduce((sum, s) => sum + Number(s.total_amount), 0);
+      const operationalIncome = operationalIncomeReceivables + operationalIncomeSales;
+      
       const operationalExpense = monthPayables.reduce((sum, p) => sum + Number(p.paid_amount || p.amount), 0);
       const operationalFlow = operationalIncome - operationalExpense;
 
