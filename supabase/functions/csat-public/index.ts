@@ -46,7 +46,7 @@ serve(async (req) => {
     if (body.action === "get") {
       const { data: survey, error: surveyError } = await supabase
         .from("csat_surveys")
-        .select("id, project_id, meeting_id, status")
+        .select("id, project_id, meeting_id, hotseat_response_id, status")
         .eq("access_token", body.token)
         .maybeSingle();
 
@@ -65,6 +65,64 @@ serve(async (req) => {
         });
       }
 
+      // Handle Hotseat CSAT
+      if (survey.hotseat_response_id) {
+        console.log("CSAT get: hotseat survey", { hotseatId: survey.hotseat_response_id });
+        
+        const { data: hotseat, error: hotseatError } = await supabase
+          .from("hotseat_responses")
+          .select("respondent_name, company_name, created_at, linked_project_id")
+          .eq("id", survey.hotseat_response_id)
+          .maybeSingle();
+
+        if (hotseatError || !hotseat) {
+          console.log("CSAT get: hotseat not found", { hotseatId: survey.hotseat_response_id, hotseatError });
+          return new Response(JSON.stringify({ error: "hotseat_not_found" }), {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        let companyName = hotseat.company_name;
+        
+        // Try to get project/company info if linked
+        if (hotseat.linked_project_id) {
+          const { data: project } = await supabase
+            .from("onboarding_projects")
+            .select("product_name, onboarding_company:onboarding_companies(name)")
+            .eq("id", hotseat.linked_project_id)
+            .maybeSingle();
+          
+          const company = (project as any)?.onboarding_company;
+          if (company?.name) {
+            companyName = company.name;
+          }
+        }
+
+        return new Response(
+          JSON.stringify({
+            surveyId: survey.id,
+            hotseatResponseId: survey.hotseat_response_id,
+            projectId: survey.project_id,
+            isHotseat: true,
+            hotseatInfo: {
+              respondent_name: hotseat.respondent_name,
+              company_name: companyName,
+              created_at: hotseat.created_at,
+            },
+            project: {
+              product_name: "Hotseat com Fabrício Nunnes",
+              company_name: companyName,
+            },
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Handle Meeting CSAT (original logic)
       const { data: meeting, error: meetingError } = await supabase
         .from("onboarding_meeting_notes")
         .select("meeting_title, meeting_date, project_id")
@@ -122,7 +180,7 @@ serve(async (req) => {
 
       const { data: survey, error: surveyError } = await supabase
         .from("csat_surveys")
-        .select("id, project_id, meeting_id, status")
+        .select("id, project_id, meeting_id, hotseat_response_id, status")
         .eq("access_token", body.token)
         .maybeSingle();
 
@@ -155,14 +213,23 @@ serve(async (req) => {
         });
       }
 
-      const { error: insertError } = await supabase.from("csat_responses").insert({
+      // Insert response - handle both meeting and hotseat cases
+      const insertData: any = {
         survey_id: survey.id,
         project_id: survey.project_id,
-        meeting_id: survey.meeting_id,
         score: body.score,
         feedback: body.feedback ?? null,
         respondent_name: body.respondentName ?? null,
-      });
+      };
+
+      if (survey.meeting_id) {
+        insertData.meeting_id = survey.meeting_id;
+      }
+      if (survey.hotseat_response_id) {
+        insertData.hotseat_response_id = survey.hotseat_response_id;
+      }
+
+      const { error: insertError } = await supabase.from("csat_responses").insert(insertData);
 
       if (insertError) {
         console.log("CSAT submit: insert failed", { insertError });

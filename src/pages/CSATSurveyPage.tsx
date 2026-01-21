@@ -12,10 +12,17 @@ import { motion } from 'framer-motion';
 
 interface SurveyContext {
   surveyId: string;
-  meetingId: string;
+  meetingId?: string;
+  hotseatResponseId?: string;
   projectId: string;
-  meetingTitle: string | null;
-  meetingDate: string | null;
+  meetingTitle?: string | null;
+  meetingDate?: string | null;
+  isHotseat?: boolean;
+  hotseatInfo?: {
+    respondent_name: string;
+    company_name: string;
+    created_at: string;
+  };
   project: {
     product_name: string;
     company_name: string | null;
@@ -215,18 +222,24 @@ const CSATSurveyPage = () => {
             <CardTitle className="text-lg">
               {ctx?.project.company_name || ctx?.project.product_name}
             </CardTitle>
-            {ctx?.meetingTitle && (
+            {ctx?.isHotseat ? (
+              <CardDescription>
+                Hotseat - {ctx.hotseatInfo?.respondent_name}
+              </CardDescription>
+            ) : ctx?.meetingTitle ? (
               <CardDescription>
                 Reunião: {ctx.meetingTitle}
               </CardDescription>
-            )}
+            ) : null}
           </CardHeader>
 
           <CardContent className="space-y-6 pt-4">
             {/* Main Question */}
             <div className="space-y-4">
               <Label className="text-base font-medium block text-center">
-                De 1 a 5, o quanto você ficou satisfeito com a reunião de hoje?
+                {ctx?.isHotseat 
+                  ? "De 1 a 5, o quanto você ficou satisfeito com o Hotseat?" 
+                  : "De 1 a 5, o quanto você ficou satisfeito com a reunião de hoje?"}
               </Label>
 
               {/* Score Selection */}
