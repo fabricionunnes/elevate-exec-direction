@@ -126,10 +126,45 @@ export default function HotseatAdminPage() {
     }
   };
 
-  const filteredResponses = responses.filter((r) =>
-    r.respondent_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.company_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredResponses = responses
+    .filter((r) =>
+      r.respondent_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.company_name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      // Status priority: pending first, then scheduled, then others
+      const statusOrder: Record<string, number> = {
+        pending: 0,
+        scheduled: 1,
+        completed: 2,
+        cancelled: 3,
+        no_show: 4,
+      };
+      
+      const aOrder = statusOrder[a.status] ?? 5;
+      const bOrder = statusOrder[b.status] ?? 5;
+      
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+      
+      // For scheduled items, sort by scheduled_at (earliest first)
+      if (a.status === "scheduled" && b.status === "scheduled") {
+        if (a.scheduled_at && b.scheduled_at) {
+          return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
+        }
+        if (a.scheduled_at) return -1;
+        if (b.scheduled_at) return 1;
+      }
+      
+      // For pending items, sort by created_at (oldest first - FIFO)
+      if (a.status === "pending" && b.status === "pending") {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      
+      // For other statuses, sort by updated_at (most recent first)
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+    });
 
   const pendingCount = responses.filter(r => r.status === "pending").length;
   const scheduledCount = responses.filter(r => r.status === "scheduled").length;
