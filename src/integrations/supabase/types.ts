@@ -5187,8 +5187,9 @@ export type Database = {
         Row: {
           created_at: string
           feedback: string | null
+          hotseat_response_id: string | null
           id: string
-          meeting_id: string
+          meeting_id: string | null
           project_id: string
           responded_at: string
           respondent_name: string | null
@@ -5198,8 +5199,9 @@ export type Database = {
         Insert: {
           created_at?: string
           feedback?: string | null
+          hotseat_response_id?: string | null
           id?: string
-          meeting_id: string
+          meeting_id?: string | null
           project_id: string
           responded_at?: string
           respondent_name?: string | null
@@ -5209,8 +5211,9 @@ export type Database = {
         Update: {
           created_at?: string
           feedback?: string | null
+          hotseat_response_id?: string | null
           id?: string
-          meeting_id?: string
+          meeting_id?: string | null
           project_id?: string
           responded_at?: string
           respondent_name?: string | null
@@ -5218,6 +5221,13 @@ export type Database = {
           survey_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "csat_responses_hotseat_response_id_fkey"
+            columns: ["hotseat_response_id"]
+            isOneToOne: false
+            referencedRelation: "hotseat_responses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "csat_responses_meeting_id_fkey"
             columns: ["meeting_id"]
@@ -5245,8 +5255,9 @@ export type Database = {
         Row: {
           access_token: string
           created_at: string
+          hotseat_response_id: string | null
           id: string
-          meeting_id: string
+          meeting_id: string | null
           project_id: string
           sent_at: string | null
           status: string | null
@@ -5256,8 +5267,9 @@ export type Database = {
         Insert: {
           access_token?: string
           created_at?: string
+          hotseat_response_id?: string | null
           id?: string
-          meeting_id: string
+          meeting_id?: string | null
           project_id: string
           sent_at?: string | null
           status?: string | null
@@ -5267,8 +5279,9 @@ export type Database = {
         Update: {
           access_token?: string
           created_at?: string
+          hotseat_response_id?: string | null
           id?: string
-          meeting_id?: string
+          meeting_id?: string | null
           project_id?: string
           sent_at?: string | null
           status?: string | null
@@ -5276,6 +5289,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "csat_surveys_hotseat_response_id_fkey"
+            columns: ["hotseat_response_id"]
+            isOneToOne: false
+            referencedRelation: "hotseat_responses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "csat_surveys_meeting_id_fkey"
             columns: ["meeting_id"]

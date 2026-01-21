@@ -62,6 +62,8 @@ import {
   MessageSquare,
   Bot,
   UserX,
+  MessageSquareHeart,
+  Copy,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -155,6 +157,11 @@ export function HotseatResponseDialog({
   // Meeting dialog
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   
+  // CSAT states
+  const [csatSurvey, setCSATSurvey] = useState<{ id: string; access_token: string; status: string } | null>(null);
+  const [isLoadingCSAT, setIsLoadingCSAT] = useState(false);
+  const [isGeneratingCSAT, setIsGeneratingCSAT] = useState(false);
+  
   // AI Summary states
   const [companySummary, setCompanySummary] = useState<string | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
@@ -178,6 +185,7 @@ export function HotseatResponseDialog({
     if (open) {
       fetchData();
       fetchNotes();
+      fetchCSATSurvey();
       setSelectedCompanyId(response.linked_company_id);
       setSelectedProjectId(response.linked_project_id);
       setScheduledAt(response.scheduled_at ? format(new Date(response.scheduled_at), "yyyy-MM-dd'T'HH:mm") : "");
@@ -262,6 +270,83 @@ export function HotseatResponseDialog({
       setNotes(notesWithStaff);
     } catch (error) {
       console.error("Error fetching notes:", error);
+    }
+  };
+
+  const fetchCSATSurvey = async () => {
+    if (!response.linked_project_id) {
+      setCSATSurvey(null);
+      return;
+    }
+    
+    setIsLoadingCSAT(true);
+    try {
+      const { data, error } = await supabase
+        .from("csat_surveys")
+        .select("id, access_token, status")
+        .eq("hotseat_response_id", response.id)
+        .maybeSingle();
+      
+      if (error) throw error;
+      setCSATSurvey(data);
+    } catch (error) {
+      console.error("Error fetching CSAT survey:", error);
+      setCSATSurvey(null);
+    } finally {
+      setIsLoadingCSAT(false);
+    }
+  };
+
+  const generateToken = (length: number = 16): string => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
+  const getCSATLink = (token: string): string => {
+    return `${window.location.origin}/#/csat?token=${token}`;
+  };
+
+  const handleGenerateCSATLink = async () => {
+    if (!selectedProjectId) {
+      toast.error("Vincule a um projeto primeiro");
+      return;
+    }
+
+    // If survey already exists, just copy the link
+    if (csatSurvey?.access_token) {
+      navigator.clipboard.writeText(getCSATLink(csatSurvey.access_token));
+      toast.success("Link CSAT copiado!");
+      return;
+    }
+
+    setIsGeneratingCSAT(true);
+    try {
+      const accessToken = generateToken(16);
+      const { data, error } = await supabase
+        .from("csat_surveys")
+        .insert({
+          project_id: selectedProjectId,
+          hotseat_response_id: response.id,
+          access_token: accessToken,
+          status: "pending",
+        })
+        .select("id, access_token, status")
+        .single();
+
+      if (error) throw error;
+
+      setCSATSurvey(data);
+      navigator.clipboard.writeText(getCSATLink(accessToken));
+      toast.success("Link CSAT gerado e copiado!");
+    } catch (error) {
+      console.error("Error generating CSAT link:", error);
+      toast.error("Erro ao gerar link CSAT");
+    } finally {
+      setIsGeneratingCSAT(false);
     }
   };
 
@@ -912,6 +997,63 @@ export function HotseatResponseDialog({
                   {!selectedProjectId && (
                     <p className="text-xs text-muted-foreground">
                       Vincule a um projeto na aba "Detalhes" para agendar reuniões
+                    </p>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* CSAT Survey */}
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-2">
+                    <MessageSquareHeart className="h-4 w-4" />
+                    Pesquisa de Satisfação (CSAT)
+                  </Label>
+                  
+                  {status === "concluido" ? (
+                    <div className="space-y-2">
+                      {isLoadingCSAT ? (
+                        <div className="flex items-center justify-center py-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      ) : csatSurvey ? (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={handleGenerateCSATLink}
+                            disabled={isGeneratingCSAT}
+                            className="flex-1"
+                          >
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copiar Link CSAT
+                          </Button>
+                          <Badge variant={csatSurvey.status === "responded" ? "default" : "secondary"}>
+                            {csatSurvey.status === "responded" ? "Respondida" : "Pendente"}
+                          </Badge>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={handleGenerateCSATLink}
+                          disabled={isGeneratingCSAT || !selectedProjectId}
+                          className="w-full"
+                        >
+                          {isGeneratingCSAT ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <MessageSquareHeart className="h-4 w-4 mr-2" />
+                          )}
+                          Gerar Link de Pesquisa CSAT
+                        </Button>
+                      )}
+                      {!selectedProjectId && (
+                        <p className="text-xs text-muted-foreground">
+                          Vincule a um projeto na aba "Detalhes" para enviar CSAT
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Marque o status como "Concluído" na aba "Detalhes" para enviar a pesquisa CSAT
                     </p>
                   )}
                 </div>
