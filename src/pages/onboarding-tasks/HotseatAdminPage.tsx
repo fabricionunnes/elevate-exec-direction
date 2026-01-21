@@ -16,9 +16,10 @@ import {
   CheckCircle2, 
   XCircle,
   Copy,
-  ExternalLink,
+  RefreshCw,
   Building2,
-  User
+  User,
+  UserX
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -118,6 +119,8 @@ export default function HotseatAdminPage() {
         return <Badge variant="outline" className="border-green-500 text-green-600"><CheckCircle2 className="h-3 w-3 mr-1" />Concluído</Badge>;
       case "cancelled":
         return <Badge variant="outline" className="border-red-500 text-red-600"><XCircle className="h-3 w-3 mr-1" />Cancelado</Badge>;
+      case "no_show":
+        return <Badge variant="outline" className="border-orange-500 text-orange-600"><UserX className="h-3 w-3 mr-1" />Não Compareceu</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -195,11 +198,15 @@ export default function HotseatAdminPage() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => window.open(getPublicLink(), "_blank")}
+                onClick={() => {
+                  setLoading(true);
+                  fetchResponses();
+                }}
+                disabled={loading}
                 className="gap-2"
               >
-                <ExternalLink className="h-4 w-4" />
-                <span className="hidden sm:inline">Abrir Formulário</span>
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Atualizar</span>
               </Button>
             </div>
           </div>
