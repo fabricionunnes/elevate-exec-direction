@@ -165,7 +165,6 @@ export function JobDetailDialog({
           <TabsList className="w-full">
             <TabsTrigger value="info" className="flex-1">Informações</TabsTrigger>
             <TabsTrigger value="pipeline" className="flex-1">Pipeline</TabsTrigger>
-            {canEdit && <TabsTrigger value="config" className="flex-1">Configurações</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="info" className="space-y-4 mt-4">
@@ -284,94 +283,6 @@ export function JobDetailDialog({
             </div>
           </TabsContent>
 
-          {canEdit && (
-            <TabsContent value="config" className="space-y-4 mt-4">
-              {/* Status */}
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Aberta</SelectItem>
-                    <SelectItem value="in_progress">Em andamento</SelectItem>
-                    <SelectItem value="paused">Pausada</SelectItem>
-                    <SelectItem value="closed">Encerrada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Dates */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Data alvo</Label>
-                  <Input
-                    type="date"
-                    value={targetDate}
-                    onChange={(e) => setTargetDate(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>SLA (dias)</Label>
-                  <Input
-                    type="number"
-                    placeholder="Ex: 30"
-                    value={slaDays}
-                    onChange={(e) => setSlaDays(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Responsibles */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>RH Responsável</Label>
-                  <Select value={responsibleRhId} onValueChange={setResponsibleRhId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Nenhum</SelectItem>
-                      {rhStaff.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Consultor</Label>
-                  <Select value={consultantId} onValueChange={setConsultantId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Nenhum</SelectItem>
-                      {consultants.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Internal notes */}
-              <div className="space-y-2">
-                <Label>Observações internas (UNV)</Label>
-                <Textarea
-                  placeholder="Notas internas sobre esta vaga..."
-                  value={internalNotes}
-                  onChange={(e) => setInternalNotes(e.target.value)}
-                  rows={4}
-                />
-              </div>
-
-              <Button onClick={handleSave} disabled={saving} className="w-full">
-                <Save className="h-4 w-4 mr-2" />
-                {saving ? "Salvando..." : "Salvar alterações"}
-              </Button>
-            </TabsContent>
-          )}
         </Tabs>
       </DialogContent>
     </Dialog>
