@@ -22,6 +22,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { Check, ChevronsUpDown } from "lucide-react";
+import {
   Tabs,
   TabsContent,
   TabsList,
@@ -119,6 +134,7 @@ export function HotseatResponseDialog({
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
+  const [companySearchOpen, setCompanySearchOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -370,25 +386,66 @@ export function HotseatResponseDialog({
               {/* Link to Company */}
               <div className="space-y-2">
                 <Label>Vincular à Empresa</Label>
-                <Select
-                  value={selectedCompanyId || "none"}
-                  onValueChange={(v) => {
-                    setSelectedCompanyId(v === "none" ? null : v);
-                    setSelectedProjectId(null);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma empresa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhuma</SelectItem>
-                    {companies.map((company) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={companySearchOpen} onOpenChange={setCompanySearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={companySearchOpen}
+                      className="w-full justify-between font-normal"
+                    >
+                      {selectedCompanyId
+                        ? companies.find((c) => c.id === selectedCompanyId)?.name || "Selecione..."
+                        : "Nenhuma"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Buscar empresa..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhuma empresa encontrada.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value="none"
+                            onSelect={() => {
+                              setSelectedCompanyId(null);
+                              setSelectedProjectId(null);
+                              setCompanySearchOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                !selectedCompanyId ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            Nenhuma
+                          </CommandItem>
+                          {companies.map((company) => (
+                            <CommandItem
+                              key={company.id}
+                              value={company.name}
+                              onSelect={() => {
+                                setSelectedCompanyId(company.id);
+                                setSelectedProjectId(null);
+                                setCompanySearchOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedCompanyId === company.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {company.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Link to Project */}
