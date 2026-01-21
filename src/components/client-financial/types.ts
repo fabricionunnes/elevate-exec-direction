@@ -145,6 +145,7 @@ export interface FinancialProduct {
   cost_price: number;
   is_active: boolean;
   category_id?: string;
+  abc_curve?: string | null;
   created_at: string;
   updated_at: string;
   category?: FinancialCategory;
