@@ -313,14 +313,14 @@ export function ClientProductsPanel({ projectId, canEdit }: Props) {
                 <div className="space-y-2">
                   <Label>Categoria</Label>
                   <Select
-                    value={formData.category_id}
-                    onValueChange={(value) => setFormData({ ...formData, category_id: value })}
+                    value={formData.category_id || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, category_id: value === "none" ? "" : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sem categoria</SelectItem>
+                      <SelectItem value="none">Sem categoria</SelectItem>
                       {categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           {cat.name}
