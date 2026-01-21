@@ -334,8 +334,8 @@ const OnboardingCompanyDetailPage = () => {
     );
   }
 
-  const csOptions = staffList.filter((s) => s.role === "cs");
-  const consultantOptions = staffList.filter((s) => s.role === "consultant");
+  const csOptions = staffList.filter((s) => s.role === "cs" || s.role === "admin");
+  const consultantOptions = staffList.filter((s) => s.role === "consultant" || s.role === "admin" || s.role === "cs");
 
   // Permission logic:
   // - Admin: can edit everything including CS assignment
