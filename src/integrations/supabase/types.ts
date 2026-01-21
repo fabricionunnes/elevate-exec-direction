@@ -1751,6 +1751,7 @@ export type Database = {
       client_customers: {
         Row: {
           address: string | null
+          birth_date: string | null
           city: string | null
           created_at: string | null
           credit_limit: number | null
@@ -1770,6 +1771,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          birth_date?: string | null
           city?: string | null
           created_at?: string | null
           credit_limit?: number | null
@@ -1789,6 +1791,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          birth_date?: string | null
           city?: string | null
           created_at?: string | null
           credit_limit?: number | null

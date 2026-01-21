@@ -46,6 +46,7 @@ import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualB
 import { ClientFinancialModule } from "@/components/client-financial/ClientFinancialModule";
 import { ClientInventoryModule } from "@/components/client-inventory/ClientInventoryModule";
 import { ClientSalesModule } from "@/components/client-sales/ClientSalesModule";
+import { ClientCustomersPanel } from "@/components/client-inventory/ClientCustomersPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,7 +98,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -286,6 +287,7 @@ const ClientOnboardingPage = () => {
         financial: "Financeiro",
         inventory: "Estoque & Compras",
         sales: "Vendas",
+        customers: "Clientes",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
@@ -424,6 +426,7 @@ const ClientOnboardingPage = () => {
     { id: "trail" as ViewType, icon: Map, label: "Trilha" },
     { id: "timeline" as ViewType, icon: Calendar, label: "Cronograma" },
     { id: "list" as ViewType, icon: List, label: "Lista" },
+    { id: "customers" as ViewType, icon: Users, label: "Clientes" },
     { id: "sales" as ViewType, icon: ShoppingBag, label: "Vendas" },
     { id: "financial" as ViewType, icon: Wallet, label: "Financeiro" },
     { id: "inventory" as ViewType, icon: Package, label: "Estoque" },
@@ -796,6 +799,20 @@ const ClientOnboardingPage = () => {
               <ClientSalesModule 
                 projectId={projectId || ""} 
                 userRole={currentUser?.role}
+              />
+            </motion.div>
+          )}
+
+          {activeView === "customers" && (
+            <motion.div
+              key="customers"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientCustomersPanel 
+                projectId={projectId || ""} 
+                canEdit={true}
               />
             </motion.div>
           )}

@@ -72,6 +72,7 @@ export function ClientCustomersPanel({ projectId, canEdit }: Props) {
     postal_code: "",
     credit_limit: 0,
     notes: "",
+    birth_date: "",
   });
 
   useEffect(() => {
@@ -112,6 +113,7 @@ export function ClientCustomersPanel({ projectId, canEdit }: Props) {
       postal_code: "",
       credit_limit: 0,
       notes: "",
+      birth_date: "",
     });
     setShowDialog(true);
   };
@@ -130,6 +132,7 @@ export function ClientCustomersPanel({ projectId, canEdit }: Props) {
       postal_code: customer.postal_code || "",
       credit_limit: customer.credit_limit || 0,
       notes: customer.notes || "",
+      birth_date: customer.birth_date || "",
     });
     setShowDialog(true);
   };
@@ -534,6 +537,17 @@ export function ClientCustomersPanel({ projectId, canEdit }: Props) {
                 onChange={(e) =>
                   setFormData({ ...formData, credit_limit: parseFloat(e.target.value) || 0 })
                 }
+              />
+            </div>
+
+            {/* Data de Nascimento */}
+            <div className="space-y-2">
+              <Label htmlFor="birth_date">Data de Nascimento</Label>
+              <Input
+                id="birth_date"
+                type="date"
+                value={formData.birth_date}
+                onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
               />
             </div>
 

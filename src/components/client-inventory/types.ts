@@ -190,6 +190,7 @@ export interface ClientCustomer {
   credit_limit: number;
   current_balance: number;
   notes?: string;
+  birth_date?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -246,7 +247,6 @@ export interface InventoryAlert {
 export type InventoryViewType =
   | 'dashboard'
   | 'products'
-  | 'customers'
   | 'purchases'
   | 'suppliers'
   | 'budgets'
