@@ -64,7 +64,7 @@ export function ClientFinancialSettingsPanel({ projectId, canEdit }: Props) {
   const [editingCategory, setEditingCategory] = useState<FinancialCategory | null>(null);
   const [categoryForm, setCategoryForm] = useState({
     name: "",
-    type: "expense" as "income" | "expense",
+    type: "expense" as "income" | "expense" | "product",
     description: "",
     color: CATEGORY_COLORS[0],
     is_active: true,
@@ -345,6 +345,7 @@ export function ClientFinancialSettingsPanel({ projectId, canEdit }: Props) {
 
   const incomeCategories = categories.filter(c => c.type === "income");
   const expenseCategories = categories.filter(c => c.type === "expense");
+  const productCategories = categories.filter(c => c.type === "product");
 
   return (
     <div className="space-y-4">
@@ -387,7 +388,7 @@ export function ClientFinancialSettingsPanel({ projectId, canEdit }: Props) {
               </Button>
             )}
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               {/* Income categories */}
               <Card>
                 <CardHeader>
@@ -435,6 +436,42 @@ export function ClientFinancialSettingsPanel({ projectId, canEdit }: Props) {
                   ) : (
                     <div className="space-y-2">
                       {expenseCategories.map(cat => (
+                        <div key={cat.id} className="flex items-center justify-between p-2 border rounded">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
+                            <span className={!cat.is_active ? "text-muted-foreground line-through" : ""}>
+                              {cat.name}
+                            </span>
+                            {!cat.is_active && <Badge variant="secondary">Inativo</Badge>}
+                          </div>
+                          {canEdit && (
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditCategory(cat)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteCategory(cat.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Product categories */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base text-blue-600">Categorias de Produto</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {productCategories.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhuma categoria de produto</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {productCategories.map(cat => (
                         <div key={cat.id} className="flex items-center justify-between p-2 border rounded">
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
@@ -601,7 +638,7 @@ export function ClientFinancialSettingsPanel({ projectId, canEdit }: Props) {
               <Label>Tipo</Label>
               <Select
                 value={categoryForm.type}
-                onValueChange={(v) => setCategoryForm({ ...categoryForm, type: v as "income" | "expense" })}
+                onValueChange={(v) => setCategoryForm({ ...categoryForm, type: v as "income" | "expense" | "product" })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -609,6 +646,7 @@ export function ClientFinancialSettingsPanel({ projectId, canEdit }: Props) {
                 <SelectContent>
                   <SelectItem value="income">Receita</SelectItem>
                   <SelectItem value="expense">Despesa</SelectItem>
+                  <SelectItem value="product">Produto</SelectItem>
                 </SelectContent>
               </Select>
             </div>
