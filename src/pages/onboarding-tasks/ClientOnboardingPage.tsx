@@ -429,7 +429,7 @@ const ClientOnboardingPage = () => {
     { 
       id: "trilha-group", 
       icon: Map, 
-      label: "Trilha",
+      label: "Jornada",
       submenu: [
         { id: "trail" as ViewType, icon: Map, label: "Trilha" },
         { id: "list" as ViewType, icon: List, label: "Lista" },
