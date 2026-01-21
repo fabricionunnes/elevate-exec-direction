@@ -24,6 +24,8 @@ import {
   Wallet,
   Package,
   ShoppingBag,
+  Briefcase,
+  ChevronRight,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -421,15 +423,30 @@ const ClientOnboardingPage = () => {
     );
   }
 
-  const viewTabs = [
+  // Menu structure with submenus
+  const menuStructure = [
     { id: "kpis" as ViewType, icon: BarChart3, label: "KPIs" },
-    { id: "trail" as ViewType, icon: Map, label: "Trilha" },
-    { id: "timeline" as ViewType, icon: Calendar, label: "Cronograma" },
-    { id: "list" as ViewType, icon: List, label: "Lista" },
-    { id: "customers" as ViewType, icon: Users, label: "Clientes" },
-    { id: "sales" as ViewType, icon: ShoppingBag, label: "Vendas" },
-    { id: "financial" as ViewType, icon: Wallet, label: "Financeiro" },
-    { id: "inventory" as ViewType, icon: Package, label: "Estoque" },
+    { 
+      id: "trilha-group", 
+      icon: Map, 
+      label: "Trilha",
+      submenu: [
+        { id: "trail" as ViewType, icon: Map, label: "Trilha" },
+        { id: "list" as ViewType, icon: List, label: "Lista" },
+        { id: "timeline" as ViewType, icon: Calendar, label: "Cronograma" },
+      ]
+    },
+    { 
+      id: "gestao-group", 
+      icon: Briefcase, 
+      label: "Gestão",
+      submenu: [
+        { id: "customers" as ViewType, icon: Users, label: "Clientes" },
+        { id: "sales" as ViewType, icon: ShoppingBag, label: "Vendas" },
+        { id: "financial" as ViewType, icon: Wallet, label: "Financeiro" },
+        { id: "inventory" as ViewType, icon: Package, label: "Estoque" },
+      ]
+    },
     { id: "tickets" as ViewType, icon: MessageSquare, label: "Chamados" },
     { id: "meetings" as ViewType, icon: Video, label: "Reuniões" },
     { id: "assessments" as ViewType, icon: ClipboardCheck, label: "Testes" },
@@ -437,6 +454,11 @@ const ClientOnboardingPage = () => {
     { id: "board" as ViewType, icon: Brain, label: "Board" },
     { id: "referrals" as ViewType, icon: Gift, label: "Indicar" },
   ];
+
+  // Helper to check if active view is in a submenu
+  const isInSubmenu = (submenu: { id: ViewType }[] | undefined) => {
+    return submenu?.some(item => item.id === activeView);
+  };
 
   // Get company ID for customer points link
   const companyId = project?.onboarding_company_id;
@@ -548,21 +570,60 @@ const ClientOnboardingPage = () => {
             <span className="text-xs font-bold text-primary tabular-nums whitespace-nowrap">{progressPercent}%</span>
           </div>
 
-          {/* Navigation tabs - horizontal scroll on mobile */}
+          {/* Navigation tabs - Desktop with dropdowns */}
           <div className="hidden md:flex items-center gap-1 flex-wrap">
-            {viewTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeView === tab.id;
+            {menuStructure.map((item) => {
+              const Icon = item.icon;
+              
+              // Items with submenu
+              if ('submenu' in item && item.submenu) {
+                const isSubmenuActive = isInSubmenu(item.submenu);
+                return (
+                  <DropdownMenu key={item.id}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant={isSubmenuActive ? "default" : "ghost"}
+                        size="sm"
+                        className={`gap-1.5 h-8 text-xs ${isSubmenuActive ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        <span>{item.label}</span>
+                        <ChevronDown className="h-3 w-3 ml-0.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-[140px]">
+                      {item.submenu.map((subItem) => {
+                        const SubIcon = subItem.icon;
+                        const isSubActive = activeView === subItem.id;
+                        return (
+                          <DropdownMenuItem
+                            key={subItem.id}
+                            onClick={() => setActiveView(subItem.id)}
+                            className={`gap-2 cursor-pointer ${isSubActive ? "bg-primary/10 text-primary" : ""}`}
+                          >
+                            <SubIcon className="h-4 w-4" />
+                            <span>{subItem.label}</span>
+                            {isSubActive && <Check className="h-3.5 w-3.5 ml-auto" />}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                );
+              }
+              
+              // Regular items
+              const isActive = activeView === item.id;
               return (
                 <Button
-                  key={tab.id}
+                  key={item.id}
                   variant={isActive ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setActiveView(tab.id)}
+                  onClick={() => setActiveView(item.id as ViewType)}
                   className={`gap-1.5 h-8 text-xs ${isActive ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   <Icon className="h-3.5 w-3.5" />
-                  <span>{tab.label}</span>
+                  <span>{item.label}</span>
                 </Button>
               );
             })}
@@ -572,14 +633,62 @@ const ClientOnboardingPage = () => {
 
       {/* Bottom Navigation - Mobile Only */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/98 backdrop-blur-md border-t safe-area-bottom md:hidden">
-        <div className="flex items-stretch">
-          {viewTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeView === tab.id;
+        <div className="flex items-stretch overflow-x-auto">
+          {menuStructure.map((item) => {
+            const Icon = item.icon;
+            
+            // Items with submenu - show as sheet/popover on mobile
+            if ('submenu' in item && item.submenu) {
+              const isSubmenuActive = isInSubmenu(item.submenu);
+              return (
+                <DropdownMenu key={item.id}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={`
+                        flex-1 flex flex-col items-center justify-center py-2 px-1 gap-0.5
+                        transition-colors touch-manipulation min-h-[56px]
+                        ${isSubmenuActive
+                          ? "text-primary"
+                          : "text-muted-foreground active:text-foreground"
+                        }
+                      `}
+                    >
+                      <div className={`
+                        p-1.5 rounded-xl transition-colors
+                        ${isSubmenuActive ? "bg-primary/10" : ""}
+                      `}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="center" side="top" className="min-w-[140px] mb-2">
+                    {item.submenu.map((subItem) => {
+                      const SubIcon = subItem.icon;
+                      const isSubActive = activeView === subItem.id;
+                      return (
+                        <DropdownMenuItem
+                          key={subItem.id}
+                          onClick={() => setActiveView(subItem.id)}
+                          className={`gap-2 cursor-pointer ${isSubActive ? "bg-primary/10 text-primary" : ""}`}
+                        >
+                          <SubIcon className="h-4 w-4" />
+                          <span>{subItem.label}</span>
+                          {isSubActive && <Check className="h-3.5 w-3.5 ml-auto" />}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              );
+            }
+            
+            // Regular items
+            const isActive = activeView === item.id;
             return (
               <button
-                key={tab.id}
-                onClick={() => setActiveView(tab.id)}
+                key={item.id}
+                onClick={() => setActiveView(item.id as ViewType)}
                 className={`
                   flex-1 flex flex-col items-center justify-center py-2 px-1 gap-0.5
                   transition-colors touch-manipulation min-h-[56px]
@@ -595,22 +704,10 @@ const ClientOnboardingPage = () => {
                 `}>
                   <Icon className="h-5 w-5" />
                 </div>
-                <span className="text-[10px] font-medium leading-tight">{tab.label}</span>
+                <span className="text-[10px] font-medium leading-tight">{item.label}</span>
               </button>
             );
           })}
-          {/* Customer Points link for mobile */}
-          {companyId && (
-            <button
-              onClick={() => navigate(`/customer-points/${companyId}`)}
-              className="flex-1 flex flex-col items-center justify-center py-2 px-1 gap-0.5 transition-colors touch-manipulation min-h-[56px] text-muted-foreground active:text-foreground"
-            >
-              <div className="p-1.5 rounded-xl transition-colors">
-                <Gift className="h-5 w-5" />
-              </div>
-              <span className="text-[10px] font-medium leading-tight">Pontos</span>
-            </button>
-          )}
         </div>
       </nav>
 
