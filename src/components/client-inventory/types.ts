@@ -174,6 +174,75 @@ export interface InventorySettings {
   updated_at: string;
 }
 
+// Client Customer types
+export interface ClientCustomer {
+  id: string;
+  project_id: string;
+  name: string;
+  document?: string;
+  document_type?: 'cpf' | 'cnpj';
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  credit_limit: number;
+  current_balance: number;
+  notes?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Sale Budget types
+export interface SaleBudget {
+  id: string;
+  project_id: string;
+  customer_id?: string;
+  customer_name?: string;
+  budget_number?: string;
+  budget_date: string;
+  validity_date?: string;
+  total_amount: number;
+  discount_amount: number;
+  final_amount: number;
+  notes?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'converted' | 'expired';
+  converted_sale_id?: string;
+  seller_id?: string;
+  seller_name?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+  items?: SaleBudgetItem[];
+  customer?: ClientCustomer;
+}
+
+export interface SaleBudgetItem {
+  id: string;
+  budget_id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  created_at: string;
+  product?: InventoryProduct;
+}
+
+// Inventory Alert types
+export interface InventoryAlert {
+  id: string;
+  project_id: string;
+  product_id: string;
+  alert_type: 'low_stock' | 'out_of_stock';
+  is_read: boolean;
+  is_resolved: boolean;
+  resolved_at?: string;
+  created_at: string;
+  product?: InventoryProduct;
+}
+
 export type InventoryViewType =
   | 'dashboard'
   | 'products'
@@ -182,7 +251,10 @@ export type InventoryViewType =
   | 'budgets'
   | 'movements'
   | 'reports'
-  | 'settings';
+  | 'settings'
+  | 'customers'
+  | 'sale-budgets'
+  | 'alerts';
 
 export const BASE_UNITS = [
   { value: 'UN', label: 'Unidade' },
@@ -206,3 +278,34 @@ export const SALE_UNITS: Record<string, { value: string; label: string; factor: 
     { value: 'CM', label: 'Centímetro', factor: 100 },
   ],
 };
+
+// Brazilian states
+export const BRAZILIAN_STATES = [
+  { value: 'AC', label: 'Acre' },
+  { value: 'AL', label: 'Alagoas' },
+  { value: 'AP', label: 'Amapá' },
+  { value: 'AM', label: 'Amazonas' },
+  { value: 'BA', label: 'Bahia' },
+  { value: 'CE', label: 'Ceará' },
+  { value: 'DF', label: 'Distrito Federal' },
+  { value: 'ES', label: 'Espírito Santo' },
+  { value: 'GO', label: 'Goiás' },
+  { value: 'MA', label: 'Maranhão' },
+  { value: 'MT', label: 'Mato Grosso' },
+  { value: 'MS', label: 'Mato Grosso do Sul' },
+  { value: 'MG', label: 'Minas Gerais' },
+  { value: 'PA', label: 'Pará' },
+  { value: 'PB', label: 'Paraíba' },
+  { value: 'PR', label: 'Paraná' },
+  { value: 'PE', label: 'Pernambuco' },
+  { value: 'PI', label: 'Piauí' },
+  { value: 'RJ', label: 'Rio de Janeiro' },
+  { value: 'RN', label: 'Rio Grande do Norte' },
+  { value: 'RS', label: 'Rio Grande do Sul' },
+  { value: 'RO', label: 'Rondônia' },
+  { value: 'RR', label: 'Roraima' },
+  { value: 'SC', label: 'Santa Catarina' },
+  { value: 'SP', label: 'São Paulo' },
+  { value: 'SE', label: 'Sergipe' },
+  { value: 'TO', label: 'Tocantins' },
+];
