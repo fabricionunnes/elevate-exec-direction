@@ -7,7 +7,6 @@ import {
   ClipboardCheck, 
   MessageSquare, 
   FileText, 
-  Settings,
   BarChart3,
   UserCheck
 } from "lucide-react";
@@ -18,7 +17,7 @@ import { PipelineTab } from "./tabs/PipelineTab";
 import { DISCEvaluationsTab } from "./tabs/DISCEvaluationsTab";
 import { InterviewsTab } from "./tabs/InterviewsTab";
 import { ResumesTab } from "./tabs/ResumesTab";
-import { HRSettingsTab } from "./tabs/HRSettingsTab";
+
 import { HRDashboardTab } from "./tabs/HRDashboardTab";
 import { TalentPoolTab } from "./tabs/TalentPoolTab";
 
@@ -148,12 +147,6 @@ export function HRRecruitmentPanel({
             <UserCheck className="h-4 w-4" />
             <span className="hidden sm:inline">Banco de Talentos</span>
           </TabsTrigger>
-          {canEdit && (
-            <TabsTrigger value="settings" className="gap-2">
-              <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">Config</span>
-            </TabsTrigger>
-          )}
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-6">
@@ -216,11 +209,6 @@ export function HRRecruitmentPanel({
           />
         </TabsContent>
 
-        {canEdit && (
-          <TabsContent value="settings" className="mt-6">
-            <HRSettingsTab projectId={projectId} />
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   );
