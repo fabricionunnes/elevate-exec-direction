@@ -62,6 +62,13 @@ serve(async (req) => {
       });
     }
 
+    if (!body.description || !body.description.trim()) {
+      return new Response(JSON.stringify({ error: "missing_description" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Insert the hotseat response
     const { data: hotseatResponse, error: insertError } = await supabase
       .from("hotseat_responses")
