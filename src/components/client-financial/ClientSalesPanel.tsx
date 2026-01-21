@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,11 +38,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, ShoppingCart, Search, Receipt, User, Calendar } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Plus, Trash2, ShoppingCart, Search, Receipt, User, Calendar, CreditCard, Check, ChevronsUpDown, Package, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import type { FinancialProduct, FinancialSale, FinancialPaymentMethod } from "./types";
 
 interface Props {
@@ -98,6 +112,16 @@ export function ClientSalesPanel({ projectId, canEdit }: Props) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<FinancialSale | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [salespersonOpen, setSalespersonOpen] = useState(false);
+  const [salespersonSearch, setSalespersonSearch] = useState("");
+
+  // Filtered salespeople based on search
+  const filteredSalespeople = useMemo(() => {
+    if (!salespersonSearch) return salespeople;
+    return salespeople.filter((sp) =>
+      sp.name.toLowerCase().includes(salespersonSearch.toLowerCase())
+    );
+  }, [salespeople, salespersonSearch]);
 
   useEffect(() => {
     loadData();
@@ -392,106 +416,197 @@ export function ClientSalesPanel({ projectId, canEdit }: Props) {
                 Nova Venda
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Nova Venda</DialogTitle>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader className="pb-4 border-b">
+                <DialogTitle className="flex items-center gap-2 text-xl">
+                  <ShoppingCart className="h-5 w-5 text-primary" />
+                  Nova Venda
+                </DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Data da Venda</Label>
-                    <Input
-                      type="date"
-                      value={formData.sale_date}
-                      onChange={(e) => setFormData({ ...formData, sale_date: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Cliente</Label>
-                    <Input
-                      value={formData.customer_name}
-                      onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                      placeholder="Nome do cliente"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Vendedor</Label>
-                    <Select
-                      value={formData.salesperson_id || "none"}
-                      onValueChange={(value) => setFormData({ ...formData, salesperson_id: value === "none" ? "" : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o vendedor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Sem vendedor</SelectItem>
-                        {salespeople.map((sp) => (
-                          <SelectItem key={sp.id} value={sp.id}>
-                            {sp.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Forma de Pagamento</Label>
-                    <Select
-                      value={formData.payment_method_id || "none"}
-                      onValueChange={(value) => setFormData({ ...formData, payment_method_id: value === "none" ? "" : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Não informado</SelectItem>
-                        {paymentMethods.map((pm) => (
-                          <SelectItem key={pm.id} value={pm.id}>
-                            {pm.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              
+              <div className="space-y-6 pt-4">
+                {/* Section: Informações Gerais */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Informações Gerais
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        Data da Venda
+                      </Label>
+                      <Input
+                        type="date"
+                        value={formData.sale_date}
+                        onChange={(e) => setFormData({ ...formData, sale_date: e.target.value })}
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        Cliente
+                      </Label>
+                      <Input
+                        value={formData.customer_name}
+                        onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                        placeholder="Nome do cliente (opcional)"
+                        className="bg-background"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Items */}
-                <div className="space-y-2">
+                {/* Section: Vendedor e Pagamento */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Vendedor & Pagamento
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border">
+                    {/* Salesperson Combobox with search */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        Vendedor
+                      </Label>
+                      <Popover open={salespersonOpen} onOpenChange={setSalespersonOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={salespersonOpen}
+                            className="w-full justify-between bg-background font-normal"
+                          >
+                            {formData.salesperson_id
+                              ? salespeople.find((sp) => sp.id === formData.salesperson_id)?.name
+                              : "Selecione o vendedor..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0" align="start">
+                          <Command shouldFilter={false}>
+                            <CommandInput 
+                              placeholder="Buscar vendedor..." 
+                              value={salespersonSearch}
+                              onValueChange={setSalespersonSearch}
+                            />
+                            <CommandList>
+                              <CommandEmpty>Nenhum vendedor encontrado.</CommandEmpty>
+                              <CommandGroup>
+                                <CommandItem
+                                  value="none"
+                                  onSelect={() => {
+                                    setFormData({ ...formData, salesperson_id: "" });
+                                    setSalespersonOpen(false);
+                                    setSalespersonSearch("");
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      !formData.salesperson_id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <span className="text-muted-foreground">Sem vendedor</span>
+                                </CommandItem>
+                                {filteredSalespeople.map((sp) => (
+                                  <CommandItem
+                                    key={sp.id}
+                                    value={sp.id}
+                                    onSelect={() => {
+                                      setFormData({ ...formData, salesperson_id: sp.id });
+                                      setSalespersonOpen(false);
+                                      setSalespersonSearch("");
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        formData.salesperson_id === sp.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {sp.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-muted-foreground" />
+                        Forma de Pagamento
+                      </Label>
+                      <Select
+                        value={formData.payment_method_id || "none"}
+                        onValueChange={(value) => setFormData({ ...formData, payment_method_id: value === "none" ? "" : value })}
+                      >
+                        <SelectTrigger className="bg-background">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Não informado</SelectItem>
+                          {paymentMethods.map((pm) => (
+                            <SelectItem key={pm.id} value={pm.id}>
+                              {pm.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section: Itens da Venda */}
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Label>Itens da Venda</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
-                      <Plus className="h-4 w-4 mr-1" />
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Itens da Venda
+                    </h3>
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddItem} className="gap-1">
+                      <Plus className="h-4 w-4" />
                       Adicionar Item
                     </Button>
                   </div>
 
                   {formData.items.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Clique em "Adicionar Item" para incluir produtos
-                    </p>
+                    <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed rounded-lg bg-muted/20">
+                      <Package className="h-10 w-10 text-muted-foreground/50 mb-2" />
+                      <p className="text-sm text-muted-foreground text-center">
+                        Nenhum item adicionado
+                      </p>
+                      <p className="text-xs text-muted-foreground/70">
+                        Clique em "Adicionar Item" para incluir produtos
+                      </p>
+                    </div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-hidden shadow-sm">
                       <Table>
                         <TableHeader>
-                          <TableRow>
-                            <TableHead>Produto</TableHead>
-                            <TableHead className="w-20">Qtd</TableHead>
-                            <TableHead className="w-32">Preço</TableHead>
-                            <TableHead className="w-32">Total</TableHead>
-                            <TableHead className="w-10"></TableHead>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="font-semibold">Produto</TableHead>
+                            <TableHead className="w-24 font-semibold">Qtd</TableHead>
+                            <TableHead className="w-36 font-semibold">Preço Unit.</TableHead>
+                            <TableHead className="w-32 font-semibold text-right">Total</TableHead>
+                            <TableHead className="w-12"></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {formData.items.map((item, index) => (
-                            <TableRow key={index}>
+                            <TableRow key={index} className="group">
                               <TableCell>
                                 <Select
                                   value={item.product_id}
                                   onValueChange={(value) => handleUpdateItem(index, { product_id: value })}
                                 >
-                                  <SelectTrigger className="h-8">
+                                  <SelectTrigger className="h-9">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -509,17 +624,17 @@ export function ClientSalesPanel({ projectId, canEdit }: Props) {
                                   min="1"
                                   value={item.quantity}
                                   onChange={(e) => handleUpdateItem(index, { quantity: Number(e.target.value) || 1 })}
-                                  className="h-8"
+                                  className="h-9"
                                 />
                               </TableCell>
                               <TableCell>
                                 <CurrencyInput
                                   value={item.unit_price}
                                   onChange={(value) => handleUpdateItem(index, { unit_price: value })}
-                                  className="h-8"
+                                  className="h-9"
                                 />
                               </TableCell>
-                              <TableCell className="font-medium">
+                              <TableCell className="font-semibold text-right">
                                 {formatCurrency(item.total)}
                               </TableCell>
                               <TableCell>
@@ -527,7 +642,7 @@ export function ClientSalesPanel({ projectId, canEdit }: Props) {
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8"
+                                  className="h-8 w-8 opacity-50 group-hover:opacity-100 transition-opacity"
                                   onClick={() => handleRemoveItem(index)}
                                 >
                                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -543,31 +658,33 @@ export function ClientSalesPanel({ projectId, canEdit }: Props) {
 
                 {/* Totals */}
                 {formData.items.length > 0 && (
-                  <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                  <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-5 space-y-3 border border-primary/20">
                     <div className="flex justify-between text-sm">
-                      <span>Subtotal:</span>
-                      <span>{formatCurrency(subtotal)}</span>
+                      <span className="text-muted-foreground">Subtotal:</span>
+                      <span className="font-medium">{formatCurrency(subtotal)}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Desconto:</span>
+                      <span className="text-sm text-muted-foreground">Desconto:</span>
                       <CurrencyInput
                         value={formData.discount}
                         onChange={(value) => setFormData({ ...formData, discount: value })}
-                        className="w-32 h-8 text-right"
+                        className="w-36 h-9 text-right"
                       />
                     </div>
-                    <div className="flex justify-between font-bold text-lg border-t pt-2">
+                    <div className="flex justify-between items-center font-bold text-xl border-t border-primary/20 pt-3">
                       <span>Total:</span>
-                      <span>{formatCurrency(total)}</span>
+                      <span className="text-primary">{formatCurrency(total)}</span>
                     </div>
                   </div>
                 )}
 
-                <div className="flex justify-end gap-2 pt-4">
+                {/* Actions */}
+                <div className="flex justify-end gap-3 pt-4 border-t">
                   <Button variant="outline" onClick={() => setDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button onClick={handleSave} disabled={formData.items.length === 0}>
+                  <Button onClick={handleSave} disabled={formData.items.length === 0} className="gap-2">
+                    <ShoppingCart className="h-4 w-4" />
                     Registrar Venda
                   </Button>
                 </div>
