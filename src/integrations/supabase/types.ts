@@ -3091,6 +3091,8 @@ export type Database = {
           project_id: string
           receivable_id: string | null
           sale_date: string
+          seller_id: string | null
+          seller_name: string | null
           status: string
           total_amount: number
           total_cost: number | null
@@ -3112,6 +3114,8 @@ export type Database = {
           project_id: string
           receivable_id?: string | null
           sale_date?: string
+          seller_id?: string | null
+          seller_name?: string | null
           status?: string
           total_amount?: number
           total_cost?: number | null
@@ -3133,6 +3137,8 @@ export type Database = {
           project_id?: string
           receivable_id?: string | null
           sale_date?: string
+          seller_id?: string | null
+          seller_name?: string | null
           status?: string
           total_amount?: number
           total_cost?: number | null
