@@ -32,8 +32,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Trash2, ShoppingBag, Search, TrendingUp, TrendingDown, DollarSign, Package } from "lucide-react";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { CustomerSelect } from "@/components/client-inventory/CustomerSelect";
 
 interface InventoryProduct {
   id: string;
@@ -103,6 +104,7 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
   const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
+    customer_id: "" as string | null,
     customer_name: "",
     customer_document: "",
     sale_date: format(new Date(), "yyyy-MM-dd"),
@@ -113,6 +115,7 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
     seller_id: "",
     seller_name: "",
     bank_account_id: "",
+    installments: 1,
   });
   const [items, setItems] = useState<SaleItem[]>([]);
 
@@ -180,6 +183,7 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
 
   const openNew = () => {
     setFormData({
+      customer_id: null,
       customer_name: "",
       customer_document: "",
       sale_date: format(new Date(), "yyyy-MM-dd"),
@@ -190,6 +194,7 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
       seller_id: "",
       seller_name: "",
       bank_account_id: "",
+      installments: 1,
     });
     setItems([]);
     setShowDialog(true);
@@ -346,17 +351,60 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
         });
       }
 
-      // Create receivable with correct status
-      await supabase.from("client_financial_receivables").insert({
-        project_id: projectId,
-        client_name: formData.customer_name || "Cliente",
-        description: `Venda #${sale.id.slice(0, 8)}`,
-        amount: finalAmount,
-        due_date: formData.sale_date,
-        status: formData.is_paid ? "paid" : "pending",
-        paid_at: formData.is_paid ? formData.sale_date : null,
-        paid_amount: formData.is_paid ? finalAmount : null,
-      });
+      // Create receivables with installments support
+      const installmentCount = formData.installments || 1;
+      const installmentAmount = finalAmount / installmentCount;
+      
+      if (installmentCount === 1) {
+        // Single payment
+        await supabase.from("client_financial_receivables").insert({
+          project_id: projectId,
+          customer_id: formData.customer_id || null,
+          client_name: formData.customer_name || "Cliente",
+          description: `Venda #${sale.id.slice(0, 8)}`,
+          amount: finalAmount,
+          due_date: formData.sale_date,
+          status: formData.is_paid ? "paid" : "open",
+          paid_at: formData.is_paid ? formData.sale_date : null,
+          paid_amount: formData.is_paid ? finalAmount : null,
+        });
+      } else {
+        // Create parent receivable first
+        const { data: parentReceivable, error: parentError } = await supabase
+          .from("client_financial_receivables")
+          .insert({
+            project_id: projectId,
+            customer_id: formData.customer_id || null,
+            client_name: formData.customer_name || "Cliente",
+            description: `Venda #${sale.id.slice(0, 8)} - Parcelado em ${installmentCount}x`,
+            amount: finalAmount,
+            due_date: formData.sale_date,
+            status: "open",
+            installment_number: null,
+            total_installments: installmentCount,
+          })
+          .select()
+          .single();
+
+        if (parentError) throw parentError;
+
+        // Create installment receivables
+        for (let i = 1; i <= installmentCount; i++) {
+          const dueDate = addDays(new Date(formData.sale_date), i * 30);
+          await supabase.from("client_financial_receivables").insert({
+            project_id: projectId,
+            customer_id: formData.customer_id || null,
+            client_name: formData.customer_name || "Cliente",
+            description: `Venda #${sale.id.slice(0, 8)} - Parcela ${i}/${installmentCount}`,
+            amount: installmentAmount,
+            due_date: format(dueDate, "yyyy-MM-dd"),
+            status: "open",
+            installment_number: i,
+            total_installments: installmentCount,
+            parent_id: parentReceivable.id,
+          });
+        }
+      }
 
       toast.success("Venda registrada com sucesso!");
       setShowDialog(false);
@@ -563,21 +611,17 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
 
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="col-span-2">
                 <Label>Cliente</Label>
-                <Input
-                  value={formData.customer_name}
-                  onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                  placeholder="Nome do cliente"
-                />
-              </div>
-
-              <div>
-                <Label>CPF/CNPJ</Label>
-                <Input
-                  value={formData.customer_document}
-                  onChange={(e) => setFormData({ ...formData, customer_document: e.target.value })}
-                  placeholder="Documento"
+                <CustomerSelect
+                  projectId={projectId}
+                  value={formData.customer_id || undefined}
+                  customerName={formData.customer_name}
+                  onChange={(customerId, customerName) =>
+                    setFormData({ ...formData, customer_id: customerId, customer_name: customerName })
+                  }
+                  allowManualInput={true}
+                  placeholder="Selecione ou digite o cliente..."
                 />
               </div>
 
@@ -661,20 +705,61 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
               </div>
             </div>
 
-            {/* Payment Status */}
-            <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg">
-              <Checkbox
-                id="is_paid"
-                checked={formData.is_paid}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_paid: checked as boolean })}
-              />
-              <Label htmlFor="is_paid" className="cursor-pointer">
-                Venda já foi paga
-              </Label>
-              <span className="text-xs text-muted-foreground ml-2">
-                {formData.is_paid ? "(Será registrada como receita paga)" : "(Será registrada como conta a receber pendente)"}
-              </span>
+            {/* Installments */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Número de Parcelas</Label>
+                <Select
+                  value={String(formData.installments)}
+                  onValueChange={(v) => {
+                    const installments = Number(v);
+                    setFormData({ 
+                      ...formData, 
+                      installments,
+                      is_paid: installments === 1 ? formData.is_paid : false
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">À Vista (1x)</SelectItem>
+                    <SelectItem value="2">2x</SelectItem>
+                    <SelectItem value="3">3x</SelectItem>
+                    <SelectItem value="4">4x</SelectItem>
+                    <SelectItem value="5">5x</SelectItem>
+                    <SelectItem value="6">6x</SelectItem>
+                    <SelectItem value="10">10x</SelectItem>
+                    <SelectItem value="12">12x</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.installments > 1 && (
+                <div className="flex items-end">
+                  <p className="text-sm text-muted-foreground">
+                    {formData.installments}x de {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(calculateTotal() / formData.installments)}
+                  </p>
+                </div>
+              )}
             </div>
+
+            {/* Payment Status - only show for single payment */}
+            {formData.installments === 1 && (
+              <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg">
+                <Checkbox
+                  id="is_paid"
+                  checked={formData.is_paid}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_paid: checked as boolean })}
+                />
+                <Label htmlFor="is_paid" className="cursor-pointer">
+                  Venda já foi paga
+                </Label>
+                <span className="text-xs text-muted-foreground ml-2">
+                  {formData.is_paid ? "(Será registrada como receita paga)" : "(Será registrada como conta a receber pendente)"}
+                </span>
+              </div>
+            )}
 
             {/* Items */}
             <div>

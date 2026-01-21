@@ -10,6 +10,8 @@ import {
   BarChart3,
   Settings,
   Lock,
+  Users,
+  ClipboardList,
 } from "lucide-react";
 import { useClientInventoryPermissions } from "./useClientInventoryPermissions";
 import { ClientInventoryDashboard } from "./ClientInventoryDashboard";
@@ -20,6 +22,8 @@ import { ClientInventoryBudgetsPanel } from "./ClientInventoryBudgetsPanel";
 import { ClientInventoryMovementsPanel } from "./ClientInventoryMovementsPanel";
 import { ClientInventoryReportsPanel } from "./ClientInventoryReportsPanel";
 import { ClientInventorySettingsPanel } from "./ClientInventorySettingsPanel";
+import { ClientCustomersPanel } from "./ClientCustomersPanel";
+import { ClientSaleBudgetsPanel } from "./ClientSaleBudgetsPanel";
 import type { InventoryViewType } from "./types";
 
 interface Props {
@@ -34,9 +38,11 @@ export function ClientInventoryModule({ projectId, userRole }: Props) {
   const tabs = [
     { id: "dashboard" as InventoryViewType, label: "Visão Geral", icon: LayoutDashboard },
     { id: "products" as InventoryViewType, label: "Produtos", icon: Package },
+    { id: "customers" as InventoryViewType, label: "Clientes", icon: Users },
     { id: "purchases" as InventoryViewType, label: "Compras", icon: ShoppingCart },
     { id: "suppliers" as InventoryViewType, label: "Fornecedores", icon: Truck },
-    { id: "budgets" as InventoryViewType, label: "Orçamentos", icon: FileText },
+    { id: "budgets" as InventoryViewType, label: "Orç. Compras", icon: FileText },
+    { id: "sale_budgets" as InventoryViewType, label: "Orç. Vendas", icon: ClipboardList },
     { id: "movements" as InventoryViewType, label: "Movimentações", icon: ArrowRightLeft },
     { id: "reports" as InventoryViewType, label: "Relatórios", icon: BarChart3 },
     { id: "settings" as InventoryViewType, label: "Configurações", icon: Settings },
@@ -80,6 +86,10 @@ export function ClientInventoryModule({ projectId, userRole }: Props) {
           <ClientInventoryProductsPanel projectId={projectId} canEdit={canEdit} />
         </TabsContent>
 
+        <TabsContent value="customers" className="mt-0">
+          <ClientCustomersPanel projectId={projectId} canEdit={canEdit} />
+        </TabsContent>
+
         <TabsContent value="purchases" className="mt-0">
           <ClientInventoryPurchasesPanel projectId={projectId} canEdit={canEdit} />
         </TabsContent>
@@ -90,6 +100,10 @@ export function ClientInventoryModule({ projectId, userRole }: Props) {
 
         <TabsContent value="budgets" className="mt-0">
           <ClientInventoryBudgetsPanel projectId={projectId} canEdit={canEdit} />
+        </TabsContent>
+
+        <TabsContent value="sale_budgets" className="mt-0">
+          <ClientSaleBudgetsPanel projectId={projectId} canEdit={canEdit} />
         </TabsContent>
 
         <TabsContent value="movements" className="mt-0">
