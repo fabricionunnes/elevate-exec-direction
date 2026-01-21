@@ -61,6 +61,7 @@ import {
   Sparkles,
   MessageSquare,
   Bot,
+  UserX,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -139,8 +140,9 @@ export function HotseatResponseDialog({
   const [status, setStatus] = useState<string>(response.status);
   
   const [newNote, setNewNote] = useState("");
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskAssignee, setNewTaskAssignee] = useState<string>("");
+  const [tasksList, setTasksList] = useState<{ title: string; assigneeId: string }[]>([
+    { title: "", assigneeId: "" }
+  ]);
   
   const [isSaving, setIsSaving] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
@@ -387,9 +389,25 @@ export function HotseatResponseDialog({
     }
   };
 
-  const handleCreateTask = async () => {
-    if (!newTaskTitle.trim()) {
-      toast.error("Informe o título da tarefa");
+  const addTask = () => {
+    setTasksList([...tasksList, { title: "", assigneeId: "" }]);
+  };
+
+  const removeTask = (index: number) => {
+    setTasksList(tasksList.filter((_, i) => i !== index));
+  };
+
+  const updateTask = (index: number, field: "title" | "assigneeId", value: string) => {
+    const updated = [...tasksList];
+    updated[index][field] = value;
+    setTasksList(updated);
+  };
+
+  const handleCreateTasks = async () => {
+    const validTasks = tasksList.filter(t => t.title.trim());
+    
+    if (validTasks.length === 0) {
+      toast.error("Informe ao menos uma tarefa");
       return;
     }
 
@@ -400,25 +418,26 @@ export function HotseatResponseDialog({
 
     setIsCreatingTask(true);
     try {
+      const tasksToInsert = validTasks.map(task => ({
+        project_id: selectedProjectId,
+        title: `[Hotseat] ${task.title.trim()}`,
+        description: `Tarefa criada a partir do Hotseat de ${response.respondent_name} (${response.company_name})`,
+        status: "pending" as const,
+        priority: "high" as const,
+        responsible_staff_id: task.assigneeId || null,
+      }));
+
       const { error } = await supabase
         .from("onboarding_tasks")
-        .insert({
-          project_id: selectedProjectId,
-          title: `[Hotseat] ${newTaskTitle.trim()}`,
-          description: `Tarefa criada a partir do Hotseat de ${response.respondent_name} (${response.company_name})`,
-          status: "pending",
-          priority: "high",
-          responsible_staff_id: newTaskAssignee || null,
-        });
+        .insert(tasksToInsert);
 
       if (error) throw error;
 
-      toast.success("Tarefa criada com sucesso!");
-      setNewTaskTitle("");
-      setNewTaskAssignee("");
+      toast.success(`${validTasks.length} tarefa(s) criada(s) com sucesso!`);
+      setTasksList([{ title: "", assigneeId: "" }]);
     } catch (error) {
-      console.error("Error creating task:", error);
-      toast.error("Erro ao criar tarefa");
+      console.error("Error creating tasks:", error);
+      toast.error("Erro ao criar tarefas");
     } finally {
       setIsCreatingTask(false);
     }
@@ -679,6 +698,12 @@ export function HotseatResponseDialog({
                           Concluído
                         </div>
                       </SelectItem>
+                      <SelectItem value="no_show">
+                        <div className="flex items-center gap-2">
+                          <UserX className="h-4 w-4 text-orange-500" />
+                          Não Compareceu
+                        </div>
+                      </SelectItem>
                       <SelectItem value="cancelled">
                         <div className="flex items-center gap-2">
                           <XCircle className="h-4 w-4 text-red-500" />
@@ -748,42 +773,75 @@ export function HotseatResponseDialog({
               </TabsContent>
 
               <TabsContent value="actions" className="space-y-4 mt-0">
-                {/* Create Task */}
+                {/* Create Tasks */}
                 <div className="space-y-3">
                   <Label className="flex items-center gap-2">
                     <ClipboardList className="h-4 w-4" />
-                    Criar Tarefa
+                    Criar Tarefas
                   </Label>
-                  <Input
-                    placeholder="Título da tarefa..."
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                  />
-                  <Select value={newTaskAssignee} onValueChange={setNewTaskAssignee}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Atribuir a..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {staffList.map((staff) => (
-                        <SelectItem key={staff.id} value={staff.id}>
-                          {staff.name} ({staff.role})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    onClick={handleCreateTask}
-                    disabled={isCreatingTask || !newTaskTitle.trim() || !selectedProjectId}
-                    size="sm"
-                    className="w-full"
-                  >
-                    {isCreatingTask ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Plus className="h-4 w-4 mr-2" />
-                    )}
-                    Criar Tarefa
-                  </Button>
+                  
+                  {/* Task list */}
+                  {tasksList.map((task, index) => (
+                    <div key={index} className="flex gap-2 items-start">
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          placeholder="Título da tarefa..."
+                          value={task.title}
+                          onChange={(e) => updateTask(index, "title", e.target.value)}
+                        />
+                        <Select 
+                          value={task.assigneeId} 
+                          onValueChange={(v) => updateTask(index, "assigneeId", v)}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Atribuir a..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {staffList.map((staff) => (
+                              <SelectItem key={staff.id} value={staff.id}>
+                                {staff.name} ({staff.role})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {tasksList.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="mt-1 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeTask(index)}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={addTask}
+                      className="flex-1"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Adicionar Tarefa
+                    </Button>
+                    <Button
+                      onClick={handleCreateTasks}
+                      disabled={isCreatingTask || !tasksList.some(t => t.title.trim()) || !selectedProjectId}
+                      size="sm"
+                      className="flex-1"
+                    >
+                      {isCreatingTask ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      Salvar Tarefas
+                    </Button>
+                  </div>
                   {!selectedProjectId && (
                     <p className="text-xs text-muted-foreground">
                       Vincule a um projeto na aba "Detalhes" para criar tarefas
