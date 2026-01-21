@@ -50,11 +50,45 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
   const [loading, setLoading] = useState(true);
   const [newLink, setNewLink] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [processingId, setProcessingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRecordings();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel("hotseat_recordings_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "hotseat_recordings",
+        },
+        (payload) => {
+          console.log("Hotseat recording update:", payload);
+          if (payload.eventType === "INSERT") {
+            setRecordings((prev) => [payload.new as HotseatRecording, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            setRecordings((prev) =>
+              prev.map((r) =>
+                r.id === payload.new.id ? (payload.new as HotseatRecording) : r
+              )
+            );
+            // Show toast when completed
+            if (payload.new.status === "completed" && payload.old?.status !== "completed") {
+              toast.success("Gravação processada com sucesso!");
+            }
+          } else if (payload.eventType === "DELETE") {
+            setRecordings((prev) => prev.filter((r) => r.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchRecordings = async () => {
@@ -118,8 +152,6 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
   };
 
   const processRecording = async (recordingId: string) => {
-    setProcessingId(recordingId);
-    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -127,27 +159,33 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
         return;
       }
 
-      toast.info("Processando gravação... Isso pode levar vários minutos.", { duration: 15000 });
+      // Update local state to show processing
+      setRecordings((prev) =>
+        prev.map((r) =>
+          r.id === recordingId ? { ...r, status: "transcribing" } : r
+        )
+      );
 
-      const response = await supabase.functions.invoke("process-hotseat-recording", {
+      toast.info("Processando gravação em segundo plano... Você pode continuar usando o sistema.", { duration: 8000 });
+
+      // Fire and forget - the edge function will update the database
+      // and realtime will update the UI
+      supabase.functions.invoke("process-hotseat-recording", {
         body: { 
           recordingId,
           staffId: currentStaffId 
         },
+      }).then((response) => {
+        if (response.error) {
+          console.error("Error processing recording:", response.error);
+        }
+      }).catch((error) => {
+        console.error("Error invoking function:", error);
       });
 
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      toast.success("Gravação processada com sucesso!");
-      fetchRecordings();
     } catch (error) {
-      console.error("Error processing recording:", error);
-      toast.error(error instanceof Error ? error.message : "Erro ao processar gravação");
-      fetchRecordings();
-    } finally {
-      setProcessingId(null);
+      console.error("Error starting recording process:", error);
+      toast.error("Erro ao iniciar processamento");
     }
   };
 
@@ -253,14 +291,9 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
                           variant="outline"
                           size="sm"
                           onClick={() => processRecording(recording.id)}
-                          disabled={processingId === recording.id}
                           className="gap-1 h-7"
                         >
-                          {processingId === recording.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Sparkles className="h-3 w-3" />
-                          )}
+                          <Sparkles className="h-3 w-3" />
                           Processar
                         </Button>
                       )}
@@ -269,12 +302,17 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
                           variant="outline"
                           size="sm"
                           onClick={() => processRecording(recording.id)}
-                          disabled={processingId === recording.id}
                           className="gap-1 h-7"
                         >
                           <RefreshCw className="h-3 w-3" />
                           Tentar Novamente
                         </Button>
+                      )}
+                      {(recording.status === "transcribing" || recording.status === "summarizing") && (
+                        <Badge variant="outline" className="border-blue-500 text-blue-600">
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Processando...
+                        </Badge>
                       )}
                       {(recording.summary || recording.transcript) && (
                         <CollapsibleTrigger asChild>
