@@ -422,7 +422,20 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
   // Calculate KPI summaries
   const getKpiSummary = (kpi: KPI) => {
     const filteredEntries = getFilteredEntries();
-    const kpiEntries = filteredEntries.filter(e => e.kpi_id === kpi.id);
+    
+    // For KPIs with unit scope and "all units" filter, filter entries by KPI's unit
+    let kpiEntries: Entry[];
+    if (kpi.unit_id && selectedUnit === "all") {
+      kpiEntries = entries.filter(e => {
+        if (e.kpi_id !== kpi.id) return false;
+        // Also filter by date range
+        if (e.entry_date < dateRange.start || e.entry_date > dateRange.end) return false;
+        const dims = getEntryDimensions(e);
+        return dims.unit_id === kpi.unit_id;
+      });
+    } else {
+      kpiEntries = filteredEntries.filter(e => e.kpi_id === kpi.id);
+    }
     const total = kpiEntries.reduce((sum, e) => sum + e.value, 0);
     
     // Calculate target based on periodicity and date range
@@ -486,7 +499,20 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     }> = [];
 
     kpisForProjection.forEach(kpi => {
-      const kpiEntries = monthEntries.filter(e => e.kpi_id === kpi.id);
+      // For KPIs with unit scope, filter entries by that specific unit (using normalized dimensions)
+      // This ensures that when viewing "all units", each unit-scoped KPI still shows its own data
+      let kpiEntries: Entry[];
+      if (kpi.unit_id && selectedUnit === "all") {
+        // KPI is unit-scoped and we're viewing all units - filter entries by KPI's unit
+        kpiEntries = allMonthEntries.filter(e => {
+          if (e.kpi_id !== kpi.id) return false;
+          const dims = getEntryDimensions(e);
+          return dims.unit_id === kpi.unit_id;
+        });
+      } else {
+        // Use normal filtering (monthEntries already filtered by active filters)
+        kpiEntries = monthEntries.filter(e => e.kpi_id === kpi.id);
+      }
       const kpiTotal = kpiEntries.reduce((sum, e) => sum + e.value, 0);
       
       // Use filtered target based on selected unit/salesperson
