@@ -203,6 +203,31 @@ Deno.serve(async (req) => {
       .limit(10);
     hotseatHistory = hotseatData || [];
 
+    // Fetch churn prediction for the project
+    let churnPrediction: any = null;
+    if (activeProject) {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: churnData } = await supabase
+        .from("churn_predictions")
+        .select("*")
+        .eq("project_id", activeProject.id)
+        .eq("prediction_date", today)
+        .maybeSingle();
+      churnPrediction = churnData;
+    }
+
+    // Fetch retention actions (rescue playbooks)
+    let rescuePlaybooks: any[] = [];
+    if (activeProject) {
+      const { data: rescueData } = await supabase
+        .from("rescue_playbooks")
+        .select("id, status, created_at, started_at, completed_at")
+        .eq("project_id", activeProject.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      rescuePlaybooks = rescueData || [];
+    }
+
     // Build context
     const taskStats = {
       total: tasks.length,
@@ -344,6 +369,33 @@ Deno.serve(async (req) => {
         scheduledAt: h.scheduled_at,
         createdAt: h.created_at,
       })),
+      churnPrediction: churnPrediction ? {
+        probability: churnPrediction.churn_probability,
+        riskLevel: churnPrediction.risk_level,
+        riskWindow: churnPrediction.estimated_risk_window,
+        riskFactors: churnPrediction.risk_factors,
+        recommendedActions: churnPrediction.recommended_actions,
+      } : null,
+      retention: {
+        hasActivePlaybook: rescuePlaybooks.some(r => r.status === "in_progress"),
+        recentlyRetained: rescuePlaybooks.some(r => r.status === "completed" && 
+          new Date(r.completed_at) > new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)),
+        playbooks: rescuePlaybooks.map(r => ({
+          status: r.status,
+          createdAt: r.created_at,
+          completedAt: r.completed_at,
+        })),
+      },
+      contractStatus: {
+        startDate: company.contract_start_date,
+        endDate: company.contract_end_date,
+        daysUntilExpiry: company.contract_end_date ? 
+          Math.ceil((new Date(company.contract_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null,
+        isExpiringSoon: company.contract_end_date ? 
+          Math.ceil((new Date(company.contract_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) <= 60 : false,
+        renewalStatus: company.renewal_status,
+        renewalMeetingDate: company.renewal_meeting_date,
+      },
     };
 
     // Build prompt for AI
@@ -358,13 +410,17 @@ Você tem acesso COMPLETO aos dados desta empresa, incluindo:
 - KPIs configurados com metas e progresso atual
 - Dados financeiros (contas a receber e pagar)
 - Histórico de Hotseats
+- PREDIÇÃO DE CHURN com probabilidade e fatores de risco
+- STATUS DE RENOVAÇÃO do contrato
+- HISTÓRICO DE RETENÇÃO (playbooks de resgate)
 
 IMPORTANTE:
 - Sempre responda com base nos dados fornecidos no contexto
 - Se perguntarem sobre metas, use os dados de "monthlyGoals" e "kpis"
 - Se perguntarem sobre tarefas, use "tasks" e "recentTasks"
 - Se perguntarem sobre reuniões, use "meetings"
-- Se perguntarem sobre saúde/risco, use "healthScore"
+- Se perguntarem sobre saúde/risco, use "healthScore" e "churnPrediction"
+- Se perguntarem sobre renovação, use "contractStatus"
 - Seja preciso e use números concretos dos dados
 - Se um dado não estiver disponível, diga claramente que não há registro
 
@@ -375,16 +431,39 @@ ${JSON.stringify(contextData, null, 2)}`;
     if (isChat) {
       userPrompt = message;
     } else {
-      userPrompt = `Gere um resumo CURTO e OBJETIVO desta empresa (máximo 150 palavras). Use formato de lista com bullets para ser mais conciso:
+      userPrompt = `Gere um resumo ESTRUTURADO desta empresa (máximo 250 palavras) usando emojis e formatação markdown para destacar informações importantes. Siga este formato:
 
-• **Nicho**: [segmento de atuação]
-• **Health Score**: [score] | **NPS**: [valor ou N/A]
-• **Status**: [situação em 1 linha]
-• **Tarefas**: [X concluídas / Y pendentes]
-• **Próximos passos**: [2-3 prioridades principais]
-• **Atenção**: [alertas se houver, senão omitir]
+## 📊 Visão Geral
+• **Nicho**: [segmento]
+• **Health Score**: [score]/100 | **NPS**: [valor ou N/A]
+• **Consultor**: [nome] | **CS**: [nome]
 
-Seja extremamente conciso. Não escreva parágrafos longos.`;
+## ⚠️ Alertas Importantes
+[Liste APENAS se houver algum destes casos - use emojis de alerta 🔴🟡🟢:]
+- 🔴 Se churn_probability > 60%: "RISCO ALTO DE CHURN: X% de probabilidade"
+- 🔴 Se contrato expira em ≤30 dias: "CONTRATO EXPIRA EM X DIAS!"
+- 🟡 Se contrato expira em ≤60 dias: "Renovação próxima: X dias"
+- 🟢 Se foi retido recentemente: "Cliente RETIDO recentemente ✓"
+- 🟡 Se health score < 60: "Saúde do cliente baixa"
+- 🟡 Se NPS < 7: "NPS precisa de atenção"
+
+## 📈 Metas e KPIs
+• Meta principal: [nome] - [progresso]% do target
+• Tendência: [subindo/descendo/estável]
+
+## ✅ Tarefas
+• [X] concluídas | [Y] pendentes | [Z] atrasadas
+
+## 🎯 Próximos Passos
+1. [Ação prioritária 1]
+2. [Ação prioritária 2]
+3. [Ação prioritária 3]
+
+REGRAS:
+- Use cores através de emojis (🔴 crítico, 🟡 atenção, 🟢 ok)
+- Seja direto e objetivo
+- Destaque números importantes com **negrito**
+- Omita seções se não houver dados relevantes`;
     }
 
     // Call Lovable AI Gateway

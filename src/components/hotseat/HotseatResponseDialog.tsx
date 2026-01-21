@@ -905,18 +905,18 @@ export function HotseatResponseDialog({
                         </Button>
                       </div>
                       
-                      <ScrollArea className="h-[200px] rounded-lg">
-                        <div className="bg-muted/50 rounded-lg p-4">
+                      <ScrollArea className="h-[300px] rounded-lg border">
+                        <div className="p-4">
                           {isLoadingSummary ? (
-                            <div className="flex items-center justify-center h-[150px]">
+                            <div className="flex items-center justify-center h-[250px]">
                               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                             </div>
                           ) : companySummary ? (
-                            <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
+                            <div className="prose prose-sm dark:prose-invert max-w-none text-sm [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-primary [&_h2]:border-b [&_h2]:pb-2 [&_h2]:mb-3 [&_h2]:mt-4 first:[&_h2]:mt-0 [&_strong]:text-foreground [&_ul]:space-y-1 [&_li]:text-muted-foreground">
                               <ReactMarkdown>{companySummary}</ReactMarkdown>
                             </div>
                           ) : (
-                            <div className="flex flex-col items-center justify-center h-[150px] text-muted-foreground">
+                            <div className="flex flex-col items-center justify-center h-[250px] text-muted-foreground">
                               <p>Clique em "Atualizar" para gerar o resumo</p>
                             </div>
                           )}
