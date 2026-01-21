@@ -149,16 +149,23 @@ export function AssessmentAIReportGenerator({
       const contentWidth = pageWidth - margin * 2;
       let y = margin;
 
-      // Colors
-      const primaryColor: [number, number, number] = [10, 34, 64];
-      const textColor: [number, number, number] = [51, 51, 51];
-      const mutedColor: [number, number, number] = [107, 114, 128];
+      // Enhanced Color Palette
+      const primaryNavy: [number, number, number] = [10, 34, 64];
+      const accentGold: [number, number, number] = [212, 175, 55];
+      const accentTeal: [number, number, number] = [0, 128, 128];
+      const softBlue: [number, number, number] = [70, 130, 180];
+      const textDark: [number, number, number] = [33, 37, 41];
+      const textMuted: [number, number, number] = [108, 117, 125];
+      const bgLight: [number, number, number] = [248, 249, 250];
+      const successGreen: [number, number, number] = [40, 167, 69];
+      const warningOrange: [number, number, number] = [255, 153, 0];
 
       // Helper function to check page break
       const checkPageBreak = (neededHeight: number) => {
-        if (y + neededHeight > pageHeight - margin) {
+        if (y + neededHeight > pageHeight - 25) {
           pdf.addPage();
-          y = margin;
+          addPageDecoration();
+          y = 25;
           return true;
         }
         return false;
@@ -170,6 +177,19 @@ export function AssessmentAIReportGenerator({
         return pdf.splitTextToSize(text, maxWidth);
       };
 
+      // Add page decoration (header line)
+      const addPageDecoration = () => {
+        // Top accent bar
+        pdf.setFillColor(...primaryNavy);
+        pdf.rect(0, 0, pageWidth, 8, "F");
+        pdf.setFillColor(...accentGold);
+        pdf.rect(0, 8, pageWidth, 2, "F");
+      };
+
+      // Add initial page decoration
+      addPageDecoration();
+      y = 18;
+
       // Load and add logo
       const img = new Image();
       img.crossOrigin = "anonymous";
@@ -180,7 +200,7 @@ export function AssessmentAIReportGenerator({
       });
 
       if (img.complete && img.naturalWidth > 0) {
-        const logoWidth = 50;
+        const logoWidth = 55;
         const logoHeight = (img.naturalHeight / img.naturalWidth) * logoWidth;
         const canvas = document.createElement("canvas");
         canvas.width = img.naturalWidth * 2;
@@ -194,111 +214,142 @@ export function AssessmentAIReportGenerator({
         }
         const logoDataUrl = canvas.toDataURL("image/png", 1.0);
         pdf.addImage(logoDataUrl, "PNG", (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
-        y += logoHeight + 10;
+        y += logoHeight + 8;
       }
 
-      // Title
+      // Main Title with gradient effect simulation
+      pdf.setFillColor(...bgLight);
+      pdf.roundedRect(margin - 5, y - 2, contentWidth + 10, 22, 3, 3, "F");
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(18);
-      pdf.setTextColor(...primaryColor);
-      const title = "Relatório de Avaliações";
-      pdf.text(title, pageWidth / 2, y, { align: "center" });
-      y += 8;
-
-      // Subtitle
-      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(20);
+      pdf.setTextColor(...primaryNavy);
+      pdf.text("RELATÓRIO EXECUTIVO", pageWidth / 2, y + 8, { align: "center" });
       pdf.setFontSize(12);
-      pdf.setTextColor(...mutedColor);
-      pdf.text(cycleTitle, pageWidth / 2, y, { align: "center" });
-      y += 6;
+      pdf.setTextColor(...accentTeal);
+      pdf.text("Avaliações de Desempenho", pageWidth / 2, y + 16, { align: "center" });
+      y += 28;
 
-      // Date
+      // Cycle title badge
+      pdf.setFillColor(...primaryNavy);
+      const cycleTextWidth = pdf.getTextWidth(cycleTitle) + 20;
+      pdf.roundedRect((pageWidth - cycleTextWidth) / 2, y - 4, cycleTextWidth, 10, 2, 2, "F");
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(11);
+      pdf.setTextColor(255, 255, 255);
+      pdf.text(cycleTitle, pageWidth / 2, y + 2, { align: "center" });
+      y += 12;
+
+      // Date with icon simulation
+      pdf.setFont("helvetica", "normal");
       pdf.setFontSize(10);
+      pdf.setTextColor(...textMuted);
       const dateStr = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-      pdf.text(dateStr, pageWidth / 2, y, { align: "center" });
-      y += 15;
+      pdf.text(`📅 ${dateStr}`, pageWidth / 2, y, { align: "center" });
+      y += 12;
 
-      // Divider
-      pdf.setDrawColor(...primaryColor);
-      pdf.setLineWidth(0.5);
-      pdf.line(margin, y, pageWidth - margin, y);
-      y += 10;
+      // Decorative divider
+      pdf.setDrawColor(...accentGold);
+      pdf.setLineWidth(1);
+      pdf.line(margin + 20, y, pageWidth - margin - 20, y);
+      pdf.setFillColor(...accentGold);
+      pdf.circle(margin + 20, y, 1.5, "F");
+      pdf.circle(pageWidth - margin - 20, y, 1.5, "F");
+      y += 12;
 
-      // Parse markdown and render
+      // Parse markdown and render with enhanced styling
       const lines = report.split("\n");
+      let sectionIndex = 0;
+      const sectionColors: [number, number, number][] = [
+        primaryNavy, accentTeal, softBlue, successGreen, warningOrange
+      ];
       
       for (const line of lines) {
         if (!line.trim()) {
-          y += 4;
-          continue;
-        }
-
-        // Headers
-        if (line.startsWith("## ")) {
-          checkPageBreak(15);
-          pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(14);
-          pdf.setTextColor(...primaryColor);
-          const headerText = line.replace("## ", "").replace(/[📊🧠🎯🌡️💡📈]/g, "").trim();
-          const wrappedHeader = wrapText(headerText, contentWidth, 14);
-          wrappedHeader.forEach((textLine) => {
-            checkPageBreak(8);
-            pdf.text(textLine, margin, y);
-            y += 7;
-          });
           y += 3;
           continue;
         }
 
-        // Subheaders
-        if (line.startsWith("### ")) {
-          checkPageBreak(12);
+        // Main Section Headers (## )
+        if (line.startsWith("## ")) {
+          checkPageBreak(20);
+          const currentColor = sectionColors[sectionIndex % sectionColors.length];
+          sectionIndex++;
+          
+          // Section header with colored background
+          pdf.setFillColor(...currentColor);
+          pdf.roundedRect(margin, y - 2, contentWidth, 12, 2, 2, "F");
+          
           pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(12);
-          pdf.setTextColor(...textColor);
-          const subHeaderText = line.replace("### ", "").trim();
-          pdf.text(subHeaderText, margin, y);
-          y += 7;
+          pdf.setFontSize(13);
+          pdf.setTextColor(255, 255, 255);
+          const headerText = line.replace("## ", "").replace(/[📊🧠🎯🌡️💡📈🔍✅⚠️💬]/g, "").trim();
+          pdf.text(headerText.toUpperCase(), margin + 5, y + 6);
+          y += 16;
           continue;
         }
 
-        // Bold text
-        if (line.startsWith("**") && line.endsWith("**")) {
-          checkPageBreak(8);
+        // Subheaders (### )
+        if (line.startsWith("### ")) {
+          checkPageBreak(14);
+          pdf.setFillColor(...bgLight);
+          pdf.rect(margin, y - 2, contentWidth, 9, "F");
+          pdf.setDrawColor(...accentGold);
+          pdf.setLineWidth(0.5);
+          pdf.line(margin, y - 2, margin, y + 7);
+          
           pdf.setFont("helvetica", "bold");
           pdf.setFontSize(11);
-          pdf.setTextColor(...textColor);
+          pdf.setTextColor(...primaryNavy);
+          const subHeaderText = line.replace("### ", "").trim();
+          pdf.text(subHeaderText, margin + 4, y + 4);
+          y += 12;
+          continue;
+        }
+
+        // Bold text blocks
+        if (line.startsWith("**") && line.endsWith("**")) {
+          checkPageBreak(10);
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(10);
+          pdf.setTextColor(...textDark);
           const boldText = line.replace(/\*\*/g, "");
-          const wrappedBold = wrapText(boldText, contentWidth, 11);
+          const wrappedBold = wrapText(boldText, contentWidth - 10, 10);
           wrappedBold.forEach((textLine) => {
             checkPageBreak(6);
-            pdf.text(textLine, margin, y);
-            y += 6;
-          });
-          continue;
-        }
-
-        // List items
-        if (line.startsWith("- ") || line.startsWith("* ") || /^\d+\.\s/.test(line)) {
-          checkPageBreak(8);
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(10);
-          pdf.setTextColor(...textColor);
-          const listText = line.replace(/^[-*]\s|^\d+\.\s/, "• ");
-          const wrappedList = wrapText(listText, contentWidth - 5, 10);
-          wrappedList.forEach((textLine, idx) => {
-            checkPageBreak(5);
-            pdf.text(idx === 0 ? textLine : `  ${textLine}`, margin + 3, y);
+            pdf.text(textLine, margin + 2, y);
             y += 5;
           });
+          y += 2;
           continue;
         }
 
-        // Regular paragraph
+        // List items with colored bullets
+        if (line.startsWith("- ") || line.startsWith("* ") || /^\d+\.\s/.test(line)) {
+          checkPageBreak(8);
+          
+          // Colored bullet
+          pdf.setFillColor(...accentTeal);
+          pdf.circle(margin + 3, y - 1.5, 1.2, "F");
+          
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(10);
+          pdf.setTextColor(...textDark);
+          const listText = line.replace(/^[-*]\s|^\d+\.\s/, "");
+          const wrappedList = wrapText(listText, contentWidth - 12, 10);
+          wrappedList.forEach((textLine, idx) => {
+            checkPageBreak(5);
+            pdf.text(textLine, margin + 8, y);
+            y += 5;
+          });
+          y += 1;
+          continue;
+        }
+
+        // Regular paragraph with inline bold handling
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(10);
-        pdf.setTextColor(...textColor);
-        const cleanedLine = line.replace(/\*\*/g, "").replace(/\*/g, "");
+        pdf.setTextColor(...textDark);
+        let cleanedLine = line.replace(/\*\*/g, "").replace(/\*/g, "");
         const wrappedParagraph = wrapText(cleanedLine, contentWidth, 10);
         wrappedParagraph.forEach((textLine) => {
           checkPageBreak(5);
@@ -308,23 +359,37 @@ export function AssessmentAIReportGenerator({
         y += 2;
       }
 
-      // Footer
+      // Footer for all pages
       const totalPages = pdf.internal.pages.length - 1;
       for (let i = 1; i <= totalPages; i++) {
         pdf.setPage(i);
+        
+        // Bottom accent bar
+        pdf.setFillColor(...primaryNavy);
+        pdf.rect(0, pageHeight - 15, pageWidth, 15, "F");
+        pdf.setFillColor(...accentGold);
+        pdf.rect(0, pageHeight - 15, pageWidth, 1, "F");
+        
+        // Footer text
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(8);
-        pdf.setTextColor(...mutedColor);
+        pdf.setTextColor(255, 255, 255);
         pdf.text(
           `Página ${i} de ${totalPages}`,
           pageWidth / 2,
-          pageHeight - 10,
+          pageHeight - 6,
           { align: "center" }
         );
         pdf.text(
-          "Gerado por UNV Soluções",
+          "Universidade Nacional de Vendas",
           margin,
-          pageHeight - 10
+          pageHeight - 6
+        );
+        pdf.text(
+          "www.unv.com.br",
+          pageWidth - margin,
+          pageHeight - 6,
+          { align: "right" }
         );
       }
 
