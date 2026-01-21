@@ -30,6 +30,24 @@ export interface FinancialPaymentMethod {
   created_at: string;
 }
 
+export interface FinancialBankAccount {
+  id: string;
+  project_id: string;
+  name: string;
+  bank_name?: string;
+  account_type?: string;
+  agency?: string;
+  account_number?: string;
+  initial_balance: number;
+  current_balance: number;
+  color?: string;
+  is_active: boolean;
+  is_default: boolean;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface FinancialReceivable {
   id: string;
   project_id: string;
@@ -37,6 +55,7 @@ export interface FinancialReceivable {
   description?: string;
   category_id?: string;
   cost_center_id?: string;
+  bank_account_id?: string;
   amount: number;
   due_date: string;
   status: string;
@@ -51,6 +70,7 @@ export interface FinancialReceivable {
   category?: FinancialCategory;
   cost_center?: FinancialCostCenter;
   payment_method?: FinancialPaymentMethod;
+  bank_account?: FinancialBankAccount;
 }
 
 export interface FinancialPayable {
@@ -60,6 +80,7 @@ export interface FinancialPayable {
   description?: string;
   category_id?: string;
   cost_center_id?: string;
+  bank_account_id?: string;
   amount: number;
   due_date: string;
   status: 'open' | 'paid' | 'overdue' | 'cancelled';
@@ -77,6 +98,7 @@ export interface FinancialPayable {
   category?: FinancialCategory;
   cost_center?: FinancialCostCenter;
   payment_method?: FinancialPaymentMethod;
+  bank_account?: FinancialBankAccount;
 }
 
 export interface FinancialRecurringRule {

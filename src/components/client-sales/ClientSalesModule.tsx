@@ -86,11 +86,18 @@ interface Salesperson {
   name: string;
 }
 
+interface BankAccount {
+  id: string;
+  name: string;
+  bank_name?: string;
+}
+
 export function ClientSalesModule({ projectId, userRole }: Props) {
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<InventoryProduct[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showDialog, setShowDialog] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -105,6 +112,7 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
     is_paid: true,
     seller_id: "",
     seller_name: "",
+    bank_account_id: "",
   });
   const [items, setItems] = useState<SaleItem[]>([]);
 
@@ -151,6 +159,15 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
         setSalespeople(salespeopleData || []);
       }
 
+      // Fetch bank accounts
+      const { data: bankData } = await supabase
+        .from("client_financial_bank_accounts")
+        .select("id, name, bank_name")
+        .eq("project_id", projectId)
+        .eq("is_active", true)
+        .order("name");
+      setBankAccounts(bankData || []);
+
       setSales(salesRes.data || []);
       setProducts(productsRes.data || []);
     } catch (error) {
@@ -172,6 +189,7 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
       is_paid: true,
       seller_id: "",
       seller_name: "",
+      bank_account_id: "",
     });
     setItems([]);
     setShowDialog(true);
@@ -227,6 +245,10 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
     }
     if (items.some((i) => !i.product_id)) {
       toast.error("Selecione o produto em todos os itens");
+      return;
+    }
+    if (!formData.bank_account_id) {
+      toast.error("Selecione a conta bancária");
       return;
     }
 
@@ -611,6 +633,25 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
                     <SelectItem value="credito">Cartão Crédito</SelectItem>
                     <SelectItem value="debito">Cartão Débito</SelectItem>
                     <SelectItem value="boleto">Boleto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Conta Bancária *</Label>
+                <Select
+                  value={formData.bank_account_id}
+                  onValueChange={(v) => setFormData({ ...formData, bank_account_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a conta..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bankAccounts.map((ba) => (
+                      <SelectItem key={ba.id} value={ba.id}>
+                        {ba.name} {ba.bank_name ? `(${ba.bank_name})` : ''}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -51,7 +51,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import type { FinancialPayable, FinancialCategory, FinancialPaymentMethod, FinancialCostCenter } from "./types";
+import type { FinancialPayable, FinancialCategory, FinancialPaymentMethod, FinancialCostCenter, FinancialBankAccount } from "./types";
 
 // Parse date string (YYYY-MM-DD) to local Date without timezone shift
 const parseDateLocal = (dateStr: string): Date => {
@@ -76,6 +76,7 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
   const [categories, setCategories] = useState<FinancialCategory[]>([]);
   const [costCenters, setCostCenters] = useState<FinancialCostCenter[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<FinancialPaymentMethod[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<FinancialBankAccount[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -91,6 +92,7 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
     amount: 0,
     due_date: "",
     payment_method_id: "",
+    bank_account_id: "",
     notes: "",
   });
   const [payData, setPayData] = useState({
@@ -140,6 +142,14 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
         .eq("project_id", projectId)
         .eq("is_active", true);
       setPaymentMethods(pmData || []);
+
+      // Load bank accounts
+      const { data: bankData } = await supabase
+        .from("client_financial_bank_accounts")
+        .select("*")
+        .eq("project_id", projectId)
+        .eq("is_active", true);
+      setBankAccounts((bankData || []) as FinancialBankAccount[]);
     } catch (error) {
       console.error("Error loading payables:", error);
       toast.error("Erro ao carregar dados");
@@ -149,8 +159,8 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
   };
 
   const handleAdd = async () => {
-    if (!formData.supplier_name || !formData.amount || !formData.due_date) {
-      toast.error("Preencha os campos obrigatórios");
+    if (!formData.supplier_name || !formData.amount || !formData.due_date || !formData.bank_account_id) {
+      toast.error("Preencha os campos obrigatórios (incluindo banco)");
       return;
     }
 
@@ -168,6 +178,7 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
         amount: formData.amount,
         due_date: formData.due_date,
         payment_method_id: formData.payment_method_id || null,
+        bank_account_id: formData.bank_account_id,
         notes: formData.notes || null,
         status: dueDate < today ? "overdue" : "open",
       });
@@ -185,8 +196,8 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
   };
 
   const handleEdit = async () => {
-    if (!selectedItem || !formData.supplier_name || !formData.amount || !formData.due_date) {
-      toast.error("Preencha os campos obrigatórios");
+    if (!selectedItem || !formData.supplier_name || !formData.amount || !formData.due_date || !formData.bank_account_id) {
+      toast.error("Preencha os campos obrigatórios (incluindo banco)");
       return;
     }
 
@@ -201,6 +212,7 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
           amount: formData.amount,
           due_date: formData.due_date,
           payment_method_id: formData.payment_method_id || null,
+          bank_account_id: formData.bank_account_id,
           notes: formData.notes || null,
         })
         .eq("id", selectedItem.id);
@@ -354,6 +366,7 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
       amount: 0,
       due_date: "",
       payment_method_id: "",
+      bank_account_id: "",
       notes: "",
     });
   };
@@ -368,6 +381,7 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
       amount: item.amount,
       due_date: item.due_date,
       payment_method_id: item.payment_method_id || "",
+      bank_account_id: item.bank_account_id || "",
       notes: item.notes || "",
     });
     setShowEditDialog(true);
@@ -694,6 +708,22 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
               </Select>
             </div>
             <div>
+              <Label>Conta Bancária *</Label>
+              <Select
+                value={formData.bank_account_id}
+                onValueChange={(v) => setFormData({ ...formData, bank_account_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a conta..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {bankAccounts.map((ba) => (
+                    <SelectItem key={ba.id} value={ba.id}>{ba.name} {ba.bank_name ? `(${ba.bank_name})` : ''}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Observações</Label>
               <Textarea
                 value={formData.notes}
@@ -793,6 +823,22 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
                 <SelectContent>
                   {paymentMethods.map((pm) => (
                     <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Conta Bancária *</Label>
+              <Select
+                value={formData.bank_account_id}
+                onValueChange={(v) => setFormData({ ...formData, bank_account_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a conta..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {bankAccounts.map((ba) => (
+                    <SelectItem key={ba.id} value={ba.id}>{ba.name} {ba.bank_name ? `(${ba.bank_name})` : ''}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
