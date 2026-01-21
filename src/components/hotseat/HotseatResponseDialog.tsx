@@ -118,6 +118,7 @@ export function HotseatResponseDialog({
   const [notes, setNotes] = useState<Note[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
+  const [currentStaffRole, setCurrentStaffRole] = useState<string | null>(null);
   
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(response.linked_company_id);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(response.linked_project_id);
@@ -133,8 +134,11 @@ export function HotseatResponseDialog({
   const [isSaving, setIsSaving] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
   const [companySearchOpen, setCompanySearchOpen] = useState(false);
+
+  const isAdmin = currentStaffRole === "admin";
 
   useEffect(() => {
     if (open) {
@@ -154,11 +158,14 @@ export function HotseatResponseDialog({
       if (user) {
         const { data: staff } = await supabase
           .from("onboarding_staff")
-          .select("id")
+          .select("id, role")
           .eq("user_id", user.id)
           .eq("is_active", true)
           .maybeSingle();
-        if (staff) setCurrentStaffId(staff.id);
+        if (staff) {
+          setCurrentStaffId(staff.id);
+          setCurrentStaffRole(staff.role);
+        }
       }
 
       // Fetch companies
@@ -324,6 +331,38 @@ export function HotseatResponseDialog({
     window.open(`/#/onboarding-tasks/${selectedProjectId}?openMeeting=true`, "_blank");
   };
 
+  const handleDelete = async () => {
+    if (!confirm("Tem certeza que deseja excluir esta resposta do Hotseat? Esta ação não pode ser desfeita.")) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // First delete related notes
+      await supabase
+        .from("hotseat_notes")
+        .delete()
+        .eq("hotseat_response_id", response.id);
+
+      // Then delete the response
+      const { error } = await supabase
+        .from("hotseat_responses")
+        .delete()
+        .eq("id", response.id);
+
+      if (error) throw error;
+
+      toast.success("Resposta excluída com sucesso!");
+      onOpenChange(false);
+      onUpdated();
+    } catch (error) {
+      console.error("Error deleting response:", error);
+      toast.error("Erro ao excluir resposta");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const getStatusColor = (s: string) => {
     switch (s) {
       case "pending": return "border-yellow-500 text-yellow-600";
@@ -337,11 +376,27 @@ export function HotseatResponseDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh]">
-        <DialogHeader>
+        <DialogHeader className="flex flex-row items-center justify-between">
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
             {response.respondent_name}
           </DialogTitle>
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              title="Excluir resposta"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </Button>
+          )}
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
