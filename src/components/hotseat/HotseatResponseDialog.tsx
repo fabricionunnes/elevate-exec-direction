@@ -1,0 +1,592 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Building2,
+  User,
+  Calendar,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Plus,
+  Save,
+  Loader2,
+  ClipboardList,
+  StickyNote,
+  Video,
+  Send,
+  Trash2,
+} from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+interface HotseatResponse {
+  id: string;
+  respondent_name: string;
+  company_name: string;
+  subjects: string[];
+  description: string | null;
+  linked_company_id: string | null;
+  linked_project_id: string | null;
+  scheduled_at: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Company {
+  id: string;
+  name: string;
+}
+
+interface Project {
+  id: string;
+  product_name: string;
+  onboarding_company_id: string | null;
+}
+
+interface Note {
+  id: string;
+  content: string;
+  created_at: string;
+  created_by_staff_id: string | null;
+  staff_name?: string;
+}
+
+interface Staff {
+  id: string;
+  name: string;
+  role: string;
+}
+
+interface HotseatResponseDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  response: HotseatResponse;
+  onUpdated: () => void;
+}
+
+export function HotseatResponseDialog({
+  open,
+  onOpenChange,
+  response,
+  onUpdated,
+}: HotseatResponseDialogProps) {
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
+  
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(response.linked_company_id);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(response.linked_project_id);
+  const [scheduledAt, setScheduledAt] = useState<string>(
+    response.scheduled_at ? format(new Date(response.scheduled_at), "yyyy-MM-dd'T'HH:mm") : ""
+  );
+  const [status, setStatus] = useState<string>(response.status);
+  
+  const [newNote, setNewNote] = useState("");
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskAssignee, setNewTaskAssignee] = useState<string>("");
+  
+  const [isSaving, setIsSaving] = useState(false);
+  const [isAddingNote, setIsAddingNote] = useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [activeTab, setActiveTab] = useState("details");
+
+  useEffect(() => {
+    if (open) {
+      fetchData();
+      fetchNotes();
+      setSelectedCompanyId(response.linked_company_id);
+      setSelectedProjectId(response.linked_project_id);
+      setScheduledAt(response.scheduled_at ? format(new Date(response.scheduled_at), "yyyy-MM-dd'T'HH:mm") : "");
+      setStatus(response.status);
+    }
+  }, [open, response]);
+
+  const fetchData = async () => {
+    try {
+      // Fetch current staff
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: staff } = await supabase
+          .from("onboarding_staff")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+        if (staff) setCurrentStaffId(staff.id);
+      }
+
+      // Fetch companies
+      const { data: companiesData } = await supabase
+        .from("onboarding_companies")
+        .select("id, name")
+        .eq("status", "active")
+        .order("name");
+      setCompanies(companiesData || []);
+
+      // Fetch projects
+      const { data: projectsData } = await supabase
+        .from("onboarding_projects")
+        .select("id, product_name, onboarding_company_id")
+        .eq("status", "active")
+        .order("product_name");
+      setProjects(projectsData || []);
+
+      // Fetch staff
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("id, name, role")
+        .eq("is_active", true)
+        .order("name");
+      setStaffList(staffData || []);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  const fetchNotes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("hotseat_notes")
+        .select(`
+          id,
+          content,
+          created_at,
+          created_by_staff_id,
+          onboarding_staff:created_by_staff_id (name)
+        `)
+        .eq("hotseat_response_id", response.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      
+      const notesWithStaff = (data || []).map((note: any) => ({
+        ...note,
+        staff_name: note.onboarding_staff?.name || "Sistema",
+      }));
+      setNotes(notesWithStaff);
+    } catch (error) {
+      console.error("Error fetching notes:", error);
+    }
+  };
+
+  const filteredProjects = selectedCompanyId
+    ? projects.filter((p) => p.onboarding_company_id === selectedCompanyId)
+    : projects;
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const updateData: any = {
+        linked_company_id: selectedCompanyId || null,
+        linked_project_id: selectedProjectId || null,
+        scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+        status,
+      };
+
+      // If scheduling, auto-set status to "scheduled"
+      if (scheduledAt && status === "pending") {
+        updateData.status = "scheduled";
+        setStatus("scheduled");
+      }
+
+      const { error } = await supabase
+        .from("hotseat_responses")
+        .update(updateData)
+        .eq("id", response.id);
+
+      if (error) throw error;
+
+      toast.success("Dados salvos com sucesso!");
+      onUpdated();
+    } catch (error) {
+      console.error("Error saving:", error);
+      toast.error("Erro ao salvar");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+
+    setIsAddingNote(true);
+    try {
+      const { error } = await supabase
+        .from("hotseat_notes")
+        .insert({
+          hotseat_response_id: response.id,
+          content: newNote.trim(),
+          created_by_staff_id: currentStaffId,
+        });
+
+      if (error) throw error;
+
+      toast.success("Anotação adicionada!");
+      setNewNote("");
+      fetchNotes();
+    } catch (error) {
+      console.error("Error adding note:", error);
+      toast.error("Erro ao adicionar anotação");
+    } finally {
+      setIsAddingNote(false);
+    }
+  };
+
+  const handleCreateTask = async () => {
+    if (!newTaskTitle.trim()) {
+      toast.error("Informe o título da tarefa");
+      return;
+    }
+
+    if (!selectedProjectId) {
+      toast.error("Vincule a um projeto primeiro");
+      return;
+    }
+
+    setIsCreatingTask(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_tasks")
+        .insert({
+          project_id: selectedProjectId,
+          title: `[Hotseat] ${newTaskTitle.trim()}`,
+          description: `Tarefa criada a partir do Hotseat de ${response.respondent_name} (${response.company_name})`,
+          status: "pending",
+          priority: "high",
+          responsible_staff_id: newTaskAssignee || null,
+        });
+
+      if (error) throw error;
+
+      toast.success("Tarefa criada com sucesso!");
+      setNewTaskTitle("");
+      setNewTaskAssignee("");
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast.error("Erro ao criar tarefa");
+    } finally {
+      setIsCreatingTask(false);
+    }
+  };
+
+  const handleScheduleMeeting = () => {
+    if (!selectedProjectId) {
+      toast.error("Vincule a um projeto primeiro para agendar reunião");
+      return;
+    }
+    // Navigate to project page with meeting dialog trigger
+    window.open(`/#/onboarding-tasks/${selectedProjectId}?openMeeting=true`, "_blank");
+  };
+
+  const getStatusColor = (s: string) => {
+    switch (s) {
+      case "pending": return "border-yellow-500 text-yellow-600";
+      case "scheduled": return "border-blue-500 text-blue-600";
+      case "completed": return "border-green-500 text-green-600";
+      case "cancelled": return "border-red-500 text-red-600";
+      default: return "";
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            {response.respondent_name}
+          </DialogTitle>
+        </DialogHeader>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="details" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Detalhes
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="gap-2">
+              <StickyNote className="h-4 w-4" />
+              Anotações
+            </TabsTrigger>
+            <TabsTrigger value="actions" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Ações
+            </TabsTrigger>
+          </TabsList>
+
+          <ScrollArea className="max-h-[60vh] mt-4">
+            <TabsContent value="details" className="space-y-4 mt-0">
+              {/* Response Info */}
+              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{response.company_name}</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {response.subjects.map((subject, idx) => (
+                    <Badge key={idx} variant="secondary">{subject}</Badge>
+                  ))}
+                </div>
+                {response.description && (
+                  <p className="text-sm text-muted-foreground">{response.description}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Recebido em {format(new Date(response.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </p>
+              </div>
+
+              <Separator />
+
+              {/* Link to Company */}
+              <div className="space-y-2">
+                <Label>Vincular à Empresa</Label>
+                <Select
+                  value={selectedCompanyId || "none"}
+                  onValueChange={(v) => {
+                    setSelectedCompanyId(v === "none" ? null : v);
+                    setSelectedProjectId(null);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma</SelectItem>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Link to Project */}
+              <div className="space-y-2">
+                <Label>Vincular ao Projeto</Label>
+                <Select
+                  value={selectedProjectId || "none"}
+                  onValueChange={(v) => setSelectedProjectId(v === "none" ? null : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um projeto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {filteredProjects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.product_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Schedule */}
+              <div className="space-y-2">
+                <Label>Agendar para</Label>
+                <Input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                />
+              </div>
+
+              {/* Status */}
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-yellow-500" />
+                        Pendente
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="scheduled">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-blue-500" />
+                        Agendado
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="completed">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        Concluído
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="cancelled">
+                      <div className="flex items-center gap-2">
+                        <XCircle className="h-4 w-4 text-red-500" />
+                        Cancelado
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Save */}
+              <Button onClick={handleSave} disabled={isSaving} className="w-full">
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Salvar Alterações
+              </Button>
+            </TabsContent>
+
+            <TabsContent value="notes" className="space-y-4 mt-0">
+              {/* Add Note */}
+              <div className="space-y-2">
+                <Label>Nova Anotação</Label>
+                <Textarea
+                  placeholder="Digite uma anotação que ficará visível para consultores..."
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  rows={3}
+                />
+                <Button
+                  onClick={handleAddNote}
+                  disabled={isAddingNote || !newNote.trim()}
+                  size="sm"
+                >
+                  {isAddingNote ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  Adicionar
+                </Button>
+              </div>
+
+              <Separator />
+
+              {/* Notes List */}
+              <div className="space-y-3">
+                {notes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhuma anotação ainda
+                  </p>
+                ) : (
+                  notes.map((note) => (
+                    <div key={note.id} className="bg-muted/50 rounded-lg p-3">
+                      <p className="text-sm">{note.content}</p>
+                      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                        <span>{note.staff_name}</span>
+                        <span>•</span>
+                        <span>{format(new Date(note.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="actions" className="space-y-4 mt-0">
+              {/* Create Task */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  Criar Tarefa
+                </Label>
+                <Input
+                  placeholder="Título da tarefa..."
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                />
+                <Select value={newTaskAssignee} onValueChange={setNewTaskAssignee}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Atribuir a..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffList.map((staff) => (
+                      <SelectItem key={staff.id} value={staff.id}>
+                        {staff.name} ({staff.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={handleCreateTask}
+                  disabled={isCreatingTask || !newTaskTitle.trim() || !selectedProjectId}
+                  size="sm"
+                  className="w-full"
+                >
+                  {isCreatingTask ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-2" />
+                  )}
+                  Criar Tarefa
+                </Button>
+                {!selectedProjectId && (
+                  <p className="text-xs text-muted-foreground">
+                    Vincule a um projeto na aba "Detalhes" para criar tarefas
+                  </p>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Schedule Meeting */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Video className="h-4 w-4" />
+                  Agendar Reunião
+                </Label>
+                <Button
+                  variant="outline"
+                  onClick={handleScheduleMeeting}
+                  disabled={!selectedProjectId}
+                  className="w-full"
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Abrir Agendamento de Reunião
+                </Button>
+                {!selectedProjectId && (
+                  <p className="text-xs text-muted-foreground">
+                    Vincule a um projeto na aba "Detalhes" para agendar reuniões
+                  </p>
+                )}
+              </div>
+            </TabsContent>
+          </ScrollArea>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}

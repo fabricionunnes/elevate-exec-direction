@@ -21,6 +21,7 @@ const publicRoutes = [
   "/points",
   "/points-salesperson",
   "/hr-disc",
+  "/hotseat",
 ];
 
 const urlSearch = new URLSearchParams(window.location.search);
@@ -63,6 +64,8 @@ if (publicParam) {
   } else if (publicParam === "points-salesperson") {
     // expects company=... or token=...
     forceHashRoute("/points-salesperson", window.location.search);
+  } else if (publicParam === "hotseat") {
+    forceHashRoute("/hotseat", "");
   }
 } else {
   // Path-based public links
