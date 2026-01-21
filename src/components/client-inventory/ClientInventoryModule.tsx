@@ -10,7 +10,6 @@ import {
   BarChart3,
   Settings,
   Lock,
-  Users,
   ClipboardList,
 } from "lucide-react";
 import { useClientInventoryPermissions } from "./useClientInventoryPermissions";
@@ -22,7 +21,6 @@ import { ClientInventoryBudgetsPanel } from "./ClientInventoryBudgetsPanel";
 import { ClientInventoryMovementsPanel } from "./ClientInventoryMovementsPanel";
 import { ClientInventoryReportsPanel } from "./ClientInventoryReportsPanel";
 import { ClientInventorySettingsPanel } from "./ClientInventorySettingsPanel";
-import { ClientCustomersPanel } from "./ClientCustomersPanel";
 import { ClientSaleBudgetsPanel } from "./ClientSaleBudgetsPanel";
 import type { InventoryViewType } from "./types";
 
@@ -38,7 +36,6 @@ export function ClientInventoryModule({ projectId, userRole }: Props) {
   const tabs = [
     { id: "dashboard" as InventoryViewType, label: "Visão Geral", icon: LayoutDashboard },
     { id: "products" as InventoryViewType, label: "Produtos", icon: Package },
-    { id: "customers" as InventoryViewType, label: "Clientes", icon: Users },
     { id: "purchases" as InventoryViewType, label: "Compras", icon: ShoppingCart },
     { id: "suppliers" as InventoryViewType, label: "Fornecedores", icon: Truck },
     { id: "budgets" as InventoryViewType, label: "Orç. Compras", icon: FileText },
@@ -86,9 +83,6 @@ export function ClientInventoryModule({ projectId, userRole }: Props) {
           <ClientInventoryProductsPanel projectId={projectId} canEdit={canEdit} />
         </TabsContent>
 
-        <TabsContent value="customers" className="mt-0">
-          <ClientCustomersPanel projectId={projectId} canEdit={canEdit} />
-        </TabsContent>
 
         <TabsContent value="purchases" className="mt-0">
           <ClientInventoryPurchasesPanel projectId={projectId} canEdit={canEdit} />
