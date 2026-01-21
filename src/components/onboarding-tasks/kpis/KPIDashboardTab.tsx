@@ -594,16 +594,21 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       }));
   };
 
-  // Get target vs realized chart data - ALWAYS use monetary KPIs (faturamento, receita, valor de vendas)
+  // Get target vs realized chart data - PRIORITIZE main goal KPIs, fallback to monetary
   const getTargetVsRealizedData = () => {
-    // Get only monetary KPIs for this chart (filtered by sector)
     const filteredKpis = getFilteredKpis();
-    const monetaryKpis = filteredKpis.filter(k => k.kpi_type === "monetary");
-    const monetaryKpiIds = monetaryKpis.map(k => k.id);
     
-    // Filter entries to only include monetary KPIs and apply unit/team/salesperson filter
+    // First check for main goal KPIs, then fallback to monetary
+    const mainGoalKpis = filteredKpis.filter(k => k.is_main_goal);
+    const targetKpis = mainGoalKpis.length > 0 
+      ? mainGoalKpis 
+      : filteredKpis.filter(k => k.kpi_type === "monetary");
+    
+    const targetKpiIds = targetKpis.map(k => k.id);
+    
+    // Filter entries to only include target KPIs and apply unit/team/salesperson filter
     const filteredEntries = entries.filter(e => {
-      if (!monetaryKpiIds.includes(e.kpi_id)) return false;
+      if (!targetKpiIds.includes(e.kpi_id)) return false;
       if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
       if (selectedSector !== "all" && e.sector_id !== selectedSector) return false;
@@ -622,12 +627,12 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
 
     // Sort dates
     const sortedDates = Object.keys(groupedByDate).sort();
-    if (sortedDates.length === 0) return { data: [], targetLevels: [] };
+    if (sortedDates.length === 0) return { data: [], targetLevels: [], kpiType: "monetary" };
 
-    // Calculate target levels - aggregate all monetary KPI targets using filtered targets
+    // Calculate target levels - aggregate all target KPI targets using filtered targets
     let targetLevelsMap: Record<string, number> = {};
     
-    monetaryKpis.forEach(kpi => {
+    targetKpis.forEach(kpi => {
       // Get targets based on current unit/salesperson filter
       const filteredTargets = getFilteredTargetsForKpi(kpi.id);
       
@@ -648,6 +653,9 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
     const targetLevelNames = Object.keys(targetLevelsMap);
     const totalDays = sortedDates.length;
 
+    // Determine KPI type for formatting
+    const kpiType = mainGoalKpis.length > 0 ? mainGoalKpis[0].kpi_type : "monetary";
+
     // Build cumulative chart data
     let cumulativeValue = 0;
     const chartData = sortedDates.map((date, index) => {
@@ -667,7 +675,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       return dataPoint;
     });
 
-    return { data: chartData, targetLevels: targetLevelNames };
+    return { data: chartData, targetLevels: targetLevelNames, kpiType };
   };
 
   // Prepare ranking data
@@ -1609,17 +1617,31 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
         </CardContent>
       </Card>
 
-      {/* Target vs Realized Chart - Always show (Monetary KPIs only) */}
+      {/* Target vs Realized Chart - Prioritizes Main Goal KPIs */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <Target className="h-4 w-4" />
-              Meta x Realizado (Faturamento)
+              Meta x Realizado
             </CardTitle>
             <Badge variant="outline" className="gap-1">
-              <DollarSign className="h-3 w-3" />
-              KPIs Monetários
+              {targetVsRealized.kpiType === "monetary" ? (
+                <>
+                  <DollarSign className="h-3 w-3" />
+                  Faturamento
+                </>
+              ) : targetVsRealized.kpiType === "percentage" ? (
+                <>
+                  <Percent className="h-3 w-3" />
+                  Percentual
+                </>
+              ) : (
+                <>
+                  <Hash className="h-3 w-3" />
+                  Quantidade
+                </>
+              )}
             </Badge>
           </div>
         </CardHeader>
@@ -1631,12 +1653,16 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
                 <XAxis dataKey="date" />
                 <YAxis 
                   tickFormatter={(value) => 
-                    new Intl.NumberFormat("pt-BR", { notation: "compact", compactDisplay: "short" }).format(value)
+                    targetVsRealized.kpiType === "monetary" 
+                      ? new Intl.NumberFormat("pt-BR", { notation: "compact", compactDisplay: "short" }).format(value)
+                      : targetVsRealized.kpiType === "percentage"
+                        ? `${value.toFixed(0)}%`
+                        : value.toLocaleString("pt-BR")
                   }
                 />
                 <Tooltip 
                   formatter={(value: number, name: string) => [
-                    formatValue(value, "monetary"),
+                    formatValue(value, targetVsRealized.kpiType || "monetary"),
                     name === "realizado" ? "Realizado" : name
                   ]}
                 />

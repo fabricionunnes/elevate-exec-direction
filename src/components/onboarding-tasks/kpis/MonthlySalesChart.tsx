@@ -21,7 +21,20 @@ interface MonthlyDataPoint {
   month: string;
   monthLabel: string;
   revenue: number;
+  target: number;
   salesCount: number;
+}
+
+interface MainGoalKpi {
+  id: string;
+  name: string;
+  kpi_type: string;
+  target_value: number;
+}
+
+interface MonthlyTarget {
+  month_year: string;
+  target_value: number;
 }
 
 interface MonthlySalesChartProps {
@@ -36,6 +49,7 @@ export const MonthlySalesChart = ({
   companyName = ""
 }: MonthlySalesChartProps) => {
   const [chartData, setChartData] = useState<MonthlyDataPoint[]>([]);
+  const [mainGoalKpi, setMainGoalKpi] = useState<MainGoalKpi | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -47,6 +61,63 @@ export const MonthlySalesChart = ({
 
   const fetchData = async () => {
     try {
+      // First, find the main goal KPI for this company
+      const { data: mainGoalKpis } = await supabase
+        .from("company_kpis")
+        .select("id, name, kpi_type, target_value")
+        .eq("company_id", companyId)
+        .eq("is_main_goal", true)
+        .limit(1);
+
+      let selectedKpi: MainGoalKpi | null = null;
+      
+      if (mainGoalKpis && mainGoalKpis.length > 0) {
+        selectedKpi = mainGoalKpis[0] as MainGoalKpi;
+      } else {
+        // Fallback to monetary KPI if no main goal
+        const { data: monetaryKpis } = await supabase
+          .from("company_kpis")
+          .select("id, name, kpi_type, target_value")
+          .eq("company_id", companyId)
+          .eq("kpi_type", "monetary")
+          .limit(1);
+        
+        if (monetaryKpis && monetaryKpis.length > 0) {
+          selectedKpi = monetaryKpis[0] as MainGoalKpi;
+        }
+      }
+
+      setMainGoalKpi(selectedKpi);
+
+      // Fetch monthly targets from kpi_monthly_targets table
+      let monthlyTargetsMap: Record<string, number> = {};
+      if (selectedKpi) {
+        const { data: monthlyTargets } = await supabase
+          .from("kpi_monthly_targets")
+          .select("month_year, target_value")
+          .eq("kpi_id", selectedKpi.id);
+        
+        if (monthlyTargets) {
+          monthlyTargets.forEach((mt: MonthlyTarget) => {
+            monthlyTargetsMap[mt.month_year] = mt.target_value;
+          });
+        }
+      }
+
+      // Get monthly target for the current KPI
+      const getMonthlyTarget = (monthYear: string): number => {
+        if (!selectedKpi) return 0;
+        
+        // Check monthly_targets table first
+        const monthKey = format(parseISO(monthYear), "yyyy-MM");
+        if (monthlyTargetsMap[monthKey]) {
+          return monthlyTargetsMap[monthKey];
+        }
+        
+        // Fallback to base target
+        return selectedKpi.target_value || 0;
+      };
+
       // Fetch historical data from company_sales_history
       const { data: history, error } = await supabase
         .from("company_sales_history")
@@ -61,38 +132,38 @@ export const MonthlySalesChart = ({
         month: entry.month_year,
         monthLabel: format(parseISO(entry.month_year), "MMM/yy", { locale: ptBR }),
         revenue: entry.revenue || 0,
+        target: getMonthlyTarget(entry.month_year),
         salesCount: entry.sales_count || 0,
       }));
 
-      // Also fetch current month data from KPI entries (monetary KPIs)
+      // Also fetch current month data from main goal KPI entries
       const currentMonthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
-      const { data: currentEntries } = await supabase
-        .from("kpi_entries")
-        .select(`
-          value,
-          company_kpis!inner(kpi_type)
-        `)
-        .eq("company_id", companyId)
-        .gte("entry_date", currentMonthStart)
-        .eq("company_kpis.kpi_type", "monetary");
+      
+      if (selectedKpi) {
+        const { data: currentEntries } = await supabase
+          .from("kpi_entries")
+          .select("value")
+          .eq("company_id", companyId)
+          .eq("kpi_id", selectedKpi.id)
+          .gte("entry_date", currentMonthStart);
 
-      if (currentEntries && currentEntries.length > 0) {
-        const currentRevenue = currentEntries.reduce((sum, e) => sum + e.value, 0);
-        const currentMonthStr = format(startOfMonth(new Date()), "yyyy-MM-dd");
-        
-        // Check if current month already exists
-        const existingIdx = data.findIndex(d => d.month === currentMonthStr);
-        if (existingIdx >= 0) {
-          // Update existing
-          data[existingIdx].revenue = Math.max(data[existingIdx].revenue, currentRevenue);
-        } else if (currentRevenue > 0) {
-          // Add current month
-          data.push({
-            month: currentMonthStr,
-            monthLabel: format(new Date(), "MMM/yy", { locale: ptBR }),
-            revenue: currentRevenue,
-            salesCount: 0,
-          });
+        if (currentEntries && currentEntries.length > 0) {
+          const currentRevenue = currentEntries.reduce((sum, e) => sum + e.value, 0);
+          const currentMonthStr = format(startOfMonth(new Date()), "yyyy-MM-dd");
+          
+          // Check if current month already exists
+          const existingIdx = data.findIndex(d => d.month === currentMonthStr);
+          if (existingIdx >= 0) {
+            data[existingIdx].revenue = Math.max(data[existingIdx].revenue, currentRevenue);
+          } else if (currentRevenue > 0) {
+            data.push({
+              month: currentMonthStr,
+              monthLabel: format(new Date(), "MMM/yy", { locale: ptBR }),
+              revenue: currentRevenue,
+              target: getMonthlyTarget(currentMonthStr),
+              salesCount: 0,
+            });
+          }
         }
       }
 
@@ -250,15 +321,44 @@ Empresa: "${companyName || 'cliente'}".`;
     );
   }
 
+  const formatValueByType = (value: number) => {
+    if (!mainGoalKpi) return formatFullCurrency(value);
+    
+    if (mainGoalKpi.kpi_type === "monetary") {
+      return formatFullCurrency(value);
+    } else if (mainGoalKpi.kpi_type === "percentage") {
+      return `${value.toFixed(1)}%`;
+    } else {
+      return value.toLocaleString("pt-BR");
+    }
+  };
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+      const hasTarget = data.target > 0;
+      const percent = hasTarget ? ((data.revenue / data.target) * 100) : 0;
+      
       return (
         <div className="bg-popover border rounded-lg shadow-lg p-3">
           <p className="font-medium">{data.monthLabel}</p>
-          <p className="text-lg font-bold text-primary">{formatFullCurrency(data.revenue)}</p>
+          <div className="space-y-1">
+            <p className="text-lg font-bold text-primary">
+              Realizado: {formatValueByType(data.revenue)}
+            </p>
+            {hasTarget && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Meta: {formatValueByType(data.target)}
+                </p>
+                <p className={`text-sm font-medium ${percent >= 100 ? 'text-green-600' : percent >= 70 ? 'text-amber-600' : 'text-red-600'}`}>
+                  {percent.toFixed(1)}% da meta
+                </p>
+              </>
+            )}
+          </div>
           {data.salesCount > 0 && (
-            <p className="text-xs text-muted-foreground">{data.salesCount} vendas</p>
+            <p className="text-xs text-muted-foreground mt-1">{data.salesCount} vendas</p>
           )}
         </div>
       );
@@ -266,14 +366,24 @@ Empresa: "${companyName || 'cliente'}".`;
     return null;
   };
 
+  // Check if we have targets to display
+  const hasTargets = chartData.some(d => d.target > 0);
+
   return (
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Calendar className="h-5 w-5" />
-            Vendas Mês a Mês
-          </CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Calendar className="h-5 w-5" />
+              {mainGoalKpi ? mainGoalKpi.name : "Meta Principal"} - Mês a Mês
+            </CardTitle>
+            {mainGoalKpi && (
+              <Badge variant="outline" className="text-xs">
+                {mainGoalKpi.kpi_type === "monetary" ? "R$" : mainGoalKpi.kpi_type === "percentage" ? "%" : "#"}
+              </Badge>
+            )}
+          </div>
           {chartData.length >= 6 && (
             <Badge 
               variant={hasPositiveTrend ? "default" : "destructive"} 
@@ -344,6 +454,10 @@ Empresa: "${companyName || 'cliente'}".`;
                   <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
                   <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                 </linearGradient>
+                <linearGradient id="colorTarget" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0}/>
+                </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis 
@@ -370,9 +484,23 @@ Empresa: "${companyName || 'cliente'}".`;
                   }}
                 />
               )}
+              {/* Target area (if available) */}
+              {hasTargets && (
+                <Area
+                  type="monotone"
+                  dataKey="target"
+                  name="Meta"
+                  stroke="hsl(var(--chart-2))"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  fill="url(#colorTarget)"
+                />
+              )}
+              {/* Realized area */}
               <Area
                 type="monotone"
                 dataKey="revenue"
+                name="Realizado"
                 stroke="hsl(var(--primary))"
                 strokeWidth={2}
                 fill="url(#colorRevenue)"
@@ -380,6 +508,20 @@ Empresa: "${companyName || 'cliente'}".`;
             </AreaChart>
           </ResponsiveContainer>
         </div>
+
+        {/* Legend */}
+        {hasTargets && (
+          <div className="flex items-center justify-center gap-6 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-primary" />
+              <span className="text-muted-foreground">Realizado</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ background: "hsl(var(--chart-2))" }} />
+              <span className="text-muted-foreground">Meta</span>
+            </div>
+          </div>
+        )}
 
         {/* AI Analysis Section */}
         <Card className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-primary/20">
