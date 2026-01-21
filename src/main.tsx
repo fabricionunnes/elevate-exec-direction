@@ -28,11 +28,12 @@ const urlSearch = new URLSearchParams(window.location.search);
 const publicParam = urlSearch.get("public");
 
 const forceHashRoute = (routePath: string, query: string) => {
-  const target = `/#${routePath}${query || ""}`;
-  const current = `${window.location.pathname}${window.location.hash}${window.location.search}`;
-  if (!current.includes(target)) {
-    window.location.replace(`${window.location.origin}${target}`);
-  }
+  // Clean query - remove public param since it's already been processed
+  const cleanQuery = query ? query.replace(/[?&]public=[^&]*/g, '').replace(/^\?&/, '?').replace(/^&/, '').replace(/^\?$/, '') : '';
+  const target = `${window.location.origin}/#${routePath}${cleanQuery}`;
+  
+  // Force navigation immediately - always redirect for public routes
+  window.location.replace(target);
 };
 
 // Query-based public links (most robust for sharing)
