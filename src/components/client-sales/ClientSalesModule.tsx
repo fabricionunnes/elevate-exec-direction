@@ -60,6 +60,7 @@ interface Sale {
   final_amount: number;
   payment_method?: string;
   payment_status?: string;
+  seller_name?: string;
   notes?: string;
   status: string;
   total_cost?: number;
@@ -95,7 +96,8 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
     payment_method: "",
     discount_amount: 0,
     notes: "",
-    is_paid: true, // Default to paid
+    is_paid: true,
+    seller_name: "",
   });
   const [items, setItems] = useState<SaleItem[]>([]);
 
@@ -141,6 +143,7 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
       discount_amount: 0,
       notes: "",
       is_paid: true,
+      seller_name: "",
     });
     setItems([]);
     setShowDialog(true);
@@ -230,6 +233,7 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
           customer_document: formData.customer_document || null,
           sale_date: formData.sale_date,
           payment_method: formData.payment_method || null,
+          seller_name: formData.seller_name || null,
           notes: formData.notes || null,
           total_amount: subtotal,
           discount_amount: formData.discount_amount,
@@ -448,8 +452,8 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
               <TableRow>
                 <TableHead>Data</TableHead>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Vendedor</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
-                <TableHead className="text-right">Custo</TableHead>
                 <TableHead className="text-right">Lucro</TableHead>
                 <TableHead className="text-right">Margem</TableHead>
                 <TableHead>Pagamento</TableHead>
@@ -473,17 +477,17 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
                     <TableCell>
                       <p className="font-medium">{sale.customer_name || "-"}</p>
                     </TableCell>
+                    <TableCell>
+                      <p className="text-sm">{sale.seller_name || "-"}</p>
+                    </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(sale.final_amount)}
                     </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {formatCurrency(sale.total_cost)}
+                    <TableCell className={`text-right font-medium ${(sale.gross_profit || 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {formatCurrency(sale.gross_profit || 0)}
                     </TableCell>
-                    <TableCell className={`text-right font-medium ${sale.gross_profit >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {formatCurrency(sale.gross_profit)}
-                    </TableCell>
-                    <TableCell className={`text-right ${sale.profit_margin >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {sale.profit_margin.toFixed(1)}%
+                    <TableCell className={`text-right ${(sale.profit_margin || 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {(sale.profit_margin || 0).toFixed(1)}%
                     </TableCell>
                     <TableCell>{getPaymentStatusBadge(sale.payment_status || "pending")}</TableCell>
                     <TableCell>{getStatusBadge(sale.status)}</TableCell>
@@ -528,6 +532,15 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
                   type="date"
                   value={formData.sale_date}
                   onChange={(e) => setFormData({ ...formData, sale_date: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label>Vendedor</Label>
+                <Input
+                  value={formData.seller_name}
+                  onChange={(e) => setFormData({ ...formData, seller_name: e.target.value })}
+                  placeholder="Nome do vendedor"
                 />
               </div>
 
