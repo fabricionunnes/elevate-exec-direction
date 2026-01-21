@@ -110,7 +110,60 @@ export type FinancialViewType =
   | 'recurring' 
   | 'cashflow' 
   | 'reports' 
-  | 'settings';
+  | 'settings'
+  | 'products'
+  | 'sales'
+  | 'analytics';
+
+export interface FinancialProduct {
+  id: string;
+  project_id: string;
+  name: string;
+  description?: string;
+  sku?: string;
+  unit_price: number;
+  cost_price: number;
+  is_active: boolean;
+  category_id?: string;
+  created_at: string;
+  updated_at: string;
+  category?: FinancialCategory;
+}
+
+export interface FinancialSale {
+  id: string;
+  project_id: string;
+  sale_date: string;
+  customer_name?: string;
+  salesperson_id?: string;
+  total_amount: number;
+  total_cost: number;
+  discount: number;
+  status: 'pending' | 'completed' | 'cancelled' | 'refunded';
+  payment_method_id?: string;
+  notes?: string;
+  receivable_id?: string;
+  created_at: string;
+  updated_at: string;
+  salesperson?: {
+    id: string;
+    name: string;
+  };
+  payment_method?: FinancialPaymentMethod;
+  items?: FinancialSaleItem[];
+}
+
+export interface FinancialSaleItem {
+  id: string;
+  sale_id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  cost_price: number;
+  discount: number;
+  total: number;
+  product?: FinancialProduct;
+}
 
 export interface CashFlowProjection {
   date: string;
