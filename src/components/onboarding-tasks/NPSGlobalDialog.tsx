@@ -148,7 +148,8 @@ export function NPSGlobalDialog({ open, onOpenChange }: NPSGlobalDialogProps) {
   };
 
   const getNPSLink = (projectId: string) => {
-    return `${getPublicBaseUrl()}/#/nps?project=${projectId}`;
+    // Use query-based public link so it works even when apps (WhatsApp/Instagram) drop the hash.
+    return `${getPublicBaseUrl()}/?public=nps&project=${encodeURIComponent(projectId)}`;
   };
 
   const copyLink = (projectId: string) => {
