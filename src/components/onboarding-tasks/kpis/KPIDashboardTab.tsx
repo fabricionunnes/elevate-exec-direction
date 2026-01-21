@@ -567,10 +567,23 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
 
   const projection = getMonthlyProjection();
 
-  // Prepare chart data - Daily evolution
+  // Prepare chart data - Daily evolution - PRIORITIZE main goal KPIs, sum if multiple
   const getDailyChartData = () => {
+    const filteredKpis = getFilteredKpis();
+    
+    // First check for main goal KPIs, then fallback to monetary
+    const mainGoalKpis = filteredKpis.filter(k => k.is_main_goal);
+    const targetKpis = mainGoalKpis.length > 0 
+      ? mainGoalKpis 
+      : filteredKpis.filter(k => k.kpi_type === "monetary");
+    
+    // If a specific KPI is selected, use that instead
+    const kpiIdsToUse = selectedKpi !== "all" 
+      ? [selectedKpi] 
+      : targetKpis.map(k => k.id);
+    
     const filteredEntries = entries.filter(e => {
-      if (selectedKpi !== "all" && e.kpi_id !== selectedKpi) return false;
+      if (!kpiIdsToUse.includes(e.kpi_id)) return false;
       if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
       if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
