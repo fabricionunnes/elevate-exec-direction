@@ -20,10 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CalendarIcon, Loader2, Video, Users } from "lucide-react";
+import { CalendarIcon, Loader2, Video, Users, Lock } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface StaffWithCalendar {
   id: string;
@@ -72,6 +73,7 @@ export const ScheduleMeetingDialog = ({
   const [duration, setDuration] = useState("60");
   const [targetStaffId, setTargetStaffId] = useState<string>("");
   const [attendeeEmails, setAttendeeEmails] = useState<string>("");
+  const [isInternal, setIsInternal] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -284,6 +286,7 @@ export const ScheduleMeetingDialog = ({
           scheduled_by: currentStaff.id,
           calendar_owner_id: targetStaff.user_id,
           calendar_owner_name: targetStaff.name,
+          is_internal: isInternal,
         });
       }
 
@@ -443,6 +446,21 @@ export const ScheduleMeetingDialog = ({
               placeholder="Pauta ou observações da reunião..."
               rows={3}
             />
+          </div>
+
+          {/* Internal Meeting Checkbox */}
+          <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg">
+            <Checkbox
+              id="is-internal"
+              checked={isInternal}
+              onCheckedChange={(checked) => setIsInternal(checked === true)}
+            />
+            <div className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-amber-500" />
+              <Label htmlFor="is-internal" className="text-sm font-normal cursor-pointer">
+                Reunião Interna (não visível para o cliente)
+              </Label>
+            </div>
           </div>
 
           {/* Actions */}

@@ -19,9 +19,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FileText, Video, Building2, Loader2, PlayCircle, Search } from "lucide-react";
+import { FileText, Video, Building2, Loader2, PlayCircle, Search, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface CalendarEvent {
   id: string;
@@ -63,6 +64,7 @@ export const MeetingNotesDialog = ({
   const [notes, setNotes] = useState("");
   const [attendees, setAttendees] = useState("");
   const [recordingLink, setRecordingLink] = useState("");
+  const [isInternal, setIsInternal] = useState(false);
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -155,7 +157,8 @@ export const MeetingNotesDialog = ({
         attendees: attendees.trim() || null,
         meeting_link: event?.meetingLink || null,
         recording_link: recordingLink.trim() || null,
-        is_finalized: true, // Auto-finalize when notes are provided
+        is_finalized: true,
+        is_internal: isInternal,
       });
 
       if (error) throw error;
@@ -178,6 +181,7 @@ export const MeetingNotesDialog = ({
     setNotes("");
     setAttendees("");
     setRecordingLink("");
+    setIsInternal(false);
   };
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
@@ -312,6 +316,21 @@ export const MeetingNotesDialog = ({
             <p className="text-xs text-muted-foreground">
               Cole o link da gravação do Google Meet ou outro serviço
             </p>
+          </div>
+
+          {/* Internal Meeting Checkbox */}
+          <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg">
+            <Checkbox
+              id="is-internal-notes"
+              checked={isInternal}
+              onCheckedChange={(checked) => setIsInternal(checked === true)}
+            />
+            <div className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-amber-500" />
+              <Label htmlFor="is-internal-notes" className="text-sm font-normal cursor-pointer">
+                Reunião Interna (não visível para o cliente)
+              </Label>
+            </div>
           </div>
         </div>
 
