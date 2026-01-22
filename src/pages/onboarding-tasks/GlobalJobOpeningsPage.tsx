@@ -25,6 +25,7 @@ import {
   TrendingUp,
   Calendar,
   Trash2,
+  Star,
 } from "lucide-react";
 import {
   Select,
@@ -489,6 +490,14 @@ const GlobalJobOpeningsPage = () => {
               <h1 className="text-lg font-semibold">Painel Global de Vagas</h1>
             </div>
           </div>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate("/onboarding-tasks/banco-talentos")}
+            className="gap-2"
+          >
+            <Star className="h-4 w-4" />
+            Banco de Talentos
+          </Button>
         </div>
       </header>
 
