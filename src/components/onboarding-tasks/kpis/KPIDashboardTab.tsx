@@ -96,6 +96,7 @@ interface KPIDashboardTabProps {
   projectId?: string;
   canDeleteEntries?: boolean; // Admin, CS, or consultant
   canEditSalesHistory?: boolean; // Admin, CS, consultant, or client
+  salespersonId?: string | null; // Filter all data by this salesperson (for vendedor role)
 }
 
 // Raw monthly targets storage (all scopes: company, unit, salesperson)
@@ -110,7 +111,13 @@ interface MonthlyTarget {
   salesperson_id: string | null;
 }
 
-export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false, canEditSalesHistory = false }: KPIDashboardTabProps) => {
+export const KPIDashboardTab = ({ 
+  companyId, 
+  projectId, 
+  canDeleteEntries = false, 
+  canEditSalesHistory = false,
+  salespersonId,
+}: KPIDashboardTabProps) => {
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -133,7 +140,14 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
 
   useEffect(() => {
     fetchData();
-  }, [companyId, dateRange]);
+  }, [companyId, dateRange, salespersonId]);
+
+  // If salespersonId is set, auto-select that salesperson
+  useEffect(() => {
+    if (salespersonId) {
+      setSelectedSalesperson(salespersonId);
+    }
+  }, [salespersonId]);
 
   const fetchData = async () => {
     console.log("[KPIDashboardTab] Fetching data for companyId:", companyId);
@@ -148,10 +162,18 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
       // Get the month from the selected date range for monthly targets
       const selectedMonthYear = format(parseDateLocal(dateRange.start), "yyyy-MM");
 
+      // Build entries query - filter by salesperson if provided
+      let entriesQuery = supabase.from("kpi_entries").select("*").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end);
+      if (salespersonId) {
+        entriesQuery = entriesQuery.eq("salesperson_id", salespersonId);
+      }
+
       const [kpisRes, salespeopleRes, entriesRes, unitsRes, teamsRes, sectorsRes, companyRes, monthlyTargetsRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
-        supabase.from("company_salespeople").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
-        supabase.from("kpi_entries").select("*").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end),
+        salespersonId 
+          ? supabase.from("company_salespeople").select("*").eq("id", salespersonId)
+          : supabase.from("company_salespeople").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
+        entriesQuery,
         supabase.from("company_units").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("company_teams").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("company_sectors").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),

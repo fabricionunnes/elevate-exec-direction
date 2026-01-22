@@ -584,7 +584,7 @@ const ClientOnboardingPage = () => {
 
             {/* Right: Actions */}
             <div className="flex items-center gap-1 flex-shrink-0">
-              {companyId && (
+              {companyId && hasPermission(CLIENT_MENU_KEYS.pontuacao) && (
                 <Button 
                   variant="ghost" 
                   size="sm"
@@ -764,25 +764,7 @@ const ClientOnboardingPage = () => {
       {/* Main content */}
       <main className="p-4 pb-0 max-w-7xl mx-auto">
         <AnimatePresence mode="wait">
-          {!hasViewAccess(activeView) && (
-            <motion.div
-              key="no-access"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-            >
-              <Card>
-                <CardContent className="py-10 text-center">
-                  <h2 className="text-lg font-semibold">Acesso negado</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Você não tem permissão para acessar esta área.
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {activeView === "kpis" && (
+          {activeView === "kpis" && hasViewAccess("kpis") && (
             <motion.div
               key="kpis"
               initial={{ opacity: 0, x: -20 }}
@@ -793,6 +775,9 @@ const ClientOnboardingPage = () => {
                 companyId={project.onboarding_company_id || ""} 
                 isAdmin={false}
                 projectId={projectId}
+                salespersonId={salespersonId}
+                canSeeDashboard={hasPermission(CLIENT_MENU_KEYS.kpis_dashboard)}
+                canSeeEndomarketing={hasPermission(CLIENT_MENU_KEYS.kpis_endomarketing)}
               />
             </motion.div>
           )}

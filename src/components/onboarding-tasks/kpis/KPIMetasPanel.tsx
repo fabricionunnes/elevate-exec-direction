@@ -29,11 +29,32 @@ interface KPIMetasPanelProps {
   projectId?: string;
   isStaff?: boolean;
   defaultTab?: string;
+  salespersonId?: string | null;
+  canSeeDashboard?: boolean;
+  canSeeEndomarketing?: boolean;
 }
 
-export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, defaultTab }: KPIMetasPanelProps) => {
+export const KPIMetasPanel = ({ 
+  companyId, 
+  isAdmin, 
+  projectId, 
+  isStaff = false, 
+  defaultTab,
+  salespersonId,
+  canSeeDashboard = true,
+  canSeeEndomarketing = true,
+}: KPIMetasPanelProps) => {
   const canAccessAllTabs = isStaff || isAdmin;
-  const [activeTab, setActiveTab] = useState(defaultTab || "dashboard");
+  
+  // Determine initial tab based on permissions
+  const getDefaultTab = () => {
+    if (defaultTab) return defaultTab;
+    if (canSeeDashboard) return "dashboard";
+    if (canSeeEndomarketing) return "gamification";
+    return "dashboard"; // fallback
+  };
+  
+  const [activeTab, setActiveTab] = useState(getDefaultTab());
   const [companyName, setCompanyName] = useState("");
 
   useEffect(() => {
@@ -98,12 +119,14 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0 pb-1">
           <TabsList className="h-auto w-max sm:w-full inline-flex sm:flex flex-nowrap sm:flex-wrap justify-start gap-1 bg-transparent p-0">
-            {/* Dashboard */}
-            <TabsTrigger value="dashboard" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
-              <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Dashboard</span>
-              <span className="sm:hidden">Dash</span>
-            </TabsTrigger>
+            {/* Dashboard - only show if has permission */}
+            {canSeeDashboard && (
+              <TabsTrigger value="dashboard" className="gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+                <span className="sm:hidden">Dash</span>
+              </TabsTrigger>
+            )}
 
             {/* Análise IA */}
             {canAccessAllTabs && (
@@ -114,46 +137,48 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, 
               </TabsTrigger>
             )}
 
-            {/* Endomarketing Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className={cn(
-                    "inline-flex items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md whitespace-nowrap transition-colors",
-                    isEndomarketingActive
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted hover:bg-muted/80 text-foreground"
-                  )}
-                >
-                  <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Endomarketing</span>
-                  <span className="sm:hidden">Endo</span>
-                  <ChevronDown className="h-3 w-3" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem
-                  onClick={() => setActiveTab("gamification")}
-                  className={cn(
-                    "gap-2 cursor-pointer",
-                    activeTab === "gamification" && "bg-accent"
-                  )}
-                >
-                  <Gamepad2 className="h-4 w-4" />
-                  Gamificação
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setActiveTab("campaigns")}
-                  className={cn(
-                    "gap-2 cursor-pointer",
-                    activeTab === "campaigns" && "bg-accent"
-                  )}
-                >
-                  <Megaphone className="h-4 w-4" />
-                  Campanhas
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Endomarketing Dropdown - only show if has permission */}
+            {canSeeEndomarketing && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md whitespace-nowrap transition-colors",
+                      isEndomarketingActive
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted hover:bg-muted/80 text-foreground"
+                    )}
+                  >
+                    <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Endomarketing</span>
+                    <span className="sm:hidden">Endo</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem
+                    onClick={() => setActiveTab("gamification")}
+                    className={cn(
+                      "gap-2 cursor-pointer",
+                      activeTab === "gamification" && "bg-accent"
+                    )}
+                  >
+                    <Gamepad2 className="h-4 w-4" />
+                    Gamificação
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setActiveTab("campaigns")}
+                    className={cn(
+                      "gap-2 cursor-pointer",
+                      activeTab === "campaigns" && "bg-accent"
+                    )}
+                  >
+                    <Megaphone className="h-4 w-4" />
+                    Campanhas
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
 
             {/* Configuração Dropdown */}
             {canAccessAllTabs && (
@@ -231,14 +256,17 @@ export const KPIMetasPanel = ({ companyId, isAdmin, projectId, isStaff = false, 
         </div>
 
         {/* Tab Contents */}
-        <TabsContent value="dashboard" className="mt-6">
-          <KPIDashboardTab 
-            companyId={companyId} 
-            projectId={projectId} 
-            canDeleteEntries={canAccessAllTabs} 
-            canEditSalesHistory={true} 
-          />
-        </TabsContent>
+        {canSeeDashboard && (
+          <TabsContent value="dashboard" className="mt-6">
+            <KPIDashboardTab 
+              companyId={companyId} 
+              projectId={projectId} 
+              canDeleteEntries={canAccessAllTabs} 
+              canEditSalesHistory={!salespersonId} 
+              salespersonId={salespersonId}
+            />
+          </TabsContent>
+        )}
 
         <TabsContent value="gamification" className="mt-6">
           <GamificationPanel

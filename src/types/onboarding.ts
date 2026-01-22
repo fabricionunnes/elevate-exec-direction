@@ -33,6 +33,9 @@ export interface OnboardingUser {
 // Menu permission keys for client portal
 export const CLIENT_MENU_KEYS = {
   kpis: "kpis",
+  kpis_dashboard: "kpis_dashboard",
+  kpis_endomarketing: "kpis_endomarketing",
+  pontuacao: "pontuacao",
   jornada_trilha: "jornada_trilha",
   jornada_lista: "jornada_lista",
   jornada_cronograma: "jornada_cronograma",
@@ -54,7 +57,22 @@ export type ClientMenuKey = typeof CLIENT_MENU_KEYS[keyof typeof CLIENT_MENU_KEY
 export const CLIENT_MENU_STRUCTURE = [
   { 
     key: CLIENT_MENU_KEYS.kpis, 
-    label: "KPIs", 
+    label: "KPIs (Menu)", 
+    group: "KPIs" 
+  },
+  { 
+    key: CLIENT_MENU_KEYS.kpis_dashboard, 
+    label: "KPIs > Dashboard", 
+    group: "KPIs" 
+  },
+  { 
+    key: CLIENT_MENU_KEYS.kpis_endomarketing, 
+    label: "KPIs > Endomarketing", 
+    group: "KPIs" 
+  },
+  { 
+    key: CLIENT_MENU_KEYS.pontuacao, 
+    label: "Pontuação", 
     group: null 
   },
   { 
