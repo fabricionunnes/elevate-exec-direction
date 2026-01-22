@@ -865,6 +865,7 @@ const OnboardingTasksPage = () => {
     });
     
     // Also calculate the actual realized percentage per company for display
+    // Now: show 0% if company has goal but no entries (instead of N/A)
     const realizedPercentByCompany = new Map<string, number | null>();
     
     activeCompanyIds.forEach(companyId => {
@@ -873,7 +874,7 @@ const OnboardingTasksPage = () => {
       const companyKpisList = getCompanyKpisList(companyId);
       
       if (companyKpisList.length === 0) {
-        realizedPercentByCompany.set(companyId, null); // No KPI configured
+        realizedPercentByCompany.set(companyId, null); // No KPI configured = N/A
         return;
       }
       
@@ -890,7 +891,7 @@ const OnboardingTasksPage = () => {
       });
       
       if (totalMonthlyTarget === 0) {
-        realizedPercentByCompany.set(companyId, null); // Target is 0
+        realizedPercentByCompany.set(companyId, null); // Target is 0 = N/A
         return;
       }
       
@@ -902,8 +903,9 @@ const OnboardingTasksPage = () => {
         companyKpisList.some(k => k.id === e.kpi_id)
       );
       
+      // If company has goal but no entries, show 0% (not N/A)
       if (companyEntries.length === 0) {
-        realizedPercentByCompany.set(companyId, null); // No entries = N/A
+        realizedPercentByCompany.set(companyId, 0); // Has goal, no entries = 0%
         return;
       }
       
@@ -1948,15 +1950,18 @@ const OnboardingTasksPage = () => {
                                 <span className={`font-semibold ${companyHealthData.riskInfo.color}`}>{companyHealthData.avgScore}</span>
                               </span>
                             )}
-                            <span className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
-                              companyGoalPercent === null || companyGoalPercent === undefined 
-                                ? 'bg-muted' 
-                                : companyGoalPercent >= 100 
-                                  ? 'bg-green-100' 
-                                  : companyGoalPercent >= 70 
-                                    ? 'bg-yellow-100' 
-                                    : 'bg-red-100'
-                            }`}>
+                            <span 
+                              className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
+                                companyGoalPercent === null || companyGoalPercent === undefined 
+                                  ? 'bg-muted' 
+                                  : companyGoalPercent >= 100 
+                                    ? 'bg-green-100' 
+                                    : companyGoalPercent >= 70 
+                                      ? 'bg-yellow-100' 
+                                      : 'bg-red-100'
+                              }`}
+                              title="Projeção da Meta Principal"
+                            >
                               <Target className={`h-2.5 w-2.5 ${
                                 companyGoalPercent === null || companyGoalPercent === undefined 
                                   ? 'text-muted-foreground' 
@@ -1975,7 +1980,7 @@ const OnboardingTasksPage = () => {
                                       ? 'text-yellow-600' 
                                       : 'text-red-600'
                               }`}>
-                                {companyGoalPercent === null || companyGoalPercent === undefined ? 'N/A' : `${companyGoalPercent}%`}
+                                {companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
                               </span>
                             </span>
                           </div>
@@ -1992,15 +1997,18 @@ const OnboardingTasksPage = () => {
                           </div>
                         )}
                         {/* Goal % Indicator - Desktop */}
-                        <div className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full ${
-                          companyGoalPercent === null || companyGoalPercent === undefined 
-                            ? 'bg-muted' 
-                            : companyGoalPercent >= 100 
-                              ? 'bg-green-100' 
-                              : companyGoalPercent >= 70 
-                                ? 'bg-yellow-100' 
-                                : 'bg-red-100'
-                        }`}>
+                        <div 
+                          className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full ${
+                            companyGoalPercent === null || companyGoalPercent === undefined 
+                              ? 'bg-muted' 
+                              : companyGoalPercent >= 100 
+                                ? 'bg-green-100' 
+                                : companyGoalPercent >= 70 
+                                  ? 'bg-yellow-100' 
+                                  : 'bg-red-100'
+                          }`}
+                          title="Projeção da Meta Principal"
+                        >
                           <Target className={`h-3.5 w-3.5 ${
                             companyGoalPercent === null || companyGoalPercent === undefined 
                               ? 'text-muted-foreground' 
@@ -2019,7 +2027,7 @@ const OnboardingTasksPage = () => {
                                   ? 'text-yellow-600' 
                                   : 'text-red-600'
                           }`}>
-                            {companyGoalPercent === null || companyGoalPercent === undefined ? 'N/A' : `${companyGoalPercent}%`}
+                            {companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
                           </span>
                         </div>
                         {/* Contract End Date / Recurring */}
