@@ -9,6 +9,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import logoNexus from "@/assets/logo-unv-nexus.png";
+import { isClientRole } from "@/types/onboarding";
 
 const OnboardingLoginPage = () => {
   const navigate = useNavigate();
@@ -89,8 +90,8 @@ const OnboardingLoginPage = () => {
 
         toast.success("Login realizado com sucesso!");
         
-        // Redirect based on role
-        if (onboardingUser.role === "client") {
+        // Redirect based on role - all client roles go to client portal
+        if (isClientRole(onboardingUser.role)) {
           navigate(`/onboarding-client/${onboardingUser.project_id}`);
         } else {
           navigate("/onboarding-tasks");
