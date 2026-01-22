@@ -779,13 +779,36 @@ const OnboardingTasksPage = () => {
     const noEntriesIds = new Set<string>(); // Has KPI but no entries in month
     const hasEntriesIds = new Set<string>(); // Has KPI AND entries in month
     
-    // Helper to get KPIs for a company - prioritizes is_main_goal, falls back to monetary
+    // Helper to get KPIs for a company.
+    // Priority: Main Goal KPIs; if there are NO entries for main goal in the selected month,
+    // fallback to monetary KPIs that DO have entries (avoids showing 0% when users are launching in another KPI).
     const getCompanyKpisList = (companyId: string) => {
       const allCompanyKpis = companyKpis.filter(k => k.company_id === companyId);
       const mainGoalKpis = allCompanyKpis.filter(k => k.is_main_goal === true);
-      return mainGoalKpis.length > 0 
-        ? mainGoalKpis 
-        : allCompanyKpis.filter(k => k.kpi_type === "monetary");
+      const monetaryKpis = allCompanyKpis.filter(k => k.kpi_type === "monetary");
+
+      if (mainGoalKpis.length === 0) return monetaryKpis;
+
+      // If main goal exists but has no entries this month, try falling back to monetary KPIs with entries
+      const hasMainGoalEntries = kpiEntries.some(e =>
+        e.company_id === companyId &&
+        e.entry_date >= monthStart &&
+        e.entry_date <= monthEnd &&
+        mainGoalKpis.some(k => k.id === e.kpi_id) &&
+        e.value !== 0
+      );
+
+      if (hasMainGoalEntries) return mainGoalKpis;
+
+      const hasMonetaryEntries = kpiEntries.some(e =>
+        e.company_id === companyId &&
+        e.entry_date >= monthStart &&
+        e.entry_date <= monthEnd &&
+        monetaryKpis.some(k => k.id === e.kpi_id) &&
+        e.value !== 0
+      );
+
+      return hasMonetaryEntries ? monetaryKpis : mainGoalKpis;
     };
     
     // Companies with KPI configured with target_value > 0 (same logic as DashboardMetrics)
