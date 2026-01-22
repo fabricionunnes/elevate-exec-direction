@@ -52,9 +52,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if user already exists in auth
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(u => u.email === email);
+    // Check if user already exists in auth - try to get directly by email first
+    let existingUser = null;
+    
+    // First attempt: try to get user by email using listUsers with filter
+    const { data: userListData } = await supabaseAdmin.auth.admin.listUsers({
+      perPage: 1000
+    });
+    existingUser = userListData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase()) || null;
+    
+    console.log(`Checking for existing user with email: ${email}, found: ${!!existingUser}`);
 
     let userId: string;
 
@@ -122,20 +129,37 @@ Deno.serve(async (req) => {
       });
 
       if (createError) {
-        // If the error is that email exists, try to find the user again
+        // If the error is that email exists, the user exists but wasn't found
+        // Try with pagination to find them
         if (createError.code === "email_exists") {
-          const { data: retryUsers } = await supabaseAdmin.auth.admin.listUsers();
-          const retryUser = retryUsers?.users?.find(u => u.email === email);
-          if (retryUser) {
-            userId = retryUser.id;
+          console.log(`User exists but not found initially, searching with pagination...`);
+          let page = 1;
+          let foundUser = null;
+          
+          while (!foundUser) {
+            const { data: pageUsers } = await supabaseAdmin.auth.admin.listUsers({
+              page,
+              perPage: 1000
+            });
+            
+            if (!pageUsers?.users || pageUsers.users.length === 0) break;
+            
+            foundUser = pageUsers.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+            if (foundUser) break;
+            
+            page++;
+            if (page > 10) break; // Safety limit
+          }
+          
+          if (foundUser) {
+            userId = foundUser.id;
             await supabaseAdmin.auth.admin.updateUserById(userId, { password });
-            console.log(`Found existing user on retry: ${email}, id: ${userId}`);
+            console.log(`Found existing user on deep search: ${email}, id: ${userId}`);
           } else {
-            console.error("Error creating auth user:", createError);
-            return new Response(
-              JSON.stringify({ error: createError.message }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
+            // Last resort: user exists but we can't find them
+            // Create onboarding_user without auth link and let them login to link
+            console.error("User exists in auth but cannot be found. Creating onboarding entry without link.");
+            userId = ""; // Will be empty - user will need to login to link
           }
         } else {
           console.error("Error creating auth user:", createError);
