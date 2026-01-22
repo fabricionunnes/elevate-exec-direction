@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CheckCircle2, Calendar, User, DollarSign, Percent, Hash, AlertCircle, Building2, Users, Layers } from "lucide-react";
+import { toDateString } from "@/lib/dateUtils";
 
 interface KPI {
   id: string;
@@ -72,7 +73,7 @@ export default function KPIEntryPage() {
   const [salespersonSectors, setSalespersonSectors] = useState<string[]>([]);
   const [team, setTeam] = useState<Team | null>(null);
   const [kpis, setKpis] = useState<KPI[]>([]);
-  const [entryDate, setEntryDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [entryDate, setEntryDate] = useState(toDateString(new Date()));
   const [values, setValues] = useState<Record<string, number>>({});
   const [observations, setObservations] = useState("");
   const [loading, setLoading] = useState(false);
@@ -392,7 +393,7 @@ export default function KPIEntryPage() {
               <Button onClick={() => {
                 setValues({});
                 setObservations("");
-                setEntryDate(format(new Date(), "yyyy-MM-dd"));
+                setEntryDate(toDateString(new Date()));
                 setStep("entry");
               }} className="w-full">
                 Fazer Novo Lançamento
@@ -448,7 +449,7 @@ export default function KPIEntryPage() {
                 type="date"
                 value={entryDate}
                 onChange={(e) => handleDateChange(e.target.value)}
-                max={format(new Date(), "yyyy-MM-dd")}
+                max={toDateString(new Date())}
               />
               {Object.keys(existingEntries).length > 0 && (
                 <p className="text-sm text-amber-600 flex items-center gap-1 mt-1">
