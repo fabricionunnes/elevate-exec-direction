@@ -38,9 +38,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, startOfMonth, endOfMonth } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { History, Trash2, DollarSign, Hash, Percent, Pencil } from "lucide-react";
+import { formatDateLocal } from "@/lib/dateUtils";
 
 interface KPI {
   id: string;
@@ -361,7 +361,7 @@ export const KPIEntriesHistoryDialog = ({
                       return (
                         <TableRow key={entry.id}>
                           <TableCell className="font-medium">
-                            {format(new Date(entry.entry_date), "dd/MM/yyyy", { locale: ptBR })}
+                            {formatDateLocal(entry.entry_date, "dd/MM/yyyy")}
                           </TableCell>
                           <TableCell>{salesperson?.name || "-"}</TableCell>
                           <TableCell>
@@ -429,7 +429,7 @@ export const KPIEntriesHistoryDialog = ({
               Tem certeza que deseja excluir este lançamento?
               {entryToDelete && (
                 <div className="mt-2 p-3 bg-muted rounded-md">
-                  <p><strong>Data:</strong> {format(new Date(entryToDelete.entry_date), "dd/MM/yyyy")}</p>
+                  <p><strong>Data:</strong> {formatDateLocal(entryToDelete.entry_date, "dd/MM/yyyy")}</p>
                   <p><strong>Vendedor:</strong> {getSalespersonById(entryToDelete.salesperson_id)?.name}</p>
                   <p><strong>Valor:</strong> {formatValue(entryToDelete.value, getKpiById(entryToDelete.kpi_id)?.kpi_type || "numeric")}</p>
                 </div>
@@ -455,7 +455,7 @@ export const KPIEntriesHistoryDialog = ({
               <div>
                 {entryToEdit && (
                   <div className="mt-2 p-3 bg-muted rounded-md mb-4">
-                    <p><strong>Data:</strong> {format(new Date(entryToEdit.entry_date), "dd/MM/yyyy")}</p>
+                    <p><strong>Data:</strong> {formatDateLocal(entryToEdit.entry_date, "dd/MM/yyyy")}</p>
                     <p><strong>Vendedor:</strong> {getSalespersonById(entryToEdit.salesperson_id)?.name}</p>
                     <p><strong>KPI:</strong> {getKpiById(entryToEdit.kpi_id)?.name}</p>
                   </div>
