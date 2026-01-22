@@ -1248,73 +1248,75 @@ export function ConsultantOneOnOnePanel() {
       {/* Meeting Details Dialog */}
       {selectedMeetingDetails && (
         <Dialog open={!!selectedMeetingDetails} onOpenChange={(open) => !open && setSelectedMeetingDetails(null)}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
                 Detalhes da Reunião
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-4">
-              {/* Meeting Info */}
-              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                <p className="font-medium text-lg">{selectedMeetingDetails.subject || selectedMeetingDetails.meeting_title}</p>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  {format(new Date(selectedMeetingDetails.meeting_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                </div>
-                {selectedMeetingDetails.attendees && (
+            <ScrollArea className="flex-1 pr-4">
+              <div className="space-y-4 pb-4">
+                {/* Meeting Info */}
+                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                  <p className="font-medium text-lg">{selectedMeetingDetails.subject || selectedMeetingDetails.meeting_title}</p>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    {selectedMeetingDetails.attendees}
+                    <Calendar className="h-4 w-4" />
+                    {format(new Date(selectedMeetingDetails.meeting_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </div>
+                  {selectedMeetingDetails.attendees && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      {selectedMeetingDetails.attendees}
+                    </div>
+                  )}
+                </div>
+
+                {/* Notes */}
+                {selectedMeetingDetails.notes && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      O que foi tratado
+                    </div>
+                    <div className="bg-muted/30 rounded-lg p-3">
+                      <p className="text-sm whitespace-pre-wrap">{selectedMeetingDetails.notes}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Links */}
+                {(selectedMeetingDetails.meeting_link || selectedMeetingDetails.recording_link) && (
+                  <div className="flex gap-2">
+                    {selectedMeetingDetails.meeting_link && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => window.open(selectedMeetingDetails.meeting_link!, '_blank')}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Link da Reunião
+                      </Button>
+                    )}
+                    {selectedMeetingDetails.recording_link && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => window.open(selectedMeetingDetails.recording_link!, '_blank')}
+                      >
+                        <PlayCircle className="h-4 w-4 mr-2" />
+                        Gravação
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
+            </ScrollArea>
 
-              {/* Notes */}
-              {selectedMeetingDetails.notes && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    O que foi tratado
-                  </div>
-                  <div className="bg-muted/30 rounded-lg p-3">
-                    <p className="text-sm whitespace-pre-wrap">{selectedMeetingDetails.notes}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Links */}
-              {(selectedMeetingDetails.meeting_link || selectedMeetingDetails.recording_link) && (
-                <div className="flex gap-2">
-                  {selectedMeetingDetails.meeting_link && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => window.open(selectedMeetingDetails.meeting_link!, '_blank')}
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Link da Reunião
-                    </Button>
-                  )}
-                  {selectedMeetingDetails.recording_link && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => window.open(selectedMeetingDetails.recording_link!, '_blank')}
-                    >
-                      <PlayCircle className="h-4 w-4 mr-2" />
-                      Gravação
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <DialogFooter>
+            <DialogFooter className="shrink-0 mt-4">
               <Button variant="outline" onClick={() => setSelectedMeetingDetails(null)}>
                 Fechar
               </Button>
