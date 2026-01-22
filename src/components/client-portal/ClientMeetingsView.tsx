@@ -7,8 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDateTimeLocal } from "@/lib/dateUtils";
-import { Video, Calendar, ExternalLink, FileText, Users } from "lucide-react";
+import { Video, Calendar, ExternalLink, FileText, Users, Clock } from "lucide-react";
 import { motion } from "framer-motion";
+import { isFuture } from "date-fns";
 
 interface MeetingNote {
   id: string;
@@ -55,15 +56,27 @@ export function ClientMeetingsView({ projectId }: ClientMeetingsViewProps) {
   }, [projectId]);
 
   const fetchMeetings = async () => {
-    const { data, error } = await supabase
+    // Fetch finalized meetings (history)
+    const { data: finalizedData, error: finalizedError } = await supabase
       .from("onboarding_meeting_notes")
       .select("*")
       .eq("project_id", projectId)
       .eq("is_finalized", true)
+      .or("is_internal.is.null,is_internal.eq.false")
       .order("meeting_date", { ascending: false });
 
-    if (!error) {
-      setMeetings(data || []);
+    // Fetch upcoming scheduled meetings (not finalized, not internal)
+    const { data: upcomingData, error: upcomingError } = await supabase
+      .from("onboarding_meeting_notes")
+      .select("*")
+      .eq("project_id", projectId)
+      .eq("is_finalized", false)
+      .or("is_internal.is.null,is_internal.eq.false")
+      .gte("meeting_date", new Date().toISOString())
+      .order("meeting_date", { ascending: true });
+
+    if (!finalizedError && !upcomingError) {
+      setMeetings([...(upcomingData || []), ...(finalizedData || [])]);
     }
     setLoading(false);
   };
@@ -103,52 +116,62 @@ export function ClientMeetingsView({ projectId }: ClientMeetingsViewProps) {
       </div>
 
       <div className="space-y-3">
-        {meetings.map((meeting, index) => (
-          <motion.div
-            key={meeting.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-          >
-            <Card 
-              className="cursor-pointer hover:bg-accent/50 transition-colors"
-              onClick={() => setSelectedMeeting(meeting)}
+        {meetings.map((meeting, index) => {
+          const isUpcoming = !meeting.is_finalized && isFuture(new Date(meeting.meeting_date));
+          
+          return (
+            <motion.div
+              key={meeting.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
             >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium truncate">{meeting.meeting_title}</h3>
-                    <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                      <Calendar className="h-3.5 w-3.5" />
-                      <span>
-                        {formatDateTimeLocal(meeting.meeting_date, "dd 'de' MMM, yyyy 'às' HH:mm")}
-                      </span>
+              <Card 
+                className={`cursor-pointer hover:bg-accent/50 transition-colors ${isUpcoming ? "border-primary/30 bg-primary/5" : ""}`}
+                onClick={() => setSelectedMeeting(meeting)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium truncate">{meeting.meeting_title}</h3>
+                      <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                        <Calendar className="h-3.5 w-3.5" />
+                        <span>
+                          {formatDateTimeLocal(meeting.meeting_date, "dd 'de' MMM, yyyy 'às' HH:mm")}
+                        </span>
+                      </div>
+                      {meeting.subject && (
+                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                          {meeting.subject}
+                        </p>
+                      )}
                     </div>
-                    {meeting.subject && (
-                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                        {meeting.subject}
-                      </p>
-                    )}
+                    <div className="flex flex-col gap-1">
+                      {isUpcoming && (
+                        <Badge variant="default" className="text-xs bg-primary">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Agendada
+                        </Badge>
+                      )}
+                      {meeting.recording_link && (
+                        <Badge variant="default" className="text-xs">
+                          <Video className="h-3 w-3 mr-1" />
+                          Gravação
+                        </Badge>
+                      )}
+                      {meeting.notes && (
+                        <Badge variant="outline" className="text-xs">
+                          <FileText className="h-3 w-3 mr-1" />
+                          Notas
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    {meeting.recording_link && (
-                      <Badge variant="default" className="text-xs">
-                        <Video className="h-3 w-3 mr-1" />
-                        Gravação
-                      </Badge>
-                    )}
-                    {meeting.notes && (
-                      <Badge variant="outline" className="text-xs">
-                        <FileText className="h-3 w-3 mr-1" />
-                        Notas
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+                </CardContent>
+              </Card>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Meeting Detail Dialog */}
@@ -158,80 +181,109 @@ export function ClientMeetingsView({ projectId }: ClientMeetingsViewProps) {
             <DialogTitle>{selectedMeeting?.meeting_title}</DialogTitle>
           </DialogHeader>
           
-          {selectedMeeting && (
-            <ScrollArea className="max-h-[60vh]">
-              <div className="space-y-4 pr-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  {formatDateTimeLocal(selectedMeeting.meeting_date, "EEEE, dd 'de' MMMM 'de' yyyy 'às' HH:mm")}
-                </div>
-
-                {selectedMeeting.attendees && (
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <Users className="h-4 w-4" />
-                      Participantes
-                    </div>
-                    <p className="text-sm text-muted-foreground pl-6">
-                      {selectedMeeting.attendees}
-                    </p>
-                  </div>
-                )}
-
-                {selectedMeeting.subject && (
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-medium">Assunto</h4>
-                    <p className="text-sm text-muted-foreground">{selectedMeeting.subject}</p>
-                  </div>
-                )}
-
-                {selectedMeeting.notes && (
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-medium">Anotações da Reunião</h4>
-                    <div className="bg-muted/50 p-3 rounded-lg text-sm whitespace-pre-wrap">
-                      {selectedMeeting.notes}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {selectedMeeting.recording_link && (
-                    <Button 
-                      variant="default" 
-                      size="sm" 
-                      asChild
-                    >
-                      <a 
-                        href={selectedMeeting.recording_link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                      >
-                        <Video className="h-4 w-4 mr-2" />
-                        Assistir Gravação
-                        <ExternalLink className="h-3 w-3 ml-2" />
-                      </a>
-                    </Button>
+          {selectedMeeting && (() => {
+            const isUpcoming = !selectedMeeting.is_finalized && isFuture(new Date(selectedMeeting.meeting_date));
+            
+            return (
+              <ScrollArea className="max-h-[60vh]">
+                <div className="space-y-4 pr-4">
+                  {isUpcoming && (
+                    <Badge variant="default" className="bg-primary">
+                      <Clock className="h-3 w-3 mr-1" />
+                      Reunião Agendada
+                    </Badge>
                   )}
-                  {selectedMeeting.meeting_link && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      asChild
-                    >
-                      <a 
-                        href={selectedMeeting.meeting_link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                      >
-                        Link da Reunião
-                        <ExternalLink className="h-3 w-3 ml-2" />
-                      </a>
-                    </Button>
+                  
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    {formatDateTimeLocal(selectedMeeting.meeting_date, "EEEE, dd 'de' MMMM 'de' yyyy 'às' HH:mm")}
+                  </div>
+
+                  {selectedMeeting.attendees && (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Users className="h-4 w-4" />
+                        Participantes
+                      </div>
+                      <p className="text-sm text-muted-foreground pl-6">
+                        {selectedMeeting.attendees}
+                      </p>
+                    </div>
                   )}
+
+                  {selectedMeeting.subject && (
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium">Assunto</h4>
+                      <p className="text-sm text-muted-foreground">{selectedMeeting.subject}</p>
+                    </div>
+                  )}
+
+                  {selectedMeeting.notes && (
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium">Anotações da Reunião</h4>
+                      <div className="bg-muted/50 p-3 rounded-lg text-sm whitespace-pre-wrap">
+                        {selectedMeeting.notes}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {/* Show meeting link prominently for upcoming meetings */}
+                    {isUpcoming && selectedMeeting.meeting_link && (
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        asChild
+                      >
+                        <a 
+                          href={selectedMeeting.meeting_link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                        >
+                          <Video className="h-4 w-4 mr-2" />
+                          Entrar na Reunião
+                          <ExternalLink className="h-3 w-3 ml-2" />
+                        </a>
+                      </Button>
+                    )}
+                    {selectedMeeting.recording_link && (
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        asChild
+                      >
+                        <a 
+                          href={selectedMeeting.recording_link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                        >
+                          <Video className="h-4 w-4 mr-2" />
+                          Assistir Gravação
+                          <ExternalLink className="h-3 w-3 ml-2" />
+                        </a>
+                      </Button>
+                    )}
+                    {!isUpcoming && selectedMeeting.meeting_link && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        asChild
+                      >
+                        <a 
+                          href={selectedMeeting.meeting_link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                        >
+                          Link da Reunião
+                          <ExternalLink className="h-3 w-3 ml-2" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </ScrollArea>
-          )}
+              </ScrollArea>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
