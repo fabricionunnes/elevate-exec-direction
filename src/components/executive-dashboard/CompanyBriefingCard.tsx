@@ -39,6 +39,14 @@ interface KPIData {
   kpiType: string;
 }
 
+export interface TaskData {
+  id: string;
+  title: string;
+  due_date?: string;
+  completed_at?: string;
+  status: string;
+}
+
 export interface MeetingHistoryItem {
   id: string;
   title: string;
@@ -75,6 +83,8 @@ interface CompanyBriefingCardProps {
     kpis?: KPIData[];
     meetingHistory?: MeetingsByMonth[];
     lastSalesEntryDate?: string;
+    upcomingTasks?: TaskData[];
+    completedTasks?: TaskData[];
   };
   index: number;
   expanded?: boolean;
@@ -718,6 +728,84 @@ export function CompanyBriefingCard({ project, index, expanded = true, onCreateI
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Tasks Sections */}
+              {((project.upcomingTasks && project.upcomingTasks.length > 0) || 
+                (project.completedTasks && project.completedTasks.length > 0)) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Upcoming Tasks */}
+                  {project.upcomingTasks && project.upcomingTasks.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                        <h5 className="text-sm font-semibold text-foreground">Próximas Tarefas</h5>
+                        <Badge variant="outline" className="text-[10px] ml-auto">
+                          {project.upcomingTasks.length}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                        {project.upcomingTasks.map((task, i) => (
+                          <motion.div
+                            key={task.id}
+                            initial={{ opacity: 0, x: -5 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.05 * i }}
+                            className="flex items-center gap-2 p-2 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800"
+                          >
+                            <Clock className="h-3 w-3 text-orange-600 dark:text-orange-400 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-foreground truncate" title={task.title}>
+                                {task.title}
+                              </p>
+                              {task.due_date && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Vence: {format(parseDateLocal(task.due_date), "dd/MM", { locale: ptBR })}
+                                </p>
+                              )}
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Completed Tasks */}
+                  {project.completedTasks && project.completedTasks.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <h5 className="text-sm font-semibold text-foreground">Últimas Concluídas</h5>
+                        <Badge variant="outline" className="text-[10px] ml-auto">
+                          {project.completedTasks.length}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                        {project.completedTasks.map((task, i) => (
+                          <motion.div
+                            key={task.id}
+                            initial={{ opacity: 0, x: -5 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.05 * i }}
+                            className="flex items-center gap-2 p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800"
+                          >
+                            <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-foreground truncate" title={task.title}>
+                                {task.title}
+                              </p>
+                              {task.completed_at && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Concluída: {format(parseDateLocal(task.completed_at), "dd/MM", { locale: ptBR })}
+                                </p>
+                              )}
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -44,7 +44,7 @@ import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { CompanyBriefingCard, MeetingsByMonth, MeetingHistoryItem } from "./CompanyBriefingCard";
+import { CompanyBriefingCard, MeetingsByMonth, MeetingHistoryItem, TaskData } from "./CompanyBriefingCard";
 import { toast } from "sonner";
 import { LeadershipMeetingNotesDialog } from "./LeadershipMeetingNotesDialog";
 import { NewCompanyCard } from "./NewCompanyCard";
@@ -88,6 +88,7 @@ interface KPIData {
   kpiType: string;
 }
 
+
 interface ProjectBriefing {
   id: string;
   company_name: string;
@@ -106,6 +107,8 @@ interface ProjectBriefing {
   kpis?: KPIData[];
   meetingHistory?: MeetingsByMonth[];
   lastSalesEntryDate?: string;
+  upcomingTasks?: TaskData[];
+  completedTasks?: TaskData[];
 }
 
 interface AgendaSection {
@@ -245,7 +248,9 @@ export function ConsultantOneOnOnePanel() {
           kpisResult,
           meetingsCountResult,
           engagementResult,
-          lastSalesEntriesResult
+          lastSalesEntriesResult,
+          upcomingTasksResult,
+          completedTasksResult
         ] = await Promise.all([
           // Overdue tasks for all projects at once
           supabase
@@ -304,7 +309,26 @@ export function ConsultantOneOnOnePanel() {
             .select("kpi_id, entry_date, company_kpis!inner(company_id)")
             .in("company_kpis.company_id", companyIds)
             .order("entry_date", { ascending: false })
-            .limit(1000) : Promise.resolve({ data: [] })
+            .limit(1000) : Promise.resolve({ data: [] }),
+
+          // Upcoming tasks (next 5 pending tasks for each project)
+          supabase
+            .from("onboarding_tasks")
+            .select("id, project_id, title, due_date, status")
+            .in("project_id", projectIds)
+            .neq("status", "completed")
+            .gte("due_date", today)
+            .order("due_date", { ascending: true })
+            .limit(500),
+
+          // Completed tasks (last 5 completed for each project)
+          supabase
+            .from("onboarding_tasks")
+            .select("id, project_id, title, due_date, completed_at, status")
+            .in("project_id", projectIds)
+            .eq("status", "completed")
+            .order("completed_at", { ascending: false })
+            .limit(500)
         ]);
 
         // Build lookup maps from batch results
@@ -352,6 +376,41 @@ export function ConsultantOneOnOnePanel() {
           const companyId = e.company_kpis?.company_id;
           if (companyId && !lastSalesEntryByCompany.has(companyId)) {
             lastSalesEntryByCompany.set(companyId, e.entry_date);
+          }
+        });
+
+        // Build map for upcoming tasks by project (next 5)
+        const upcomingTasksByProject = new Map<string, TaskData[]>();
+        ((upcomingTasksResult.data as any[]) || []).forEach((t: any) => {
+          if (!upcomingTasksByProject.has(t.project_id)) {
+            upcomingTasksByProject.set(t.project_id, []);
+          }
+          const tasks = upcomingTasksByProject.get(t.project_id)!;
+          if (tasks.length < 5) {
+            tasks.push({
+              id: t.id,
+              title: t.title,
+              due_date: t.due_date,
+              status: t.status
+            });
+          }
+        });
+
+        // Build map for completed tasks by project (last 5)
+        const completedTasksByProject = new Map<string, TaskData[]>();
+        ((completedTasksResult.data as any[]) || []).forEach((t: any) => {
+          if (!completedTasksByProject.has(t.project_id)) {
+            completedTasksByProject.set(t.project_id, []);
+          }
+          const tasks = completedTasksByProject.get(t.project_id)!;
+          if (tasks.length < 5) {
+            tasks.push({
+              id: t.id,
+              title: t.title,
+              due_date: t.due_date,
+              completed_at: t.completed_at,
+              status: t.status
+            });
           }
         });
 
@@ -489,6 +548,10 @@ export function ConsultantOneOnOnePanel() {
           // Get last sales entry date for this company
           const lastSalesEntryDate = companyId ? lastSalesEntryByCompany.get(companyId) : undefined;
 
+          // Get upcoming and completed tasks for this project
+          const upcomingTasks = upcomingTasksByProject.get(project.id) || [];
+          const completedTasks = completedTasksByProject.get(project.id) || [];
+
           briefings.push({
             id: project.id,
             company_name: companyName,
@@ -504,7 +567,9 @@ export function ConsultantOneOnOnePanel() {
             company_id: companyId,
             kpis: kpisData,
             meetingHistory,
-            lastSalesEntryDate
+            lastSalesEntryDate,
+            upcomingTasks,
+            completedTasks
           });
 
           // Categorize for agenda
