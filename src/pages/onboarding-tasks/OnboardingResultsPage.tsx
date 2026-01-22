@@ -241,14 +241,34 @@ const OnboardingResultsPage = () => {
       }
       
       // Fetch monthly targets for current month
+      // IMPORTANT: For global company projection we must ONLY use the company-level target
+      // (unit/team/sector/salesperson null). Otherwise we might accidentally pick a unit/salesperson
+      // target and distort the projection.
+      // Also, when there are multiple target "levels" (level_order), we use the primary level (lowest order).
       const { data: monthlyTargets } = await supabase
         .from("kpi_monthly_targets")
-        .select("kpi_id, target_value")
-        .eq("month_year", currentMonth);
+        .select("kpi_id, target_value, level_order")
+        .eq("month_year", currentMonth)
+        .is("unit_id", null)
+        .is("team_id", null)
+        .is("sector_id", null)
+        .is("salesperson_id", null);
       
       const targetMap = new Map<string, number>();
+      const targetLevelOrderMap = new Map<string, number>();
       (monthlyTargets || []).forEach(t => {
-        targetMap.set(t.kpi_id, t.target_value);
+        const levelOrder = (t as any).level_order ?? 1;
+        const currentLevelOrder = targetLevelOrderMap.get(t.kpi_id);
+        // Prefer the lowest level_order; if same order appears multiple times, keep the highest target_value.
+        if (currentLevelOrder === undefined || levelOrder < currentLevelOrder) {
+          targetLevelOrderMap.set(t.kpi_id, levelOrder);
+          targetMap.set(t.kpi_id, t.target_value);
+          return;
+        }
+        if (levelOrder === currentLevelOrder) {
+          const existing = targetMap.get(t.kpi_id) ?? 0;
+          if (t.target_value > existing) targetMap.set(t.kpi_id, t.target_value);
+        }
       });
       
       // Calculate projection for each company (using same logic as dashboard)
