@@ -174,13 +174,12 @@ const OnboardingResultsPage = () => {
         .eq("is_active", true);
       
       // Create set of company IDs that have monetary KPIs configured
-      // A company "has goals" if it has ANY company-level monetary KPI (not just is_main_goal)
-      // This matches user expectation: if they configured a monetary KPI, they have a goal
+      // A company "has goals" if it has ANY monetary KPI (regardless of scope: company, unit, team, etc.)
+      // This matches user expectation: if they configured any monetary KPI, they have a goal
       const companyIdsWithGoals = new Set<string>();
       (kpisData || []).forEach(k => {
-        const kpiScope = k.scope || "company";
-        // Consider company has goals if it has any company-level monetary KPI
-        if (k.company_id && k.kpi_type === "monetary" && kpiScope === "company") {
+        // Consider company has goals if it has ANY monetary KPI (any scope)
+        if (k.company_id && k.kpi_type === "monetary") {
           companyIdsWithGoals.add(k.company_id);
         }
       });
