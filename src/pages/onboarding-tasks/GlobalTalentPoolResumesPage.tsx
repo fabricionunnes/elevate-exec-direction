@@ -23,42 +23,43 @@ import {
   Loader2,
   Star,
   Sparkles,
-  Filter
+  Filter,
+  User
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 
-interface TalentPoolResume {
+interface TalentCandidate {
   id: string;
-  file_name: string;
-  file_url: string;
-  file_type: string | null;
-  file_size: number | null;
-  is_primary: boolean;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  talent_pool_notes: string | null;
+  talent_pool_added_at: string | null;
+  ai_summary: string | null;
+  ai_match_score: number | null;
   created_at: string;
-  candidate: {
+  disc_profile: string | null;
+  project: {
     id: string;
-    full_name: string;
-    email: string;
-    phone: string | null;
-    talent_pool_notes: string | null;
-    talent_pool_added_at: string | null;
-    ai_summary: string | null;
-    ai_match_score: number | null;
-    disc_profile: string | null;
-    project: {
+    product_name: string;
+    company: {
       id: string;
-      product_name: string;
-      company: {
-        id: string;
-        name: string;
-      } | null;
+      name: string;
     } | null;
-    last_job?: {
-      title: string;
-    } | null;
-  };
+  } | null;
+  last_job: {
+    title: string;
+  } | null;
+  resumes: Array<{
+    id: string;
+    file_name: string;
+    file_url: string;
+    file_size: number | null;
+    is_primary: boolean;
+    created_at: string;
+  }>;
 }
 
 interface Company {
@@ -68,7 +69,7 @@ interface Company {
 
 export default function GlobalTalentPoolResumesPage() {
   const navigate = useNavigate();
-  const [resumes, setResumes] = useState<TalentPoolResume[]>([]);
+  const [candidates, setCandidates] = useState<TalentCandidate[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -109,44 +110,37 @@ export default function GlobalTalentPoolResumesPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch resumes from talent pool candidates across all projects
-      const { data: resumesData, error: resumesError } = await supabase
-        .from("candidate_resumes")
+      // Fetch ALL candidates in talent pool (with or without resumes)
+      const { data: candidatesData, error: candidatesError } = await supabase
+        .from("candidates")
         .select(`
           id,
-          file_name,
-          file_url,
-          file_type,
-          file_size,
-          is_primary,
+          full_name,
+          email,
+          phone,
+          talent_pool_notes,
+          talent_pool_added_at,
+          ai_summary,
+          ai_match_score,
           created_at,
-          candidate:candidates!inner(
+          job_opening:job_openings(title),
+          project:onboarding_projects(
             id,
-            full_name,
-            email,
-            phone,
-            talent_pool_notes,
-            talent_pool_added_at,
-            ai_summary,
-            ai_match_score,
-            job_opening:job_openings(title),
-            project:onboarding_projects(
-              id,
-              product_name,
-              company:onboarding_companies(id, name)
-            )
-          )
+            product_name,
+            company:onboarding_companies(id, name)
+          ),
+          resumes:candidate_resumes(id, file_name, file_url, file_size, is_primary, created_at)
         `)
-        .eq("candidate.current_stage", "talent_pool")
-        .order("created_at", { ascending: false });
+        .eq("current_stage", "talent_pool")
+        .order("talent_pool_added_at", { ascending: false, nullsFirst: false });
 
-      if (resumesError) {
-        console.error("Error fetching resumes:", resumesError);
-        throw resumesError;
+      if (candidatesError) {
+        console.error("Error fetching candidates:", candidatesError);
+        throw candidatesError;
       }
 
       // Fetch DISC results for each candidate
-      const candidateIds = [...new Set((resumesData || []).map((r: any) => r.candidate?.id).filter(Boolean))];
+      const candidateIds = (candidatesData || []).map((c: any) => c.id);
       
       let discByCandidate: Record<string, string | null> = {};
       if (candidateIds.length > 0) {
@@ -162,24 +156,22 @@ export default function GlobalTalentPoolResumesPage() {
         }, {});
       }
 
-      // Map resumes with DISC profile
-      const mappedResumes = (resumesData || []).map((r: any) => ({
-        ...r,
-        candidate: {
-          ...r.candidate,
-          disc_profile: discByCandidate[r.candidate?.id] || null,
-          last_job: r.candidate?.job_opening || null,
-          project: r.candidate?.project || null,
-        }
+      // Map candidates with DISC profile
+      const mappedCandidates = (candidatesData || []).map((c: any) => ({
+        ...c,
+        disc_profile: discByCandidate[c.id] || null,
+        last_job: c.job_opening || null,
+        project: c.project || null,
+        resumes: c.resumes || [],
       }));
 
-      setResumes(mappedResumes);
+      setCandidates(mappedCandidates);
 
       // Get unique companies for filter
       const uniqueCompanies: Company[] = [];
       const seenIds = new Set<string>();
-      mappedResumes.forEach((r: TalentPoolResume) => {
-        const company = r.candidate?.project?.company;
+      mappedCandidates.forEach((c: TalentCandidate) => {
+        const company = c.project?.company;
         if (company && !seenIds.has(company.id)) {
           seenIds.add(company.id);
           uniqueCompanies.push(company);
@@ -189,7 +181,7 @@ export default function GlobalTalentPoolResumesPage() {
 
     } catch (error) {
       console.error("Error fetching data:", error);
-      toast.error("Erro ao carregar currículos");
+      toast.error("Erro ao carregar candidatos");
     } finally {
       setLoading(false);
     }
@@ -215,17 +207,16 @@ export default function GlobalTalentPoolResumesPage() {
     }
   };
 
-  const filteredResumes = resumes.filter((r) => {
+  const filteredCandidates = candidates.filter((c) => {
     const matchesSearch = 
-      r.candidate.full_name.toLowerCase().includes(search.toLowerCase()) ||
-      r.file_name.toLowerCase().includes(search.toLowerCase()) ||
-      r.candidate.email.toLowerCase().includes(search.toLowerCase());
+      c.full_name.toLowerCase().includes(search.toLowerCase()) ||
+      c.email.toLowerCase().includes(search.toLowerCase());
     
     const matchesCompany = filterCompany === "all" || 
-      r.candidate.project?.company?.id === filterCompany;
+      c.project?.company?.id === filterCompany;
     
     const matchesDisc = filterDisc === "all" || 
-      r.candidate.disc_profile === filterDisc;
+      c.disc_profile === filterDisc;
 
     return matchesSearch && matchesCompany && matchesDisc;
   });
@@ -251,13 +242,10 @@ export default function GlobalTalentPoolResumesPage() {
   };
 
   // Stats
-  const totalCandidates = new Set(resumes.map(r => r.candidate.id)).size;
-  const candidatesWithDisc = new Set(
-    resumes.filter(r => r.candidate.disc_profile).map(r => r.candidate.id)
-  ).size;
-  const candidatesWithAI = new Set(
-    resumes.filter(r => r.candidate.ai_summary).map(r => r.candidate.id)
-  ).size;
+  const totalCandidates = candidates.length;
+  const candidatesWithResumes = candidates.filter(c => c.resumes.length > 0).length;
+  const candidatesWithDisc = candidates.filter(c => c.disc_profile).length;
+  const candidatesWithAI = candidates.filter(c => c.ai_summary).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -268,17 +256,17 @@ export default function GlobalTalentPoolResumesPage() {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => navigate("/onboarding-tasks")}
+              onClick={() => navigate("/onboarding-tasks/vagas")}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-slate-900 flex items-center gap-2">
                 <Star className="h-6 w-6 text-amber-500" />
-                Currículos do Banco de Talentos
+                Banco de Talentos Global
               </h1>
               <p className="text-sm text-muted-foreground hidden md:block">
-                Todos os currículos de candidatos no banco de talentos de todas as empresas
+                Todos os candidatos no banco de talentos de todas as empresas
               </p>
             </div>
           </div>
@@ -288,16 +276,16 @@ export default function GlobalTalentPoolResumesPage() {
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold">{resumes.length}</p>
-              <p className="text-sm text-muted-foreground">Currículos</p>
-            </CardContent>
-          </Card>
           <Card className="bg-amber-500/10 border-amber-500/20">
             <CardContent className="p-4 text-center">
               <p className="text-2xl font-bold">{totalCandidates}</p>
               <p className="text-sm text-muted-foreground">Talentos</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold">{candidatesWithResumes}</p>
+              <p className="text-sm text-muted-foreground">Com Currículo</p>
             </CardContent>
           </Card>
           <Card className="bg-green-500/10 border-green-500/20">
@@ -319,7 +307,7 @@ export default function GlobalTalentPoolResumesPage() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, email ou arquivo..."
+              placeholder="Buscar por nome ou email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
@@ -356,104 +344,126 @@ export default function GlobalTalentPoolResumesPage() {
           </Select>
         </div>
 
-        {/* Resumes List */}
+        {/* Candidates List */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : filteredResumes.length === 0 ? (
+        ) : filteredCandidates.length === 0 ? (
           <Card className="p-12 text-center">
             <Star className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">Nenhum currículo encontrado</h3>
+            <h3 className="text-lg font-medium mb-2">Nenhum candidato encontrado</h3>
             <p className="text-muted-foreground">
               Candidatos movidos para o banco de talentos aparecerão aqui
             </p>
           </Card>
         ) : (
           <div className="space-y-3">
-            {filteredResumes.map((resume) => (
-              <Card key={resume.id} className="hover:shadow-md transition-shadow">
+            {filteredCandidates.map((candidate) => (
+              <Card key={candidate.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     <Avatar className="h-12 w-12">
                       <AvatarFallback className="bg-primary/10 text-primary">
-                        {getInitials(resume.candidate.full_name)}
+                        {getInitials(candidate.full_name)}
                       </AvatarFallback>
                     </Avatar>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h4 className="font-medium">{resume.candidate.full_name}</h4>
-                        {resume.candidate.disc_profile && (
-                          <Badge className={`${getDISCColor(resume.candidate.disc_profile)} text-white`}>
-                            {resume.candidate.disc_profile}
+                        <h4 className="font-medium">{candidate.full_name}</h4>
+                        {candidate.disc_profile && (
+                          <Badge className={`${getDISCColor(candidate.disc_profile)} text-white`}>
+                            {candidate.disc_profile}
                           </Badge>
                         )}
-                        {resume.candidate.ai_match_score && (
+                        {candidate.ai_match_score && (
                           <Badge variant="outline" className="gap-1">
                             <Sparkles className="h-3 w-3" />
-                            {resume.candidate.ai_match_score}%
+                            {candidate.ai_match_score}%
                           </Badge>
                         )}
-                        {resume.is_primary && (
-                          <Badge variant="secondary">Principal</Badge>
+                        {candidate.resumes.length > 0 && (
+                          <Badge variant="secondary" className="gap-1">
+                            <FileText className="h-3 w-3" />
+                            {candidate.resumes.length} currículo{candidate.resumes.length > 1 ? 's' : ''}
+                          </Badge>
                         )}
                       </div>
 
-                      <p className="text-sm text-muted-foreground">{resume.candidate.email}</p>
+                      <p className="text-sm text-muted-foreground">{candidate.email}</p>
+                      {candidate.phone && (
+                        <p className="text-sm text-muted-foreground">{candidate.phone}</p>
+                      )}
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2">
-                        {resume.candidate.project?.company && (
+                        {candidate.project?.company && (
                           <span className="flex items-center gap-1">
                             <Building2 className="h-3 w-3" />
-                            {resume.candidate.project.company.name}
+                            {candidate.project.company.name}
                           </span>
                         )}
-                        <span className="flex items-center gap-1">
-                          <FileText className="h-3 w-3" />
-                          {resume.file_name}
-                          {resume.file_size && ` (${formatFileSize(resume.file_size)})`}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {format(new Date(resume.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                        </span>
+                        {candidate.talent_pool_added_at && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            Adicionado em {format(new Date(candidate.talent_pool_added_at), "dd/MM/yyyy", { locale: ptBR })}
+                          </span>
+                        )}
                       </div>
 
-                      {resume.candidate.last_job && (
+                      {candidate.last_job && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Última vaga: {resume.candidate.last_job.title}
+                          Última vaga: {candidate.last_job.title}
                         </p>
                       )}
 
                       {/* AI Summary */}
-                      {resume.candidate.ai_summary && (
+                      {candidate.ai_summary && (
                         <div className="mt-2 p-2 bg-muted/50 rounded text-sm">
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
                             <Sparkles className="h-3 w-3" />
                             Resumo IA
                           </div>
-                          <p className="line-clamp-2">{resume.candidate.ai_summary}</p>
+                          <p className="line-clamp-2">{candidate.ai_summary}</p>
                         </div>
                       )}
 
                       {/* Talent Pool Notes */}
-                      {resume.candidate.talent_pool_notes && (
+                      {candidate.talent_pool_notes && (
                         <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-950/20 rounded text-sm">
                           <FileText className="h-3 w-3 inline mr-1 text-yellow-600" />
-                          <span className="line-clamp-2">{resume.candidate.talent_pool_notes}</span>
+                          <span className="line-clamp-2">{candidate.talent_pool_notes}</span>
+                        </div>
+                      )}
+
+                      {/* Resumes */}
+                      {candidate.resumes.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {candidate.resumes.map((resume) => (
+                            <Button
+                              key={resume.id}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownload(resume.file_url, resume.file_name)}
+                              className="gap-2 text-xs"
+                            >
+                              <Download className="h-3 w-3" />
+                              {resume.file_name.length > 25 
+                                ? resume.file_name.substring(0, 22) + '...' 
+                                : resume.file_name}
+                              {resume.file_size && ` (${formatFileSize(resume.file_size)})`}
+                            </Button>
+                          ))}
                         </div>
                       )}
                     </div>
 
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDownload(resume.file_url, resume.file_name)}
-                      title="Baixar currículo"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    {candidate.resumes.length === 0 && (
+                      <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                        <User className="h-5 w-5" />
+                        <span className="text-xs">Sem CV</span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
