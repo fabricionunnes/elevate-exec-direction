@@ -185,24 +185,23 @@ const OnboardingResultsPage = () => {
       });
       setCompaniesWithGoals(companyIdsWithGoalsRecord);
       
-      // Create map of company -> main goal KPI IDs for projection calculation
-      // IMPORTANT: When a company has a main goal KPI, ONLY use that for projection
-      // Otherwise fallback to all monetary KPIs
+      // Create map of company -> KPI IDs for projection calculation
+      // IMPORTANT: For projection, consider ALL monetary KPIs regardless of scope
+      // This is because companies like CENTRAL FREE SHOP have unit-level KPIs
+      // We need to sum ALL their targets and results to get accurate company-wide projection
+      const allMonetaryKpisByCompany = new Map<string, Set<string>>();
       const mainGoalKpisByCompany = new Map<string, Set<string>>();
-      const companyLevelMonetaryKpisByCompany = new Map<string, Set<string>>();
       
       (kpisData || []).forEach(k => {
-        const kpiScope = k.scope || "company";
-        if (kpiScope !== "company") return; // Only company-level KPIs
+        if (k.kpi_type !== "monetary") return;
         
-        if (!companyLevelMonetaryKpisByCompany.has(k.company_id)) {
-          companyLevelMonetaryKpisByCompany.set(k.company_id, new Set());
+        // Add to all monetary KPIs map (for fallback)
+        if (!allMonetaryKpisByCompany.has(k.company_id)) {
+          allMonetaryKpisByCompany.set(k.company_id, new Set());
         }
+        allMonetaryKpisByCompany.get(k.company_id)!.add(k.id);
         
-        if (k.kpi_type === "monetary") {
-          companyLevelMonetaryKpisByCompany.get(k.company_id)!.add(k.id);
-        }
-        
+        // Add to main goal map if marked
         if (k.is_main_goal) {
           if (!mainGoalKpisByCompany.has(k.company_id)) {
             mainGoalKpisByCompany.set(k.company_id, new Set());
@@ -211,20 +210,19 @@ const OnboardingResultsPage = () => {
         }
       });
       
-      // For projection, use main goal KPIs if exist, otherwise all monetary
+      // For projection, use main goal KPIs if exist, otherwise ALL monetary KPIs
       const getKpisForProjection = (companyId: string): Set<string> => {
         const mainGoalKpis = mainGoalKpisByCompany.get(companyId);
         if (mainGoalKpis && mainGoalKpis.size > 0) {
           return mainGoalKpis;
         }
-        return companyLevelMonetaryKpisByCompany.get(companyId) || new Set();
+        return allMonetaryKpisByCompany.get(companyId) || new Set();
       };
       
-      // Create a map for KPI periodicity
+      // Create a map for KPI periodicity - include ALL monetary KPIs (not just company scope)
       const kpiPeriodicityMap = new Map<string, { periodicity: string; target: number; isMainGoal: boolean }>();
       (kpisData || []).forEach(k => {
-        const kpiScope = k.scope || "company";
-        if (kpiScope === "company" && k.kpi_type === "monetary") {
+        if (k.kpi_type === "monetary") {
           kpiPeriodicityMap.set(k.id, { 
             periodicity: k.periodicity, 
             target: k.target_value,
