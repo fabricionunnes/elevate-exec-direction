@@ -50,6 +50,7 @@ export const TaskNotificationsDialog = () => {
       const today = new Date();
       const todayStr = format(today, "yyyy-MM-dd");
 
+      // Fetch tasks with project and company info to apply proper filters
       let tasksQuery = supabase
         .from("onboarding_tasks")
         .select(`
@@ -61,7 +62,8 @@ export const TaskNotificationsDialog = () => {
           project:onboarding_projects(
             id,
             product_name,
-            onboarding_company:onboarding_companies(name)
+            status,
+            onboarding_company:onboarding_companies(id, name, status, is_simulator)
           )
         `)
         .neq("status", "completed")
@@ -81,7 +83,30 @@ export const TaskNotificationsDialog = () => {
         return;
       }
 
-      const notifications: TaskNotification[] = tasksData.map((task: any) => {
+      // Filter tasks to only include those from:
+      // 1. Active projects (not closed/completed)
+      // 2. Non-simulator companies
+      // 3. Active companies (not inactive/closed)
+      const filteredTasksData = tasksData.filter((task: any) => {
+        const project = task.project;
+        if (!project) return false;
+        
+        // Only include active projects
+        if (project.status !== "active") return false;
+        
+        const company = project.onboarding_company;
+        if (!company) return true; // If no company, include the task
+        
+        // Exclude simulator companies
+        if (company.is_simulator) return false;
+        
+        // Exclude inactive/closed companies
+        if (company.status === "inactive" || company.status === "closed") return false;
+        
+        return true;
+      });
+
+      const notifications: TaskNotification[] = filteredTasksData.map((task: any) => {
         // Use parseDateLocal to avoid timezone issues with date-only strings
         const dueDate = parseDateLocal(task.due_date);
         const todayStart = startOfDay(new Date());
