@@ -178,6 +178,14 @@ const OnboardingTasksPage = () => {
     loadData();
   }, []);
 
+  // Keep KPI entries synced with the selected period.
+  // Fetching all entries without date filters hits the backend default limit (1000) and causes missing data,
+  // which makes the projection badge show 0% even when the company has projection (e.g., Vitale 77%).
+  useEffect(() => {
+    fetchKpiEntriesForRange(dateRange.start, dateRange.end);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange.start, dateRange.end]);
+
   const fetchAllTasks = async () => {
     try {
       // OPTIMIZATION: Use RPC function to get only relevant tasks (pending/in_progress + completed in last 90 days)
@@ -376,23 +384,48 @@ const OnboardingTasksPage = () => {
 
   const fetchCompanyKpis = async () => {
     try {
-      const [kpisResult, entriesResult] = await Promise.all([
-        supabase
-          .from("company_kpis")
-          .select("id, company_id, target_value, kpi_type, periodicity, is_main_goal")
-          .eq("is_active", true),
-        supabase
-          .from("kpi_entries")
-          .select("company_id, kpi_id, value, entry_date")
-      ]);
+      const { data, error } = await supabase
+        .from("company_kpis")
+        .select("id, company_id, target_value, kpi_type, periodicity, is_main_goal")
+        .eq("is_active", true);
 
-      if (kpisResult.error) throw kpisResult.error;
-      if (entriesResult.error) throw entriesResult.error;
-      
-      setCompanyKpis(kpisResult.data || []);
-      setKpiEntries(entriesResult.data || []);
+      if (error) throw error;
+      setCompanyKpis(data || []);
     } catch (error) {
       console.error("Error fetching company KPIs:", error);
+    }
+  };
+
+  const fetchKpiEntriesForRange = async (start: Date, end: Date) => {
+    try {
+      const startStr = format(start, "yyyy-MM-dd");
+      const endStr = format(end, "yyyy-MM-dd");
+
+      const pageSize = 1000;
+      let from = 0;
+      let all: { company_id: string; kpi_id: string; value: number; entry_date: string }[] = [];
+
+      while (true) {
+        const { data, error } = await supabase
+          .from("kpi_entries")
+          .select("company_id, kpi_id, value, entry_date")
+          .gte("entry_date", startStr)
+          .lte("entry_date", endStr)
+          .order("entry_date", { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+
+        const batch = data || [];
+        all = all.concat(batch);
+
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+
+      setKpiEntries(all);
+    } catch (error) {
+      console.error("Error fetching KPI entries:", error);
     }
   };
 
