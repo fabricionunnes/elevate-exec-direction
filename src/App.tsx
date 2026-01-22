@@ -98,6 +98,7 @@ import ExecutiveDashboardPage from "./pages/onboarding-tasks/ExecutiveDashboardP
 import CEODashboardPage from "./pages/onboarding-tasks/CEODashboardPage";
 import LeaderDashboardPage from "./pages/onboarding-tasks/LeaderDashboardPage";
 import GlobalJobOpeningsPage from "./pages/onboarding-tasks/GlobalJobOpeningsPage";
+import GlobalTalentPoolResumesPage from "./pages/onboarding-tasks/GlobalTalentPoolResumesPage";
 import HotseatAdminPage from "./pages/onboarding-tasks/HotseatAdminPage";
 import HotseatFormPage from "./pages/HotseatFormPage";
 import ClientAccessReportPage from "./pages/onboarding-tasks/ClientAccessReportPage";
@@ -215,6 +216,7 @@ const App = () => (
               <Route path="/onboarding-tasks/engagement" element={<ConsultantEngagementPage />} />
               <Route path="/onboarding-tasks/executive" element={<ExecutiveDashboardPage />} />
               <Route path="/onboarding-tasks/vagas" element={<GlobalJobOpeningsPage />} />
+              <Route path="/onboarding-tasks/banco-talentos" element={<GlobalTalentPoolResumesPage />} />
               <Route path="/onboarding-tasks/hotseat" element={<HotseatAdminPage />} />
               <Route path="/onboarding-tasks/client-access" element={<ClientAccessReportPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
