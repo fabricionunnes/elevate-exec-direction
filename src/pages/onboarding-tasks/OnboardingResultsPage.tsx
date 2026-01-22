@@ -216,23 +216,69 @@ const OnboardingResultsPage = () => {
         .select("id, company_id, kpi_type, target_value, periodicity, is_main_goal, scope")
         .eq("is_active", true);
       
-      // REGRA CORRIGIDA:
-      // 1. "Tem meta" = empresa possui algum KPI com is_main_goal = true
-      // 2. "Projeção" = calculada APENAS com base nos KPIs is_main_goal = true
-      
-      const companyIdsWithGoalsRecord: Record<string, boolean> = {};
+      // Create map of KPI to company for quick lookup
+      const kpiToCompanyMap = new Map<string, string>();
       const mainGoalKpisByCompany = new Map<string, Set<string>>();
       
       (kpisData || []).forEach(k => {
-        // Uma empresa TEM META apenas se tiver algum KPI marcado como meta principal
+        if (k.company_id) {
+          kpiToCompanyMap.set(k.id, k.company_id);
+        }
+        // Track main goal KPIs for projection calculation
         if (k.is_main_goal && k.company_id) {
-          companyIdsWithGoalsRecord[k.company_id] = true;
-          
-          // Adiciona ao mapa de metas principais para cálculo de projeção
           if (!mainGoalKpisByCompany.has(k.company_id)) {
             mainGoalKpisByCompany.set(k.company_id, new Set());
           }
           mainGoalKpisByCompany.get(k.company_id)!.add(k.id);
+        }
+      });
+      
+      // Fetch monthly targets for the SELECTED month FIRST
+      // This determines which companies have goals for this specific month
+      const { data: monthlyTargets } = await supabase
+        .from("kpi_monthly_targets")
+        .select("kpi_id, target_value, level_order")
+        .eq("month_year", selectedMonth)
+        .is("unit_id", null)
+        .is("team_id", null)
+        .is("sector_id", null)
+        .is("salesperson_id", null);
+      
+      // Build the target map and track which companies have targets for THIS month
+      const targetMap = new Map<string, number>();
+      const targetLevelOrderMap = new Map<string, number>();
+      const companyIdsWithGoalsRecord: Record<string, boolean> = {};
+      
+      (monthlyTargets || []).forEach(t => {
+        const levelOrder = (t as any).level_order ?? 1;
+        const currentLevelOrder = targetLevelOrderMap.get(t.kpi_id);
+        
+        // Mark company as having a goal for this month
+        const companyId = kpiToCompanyMap.get(t.kpi_id);
+        if (companyId) {
+          companyIdsWithGoalsRecord[companyId] = true;
+        }
+        
+        // Prefer the lowest level_order; if same order appears multiple times, keep the highest target_value.
+        if (currentLevelOrder === undefined || levelOrder < currentLevelOrder) {
+          targetLevelOrderMap.set(t.kpi_id, levelOrder);
+          targetMap.set(t.kpi_id, t.target_value);
+          return;
+        }
+        if (levelOrder === currentLevelOrder) {
+          const existing = targetMap.get(t.kpi_id) ?? 0;
+          if (t.target_value > existing) targetMap.set(t.kpi_id, t.target_value);
+        }
+      });
+      
+      // Also consider companies with main goal KPIs that have default targets (not month-specific)
+      // This is a fallback for companies that have KPIs configured but no monthly target yet
+      (kpisData || []).forEach(k => {
+        if (k.is_main_goal && k.company_id && k.target_value > 0) {
+          // Only add if not already marked from monthly targets
+          if (!companyIdsWithGoalsRecord[k.company_id]) {
+            companyIdsWithGoalsRecord[k.company_id] = true;
+          }
         }
       });
       
@@ -281,36 +327,7 @@ const OnboardingResultsPage = () => {
         offset += pageSize;
       }
       
-      // Fetch monthly targets for current month
-      // IMPORTANT: For global company projection we must ONLY use the company-level target
-      // (unit/team/sector/salesperson null). Otherwise we might accidentally pick a unit/salesperson
-      // target and distort the projection.
-      // Also, when there are multiple target "levels" (level_order), we use the primary level (lowest order).
-      const { data: monthlyTargets } = await supabase
-        .from("kpi_monthly_targets")
-        .select("kpi_id, target_value, level_order")
-        .eq("month_year", selectedMonth)
-        .is("unit_id", null)
-        .is("team_id", null)
-        .is("sector_id", null)
-        .is("salesperson_id", null);
-      
-      const targetMap = new Map<string, number>();
-      const targetLevelOrderMap = new Map<string, number>();
-      (monthlyTargets || []).forEach(t => {
-        const levelOrder = (t as any).level_order ?? 1;
-        const currentLevelOrder = targetLevelOrderMap.get(t.kpi_id);
-        // Prefer the lowest level_order; if same order appears multiple times, keep the highest target_value.
-        if (currentLevelOrder === undefined || levelOrder < currentLevelOrder) {
-          targetLevelOrderMap.set(t.kpi_id, levelOrder);
-          targetMap.set(t.kpi_id, t.target_value);
-          return;
-        }
-        if (levelOrder === currentLevelOrder) {
-          const existing = targetMap.get(t.kpi_id) ?? 0;
-          if (t.target_value > existing) targetMap.set(t.kpi_id, t.target_value);
-        }
-      });
+      // targetMap and targetLevelOrderMap already built above when fetching monthly targets
       
       // Calculate projection for each company (using same logic as dashboard)
       const projectionsMap = new Map<string, number>();
