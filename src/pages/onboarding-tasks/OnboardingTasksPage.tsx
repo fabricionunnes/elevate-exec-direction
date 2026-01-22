@@ -1523,18 +1523,6 @@ const OnboardingTasksPage = () => {
                 Vagas (RH)
               </Button>
             )}
-            {/* Banco de Talentos button - visible for admin, cs, consultant, rh */}
-            {(isAdmin || isCS || currentUserRole === "consultant" || currentUserRole === "rh") && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => navigate("/onboarding-tasks/banco-talentos")}
-                className="gap-2"
-              >
-                <Star className="h-4 w-4" />
-                Banco de Talentos
-              </Button>
-            )}
             {/* CRM Comercial button - visible for admin, head_comercial, closer, sdr */}
             {canAccessCRM && (
               <Button 
