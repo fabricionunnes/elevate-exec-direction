@@ -82,8 +82,8 @@ const OnboardingResultsPage = () => {
   const [consultants, setConsultants] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [companiesWithGoals, setCompaniesWithGoals] = useState<Set<string>>(new Set());
-  const [companiesWithResults, setCompaniesWithResults] = useState<Set<string>>(new Set());
+  const [companiesWithGoals, setCompaniesWithGoals] = useState<Record<string, boolean>>({});
+  const [companiesWithResults, setCompaniesWithResults] = useState<Record<string, boolean>>({});
   const [companyProjections, setCompanyProjections] = useState<Map<string, number>>(new Map());
 
   // Check staff permissions
@@ -173,17 +173,17 @@ const OnboardingResultsPage = () => {
         .select("id, company_id, kpi_type, target_value, periodicity, is_main_goal, scope")
         .eq("is_active", true);
       
-      // Create set of company IDs that have monetary KPIs configured
+      // Create record of company IDs that have monetary KPIs configured
       // A company "has goals" if it has ANY monetary KPI (regardless of scope: company, unit, team, etc.)
       // This matches user expectation: if they configured any monetary KPI, they have a goal
-      const companyIdsWithGoals = new Set<string>();
+      const companyIdsWithGoalsRecord: Record<string, boolean> = {};
       (kpisData || []).forEach(k => {
         // Consider company has goals if it has ANY monetary KPI (any scope)
         if (k.company_id && k.kpi_type === "monetary") {
-          companyIdsWithGoals.add(k.company_id);
+          companyIdsWithGoalsRecord[k.company_id] = true;
         }
       });
-      setCompaniesWithGoals(companyIdsWithGoals);
+      setCompaniesWithGoals(companyIdsWithGoalsRecord);
       
       // Create map of company -> main goal KPI IDs for projection calculation
       // IMPORTANT: When a company has a main goal KPI, ONLY use that for projection
@@ -271,7 +271,7 @@ const OnboardingResultsPage = () => {
       
       // Calculate projection for each company (using same logic as dashboard)
       const projectionsMap = new Map<string, number>();
-      const companyIdsWithResultsSet = new Set<string>();
+      const companyIdsWithResultsRecord: Record<string, boolean> = {};
       
       // Group entries by company - only for company-level monetary KPIs
       const entriesByCompany = new Map<string, { value: number; target: number; kpiId: string }[]>();
@@ -284,7 +284,7 @@ const OnboardingResultsPage = () => {
         // Skip simulator companies
         if (!realCompanyIds.has(companyId)) return;
         
-        companyIdsWithResultsSet.add(companyId);
+        companyIdsWithResultsRecord[companyId] = true;
         
         // Only process monetary KPIs for projection
         if (kpiType !== "monetary") return;
@@ -350,11 +350,11 @@ const OnboardingResultsPage = () => {
         }
       });
       
-      setCompaniesWithResults(companyIdsWithResultsSet);
+      setCompaniesWithResults(companyIdsWithResultsRecord);
       setCompanyProjections(projectionsMap);
       
-      console.log("Companies with KPIs configured:", Array.from(companyIdsWithGoals));
-      console.log("Companies with results:", Array.from(companyIdsWithResultsSet));
+      console.log("Companies with KPIs configured:", Object.keys(companyIdsWithGoalsRecord));
+      console.log("Companies with results:", Object.keys(companyIdsWithResultsRecord));
       console.log("Company projections:", Object.fromEntries(projectionsMap));
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -403,14 +403,14 @@ const OnboardingResultsPage = () => {
       // Goals filter
       let matchesGoals = filterGoals === "all";
       if (!matchesGoals) {
-        const hasGoals = companiesWithGoals.has(company.id);
+        const hasGoals = !!companiesWithGoals[company.id];
         matchesGoals = filterGoals === "with_goals" ? hasGoals : !hasGoals;
       }
       
       // Results filter
       let matchesResults = filterResults === "all";
       if (!matchesResults) {
-        const hasResults = companiesWithResults.has(company.id);
+        const hasResults = !!companiesWithResults[company.id];
         matchesResults = filterResults === "with_results" ? hasResults : !hasResults;
       }
       
@@ -469,7 +469,7 @@ const OnboardingResultsPage = () => {
       // Goals filter
       let matchesGoals = filterGoals === "all";
       if (!matchesGoals) {
-        const hasGoals = companiesWithGoals.has(company.id);
+        const hasGoals = !!companiesWithGoals[company.id];
         matchesGoals = filterGoals === "with_goals" ? hasGoals : !hasGoals;
       }
       
@@ -478,16 +478,16 @@ const OnboardingResultsPage = () => {
   }, [companies, searchTerm, filterConsultant, filterService, filterGoals, projects, currentStaff, companiesWithGoals]);
 
   const companiesWithResultsCount = useMemo(() => {
-    return baseFilteredCompanies.filter(company => companiesWithResults.has(company.id)).length;
+    return baseFilteredCompanies.filter(company => !!companiesWithResults[company.id]).length;
   }, [baseFilteredCompanies, companiesWithResults]);
 
   const companiesWithoutResultsCount = useMemo(() => {
-    return baseFilteredCompanies.filter(company => !companiesWithResults.has(company.id)).length;
+    return baseFilteredCompanies.filter(company => !companiesWithResults[company.id]).length;
   }, [baseFilteredCompanies, companiesWithResults]);
 
   // Projection-based counters for companies with results
   const projectionCounts = useMemo(() => {
-    const companiesWithResultsList = baseFilteredCompanies.filter(c => companiesWithResults.has(c.id));
+    const companiesWithResultsList = baseFilteredCompanies.filter(c => !!companiesWithResults[c.id]);
     
     return {
       above100: companiesWithResultsList.filter(c => {
@@ -889,7 +889,7 @@ const OnboardingResultsPage = () => {
                   const consultantName = getConsultantName(company.consultant_id);
                   const csName = getConsultantName(company.cs_id);
                   const projection = companyProjections.get(company.id);
-                  const hasResults = companiesWithResults.has(company.id);
+                  const hasResults = !!companiesWithResults[company.id];
                   
                   // Determine projection badge styling
                   const getProjectionBadge = () => {
