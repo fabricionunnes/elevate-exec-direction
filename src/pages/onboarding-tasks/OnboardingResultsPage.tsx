@@ -145,7 +145,9 @@ const OnboardingResultsPage = () => {
       const timeElapsedPercent = currentDay / daysInMonth;
 
       const startDate = format(startOfMonth(now), "yyyy-MM-dd");
-      const endDate = format(endOfMonth(now), "yyyy-MM-dd");
+      // IMPORTANT: Projeção deve considerar realizado ATÉ HOJE (não até o fim do mês),
+      // senão lançamentos futuros inflacionam a projeção.
+      const endDate = format(now, "yyyy-MM-dd");
       
       const [companiesRes, staffRes, servicesRes, projectsRes] = await Promise.all([
         supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status, is_simulator").eq("status", "active").order("name"),
@@ -227,7 +229,7 @@ const OnboardingResultsPage = () => {
             "kpi_id, value, entry_date, company_kpis!inner(id, company_id, kpi_type, target_value, periodicity)"
           )
           .gte("entry_date", startDate)
-          .lte("entry_date", endDate)
+           .lte("entry_date", endDate)
           .not("value", "is", null)
           .range(offset, offset + pageSize - 1);
 
