@@ -85,13 +85,7 @@ interface OnboardingTask {
   responsible_staff?: { id: string; name: string } | null;
 }
 
-interface OnboardingUser {
-  id: string;
-  name: string;
-  email: string;
-  role: "admin" | "cs" | "consultant" | "client";
-  user_id?: string;
-}
+import type { OnboardingUser } from "@/types/onboarding";
 
 interface TaskPhase {
   name: string;

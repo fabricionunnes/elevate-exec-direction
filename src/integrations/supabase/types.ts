@@ -3794,6 +3794,35 @@ export type Database = {
           },
         ]
       }
+      client_user_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          menu_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          menu_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          menu_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_user_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       climate_survey_responses: {
         Row: {
           adequate_recognition: boolean | null
@@ -10351,6 +10380,7 @@ export type Database = {
           password_changed: boolean
           project_id: string
           role: Database["public"]["Enums"]["onboarding_role"]
+          salesperson_id: string | null
           temp_password: string | null
           updated_at: string
           user_id: string | null
@@ -10364,6 +10394,7 @@ export type Database = {
           password_changed?: boolean
           project_id: string
           role?: Database["public"]["Enums"]["onboarding_role"]
+          salesperson_id?: string | null
           temp_password?: string | null
           updated_at?: string
           user_id?: string | null
@@ -10377,6 +10408,7 @@ export type Database = {
           password_changed?: boolean
           project_id?: string
           role?: Database["public"]["Enums"]["onboarding_role"]
+          salesperson_id?: string | null
           temp_password?: string | null
           updated_at?: string
           user_id?: string | null
@@ -10387,6 +10419,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_users_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "company_salespeople"
             referencedColumns: ["id"]
           },
         ]
@@ -11899,6 +11938,10 @@ export type Database = {
           total_tasks: number
         }[]
       }
+      has_client_menu_permission: {
+        Args: { check_menu_key: string; check_user_id: string }
+        Returns: boolean
+      }
       has_crm_access: { Args: never; Returns: boolean }
       has_hr_edit_access: {
         Args: { check_project_id: string }
@@ -11957,7 +12000,16 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      onboarding_role: "cs" | "consultant" | "client" | "admin"
+      onboarding_role:
+        | "cs"
+        | "consultant"
+        | "client"
+        | "admin"
+        | "gerente"
+        | "vendedor"
+        | "rh_client"
+        | "estoque"
+        | "financeiro"
       onboarding_task_status: "pending" | "in_progress" | "completed"
       onboarding_ticket_status: "open" | "in_progress" | "resolved" | "closed"
       plan_status: "draft" | "published" | "archived"
@@ -12091,7 +12143,17 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      onboarding_role: ["cs", "consultant", "client", "admin"],
+      onboarding_role: [
+        "cs",
+        "consultant",
+        "client",
+        "admin",
+        "gerente",
+        "vendedor",
+        "rh_client",
+        "estoque",
+        "financeiro",
+      ],
       onboarding_task_status: ["pending", "in_progress", "completed"],
       onboarding_ticket_status: ["open", "in_progress", "resolved", "closed"],
       plan_status: ["draft", "published", "archived"],
