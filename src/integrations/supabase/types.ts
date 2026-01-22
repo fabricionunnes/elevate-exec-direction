@@ -11906,6 +11906,7 @@ export type Database = {
         Args: { check_company_id: string }
         Returns: boolean
       }
+      get_current_client_project: { Args: never; Returns: string }
       get_current_staff_id: { Args: never; Returns: string }
       get_next_business_day: {
         Args: { days_to_add: number; start_date: string }
