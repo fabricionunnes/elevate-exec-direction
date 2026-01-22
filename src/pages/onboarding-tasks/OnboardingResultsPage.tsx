@@ -173,12 +173,14 @@ const OnboardingResultsPage = () => {
         .select("id, company_id, kpi_type, target_value, periodicity, is_main_goal, scope")
         .eq("is_active", true);
       
-      // Create set of company IDs that have a KPI marked as "Meta Principal"
-      // Only consider company-level KPIs (scope = 'company' or null/undefined)
+      // Create set of company IDs that have monetary KPIs configured
+      // A company "has goals" if it has ANY company-level monetary KPI (not just is_main_goal)
+      // This matches user expectation: if they configured a monetary KPI, they have a goal
       const companyIdsWithGoals = new Set<string>();
       (kpisData || []).forEach(k => {
         const kpiScope = k.scope || "company";
-        if (k.company_id && k.is_main_goal && kpiScope === "company") {
+        // Consider company has goals if it has any company-level monetary KPI
+        if (k.company_id && k.kpi_type === "monetary" && kpiScope === "company") {
           companyIdsWithGoals.add(k.company_id);
         }
       });
