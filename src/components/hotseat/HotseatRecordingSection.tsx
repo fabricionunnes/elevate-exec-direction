@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import ReactMarkdown from "react-markdown";
+import { HotseatSummaryDisplay } from "./HotseatSummaryDisplay";
 import {
   Collapsible,
   CollapsibleContent,
@@ -584,17 +584,10 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
 
                   <CollapsibleContent className="mt-4 space-y-4">
                     {recording.summary && (
-                      <div>
-                        <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-purple-500" />
-                          Resumo
-                        </h5>
-                        <ScrollArea className="h-[300px] rounded-md border p-4 bg-slate-50">
-                          <div className="prose prose-sm max-w-none">
-                            <ReactMarkdown>{recording.summary}</ReactMarkdown>
-                          </div>
-                        </ScrollArea>
-                      </div>
+                      <HotseatSummaryDisplay 
+                        summary={recording.summary} 
+                        companiesMentioned={recording.companies_mentioned}
+                      />
                     )}
 
                     {/* Editable transcript section */}
