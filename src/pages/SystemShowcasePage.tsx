@@ -20,6 +20,20 @@ import {
   Star,
 } from "lucide-react";
 
+// Import mockup images
+import mockupKpis from "@/assets/showcase/mockup-kpis.jpg";
+import mockupJornada from "@/assets/showcase/mockup-jornada.jpg";
+import mockupCrm from "@/assets/showcase/mockup-crm.jpg";
+import mockupVendas from "@/assets/showcase/mockup-vendas.jpg";
+import mockupFinanceiro from "@/assets/showcase/mockup-financeiro.jpg";
+import mockupEstoque from "@/assets/showcase/mockup-estoque.jpg";
+import mockupRh from "@/assets/showcase/mockup-rh.jpg";
+import mockupBoard from "@/assets/showcase/mockup-board.jpg";
+import mockupReunioes from "@/assets/showcase/mockup-reunioes.jpg";
+import mockupChamados from "@/assets/showcase/mockup-chamados.jpg";
+import mockupIndicacoes from "@/assets/showcase/mockup-indicacoes.jpg";
+import mockupFidelidade from "@/assets/showcase/mockup-fidelidade.jpg";
+
 // Module data
 const kpisModule = {
   title: "KPIs e Metas",
@@ -32,6 +46,7 @@ const kpisModule = {
     "Alertas de performance em tempo real",
   ],
   icon: BarChart3,
+  image: mockupKpis,
 };
 
 const journeyModule = {
@@ -45,6 +60,7 @@ const journeyModule = {
     "Status de conclusão automático",
   ],
   icon: Route,
+  image: mockupJornada,
 };
 
 const operationalModules = [
@@ -58,6 +74,7 @@ const operationalModules = [
       "Dados de contato e endereço",
     ],
     icon: Users,
+    imageSrc: mockupCrm,
   },
   {
     title: "Vendas",
@@ -69,6 +86,7 @@ const operationalModules = [
       "Relatórios de vendas",
     ],
     icon: ShoppingCart,
+    imageSrc: mockupVendas,
   },
   {
     title: "Financeiro",
@@ -80,6 +98,7 @@ const operationalModules = [
       "Relatórios financeiros",
     ],
     icon: DollarSign,
+    imageSrc: mockupFinanceiro,
   },
   {
     title: "Estoque",
@@ -91,6 +110,7 @@ const operationalModules = [
       "Pedidos de compra",
     ],
     icon: Package,
+    imageSrc: mockupEstoque,
   },
 ];
 
@@ -105,6 +125,7 @@ const hrModule = {
     "Banco de talentos para futuras vagas",
   ],
   icon: Briefcase,
+  image: mockupRh,
 };
 
 const boardModule = {
@@ -118,6 +139,7 @@ const boardModule = {
     "Histórico de consultas",
   ],
   icon: Brain,
+  image: mockupBoard,
 };
 
 const supportModules = [
@@ -131,6 +153,7 @@ const supportModules = [
       "Agendamento integrado",
     ],
     icon: Calendar,
+    imageSrc: mockupReunioes,
   },
   {
     title: "Chamados",
@@ -142,6 +165,7 @@ const supportModules = [
       "Priorização por urgência",
     ],
     icon: HeadphonesIcon,
+    imageSrc: mockupChamados,
   },
 ];
 
@@ -156,6 +180,7 @@ const loyaltyModules = [
       "Relatório de indicações",
     ],
     icon: Gift,
+    imageSrc: mockupIndicacoes,
   },
   {
     title: "Fidelidade",
@@ -167,6 +192,7 @@ const loyaltyModules = [
       "Resgate de pontos",
     ],
     icon: Star,
+    imageSrc: mockupFidelidade,
   },
 ];
 
@@ -184,6 +210,7 @@ const SystemShowcasePage = () => {
           description={kpisModule.description}
           features={kpisModule.features}
           icon={kpisModule.icon}
+          imageSrc={kpisModule.image}
           reversed={false}
         />
         
@@ -193,6 +220,7 @@ const SystemShowcasePage = () => {
           description={journeyModule.description}
           features={journeyModule.features}
           icon={journeyModule.icon}
+          imageSrc={journeyModule.image}
           reversed={true}
         />
         
@@ -209,6 +237,7 @@ const SystemShowcasePage = () => {
           description={hrModule.description}
           features={hrModule.features}
           icon={hrModule.icon}
+          imageSrc={hrModule.image}
           reversed={false}
         />
         
@@ -218,6 +247,7 @@ const SystemShowcasePage = () => {
           description={boardModule.description}
           features={boardModule.features}
           icon={boardModule.icon}
+          imageSrc={boardModule.image}
           reversed={true}
         />
         
