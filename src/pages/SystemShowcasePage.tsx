@@ -65,7 +65,7 @@ const journeyModule = {
 
 const operationalModules = [
   {
-    title: "CRM / Clientes",
+    title: "Clientes",
     description: "Gestão completa de clientes e relacionamento",
     features: [
       "Cadastro completo de clientes",
@@ -94,7 +94,6 @@ const operationalModules = [
     features: [
       "Contas a pagar e receber",
       "Fluxo de caixa projetado",
-      "Conciliação bancária",
       "Relatórios financeiros",
     ],
     icon: DollarSign,
@@ -150,7 +149,6 @@ const supportModules = [
       "Histórico de reuniões",
       "Gravações disponíveis",
       "Notas e atas",
-      "Agendamento integrado",
     ],
     icon: Calendar,
     imageSrc: mockupReunioes,
@@ -187,7 +185,6 @@ const loyaltyModules = [
     description: "Sistema de pontos e recompensas",
     features: [
       "Acúmulo de pontos",
-      "QR Code para clientes",
       "Catálogo de prêmios",
       "Resgate de pontos",
     ],
