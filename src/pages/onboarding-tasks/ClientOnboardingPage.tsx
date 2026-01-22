@@ -113,6 +113,15 @@ const ClientOnboardingPage = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [userProjects, setUserProjects] = useState<UserProject[]>([]);
 
+  // IMPORTANT: hooks must be called unconditionally (before any early returns)
+  const {
+    loading: permissionsLoading,
+    hasPermission,
+    hasAnyPermission,
+    isFullAccess,
+    salespersonId,
+  } = useClientPermissions(projectId);
+
   const fetchTasks = useCallback(async () => {
     if (!projectId) return;
     
@@ -400,7 +409,7 @@ const ClientOnboardingPage = () => {
   const totalTasks = tasks.length;
   const progressPercent = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
@@ -418,9 +427,6 @@ const ClientOnboardingPage = () => {
       </div>
     );
   }
-
-  // Get permissions
-  const { hasPermission, hasAnyPermission, isFullAccess, salespersonId } = useClientPermissions(projectId);
 
   // Menu structure with submenus - filtered by permissions
   const menuStructure = useMemo(() => {
