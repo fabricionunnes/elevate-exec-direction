@@ -173,36 +173,19 @@ const OnboardingResultsPage = () => {
         .select("id, company_id, kpi_type, target_value, periodicity, is_main_goal, scope")
         .eq("is_active", true);
       
-      // Create record of company IDs that have monetary KPIs configured
-      // A company "has goals" if it has ANY monetary KPI (regardless of scope: company, unit, team, etc.)
-      // This matches user expectation: if they configured any monetary KPI, they have a goal
-      const companyIdsWithGoalsRecord: Record<string, boolean> = {};
-      (kpisData || []).forEach(k => {
-        // Consider company has goals if it has ANY monetary KPI (any scope)
-        if (k.company_id && k.kpi_type === "monetary") {
-          companyIdsWithGoalsRecord[k.company_id] = true;
-        }
-      });
-      setCompaniesWithGoals(companyIdsWithGoalsRecord);
+      // REGRA CORRIGIDA:
+      // 1. "Tem meta" = empresa possui algum KPI com is_main_goal = true
+      // 2. "Projeção" = calculada APENAS com base nos KPIs is_main_goal = true
       
-      // Create map of company -> KPI IDs for projection calculation
-      // IMPORTANT: For projection, consider ALL monetary KPIs regardless of scope
-      // This is because companies like CENTRAL FREE SHOP have unit-level KPIs
-      // We need to sum ALL their targets and results to get accurate company-wide projection
-      const allMonetaryKpisByCompany = new Map<string, Set<string>>();
+      const companyIdsWithGoalsRecord: Record<string, boolean> = {};
       const mainGoalKpisByCompany = new Map<string, Set<string>>();
       
       (kpisData || []).forEach(k => {
-        if (k.kpi_type !== "monetary") return;
-        
-        // Add to all monetary KPIs map (for fallback)
-        if (!allMonetaryKpisByCompany.has(k.company_id)) {
-          allMonetaryKpisByCompany.set(k.company_id, new Set());
-        }
-        allMonetaryKpisByCompany.get(k.company_id)!.add(k.id);
-        
-        // Add to main goal map if marked
-        if (k.is_main_goal) {
+        // Uma empresa TEM META apenas se tiver algum KPI marcado como meta principal
+        if (k.is_main_goal && k.company_id) {
+          companyIdsWithGoalsRecord[k.company_id] = true;
+          
+          // Adiciona ao mapa de metas principais para cálculo de projeção
           if (!mainGoalKpisByCompany.has(k.company_id)) {
             mainGoalKpisByCompany.set(k.company_id, new Set());
           }
@@ -210,23 +193,22 @@ const OnboardingResultsPage = () => {
         }
       });
       
-      // For projection, use main goal KPIs if exist, otherwise ALL monetary KPIs
+      setCompaniesWithGoals(companyIdsWithGoalsRecord);
+      
+      // Para projeção, usar APENAS os KPIs com is_main_goal = true
+      // Sem fallback - se não tem meta principal, não tem projeção
       const getKpisForProjection = (companyId: string): Set<string> => {
-        const mainGoalKpis = mainGoalKpisByCompany.get(companyId);
-        if (mainGoalKpis && mainGoalKpis.size > 0) {
-          return mainGoalKpis;
-        }
-        return allMonetaryKpisByCompany.get(companyId) || new Set();
+        return mainGoalKpisByCompany.get(companyId) || new Set();
       };
       
-      // Create a map for KPI periodicity - include ALL monetary KPIs (not just company scope)
+      // Create a map for KPI periodicity - apenas para KPIs com is_main_goal
       const kpiPeriodicityMap = new Map<string, { periodicity: string; target: number; isMainGoal: boolean }>();
       (kpisData || []).forEach(k => {
-        if (k.kpi_type === "monetary") {
+        if (k.is_main_goal) {
           kpiPeriodicityMap.set(k.id, { 
             periodicity: k.periodicity, 
             target: k.target_value,
-            isMainGoal: k.is_main_goal || false
+            isMainGoal: true
           });
         }
       });
