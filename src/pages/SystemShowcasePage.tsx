@@ -31,8 +31,8 @@ import mockupRh from "@/assets/showcase/mockup-rh.png";
 import mockupBoard from "@/assets/showcase/mockup-board.png";
 import mockupReunioes from "@/assets/showcase/mockup-reunioes.png";
 import mockupChamados from "@/assets/showcase/mockup-chamados.png";
-import mockupIndicacoes from "@/assets/showcase/mockup-indicacoes.jpg";
-import mockupFidelidade from "@/assets/showcase/mockup-fidelidade.jpg";
+import mockupIndicacoes from "@/assets/showcase/mockup-indicacoes.png";
+import mockupFidelidade from "@/assets/showcase/mockup-fidelidade.png";
 
 // Module data
 const kpisModule = {
