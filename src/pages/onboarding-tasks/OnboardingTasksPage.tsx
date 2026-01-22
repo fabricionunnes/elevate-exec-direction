@@ -864,7 +864,8 @@ const OnboardingTasksPage = () => {
       }
     });
     
-    // Also calculate the actual realized percentage per company for display
+    // Also calculate the PROJECTION percentage per company for display
+    // Projection = (realized / target) / timeElapsedPercent * 100
     // Now: show 0% if company has goal but no entries (instead of N/A)
     const realizedPercentByCompany = new Map<string, number | null>();
     
@@ -874,7 +875,7 @@ const OnboardingTasksPage = () => {
       const companyKpisList = getCompanyKpisList(companyId);
       
       if (companyKpisList.length === 0) {
-        realizedPercentByCompany.set(companyId, null); // No KPI configured = N/A
+        realizedPercentByCompany.set(companyId, null); // No KPI configured = S/M
         return;
       }
       
@@ -891,7 +892,7 @@ const OnboardingTasksPage = () => {
       });
       
       if (totalMonthlyTarget === 0) {
-        realizedPercentByCompany.set(companyId, null); // Target is 0 = N/A
+        realizedPercentByCompany.set(companyId, null); // Target is 0 = S/M
         return;
       }
       
@@ -903,15 +904,20 @@ const OnboardingTasksPage = () => {
         companyKpisList.some(k => k.id === e.kpi_id)
       );
       
-      // If company has goal but no entries, show 0% (not N/A)
+      // If company has goal but no entries, show 0% (not S/M)
       if (companyEntries.length === 0) {
         realizedPercentByCompany.set(companyId, 0); // Has goal, no entries = 0%
         return;
       }
       
       const totalRealized = companyEntries.reduce((sum, e) => sum + e.value, 0);
-      const realizedPercent = Math.round((totalRealized / totalMonthlyTarget) * 100);
-      realizedPercentByCompany.set(companyId, realizedPercent);
+      
+      // Calculate PROJECTION (not just realized) - same formula as the first loop
+      const projectionPercent = timeElapsedPercent > 0 && totalMonthlyTarget > 0 
+        ? Math.round(((totalRealized / totalMonthlyTarget) / timeElapsedPercent) * 100) 
+        : 0;
+      
+      realizedPercentByCompany.set(companyId, projectionPercent);
     });
     
     return {
