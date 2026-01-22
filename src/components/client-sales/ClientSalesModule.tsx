@@ -73,6 +73,7 @@ interface Sale {
 interface Props {
   projectId: string;
   userRole?: string;
+  salespersonId?: string | null;
 }
 
 interface SaleItem {
@@ -93,7 +94,7 @@ interface BankAccount {
   bank_name?: string;
 }
 
-export function ClientSalesModule({ projectId, userRole }: Props) {
+export function ClientSalesModule({ projectId, userRole, salespersonId }: Props) {
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<InventoryProduct[]>([]);
@@ -119,11 +120,12 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
   });
   const [items, setItems] = useState<SaleItem[]>([]);
 
-  const canEdit = userRole === "client" || userRole === "admin";
+  const canEdit = userRole === "client" || userRole === "admin" || userRole === "gerente" || userRole === "vendedor";
+  const isVendedor = userRole === "vendedor";
 
   useEffect(() => {
     loadData();
-  }, [projectId]);
+  }, [projectId, salespersonId]);
 
   const loadData = async () => {
     setLoading(true);
@@ -137,12 +139,20 @@ export function ClientSalesModule({ projectId, userRole }: Props) {
 
       const companyId = project?.onboarding_company_id;
 
+      // Build sales query - filter by salesperson if vendedor role
+      let salesQuery = supabase
+        .from("client_inventory_sales")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("sale_date", { ascending: false });
+
+      // If user is a vendedor, only show their sales
+      if (userRole === "vendedor" && salespersonId) {
+        salesQuery = salesQuery.eq("seller_id", salespersonId);
+      }
+
       const [salesRes, productsRes] = await Promise.all([
-        supabase
-          .from("client_inventory_sales")
-          .select("*")
-          .eq("project_id", projectId)
-          .order("sale_date", { ascending: false }),
+        salesQuery,
         supabase
           .from("client_inventory_products")
           .select("*")
