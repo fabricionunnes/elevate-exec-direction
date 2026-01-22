@@ -61,12 +61,7 @@ interface OnboardingTask {
   recurrence?: string | null;
 }
 
-interface OnboardingUser {
-  id: string;
-  name: string;
-  email: string;
-  role: "admin" | "cs" | "consultant" | "client";
-}
+import type { OnboardingUser } from "@/types/onboarding";
 
 interface StaffMember {
   id: string;

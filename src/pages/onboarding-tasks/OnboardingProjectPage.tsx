@@ -144,13 +144,7 @@ interface OnboardingTask {
   responsible_staff?: { id: string; name: string } | null;
 }
 
-interface OnboardingUser {
-  id: string;
-  name: string;
-  email: string;
-  role: "admin" | "cs" | "consultant" | "client";
-  password_changed: boolean;
-}
+import type { OnboardingUser } from "@/types/onboarding";
 
 interface Project {
   id: string;

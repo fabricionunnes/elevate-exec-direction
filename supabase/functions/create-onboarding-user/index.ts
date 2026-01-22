@@ -32,7 +32,8 @@ Deno.serve(async (req) => {
       is_password_reset,
       company_name,
       selected_products,
-      selected_companies
+      selected_companies,
+      salesperson_id
     } = body;
 
     // Validate required fields
@@ -357,17 +358,24 @@ Deno.serve(async (req) => {
       }
     } else {
       // Create new onboarding user
+      const insertData: Record<string, unknown> = {
+        user_id: userId,
+        email,
+        name,
+        project_id,
+        role,
+        temp_password: password,
+        password_changed: false,
+      };
+
+      // Add salesperson_id for vendedor role
+      if (salesperson_id) {
+        insertData.salesperson_id = salesperson_id;
+      }
+
       const { error: insertError } = await supabaseAdmin
         .from("onboarding_users")
-        .insert({
-          user_id: userId,
-          email,
-          name,
-          project_id,
-          role,
-          temp_password: password,
-          password_changed: false,
-        });
+        .insert(insertData);
 
       if (insertError) {
         console.error("Error inserting onboarding user:", insertError);

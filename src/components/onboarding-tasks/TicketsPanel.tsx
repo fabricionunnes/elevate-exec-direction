@@ -23,12 +23,7 @@ import { Plus, MessageSquare, Clock, CheckCircle, AlertCircle } from "lucide-rea
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-interface OnboardingUser {
-  id: string;
-  name: string;
-  email: string;
-  role: "admin" | "cs" | "consultant" | "client";
-}
+import type { OnboardingUser } from "@/types/onboarding";
 
 interface Ticket {
   id: string;

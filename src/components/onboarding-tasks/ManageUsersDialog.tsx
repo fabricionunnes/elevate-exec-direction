@@ -28,14 +28,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-interface OnboardingUser {
-  id: string;
-  name: string;
-  email: string;
-  role: "admin" | "cs" | "consultant" | "client";
-  password_changed: boolean;
-  temp_password?: string;
-}
+import type { OnboardingUser, OnboardingRole } from "@/types/onboarding";
+import { ROLE_LABELS, ROLE_COLORS, isStaffRole as checkIsStaffRole } from "@/types/onboarding";
 
 interface StaffMember {
   id: string;
@@ -69,7 +63,7 @@ export const ManageUsersDialog = ({
     name: "",
     email: "",
     password: "",
-    role: "client" as "admin" | "cs" | "consultant" | "client",
+    role: "client" as OnboardingRole,
   });
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -110,7 +104,7 @@ export const ManageUsersDialog = ({
     return password;
   };
 
-  const isStaffRole = (role: string) => role === "cs" || role === "consultant";
+  const isStaffRole = (role: OnboardingRole) => checkIsStaffRole(role);
 
   const handleAddUser = async () => {
     const isStaff = isStaffRole(newUser.role);
@@ -289,19 +283,10 @@ export const ManageUsersDialog = ({
     setShowChangePassword(false);
   };
 
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case "admin":
-        return <Badge className="bg-red-500">Admin</Badge>;
-      case "cs":
-        return <Badge className="bg-blue-500">CS</Badge>;
-      case "consultant":
-        return <Badge className="bg-purple-500">Consultor</Badge>;
-      case "client":
-        return <Badge variant="outline">Cliente</Badge>;
-      default:
-        return null;
-    }
+  const getRoleBadge = (role: OnboardingRole) => {
+    const label = ROLE_LABELS[role] || role;
+    const colorClass = ROLE_COLORS[role] || "bg-gray-100 text-gray-800";
+    return <Badge className={colorClass}>{label}</Badge>;
   };
 
   const filteredStaff = staffMembers.filter((staff) => {
