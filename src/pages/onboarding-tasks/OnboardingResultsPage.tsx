@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { KPIDashboardTab } from "@/components/onboarding-tasks/kpis/KPIDashboardTab";
-import { format } from "date-fns";
+import { endOfMonth, format, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { 
@@ -136,15 +136,16 @@ const OnboardingResultsPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Use 2026 as the reference year to match database data
       const now = new Date();
-      const referenceYear = 2026;
-      const currentMonth = `${referenceYear}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const currentMonth = format(now, "yyyy-MM");
       const periodMonth = now.getMonth() + 1;
-      const periodYear = referenceYear;
+      const periodYear = now.getFullYear();
       const daysInMonth = new Date(periodYear, periodMonth, 0).getDate();
       const currentDay = now.getDate();
       const timeElapsedPercent = currentDay / daysInMonth;
+
+      const startDate = format(startOfMonth(now), "yyyy-MM-dd");
+      const endDate = format(endOfMonth(now), "yyyy-MM-dd");
       
       const [companiesRes, staffRes, servicesRes, projectsRes] = await Promise.all([
         supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status").eq("status", "active").order("name"),
@@ -182,12 +183,29 @@ const OnboardingResultsPage = () => {
       });
       
       // Fetch current month entries for all KPIs
-      const { data: entriesData } = await supabase
-        .from("kpi_entries")
-        .select("kpi_id, value, entry_date, company_kpis!inner(id, company_id, kpi_type, target_value, periodicity)")
-        .gte("entry_date", `${currentMonth}-01`)
-        .lte("entry_date", `${currentMonth}-31`)
-        .not("value", "is", null);
+      // IMPORTANT: backend has a default per-query limit (1000). We must paginate,
+      // otherwise we will undercount companies with results.
+      const entriesData: any[] = [];
+      const pageSize = 1000;
+      let offset = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("kpi_entries")
+          .select(
+            "kpi_id, value, entry_date, company_kpis!inner(id, company_id, kpi_type, target_value, periodicity)"
+          )
+          .gte("entry_date", startDate)
+          .lte("entry_date", endDate)
+          .not("value", "is", null)
+          .range(offset, offset + pageSize - 1);
+
+        if (error) throw error;
+        if (data?.length) entriesData.push(...data);
+
+        if (!data || data.length < pageSize) break;
+        offset += pageSize;
+      }
       
       // Fetch monthly targets for current month
       const { data: monthlyTargets } = await supabase
