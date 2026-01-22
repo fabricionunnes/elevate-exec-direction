@@ -25,6 +25,7 @@ import { format, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek } fro
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter, UsersRound, Layers } from "lucide-react";
+import { parseDateLocal } from "@/lib/dateUtils";
 import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidget";
 import { GamificationDashboardWidget } from "../gamification/GamificationDashboardWidget";
 import { SalesHistoryDialog } from "./SalesHistoryDialog";
@@ -145,7 +146,7 @@ export const KPIDashboardTab = ({ companyId, projectId, canDeleteEntries = false
 
     try {
       // Get the month from the selected date range for monthly targets
-      const selectedMonthYear = format(new Date(dateRange.start), "yyyy-MM");
+      const selectedMonthYear = format(parseDateLocal(dateRange.start), "yyyy-MM");
 
       const [kpisRes, salespeopleRes, entriesRes, unitsRes, teamsRes, sectorsRes, companyRes, monthlyTargetsRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),

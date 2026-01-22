@@ -31,7 +31,7 @@ import {
 import { toast } from "sonner";
 import { History, Plus, Trash2, Pencil } from "lucide-react";
 import { format, startOfMonth } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateLocal, toDateString } from "@/lib/dateUtils";
 
 const MONTHS = [
   { value: "01", label: "Janeiro" },
@@ -144,7 +144,7 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange,
       
       const payload = {
         company_id: companyId,
-        month_year: format(monthDate, "yyyy-MM-dd"),
+        month_year: toDateString(monthDate),
         revenue: parseFloat(revenue.replace(/\./g, "").replace(",", ".")),
         target_revenue: targetRevenue ? parseFloat(targetRevenue.replace(/\./g, "").replace(",", ".")) : null,
         sales_count: salesCount ? parseInt(salesCount) : null,
@@ -389,7 +389,7 @@ export const SalesHistoryDialog = ({ companyId, contractStartDate, onDataChange,
                     return (
                       <TableRow key={entry.id}>
                         <TableCell className="font-medium text-xs sm:text-sm py-2 sm:py-4">
-                          {format(new Date(entry.month_year), "MMM/yy", { locale: ptBR })}
+                          {formatDateLocal(entry.month_year, "MMM/yy")}
                         </TableCell>
                         <TableCell className="font-medium text-green-600 text-xs sm:text-sm py-2 sm:py-4">
                           <div className="flex flex-col">
