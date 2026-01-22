@@ -24,7 +24,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter, UsersRound, Layers } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter, UsersRound, Layers, ExternalLink } from "lucide-react";
 import { parseDateLocal } from "@/lib/dateUtils";
 import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidget";
 import { GamificationDashboardWidget } from "../gamification/GamificationDashboardWidget";
@@ -33,6 +33,7 @@ import { SalesComparisonChart } from "./SalesComparisonChart";
 import { KPIEntriesHistoryDialog } from "./KPIEntriesHistoryDialog";
 import { SalespeopleComparisonTable } from "./SalespeopleComparisonTable";
 import { MonthlySalesChart } from "./MonthlySalesChart";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface KPI {
   id: string;
@@ -137,6 +138,7 @@ export const KPIDashboardTab = ({
   const [selectedSector, setSelectedSector] = useState<string>("all");
   const [salesHistoryRefreshKey, setSalesHistoryRefreshKey] = useState(0);
   const [contractStartDate, setContractStartDate] = useState<string | null>(null);
+  const [salespersonAccessCode, setSalespersonAccessCode] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -238,6 +240,10 @@ export const KPIDashboardTab = ({
       setSectors(sectorsRes.data || []);
       if (companyRes.data) {
         setContractStartDate(companyRes.data.contract_start_date);
+      }
+      // Store access code for the salesperson if we're filtering by one
+      if (salespersonId && salespeopleRes.data?.[0]?.access_code) {
+        setSalespersonAccessCode(salespeopleRes.data[0].access_code);
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -1088,17 +1094,36 @@ export const KPIDashboardTab = ({
               </Select>
             </div>
             <div className="col-span-2 sm:col-span-1 flex items-end gap-2 flex-wrap">
-              <SalesHistoryDialog 
-                companyId={companyId} 
-                contractStartDate={contractStartDate}
-                onDataChange={() => setSalesHistoryRefreshKey(prev => prev + 1)}
-                canEdit={canEditSalesHistory}
-              />
+              {/* Personalized entry link for salespeople */}
+              {salespersonId && salespersonAccessCode && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => {
+                    const link = `${getPublicBaseUrl()}/#/kpi-entry/${companyId}?code=${salespersonAccessCode}`;
+                    window.open(link, '_blank');
+                  }}
+                  className="gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Lançar Vendas
+                </Button>
+              )}
+              {/* Only show sales history if not filtering by salesperson (company-wide data) */}
+              {!salespersonId && (
+                <SalesHistoryDialog 
+                  companyId={companyId} 
+                  contractStartDate={contractStartDate}
+                  onDataChange={() => setSalesHistoryRefreshKey(prev => prev + 1)}
+                  canEdit={canEditSalesHistory}
+                />
+              )}
               <KPIEntriesHistoryDialog 
                 companyId={companyId}
                 canDelete={canDeleteEntries}
                 canEdit={canEditSalesHistory}
                 onEntryDeleted={fetchData}
+                salespersonId={salespersonId || undefined}
               />
             </div>
           </div>

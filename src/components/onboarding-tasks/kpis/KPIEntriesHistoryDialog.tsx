@@ -68,13 +68,15 @@ interface KPIEntriesHistoryDialogProps {
   canDelete?: boolean; // Admin, CS, or consultant
   canEdit?: boolean; // Admin, CS, consultant, or client
   onEntryDeleted?: () => void;
+  salespersonId?: string; // If provided, filter entries to only this salesperson
 }
 
 export const KPIEntriesHistoryDialog = ({ 
   companyId, 
   canDelete = false,
   canEdit = false,
-  onEntryDeleted
+  onEntryDeleted,
+  salespersonId
 }: KPIEntriesHistoryDialogProps) => {
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -106,26 +108,44 @@ export const KPIEntriesHistoryDialog = ({
   const fetchData = async () => {
     setLoading(true);
     try {
+      // Build entries query with optional salesperson filter
+      let entriesQuery = supabase
+        .from("kpi_entries")
+        .select("*")
+        .eq("company_id", companyId)
+        .gte("entry_date", dateRange.start)
+        .lte("entry_date", dateRange.end);
+      
+      // If salespersonId is provided, filter to only their entries
+      if (salespersonId) {
+        entriesQuery = entriesQuery.eq("salesperson_id", salespersonId);
+      }
+      
+      entriesQuery = entriesQuery
+        .order("entry_date", { ascending: false })
+        .order("created_at", { ascending: false });
+
+      // Build salespeople query - if filtering by salesperson, only fetch that one
+      let salespeopleQuery = supabase
+        .from("company_salespeople")
+        .select("id, name")
+        .eq("company_id", companyId)
+        .eq("is_active", true);
+      
+      if (salespersonId) {
+        salespeopleQuery = salespeopleQuery.eq("id", salespersonId);
+      } else {
+        salespeopleQuery = salespeopleQuery.order("name");
+      }
+
       const [entriesRes, kpisRes, salespeopleRes] = await Promise.all([
-        supabase
-          .from("kpi_entries")
-          .select("*")
-          .eq("company_id", companyId)
-          .gte("entry_date", dateRange.start)
-          .lte("entry_date", dateRange.end)
-          .order("entry_date", { ascending: false })
-          .order("created_at", { ascending: false }),
+        entriesQuery,
         supabase
           .from("company_kpis")
           .select("id, name, kpi_type")
           .eq("company_id", companyId)
           .eq("is_active", true),
-        supabase
-          .from("company_salespeople")
-          .select("id, name")
-          .eq("company_id", companyId)
-          .eq("is_active", true)
-          .order("name"),
+        salespeopleQuery,
       ]);
 
       if (entriesRes.error) throw entriesRes.error;
