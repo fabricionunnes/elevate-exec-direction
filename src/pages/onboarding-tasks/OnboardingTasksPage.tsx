@@ -778,6 +778,17 @@ const OnboardingTasksPage = () => {
     const below50Ids = new Set<string>(); // <50%
     const noEntriesIds = new Set<string>(); // Has KPI but no entries in month
     const hasEntriesIds = new Set<string>(); // Has KPI AND entries in month
+
+    // Some legacy KPI entries may have company_id null/incorrect.
+    // Normalize by inferring the company from the KPI relationship.
+    const kpiIdToCompanyId = new Map<string, string>();
+    companyKpis.forEach(k => {
+      if (k?.id && k?.company_id) kpiIdToCompanyId.set(k.id, k.company_id);
+    });
+
+    const getEntryCompanyId = (e: { company_id: string; kpi_id: string }) => {
+      return e.company_id || kpiIdToCompanyId.get(e.kpi_id) || "";
+    };
     
     // Helper to get KPIs for a company.
     // Priority: Main Goal KPIs; if there are NO entries for main goal in the selected month,
@@ -791,7 +802,7 @@ const OnboardingTasksPage = () => {
 
       // If main goal exists but has no entries this month, try falling back to monetary KPIs with entries
       const hasMainGoalEntries = kpiEntries.some(e =>
-        e.company_id === companyId &&
+        getEntryCompanyId(e as any) === companyId &&
         e.entry_date >= monthStart &&
         e.entry_date <= monthEnd &&
         mainGoalKpis.some(k => k.id === e.kpi_id) &&
@@ -801,7 +812,7 @@ const OnboardingTasksPage = () => {
       if (hasMainGoalEntries) return mainGoalKpis;
 
       const hasMonetaryEntries = kpiEntries.some(e =>
-        e.company_id === companyId &&
+        getEntryCompanyId(e as any) === companyId &&
         e.entry_date >= monthStart &&
         e.entry_date <= monthEnd &&
         monetaryKpis.some(k => k.id === e.kpi_id) &&
@@ -850,7 +861,7 @@ const OnboardingTasksPage = () => {
       
       // Get entries for this company in the period
       const companyEntries = kpiEntries.filter(e => 
-        e.company_id === companyId &&
+        getEntryCompanyId(e as any) === companyId &&
         e.entry_date >= monthStart &&
         e.entry_date <= monthEnd &&
         companyKpisList.some(k => k.id === e.kpi_id)
@@ -921,7 +932,7 @@ const OnboardingTasksPage = () => {
       
       // Get entries for this company in the period
       const companyEntries = kpiEntries.filter(e => 
-        e.company_id === companyId &&
+        getEntryCompanyId(e as any) === companyId &&
         e.entry_date >= monthStart &&
         e.entry_date <= monthEnd &&
         companyKpisList.some(k => k.id === e.kpi_id)
