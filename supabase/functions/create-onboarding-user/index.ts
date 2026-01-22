@@ -107,8 +107,12 @@ Deno.serve(async (req) => {
         );
       }
       userId = existingUser.id;
-      // Update password for existing user
-      await supabaseAdmin.auth.admin.updateUserById(userId, { password });
+      // Update password for existing user (for admin-created users)
+      const { error: updatePassError } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
+      if (updatePassError) {
+        console.error("Error updating password for existing user:", updatePassError);
+      }
+      console.log(`Reusing existing auth user: ${email}, id: ${userId}`);
     } else {
       // Create new auth user
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -118,14 +122,33 @@ Deno.serve(async (req) => {
       });
 
       if (createError) {
-        console.error("Error creating auth user:", createError);
-        return new Response(
-          JSON.stringify({ error: createError.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        // If the error is that email exists, try to find the user again
+        if (createError.code === "email_exists") {
+          const { data: retryUsers } = await supabaseAdmin.auth.admin.listUsers();
+          const retryUser = retryUsers?.users?.find(u => u.email === email);
+          if (retryUser) {
+            userId = retryUser.id;
+            await supabaseAdmin.auth.admin.updateUserById(userId, { password });
+            console.log(`Found existing user on retry: ${email}, id: ${userId}`);
+          } else {
+            console.error("Error creating auth user:", createError);
+            return new Response(
+              JSON.stringify({ error: createError.message }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        } else {
+          console.error("Error creating auth user:", createError);
+          return new Response(
+            JSON.stringify({ error: createError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } else {
+        userId = newUser.user.id;
       }
-
-      userId = newUser.user.id;
+      
+      console.log(`Created/found auth user: ${email}, id: ${userId}`);
     }
 
     // Handle signup flow
