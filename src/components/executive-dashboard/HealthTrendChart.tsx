@@ -45,11 +45,10 @@ export function HealthTrendChart({ data, currentAvg }: HealthTrendChartProps) {
     score: 50 + Math.random() * 30,
   }));
 
-  const firstHalf = chartData.slice(0, Math.floor(chartData.length / 2));
-  const secondHalf = chartData.slice(Math.floor(chartData.length / 2));
-  const firstAvg = firstHalf.reduce((sum, d) => sum + d.score, 0) / firstHalf.length;
-  const secondAvg = secondHalf.reduce((sum, d) => sum + d.score, 0) / secondHalf.length;
-  const trend = secondAvg - firstAvg;
+  // Compare first and last data points to determine trend (matches useHealthScore logic)
+  const firstScore = chartData.length > 0 ? chartData[0].score : 0;
+  const lastScore = chartData.length > 0 ? chartData[chartData.length - 1].score : 0;
+  const trend = lastScore - firstScore;
   const trendIsPositive = trend >= 0;
 
   return (
