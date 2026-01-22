@@ -184,18 +184,52 @@ const OnboardingResultsPage = () => {
       });
       setCompaniesWithGoals(companyIdsWithGoals);
       
-      // Filter only company-level monetary KPIs for projection calculation
-      // IMPORTANT: Exclude individual salesperson, unit, team, sector KPIs to get accurate company projections
-      const companyLevelMonetaryKpis = (kpisData || []).filter(k => {
-        const kpiScope = k.scope || "company";
-        return k.kpi_type === "monetary" && kpiScope === "company";
-      });
-      const companyLevelKpiIds = new Set(companyLevelMonetaryKpis.map(k => k.id));
+      // Create map of company -> main goal KPI IDs for projection calculation
+      // IMPORTANT: When a company has a main goal KPI, ONLY use that for projection
+      // Otherwise fallback to all monetary KPIs
+      const mainGoalKpisByCompany = new Map<string, Set<string>>();
+      const companyLevelMonetaryKpisByCompany = new Map<string, Set<string>>();
       
-      // Create a map for KPI periodicity (company-level only)
-      const kpiPeriodicityMap = new Map<string, { periodicity: string; target: number }>();
-      companyLevelMonetaryKpis.forEach(k => {
-        kpiPeriodicityMap.set(k.id, { periodicity: k.periodicity, target: k.target_value });
+      (kpisData || []).forEach(k => {
+        const kpiScope = k.scope || "company";
+        if (kpiScope !== "company") return; // Only company-level KPIs
+        
+        if (!companyLevelMonetaryKpisByCompany.has(k.company_id)) {
+          companyLevelMonetaryKpisByCompany.set(k.company_id, new Set());
+        }
+        
+        if (k.kpi_type === "monetary") {
+          companyLevelMonetaryKpisByCompany.get(k.company_id)!.add(k.id);
+        }
+        
+        if (k.is_main_goal) {
+          if (!mainGoalKpisByCompany.has(k.company_id)) {
+            mainGoalKpisByCompany.set(k.company_id, new Set());
+          }
+          mainGoalKpisByCompany.get(k.company_id)!.add(k.id);
+        }
+      });
+      
+      // For projection, use main goal KPIs if exist, otherwise all monetary
+      const getKpisForProjection = (companyId: string): Set<string> => {
+        const mainGoalKpis = mainGoalKpisByCompany.get(companyId);
+        if (mainGoalKpis && mainGoalKpis.size > 0) {
+          return mainGoalKpis;
+        }
+        return companyLevelMonetaryKpisByCompany.get(companyId) || new Set();
+      };
+      
+      // Create a map for KPI periodicity
+      const kpiPeriodicityMap = new Map<string, { periodicity: string; target: number; isMainGoal: boolean }>();
+      (kpisData || []).forEach(k => {
+        const kpiScope = k.scope || "company";
+        if (kpiScope === "company" && k.kpi_type === "monetary") {
+          kpiPeriodicityMap.set(k.id, { 
+            periodicity: k.periodicity, 
+            target: k.target_value,
+            isMainGoal: k.is_main_goal || false
+          });
+        }
       });
       
       // Fetch current month entries for all KPIs
@@ -251,15 +285,20 @@ const OnboardingResultsPage = () => {
         
         companyIdsWithResultsSet.add(companyId);
         
-        // Only process company-level monetary KPIs for projection
-        // Skip individual, unit, team, sector KPIs
-        if (!companyLevelKpiIds.has(entry.kpi_id)) return;
+        // Only process monetary KPIs for projection
         if (kpiType !== "monetary") return;
+        
+        // Get the KPIs that should be used for this company's projection
+        const kpisForProjection = getKpisForProjection(companyId);
+        
+        // Skip if this KPI is not in the projection set
+        if (!kpisForProjection.has(entry.kpi_id)) return;
         
         // Get target: first from monthly targets, then from KPI default
         const monthlyTarget = targetMap.get(entry.kpi_id);
-        const defaultTarget = entry.company_kpis?.target_value || 0;
-        const periodicity = entry.company_kpis?.periodicity || "monthly";
+        const kpiInfo = kpiPeriodicityMap.get(entry.kpi_id);
+        const defaultTarget = kpiInfo?.target || entry.company_kpis?.target_value || 0;
+        const periodicity = kpiInfo?.periodicity || entry.company_kpis?.periodicity || "monthly";
         
         // Calculate monthly target based on periodicity (same as dashboard)
         let calculatedTarget = monthlyTarget ?? defaultTarget;
