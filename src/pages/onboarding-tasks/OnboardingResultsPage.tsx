@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { KPIDashboardTab } from "@/components/onboarding-tasks/kpis/KPIDashboardTab";
-import { endOfMonth, format, startOfMonth } from "date-fns";
+import { endOfMonth, format, startOfMonth, subMonths, isSameMonth, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { 
@@ -28,7 +28,8 @@ import {
   Trophy,
   ThumbsUp,
   AlertTriangle,
-  XCircle
+  XCircle,
+  Calendar
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -77,6 +78,27 @@ const OnboardingResultsPage = () => {
   const [filterResults, setFilterResults] = useState<string>(() => searchParams.get("results") || "all");
   const [filterProjection, setFilterProjection] = useState<string>(() => searchParams.get("projection") || "all");
   
+  // Month filter - default to current month
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const urlMonth = searchParams.get("month");
+    if (urlMonth) return urlMonth;
+    return format(new Date(), "yyyy-MM");
+  });
+  
+  // Generate list of months (last 12 months)
+  const monthOptions = useMemo(() => {
+    const months: { value: string; label: string }[] = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const date = subMonths(now, i);
+      months.push({
+        value: format(date, "yyyy-MM"),
+        label: format(date, "MMMM yyyy", { locale: ptBR }),
+      });
+    }
+    return months;
+  }, []);
+  
   // Data states
   const [companies, setCompanies] = useState<Company[]>([]);
   const [consultants, setConsultants] = useState<Staff[]>([]);
@@ -114,12 +136,12 @@ const OnboardingResultsPage = () => {
     checkAuth();
   }, [navigate]);
 
-  // Fetch data
+  // Fetch data when month changes
   useEffect(() => {
     if (currentStaff) {
       fetchData();
     }
-  }, [currentStaff]);
+  }, [currentStaff, selectedMonth]);
 
   // Update URL params when filters change
   useEffect(() => {
@@ -130,24 +152,34 @@ const OnboardingResultsPage = () => {
     if (filterGoals !== "all") params.set("goals", filterGoals);
     if (filterResults !== "all") params.set("results", filterResults);
     if (filterProjection !== "all") params.set("projection", filterProjection);
+    const currentMonthStr = format(new Date(), "yyyy-MM");
+    if (selectedMonth !== currentMonthStr) params.set("month", selectedMonth);
     setSearchParams(params, { replace: true });
-  }, [selectedCompanyId, filterConsultant, filterService, filterGoals, filterResults, filterProjection, setSearchParams]);
+  }, [selectedCompanyId, filterConsultant, filterService, filterGoals, filterResults, filterProjection, selectedMonth, setSearchParams]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const now = new Date();
-      const currentMonth = format(now, "yyyy-MM");
-      const periodMonth = now.getMonth() + 1;
-      const periodYear = now.getFullYear();
+      const currentMonthStr = format(now, "yyyy-MM");
+      
+      // Parse selected month
+      const [yearStr, monthStr] = selectedMonth.split("-");
+      const periodYear = parseInt(yearStr, 10);
+      const periodMonth = parseInt(monthStr, 10);
+      const selectedMonthDate = new Date(periodYear, periodMonth - 1, 1);
       const daysInMonth = new Date(periodYear, periodMonth, 0).getDate();
-      const currentDay = now.getDate();
+      
+      // Calculate time elapsed based on whether we're looking at current or past month
+      const isCurrentMonth = selectedMonth === currentMonthStr;
+      const currentDay = isCurrentMonth ? now.getDate() : daysInMonth;
       const timeElapsedPercent = currentDay / daysInMonth;
 
-      const startDate = format(startOfMonth(now), "yyyy-MM-dd");
-      // IMPORTANT: Projeção deve considerar realizado ATÉ HOJE (não até o fim do mês),
-      // senão lançamentos futuros inflacionam a projeção.
-      const endDate = format(now, "yyyy-MM-dd");
+      const startDate = format(startOfMonth(selectedMonthDate), "yyyy-MM-dd");
+      // For current month: até hoje. For past months: até fim do mês
+      const endDate = isCurrentMonth 
+        ? format(now, "yyyy-MM-dd")
+        : format(endOfMonth(selectedMonthDate), "yyyy-MM-dd");
       
       const [companiesRes, staffRes, servicesRes, projectsRes] = await Promise.all([
         supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status, is_simulator").eq("status", "active").order("name"),
@@ -248,7 +280,7 @@ const OnboardingResultsPage = () => {
       const { data: monthlyTargets } = await supabase
         .from("kpi_monthly_targets")
         .select("kpi_id, target_value, level_order")
-        .eq("month_year", currentMonth)
+        .eq("month_year", selectedMonth)
         .is("unit_id", null)
         .is("team_id", null)
         .is("sector_id", null)
@@ -558,9 +590,13 @@ const OnboardingResultsPage = () => {
                   <TrendingUp className="h-5 w-5 text-primary" />
                   {selectedCompany ? selectedCompany.name : "Resultados"}
                 </h1>
-                {selectedCompany && (
+                {selectedCompany ? (
                   <p className="text-xs text-muted-foreground">
                     Dashboard de KPIs
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground capitalize">
+                    {monthOptions.find(m => m.value === selectedMonth)?.label || selectedMonth}
                   </p>
                 )}
               </div>
@@ -774,6 +810,24 @@ const OnboardingResultsPage = () => {
             <Card className="mb-6">
               <CardContent className="py-4">
                 <div className="flex flex-wrap items-end gap-4">
+                  {/* Month filter */}
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Mês</Label>
+                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                      <SelectTrigger className="w-[180px]">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Selecione o mês" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {monthOptions.map(m => (
+                          <SelectItem key={m.value} value={m.value} className="capitalize">
+                            {m.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div className="flex-1 min-w-[200px]">
                     <Label className="text-xs text-muted-foreground mb-1.5 block">Buscar empresa</Label>
                     <div className="relative">
