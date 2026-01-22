@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Brain } from "lucide-react";
 import { CLIENT_MENU_KEYS } from "@/types/onboarding";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface UserProject {
   id: string;
@@ -458,6 +459,33 @@ const ClientOnboardingPage = () => {
       .filter(Boolean) as typeof allMenus;
   }, [hasPermission, isFullAccess]);
 
+  const hasViewAccess = useCallback(
+    (view: ViewType) => {
+      if (isFullAccess) return true;
+      const key = VIEW_TO_MENU_KEY[view];
+      // Some views are legacy/unused; if not mapped, default to allow (they won't appear in menu anyway)
+      if (!key) return true;
+      return hasPermission(key);
+    },
+    [hasPermission, isFullAccess]
+  );
+
+  // If user lands in a view they can't access (direct link/state), move to the first allowed menu.
+  useEffect(() => {
+    if (loading || permissionsLoading) return;
+    if (!activeView) return;
+    if (hasViewAccess(activeView)) return;
+
+    const firstAllowed = (() => {
+      const first = menuStructure[0] as any;
+      if (!first) return null;
+      if (first.submenu && first.submenu.length > 0) return first.submenu[0].id as ViewType;
+      return first.id as ViewType;
+    })();
+
+    if (firstAllowed) setActiveView(firstAllowed);
+  }, [activeView, hasViewAccess, loading, menuStructure, permissionsLoading]);
+
   if (loading || permissionsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -736,6 +764,24 @@ const ClientOnboardingPage = () => {
       {/* Main content */}
       <main className="p-4 pb-0 max-w-7xl mx-auto">
         <AnimatePresence mode="wait">
+          {!hasViewAccess(activeView) && (
+            <motion.div
+              key="no-access"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <Card>
+                <CardContent className="py-10 text-center">
+                  <h2 className="text-lg font-semibold">Acesso negado</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Você não tem permissão para acessar esta área.
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
           {activeView === "kpis" && (
             <motion.div
               key="kpis"
