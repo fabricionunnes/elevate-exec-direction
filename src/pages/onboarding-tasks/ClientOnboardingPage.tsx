@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useClientAccessTracking } from "@/hooks/useClientAccessTracking";
 import { useClientActivityTracking } from "@/hooks/useClientActivityTracking";
+import { useClientPermissions, VIEW_TO_MENU_KEY } from "@/hooks/useClientPermissions";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
@@ -58,6 +59,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Brain } from "lucide-react";
+import { CLIENT_MENU_KEYS } from "@/types/onboarding";
 
 interface UserProject {
   id: string;
@@ -417,37 +419,63 @@ const ClientOnboardingPage = () => {
     );
   }
 
-  // Menu structure with submenus
-  const menuStructure = [
-    { id: "kpis" as ViewType, icon: BarChart3, label: "KPIs" },
-    { 
-      id: "trilha-group", 
-      icon: Map, 
-      label: "Jornada",
-      submenu: [
-        { id: "trail" as ViewType, icon: Map, label: "Trilha" },
-        { id: "list" as ViewType, icon: List, label: "Lista" },
-        { id: "timeline" as ViewType, icon: Calendar, label: "Cronograma" },
-      ]
-    },
-    { 
-      id: "gestao-group", 
-      icon: Briefcase, 
-      label: "Gestão",
-      submenu: [
-        { id: "customers" as ViewType, icon: Users, label: "Clientes" },
-        { id: "sales" as ViewType, icon: ShoppingBag, label: "Vendas" },
-        { id: "financial" as ViewType, icon: Wallet, label: "Financeiro" },
-        { id: "inventory" as ViewType, icon: Package, label: "Estoque" },
-      ]
-    },
-    { id: "tickets" as ViewType, icon: MessageSquare, label: "Chamados" },
-    { id: "meetings" as ViewType, icon: Video, label: "Reuniões" },
-    { id: "assessments" as ViewType, icon: ClipboardCheck, label: "Testes" },
-    { id: "rh" as ViewType, icon: Users, label: "RH" },
-    { id: "board" as ViewType, icon: Brain, label: "Board" },
-    { id: "referrals" as ViewType, icon: Gift, label: "Indicar" },
-  ];
+  // Get permissions
+  const { hasPermission, hasAnyPermission, isFullAccess, salespersonId } = useClientPermissions(projectId);
+
+  // Menu structure with submenus - filtered by permissions
+  const menuStructure = useMemo(() => {
+    const allMenus = [
+      { id: "kpis" as ViewType, icon: BarChart3, label: "KPIs", menuKey: CLIENT_MENU_KEYS.kpis },
+      { 
+        id: "trilha-group", 
+        icon: Map, 
+        label: "Jornada",
+        submenu: [
+          { id: "trail" as ViewType, icon: Map, label: "Trilha", menuKey: CLIENT_MENU_KEYS.jornada_trilha },
+          { id: "list" as ViewType, icon: List, label: "Lista", menuKey: CLIENT_MENU_KEYS.jornada_lista },
+          { id: "timeline" as ViewType, icon: Calendar, label: "Cronograma", menuKey: CLIENT_MENU_KEYS.jornada_cronograma },
+        ]
+      },
+      { 
+        id: "gestao-group", 
+        icon: Briefcase, 
+        label: "Gestão",
+        submenu: [
+          { id: "customers" as ViewType, icon: Users, label: "Clientes", menuKey: CLIENT_MENU_KEYS.gestao_clientes },
+          { id: "sales" as ViewType, icon: ShoppingBag, label: "Vendas", menuKey: CLIENT_MENU_KEYS.gestao_vendas },
+          { id: "financial" as ViewType, icon: Wallet, label: "Financeiro", menuKey: CLIENT_MENU_KEYS.gestao_financeiro },
+          { id: "inventory" as ViewType, icon: Package, label: "Estoque", menuKey: CLIENT_MENU_KEYS.gestao_estoque },
+        ]
+      },
+      { id: "tickets" as ViewType, icon: MessageSquare, label: "Chamados", menuKey: CLIENT_MENU_KEYS.chamados },
+      { id: "meetings" as ViewType, icon: Video, label: "Reuniões", menuKey: CLIENT_MENU_KEYS.reunioes },
+      { id: "assessments" as ViewType, icon: ClipboardCheck, label: "Testes", menuKey: CLIENT_MENU_KEYS.testes },
+      { id: "rh" as ViewType, icon: Users, label: "RH", menuKey: CLIENT_MENU_KEYS.rh },
+      { id: "board" as ViewType, icon: Brain, label: "Board", menuKey: CLIENT_MENU_KEYS.board },
+      { id: "referrals" as ViewType, icon: Gift, label: "Indicar", menuKey: CLIENT_MENU_KEYS.indicar },
+    ];
+
+    // If full access, return all menus
+    if (isFullAccess) return allMenus;
+
+    // Filter menus based on permissions
+    return allMenus
+      .map(item => {
+        // If it has submenu, filter the submenu items
+        if ('submenu' in item && item.submenu) {
+          const filteredSubmenu = item.submenu.filter(subItem => 
+            hasPermission(subItem.menuKey)
+          );
+          // Only include the group if it has any visible items
+          if (filteredSubmenu.length === 0) return null;
+          return { ...item, submenu: filteredSubmenu };
+        }
+        // Regular items - check permission
+        if ('menuKey' in item && !hasPermission(item.menuKey)) return null;
+        return item;
+      })
+      .filter(Boolean) as typeof allMenus;
+  }, [hasPermission, isFullAccess]);
 
   // Helper to check if active view is in a submenu
   const isInSubmenu = (submenu: { id: ViewType }[] | undefined) => {
@@ -890,6 +918,7 @@ const ClientOnboardingPage = () => {
               <ClientSalesModule 
                 projectId={projectId || ""} 
                 userRole={currentUser?.role}
+                salespersonId={salespersonId}
               />
             </motion.div>
           )}
@@ -922,6 +951,9 @@ const ClientOnboardingPage = () => {
         onOpenChange={setShowSettings}
         userName={currentUser?.name || ""}
         userEmail={currentUser?.email || ""}
+        userRole={currentUser?.role}
+        projectId={projectId}
+        companyId={companyId}
       />
 
       {/* Support Button */}
