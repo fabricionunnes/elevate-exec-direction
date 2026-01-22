@@ -848,7 +848,7 @@ export function CompanyBriefingCard({ project, index, expanded = true, onCreateI
               variant="outline"
               size="sm"
               className={onCreateInternalTask ? "flex-1" : "w-full"}
-              onClick={() => navigate(`/onboarding-tasks/${project.id}`)}
+              onClick={() => window.open(`/onboarding-tasks/${project.id}`, '_blank')}
             >
               Ver Projeto
               <ExternalLink className="h-3.5 w-3.5 ml-2" />
