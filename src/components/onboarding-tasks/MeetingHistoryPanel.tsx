@@ -50,7 +50,8 @@ import {
   MessageSquareHeart,
   ClipboardPaste,
   UserX,
-  Sparkles
+  Sparkles,
+  Lock
 } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { ScheduleMeetingDialog } from "./ScheduleMeetingDialog";
@@ -76,6 +77,7 @@ interface MeetingNote {
   created_at: string;
   is_finalized: boolean;
   is_no_show?: boolean;
+  is_internal?: boolean;
   google_event_id: string | null;
   scheduled_by: string | null;
   calendar_owner_id: string | null;
@@ -173,6 +175,7 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
   const [briefingMeeting, setBriefingMeeting] = useState<MeetingNote | null>(null);
   const [meetingSentiments, setMeetingSentiments] = useState<Record<string, string>>({});
   const [meetingBriefings, setMeetingBriefings] = useState<Record<string, boolean>>({});
+  const [savingIsInternal, setSavingIsInternal] = useState(false);
   
   useEffect(() => {
     fetchAll();
@@ -770,6 +773,30 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
     }
   };
 
+  const handleToggleInternal = async (newValue: boolean) => {
+    if (!selectedMeeting) return;
+    setSavingIsInternal(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_meeting_notes")
+        .update({ is_internal: newValue })
+        .eq("id", selectedMeeting.id);
+
+      if (error) throw error;
+
+      setSelectedMeeting((prev) => (prev ? { ...prev, is_internal: newValue } : prev));
+      setMeetings((prev) => prev.map((m) => (m.id === selectedMeeting.id ? { ...m, is_internal: newValue } : m)));
+
+      toast.success(newValue ? "Reunião marcada como interna" : "Reunião visível para o cliente");
+      await fetchMeetings();
+    } catch (e) {
+      console.error("Error updating is_internal:", e);
+      toast.error("Não foi possível atualizar a visibilidade da reunião");
+    } finally {
+      setSavingIsInternal(false);
+    }
+  };
+
   const openFinalizeDialog = (meeting: MeetingNote) => {
     setMeetingToFinalize(meeting);
     setFinalizeForm({
@@ -1197,6 +1224,12 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
                               <Badge variant="outline" className="shrink-0 text-xs border-primary/50 text-primary">
                                 <FileText className="h-3 w-3 mr-1" />
                                 Anotações
+                              </Badge>
+                            )}
+                            {meeting.is_internal && (
+                              <Badge variant="outline" className="shrink-0 text-xs border-amber-500/50 text-amber-600 dark:text-amber-400">
+                                <Lock className="h-3 w-3 mr-1" />
+                                Interna
                               </Badge>
                             )}
                           </div>
@@ -1748,6 +1781,24 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
                 />
               </div>
 
+              {/* Internal Meeting Toggle */}
+              {(isAdmin || isCS) && selectedMeeting.is_finalized && (
+                <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg border">
+                  <Checkbox
+                    id="is-internal-detail"
+                    checked={selectedMeeting.is_internal || false}
+                    onCheckedChange={(checked) => handleToggleInternal(checked === true)}
+                    disabled={savingIsInternal}
+                  />
+                  <div className="flex items-center gap-2 flex-1">
+                    <Lock className="h-4 w-4 text-amber-500" />
+                    <Label htmlFor="is-internal-detail" className="text-sm font-normal cursor-pointer">
+                      Reunião Interna (não visível para o cliente)
+                    </Label>
+                  </div>
+                  {savingIsInternal && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                </div>
+              )}
 
               {/* Actions - Generate Actions and Delete */}
               <div className="flex justify-between items-center">
