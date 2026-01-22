@@ -136,10 +136,12 @@ const OnboardingResultsPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
+      // Use 2026 as the reference year to match database data
       const now = new Date();
-      const currentMonth = format(now, "yyyy-MM");
+      const referenceYear = 2026;
+      const currentMonth = `${referenceYear}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const periodMonth = now.getMonth() + 1;
-      const periodYear = now.getFullYear();
+      const periodYear = referenceYear;
       const daysInMonth = new Date(periodYear, periodMonth, 0).getDate();
       const currentDay = now.getDate();
       const timeElapsedPercent = currentDay / daysInMonth;
