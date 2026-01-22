@@ -967,6 +967,81 @@ const OnboardingTasksPage = () => {
     };
   }, [dateRange, companies, companyKpis, kpiEntries]);
 
+  // Badge projection should match the company KPI dashboard's "Projeção do Mês",
+  // which is always based on the current month (not the MonthYearPicker range).
+  const currentMonthProjectionByCompany = useMemo(() => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const timeElapsedPercent = now.getDate() / daysInMonth;
+    const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
+    const monthEnd = `${year}-${String(month).padStart(2, "0")}-${daysInMonth}`;
+
+    const kpiIdToCompanyId = new Map<string, string>();
+    companyKpis.forEach(k => {
+      if (k?.id && k?.company_id) kpiIdToCompanyId.set(k.id, k.company_id);
+    });
+    const getEntryCompanyId = (e: { company_id: string; kpi_id: string }) => {
+      return e.company_id || kpiIdToCompanyId.get(e.kpi_id) || "";
+    };
+
+    const map = new Map<string, number | null>();
+
+    // Compute only for active companies (same exclusion as the main ranges)
+    const activeCompanies = companies.filter(c => c.status !== "inactive" && c.status !== "closed" && !c.is_simulator);
+
+    activeCompanies.forEach(company => {
+      const companyId = company.id;
+      const allCompanyKpis = companyKpis.filter(k => k.company_id === companyId);
+      const mainGoalKpis = allCompanyKpis.filter(k => k.is_main_goal === true);
+      const monetaryKpis = allCompanyKpis.filter(k => k.kpi_type === "monetary");
+      const kpisForProjection = mainGoalKpis.length > 0 ? mainGoalKpis : monetaryKpis;
+
+      if (kpisForProjection.length === 0) {
+        map.set(companyId, null);
+        return;
+      }
+
+      // Monthly target with periodicity
+      let totalMonthlyTarget = 0;
+      kpisForProjection.forEach(kpi => {
+        if (kpi.periodicity === "daily") {
+          totalMonthlyTarget += kpi.target_value * daysInMonth;
+        } else if (kpi.periodicity === "weekly") {
+          totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
+        } else {
+          totalMonthlyTarget += kpi.target_value;
+        }
+      });
+
+      if (totalMonthlyTarget <= 0) {
+        map.set(companyId, null);
+        return;
+      }
+
+      const companyEntries = kpiEntries.filter(e =>
+        getEntryCompanyId(e as any) === companyId &&
+        e.entry_date >= monthStart &&
+        e.entry_date <= monthEnd &&
+        kpisForProjection.some(k => k.id === e.kpi_id)
+      );
+
+      if (companyEntries.length === 0) {
+        map.set(companyId, 0);
+        return;
+      }
+
+      const totalRealized = companyEntries.reduce((sum, e) => sum + e.value, 0);
+      const projectionPercent = timeElapsedPercent > 0
+        ? Math.round(((totalRealized / totalMonthlyTarget) / timeElapsedPercent) * 100)
+        : 0;
+      map.set(companyId, projectionPercent);
+    });
+
+    return map;
+  }, [companies, companyKpis, kpiEntries]);
+
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
       // Hide inactive and closed companies entirely from dashboard
@@ -1928,7 +2003,7 @@ const OnboardingTasksPage = () => {
               })();
 
               // Get the realized goal percentage for this company
-              const companyGoalPercent = companiesGoalRanges.realizedPercent.get(company.id);
+              const companyGoalPercent = currentMonthProjectionByCompany.get(company.id);
 
               return (
               <div key={company.id}>
