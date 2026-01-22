@@ -13,6 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { 
   User, 
   Building2, 
@@ -37,7 +44,9 @@ import {
   Copy,
   Check,
   NotebookPen,
-  Plus
+  Plus,
+  ExternalLink,
+  PlayCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInDays } from "date-fns";
@@ -147,6 +156,18 @@ export function ConsultantOneOnOnePanel() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<"admin" | "cs" | "consultant" | "client" | "rh" | null>(null);
 
+  // State for meeting details dialog
+  const [selectedMeetingDetails, setSelectedMeetingDetails] = useState<{
+    id: string;
+    meeting_title: string;
+    meeting_date: string;
+    subject: string;
+    notes: string | null;
+    meeting_link: string | null;
+    recording_link: string | null;
+    attendees: string | null;
+  } | null>(null);
+
   // Handler to open task dialog
   const handleOpenTaskDialog = (projectId: string, companyName: string) => {
     setSelectedProjectId(projectId);
@@ -199,6 +220,19 @@ export function ConsultantOneOnOnePanel() {
     if (task) {
       setSelectedTaskForEdit(task);
       setSelectedProjectId(projectId);
+    }
+  };
+
+  // Handler to open meeting details
+  const handleOpenMeetingDetails = async (meetingId: string, projectId: string) => {
+    const { data: meeting } = await supabase
+      .from("onboarding_meeting_notes")
+      .select("id, meeting_title, meeting_date, subject, notes, meeting_link, recording_link, attendees")
+      .eq("id", meetingId)
+      .single();
+    
+    if (meeting) {
+      setSelectedMeetingDetails(meeting);
     }
   };
 
@@ -1163,6 +1197,7 @@ export function ConsultantOneOnOnePanel() {
                     expanded={true}
                     onCreateInternalTask={handleOpenTaskDialog}
                     onTaskClick={handleOpenTaskForEdit}
+                    onMeetingClick={handleOpenMeetingDetails}
                   />
                 ))}
               </div>
@@ -1209,6 +1244,84 @@ export function ConsultantOneOnOnePanel() {
         currentUserRole={currentUserRole}
         currentUserId={currentUserId}
       />
+
+      {/* Meeting Details Dialog */}
+      {selectedMeetingDetails && (
+        <Dialog open={!!selectedMeetingDetails} onOpenChange={(open) => !open && setSelectedMeetingDetails(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                Detalhes da Reunião
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Meeting Info */}
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <p className="font-medium text-lg">{selectedMeetingDetails.subject || selectedMeetingDetails.meeting_title}</p>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  {format(new Date(selectedMeetingDetails.meeting_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </div>
+                {selectedMeetingDetails.attendees && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    {selectedMeetingDetails.attendees}
+                  </div>
+                )}
+              </div>
+
+              {/* Notes */}
+              {selectedMeetingDetails.notes && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    O que foi tratado
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    <p className="text-sm whitespace-pre-wrap">{selectedMeetingDetails.notes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Links */}
+              {(selectedMeetingDetails.meeting_link || selectedMeetingDetails.recording_link) && (
+                <div className="flex gap-2">
+                  {selectedMeetingDetails.meeting_link && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => window.open(selectedMeetingDetails.meeting_link!, '_blank')}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Link da Reunião
+                    </Button>
+                  )}
+                  {selectedMeetingDetails.recording_link && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => window.open(selectedMeetingDetails.recording_link!, '_blank')}
+                    >
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                      Gravação
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSelectedMeetingDetails(null)}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
