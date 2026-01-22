@@ -13,12 +13,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Check, Loader2, ListChecks, Sparkles, Plus } from "lucide-react";
+import { Check, Loader2, ListChecks, Sparkles, Plus, Video, Calendar, User } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { addBusinessDays, ensureBusinessDay } from "@/lib/businessDays";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
 type TemplateTask = {
   id: string;
   title: string;
@@ -41,6 +45,29 @@ type AISuggestedTask = {
   reasoning: string;
 };
 
+type MeetingAction = {
+  id: string;
+  title: string;
+  description: string;
+  due_days: number;
+  priority: string;
+  selected: boolean;
+};
+
+type Meeting = {
+  id: string;
+  meeting_title: string | null;
+  subject: string | null;
+  meeting_date: string;
+  notes: string | null;
+  transcript: string | null;
+};
+
+type StaffMember = {
+  id: string;
+  name: string;
+};
+
 interface GenerateTasksDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -59,7 +86,7 @@ export const GenerateTasksDialog = ({
   const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState<TemplateTask[]>([]);
   const [replaceExisting, setReplaceExisting] = useState(false);
-  const [activeTab, setActiveTab] = useState<"template" | "ai">("ai");
+  const [activeTab, setActiveTab] = useState<"template" | "ai" | "meeting">("ai");
   
   // AI generation state
   const [aiLoading, setAiLoading] = useState(false);
@@ -67,6 +94,14 @@ export const GenerateTasksDialog = ({
   const [selectedAiTasks, setSelectedAiTasks] = useState<Set<number>>(new Set());
   const [aiContext, setAiContext] = useState<{ completedCount: number; pendingCount: number; companyName: string } | null>(null);
   const [userSuggestion, setUserSuggestion] = useState("");
+
+  // Meeting-based generation state
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string>("");
+  const [meetingActions, setMeetingActions] = useState<MeetingAction[]>([]);
+  const [meetingLoading, setMeetingLoading] = useState(false);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [selectedResponsible, setSelectedResponsible] = useState<string>("");
 
   const templatesCount = templates.length;
   const titlePreview = useMemo(() => templates.slice(0, 5).map((t) => t.title), [templates]);
@@ -78,8 +113,15 @@ export const GenerateTasksDialog = ({
       setSelectedAiTasks(new Set());
       setAiContext(null);
       setUserSuggestion("");
+      // Reset meeting state
+      setSelectedMeetingId("");
+      setMeetingActions([]);
+      setSelectedResponsible("");
       return;
     }
+
+    // Load meetings and staff when dialog opens
+    loadMeetingsAndStaff();
 
     let cancelled = false;
 
@@ -108,6 +150,51 @@ export const GenerateTasksDialog = ({
       cancelled = true;
     };
   }, [open, productId]);
+
+  // Load meetings with transcripts and staff members
+  const loadMeetingsAndStaff = async () => {
+    try {
+      // Load meetings with transcripts or notes
+      const { data: meetingsData } = await supabase
+        .from("onboarding_meeting_notes")
+        .select("id, meeting_title, subject, meeting_date, notes, transcript")
+        .eq("project_id", projectId)
+        .eq("is_finalized", true)
+        .order("meeting_date", { ascending: false })
+        .limit(20);
+
+      // Filter meetings that have content (transcript or notes)
+      const filteredMeetings = (meetingsData || []).filter(
+        (m) => (m.transcript && m.transcript.length > 50) || (m.notes && m.notes.length > 50)
+      );
+      setMeetings(filteredMeetings);
+
+      // Load staff members
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("id, name")
+        .eq("is_active", true)
+        .in("role", ["admin", "cs", "consultant"])
+        .order("name");
+
+      setStaffMembers(staffData || []);
+
+      // Try to get the project's consultant as default responsible
+      const { data: projectData } = await supabase
+        .from("onboarding_projects")
+        .select("consultant_id, cs_id")
+        .eq("id", projectId)
+        .single();
+
+      if (projectData?.consultant_id) {
+        setSelectedResponsible(projectData.consultant_id);
+      } else if (projectData?.cs_id) {
+        setSelectedResponsible(projectData.cs_id);
+      }
+    } catch (error) {
+      console.error("Error loading meetings and staff:", error);
+    }
+  };
 
   const handleClose = () => onOpenChange(false);
 
@@ -150,6 +237,91 @@ export const GenerateTasksDialog = ({
       }
       return next;
     });
+  };
+
+  // Generate tasks from meeting
+  const handleGenerateFromMeeting = async () => {
+    if (!selectedMeetingId) {
+      toast.error("Selecione uma reunião");
+      return;
+    }
+
+    setMeetingLoading(true);
+    setMeetingActions([]);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-meeting-actions", {
+        body: { meetingId: selectedMeetingId, projectId },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      if (!data?.actions || data.actions.length === 0) {
+        throw new Error("Nenhuma ação identificada na reunião");
+      }
+
+      setMeetingActions(data.actions);
+      toast.success(`${data.actions.length} ações identificadas!`);
+    } catch (err) {
+      console.error("Error generating from meeting:", err);
+      const message = err instanceof Error ? err.message : "Erro ao gerar ações";
+      toast.error(message);
+    } finally {
+      setMeetingLoading(false);
+    }
+  };
+
+  const toggleMeetingAction = (id: string) => {
+    setMeetingActions((prev) =>
+      prev.map((action) =>
+        action.id === id ? { ...action, selected: !action.selected } : action
+      )
+    );
+  };
+
+  const handleApplyMeetingTasks = async () => {
+    const selectedActions = meetingActions.filter((a) => a.selected);
+    if (selectedActions.length === 0) {
+      toast.error("Selecione pelo menos uma tarefa");
+      return;
+    }
+
+    setMeetingLoading(true);
+
+    try {
+      const today = ensureBusinessDay(new Date());
+      const tasksToInsert = selectedActions.map((action, index) => {
+        const dueDate = action.due_days > 0 ? addBusinessDays(today, action.due_days) : today;
+        
+        return {
+          project_id: projectId,
+          title: action.title,
+          description: action.description,
+          priority: action.priority || "medium",
+          status: "pending" as const,
+          due_date: dueDate.toISOString().split("T")[0],
+          tags: ["Reunião", "IA"],
+          sort_order: index,
+          responsible_staff_id: selectedResponsible || null,
+        };
+      });
+
+      const { error: insertError } = await supabase.from("onboarding_tasks").insert(tasksToInsert);
+      if (insertError) throw insertError;
+
+      toast.success(`${tasksToInsert.length} tarefas criadas com sucesso!`);
+      onTasksGenerated();
+      handleClose();
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Erro ao criar tarefas");
+    } finally {
+      setMeetingLoading(false);
+    }
   };
 
   const handleApplyAITasks = async () => {
@@ -283,19 +455,23 @@ export const GenerateTasksDialog = ({
             Gerar Tarefas
           </DialogTitle>
           <DialogDescription>
-            Escolha entre gerar tarefas com IA (recomendado) ou aplicar o template padrão do serviço.
+            Escolha entre gerar tarefas com IA, a partir de uma reunião ou aplicar o template padrão.
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "template" | "ai")} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "template" | "ai" | "meeting")} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="ai" className="gap-2">
               <Sparkles className="h-4 w-4" />
               Gerar com IA
             </TabsTrigger>
+            <TabsTrigger value="meeting" className="gap-2">
+              <Video className="h-4 w-4" />
+              A partir de Reunião
+            </TabsTrigger>
             <TabsTrigger value="template" className="gap-2">
               <ListChecks className="h-4 w-4" />
-              Template Padrão
+              Template
             </TabsTrigger>
           </TabsList>
 
@@ -455,10 +631,170 @@ export const GenerateTasksDialog = ({
               )}
             </div>
           </TabsContent>
+
+          {/* Meeting Tab */}
+          <TabsContent value="meeting" className="flex-1 overflow-hidden flex flex-col space-y-4 mt-4">
+            {meetingActions.length === 0 ? (
+              <div className="flex-1 flex flex-col p-4 border rounded-lg border-dashed space-y-4">
+                <div className="flex items-center gap-3">
+                  <Video className="h-8 w-8 text-primary/70" />
+                  <div>
+                    <h3 className="font-semibold">Gerar tarefas a partir de reunião</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Selecione uma reunião para extrair ações e criar tarefas.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Selecione a reunião</Label>
+                    <Select value={selectedMeetingId} onValueChange={setSelectedMeetingId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Escolha uma reunião..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {meetings.length === 0 ? (
+                          <div className="p-2 text-sm text-muted-foreground text-center">
+                            Nenhuma reunião com transcrição/notas encontrada
+                          </div>
+                        ) : (
+                          meetings.map((meeting) => (
+                            <SelectItem key={meeting.id} value={meeting.id}>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-3 w-3" />
+                                <span>
+                                  {format(new Date(meeting.meeting_date), "dd/MM/yyyy", { locale: ptBR })} -{" "}
+                                  {meeting.meeting_title || meeting.subject || "Reunião"}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Responsável pelas tarefas</Label>
+                    <Select value={selectedResponsible} onValueChange={setSelectedResponsible}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o responsável..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {staffMembers.map((staff) => (
+                          <SelectItem key={staff.id} value={staff.id}>
+                            <div className="flex items-center gap-2">
+                              <User className="h-3 w-3" />
+                              {staff.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Este responsável será atribuído a todas as tarefas geradas.
+                    </p>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleGenerateFromMeeting} 
+                  disabled={meetingLoading || !selectedMeetingId} 
+                  className="w-full"
+                >
+                  {meetingLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Analisando reunião...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Extrair ações da reunião
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Video className="h-4 w-4" />
+                    Ações extraídas da reunião
+                  </div>
+                  {selectedResponsible && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <User className="h-4 w-4 text-primary" />
+                      <span className="text-muted-foreground">
+                        Responsável: {staffMembers.find((s) => s.id === selectedResponsible)?.name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 overflow-hidden min-h-0">
+                  <ScrollArea className="h-[300px]">
+                    <div className="space-y-3 pr-4 pb-2">
+                      {meetingActions.map((action) => {
+                        const dueDate = action.due_days > 0 
+                          ? addBusinessDays(ensureBusinessDay(new Date()), action.due_days) 
+                          : ensureBusinessDay(new Date());
+                        
+                        return (
+                          <Card 
+                            key={action.id} 
+                            className={`cursor-pointer transition-all ${
+                              action.selected 
+                                ? "ring-2 ring-primary bg-primary/5" 
+                                : "hover:bg-muted/50"
+                            }`}
+                            onClick={() => toggleMeetingAction(action.id)}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-start gap-3">
+                                <Checkbox 
+                                  checked={action.selected} 
+                                  onCheckedChange={() => toggleMeetingAction(action.id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="mt-1"
+                                />
+                                <div className="flex-1 space-y-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium">{action.title}</span>
+                                    {getPriorityBadge(action.priority)}
+                                    <Badge variant="outline" className="text-xs">
+                                      <Calendar className="h-3 w-3 mr-1" />
+                                      {format(dueDate, "dd/MM/yyyy", { locale: ptBR })}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    {action.description}
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <Button variant="ghost" size="sm" onClick={handleGenerateFromMeeting} disabled={meetingLoading}>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Gerar novamente
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {meetingActions.filter((a) => a.selected).length} de {meetingActions.length} selecionadas
+                  </span>
+                </div>
+              </>
+            )}
+          </TabsContent>
         </Tabs>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={loading || aiLoading}>
+          <Button variant="outline" onClick={handleClose} disabled={loading || aiLoading || meetingLoading}>
             Cancelar
           </Button>
           {activeTab === "ai" ? (
@@ -472,6 +808,18 @@ export const GenerateTasksDialog = ({
                 <Plus className="h-4 w-4 mr-2" />
               )}
               Criar {selectedAiTasks.size} tarefa{selectedAiTasks.size !== 1 ? "s" : ""}
+            </Button>
+          ) : activeTab === "meeting" ? (
+            <Button 
+              onClick={handleApplyMeetingTasks} 
+              disabled={meetingLoading || meetingActions.filter((a) => a.selected).length === 0}
+            >
+              {meetingLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Criar {meetingActions.filter((a) => a.selected).length} tarefa{meetingActions.filter((a) => a.selected).length !== 1 ? "s" : ""}
             </Button>
           ) : (
             <Button onClick={handleApplyTemplate} disabled={loading || templatesCount === 0}>
