@@ -166,7 +166,11 @@ export function ConsultantOneOnOnePanel() {
     meeting_link: string | null;
     recording_link: string | null;
     attendees: string | null;
+    transcript: string | null;
+    live_notes: string | null;
+    briefing_content: string | null;
   } | null>(null);
+  const [loadingMeetingDetails, setLoadingMeetingDetails] = useState(false);
 
   // Handler to open task dialog
   const handleOpenTaskDialog = (projectId: string, companyName: string) => {
@@ -225,15 +229,38 @@ export function ConsultantOneOnOnePanel() {
 
   // Handler to open meeting details
   const handleOpenMeetingDetails = async (meetingId: string, projectId: string) => {
+    setLoadingMeetingDetails(true);
+    
+    // Fetch meeting details
     const { data: meeting } = await supabase
       .from("onboarding_meeting_notes")
-      .select("id, meeting_title, meeting_date, subject, notes, meeting_link, recording_link, attendees")
+      .select("id, meeting_title, meeting_date, subject, notes, meeting_link, recording_link, attendees, transcript, live_notes")
       .eq("id", meetingId)
       .single();
     
+    // Fetch briefing if exists
+    const { data: briefing } = await supabase
+      .from("onboarding_meeting_briefings")
+      .select("briefing_content")
+      .eq("meeting_id", meetingId)
+      .single();
+    
     if (meeting) {
-      setSelectedMeetingDetails(meeting);
+      setSelectedMeetingDetails({
+        id: meeting.id,
+        meeting_title: meeting.meeting_title,
+        meeting_date: meeting.meeting_date,
+        subject: meeting.subject,
+        notes: meeting.notes,
+        meeting_link: meeting.meeting_link,
+        recording_link: meeting.recording_link,
+        attendees: meeting.attendees,
+        transcript: meeting.transcript,
+        live_notes: meeting.live_notes,
+        briefing_content: briefing?.briefing_content || null
+      });
     }
+    setLoadingMeetingDetails(false);
   };
 
   // Load consultants - only show role='consultant'
@@ -1273,15 +1300,57 @@ export function ConsultantOneOnOnePanel() {
                   )}
                 </div>
 
-                {/* Notes */}
+                {/* Briefing / Summary - highlighted first */}
+                {selectedMeetingDetails.briefing_content && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Sparkles className="h-4 w-4 text-purple-500" />
+                      <span className="text-purple-700 dark:text-purple-300">Resumo da Reunião (IA)</span>
+                    </div>
+                    <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                      <p className="text-sm whitespace-pre-wrap text-foreground">{selectedMeetingDetails.briefing_content}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes - O que foi tratado */}
                 {selectedMeetingDetails.notes && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <FileText className="h-4 w-4 text-muted-foreground" />
                       O que foi tratado
                     </div>
-                    <div className="bg-muted/30 rounded-lg p-3">
+                    <div className="bg-muted/30 rounded-lg p-3 max-h-[200px] overflow-y-auto">
                       <p className="text-sm whitespace-pre-wrap">{selectedMeetingDetails.notes}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Live Notes */}
+                {selectedMeetingDetails.live_notes && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <NotebookPen className="h-4 w-4 text-blue-500" />
+                      Anotações ao Vivo
+                    </div>
+                    <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 max-h-[250px] overflow-y-auto">
+                      <div 
+                        className="text-sm prose prose-sm dark:prose-invert max-w-none"
+                        dangerouslySetInnerHTML={{ __html: selectedMeetingDetails.live_notes }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Transcript */}
+                {selectedMeetingDetails.transcript && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <MessageSquare className="h-4 w-4 text-cyan-500" />
+                      Transcrição
+                    </div>
+                    <div className="bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800 rounded-lg p-3 max-h-[300px] overflow-y-auto">
+                      <p className="text-sm whitespace-pre-wrap">{selectedMeetingDetails.transcript}</p>
                     </div>
                   </div>
                 )}
