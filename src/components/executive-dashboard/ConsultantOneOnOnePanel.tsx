@@ -49,6 +49,7 @@ import { toast } from "sonner";
 import { LeadershipMeetingNotesDialog } from "./LeadershipMeetingNotesDialog";
 import { NewCompanyCard } from "./NewCompanyCard";
 import { AddTaskDialog } from "@/components/onboarding-tasks/AddTaskDialog";
+import { TaskDetailsDialog } from "@/components/onboarding-tasks/TaskDetailsDialog";
 
 interface Consultant {
   id: string;
@@ -140,6 +141,11 @@ export function ConsultantOneOnOnePanel() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [selectedCompanyName, setSelectedCompanyName] = useState<string>("");
   const [staffList, setStaffList] = useState<Array<{ id: string; name: string; role: string }>>([]);
+  
+  // State for task edit dialog
+  const [selectedTaskForEdit, setSelectedTaskForEdit] = useState<any>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<"admin" | "cs" | "consultant" | "client" | "rh" | null>(null);
 
   // Handler to open task dialog
   const handleOpenTaskDialog = (projectId: string, companyName: string) => {
@@ -148,20 +154,53 @@ export function ConsultantOneOnOnePanel() {
     setShowAddTaskDialog(true);
   };
 
-  // Fetch staff list when dialog opens
+  // Fetch staff list and current user info
   useEffect(() => {
-    if (showAddTaskDialog && staffList.length === 0) {
-      const fetchStaff = async () => {
-        const { data } = await supabase
+    const fetchInitialData = async () => {
+      // Fetch staff list
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("id, name, role")
+        .eq("is_active", true)
+        .order("name");
+      if (staffData) setStaffList(staffData);
+
+      // Get current user info
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: staffMember } = await supabase
           .from("onboarding_staff")
-          .select("id, name, role")
-          .eq("is_active", true)
-          .order("name");
-        if (data) setStaffList(data);
-      };
-      fetchStaff();
+          .select("id, role")
+          .eq("user_id", user.id)
+          .single();
+        if (staffMember) {
+          setCurrentUserId(staffMember.id);
+          setCurrentUserRole(staffMember.role as any);
+        }
+      }
+    };
+    fetchInitialData();
+  }, []);
+
+  // Handler to open task for editing
+  const handleOpenTaskForEdit = async (taskId: string, projectId: string) => {
+    // Fetch the full task data
+    const { data: task } = await supabase
+      .from("onboarding_tasks")
+      .select(`
+        id, title, description, due_date, completed_at, status, 
+        assignee_id, observations, sort_order, project_id, template_id,
+        is_internal, meeting_link, recurrence,
+        responsible_staff:responsible_staff_id(id, name)
+      `)
+      .eq("id", taskId)
+      .single();
+    
+    if (task) {
+      setSelectedTaskForEdit(task);
+      setSelectedProjectId(projectId);
     }
-  }, [showAddTaskDialog, staffList.length]);
+  };
 
   // Load consultants - only show role='consultant'
   useEffect(() => {
@@ -1123,6 +1162,7 @@ export function ConsultantOneOnOnePanel() {
                     index={index}
                     expanded={true}
                     onCreateInternalTask={handleOpenTaskDialog}
+                    onTaskClick={handleOpenTaskForEdit}
                   />
                 ))}
               </div>
@@ -1140,8 +1180,34 @@ export function ConsultantOneOnOnePanel() {
         onTaskAdded={() => {
           setShowAddTaskDialog(false);
           toast.success(`Tarefa interna criada para ${selectedCompanyName}!`);
+          // Refresh data
+          if (selectedConsultant) {
+            setLoadingProjects(true);
+            setTimeout(() => setLoadingProjects(false), 100);
+          }
         }}
         forceInternal={true}
+      />
+
+      {/* Task Edit Dialog */}
+      <TaskDetailsDialog
+        task={selectedTaskForEdit}
+        users={[]}
+        staffList={staffList}
+        onClose={() => setSelectedTaskForEdit(null)}
+        onTaskUpdated={() => {
+          setSelectedTaskForEdit(null);
+          toast.success("Tarefa atualizada!");
+          // Trigger data refresh
+          if (selectedConsultant) {
+            setLoadingProjects(true);
+            setTimeout(() => setLoadingProjects(false), 100);
+          }
+        }}
+        isAdmin={currentUserRole === "admin"}
+        projectId={selectedProjectId}
+        currentUserRole={currentUserRole}
+        currentUserId={currentUserId}
       />
     </div>
   );

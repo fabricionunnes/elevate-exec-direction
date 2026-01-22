@@ -89,9 +89,10 @@ interface CompanyBriefingCardProps {
   index: number;
   expanded?: boolean;
   onCreateInternalTask?: (projectId: string, companyName: string) => void;
+  onTaskClick?: (taskId: string, projectId: string) => void;
 }
 
-export function CompanyBriefingCard({ project, index, expanded = true, onCreateInternalTask }: CompanyBriefingCardProps) {
+export function CompanyBriefingCard({ project, index, expanded = true, onCreateInternalTask, onTaskClick }: CompanyBriefingCardProps) {
   const navigate = useNavigate();
 
   const getHealthColor = (score: number) => {
@@ -752,7 +753,8 @@ export function CompanyBriefingCard({ project, index, expanded = true, onCreateI
                             initial={{ opacity: 0, x: -5 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: 0.05 * i }}
-                            className="flex items-center gap-2 p-2 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800"
+                            className={`flex items-center gap-2 p-2 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 ${onTaskClick ? 'cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-950/50 transition-colors' : ''}`}
+                            onClick={() => onTaskClick?.(task.id, project.id)}
                           >
                             <Clock className="h-3 w-3 text-orange-600 dark:text-orange-400 shrink-0" />
                             <div className="flex-1 min-w-0">
@@ -788,7 +790,8 @@ export function CompanyBriefingCard({ project, index, expanded = true, onCreateI
                             initial={{ opacity: 0, x: -5 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: 0.05 * i }}
-                            className="flex items-center gap-2 p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800"
+                            className={`flex items-center gap-2 p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 ${onTaskClick ? 'cursor-pointer hover:bg-green-100 dark:hover:bg-green-950/50 transition-colors' : ''}`}
+                            onClick={() => onTaskClick?.(task.id, project.id)}
                           >
                             <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />
                             <div className="flex-1 min-w-0">
