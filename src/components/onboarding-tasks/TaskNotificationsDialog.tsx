@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertTriangle, Calendar, Building2, ExternalLink } from "lucide-react";
-import { format, isToday, isBefore, startOfDay } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { isToday, isBefore, startOfDay, format } from "date-fns";
+import { parseDateLocal, formatDateLocal } from "@/lib/dateUtils";
 
 interface TaskNotification {
   id: string;
@@ -82,7 +82,8 @@ export const TaskNotificationsDialog = () => {
       }
 
       const notifications: TaskNotification[] = tasksData.map((task: any) => {
-        const dueDate = new Date(task.due_date + "T00:00:00");
+        // Use parseDateLocal to avoid timezone issues with date-only strings
+        const dueDate = parseDateLocal(task.due_date);
         const todayStart = startOfDay(new Date());
         
         return {
@@ -185,7 +186,7 @@ export const TaskNotificationsDialog = () => {
                       <Calendar className="h-3 w-3 text-muted-foreground" />
                       <span className={`text-xs ${task.is_overdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                         {task.is_overdue 
-                          ? `Atrasada desde ${format(new Date(task.due_date + "T00:00:00"), "dd/MM", { locale: ptBR })}`
+                          ? `Atrasada desde ${formatDateLocal(task.due_date, "dd/MM")}`
                           : "Para hoje"
                         }
                       </span>

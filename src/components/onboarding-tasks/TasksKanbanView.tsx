@@ -13,8 +13,9 @@ import {
   User,
   GripVertical,
 } from "lucide-react";
-import { format, parseISO, isBefore, startOfDay, isToday } from "date-fns";
+import { isToday } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
+import { parseDateLocal, formatDateLocal } from "@/lib/dateUtils";
 
 interface OnboardingTask {
   id: string;
@@ -71,14 +72,20 @@ const COLUMNS = [
 
 const isTaskOverdue = (task: OnboardingTask): boolean => {
   if (task.status === "completed" || !task.due_date) return false;
-  const today = startOfDay(new Date());
-  const dueDate = parseISO(task.due_date);
-  return isBefore(startOfDay(dueDate), today) && !isToday(dueDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dueDate = parseDateLocal(task.due_date);
+  dueDate.setHours(0, 0, 0, 0);
+  return dueDate < today;
 };
 
 const isTaskDueToday = (task: OnboardingTask): boolean => {
   if (!task.due_date) return false;
-  return isToday(parseISO(task.due_date));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dueDate = parseDateLocal(task.due_date);
+  dueDate.setHours(0, 0, 0, 0);
+  return dueDate.getTime() === today.getTime();
 };
 
 export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange }: TasksKanbanViewProps) => {
@@ -193,7 +200,7 @@ export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange }: TasksKan
                   ${overdue ? "text-red-600" : dueToday ? "text-amber-600" : ""}
                 `}>
                   <Calendar className="h-3 w-3" />
-                  {format(parseISO(task.due_date), "dd/MM")}
+                  {formatDateLocal(task.due_date, "dd/MM")}
                 </span>
               )}
               

@@ -28,6 +28,7 @@ import {
   isPast
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { parseDateLocal, toDateString } from "@/lib/dateUtils";
 
 interface OnboardingTask {
   id: string;
@@ -66,7 +67,9 @@ export const ClientCalendarView = ({ tasks, onTaskClick }: ClientCalendarViewPro
     const map: Record<string, OnboardingTask[]> = {};
     tasks.forEach(task => {
       if (task.due_date) {
-        const dateKey = format(new Date(task.due_date), "yyyy-MM-dd");
+        // Use parseDateLocal to avoid timezone issues with date-only strings
+        const taskDate = parseDateLocal(task.due_date);
+        const dateKey = toDateString(taskDate);
         if (!map[dateKey]) map[dateKey] = [];
         map[dateKey].push(task);
       }

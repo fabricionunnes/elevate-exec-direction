@@ -15,8 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateTimeLocal } from "@/lib/dateUtils";
 import { AlertTriangle, Video, Calendar, Clock, Loader2, PlayCircle, Building2 } from "lucide-react";
 
 interface PendingMeeting {
@@ -179,11 +178,11 @@ export const PendingMeetingsAlert = () => {
                     <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {format(new Date(meeting.meeting_date), "dd/MM/yyyy", { locale: ptBR })}
+                        {formatDateTimeLocal(meeting.meeting_date, "dd/MM/yyyy")}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {format(new Date(meeting.meeting_date), "HH:mm", { locale: ptBR })}
+                        {formatDateTimeLocal(meeting.meeting_date, "HH:mm")}
                       </span>
                       {meeting.project && (
                         <span className="flex items-center gap-1">
@@ -225,7 +224,7 @@ export const PendingMeetingsAlert = () => {
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    {format(new Date(selectedMeeting.meeting_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    {formatDateTimeLocal(selectedMeeting.meeting_date, "dd/MM/yyyy 'às' HH:mm")}
                   </span>
                   {selectedMeeting.project && (
                     <span className="flex items-center gap-1">

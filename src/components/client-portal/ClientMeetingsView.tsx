@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateTimeLocal } from "@/lib/dateUtils";
 import { Video, Calendar, ExternalLink, FileText, Users } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -122,7 +121,7 @@ export function ClientMeetingsView({ projectId }: ClientMeetingsViewProps) {
                     <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                       <Calendar className="h-3.5 w-3.5" />
                       <span>
-                        {format(new Date(meeting.meeting_date), "dd 'de' MMM, yyyy 'às' HH:mm", { locale: ptBR })}
+                        {formatDateTimeLocal(meeting.meeting_date, "dd 'de' MMM, yyyy 'às' HH:mm")}
                       </span>
                     </div>
                     {meeting.subject && (
@@ -164,7 +163,7 @@ export function ClientMeetingsView({ projectId }: ClientMeetingsViewProps) {
               <div className="space-y-4 pr-4">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
-                  {format(new Date(selectedMeeting.meeting_date), "EEEE, dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                  {formatDateTimeLocal(selectedMeeting.meeting_date, "EEEE, dd 'de' MMMM 'de' yyyy 'às' HH:mm")}
                 </div>
 
                 {selectedMeeting.attendees && (
