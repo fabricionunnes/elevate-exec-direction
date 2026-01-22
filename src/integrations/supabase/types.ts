@@ -9379,6 +9379,7 @@ export type Database = {
           google_event_id: string | null
           id: string
           is_finalized: boolean
+          is_internal: boolean | null
           is_no_show: boolean | null
           live_notes: string | null
           meeting_date: string
@@ -9401,6 +9402,7 @@ export type Database = {
           google_event_id?: string | null
           id?: string
           is_finalized?: boolean
+          is_internal?: boolean | null
           is_no_show?: boolean | null
           live_notes?: string | null
           meeting_date: string
@@ -9423,6 +9425,7 @@ export type Database = {
           google_event_id?: string | null
           id?: string
           is_finalized?: boolean
+          is_internal?: boolean | null
           is_no_show?: boolean | null
           live_notes?: string | null
           meeting_date?: string

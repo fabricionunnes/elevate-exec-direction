@@ -16,7 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { formatDateTimeLocal } from "@/lib/dateUtils";
-import { AlertTriangle, Video, Calendar, Clock, Loader2, PlayCircle, Building2 } from "lucide-react";
+import { AlertTriangle, Video, Calendar, Clock, Loader2, PlayCircle, Building2, Lock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface PendingMeeting {
   id: string;
@@ -43,6 +44,7 @@ export const PendingMeetingsAlert = () => {
     notes: "",
     attendees: "",
     recordingLink: "",
+    isInternal: false,
   });
 
   useEffect(() => {
@@ -122,6 +124,7 @@ export const PendingMeetingsAlert = () => {
           attendees: formData.attendees.trim() || null,
           recording_link: formData.recordingLink.trim() || null,
           is_finalized: true,
+          is_internal: formData.isInternal,
         })
         .eq("id", selectedMeeting.id);
 
@@ -129,7 +132,7 @@ export const PendingMeetingsAlert = () => {
 
       toast.success("Reunião finalizada com sucesso!");
       setSelectedMeeting(null);
-      setFormData({ notes: "", attendees: "", recordingLink: "" });
+      setFormData({ notes: "", attendees: "", recordingLink: "", isInternal: false });
       fetchPendingMeetings();
     } catch (error) {
       console.error("Error finalizing meeting:", error);
@@ -145,6 +148,7 @@ export const PendingMeetingsAlert = () => {
       notes: meeting.notes || "",
       attendees: "",
       recordingLink: "",
+      isInternal: false,
     });
   };
 
@@ -267,6 +271,21 @@ export const PendingMeetingsAlert = () => {
                   value={formData.recordingLink}
                   onChange={(e) => setFormData({ ...formData, recordingLink: e.target.value })}
                 />
+              </div>
+
+              {/* Internal Meeting Checkbox */}
+              <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg">
+                <Checkbox
+                  id="is-internal-finalize"
+                  checked={formData.isInternal}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isInternal: checked === true })}
+                />
+                <div className="flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-amber-500" />
+                  <Label htmlFor="is-internal-finalize" className="text-sm font-normal cursor-pointer">
+                    Reunião Interna (não visível para o cliente)
+                  </Label>
+                </div>
               </div>
             </div>
           )}
