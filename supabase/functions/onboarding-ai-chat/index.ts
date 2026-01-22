@@ -694,14 +694,14 @@ Total de Tarefas: ${tasks?.length || 0}
 ### Progresso por Fase:
 ${phasesSummary}
 
-### Tarefas Concluídas (últimas 15):
-${completedTasks.slice(0, 15).map(t => `- ✅ ${t.title}${t.completed_at ? ` (concluída em ${new Date(t.completed_at).toLocaleDateString('pt-BR')})` : ''}${t.responsible_staff?.name ? ` por ${t.responsible_staff.name}` : ''}`).join("\n") || "Nenhuma"}
+### Tarefas Concluídas (últimas 20 com descrições):
+${completedTasks.slice(0, 20).map(t => `- ✅ ${t.title}${t.completed_at ? ` (concluída em ${new Date(t.completed_at).toLocaleDateString('pt-BR')})` : ''}${t.responsible_staff?.name ? ` por ${t.responsible_staff.name}` : ''}${t.description ? `\n  📝 Descrição: ${t.description}` : ''}`).join("\n") || "Nenhuma"}
 
-### Tarefas em Andamento:
-${inProgressTasks.map(t => `- 🔄 ${t.title}${t.responsible_staff?.name ? ` (responsável: ${t.responsible_staff.name})` : ''}${t.due_date ? ` [prazo: ${new Date(t.due_date).toLocaleDateString('pt-BR')}]` : ''}${t.description ? `\n  Descrição: ${t.description.substring(0, 150)}...` : ''}`).join("\n") || "Nenhuma"}
+### Tarefas em Andamento (com descrições):
+${inProgressTasks.map(t => `- 🔄 ${t.title}${t.responsible_staff?.name ? ` (responsável: ${t.responsible_staff.name})` : ''}${t.due_date ? ` [prazo: ${new Date(t.due_date).toLocaleDateString('pt-BR')}]` : ''}${t.description ? `\n  📝 Descrição: ${t.description}` : ''}`).join("\n") || "Nenhuma"}
 
-### Tarefas Pendentes (próximas 15):
-${pendingTasks.slice(0, 15).map(t => `- ⏳ ${t.title}${t.due_date ? ` (prazo: ${new Date(t.due_date).toLocaleDateString('pt-BR')})` : ''}${t.priority ? ` [${t.priority}]` : ''}`).join("\n") || "Nenhuma"}
+### Tarefas Pendentes (próximas 15 com descrições):
+${pendingTasks.slice(0, 15).map(t => `- ⏳ ${t.title}${t.due_date ? ` (prazo: ${new Date(t.due_date).toLocaleDateString('pt-BR')})` : ''}${t.priority ? ` [${t.priority}]` : ''}${t.description ? `\n  📝 Descrição: ${t.description}` : ''}`).join("\n") || "Nenhuma"}
 
 ### Tarefas Atrasadas:
 ${tasks?.filter(t => t.status !== "completed" && t.due_date && new Date(t.due_date) < new Date()).map(t => `- ⚠️ ${t.title} (venceu em ${new Date(t.due_date!).toLocaleDateString('pt-BR')})`).join("\n") || "Nenhuma tarefa atrasada"}
