@@ -81,15 +81,20 @@ export default function KPIEntryPage() {
 
   useEffect(() => {
     if (codeFromUrl) {
-      handleAuthenticate();
+      handleAuthenticateWithCode(codeFromUrl);
     }
-  }, [codeFromUrl]);
+  }, [codeFromUrl, companyId]);
 
   const handleAuthenticate = async () => {
     if (!accessCode.trim()) {
       toast.error("Digite seu código de acesso");
       return;
     }
+    await handleAuthenticateWithCode(accessCode.trim());
+  };
+
+  const handleAuthenticateWithCode = async (code: string) => {
+    if (!code) return;
 
     setLoading(true);
     try {
@@ -97,7 +102,7 @@ export default function KPIEntryPage() {
       const { data: salespersonData, error: spError } = await supabase
         .from("company_salespeople")
         .select("*")
-        .eq("access_code", accessCode.trim())
+        .eq("access_code", code)
         .eq("company_id", companyId)
         .eq("is_active", true)
         .single();
