@@ -22,12 +22,14 @@ import {
   Flag,
   Zap,
   BarChart3,
-  Plus
+  Plus,
+  DollarSign
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { parseDateLocal } from "@/lib/dateUtils";
 
 interface KPIData {
   name: string;
@@ -72,6 +74,7 @@ interface CompanyBriefingCardProps {
     total_tasks_this_month?: number;
     kpis?: KPIData[];
     meetingHistory?: MeetingsByMonth[];
+    lastSalesEntryDate?: string;
   };
   index: number;
   expanded?: boolean;
@@ -427,7 +430,7 @@ export function CompanyBriefingCard({ project, index, expanded = true, onCreateI
           </div>
 
           {/* Key Metrics Grid */}
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {/* Goal Projection */}
             <div className="p-3 rounded-lg bg-muted border">
               <div className="flex items-center gap-1.5 mb-1">
@@ -486,6 +489,21 @@ export function CompanyBriefingCard({ project, index, expanded = true, onCreateI
                     {npsBadge.label}
                   </span>
                 </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">N/A</span>
+              )}
+            </div>
+
+            {/* Last Sales Entry */}
+            <div className="p-3 rounded-lg bg-muted border">
+              <div className="flex items-center gap-1.5 mb-1">
+                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Últ. Venda</span>
+              </div>
+              {project.lastSalesEntryDate ? (
+                <p className="text-sm font-bold text-foreground">
+                  {format(parseDateLocal(project.lastSalesEntryDate), "dd/MM", { locale: ptBR })}
+                </p>
               ) : (
                 <span className="text-sm text-muted-foreground">N/A</span>
               )}
@@ -691,7 +709,7 @@ export function CompanyBriefingCard({ project, index, expanded = true, onCreateI
                                   {meeting.title || "Reunião sem título"}
                                 </p>
                                 <p className="text-[10px] text-muted-foreground">
-                                  {format(new Date(meeting.date), "dd/MM/yyyy", { locale: ptBR })}
+                                  {format(parseDateLocal(meeting.date), "dd/MM/yyyy", { locale: ptBR })}
                                 </p>
                               </div>
                             </motion.div>

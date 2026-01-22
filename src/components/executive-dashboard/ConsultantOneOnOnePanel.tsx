@@ -105,6 +105,7 @@ interface ProjectBriefing {
   company_id?: string;
   kpis?: KPIData[];
   meetingHistory?: MeetingsByMonth[];
+  lastSalesEntryDate?: string;
 }
 
 interface AgendaSection {
@@ -243,7 +244,8 @@ export function ConsultantOneOnOnePanel() {
           latestNpsResult,
           kpisResult,
           meetingsCountResult,
-          engagementResult
+          engagementResult,
+          lastSalesEntriesResult
         ] = await Promise.all([
           // Overdue tasks for all projects at once
           supabase
@@ -253,12 +255,13 @@ export function ConsultantOneOnOnePanel() {
             .lt("due_date", today)
             .neq("status", "completed"),
           
-          // All meetings for all projects (for history display)
+          // All meetings for all projects (last 30 days only)
           supabase
             .from("onboarding_meeting_notes")
             .select("id, project_id, meeting_date, meeting_title")
             .in("project_id", projectIds)
             .eq("is_finalized", true)
+            .gte("meeting_date", format(new Date(Date.now() - 30 * 86400000), "yyyy-MM-dd"))
             .order("meeting_date", { ascending: false }),
           
           // Latest NPS for all projects at once
@@ -293,7 +296,15 @@ export function ConsultantOneOnOnePanel() {
             .eq("staff_id", selectedConsultant)
             .order("calculation_date", { ascending: false })
             .limit(1)
-            .single()
+            .single(),
+
+          // Last sales entry (kpi_entries) for all KPIs of these companies
+          companyIds.length > 0 ? supabase
+            .from("kpi_entries")
+            .select("kpi_id, entry_date, company_kpis!inner(company_id)")
+            .in("company_kpis.company_id", companyIds)
+            .order("entry_date", { ascending: false })
+            .limit(1000) : Promise.resolve({ data: [] })
         ]);
 
         // Build lookup maps from batch results
@@ -333,6 +344,15 @@ export function ConsultantOneOnOnePanel() {
             kpisByCompany.set(k.company_id, []);
           }
           kpisByCompany.get(k.company_id)!.push(k);
+        });
+
+        // Build map for last sales entry date by company
+        const lastSalesEntryByCompany = new Map<string, string>();
+        ((lastSalesEntriesResult.data as any[]) || []).forEach((e: any) => {
+          const companyId = e.company_kpis?.company_id;
+          if (companyId && !lastSalesEntryByCompany.has(companyId)) {
+            lastSalesEntryByCompany.set(companyId, e.entry_date);
+          }
         });
 
         // Fetch KPI entries and targets in batch if there are KPIs
@@ -456,28 +476,18 @@ export function ConsultantOneOnOnePanel() {
 
           const finalGoalProjection = overallTarget > 0 ? (overallRealized / overallTarget) * 100 : 0;
 
-          // Group meetings by month for this project
+          // Filter meetings to last 30 days and group - already filtered in query
           const projectMeetings = meetingsByProject.get(project.id) || [];
-          const meetingHistoryMap = new Map<string, MeetingHistoryItem[]>();
           
-          projectMeetings.forEach(meeting => {
-            const meetingDate = new Date(meeting.date);
-            const monthKey = format(meetingDate, "yyyy-MM");
-            if (!meetingHistoryMap.has(monthKey)) {
-              meetingHistoryMap.set(monthKey, []);
-            }
-            meetingHistoryMap.get(monthKey)!.push(meeting);
-          });
+          // Since we only have 30 days, just show as a flat list with month labels
+          const meetingHistory: MeetingsByMonth[] = projectMeetings.length > 0 ? [{
+            month: "last30days",
+            monthLabel: "Últimos 30 dias",
+            meetings: projectMeetings.slice(0, 10) // Max 10 meetings
+          }] : [];
 
-          // Convert to sorted array (most recent month first)
-          const meetingHistory: MeetingsByMonth[] = Array.from(meetingHistoryMap.entries())
-            .sort((a, b) => b[0].localeCompare(a[0]))
-            .slice(0, 3) // Show last 3 months
-            .map(([month, meetings]) => ({
-              month,
-              monthLabel: format(new Date(month + "-01"), "MMMM yyyy", { locale: ptBR }),
-              meetings: meetings.slice(0, 5) // Max 5 meetings per month
-            }));
+          // Get last sales entry date for this company
+          const lastSalesEntryDate = companyId ? lastSalesEntryByCompany.get(companyId) : undefined;
 
           briefings.push({
             id: project.id,
@@ -493,7 +503,8 @@ export function ConsultantOneOnOnePanel() {
             last_nps_feedback: npsData?.feedback,
             company_id: companyId,
             kpis: kpisData,
-            meetingHistory
+            meetingHistory,
+            lastSalesEntryDate
           });
 
           // Categorize for agenda
