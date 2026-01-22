@@ -15,7 +15,8 @@ import {
   AlertCircle,
   User,
 } from "lucide-react";
-import { format, isPast, isToday } from "date-fns";
+import { isPast, isToday } from "date-fns";
+import { formatDateLocal, parseDateLocal } from "@/lib/dateUtils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,9 +74,12 @@ const PHASE_COLORS = [
 
 const getTaskDueStatus = (dueDate: string | null, status: string) => {
   if (status === "completed" || !dueDate) return null;
-  const date = new Date(dueDate);
-  if (isPast(date) && !isToday(date)) return "overdue";
-  if (isToday(date)) return "today";
+  const date = parseDateLocal(dueDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  if (date < today) return "overdue";
+  if (date.getTime() === today.getTime()) return "today";
   return null;
 };
 
@@ -308,7 +312,7 @@ export const TasksListView = ({
                                 `}>
                                   <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                                   <span>
-                                    {format(new Date(task.due_date), "dd/MM")}
+                                    {formatDateLocal(task.due_date, "dd/MM")}
                                   </span>
                                 </div>
                               )}

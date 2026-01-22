@@ -8,9 +8,10 @@ import {
   Calendar,
   User,
 } from "lucide-react";
-import { format, isToday, isPast, isFuture, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
+import { parseDateLocal, formatDateLocal, formatDateTimeLocal } from "@/lib/dateUtils";
 
 interface OnboardingTask {
   id: string;
@@ -39,7 +40,8 @@ export const ClientTimelineView = ({ tasks, onTaskClick }: ClientTimelineViewPro
   const getTasksForDay = (day: Date) => {
     return tasks.filter(task => {
       if (!task.due_date) return false;
-      return isSameDay(new Date(task.due_date), day);
+      // Use parseDateLocal to avoid timezone issues
+      return isSameDay(parseDateLocal(task.due_date), day);
     });
   };
 
@@ -61,7 +63,7 @@ export const ClientTimelineView = ({ tasks, onTaskClick }: ClientTimelineViewPro
   // Group tasks by status for timeline view
   const upcomingTasks = tasks
     .filter(t => t.status !== "completed" && t.due_date)
-    .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+    .sort((a, b) => parseDateLocal(a.due_date!).getTime() - parseDateLocal(b.due_date!).getTime());
 
   const completedTasks = tasks
     .filter(t => t.status === "completed")
@@ -142,8 +144,12 @@ export const ClientTimelineView = ({ tasks, onTaskClick }: ClientTimelineViewPro
           <div className="space-y-2">
             {upcomingTasks.slice(0, 5).map((task, index) => {
               const responsibleName = getResponsibleName(task);
-              const isOverdue = task.due_date && isPast(new Date(task.due_date)) && !isToday(new Date(task.due_date));
-              const isDueToday = task.due_date && isToday(new Date(task.due_date));
+              const taskDueDate = task.due_date ? parseDateLocal(task.due_date) : null;
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              taskDueDate?.setHours(0, 0, 0, 0);
+              const isOverdue = taskDueDate && taskDueDate < today;
+              const isDueToday = taskDueDate && taskDueDate.getTime() === today.getTime();
               
               return (
                 <motion.div
@@ -184,7 +190,7 @@ export const ClientTimelineView = ({ tasks, onTaskClick }: ClientTimelineViewPro
                         {task.due_date && (
                           <div className={`flex items-center gap-1 text-xs ${isOverdue ? "text-red-600" : "text-muted-foreground"}`}>
                             <Calendar className="h-3 w-3" />
-                            {format(new Date(task.due_date), "dd/MM", { locale: ptBR })}
+                            {formatDateLocal(task.due_date, "dd/MM")}
                           </div>
                         )}
                         {responsibleName && (
@@ -238,7 +244,7 @@ export const ClientTimelineView = ({ tasks, onTaskClick }: ClientTimelineViewPro
                         {task.completed_at && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <CheckCircle2 className="h-3 w-3" />
-                            Concluída em {format(new Date(task.completed_at), "dd/MM", { locale: ptBR })}
+                            Concluída em {formatDateTimeLocal(task.completed_at, "dd/MM")}
                           </div>
                         )}
                         {responsibleName && (
