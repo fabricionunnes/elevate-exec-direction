@@ -20,6 +20,7 @@ export const OnboardingStaffLayout = () => {
   const [staffId, setStaffId] = useState<string | null>(null);
   const [staffRole, setStaffRole] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [clientRedirecting, setClientRedirecting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -63,6 +64,35 @@ export const OnboardingStaffLayout = () => {
           console.warn("Error checking staff status:", staffError);
         }
 
+        // If user is NOT staff, try to redirect them to the client portal (first active project).
+        if (!staff && !location.pathname.includes("/login")) {
+          setClientRedirecting(true);
+          const { data: clientMemberships, error: clientMembershipError } = await supabase
+            .from("onboarding_users")
+            .select(
+              "project_id, role, project:onboarding_projects(status)"
+            )
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false });
+
+          if (!isMounted) return;
+
+          if (clientMembershipError) {
+            console.warn("Error checking client membership:", clientMembershipError);
+          }
+
+          const firstActiveProject = (clientMemberships || []).find((m: any) => {
+            const status = m?.project?.status;
+            return status !== "closed" && status !== "completed";
+          });
+
+          if (firstActiveProject?.project_id) {
+            navigate(`/onboarding-client/${firstActiveProject.project_id}`);
+            return;
+          }
+        }
+
+        setClientRedirecting(false);
         setIsStaff(!!staff);
         setStaffId(staff?.id || null);
         setStaffRole(staff?.role || null);
@@ -79,6 +109,7 @@ export const OnboardingStaffLayout = () => {
           setIsStaff(false);
           setStaffId(null);
           setStaffRole(null);
+          setClientRedirecting(false);
           setAuthChecked(true);
         }
       }
@@ -96,8 +127,8 @@ export const OnboardingStaffLayout = () => {
     return <Outlet />;
   }
 
-  // Enquanto verifica auth, mostra loading spinner
-  if (!authChecked || isStaff === null) {
+  // Enquanto verifica auth (ou redireciona cliente), mostra loading spinner
+  if (!authChecked || isStaff === null || clientRedirecting) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
