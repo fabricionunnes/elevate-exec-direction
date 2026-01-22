@@ -63,7 +63,7 @@ export default function KPIEntryPage() {
   const [searchParams] = useSearchParams();
   const codeFromUrl = searchParams.get("code");
 
-  const [step, setStep] = useState<"auth" | "entry" | "success">("auth");
+  const [step, setStep] = useState<"auth" | "entry" | "success">(codeFromUrl ? "auth" : "auth");
   const [accessCode, setAccessCode] = useState(codeFromUrl || "");
   const [salesperson, setSalesperson] = useState<Salesperson | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
@@ -76,14 +76,16 @@ export default function KPIEntryPage() {
   const [entryDate, setEntryDate] = useState(toDateString(new Date()));
   const [values, setValues] = useState<Record<string, number>>({});
   const [observations, setObservations] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!!codeFromUrl); // Start loading if code is in URL
   const [existingEntries, setExistingEntries] = useState<Record<string, number>>({});
+  const [autoAuthAttempted, setAutoAuthAttempted] = useState(false);
 
   useEffect(() => {
-    if (codeFromUrl) {
+    if (codeFromUrl && companyId && !autoAuthAttempted) {
+      setAutoAuthAttempted(true);
       handleAuthenticateWithCode(codeFromUrl);
     }
-  }, [codeFromUrl, companyId]);
+  }, [codeFromUrl, companyId, autoAuthAttempted]);
 
   const handleAuthenticate = async () => {
     if (!accessCode.trim()) {
@@ -357,6 +359,20 @@ export default function KPIEntryPage() {
   };
 
   if (step === "auth") {
+    // If we have a code from URL and are still loading, show loading state
+    if (codeFromUrl && loading) {
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardContent className="py-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Autenticando...</p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
