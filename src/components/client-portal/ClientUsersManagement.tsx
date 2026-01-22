@@ -316,9 +316,9 @@ export const ClientUsersManagement = ({
     sp => !users.some(u => u.salesperson_id === sp.id)
   );
 
-  // Roles that require permission configuration
+  // Roles that require permission configuration (gerente included)
   const needsPermissions = (role: string) => 
-    ["vendedor", "rh_client", "estoque", "financeiro"].includes(role);
+    ["gerente", "vendedor", "rh_client", "estoque", "financeiro"].includes(role);
 
   // Filter users: only show client-side roles (not staff)
   const clientUsers = users.filter(u => isClientRole(u.role));
