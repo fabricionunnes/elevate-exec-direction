@@ -15,7 +15,7 @@ const ShowcaseHeader = () => {
             <p className="text-xs text-muted-foreground">Portal do Cliente</p>
           </div>
         </div>
-        <Link to="/portal/login">
+        <Link to="/onboarding-tasks/login">
           <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
             <LogIn className="w-4 h-4 mr-2" />
             Acessar Portal

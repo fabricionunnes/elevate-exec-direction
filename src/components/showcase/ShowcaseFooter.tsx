@@ -14,7 +14,7 @@ const ShowcaseFooter = () => {
             <span className="text-xl font-bold text-foreground">UNV Nexus</span>
           </div>
           
-          <Link to="/portal/login">
+          <Link to="/onboarding-tasks/login">
             <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
               <LogIn className="w-4 h-4 mr-2" />
               Acessar Portal
