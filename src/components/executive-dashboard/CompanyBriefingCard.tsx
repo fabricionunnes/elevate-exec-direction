@@ -37,6 +37,18 @@ interface KPIData {
   kpiType: string;
 }
 
+export interface MeetingHistoryItem {
+  id: string;
+  title: string;
+  date: string;
+}
+
+export interface MeetingsByMonth {
+  month: string; // "2026-01"
+  monthLabel: string; // "Janeiro 2026"
+  meetings: MeetingHistoryItem[];
+}
+
 interface CompanyBriefingCardProps {
   project: {
     id: string;
@@ -59,6 +71,7 @@ interface CompanyBriefingCardProps {
     completed_tasks_this_month?: number;
     total_tasks_this_month?: number;
     kpis?: KPIData[];
+    meetingHistory?: MeetingsByMonth[];
   };
   index: number;
   expanded?: boolean;
@@ -642,6 +655,53 @@ export function CompanyBriefingCard({ project, index, expanded = true, onCreateI
                   )}
                 </div>
               </div>
+
+              {/* Meeting History Section */}
+              {project.meetingHistory && project.meetingHistory.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                    <h5 className="text-sm font-semibold text-foreground">Histórico de Reuniões</h5>
+                    <Badge variant="outline" className="text-[10px] ml-auto">
+                      {project.meetingHistory.reduce((acc, m) => acc + m.meetings.length, 0)} reuniões
+                    </Badge>
+                  </div>
+                  <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                    {project.meetingHistory.map((monthData) => (
+                      <div key={monthData.month} className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-muted-foreground capitalize">
+                            {monthData.monthLabel}
+                          </span>
+                          <Badge variant="secondary" className="text-[10px]">
+                            {monthData.meetings.length} {monthData.meetings.length === 1 ? 'reunião' : 'reuniões'}
+                          </Badge>
+                        </div>
+                        <div className="space-y-1">
+                          {monthData.meetings.map((meeting) => (
+                            <motion.div
+                              key={meeting.id}
+                              initial={{ opacity: 0, x: -5 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              className="flex items-center gap-2 p-2 rounded-lg bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800"
+                            >
+                              <Calendar className="h-3 w-3 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-foreground truncate" title={meeting.title}>
+                                  {meeting.title || "Reunião sem título"}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">
+                                  {format(new Date(meeting.date), "dd/MM/yyyy", { locale: ptBR })}
+                                </p>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* AI Insight */}
               {project.ai_insight && (

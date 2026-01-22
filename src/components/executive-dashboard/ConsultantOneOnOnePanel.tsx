@@ -44,7 +44,7 @@ import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { CompanyBriefingCard } from "./CompanyBriefingCard";
+import { CompanyBriefingCard, MeetingsByMonth, MeetingHistoryItem } from "./CompanyBriefingCard";
 import { toast } from "sonner";
 import { LeadershipMeetingNotesDialog } from "./LeadershipMeetingNotesDialog";
 import { NewCompanyCard } from "./NewCompanyCard";
@@ -104,6 +104,7 @@ interface ProjectBriefing {
   last_nps_feedback?: string;
   company_id?: string;
   kpis?: KPIData[];
+  meetingHistory?: MeetingsByMonth[];
 }
 
 interface AgendaSection {
@@ -252,10 +253,10 @@ export function ConsultantOneOnOnePanel() {
             .lt("due_date", today)
             .neq("status", "completed"),
           
-          // Last meetings for all projects at once
+          // All meetings for all projects (for history display)
           supabase
             .from("onboarding_meeting_notes")
-            .select("project_id, meeting_date")
+            .select("id, project_id, meeting_date, meeting_title")
             .in("project_id", projectIds)
             .eq("is_finalized", true)
             .order("meeting_date", { ascending: false }),
@@ -302,10 +303,21 @@ export function ConsultantOneOnOnePanel() {
         });
 
         const lastMeetingByProject = new Map<string, string>();
+        const meetingsByProject = new Map<string, MeetingHistoryItem[]>();
         (lastMeetingsResult.data || []).forEach(m => {
+          // Track last meeting date (first occurrence due to ordering)
           if (!lastMeetingByProject.has(m.project_id)) {
             lastMeetingByProject.set(m.project_id, m.meeting_date);
           }
+          // Build meeting history
+          if (!meetingsByProject.has(m.project_id)) {
+            meetingsByProject.set(m.project_id, []);
+          }
+          meetingsByProject.get(m.project_id)!.push({
+            id: m.id,
+            title: m.meeting_title || "Reunião",
+            date: m.meeting_date
+          });
         });
 
         const latestNpsByProject = new Map<string, { score: number; feedback: string | null }>();
@@ -444,6 +456,29 @@ export function ConsultantOneOnOnePanel() {
 
           const finalGoalProjection = overallTarget > 0 ? (overallRealized / overallTarget) * 100 : 0;
 
+          // Group meetings by month for this project
+          const projectMeetings = meetingsByProject.get(project.id) || [];
+          const meetingHistoryMap = new Map<string, MeetingHistoryItem[]>();
+          
+          projectMeetings.forEach(meeting => {
+            const meetingDate = new Date(meeting.date);
+            const monthKey = format(meetingDate, "yyyy-MM");
+            if (!meetingHistoryMap.has(monthKey)) {
+              meetingHistoryMap.set(monthKey, []);
+            }
+            meetingHistoryMap.get(monthKey)!.push(meeting);
+          });
+
+          // Convert to sorted array (most recent month first)
+          const meetingHistory: MeetingsByMonth[] = Array.from(meetingHistoryMap.entries())
+            .sort((a, b) => b[0].localeCompare(a[0]))
+            .slice(0, 3) // Show last 3 months
+            .map(([month, meetings]) => ({
+              month,
+              monthLabel: format(new Date(month + "-01"), "MMMM yyyy", { locale: ptBR }),
+              meetings: meetings.slice(0, 5) // Max 5 meetings per month
+            }));
+
           briefings.push({
             id: project.id,
             company_name: companyName,
@@ -457,7 +492,8 @@ export function ConsultantOneOnOnePanel() {
             segment: project.onboarding_companies?.segment,
             last_nps_feedback: npsData?.feedback,
             company_id: companyId,
-            kpis: kpisData
+            kpis: kpisData,
+            meetingHistory
           });
 
           // Categorize for agenda
