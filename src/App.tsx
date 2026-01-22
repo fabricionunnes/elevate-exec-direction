@@ -56,6 +56,9 @@ import PortalAdminPage from "./pages/portal/PortalAdminPage";
 import PortalPlanVersionPage from "./pages/portal/PortalPlanVersionPage";
 import PortalStrategiesPage from "./pages/portal/PortalStrategiesPage";
 
+// System Showcase
+import SystemShowcasePage from "./pages/SystemShowcasePage";
+
 // Onboarding pages
 import OnboardingPage from "./pages/OnboardingPage";
 import OnboardingProductPage from "./pages/OnboardingProductPage";
@@ -269,6 +272,9 @@ const App = () => (
               <Route path="reports" element={<CRMReportsPage />} />
               <Route path="settings" element={<CRMSettingsPage />} />
             </Route>
+            
+            {/* System Showcase */}
+            <Route path="/sistema" element={<SystemShowcasePage />} />
             
             {/* Portal do Planejamento 2026 */}
             <Route path="/portal" element={<PortalLandingPage />} />
