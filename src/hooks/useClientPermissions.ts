@@ -47,8 +47,8 @@ export function useClientPermissions(projectId: string | undefined): UseClientPe
 
         setCurrentUser(onboardingUser as OnboardingUser);
 
-        // If it's client or gerente, they have full access - no need to fetch permissions
-        if (onboardingUser.role === "client" || onboardingUser.role === "gerente") {
+        // Only "client" role has full access - gerente now needs permissions
+        if (onboardingUser.role === "client") {
           setPermissions([]);
           setLoading(false);
           return;
@@ -73,7 +73,8 @@ export function useClientPermissions(projectId: string | undefined): UseClientPe
 
   const isFullAccess = useMemo(() => {
     if (!currentUser) return false;
-    return currentUser.role === "client" || currentUser.role === "gerente";
+    // Only "client" role has full access
+    return currentUser.role === "client";
   }, [currentUser]);
 
   const hasPermission = (menuKey: ClientMenuKey | string): boolean => {
