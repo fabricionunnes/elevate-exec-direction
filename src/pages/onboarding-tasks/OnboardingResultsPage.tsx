@@ -85,10 +85,19 @@ const OnboardingResultsPage = () => {
     return format(new Date(), "yyyy-MM");
   });
   
-  // Generate list of months (last 12 months)
+  // Generate list of months (current + next month + last 12 months)
   const monthOptions = useMemo(() => {
     const months: { value: string; label: string }[] = [];
     const now = new Date();
+    
+    // Add next month first
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    months.push({
+      value: format(nextMonth, "yyyy-MM"),
+      label: format(nextMonth, "MMMM yyyy", { locale: ptBR }),
+    });
+    
+    // Add current and past 11 months
     for (let i = 0; i < 12; i++) {
       const date = subMonths(now, i);
       months.push({
