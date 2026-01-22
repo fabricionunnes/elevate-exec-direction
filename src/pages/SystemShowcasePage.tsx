@@ -20,17 +20,17 @@ import {
   Star,
 } from "lucide-react";
 
-// Import mockup images
-import mockupKpis from "@/assets/showcase/mockup-kpis.jpg";
-import mockupJornada from "@/assets/showcase/mockup-jornada.jpg";
-import mockupCrm from "@/assets/showcase/mockup-crm.jpg";
-import mockupVendas from "@/assets/showcase/mockup-vendas.jpg";
-import mockupFinanceiro from "@/assets/showcase/mockup-financeiro.jpg";
-import mockupEstoque from "@/assets/showcase/mockup-estoque.jpg";
-import mockupRh from "@/assets/showcase/mockup-rh.jpg";
-import mockupBoard from "@/assets/showcase/mockup-board.jpg";
-import mockupReunioes from "@/assets/showcase/mockup-reunioes.jpg";
-import mockupChamados from "@/assets/showcase/mockup-chamados.jpg";
+// Import mockup images (real system screenshots)
+import mockupKpis from "@/assets/showcase/mockup-kpis.png";
+import mockupJornada from "@/assets/showcase/mockup-jornada.png";
+import mockupCrm from "@/assets/showcase/mockup-crm.png";
+import mockupVendas from "@/assets/showcase/mockup-vendas.png";
+import mockupFinanceiro from "@/assets/showcase/mockup-financeiro.png";
+import mockupEstoque from "@/assets/showcase/mockup-estoque.png";
+import mockupRh from "@/assets/showcase/mockup-rh.png";
+import mockupBoard from "@/assets/showcase/mockup-board.png";
+import mockupReunioes from "@/assets/showcase/mockup-reunioes.png";
+import mockupChamados from "@/assets/showcase/mockup-chamados.png";
 import mockupIndicacoes from "@/assets/showcase/mockup-indicacoes.jpg";
 import mockupFidelidade from "@/assets/showcase/mockup-fidelidade.jpg";
 
