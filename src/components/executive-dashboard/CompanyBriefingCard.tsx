@@ -90,9 +90,10 @@ interface CompanyBriefingCardProps {
   expanded?: boolean;
   onCreateInternalTask?: (projectId: string, companyName: string) => void;
   onTaskClick?: (taskId: string, projectId: string) => void;
+  onMeetingClick?: (meetingId: string, projectId: string) => void;
 }
 
-export function CompanyBriefingCard({ project, index, expanded = true, onCreateInternalTask, onTaskClick }: CompanyBriefingCardProps) {
+export function CompanyBriefingCard({ project, index, expanded = true, onCreateInternalTask, onTaskClick, onMeetingClick }: CompanyBriefingCardProps) {
   const navigate = useNavigate();
 
   const getHealthColor = (score: number) => {
@@ -712,7 +713,8 @@ export function CompanyBriefingCard({ project, index, expanded = true, onCreateI
                               key={meeting.id}
                               initial={{ opacity: 0, x: -5 }}
                               animate={{ opacity: 1, x: 0 }}
-                              className="flex items-center gap-2 p-2 rounded-lg bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800"
+                              className={`flex items-center gap-2 p-2 rounded-lg bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800 ${onMeetingClick ? 'cursor-pointer hover:bg-cyan-100 dark:hover:bg-cyan-950/50 transition-colors' : ''}`}
+                              onClick={() => onMeetingClick?.(meeting.id, project.id)}
                             >
                               <Calendar className="h-3 w-3 text-cyan-600 dark:text-cyan-400 shrink-0" />
                               <div className="flex-1 min-w-0">
