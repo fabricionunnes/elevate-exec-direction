@@ -148,37 +148,53 @@ const OnboardingResultsPage = () => {
       const endDate = format(endOfMonth(now), "yyyy-MM-dd");
       
       const [companiesRes, staffRes, servicesRes, projectsRes] = await Promise.all([
-        supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status").eq("status", "active").order("name"),
+        supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status, is_simulator").eq("status", "active").order("name"),
         supabase.from("onboarding_staff").select("id, name, role").eq("is_active", true).order("name"),
         supabase.from("onboarding_services").select("id, name").order("name"),
         supabase.from("onboarding_projects").select("id, product_id, product_name, onboarding_company_id, status").eq("status", "active"),
       ]);
+      
+      // Filter out simulator companies from the results
+      const realCompanies = (companiesRes.data || []).filter(c => !c.is_simulator);
 
-      setCompanies(companiesRes.data || []);
+      setCompanies(realCompanies);
       setConsultants((staffRes.data || []).filter(s => s.role === "consultant" || s.role === "cs"));
       setServices(servicesRes.data || []);
       setProjects(projectsRes.data || []);
       
+      // Build set of real company IDs (non-simulators) for filtering
+      const realCompanyIds = new Set(realCompanies.map(c => c.id));
+      
       // Fetch companies with KPI marked as "Meta Principal" (is_main_goal)
+      // IMPORTANT: Only fetch company-level KPIs (scope = 'company' or null) for projection
+      // This excludes individual salesperson, unit, team, sector KPIs
       const { data: kpisData } = await supabase
         .from("company_kpis")
-        .select("id, company_id, kpi_type, target_value, periodicity, is_main_goal")
+        .select("id, company_id, kpi_type, target_value, periodicity, is_main_goal, scope")
         .eq("is_active", true);
       
       // Create set of company IDs that have a KPI marked as "Meta Principal"
+      // Only consider company-level KPIs (scope = 'company' or null/undefined)
       const companyIdsWithGoals = new Set<string>();
       (kpisData || []).forEach(k => {
-        if (k.company_id && k.is_main_goal) companyIdsWithGoals.add(k.company_id);
+        const kpiScope = k.scope || "company";
+        if (k.company_id && k.is_main_goal && kpiScope === "company") {
+          companyIdsWithGoals.add(k.company_id);
+        }
       });
       setCompaniesWithGoals(companyIdsWithGoals);
       
-      // Filter only monetary KPIs for projection calculation (same as dashboard)
-      const monetaryKpis = (kpisData || []).filter(k => k.kpi_type === "monetary");
-      const monetaryKpiIds = new Set(monetaryKpis.map(k => k.id));
+      // Filter only company-level monetary KPIs for projection calculation
+      // IMPORTANT: Exclude individual salesperson, unit, team, sector KPIs to get accurate company projections
+      const companyLevelMonetaryKpis = (kpisData || []).filter(k => {
+        const kpiScope = k.scope || "company";
+        return k.kpi_type === "monetary" && kpiScope === "company";
+      });
+      const companyLevelKpiIds = new Set(companyLevelMonetaryKpis.map(k => k.id));
       
-      // Create a map for KPI periodicity
+      // Create a map for KPI periodicity (company-level only)
       const kpiPeriodicityMap = new Map<string, { periodicity: string; target: number }>();
-      monetaryKpis.forEach(k => {
+      companyLevelMonetaryKpis.forEach(k => {
         kpiPeriodicityMap.set(k.id, { periodicity: k.periodicity, target: k.target_value });
       });
       
@@ -222,7 +238,7 @@ const OnboardingResultsPage = () => {
       const projectionsMap = new Map<string, number>();
       const companyIdsWithResultsSet = new Set<string>();
       
-      // Group entries by company - only for monetary KPIs
+      // Group entries by company - only for company-level monetary KPIs
       const entriesByCompany = new Map<string, { value: number; target: number; kpiId: string }[]>();
       
       (entriesData || []).forEach((entry: any) => {
@@ -230,9 +246,14 @@ const OnboardingResultsPage = () => {
         const kpiType = entry.company_kpis?.kpi_type;
         if (!companyId) return;
         
+        // Skip simulator companies
+        if (!realCompanyIds.has(companyId)) return;
+        
         companyIdsWithResultsSet.add(companyId);
         
-        // Only process monetary KPIs for projection
+        // Only process company-level monetary KPIs for projection
+        // Skip individual, unit, team, sector KPIs
+        if (!companyLevelKpiIds.has(entry.kpi_id)) return;
         if (kpiType !== "monetary") return;
         
         // Get target: first from monthly targets, then from KPI default
