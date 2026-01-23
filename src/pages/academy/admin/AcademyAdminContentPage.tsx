@@ -47,6 +47,9 @@ import {
   Edit,
   GripVertical,
   ChevronRight,
+  Upload,
+  Image,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { AcademyUserContext } from "../AcademyLayout";
@@ -56,6 +59,7 @@ interface Track {
   name: string;
   description: string | null;
   category: string;
+  cover_image_url: string | null;
   level: number;
   is_active: boolean;
   require_sequential_lessons: boolean;
@@ -112,12 +116,14 @@ export const AcademyAdminContentPage = () => {
     name: "",
     description: "",
     category: "geral",
+    cover_image_url: null as string | null,
     level: 1,
     is_active: true,
     require_sequential_lessons: true,
     require_quiz_to_advance: true,
     min_quiz_score: 70,
   });
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Lesson dialog
   const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
@@ -266,6 +272,7 @@ export const AcademyAdminContentPage = () => {
       name: track.name,
       description: track.description || "",
       category: track.category,
+      cover_image_url: track.cover_image_url,
       level: track.level,
       is_active: track.is_active,
       require_sequential_lessons: track.require_sequential_lessons,
@@ -302,12 +309,59 @@ export const AcademyAdminContentPage = () => {
       name: "",
       description: "",
       category: "geral",
+      cover_image_url: null,
       level: 1,
       is_active: true,
       require_sequential_lessons: true,
       require_quiz_to_advance: true,
       min_quiz_score: 70,
     });
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor, selecione um arquivo de imagem");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5MB");
+      return;
+    }
+
+    setUploadingImage(true);
+
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("academy-covers")
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("academy-covers")
+        .getPublicUrl(fileName);
+
+      setTrackForm({ ...trackForm, cover_image_url: publicUrl });
+      toast.success("Imagem enviada com sucesso!");
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Erro ao enviar imagem");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const removeImage = () => {
+    setTrackForm({ ...trackForm, cover_image_url: null });
   };
 
   const resetLessonForm = () => {
@@ -504,6 +558,51 @@ export const AcademyAdminContentPage = () => {
                 onChange={(e) => setTrackForm({ ...trackForm, description: e.target.value })}
                 placeholder="Descrição da trilha"
               />
+            </div>
+            <div>
+              <Label>Imagem de Capa</Label>
+              {trackForm.cover_image_url ? (
+                <div className="relative mt-2">
+                  <img 
+                    src={trackForm.cover_image_url} 
+                    alt="Capa da trilha"
+                    className="w-full h-40 object-cover rounded-lg"
+                  />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2"
+                    onClick={removeImage}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <label className="mt-2 flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    {uploadingImage ? (
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                    ) : (
+                      <>
+                        <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                          Clique para enviar uma imagem
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          PNG, JPG (max. 5MB)
+                        </p>
+                      </>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                    disabled={uploadingImage}
+                  />
+                </label>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
