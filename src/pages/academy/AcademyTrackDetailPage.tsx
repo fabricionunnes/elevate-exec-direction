@@ -18,6 +18,24 @@ import {
 } from "lucide-react";
 import type { AcademyUserContext } from "./AcademyLayout";
 
+// Default cover images for tracks without custom covers
+const DEFAULT_COVERS = [
+  "https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=600&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1560472355-536de3962603?w=600&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=600&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&h=400&fit=crop",
+];
+
+// Generate consistent index from track name
+const getDefaultCoverIndex = (name: string): number => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash) % DEFAULT_COVERS.length;
+};
+
 interface Track {
   id: string;
   name: string;
@@ -332,17 +350,11 @@ export const AcademyTrackDetailPage = () => {
       {/* Track Header */}
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-1">
-          {track.cover_image_url ? (
-            <img 
-              src={track.cover_image_url} 
-              alt={track.name}
-              className="w-full h-48 md:h-64 object-cover rounded-xl shadow-lg"
-            />
-          ) : (
-            <div className="w-full h-48 md:h-64 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-              <BookOpen className="h-20 w-20 text-primary/40" />
-            </div>
-          )}
+          <img 
+            src={track.cover_image_url || DEFAULT_COVERS[getDefaultCoverIndex(track.name)]} 
+            alt={track.name}
+            className="w-full h-48 md:h-64 object-cover rounded-xl shadow-lg"
+          />
         </div>
 
         <div className="md:col-span-2 space-y-4">
