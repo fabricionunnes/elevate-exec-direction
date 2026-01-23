@@ -124,6 +124,7 @@ import AcademyAdminGamificationPage from "./pages/academy/admin/AcademyAdminGami
 import AcademyAdminAccessPage from "./pages/academy/admin/AcademyAdminAccessPage";
 import AcademyAdminReportsPage from "./pages/academy/admin/AcademyAdminReportsPage";
 import AcademyReportsPage from "./pages/academy/AcademyReportsPage";
+import AcademySettingsPage from "./pages/academy/AcademySettingsPage";
 
 // CRM Pages
 import {
@@ -328,6 +329,7 @@ const App = () => (
               <Route path="admin/gamification" element={<AcademyAdminGamificationPage />} />
               <Route path="admin/access" element={<AcademyAdminAccessPage />} />
               <Route path="admin/reports" element={<AcademyAdminReportsPage />} />
+              <Route path="settings" element={<AcademySettingsPage />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />
