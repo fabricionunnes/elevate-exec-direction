@@ -347,6 +347,26 @@ export const useHealthScore = (projectId: string | undefined) => {
         totalScore = Math.min(100, totalScore + 10);
       }
 
+      // Check for recent renewal (within last 30 days) - DOUBLE the score
+      if (companyId) {
+        const thirtyDaysAgoRenewal = new Date();
+        thirtyDaysAgoRenewal.setDate(thirtyDaysAgoRenewal.getDate() - 30);
+        
+        const { data: companyData } = await supabase
+          .from("onboarding_companies")
+          .select("renewed_at")
+          .eq("id", companyId)
+          .single();
+        
+        if (companyData?.renewed_at) {
+          const renewedAt = new Date(companyData.renewed_at);
+          if (renewedAt >= thirtyDaysAgoRenewal) {
+            // Double the score on recent renewal (cap at 100)
+            totalScore = Math.min(100, totalScore * 2);
+          }
+        }
+      }
+
       // Apply cancellation penalty (reduces score)
       if (isCancellationStatus) {
         totalScore = Math.max(0, totalScore - 30); // -30 points penalty

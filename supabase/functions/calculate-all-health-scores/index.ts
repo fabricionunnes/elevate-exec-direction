@@ -631,10 +631,10 @@ async function calculateProjectHealthScore(
   // PENALTY: Global inactivity
   totalScore = Math.max(0, totalScore - details.inactivityPenalty);
 
-  // Check for recent renewal (within last 90 days) - add +20 bonus
+  // Check for recent renewal (within last 30 days) - DOUBLE the score
   if (companyId) {
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const thirtyDaysAgoRenewal = new Date();
+    thirtyDaysAgoRenewal.setDate(thirtyDaysAgoRenewal.getDate() - 30);
     
     const { data: companyData } = await supabase
       .from("onboarding_companies")
@@ -644,9 +644,12 @@ async function calculateProjectHealthScore(
     
     if (companyData?.renewed_at) {
       const renewedAt = new Date(companyData.renewed_at);
-      if (renewedAt >= ninetyDaysAgo) {
-        details.renewalBonus = 20;
-        totalScore = Math.min(100, totalScore + 20);
+      if (renewedAt >= thirtyDaysAgoRenewal) {
+        // Double the score on recent renewal (cap at 100)
+        const doubledScore = totalScore * 2;
+        details.renewalBonus = Math.min(100, doubledScore) - totalScore; // Track the actual bonus added
+        totalScore = Math.min(100, doubledScore);
+        console.log(`Renewal bonus applied: score doubled from ${totalScore / 2} to ${totalScore}`);
       }
     }
   }
