@@ -4,8 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Settings, Users, BarChart3, Link, Sparkles, Building2, Trophy, Gamepad2, ChevronDown, Megaphone, UsersRound, Layers } from "lucide-react";
+import { Settings, Users, BarChart3, Link, Sparkles, Building2, Trophy, Gamepad2, ChevronDown, Megaphone, UsersRound, Layers, ExternalLink, Copy } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
+import { Badge } from "@/components/ui/badge";
 import { KPIConfigurationTab } from "./KPIConfigurationTab";
 import { SalespeopleTab } from "./SalespeopleTab";
 import { KPIDashboardTab } from "./KPIDashboardTab";
@@ -56,10 +57,27 @@ export const KPIMetasPanel = ({
   
   const [activeTab, setActiveTab] = useState(getDefaultTab());
   const [companyName, setCompanyName] = useState("");
+  const [salespersonAccessCode, setSalespersonAccessCode] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCompanyName();
-  }, [companyId]);
+    // Fetch access code if salesperson is logged in
+    if (salespersonId) {
+      fetchSalespersonAccessCode();
+    }
+  }, [companyId, salespersonId]);
+
+  const fetchSalespersonAccessCode = async () => {
+    if (!salespersonId) return;
+    const { data } = await supabase
+      .from("company_salespeople")
+      .select("access_code")
+      .eq("id", salespersonId)
+      .single();
+    if (data?.access_code) {
+      setSalespersonAccessCode(data.access_code);
+    }
+  };
 
   useEffect(() => {
     if (defaultTab) {
@@ -79,10 +97,20 @@ export const KPIMetasPanel = ({
     }
   };
 
-  const copyPublicLink = () => {
-    const link = `${getPublicBaseUrl()}/#/kpi-entry/${companyId}`;
-    navigator.clipboard.writeText(link);
-    toast.success("Link copiado! Compartilhe com os vendedores.");
+  const getEntryLink = () => {
+    const baseLink = `${getPublicBaseUrl()}/#/kpi-entry/${companyId}`;
+    return salespersonAccessCode ? `${baseLink}?code=${salespersonAccessCode}` : baseLink;
+  };
+
+  const openEntryLink = () => {
+    window.open(getEntryLink(), '_blank');
+  };
+
+  const copyAccessCode = () => {
+    if (salespersonAccessCode) {
+      navigator.clipboard.writeText(salespersonAccessCode);
+      toast.success("Código copiado!");
+    }
   };
 
   // Check if current tab is within a submenu
@@ -109,11 +137,24 @@ export const KPIMetasPanel = ({
             Configure e acompanhe os indicadores de performance
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={copyPublicLink} className="gap-2 w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm">
-          <Link className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          <span className="sm:hidden">Copiar Link</span>
-          <span className="hidden sm:inline">Copiar Link de Lançamento</span>
-        </Button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {salespersonAccessCode && (
+            <Badge 
+              variant="secondary" 
+              className="cursor-pointer hover:bg-secondary/80 gap-1.5 h-8 sm:h-9 px-3"
+              onClick={copyAccessCode}
+              title="Clique para copiar o código"
+            >
+              <Copy className="h-3 w-3" />
+              <span className="font-mono">{salespersonAccessCode}</span>
+            </Badge>
+          )}
+          <Button variant="outline" size="sm" onClick={openEntryLink} className="gap-2 flex-1 sm:flex-none h-8 sm:h-9 text-xs sm:text-sm">
+            <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="sm:hidden">Lançar</span>
+            <span className="hidden sm:inline">Lançar Vendas</span>
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
