@@ -1482,17 +1482,19 @@ const OnboardingProjectPage = () => {
                 </div>
                 {canAddTasks && (
                   <div className="flex gap-2 w-full sm:w-auto">
-                    {/* Reorganize dates button */}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setShowReorganizeDatesDialog(true)}
-                      className="h-9 gap-1.5 text-xs sm:text-sm"
-                      title="Reorganizar datas"
-                    >
-                      <Wand2 className="h-3.5 w-3.5" />
-                      <span className="hidden md:inline">Reorganizar datas</span>
-                    </Button>
+                    {/* Reorganize dates button - only for Admin and CS */}
+                    {(currentUserRole === "admin" || currentUserRole === "cs") && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowReorganizeDatesDialog(true)}
+                        className="h-9 gap-1.5 text-xs sm:text-sm"
+                        title="Reorganizar datas"
+                      >
+                        <Wand2 className="h-3.5 w-3.5" />
+                        <span className="hidden md:inline">Reorganizar datas</span>
+                      </Button>
+                    )}
                     <Input
                       placeholder="Nova tarefa..."
                       value={newTaskTitle}
