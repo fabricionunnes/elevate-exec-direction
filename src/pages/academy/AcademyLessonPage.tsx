@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
   ChevronLeft,
   ChevronRight,
@@ -13,7 +12,6 @@ import {
   FileText,
   ExternalLink,
   Lock,
-  Timer,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { AcademyUserContext } from "./AcademyLayout";
@@ -265,16 +263,6 @@ export const AcademyLessonPage = () => {
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const getTimeRemaining = () => {
-    const remaining = MIN_TIME_TO_COMPLETE - timeSpent;
-    return remaining > 0 ? remaining : 0;
-  };
 
   const isNextLessonLocked = () => {
     if (!trackConfig.require_sequential_lessons) return false;
@@ -338,9 +326,6 @@ export const AcademyLessonPage = () => {
       </div>
     );
   }
-
-  const timeRemaining = getTimeRemaining();
-  const progressPercent = Math.min((timeSpent / MIN_TIME_TO_COMPLETE) * 100, 100);
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -413,52 +398,28 @@ export const AcademyLessonPage = () => {
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-2">
-            {/* Timer indicator */}
-            {!isCompleted && (
-              <div className="flex items-center gap-3">
-                {!canComplete && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Timer className="h-4 w-4 text-amber-500" />
-                    <span className="text-muted-foreground">
-                      Aguarde {formatTime(timeRemaining)}
-                    </span>
-                    <div className="w-24">
-                      <Progress value={progressPercent} className="h-2" />
-                    </div>
-                  </div>
-                )}
-              </div>
+          <Button
+            onClick={handleComplete}
+            disabled={isCompleted || completing || !canComplete}
+            className={isCompleted ? "bg-green-600 hover:bg-green-700" : ""}
+          >
+            {completing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                Salvando...
+              </>
+            ) : isCompleted ? (
+              <>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Concluída
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Marcar como concluída
+              </>
             )}
-
-            <Button
-              onClick={handleComplete}
-              disabled={isCompleted || completing || !canComplete}
-              className={isCompleted ? "bg-green-600 hover:bg-green-700" : ""}
-            >
-              {completing ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Salvando...
-                </>
-              ) : isCompleted ? (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Concluída
-                </>
-              ) : !canComplete ? (
-                <>
-                  <Lock className="h-4 w-4 mr-2" />
-                  Aguarde {formatTime(timeRemaining)}
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Marcar como concluída
-                </>
-              )}
-            </Button>
-          </div>
+          </Button>
         </div>
 
         {lesson.description && (
