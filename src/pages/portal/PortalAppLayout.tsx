@@ -14,7 +14,8 @@ import {
   MessageCircle,
   ChevronRight,
   User,
-  ClipboardCheck
+  ClipboardCheck,
+  GraduationCap
 } from "lucide-react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -88,6 +89,7 @@ const PortalAppLayout = () => {
     { href: "/portal/app/planejamento", icon: FileText, label: "Planejamento" },
     { href: "/portal/app/execucao", icon: ClipboardCheck, label: "Execução" },
     { href: "/portal/app/dashboard", icon: BarChart3, label: "Dashboard" },
+    { href: "/academy", icon: GraduationCap, label: "Academy" },
     { href: "/portal/app/config", icon: Settings, label: "Configurações" },
     ...(user?.role === "admin_unv" ? [{ href: "/portal/app/admin", icon: Settings, label: "Admin UNV" }] : []),
   ];
