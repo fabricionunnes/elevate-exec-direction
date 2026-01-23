@@ -46,6 +46,17 @@ export const useHealthScore = (projectId: string | undefined) => {
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
 
+  // Check if score needs auto-calculation (missing or older than 24h)
+  const isScoreStale = (lastCalculatedAt: string | null): boolean => {
+    if (!lastCalculatedAt) return true;
+    
+    const lastCalculated = new Date(lastCalculatedAt);
+    const now = new Date();
+    const hoursSinceCalc = (now.getTime() - lastCalculated.getTime()) / (1000 * 60 * 60);
+    
+    return hoursSinceCalc > 24;
+  };
+
   const fetchData = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
@@ -88,6 +99,15 @@ export const useHealthScore = (projectId: string | undefined) => {
           trend_direction: scoreData.trend_direction || "stable",
           last_calculated_at: scoreData.last_calculated_at,
         });
+        
+        // Check if score is stale and needs auto-calculation
+        if (isScoreStale(scoreData.last_calculated_at)) {
+          // Will trigger calculation after loading completes
+          setShouldAutoCalculate(true);
+        }
+      } else {
+        // No score exists - trigger auto-calculation
+        setShouldAutoCalculate(true);
       }
 
       // Fetch snapshots (last 90 days)
@@ -110,7 +130,21 @@ export const useHealthScore = (projectId: string | undefined) => {
     fetchData();
   }, [fetchData]);
 
-  const calculateScore = useCallback(async () => {
+  // Auto-calculate when needed (after initial load)
+  const [shouldAutoCalculate, setShouldAutoCalculate] = useState(false);
+  
+  useEffect(() => {
+    if (shouldAutoCalculate && !loading && !calculating) {
+      setShouldAutoCalculate(false);
+      // Small delay to avoid UI flicker
+      const timer = setTimeout(() => {
+        calculateScoreInternal();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldAutoCalculate, loading, calculating]);
+
+  const calculateScoreInternal = useCallback(async () => {
     if (!projectId) return;
     setCalculating(true);
 
@@ -448,7 +482,7 @@ export const useHealthScore = (projectId: string | undefined) => {
     snapshots,
     loading,
     calculating,
-    calculateScore,
+    calculateScore: calculateScoreInternal,
     updateWeights,
     refetch: fetchData,
   };
