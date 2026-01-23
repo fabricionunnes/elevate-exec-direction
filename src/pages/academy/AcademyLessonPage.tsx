@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate, useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   ChevronLeft,
   ChevronRight,
@@ -11,7 +12,8 @@ import {
   Clock,
   FileText,
   ExternalLink,
-  Download,
+  Lock,
+  Timer,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { AcademyUserContext } from "./AcademyLayout";
@@ -27,6 +29,7 @@ interface Lesson {
   points_on_complete: number;
   track_id: string;
   track_name: string;
+  sort_order: number;
 }
 
 interface Asset {
@@ -39,7 +42,15 @@ interface Asset {
 interface NavigationLesson {
   id: string;
   title: string;
+  sort_order: number;
+  is_completed: boolean;
 }
+
+interface TrackConfig {
+  require_sequential_lessons: boolean;
+}
+
+const MIN_TIME_TO_COMPLETE = 60; // 1 minute in seconds
 
 export const AcademyLessonPage = () => {
   const { lessonId } = useParams();
@@ -52,6 +63,44 @@ export const AcademyLessonPage = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
+  const [trackConfig, setTrackConfig] = useState<TrackConfig>({ require_sequential_lessons: true });
+  
+  // Timer state
+  const [timeSpent, setTimeSpent] = useState(0);
+  const [canComplete, setCanComplete] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<Date | null>(null);
+
+  // Start timer when lesson loads
+  useEffect(() => {
+    if (lesson && !isCompleted) {
+      startTimeRef.current = new Date();
+      
+      timerRef.current = setInterval(() => {
+        if (startTimeRef.current) {
+          const elapsed = Math.floor((new Date().getTime() - startTimeRef.current.getTime()) / 1000);
+          setTimeSpent(elapsed);
+          
+          if (elapsed >= MIN_TIME_TO_COMPLETE && !canComplete) {
+            setCanComplete(true);
+          }
+        }
+      }, 1000);
+
+      return () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+        }
+      };
+    }
+  }, [lesson, isCompleted]);
+
+  // Reset timer when lesson changes
+  useEffect(() => {
+    setTimeSpent(0);
+    setCanComplete(false);
+    startTimeRef.current = null;
+  }, [lessonId]);
 
   useEffect(() => {
     if (lessonId) loadLesson();
@@ -64,7 +113,7 @@ export const AcademyLessonPage = () => {
         .from("academy_lessons")
         .select(`
           *,
-          academy_tracks!inner(id, name)
+          academy_tracks!inner(id, name, require_sequential_lessons)
         `)
         .eq("id", lessonId)
         .single();
@@ -75,6 +124,8 @@ export const AcademyLessonPage = () => {
       }
 
       const trackData = lessonData.academy_tracks as any;
+      setTrackConfig({ require_sequential_lessons: trackData.require_sequential_lessons });
+      
       setLesson({
         id: lessonData.id,
         title: lessonData.title,
@@ -86,6 +137,7 @@ export const AcademyLessonPage = () => {
         points_on_complete: lessonData.points_on_complete,
         track_id: trackData.id,
         track_name: trackData.name,
+        sort_order: lessonData.sort_order,
       });
 
       // Load assets
@@ -97,7 +149,7 @@ export const AcademyLessonPage = () => {
 
       setAssets(assetsData || []);
 
-      // Load navigation (prev/next lessons in same track)
+      // Load all lessons in track with completion status
       const { data: trackLessons } = await supabase
         .from("academy_lessons")
         .select("id, title, sort_order")
@@ -105,36 +157,55 @@ export const AcademyLessonPage = () => {
         .eq("is_active", true)
         .order("sort_order", { ascending: true });
 
-      if (trackLessons) {
-        const currentIndex = trackLessons.findIndex(l => l.id === lessonId);
-        if (currentIndex > 0) {
-          setPrevLesson(trackLessons[currentIndex - 1]);
-        }
-        if (currentIndex < trackLessons.length - 1) {
-          setNextLesson(trackLessons[currentIndex + 1]);
-        }
-      }
-
-      // Check user progress
-      if (userContext.onboardingUserId) {
+      if (trackLessons && userContext.onboardingUserId) {
+        // Get completion status for all lessons
         const { data: progressData } = await supabase
           .from("academy_progress")
-          .select("status")
+          .select("lesson_id, status")
           .eq("onboarding_user_id", userContext.onboardingUserId)
-          .eq("lesson_id", lessonId)
-          .maybeSingle();
+          .in("lesson_id", trackLessons.map(l => l.id));
 
-        setIsCompleted(progressData?.status === "completed");
+        const completedLessons = new Set(
+          progressData?.filter(p => p.status === "completed").map(p => p.lesson_id) || []
+        );
+
+        const lessonsWithStatus = trackLessons.map(l => ({
+          ...l,
+          is_completed: completedLessons.has(l.id),
+        }));
+
+        const currentIndex = lessonsWithStatus.findIndex(l => l.id === lessonId);
+        
+        if (currentIndex > 0) {
+          setPrevLesson(lessonsWithStatus[currentIndex - 1]);
+        } else {
+          setPrevLesson(null);
+        }
+        
+        if (currentIndex < lessonsWithStatus.length - 1) {
+          setNextLesson(lessonsWithStatus[currentIndex + 1]);
+        } else {
+          setNextLesson(null);
+        }
+
+        // Check current lesson completion
+        const currentProgress = progressData?.find(p => p.lesson_id === lessonId);
+        const isCurrentCompleted = currentProgress?.status === "completed";
+        setIsCompleted(isCurrentCompleted);
+        
+        if (isCurrentCompleted) {
+          setCanComplete(true);
+        }
 
         // Mark as in_progress if not started
-        if (!progressData) {
+        if (!currentProgress) {
           await supabase.from("academy_progress").insert({
             onboarding_user_id: userContext.onboardingUserId,
             lesson_id: lessonId,
             status: "in_progress",
             started_at: new Date().toISOString(),
           });
-        } else if (progressData.status === "not_started") {
+        } else if (currentProgress.status === "not_started") {
           await supabase
             .from("academy_progress")
             .update({ status: "in_progress", started_at: new Date().toISOString() })
@@ -162,6 +233,7 @@ export const AcademyLessonPage = () => {
           lesson_id: lesson.id,
           status: "completed",
           completed_at: new Date().toISOString(),
+          time_spent_seconds: timeSpent,
         }, {
           onConflict: "onboarding_user_id,lesson_id",
         });
@@ -193,6 +265,23 @@ export const AcademyLessonPage = () => {
     }
   };
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const getTimeRemaining = () => {
+    const remaining = MIN_TIME_TO_COMPLETE - timeSpent;
+    return remaining > 0 ? remaining : 0;
+  };
+
+  const isNextLessonLocked = () => {
+    if (!trackConfig.require_sequential_lessons) return false;
+    if (!nextLesson) return false;
+    return !isCompleted;
+  };
+
   const getVideoEmbed = () => {
     if (!lesson?.video_url) return null;
 
@@ -202,7 +291,6 @@ export const AcademyLessonPage = () => {
     let embedUrl = url;
 
     if (provider === "youtube") {
-      // Extract video ID
       const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^&?/]+)/);
       if (match) {
         embedUrl = `https://www.youtube.com/embed/${match[1]}`;
@@ -213,7 +301,6 @@ export const AcademyLessonPage = () => {
         embedUrl = `https://player.vimeo.com/video/${match[1]}`;
       }
     } else if (provider === "panda") {
-      // Panda Video embed
       if (!url.includes("embed")) {
         embedUrl = url.replace("player.pandavideo.com", "player.pandavideo.com.br/embed");
       }
@@ -252,6 +339,9 @@ export const AcademyLessonPage = () => {
     );
   }
 
+  const timeRemaining = getTimeRemaining();
+  const progressPercent = Math.min((timeSpent / MIN_TIME_TO_COMPLETE) * 100, 100);
+
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
       {/* Navigation Header */}
@@ -272,10 +362,21 @@ export const AcademyLessonPage = () => {
             </Button>
           )}
           {nextLesson && (
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/academy/lesson/${nextLesson.id}`}>
-                <ChevronRight className="h-4 w-4" />
-              </Link>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              asChild={!isNextLessonLocked()}
+              disabled={isNextLessonLocked()}
+            >
+              {isNextLessonLocked() ? (
+                <span className="flex items-center gap-1 opacity-50 cursor-not-allowed px-3">
+                  <Lock className="h-4 w-4" />
+                </span>
+              ) : (
+                <Link to={`/academy/lesson/${nextLesson.id}`}>
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              )}
             </Button>
           )}
         </div>
@@ -292,10 +393,10 @@ export const AcademyLessonPage = () => {
 
       {/* Lesson Info */}
       <div className="space-y-4">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold">{lesson.title}</h1>
-            <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground flex-wrap">
               <Badge variant="outline">{lesson.track_name}</Badge>
               {lesson.estimated_duration_minutes && (
                 <span className="flex items-center gap-1">
@@ -312,28 +413,52 @@ export const AcademyLessonPage = () => {
             </div>
           </div>
 
-          <Button
-            onClick={handleComplete}
-            disabled={isCompleted || completing}
-            className={isCompleted ? "bg-green-600 hover:bg-green-700" : ""}
-          >
-            {completing ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                Salvando...
-              </>
-            ) : isCompleted ? (
-              <>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Concluída
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Marcar como concluída
-              </>
+          <div className="flex flex-col items-end gap-2">
+            {/* Timer indicator */}
+            {!isCompleted && (
+              <div className="flex items-center gap-3">
+                {!canComplete && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Timer className="h-4 w-4 text-amber-500" />
+                    <span className="text-muted-foreground">
+                      Aguarde {formatTime(timeRemaining)}
+                    </span>
+                    <div className="w-24">
+                      <Progress value={progressPercent} className="h-2" />
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
-          </Button>
+
+            <Button
+              onClick={handleComplete}
+              disabled={isCompleted || completing || !canComplete}
+              className={isCompleted ? "bg-green-600 hover:bg-green-700" : ""}
+            >
+              {completing ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Salvando...
+                </>
+              ) : isCompleted ? (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Concluída
+                </>
+              ) : !canComplete ? (
+                <>
+                  <Lock className="h-4 w-4 mr-2" />
+                  Aguarde {formatTime(timeRemaining)}
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Marcar como concluída
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {lesson.description && (
@@ -390,12 +515,19 @@ export const AcademyLessonPage = () => {
         )}
         
         {nextLesson ? (
-          <Button asChild>
-            <Link to={`/academy/lesson/${nextLesson.id}`}>
-              Próxima aula
-              <ChevronRight className="h-4 w-4 ml-2" />
-            </Link>
-          </Button>
+          isNextLessonLocked() ? (
+            <Button disabled className="opacity-50">
+              <Lock className="h-4 w-4 mr-2" />
+              Conclua esta aula primeiro
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link to={`/academy/lesson/${nextLesson.id}`}>
+                Próxima aula
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Link>
+            </Button>
+          )
         ) : (
           <Button asChild>
             <Link to={`/academy/track/${lesson.track_id}`}>
