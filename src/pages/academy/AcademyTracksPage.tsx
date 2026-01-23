@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,6 +19,7 @@ import {
   Star,
   Lock,
   CheckCircle,
+  Play,
   Clock,
 } from "lucide-react";
 import type { AcademyUserContext } from "./AcademyLayout";
@@ -47,6 +47,15 @@ const CATEGORIES = [
   { value: "geral", label: "Geral" },
 ];
 
+// Default cover images for tracks without custom covers
+const DEFAULT_COVERS = [
+  "https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=600&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1560472355-536de3962603?w=600&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=600&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&h=400&fit=crop",
+];
+
 export const AcademyTracksPage = () => {
   const userContext = useOutletContext<AcademyUserContext>();
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -54,6 +63,7 @@ export const AcademyTracksPage = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
+  const [hoveredTrack, setHoveredTrack] = useState<string | null>(null);
 
   useEffect(() => {
     loadTracks();
@@ -90,7 +100,7 @@ export const AcademyTracksPage = () => {
         tracksData.forEach(t => trackIdToName.set(t.id, t.name));
 
         const tracksWithProgress = await Promise.all(
-          tracksData.map(async (track) => {
+          tracksData.map(async (track, index) => {
             let completedLessons = 0;
             
             if (userContext.onboardingUserId) {
@@ -117,7 +127,7 @@ export const AcademyTracksPage = () => {
               name: track.name,
               description: track.description || "",
               category: track.category,
-              cover_image_url: track.cover_image_url,
+              cover_image_url: track.cover_image_url || DEFAULT_COVERS[index % DEFAULT_COVERS.length],
               level: track.level,
               lessons_count: (track.academy_lessons as any[]).length,
               completed_lessons: completedLessons,
@@ -140,12 +150,12 @@ export const AcademyTracksPage = () => {
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
-      gestao: "bg-purple-100 text-purple-800",
-      vendas: "bg-blue-100 text-blue-800",
-      rh: "bg-pink-100 text-pink-800",
-      financeiro: "bg-green-100 text-green-800",
-      marketing: "bg-orange-100 text-orange-800",
-      geral: "bg-gray-100 text-gray-800",
+      gestao: "bg-purple-600",
+      vendas: "bg-blue-600",
+      rh: "bg-pink-600",
+      financeiro: "bg-green-600",
+      marketing: "bg-orange-600",
+      geral: "bg-gray-600",
     };
     return colors[category] || colors.geral;
   };
@@ -164,179 +174,241 @@ export const AcademyTracksPage = () => {
     return matchesSearch && matchesCategory && matchesLevel;
   });
 
+  // Group tracks by category for Netflix-style rows
+  const tracksByCategory = filteredTracks.reduce((acc, track) => {
+    if (!acc[track.category]) {
+      acc[track.category] = [];
+    }
+    acc[track.category].push(track);
+    return acc;
+  }, {} as Record<string, Track[]>);
+
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Trilhas de Aprendizado</h1>
-        <p className="text-muted-foreground mt-1">
-          Explore nossas trilhas e avance em sua jornada
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-zinc-900 via-black to-black text-white">
+      {/* Hero Section */}
+      {filteredTracks.length > 0 && (
+        <div className="relative h-[50vh] overflow-hidden">
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ 
+              backgroundImage: `url(${filteredTracks[0].cover_image_url})`,
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
+          
+          <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12">
+            <Badge className={`${getCategoryColor(filteredTracks[0].category)} mb-4`}>
+              {filteredTracks[0].category.toUpperCase()}
+            </Badge>
+            <h1 className="text-4xl md:text-6xl font-bold mb-4 max-w-2xl">
+              {filteredTracks[0].name}
+            </h1>
+            <p className="text-lg text-gray-300 mb-6 max-w-xl line-clamp-2">
+              {filteredTracks[0].description}
+            </p>
+            <div className="flex items-center gap-4">
+              <Button
+                size="lg"
+                className="bg-white text-black hover:bg-gray-200 font-semibold"
+                asChild={!filteredTracks[0].is_locked}
+                disabled={filteredTracks[0].is_locked}
+              >
+                {filteredTracks[0].is_locked ? (
+                  <span><Lock className="h-5 w-5 mr-2" /> Bloqueada</span>
+                ) : (
+                  <Link to={`/academy/track/${filteredTracks[0].id}`}>
+                    <Play className="h-5 w-5 mr-2 fill-black" /> Assistir
+                  </Link>
+                )}
+              </Button>
+              <div className="flex items-center gap-2 text-gray-300">
+                <BookOpen className="h-5 w-5" />
+                <span>{filteredTracks[0].lessons_count} aulas</span>
+                <span className="mx-2">•</span>
+                <span className="flex items-center gap-1">{getLevelStars(filteredTracks[0].level)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar trilhas..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+      <div className="px-6 md:px-12 py-6 space-y-6">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Buscar trilhas..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 bg-zinc-800 border-zinc-700 text-white placeholder:text-gray-400"
+            />
+          </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full sm:w-48 bg-zinc-800 border-zinc-700 text-white">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-zinc-800 border-zinc-700">
+              {CATEGORIES.map(cat => (
+                <SelectItem key={cat.value} value={cat.value} className="text-white hover:bg-zinc-700">
+                  {cat.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={levelFilter} onValueChange={setLevelFilter}>
+            <SelectTrigger className="w-full sm:w-36 bg-zinc-800 border-zinc-700 text-white">
+              <Star className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Nível" />
+            </SelectTrigger>
+            <SelectContent className="bg-zinc-800 border-zinc-700">
+              <SelectItem value="all" className="text-white hover:bg-zinc-700">Todos</SelectItem>
+              {[1, 2, 3, 4, 5].map(l => (
+                <SelectItem key={l} value={l.toString()} className="text-white hover:bg-zinc-700">
+                  Nível {l}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-48">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {CATEGORIES.map(cat => (
-              <SelectItem key={cat.value} value={cat.value}>
-                {cat.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={levelFilter} onValueChange={setLevelFilter}>
-          <SelectTrigger className="w-full sm:w-36">
-            <Star className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Nível" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os níveis</SelectItem>
-            <SelectItem value="1">Nível 1</SelectItem>
-            <SelectItem value="2">Nível 2</SelectItem>
-            <SelectItem value="3">Nível 3</SelectItem>
-            <SelectItem value="4">Nível 4</SelectItem>
-            <SelectItem value="5">Nível 5</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
-      {/* Tracks Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTracks.map((track) => {
-          const progress = track.lessons_count > 0
-            ? (track.completed_lessons / track.lessons_count) * 100
-            : 0;
-          const isCompleted = progress === 100;
+      {/* Netflix-style Rows */}
+      <div className="px-6 md:px-12 pb-12 space-y-10">
+        {Object.entries(tracksByCategory).map(([category, categoryTracks]) => (
+          <div key={category}>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span className={`w-1 h-6 rounded-full ${getCategoryColor(category)}`} />
+              {CATEGORIES.find(c => c.value === category)?.label || category}
+            </h2>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              {categoryTracks.map((track) => {
+                const progress = track.lessons_count > 0
+                  ? (track.completed_lessons / track.lessons_count) * 100
+                  : 0;
+                const isCompleted = progress === 100;
+                const isHovered = hoveredTrack === track.id;
 
-          return (
-            <Card 
-              key={track.id} 
-              className={`overflow-hidden transition-all ${
-                track.is_locked 
-                  ? "opacity-60 grayscale" 
-                  : "hover:shadow-lg hover:-translate-y-1"
-              }`}
-            >
-              <div
-                className="h-40 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center relative"
-                style={track.cover_image_url ? {
-                  backgroundImage: `url(${track.cover_image_url})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                } : {}}
-              >
-                {!track.cover_image_url && (
-                  <BookOpen className="h-16 w-16 text-primary/40" />
-                )}
-                {track.is_locked && (
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <div className="text-center text-white">
-                      <Lock className="h-8 w-8 mx-auto mb-2" />
-                      <p className="text-sm font-medium">Bloqueada</p>
-                      {track.prerequisite_track_name && (
-                        <p className="text-xs opacity-80">
-                          Complete: {track.prerequisite_track_name}
-                        </p>
+                return (
+                  <Link
+                    key={track.id}
+                    to={track.is_locked ? "#" : `/academy/track/${track.id}`}
+                    className={`group relative aspect-[2/3] rounded-lg overflow-hidden transition-all duration-300 ${
+                      track.is_locked ? "cursor-not-allowed" : "cursor-pointer"
+                    } ${isHovered ? "scale-105 z-10 shadow-2xl shadow-black/50" : ""}`}
+                    onMouseEnter={() => !track.is_locked && setHoveredTrack(track.id)}
+                    onMouseLeave={() => setHoveredTrack(null)}
+                    onClick={(e) => track.is_locked && e.preventDefault()}
+                  >
+                    {/* Cover Image */}
+                    <div 
+                      className={`absolute inset-0 bg-cover bg-center transition-transform duration-500 ${
+                        isHovered ? "scale-110" : ""
+                      }`}
+                      style={{ backgroundImage: `url(${track.cover_image_url})` }}
+                    />
+                    
+                    {/* Gradient Overlay */}
+                    <div className={`absolute inset-0 transition-opacity duration-300 ${
+                      isHovered 
+                        ? "bg-gradient-to-t from-black via-black/70 to-transparent" 
+                        : "bg-gradient-to-t from-black/90 via-black/30 to-transparent"
+                    }`} />
+
+                    {/* Locked Overlay */}
+                    {track.is_locked && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <div className="text-center">
+                          <Lock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                          <p className="text-xs text-gray-400 px-2">
+                            Complete: {track.prerequisite_track_name}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Completed Badge */}
+                    {isCompleted && !track.is_locked && (
+                      <div className="absolute top-2 right-2 bg-green-500 p-1 rounded-full">
+                        <CheckCircle className="h-4 w-4" />
+                      </div>
+                    )}
+
+                    {/* Content */}
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      {/* Level Stars */}
+                      <div className="flex gap-0.5 mb-1">
+                        {getLevelStars(track.level)}
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="font-semibold text-sm leading-tight mb-1 line-clamp-2">
+                        {track.name}
+                      </h3>
+
+                      {/* Description on hover */}
+                      <p className={`text-xs text-gray-300 line-clamp-2 transition-all duration-300 ${
+                        isHovered ? "opacity-100 max-h-10" : "opacity-0 max-h-0"
+                      }`}>
+                        {track.description}
+                      </p>
+
+                      {/* Progress Bar */}
+                      {progress > 0 && !track.is_locked && (
+                        <div className="mt-2">
+                          <Progress value={progress} className="h-1 bg-gray-700" />
+                          <div className="flex justify-between items-center mt-1">
+                            <span className="text-xs text-gray-400">
+                              {track.completed_lessons}/{track.lessons_count} aulas
+                            </span>
+                            {!isCompleted && (
+                              <span className="text-xs text-gray-400 flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {Math.round(progress)}%
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Play Button on hover */}
+                      {!track.is_locked && isHovered && (
+                        <div className="mt-2 flex gap-2">
+                          <Button size="sm" className="w-full bg-white text-black hover:bg-gray-200 h-8">
+                            <Play className="h-4 w-4 mr-1 fill-black" />
+                            {isCompleted ? "Revisar" : progress > 0 ? "Continuar" : "Começar"}
+                          </Button>
+                        </div>
                       )}
                     </div>
-                  </div>
-                )}
-                {isCompleted && !track.is_locked && (
-                  <div className="absolute top-3 right-3 bg-green-500 text-white p-1 rounded-full">
-                    <CheckCircle className="h-5 w-5" />
-                  </div>
-                )}
-              </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
 
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge className={getCategoryColor(track.category)}>
-                    {track.category}
-                  </Badge>
-                  <span className="flex items-center gap-0.5">
-                    {getLevelStars(track.level)}
-                  </span>
-                </div>
-
-                <h3 className="font-semibold text-lg mb-1">{track.name}</h3>
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                  {track.description}
-                </p>
-
-                <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
-                  <span className="flex items-center gap-1">
-                    <BookOpen className="h-4 w-4" />
-                    {track.lessons_count} aulas
-                  </span>
-                  <span className="flex items-center gap-1">
-                    {isCompleted ? (
-                      <>
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        Concluída
-                      </>
-                    ) : (
-                      <>
-                        <Clock className="h-4 w-4" />
-                        {Math.round(progress)}%
-                      </>
-                    )}
-                  </span>
-                </div>
-
-                <Progress value={progress} className="h-2 mb-4" />
-
-                <Button 
-                  className="w-full" 
-                  disabled={track.is_locked}
-                  asChild={!track.is_locked}
-                >
-                  {track.is_locked ? (
-                    <span className="flex items-center gap-2">
-                      <Lock className="h-4 w-4" />
-                      Bloqueada
-                    </span>
-                  ) : (
-                    <Link to={`/academy/track/${track.id}`}>
-                      {isCompleted ? "Revisar" : progress > 0 ? "Continuar" : "Começar"}
-                    </Link>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          );
-        })}
+        {filteredTracks.length === 0 && (
+          <div className="text-center py-20">
+            <BookOpen className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-300 mb-2">Nenhuma trilha encontrada</h3>
+            <p className="text-gray-500">
+              Tente ajustar os filtros ou aguarde novas trilhas.
+            </p>
+          </div>
+        )}
       </div>
-
-      {filteredTracks.length === 0 && (
-        <Card className="p-12 text-center">
-          <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="font-semibold mb-2">Nenhuma trilha encontrada</h3>
-          <p className="text-muted-foreground">
-            Tente ajustar os filtros ou aguarde novas trilhas.
-          </p>
-        </Card>
-      )}
     </div>
   );
 };
