@@ -27,6 +27,7 @@ import {
   ShoppingBag,
   Briefcase,
   ChevronRight,
+  GraduationCap,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -441,6 +442,7 @@ const ClientOnboardingPage = () => {
       { id: "assessments" as ViewType, icon: ClipboardCheck, label: "Testes", menuKey: CLIENT_MENU_KEYS.testes },
       { id: "rh" as ViewType, icon: Users, label: "RH", menuKey: CLIENT_MENU_KEYS.rh },
       { id: "board" as ViewType, icon: Brain, label: "Board", menuKey: CLIENT_MENU_KEYS.board },
+      { id: "academy" as const, icon: GraduationCap, label: "Academy", href: "/academy" },
       { id: "referrals" as ViewType, icon: Gift, label: "Indicar", menuKey: CLIENT_MENU_KEYS.indicar },
     ];
 
@@ -662,6 +664,22 @@ const ClientOnboardingPage = () => {
                 );
               }
               
+              // Items with external navigation (href)
+              if ('href' in item && item.href) {
+                return (
+                  <Button
+                    key={item.id}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate(item.href)}
+                    className="gap-1.5 h-8 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span>{item.label}</span>
+                  </Button>
+                );
+              }
+              
               // Regular items
               const isActive = activeView === item.id;
               return (
@@ -730,6 +748,22 @@ const ClientOnboardingPage = () => {
                     })}
                   </DropdownMenuContent>
                 </DropdownMenu>
+              );
+            }
+            
+            // Items with external navigation (href)
+            if ('href' in item && item.href) {
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => navigate(item.href)}
+                  className="flex-1 flex flex-col items-center justify-center py-2 px-1 gap-0.5 transition-colors touch-manipulation min-h-[56px] text-muted-foreground active:text-foreground"
+                >
+                  <div className="p-1.5 rounded-xl transition-colors">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+                </button>
               );
             }
             
