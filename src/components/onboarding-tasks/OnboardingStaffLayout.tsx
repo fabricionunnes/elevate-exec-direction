@@ -32,6 +32,15 @@ export const OnboardingStaffLayout = () => {
 
   useEffect(() => {
     let isMounted = true;
+
+    // Avoid flashing "Acesso Negado" when navigating from /login to a protected staff route.
+    // The login route renders <Outlet /> without running the gate UI; when we leave /login,
+    // we must re-check auth/staff from a clean state.
+    if (!location.pathname.includes("/login")) {
+      setAuthChecked(false);
+      setIsStaff(null);
+      setClientRedirecting(false);
+    }
     
     const checkStaffStatus = async () => {
       try {
