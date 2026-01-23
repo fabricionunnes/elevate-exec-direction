@@ -64,8 +64,18 @@ export const OnboardingStaffLayout = () => {
           console.warn("Error checking staff status:", staffError);
         }
 
+        // If user IS staff, set states immediately and skip client redirect logic
+        if (staff) {
+          setIsStaff(true);
+          setStaffId(staff.id);
+          setStaffRole(staff.role);
+          setClientRedirecting(false);
+          setAuthChecked(true);
+          return;
+        }
+
         // If user is NOT staff, try to redirect them to the client portal (first active project).
-        if (!staff && !location.pathname.includes("/login")) {
+        if (!location.pathname.includes("/login")) {
           setClientRedirecting(true);
           const { data: clientMemberships, error: clientMembershipError } = await supabase
             .from("onboarding_users")
@@ -93,9 +103,9 @@ export const OnboardingStaffLayout = () => {
         }
 
         setClientRedirecting(false);
-        setIsStaff(!!staff);
-        setStaffId(staff?.id || null);
-        setStaffRole(staff?.role || null);
+        setIsStaff(false);
+        setStaffId(null);
+        setStaffRole(null);
         setAuthChecked(true);
 
         // Redirect commercial roles to CRM as home page
