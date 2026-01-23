@@ -216,16 +216,21 @@ export const AcademyLayout = () => {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-border">
-        <Link
-          to="/onboarding-tasks"
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      <div className="p-4 border-t border-border space-y-3">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start gap-2"
+          onClick={() => {
+            setSidebarOpen(false);
+            navigate(userContext.isAdmin ? "/onboarding-tasks" : "/portal/app");
+          }}
         >
           <ChevronLeft className="h-4 w-4" />
-          Voltar ao Nexus
-        </Link>
+          Voltar ao Dashboard
+        </Button>
         {userContext.userName && (
-          <p className="mt-2 text-xs text-muted-foreground truncate">
+          <p className="text-xs text-muted-foreground truncate">
             {userContext.userName}
           </p>
         )}
