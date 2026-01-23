@@ -107,6 +107,23 @@ import HotseatFormPage from "./pages/HotseatFormPage";
 import ClientAccessReportPage from "./pages/onboarding-tasks/ClientAccessReportPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
+// Academy pages
+import AcademyLayout from "./pages/academy/AcademyLayout";
+import AcademyHomePage from "./pages/academy/AcademyHomePage";
+import AcademyTracksPage from "./pages/academy/AcademyTracksPage";
+import AcademyTrackDetailPage from "./pages/academy/AcademyTrackDetailPage";
+import AcademyLessonPage from "./pages/academy/AcademyLessonPage";
+import AcademyProgressPage from "./pages/academy/AcademyProgressPage";
+import AcademyRankingPage from "./pages/academy/AcademyRankingPage";
+import AcademyQuizPage from "./pages/academy/AcademyQuizPage";
+import AcademyQuizzesListPage from "./pages/academy/AcademyQuizzesListPage";
+import AcademyTeamPage from "./pages/academy/AcademyTeamPage";
+import AcademyAdminContentPage from "./pages/academy/admin/AcademyAdminContentPage";
+import AcademyAdminQuizzesPage from "./pages/academy/admin/AcademyAdminQuizzesPage";
+import AcademyAdminGamificationPage from "./pages/academy/admin/AcademyAdminGamificationPage";
+import AcademyAdminAccessPage from "./pages/academy/admin/AcademyAdminAccessPage";
+import AcademyAdminReportsPage from "./pages/academy/admin/AcademyAdminReportsPage";
+
 // CRM Pages
 import {
   CRMLayout,
@@ -291,6 +308,24 @@ const App = () => (
               <Route path="admin" element={<PortalAdminPage />} />
               <Route path="plano/:planId" element={<PortalPlanVersionPage />} />
               <Route path="estrategias/:planId" element={<PortalStrategiesPage />} />
+            </Route>
+            
+            {/* UNV Academy */}
+            <Route path="/academy" element={<AcademyLayout />}>
+              <Route index element={<AcademyHomePage />} />
+              <Route path="tracks" element={<AcademyTracksPage />} />
+              <Route path="track/:trackId" element={<AcademyTrackDetailPage />} />
+              <Route path="lesson/:lessonId" element={<AcademyLessonPage />} />
+              <Route path="progress" element={<AcademyProgressPage />} />
+              <Route path="ranking" element={<AcademyRankingPage />} />
+              <Route path="quizzes" element={<AcademyQuizzesListPage />} />
+              <Route path="quiz/:quizId" element={<AcademyQuizPage />} />
+              <Route path="team" element={<AcademyTeamPage />} />
+              <Route path="admin/content" element={<AcademyAdminContentPage />} />
+              <Route path="admin/quizzes" element={<AcademyAdminQuizzesPage />} />
+              <Route path="admin/gamification" element={<AcademyAdminGamificationPage />} />
+              <Route path="admin/access" element={<AcademyAdminAccessPage />} />
+              <Route path="admin/reports" element={<AcademyAdminReportsPage />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />
