@@ -561,6 +561,9 @@ export const AcademyAdminContentPage = () => {
             </div>
             <div>
               <Label>Imagem de Capa</Label>
+              <p className="text-xs text-muted-foreground mt-1 mb-2">
+                📐 <strong>Tamanho ideal:</strong> 400x600 pixels (proporção 2:3 vertical, estilo poster)
+              </p>
               {trackForm.cover_image_url ? (
                 <div className="relative mt-2">
                   <img 
