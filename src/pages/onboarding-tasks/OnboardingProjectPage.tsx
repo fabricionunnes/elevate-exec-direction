@@ -69,6 +69,8 @@ import { TasksKanbanView } from "@/components/onboarding-tasks/TasksKanbanView";
 import { AddTaskDialog } from "@/components/onboarding-tasks/AddTaskDialog";
 import { NPSHistoryPanel } from "@/components/onboarding-tasks/NPSHistoryPanel";
 import { ProjectUrgentTasks } from "@/components/onboarding-tasks/ProjectUrgentTasks";
+import { TasksFilterBar, TaskStatusFilter, TaskSortOrder } from "@/components/onboarding-tasks/TasksFilterBar";
+import { parseDateLocal, getTodayLocal } from "@/lib/dateUtils";
 import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
 import { ProjectSupportBanner } from "@/components/onboarding-tasks/ProjectSupportBanner";
 import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistoryPanel";
@@ -213,6 +215,8 @@ const OnboardingProjectPage = () => {
   const [tasksViewMode, setTasksViewMode] = useState<"trail" | "list" | "schedule" | "panel" | "kanban">("trail");
   const [staffList, setStaffList] = useState<{ id: string; name: string; role: string }[]>([]);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
+  const [taskStatusFilter, setTaskStatusFilter] = useState<TaskStatusFilter>("all");
+  const [taskSortOrder, setTaskSortOrder] = useState<TaskSortOrder>("due_date_asc");
   const [showChurnDialog, setShowChurnDialog] = useState(false);
   const [showCancellationSignalDialog, setShowCancellationSignalDialog] = useState(false);
   const [showNoticePeriodDialog, setShowNoticePeriodDialog] = useState(false);
@@ -885,14 +889,54 @@ const OnboardingProjectPage = () => {
     }
   };
 
+  // Helper function to check if a task is overdue
+  const isTaskOverdue = (task: OnboardingTask): boolean => {
+    if (task.status === "completed" || !task.due_date) return false;
+    const today = getTodayLocal();
+    const dueDate = parseDateLocal(task.due_date);
+    dueDate.setHours(0, 0, 0, 0);
+    return dueDate < today;
+  };
+
+  // Calculate task counts for filter badges
+  const taskCounts = {
+    all: tasks.length,
+    pending: tasks.filter(t => t.status === "pending").length,
+    in_progress: tasks.filter(t => t.status === "in_progress").length,
+    completed: tasks.filter(t => t.status === "completed").length,
+    overdue: tasks.filter(t => isTaskOverdue(t)).length,
+  };
+
   // Group tasks by phase (stored in tags[0], order in tags[1] or by first task sort_order)
-  // Filter tasks based on search query
-  const filteredTasks = taskSearchQuery.trim()
-    ? tasks.filter(task => 
-        task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
-        task.description?.toLowerCase().includes(taskSearchQuery.toLowerCase())
-      )
-    : tasks;
+  // Filter tasks based on search query AND status filter
+  const filteredTasks = tasks.filter(task => {
+    // Search filter
+    const matchesSearch = !taskSearchQuery.trim() ||
+      task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+      task.description?.toLowerCase().includes(taskSearchQuery.toLowerCase());
+    
+    // Status filter
+    let matchesStatus = true;
+    switch (taskStatusFilter) {
+      case "pending":
+        matchesStatus = task.status === "pending";
+        break;
+      case "in_progress":
+        matchesStatus = task.status === "in_progress";
+        break;
+      case "completed":
+        matchesStatus = task.status === "completed";
+        break;
+      case "overdue":
+        matchesStatus = isTaskOverdue(task);
+        break;
+      case "all":
+      default:
+        matchesStatus = true;
+    }
+    
+    return matchesSearch && matchesStatus;
+  });
 
   const groupedTasks = filteredTasks.reduce<Record<string, TaskPhase>>((acc, task) => {
     const phaseName = task.tags?.[0] || "Sem fase";
@@ -921,7 +965,7 @@ const OnboardingProjectPage = () => {
       // Calculate the earliest due_date for this phase
       const earliestDueDate = phase.tasks.reduce((earliest, task) => {
         if (!task.due_date) return earliest;
-        const taskDate = new Date(task.due_date).getTime();
+        const taskDate = parseDateLocal(task.due_date).getTime();
         return earliest === Infinity ? taskDate : Math.min(earliest, taskDate);
       }, Infinity);
       
@@ -929,10 +973,15 @@ const OnboardingProjectPage = () => {
         ...phase,
         earliestDueDate,
         tasks: phase.tasks.slice().sort((ta, tb) => {
-          // Sort by due_date first, then by sort_order
-          const dueDateA = ta.due_date ? new Date(ta.due_date).getTime() : Infinity;
-          const dueDateB = tb.due_date ? new Date(tb.due_date).getTime() : Infinity;
-          if (dueDateA !== dueDateB) return dueDateA - dueDateB;
+          // Sort by due_date based on selected sort order
+          const dueDateA = ta.due_date ? parseDateLocal(ta.due_date).getTime() : (taskSortOrder === "due_date_asc" ? Infinity : -Infinity);
+          const dueDateB = tb.due_date ? parseDateLocal(tb.due_date).getTime() : (taskSortOrder === "due_date_asc" ? Infinity : -Infinity);
+          
+          if (dueDateA !== dueDateB) {
+            return taskSortOrder === "due_date_asc" 
+              ? dueDateA - dueDateB 
+              : dueDateB - dueDateA;
+          }
           return ta.sort_order - tb.sort_order;
         }),
       };
@@ -943,7 +992,9 @@ const OnboardingProjectPage = () => {
         return a.order - b.order;
       }
       // If order is undefined or equal, use earliest due date
-      return a.earliestDueDate - b.earliestDueDate;
+      return taskSortOrder === "due_date_asc" 
+        ? a.earliestDueDate - b.earliestDueDate
+        : b.earliestDueDate - a.earliestDueDate;
     });
 
   if (loading) {
@@ -1356,7 +1407,7 @@ const OnboardingProjectPage = () => {
           </div>
 
           <TabsContent value="tasks">
-            {/* Search, View Toggle and Add Task */}
+            {/* Search, Filters, View Toggle and Add Task */}
             <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
               {/* Search */}
               <div className="relative w-full sm:max-w-md">
@@ -1368,6 +1419,15 @@ const OnboardingProjectPage = () => {
                   className="pl-10 h-9 sm:h-10 text-sm"
                 />
               </div>
+
+              {/* Status Filters and Sort */}
+              <TasksFilterBar
+                statusFilter={taskStatusFilter}
+                onStatusFilterChange={setTaskStatusFilter}
+                sortOrder={taskSortOrder}
+                onSortOrderChange={setTaskSortOrder}
+                counts={taskCounts}
+              />
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 {/* View mode buttons - scrollable on mobile */}
