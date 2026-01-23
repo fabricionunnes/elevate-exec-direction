@@ -331,16 +331,17 @@ export const AcademyTrackDetailPage = () => {
 
       {/* Track Header */}
       <div className="grid md:grid-cols-3 gap-6">
-        <div
-          className="md:col-span-1 h-48 md:h-auto rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center"
-          style={track.cover_image_url ? {
-            backgroundImage: `url(${track.cover_image_url})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          } : {}}
-        >
-          {!track.cover_image_url && (
-            <BookOpen className="h-20 w-20 text-primary/40" />
+        <div className="md:col-span-1">
+          {track.cover_image_url ? (
+            <img 
+              src={track.cover_image_url} 
+              alt={track.name}
+              className="w-full h-48 md:h-64 object-cover rounded-xl shadow-lg"
+            />
+          ) : (
+            <div className="w-full h-48 md:h-64 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+              <BookOpen className="h-20 w-20 text-primary/40" />
+            </div>
           )}
         </div>
 
