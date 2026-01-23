@@ -137,24 +137,13 @@ export const KPIMetasPanel = ({
             Configure e acompanhe os indicadores de performance
           </p>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          {salespersonAccessCode && (
-            <Badge 
-              variant="secondary" 
-              className="cursor-pointer hover:bg-secondary/80 gap-1.5 h-8 sm:h-9 px-3"
-              onClick={copyAccessCode}
-              title="Clique para copiar o código"
-            >
-              <Copy className="h-3 w-3" />
-              <span className="font-mono">{salespersonAccessCode}</span>
-            </Badge>
-          )}
-          <Button variant="outline" size="sm" onClick={openEntryLink} className="gap-2 flex-1 sm:flex-none h-8 sm:h-9 text-xs sm:text-sm">
+        {canAccessAllTabs && (
+          <Button variant="outline" size="sm" onClick={openEntryLink} className="gap-2 w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm">
             <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="sm:hidden">Lançar</span>
             <span className="hidden sm:inline">Lançar Vendas</span>
           </Button>
-        </div>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
