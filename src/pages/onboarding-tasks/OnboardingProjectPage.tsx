@@ -72,6 +72,7 @@ import { ProjectUrgentTasks } from "@/components/onboarding-tasks/ProjectUrgentT
 import { TasksFilterBar, TaskStatusFilter, TaskSortOrder } from "@/components/onboarding-tasks/TasksFilterBar";
 import { parseDateLocal, getTodayLocal } from "@/lib/dateUtils";
 import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
+import { ReorganizeTasksDatesDialog } from "@/components/onboarding-tasks/ReorganizeTasksDatesDialog";
 import { ProjectSupportBanner } from "@/components/onboarding-tasks/ProjectSupportBanner";
 import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistoryPanel";
 import { MeetingHistoryPanel } from "@/components/onboarding-tasks/MeetingHistoryPanel";
@@ -217,6 +218,7 @@ const OnboardingProjectPage = () => {
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
   const [taskStatusFilter, setTaskStatusFilter] = useState<TaskStatusFilter>("all");
   const [taskSortOrder, setTaskSortOrder] = useState<TaskSortOrder>("due_date_asc");
+  const [showReorganizeDatesDialog, setShowReorganizeDatesDialog] = useState(false);
   const [showChurnDialog, setShowChurnDialog] = useState(false);
   const [showCancellationSignalDialog, setShowCancellationSignalDialog] = useState(false);
   const [showNoticePeriodDialog, setShowNoticePeriodDialog] = useState(false);
@@ -1480,6 +1482,17 @@ const OnboardingProjectPage = () => {
                 </div>
                 {canAddTasks && (
                   <div className="flex gap-2 w-full sm:w-auto">
+                    {/* Reorganize dates button */}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setShowReorganizeDatesDialog(true)}
+                      className="h-9 gap-1.5 text-xs sm:text-sm"
+                      title="Reorganizar datas"
+                    >
+                      <Wand2 className="h-3.5 w-3.5" />
+                      <span className="hidden md:inline">Reorganizar datas</span>
+                    </Button>
                     <Input
                       placeholder="Nova tarefa..."
                       value={newTaskTitle}
@@ -1922,6 +1935,15 @@ const OnboardingProjectPage = () => {
         staffList={staffList}
         onTaskAdded={handleTaskAddedFromDialog}
         currentSortOrder={Math.max(...tasks.map(t => t.sort_order), 0)}
+      />
+
+      {/* Reorganize Tasks Dates Dialog */}
+      <ReorganizeTasksDatesDialog
+        open={showReorganizeDatesDialog}
+        onOpenChange={setShowReorganizeDatesDialog}
+        tasks={tasks}
+        projectId={projectId!}
+        onTasksUpdated={fetchProjectData}
       />
     </div>
   );
