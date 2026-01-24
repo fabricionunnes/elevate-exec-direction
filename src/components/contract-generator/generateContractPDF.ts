@@ -15,8 +15,14 @@ interface GeneratePDFOptions {
   formData: ContractFormData;
 }
 
-// Convert image to base64
-async function loadImage(src: string): Promise<string> {
+type LoadedImage = {
+  dataUrl: string;
+  width: number;
+  height: number;
+};
+
+// Convert image to base64 + keep original dimensions (for correct aspect ratio)
+async function loadImage(src: string): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -25,16 +31,34 @@ async function loadImage(src: string): Promise<string> {
       canvas.width = img.width;
       canvas.height = img.height;
       const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
-      } else {
-        reject(new Error("Could not get canvas context"));
-      }
+      if (!ctx) return reject(new Error("Could not get canvas context"));
+      ctx.drawImage(img, 0, 0);
+      resolve({
+        dataUrl: canvas.toDataURL("image/png"),
+        width: img.width,
+        height: img.height,
+      });
     };
     img.onerror = reject;
     img.src = src;
   });
+}
+
+function fitImage(
+  imgWidth: number,
+  imgHeight: number,
+  maxWidth: number,
+  maxHeight: number
+): { width: number; height: number } {
+  // Fit inside box preserving aspect ratio
+  const ratio = imgWidth / imgHeight;
+  let width = maxWidth;
+  let height = width / ratio;
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = height * ratio;
+  }
+  return { width, height };
 }
 
 export async function generateContractPDF({ formData }: GeneratePDFOptions): Promise<Blob> {
@@ -55,9 +79,9 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
   const installmentValue = formData.contractValue / formData.installments;
 
   // Load logo from public folder
-  let logoBase64: string | null = null;
+  let logo: LoadedImage | null = null;
   try {
-    logoBase64 = await loadImage("/images/unv-logo-contract.png");
+    logo = await loadImage("/images/unv-logo-contract.png");
   } catch (e) {
     console.warn("Could not load logo:", e);
   }
@@ -73,18 +97,22 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
     doc.rect(6, 0, 2, pageHeight, "F");
     
     // Watermark - centered logo with low opacity
-    if (logoBase64) {
+    if (logo) {
       try {
         // Add watermark with transparency using GState
         const gState = doc.GState({ opacity: 0.06 });
         doc.setGState(gState);
         
-        // Large centered watermark - preserve aspect ratio (logo is roughly 1:1 ratio)
-        const wmWidth = 100;
-        const wmHeight = 100; // Keep same aspect ratio as header logo
+        // Large centered watermark - preserve real aspect ratio
+        const { width: wmWidth, height: wmHeight } = fitImage(
+          logo.width,
+          logo.height,
+          120,
+          120
+        );
         const wmX = (pageWidth - wmWidth) / 2;
         const wmY = (pageHeight - wmHeight) / 2;
-        doc.addImage(logoBase64, "PNG", wmX, wmY, wmWidth, wmHeight);
+        doc.addImage(logo.dataUrl, "PNG", wmX, wmY, wmWidth, wmHeight);
         
         // Reset opacity
         doc.setGState(doc.GState({ opacity: 1 }));
@@ -154,10 +182,12 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
   };
 
   // ============ FIRST PAGE HEADER ============
-  if (logoBase64) {
+  if (logo) {
     try {
-      doc.addImage(logoBase64, "PNG", pageWidth / 2 - 30, y, 60, 50);
-      y += 58;
+      // Header logo - preserve real aspect ratio
+      const { width: hW, height: hH } = fitImage(logo.width, logo.height, 60, 50);
+      doc.addImage(logo.dataUrl, "PNG", pageWidth / 2 - hW / 2, y, hW, hH);
+      y += hH + 8;
     } catch (e) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
@@ -338,20 +368,6 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
-    
-    // Add header logo on pages after first
-    if (i > 1) {
-      if (logoBase64) {
-        try {
-          doc.addImage(logoBase64, "PNG", pageWidth / 2 - 20, 8, 40, 12);
-        } catch (e) {
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(10);
-          doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-          doc.text("UNIVERSIDADE NACIONAL DE VENDAS", pageWidth / 2, 15, { align: "center" });
-        }
-      }
-    }
     
     doc.setFontSize(8);
     doc.setTextColor(128, 128, 128);
