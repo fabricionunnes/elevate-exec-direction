@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronRight, RotateCcw, Save, Loader2, Settings, Plus, Trash2, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, RotateCcw, Save, Loader2, Settings, Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { contractClauses, type ContractClause } from "@/data/contractTemplate";
@@ -35,6 +35,7 @@ interface TemplateEditorDialogProps {
 
 export default function TemplateEditorDialog({ open, onOpenChange, onSave }: TemplateEditorDialogProps) {
   const [clauses, setClauses] = useState<TemplateClause[]>([]);
+  const [originalOrder, setOriginalOrder] = useState<string[]>([]);
   const [openClauses, setOpenClauses] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,15 +48,19 @@ export default function TemplateEditorDialog({ open, onOpenChange, onSave }: Tem
     try {
       const { data, error } = await supabase
         .from("contract_template_clauses")
-        .select("*");
+        .select("*")
+        .order("sort_order", { ascending: true });
 
       if (error) throw error;
 
-      // Create a map of saved clauses
+      // Create a map of saved clauses with their sort_order
       const savedClausesMap = new Map(data?.map((c) => [c.id, c]) || []);
+      
+      // Check if we have any saved order
+      const hasSavedOrder = data && data.length > 0 && data.some(c => c.sort_order !== null);
 
-      // Merge default clauses with saved ones
-      const mergedClauses: TemplateClause[] = contractClauses.map((defaultClause) => {
+      // Merge default clauses with saved ones (with temporary sortOrder)
+      const mergedClauses = contractClauses.map((defaultClause, index) => {
         const saved = savedClausesMap.get(defaultClause.id);
         return {
           id: defaultClause.id,
@@ -65,6 +70,7 @@ export default function TemplateEditorDialog({ open, onOpenChange, onSave }: Tem
           originalTitle: defaultClause.title,
           isDynamic: saved?.is_dynamic ?? defaultClause.isDynamic,
           isNew: false,
+          sortOrder: saved?.sort_order ?? index,
         };
       });
 
@@ -80,9 +86,20 @@ export default function TemplateEditorDialog({ open, onOpenChange, onSave }: Tem
           originalTitle: c.title,
           isDynamic: c.is_dynamic || false,
           isNew: false,
+          sortOrder: c.sort_order ?? 999,
         }));
 
-      setClauses([...mergedClauses, ...customClauses]);
+      // Combine and sort by sort_order if we have saved order
+      let allClauses = [...mergedClauses, ...customClauses];
+      if (hasSavedOrder) {
+        allClauses = allClauses.sort((a, b) => a.sortOrder - b.sortOrder);
+      }
+      
+      // Remove sortOrder from final object (not needed in state)
+      const finalClauses: TemplateClause[] = allClauses.map(({ sortOrder, ...rest }) => rest);
+      
+      setClauses(finalClauses);
+      setOriginalOrder(finalClauses.map(c => c.id));
     } catch (error) {
       console.error("Erro ao carregar template:", error);
       toast.error("Erro ao carregar template do contrato");
@@ -196,49 +213,67 @@ export default function TemplateEditorDialog({ open, onOpenChange, onSave }: Tem
     toast.success("Cláusula removida");
   };
 
-  const hasChanges = clauses.some(
+  const moveClauseUp = (index: number) => {
+    if (index === 0) return;
+    const newClauses = [...clauses];
+    [newClauses[index - 1], newClauses[index]] = [newClauses[index], newClauses[index - 1]];
+    setClauses(newClauses);
+  };
+
+  const moveClauseDown = (index: number) => {
+    if (index === clauses.length - 1) return;
+    const newClauses = [...clauses];
+    [newClauses[index], newClauses[index + 1]] = [newClauses[index + 1], newClauses[index]];
+    setClauses(newClauses);
+  };
+
+  // Check if order changed
+  const orderChanged = clauses.length !== originalOrder.length || 
+    clauses.some((c, i) => c.id !== originalOrder[i]);
+
+  const hasChanges = orderChanged || clauses.some(
     (c) => c.content !== c.originalContent || c.title !== c.originalTitle || c.isNew
   );
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Get clauses that need to be saved (modified or new)
-      const clausesToSave = clauses.filter(
-        (c) => c.content !== c.originalContent || c.title !== c.originalTitle || c.isNew
-      );
-
-      if (clausesToSave.length === 0) {
-        toast.info("Nenhuma alteração para salvar");
-        onOpenChange(false);
-        return;
-      }
-
-      // Upsert each modified/new clause
-      for (const clause of clausesToSave) {
-        const { error } = await supabase
-          .from("contract_template_clauses")
-          .upsert({
-            id: clause.id,
-            title: clause.title,
-            content: clause.content,
-            is_dynamic: clause.isDynamic || false,
-            updated_at: new Date().toISOString(),
-          });
-
-        if (error) throw error;
-      }
-
-      // Remove clauses that were reset to original and are default clauses
       const defaultIds = new Set(contractClauses.map(c => c.id));
-      const resetClauses = clauses.filter(
-        (c) => defaultIds.has(c.id) && c.content === c.originalContent && c.title === c.originalTitle
-      );
-      for (const clause of resetClauses) {
-        await supabase
-          .from("contract_template_clauses")
-          .delete()
-          .eq("id", clause.id);
+
+      // Save all clauses with their sort_order to preserve order
+      for (let i = 0; i < clauses.length; i++) {
+        const clause = clauses[i];
+        const isModified = clause.content !== clause.originalContent || clause.title !== clause.originalTitle || clause.isNew;
+        const needsOrderUpdate = orderChanged;
+
+        // Only save if modified or order changed
+        if (isModified || needsOrderUpdate) {
+          const { error } = await supabase
+            .from("contract_template_clauses")
+            .upsert({
+              id: clause.id,
+              title: clause.title,
+              content: clause.content,
+              is_dynamic: clause.isDynamic || false,
+              sort_order: i,
+              updated_at: new Date().toISOString(),
+            });
+
+          if (error) throw error;
+        }
+      }
+
+      // Remove clauses that were reset to original and are default clauses (only if not reordered)
+      if (!orderChanged) {
+        const resetClauses = clauses.filter(
+          (c) => defaultIds.has(c.id) && c.content === c.originalContent && c.title === c.originalTitle
+        );
+        for (const clause of resetClauses) {
+          await supabase
+            .from("contract_template_clauses")
+            .delete()
+            .eq("id", clause.id);
+        }
       }
 
       // Delete removed custom clauses from DB
@@ -288,10 +323,12 @@ export default function TemplateEditorDialog({ open, onOpenChange, onSave }: Tem
           </div>
         ) : (
           <div className="space-y-2 py-4">
-            {clauses.map((clause) => {
+            {clauses.map((clause, index) => {
               const isOpen = openClauses[clause.id] || false;
               const isModified = clause.content !== clause.originalContent || clause.title !== clause.originalTitle;
               const isCustom = !defaultIds.has(clause.id);
+              const isFirst = index === 0;
+              const isLast = index === clauses.length - 1;
 
               return (
                 <Collapsible
@@ -330,19 +367,49 @@ export default function TemplateEditorDialog({ open, onOpenChange, onSave }: Tem
                           </span>
                         )}
                       </div>
-                      {isCustom && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {/* Move up/down buttons */}
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive flex-shrink-0"
+                          className="h-7 w-7"
+                          disabled={isFirst}
                           onClick={(e) => {
                             e.stopPropagation();
-                            deleteClause(clause.id);
+                            moveClauseUp(index);
                           }}
+                          title="Mover para cima"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <ArrowUp className="h-4 w-4" />
                         </Button>
-                      )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={isLast}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            moveClauseDown(index);
+                          }}
+                          title="Mover para baixo"
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </Button>
+                        {isCustom && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteClause(clause.id);
+                            }}
+                            title="Excluir cláusula"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="pt-2 pb-4 px-3">
