@@ -19,6 +19,7 @@ import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import ContractForm, { type ContractFormData } from "@/components/contract-generator/ContractForm";
 import ContractPreview from "@/components/contract-generator/ContractPreview";
+import ClausesEditor, { getDefaultEditableClauses, type EditableClause } from "@/components/contract-generator/ClausesEditor";
 import { generateContractPDF, downloadContractPDF } from "@/components/contract-generator/generateContractPDF";
 import { productDetails } from "@/data/productDetails";
 import { formatCurrencyBR } from "@/lib/numberToWords";
@@ -86,6 +87,7 @@ export default function ContractGeneratorPage() {
   const [showContractDialog, setShowContractDialog] = useState(false);
 
   const [formData, setFormData] = useState<ContractFormData>(defaultFormData);
+  const [editableClauses, setEditableClauses] = useState<EditableClause[]>(getDefaultEditableClauses());
 
   const loadContracts = async () => {
     setLoadingHistory(true);
@@ -180,7 +182,15 @@ export default function ContractGeneratorPage() {
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const blob = await generateContractPDF({ formData });
+      // Convert editable clauses to format expected by PDF generator
+      const customClauses = editableClauses.map((c) => ({
+        id: c.id,
+        title: c.title,
+        content: c.content,
+        isDynamic: c.isDynamic,
+      }));
+      
+      const blob = await generateContractPDF({ formData, customClauses });
       setGeneratedBlob(blob);
       
       // Upload PDF to storage
@@ -209,6 +219,7 @@ export default function ContractGeneratorPage() {
     setShowSuccessDialog(false);
     setGeneratedBlob(null);
     setFormData(defaultFormData);
+    setEditableClauses(getDefaultEditableClauses());
   };
 
   const handleContractClick = (contract: SavedContract) => {
@@ -519,13 +530,19 @@ export default function ContractGeneratorPage() {
         ) : (
           // Form View
           <div className="grid lg:grid-cols-3 gap-6">
-            {/* Form - 2 columns */}
-            <div className="lg:col-span-2">
+            {/* Form + Clauses Editor - 2 columns */}
+            <div className="lg:col-span-2 space-y-6">
               <ContractForm
                 formData={formData}
                 onChange={setFormData}
                 onGenerate={handleGenerate}
                 isGenerating={isGenerating}
+              />
+              
+              {/* Clauses Editor */}
+              <ClausesEditor
+                clauses={editableClauses}
+                onChange={setEditableClauses}
               />
             </div>
 
