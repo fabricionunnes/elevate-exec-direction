@@ -67,6 +67,8 @@ export default function ContractGeneratorPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [savedContracts, setSavedContracts] = useState<SavedContract[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [selectedContract, setSelectedContract] = useState<SavedContract | null>(null);
+  const [showContractDialog, setShowContractDialog] = useState(false);
 
   const [formData, setFormData] = useState<ContractFormData>(defaultFormData);
 
@@ -93,7 +95,36 @@ export default function ContractGeneratorPage() {
     loadContracts();
   }, []);
 
-  const saveContract = async () => {
+  const uploadPDF = async (blob: Blob, clientName: string): Promise<string | null> => {
+    try {
+      const fileName = `contrato-${clientName.replace(/[^a-zA-Z0-9]/g, "-")}-${Date.now()}.pdf`;
+      const filePath = `contracts/${fileName}`;
+      
+      const { data, error } = await supabase.storage
+        .from("contract-pdfs")
+        .upload(filePath, blob, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+
+      if (error) {
+        console.error("Erro ao fazer upload do PDF:", error);
+        return null;
+      }
+
+      // Get public URL
+      const { data: publicUrl } = supabase.storage
+        .from("contract-pdfs")
+        .getPublicUrl(filePath);
+
+      return publicUrl.publicUrl;
+    } catch (error) {
+      console.error("Erro ao fazer upload do PDF:", error);
+      return null;
+    }
+  };
+
+  const saveContract = async (pdfUrl: string | null) => {
     try {
       const selectedProduct = productDetails[formData.productId];
       
@@ -119,6 +150,7 @@ export default function ContractGeneratorPage() {
           is_recurring: formData.isRecurring,
           due_date: formData.dueDate ? format(formData.dueDate, "yyyy-MM-dd") : null,
           start_date: formData.startDate ? format(formData.startDate, "yyyy-MM-dd") : null,
+          pdf_url: pdfUrl,
         });
 
       if (error) throw error;
@@ -127,7 +159,6 @@ export default function ContractGeneratorPage() {
       loadContracts();
     } catch (error) {
       console.error("Erro ao salvar contrato:", error);
-      // Don't show error to user, just log it
     }
   };
 
@@ -137,8 +168,11 @@ export default function ContractGeneratorPage() {
       const blob = await generateContractPDF({ formData });
       setGeneratedBlob(blob);
       
-      // Save contract to database
-      await saveContract();
+      // Upload PDF to storage
+      const pdfUrl = await uploadPDF(blob, formData.clientName);
+      
+      // Save contract to database with PDF URL
+      await saveContract(pdfUrl);
       
       setShowSuccessDialog(true);
       toast.success("Contrato gerado com sucesso!");
@@ -160,6 +194,33 @@ export default function ContractGeneratorPage() {
     setShowSuccessDialog(false);
     setGeneratedBlob(null);
     setFormData(defaultFormData);
+  };
+
+  const handleContractClick = (contract: SavedContract) => {
+    setSelectedContract(contract);
+    setShowContractDialog(true);
+  };
+
+  const handleViewPDF = () => {
+    if (selectedContract?.pdf_url) {
+      window.open(selectedContract.pdf_url, "_blank");
+    } else {
+      toast.error("PDF não disponível para este contrato");
+    }
+  };
+
+  const handleDownloadFromHistory = () => {
+    if (selectedContract?.pdf_url) {
+      const link = document.createElement("a");
+      link.href = selectedContract.pdf_url;
+      link.download = `contrato-${selectedContract.client_name}.pdf`;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      toast.error("PDF não disponível para este contrato");
+    }
   };
 
   const getPaymentMethodLabel = (method: string) => {
@@ -237,17 +298,28 @@ export default function ContractGeneratorPage() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {savedContracts.map((contract) => (
-                  <Card key={contract.id} className="hover:shadow-md transition-shadow">
+                  <Card 
+                    key={contract.id} 
+                    className="hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => handleContractClick(contract)}
+                  >
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
                         <CardTitle className="text-base font-medium line-clamp-1">
                           {contract.client_name}
                         </CardTitle>
-                        {contract.is_recurring && (
-                          <Badge variant="secondary" className="text-xs">
-                            Recorrente
-                          </Badge>
-                        )}
+                        <div className="flex gap-1">
+                          {contract.pdf_url && (
+                            <Badge variant="default" className="text-xs bg-green-600">
+                              PDF
+                            </Badge>
+                          )}
+                          {contract.is_recurring && (
+                            <Badge variant="secondary" className="text-xs">
+                              Recorrente
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {contract.client_document}
@@ -333,6 +405,83 @@ export default function ContractGeneratorPage() {
               Baixar PDF
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contract Details Dialog */}
+      <Dialog open={showContractDialog} onOpenChange={setShowContractDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Detalhes do Contrato
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedContract && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Cliente</p>
+                  <p className="font-medium">{selectedContract.client_name}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Documento</p>
+                  <p className="font-medium">{selectedContract.client_document}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Produto</p>
+                  <p className="font-medium text-primary">{selectedContract.product_name}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Valor</p>
+                  <p className="font-medium">{formatCurrencyBR(selectedContract.contract_value)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Pagamento</p>
+                  <p className="font-medium">
+                    {selectedContract.is_recurring 
+                      ? "Recorrente Mensal" 
+                      : `${selectedContract.installments}x`} via {getPaymentMethodLabel(selectedContract.payment_method)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Gerado em</p>
+                  <p className="font-medium">
+                    {format(new Date(selectedContract.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleViewPDF} 
+                  className="flex-1"
+                  disabled={!selectedContract.pdf_url}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Visualizar
+                </Button>
+                <Button 
+                  onClick={handleDownloadFromHistory} 
+                  className="flex-1"
+                  disabled={!selectedContract.pdf_url}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Baixar PDF
+                </Button>
+              </DialogFooter>
+              
+              {!selectedContract.pdf_url && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Este contrato foi gerado antes do armazenamento de PDFs. Gere um novo contrato para ter acesso ao PDF.
+                </p>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
