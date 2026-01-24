@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw } from "lucide-react";
+import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -227,6 +227,28 @@ export default function ContractGeneratorPage() {
     } else {
       toast.error("PDF não disponível para este contrato");
     }
+  };
+
+  const handleDuplicateContract = () => {
+    if (!selectedContract) return;
+    
+    // Pre-fill form with selected contract data
+    setFormData({
+      ...defaultFormData,
+      clientName: selectedContract.client_name,
+      clientDocument: selectedContract.client_document,
+      // Keep product, value, and payment empty for user to choose new ones
+      productId: selectedContract.product_id || "",
+      contractValue: selectedContract.contract_value || 0,
+      paymentMethod: (selectedContract.payment_method as "card" | "pix" | "boleto") || "pix",
+      installments: selectedContract.installments || 1,
+      isRecurring: selectedContract.is_recurring || false,
+      startDate: new Date(),
+    });
+    
+    setShowContractDialog(false);
+    setShowHistory(false);
+    toast.success("Dados do cliente carregados. Ajuste o produto, valor e forma de pagamento conforme necessário.");
   };
 
   const getPaymentMethodLabel = (method: string) => {
@@ -462,6 +484,14 @@ export default function ContractGeneratorPage() {
               <Separator />
               
               <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button 
+                  variant="secondary" 
+                  onClick={handleDuplicateContract} 
+                  className="flex-1"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Duplicar
+                </Button>
                 <Button 
                   variant="outline" 
                   onClick={handleViewPDF} 
