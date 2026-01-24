@@ -44,6 +44,7 @@ const defaultFormData: ContractFormData = {
   clientCep: "",
   clientStreet: "",
   clientNumber: "",
+  clientComplement: "",
   clientNeighborhood: "",
   clientCity: "",
   clientState: "",
