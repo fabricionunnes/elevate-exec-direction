@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil } from "lucide-react";
+import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil, Send, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,6 +23,8 @@ import ClausesEditor, { getDefaultEditableClauses, type EditableClause } from "@
 import { generateContractPDF, downloadContractPDF } from "@/components/contract-generator/generateContractPDF";
 import { productDetails } from "@/data/productDetails";
 import { formatCurrencyBR } from "@/lib/numberToWords";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface SavedContract {
   id: string;
@@ -85,6 +87,12 @@ export default function ContractGeneratorPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [selectedContract, setSelectedContract] = useState<SavedContract | null>(null);
   const [showContractDialog, setShowContractDialog] = useState(false);
+  
+  // ZapSign integration states
+  const [isSendingToZapSign, setIsSendingToZapSign] = useState(false);
+  const [zapSignSent, setZapSignSent] = useState(false);
+  const [lastGeneratedPdfUrl, setLastGeneratedPdfUrl] = useState<string | null>(null);
+  const [companySignerEmail, setCompanySignerEmail] = useState("");
 
   const [formData, setFormData] = useState<ContractFormData>(defaultFormData);
   const [editableClauses, setEditableClauses] = useState<EditableClause[]>(getDefaultEditableClauses());
@@ -181,6 +189,7 @@ export default function ContractGeneratorPage() {
 
   const handleGenerate = async () => {
     setIsGenerating(true);
+    setZapSignSent(false);
     try {
       // Convert editable clauses to format expected by PDF generator
       const customClauses = editableClauses.map((c) => ({
@@ -195,6 +204,7 @@ export default function ContractGeneratorPage() {
       
       // Upload PDF to storage
       const pdfUrl = await uploadPDF(blob, formData.clientName);
+      setLastGeneratedPdfUrl(pdfUrl);
       
       // Save contract to database with PDF URL
       await saveContract(pdfUrl);
@@ -209,6 +219,63 @@ export default function ContractGeneratorPage() {
     }
   };
 
+  const handleSendToZapSign = async () => {
+    if (!lastGeneratedPdfUrl) {
+      toast.error("PDF não disponível. Gere o contrato novamente.");
+      return;
+    }
+
+    if (!formData.clientEmail) {
+      toast.error("E-mail do cliente é obrigatório para envio via ZapSign.");
+      return;
+    }
+
+    if (!companySignerEmail) {
+      toast.error("E-mail do signatário da empresa é obrigatório.");
+      return;
+    }
+
+    setIsSendingToZapSign(true);
+    try {
+      const selectedProduct = productDetails[formData.productId];
+      const documentName = `Contrato - ${formData.clientName} - ${selectedProduct?.name || formData.productId}`;
+
+      const { data, error } = await supabase.functions.invoke("send-to-zapsign", {
+        body: {
+          pdfUrl: lastGeneratedPdfUrl,
+          documentName,
+          signers: [
+            {
+              name: formData.clientName,
+              email: formData.clientEmail,
+              phone: formData.clientPhone,
+            },
+            {
+              name: "Empresa Contratante",
+              email: companySignerEmail,
+            },
+          ],
+          sendAutomatically: true,
+        },
+      });
+
+      if (error) {
+        console.error("Erro ao enviar para ZapSign:", error);
+        toast.error("Erro ao enviar para ZapSign. Verifique a configuração.");
+        return;
+      }
+
+      console.log("ZapSign response:", data);
+      setZapSignSent(true);
+      toast.success(data.message || "Contrato enviado para assinatura!");
+    } catch (error) {
+      console.error("Erro ao enviar para ZapSign:", error);
+      toast.error("Erro ao enviar para ZapSign. Tente novamente.");
+    } finally {
+      setIsSendingToZapSign(false);
+    }
+  };
+
   const handleDownload = () => {
     if (generatedBlob) {
       downloadContractPDF(generatedBlob, formData.clientName);
@@ -220,6 +287,9 @@ export default function ContractGeneratorPage() {
     setGeneratedBlob(null);
     setFormData(defaultFormData);
     setEditableClauses(getDefaultEditableClauses());
+    setZapSignSent(false);
+    setLastGeneratedPdfUrl(null);
+    setCompanySignerEmail("");
   };
 
   const handleContractClick = (contract: SavedContract) => {
@@ -558,16 +628,81 @@ export default function ContractGeneratorPage() {
 
       {/* Success Dialog */}
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-500" />
               Contrato Gerado com Sucesso!
             </DialogTitle>
             <DialogDescription>
-              O contrato foi gerado e salvo no histórico. Você pode baixá-lo agora ou acessá-lo depois.
+              O contrato foi gerado e salvo no histórico. Você pode baixá-lo ou enviar para assinatura digital via ZapSign.
             </DialogDescription>
           </DialogHeader>
+          
+          {/* ZapSign Integration Section */}
+          <div className="space-y-4 py-2">
+            <Separator />
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Send className="h-4 w-4 text-primary" />
+                Enviar para Assinatura Digital (ZapSign)
+              </h4>
+              
+              {zapSignSent ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+                  <CheckCircle2 className="h-4 w-4 inline mr-2" />
+                  Contrato enviado! Os signatários receberão um e-mail com o link para assinatura.
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    O contrato será enviado para o cliente ({formData.clientEmail || "e-mail não informado"}) e para o signatário da empresa.
+                  </p>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="companySignerEmail" className="text-xs">
+                      E-mail do signatário da empresa *
+                    </Label>
+                    <Input
+                      id="companySignerEmail"
+                      type="email"
+                      placeholder="contrato@suaempresa.com"
+                      value={companySignerEmail}
+                      onChange={(e) => setCompanySignerEmail(e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                  
+                  <Button
+                    onClick={handleSendToZapSign}
+                    disabled={isSendingToZapSign || !formData.clientEmail || !companySignerEmail}
+                    className="w-full"
+                    variant="secondary"
+                  >
+                    {isSendingToZapSign ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Enviar para Assinatura
+                      </>
+                    )}
+                  </Button>
+                  
+                  {!formData.clientEmail && (
+                    <p className="text-xs text-destructive">
+                      E-mail do cliente não informado no formulário.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+            <Separator />
+          </div>
+          
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={handleNewContract} className="flex-1">
               Novo Contrato
