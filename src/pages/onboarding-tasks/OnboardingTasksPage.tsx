@@ -1647,16 +1647,19 @@ const OnboardingTasksPage = () => {
                   <Heart className="h-4 w-4" />
                   Hotseat
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => navigate("/contratos")}
-                  className="gap-2"
-                >
-                  <FileText className="h-4 w-4" />
-                  Contratos
-                </Button>
               </>
+            )}
+            {/* Contratos button - Admin, CS and Closer */}
+            {(isAdmin || isCS || currentUserRole === "closer") && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate("/contratos")}
+                className="gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Contratos
+              </Button>
             )}
             {/* Resultados button - visible for all staff (admin, cs, consultant) */}
             {currentUserRole && (
