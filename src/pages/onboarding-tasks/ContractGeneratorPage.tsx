@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil, Send, Loader2, Clock, ExternalLink, Check, XCircle } from "lucide-react";
+import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil, Send, Loader2, Clock, ExternalLink, Check, XCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -89,6 +89,8 @@ const defaultFormData: ContractFormData = {
   startDate: new Date(),
 };
 
+const CEO_EMAIL = "fabricio@universidadevendas.com.br";
+
 export default function ContractGeneratorPage() {
   const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -99,6 +101,8 @@ export default function ContractGeneratorPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [selectedContract, setSelectedContract] = useState<SavedContract | null>(null);
   const [showContractDialog, setShowContractDialog] = useState(false);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // ZapSign integration states
   const [isSendingToZapSign, setIsSendingToZapSign] = useState(false);
@@ -115,6 +119,8 @@ export default function ContractGeneratorPage() {
   // E-mail fixo da empresa contratada
   const COMPANY_SIGNER_EMAIL = "fabricio@universidadevendas.com.br";
   const COMPANY_SIGNER_NAME = "Universidade de Vendas";
+  
+  const canDeleteContracts = currentUserEmail === CEO_EMAIL;
 
   const [formData, setFormData] = useState<ContractFormData>(defaultFormData);
   const [editableClauses, setEditableClauses] = useState<EditableClause[]>(getDefaultEditableClauses());
@@ -140,6 +146,13 @@ export default function ContractGeneratorPage() {
 
   useEffect(() => {
     loadContracts();
+    
+    // Get current user email
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserEmail(user?.email || null);
+    };
+    getCurrentUser();
   }, []);
 
   const uploadPDF = async (blob: Blob, clientName: string): Promise<string | null> => {
@@ -408,6 +421,44 @@ export default function ContractGeneratorPage() {
     // If contract was sent to ZapSign, check current status
     if (contract.zapsign_document_token) {
       await checkSignatureStatus(contract.zapsign_document_token);
+    }
+  };
+
+  const handleDeleteContract = async () => {
+    if (!selectedContract || !canDeleteContracts) return;
+    
+    const confirmDelete = window.confirm(
+      `Tem certeza que deseja excluir o contrato de ${selectedContract.client_name}? Esta ação não pode ser desfeita.`
+    );
+    
+    if (!confirmDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      // Delete PDF from storage if exists
+      if (selectedContract.pdf_url) {
+        const urlParts = selectedContract.pdf_url.split("/");
+        const fileName = urlParts.slice(-2).join("/"); // "contracts/filename.pdf"
+        await supabase.storage.from("contract-pdfs").remove([fileName]);
+      }
+      
+      // Delete from database
+      const { error } = await supabase
+        .from("generated_contracts")
+        .delete()
+        .eq("id", selectedContract.id);
+      
+      if (error) throw error;
+      
+      toast.success("Contrato excluído com sucesso!");
+      setShowContractDialog(false);
+      setSelectedContract(null);
+      loadContracts();
+    } catch (error) {
+      console.error("Erro ao excluir contrato:", error);
+      toast.error("Erro ao excluir contrato. Tente novamente.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1060,6 +1111,32 @@ export default function ContractGeneratorPage() {
                       </div>
                     )}
                   </div>
+                </>
+              )}
+              
+              {/* Delete Button - Only for Fabrício */}
+              {canDeleteContracts && (
+                <>
+                  <Separator />
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteContract}
+                    disabled={isDeleting}
+                    className="w-full"
+                    size="sm"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Excluindo...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir Contrato
+                      </>
+                    )}
+                  </Button>
                 </>
               )}
             </div>
