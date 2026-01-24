@@ -178,10 +178,17 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
 
   // CONTRATANTE
   addText("CONTRATANTE:", 10, { bold: true });
-  const clientInfo = formData.clientDocument.length > 14 
-    ? `${formData.clientName}, sociedade empresária inscrita no CNPJ sob o nº ${formData.clientDocument}, com sede na ${formData.clientAddress}${formData.clientEmail ? `, e endereço eletrônico ${formData.clientEmail}` : ""}.`
-    : `${formData.clientName}, inscrito(a) no CPF sob o nº ${formData.clientDocument}${formData.clientAddress ? `, residente e domiciliado(a) na ${formData.clientAddress}` : ""}${formData.clientEmail ? `, e-mail: ${formData.clientEmail}` : ""}${formData.clientPhone ? `, telefone: ${formData.clientPhone}` : ""}.`;
-  addText(clientInfo, 10);
+  
+  // Check if it's a company (CNPJ) or individual (CPF)
+  const isCompany = formData.clientDocument.replace(/\D/g, "").length > 11;
+  
+  if (isCompany) {
+    // Company format
+    addText(`${formData.clientName}, sociedade empresária inscrita no CNPJ sob o nº ${formData.clientDocument}, com sede na ${formData.clientAddress}, e endereço eletrônico ${formData.clientEmail}, neste ato representada por ${formData.legalRepName}, ${formData.legalRepNationality || "brasileiro(a)"}, ${formData.legalRepMaritalStatus}, ${formData.legalRepProfession}, portador(a) da Cédula de Identidade RG nº ${formData.legalRepRg}, inscrito(a) no CPF sob o nº ${formData.legalRepCpf}.`, 10);
+  } else {
+    // Individual format
+    addText(`${formData.legalRepName || formData.clientName}, ${formData.legalRepNationality || "brasileiro(a)"}, ${formData.legalRepMaritalStatus}, ${formData.legalRepProfession}, portador(a) da Cédula de Identidade RG nº ${formData.legalRepRg}, inscrito(a) no CPF sob o nº ${formData.legalRepCpf || formData.clientDocument}${formData.clientAddress ? `, residente e domiciliado(a) na ${formData.clientAddress}` : ""}${formData.clientEmail ? `, e-mail: ${formData.clientEmail}` : ""}.`, 10);
+  }
   y += 8;
 
   // ============ CONTRACT CLAUSES ============
@@ -284,10 +291,13 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
   // CONTRATANTE signature
   doc.line(rightX, signatureY, rightX + 70, signatureY);
   
+  // Use legal representative name if available, otherwise client name
+  const signerName = formData.legalRepName || formData.clientName;
+  
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.text(formData.clientName.toUpperCase(), rightX + 35, signatureY + 6, { align: "center" });
+  doc.text(signerName.toUpperCase(), rightX + 35, signatureY + 6, { align: "center" });
   
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
