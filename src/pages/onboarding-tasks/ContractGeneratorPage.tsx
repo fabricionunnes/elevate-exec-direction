@@ -103,6 +103,7 @@ export default function ContractGeneratorPage() {
   const [showContractDialog, setShowContractDialog] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [lastSavedContractId, setLastSavedContractId] = useState<string | null>(null);
   
   // ZapSign integration states
   const [isSendingToZapSign, setIsSendingToZapSign] = useState(false);
@@ -200,11 +201,11 @@ export default function ContractGeneratorPage() {
     }
   };
 
-  const saveContract = async (pdfUrl: string | null) => {
+  const saveContract = async (pdfUrl: string | null): Promise<string | null> => {
     try {
       const selectedProduct = productDetails[formData.productId];
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("generated_contracts")
         .insert({
           client_name: formData.clientName,
@@ -227,20 +228,25 @@ export default function ContractGeneratorPage() {
           due_date: formData.dueDate ? format(formData.dueDate, "yyyy-MM-dd") : null,
           start_date: formData.startDate ? format(formData.startDate, "yyyy-MM-dd") : null,
           pdf_url: pdfUrl,
-        });
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
-      
+
       // Reload contracts list
       loadContracts();
+      return data?.id || null;
     } catch (error) {
       console.error("Erro ao salvar contrato:", error);
+      return null;
     }
   };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     setZapSignSent(false);
+    setLastSavedContractId(null);
     try {
       // Convert editable clauses to format expected by PDF generator
       const customClauses = editableClauses.map((c) => ({
@@ -258,7 +264,8 @@ export default function ContractGeneratorPage() {
       setLastGeneratedPdfUrl(pdfUrl);
       
       // Save contract to database with PDF URL
-      await saveContract(pdfUrl);
+      const savedId = await saveContract(pdfUrl);
+      setLastSavedContractId(savedId);
       
       setShowSuccessDialog(true);
       toast.success("Contrato gerado com sucesso!");
@@ -312,6 +319,26 @@ export default function ContractGeneratorPage() {
       }
 
       console.log("ZapSign response:", data);
+
+      // Persist ZapSign info to the most recently saved contract so history can show status
+      if (lastSavedContractId) {
+        const { error: updateError } = await supabase
+          .from("generated_contracts")
+          .update({
+            zapsign_document_token: data.documentToken,
+            zapsign_document_url: data.documentUrl,
+            zapsign_signers: data.signers,
+            zapsign_sent_at: new Date().toISOString(),
+          })
+          .eq("id", lastSavedContractId);
+
+        if (updateError) {
+          console.error("Erro ao salvar dados do ZapSign no contrato:", updateError);
+        } else {
+          loadContracts();
+        }
+      }
+
       setZapSignSent(true);
       toast.success(data.message || "Contrato enviado para assinatura!");
     } catch (error) {
