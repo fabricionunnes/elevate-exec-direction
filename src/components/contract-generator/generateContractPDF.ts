@@ -5,13 +5,35 @@ import { productDetails } from "@/data/productDetails";
 import { contractClauses, companyInfo } from "@/data/contractTemplate";
 import { formatCurrencyWithWords, formatCurrencyBR } from "@/lib/numberToWords";
 import type { ContractFormData } from "./ContractForm";
+import logoUnv from "@/assets/logo-unv-contract.png";
 
 // UNV Brand Colors
 const NAVY = [10, 34, 64] as const; // #0A2240
-const RED = [196, 30, 58] as const; // #C41E3A
 
 interface GeneratePDFOptions {
   formData: ContractFormData;
+}
+
+// Convert image to base64
+async function loadImage(src: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      } else {
+        reject(new Error("Could not get canvas context"));
+      }
+    };
+    img.onerror = reject;
+    img.src = src;
+  });
 }
 
 export async function generateContractPDF({ formData }: GeneratePDFOptions): Promise<Blob> {
@@ -31,14 +53,45 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
   const today = new Date();
   const installmentValue = formData.contractValue / formData.installments;
 
+  // Load logo
+  let logoBase64: string | null = null;
+  try {
+    logoBase64 = await loadImage(logoUnv);
+  } catch (e) {
+    console.warn("Could not load logo:", e);
+  }
+
   // Helper functions
   const checkPageBreak = (requiredSpace: number) => {
     if (y + requiredSpace > pageHeight - 30) {
       doc.addPage();
       y = margin;
+      addHeader();
       return true;
     }
     return false;
+  };
+
+  const addHeader = () => {
+    // Logo
+    if (logoBase64) {
+      try {
+        doc.addImage(logoBase64, "PNG", pageWidth / 2 - 25, 10, 50, 15);
+      } catch (e) {
+        console.warn("Could not add logo to PDF:", e);
+        // Fallback text
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+        doc.text("UNIVERSIDADE NACIONAL DE VENDAS", pageWidth / 2, 18, { align: "center" });
+      }
+    } else {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+      doc.text("UNIVERSIDADE NACIONAL DE VENDAS", pageWidth / 2, 18, { align: "center" });
+    }
+    y = 35;
   };
 
   const wrapText = (text: string, maxWidth: number, fontSize: number): string[] => {
@@ -51,8 +104,15 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
     color?: readonly [number, number, number];
     align?: "left" | "center" | "right";
     maxWidth?: number;
+    lineHeight?: number;
   }) => {
-    const { bold = false, color = [0, 0, 0], align = "left", maxWidth = contentWidth } = options || {};
+    const { 
+      bold = false, 
+      color = [0, 0, 0], 
+      align = "left", 
+      maxWidth = contentWidth,
+      lineHeight = fontSize * 0.5 
+    } = options || {};
     
     doc.setFontSize(fontSize);
     doc.setFont("helvetica", bold ? "bold" : "normal");
@@ -65,195 +125,200 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
       if (align === "center") x = pageWidth / 2;
       if (align === "right") x = pageWidth - margin;
       doc.text(line, x, y, { align });
-      y += fontSize * 0.5;
+      y += lineHeight;
     });
     
-    return lines.length * fontSize * 0.5;
+    return lines.length * lineHeight;
   };
 
   const addSectionTitle = (title: string) => {
     checkPageBreak(15);
-    y += 8;
+    y += 6;
     addText(title, 11, { bold: true, color: NAVY });
     y += 3;
   };
 
-  // ============ HEADER ============
-  // Logo placeholder - drawing a styled "UNV" text
-  doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.rect(pageWidth / 2 - 20, y, 40, 12, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(255, 255, 255);
-  doc.text("UNV", pageWidth / 2, y + 8, { align: "center" });
-  y += 20;
+  // ============ FIRST PAGE HEADER ============
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, "PNG", pageWidth / 2 - 30, y, 60, 18);
+      y += 25;
+    } catch (e) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+      doc.text("UNIVERSIDADE NACIONAL DE VENDAS", pageWidth / 2, y + 10, { align: "center" });
+      y += 20;
+    }
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+    doc.text("UNIVERSIDADE NACIONAL DE VENDAS", pageWidth / 2, y + 10, { align: "center" });
+    y += 20;
+  }
 
   // Title
   doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.setFontSize(18);
+  doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("CONTRATO DE PRESTAÇÃO DE SERVIÇOS", pageWidth / 2, y, { align: "center" });
-  y += 8;
-
-  // Subtitle with product name
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "normal");
-  doc.text(selectedProduct.name, pageWidth / 2, y, { align: "center" });
+  doc.text(`CONTRATO DE PRESTAÇÃO DE SERVIÇOS – ${selectedProduct.name.toUpperCase()}`, pageWidth / 2, y, { align: "center" });
   y += 12;
 
-  // Horizontal line
-  doc.setDrawColor(RED[0], RED[1], RED[2]);
-  doc.setLineWidth(0.5);
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 10;
-
   // ============ PARTIES IDENTIFICATION ============
-  addSectionTitle("1. IDENTIFICAÇÃO DAS PARTES");
+  addSectionTitle("IDENTIFICAÇÃO DAS PARTES");
 
-  // CONTRATANTE
-  addText("CONTRATANTE:", 10, { bold: true });
-  y += 2;
-  addText(`Nome/Razão Social: ${formData.clientName}`, 10);
-  addText(`CPF/CNPJ: ${formData.clientDocument}`, 10);
-  addText(`Endereço: ${formData.clientAddress}`, 10);
-  if (formData.clientEmail) addText(`E-mail: ${formData.clientEmail}`, 10);
-  if (formData.clientPhone) addText(`Telefone: ${formData.clientPhone}`, 10);
+  addText("As partes abaixo identificadas têm, entre si, justo e acertado o presente Contrato de Prestação de Serviços, que se regerá pelas cláusulas seguintes e pelas condições de preço, forma e termo de pagamento descritas no presente neste contrato.", 10);
   y += 5;
 
   // CONTRATADA
   addText("CONTRATADA:", 10, { bold: true });
-  y += 2;
-  addText(`Razão Social: ${companyInfo.name}`, 10);
-  addText(`CNPJ: ${companyInfo.cnpj}`, 10);
-  addText(`Sede: ${companyInfo.address}`, 10);
-  addText(`E-mail: ${companyInfo.email}`, 10);
+  addText(`${companyInfo.name}, inscrita no CNPJ sob o nº ${companyInfo.cnpj}, com sede na ${companyInfo.address}, e-mail: ${companyInfo.email}, neste ato representada por seu ${companyInfo.role}, ${companyInfo.representative}, CPF ${companyInfo.cpf} e RG ${companyInfo.rg}.`, 10);
   y += 5;
 
-  // ============ CONTRACT OBJECT ============
-  addSectionTitle("2. OBJETO DO CONTRATO");
-  
-  addText(`Serviço Contratado: ${selectedProduct.name}`, 10, { bold: true });
-  y += 2;
-  addText(`Descrição: ${selectedProduct.description}`, 10);
-  y += 5;
-
-  addText("Entregáveis:", 10, { bold: true });
-  y += 2;
-  selectedProduct.deliverables.forEach((item, index) => {
-    checkPageBreak(8);
-    addText(`${index + 1}. ${item}`, 10);
-  });
-  y += 5;
-
-  // ============ COMMERCIAL CONDITIONS ============
-  addSectionTitle("3. CONDIÇÕES COMERCIAIS");
-
-  addText("Valor Total:", 10, { bold: true });
-  addText(formatCurrencyWithWords(formData.contractValue), 10);
-  y += 3;
-
-  addText("Forma de Pagamento:", 10, { bold: true });
-  const paymentMethodLabels = {
-    card: "Cartão de Crédito",
-    pix: "PIX",
-    boleto: "Boleto Bancário",
-  };
-  addText(paymentMethodLabels[formData.paymentMethod], 10);
-  y += 3;
-
-  addText("Condições:", 10, { bold: true });
-  if (formData.installments === 1) {
-    addText("Pagamento à vista", 10);
-  } else {
-    addText(`${formData.installments}x de ${formatCurrencyWithWords(installmentValue)} - sem juros`, 10);
-  }
-  y += 3;
-
-  if (formData.dueDate) {
-    addText("Data de Vencimento:", 10, { bold: true });
-    addText(format(formData.dueDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }), 10);
-    y += 3;
-  }
-
-  addText("Início do Contrato:", 10, { bold: true });
-  addText(
-    formData.startDate
-      ? format(formData.startDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-      : "A definir",
-    10
-  );
-  y += 5;
+  // CONTRATANTE
+  addText("CONTRATANTE:", 10, { bold: true });
+  const clientInfo = formData.clientDocument.length > 14 
+    ? `${formData.clientName}, sociedade empresária inscrita no CNPJ sob o nº ${formData.clientDocument}, com sede na ${formData.clientAddress}${formData.clientEmail ? `, e endereço eletrônico ${formData.clientEmail}` : ""}.`
+    : `${formData.clientName}, inscrito(a) no CPF sob o nº ${formData.clientDocument}${formData.clientAddress ? `, residente e domiciliado(a) na ${formData.clientAddress}` : ""}${formData.clientEmail ? `, e-mail: ${formData.clientEmail}` : ""}${formData.clientPhone ? `, telefone: ${formData.clientPhone}` : ""}.`;
+  addText(clientInfo, 10);
+  y += 8;
 
   // ============ CONTRACT CLAUSES ============
-  addSectionTitle("4. CLÁUSULAS CONTRATUAIS");
-  
   contractClauses.forEach((clause) => {
-    checkPageBreak(30);
-    y += 3;
-    addText(clause.title, 10, { bold: true });
-    y += 2;
-    const lines = wrapText(clause.content, contentWidth, 9);
-    lines.forEach((line) => {
-      checkPageBreak(6);
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(0, 0, 0);
-      doc.text(line, margin, y);
-      y += 4.5;
-    });
-    y += 3;
+    checkPageBreak(25);
+    
+    addSectionTitle(clause.title);
+    
+    if (clause.isDynamic && clause.id === "entrega") {
+      // Dynamic deliverables clause
+      addText(clause.content, 10);
+      y += 3;
+      
+      selectedProduct.deliverables.forEach((item, index) => {
+        checkPageBreak(8);
+        addText(`• ${item}`, 10);
+      });
+      y += 3;
+    } else if (clause.id === "investimento") {
+      // Add payment details to investment clause
+      const paymentMethodLabels = {
+        card: "Cartão de Crédito",
+        pix: "PIX",
+        boleto: "Boleto Bancário",
+      };
+      
+      addText(`I. O valor do presente contrato será de ${formatCurrencyWithWords(formData.contractValue)}.`, 10);
+      y += 2;
+      
+      if (formData.installments === 1) {
+        addText(`II. O pagamento será realizado à vista via ${paymentMethodLabels[formData.paymentMethod]}.`, 10);
+      } else {
+        addText(`II. O pagamento será realizado em ${formData.installments}x de ${formatCurrencyWithWords(installmentValue)}, sem juros, via ${paymentMethodLabels[formData.paymentMethod]}.`, 10);
+      }
+      y += 2;
+      
+      if (formData.dueDate) {
+        addText(`Vencimento: ${format(formData.dueDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}.`, 10);
+        y += 2;
+      }
+      
+      addText(`III. Em caso de atraso no pagamento, incidirão:
+• Multa moratória de 2%
+• Juros de mora de 1% ao dia`, 10);
+      y += 2;
+      
+      addText("IV. Este contrato caracteriza-se como prestação de serviço com pagamento parcelado. O não uso dos serviços não isenta a CONTRATANTE do pagamento das parcelas acordadas.", 10);
+      y += 2;
+      
+      addText("V. A rescisão poderá ser feita com aviso prévio de 30 dias do vencimento da próxima parcela.", 10);
+      y += 3;
+    } else {
+      // Regular clause
+      const lines = wrapText(clause.content, contentWidth, 10);
+      lines.forEach((line) => {
+        checkPageBreak(6);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(0, 0, 0);
+        doc.text(line, margin, y);
+        y += 5;
+      });
+      y += 3;
+    }
   });
 
   // ============ SIGNATURES ============
-  checkPageBreak(60);
+  checkPageBreak(70);
   y += 15;
 
+  // Date and location
+  const startDate = formData.startDate || today;
   addText(
-    `São Paulo, ${format(today, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`,
-    10,
-    { align: "center" }
+    `${companyInfo.city}, ${companyInfo.state} ${format(startDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`,
+    11,
+    { align: "center", bold: true }
   );
-  y += 20;
+  y += 25;
 
   // Signature lines
   const signatureY = y;
-  const leftX = margin + 20;
-  const rightX = pageWidth - margin - 60;
+  const leftX = margin + 15;
+  const rightX = pageWidth - margin - 75;
 
-  // CONTRATANTE
+  // CONTRATADA signature
   doc.setDrawColor(0, 0, 0);
-  doc.line(leftX, signatureY, leftX + 60, signatureY);
+  doc.setLineWidth(0.3);
+  doc.line(leftX, signatureY, leftX + 70, signatureY);
+  
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+  doc.text(companyInfo.representative.toUpperCase(), leftX + 35, signatureY + 6, { align: "center" });
+  
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text("CONTRATANTE", leftX + 30, signatureY + 5, { align: "center" });
-  doc.setFontSize(8);
-  doc.text(formData.clientName, leftX + 30, signatureY + 10, { align: "center" });
-  doc.text(formData.clientDocument, leftX + 30, signatureY + 14, { align: "center" });
+  doc.setTextColor(0, 0, 0);
+  doc.text("CONTRATADA", leftX + 35, signatureY + 12, { align: "center" });
 
-  // CONTRATADA
-  doc.line(rightX, signatureY, rightX + 60, signatureY);
+  // CONTRATANTE signature
+  doc.line(rightX, signatureY, rightX + 70, signatureY);
+  
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+  doc.text(formData.clientName.toUpperCase(), rightX + 35, signatureY + 6, { align: "center" });
+  
   doc.setFontSize(9);
-  doc.text("CONTRATADA", rightX + 30, signatureY + 5, { align: "center" });
-  doc.setFontSize(8);
-  doc.text(companyInfo.name, rightX + 30, signatureY + 10, { align: "center" });
-  doc.text(companyInfo.cnpj, rightX + 30, signatureY + 14, { align: "center" });
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(0, 0, 0);
+  doc.text("CONTRATANTE", rightX + 35, signatureY + 12, { align: "center" });
 
   // Footer on all pages
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
+    
+    // Add header logo on pages after first
+    if (i > 1) {
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, "PNG", pageWidth / 2 - 20, 8, 40, 12);
+        } catch (e) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10);
+          doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+          doc.text("UNIVERSIDADE NACIONAL DE VENDAS", pageWidth / 2, 15, { align: "center" });
+        }
+      }
+    }
+    
     doc.setFontSize(8);
     doc.setTextColor(128, 128, 128);
     doc.text(
       `Página ${i} de ${totalPages}`,
       pageWidth / 2,
       pageHeight - 10,
-      { align: "center" }
-    );
-    doc.text(
-      `Contrato gerado em ${format(today, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
-      pageWidth / 2,
-      pageHeight - 6,
       { align: "center" }
     );
   }
@@ -265,7 +330,7 @@ export function downloadContractPDF(blob: Blob, clientName: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `Contrato_${clientName.replace(/\s+/g, "_")}_${format(new Date(), "yyyy-MM-dd")}.pdf`;
+  link.download = `Contrato_UNV_${clientName.replace(/\s+/g, "_")}_${format(new Date(), "yyyy-MM-dd")}.pdf`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
