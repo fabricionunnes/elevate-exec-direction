@@ -732,7 +732,7 @@ export default function ContractGeneratorPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/onboarding-tasks")}
               >
                 <Home className="h-5 w-5" />
               </Button>
