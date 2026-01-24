@@ -11,8 +11,16 @@ import { formatFullAddress } from "./ContractForm";
 const NAVY = [10, 34, 64] as const; // #0A2240
 const RED = [220, 38, 38] as const; // #DC2626
 
+interface CustomClause {
+  id: string;
+  title: string;
+  content: string;
+  isDynamic?: boolean;
+}
+
 interface GeneratePDFOptions {
   formData: ContractFormData;
+  customClauses?: CustomClause[];
 }
 
 type LoadedImage = {
@@ -61,7 +69,7 @@ function fitImage(
   return { width, height };
 }
 
-export async function generateContractPDF({ formData }: GeneratePDFOptions): Promise<Blob> {
+export async function generateContractPDF({ formData, customClauses }: GeneratePDFOptions): Promise<Blob> {
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -238,7 +246,10 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
   y += 8;
 
   // ============ CONTRACT CLAUSES ============
-  contractClauses.forEach((clause) => {
+  // Use custom clauses if provided, otherwise use defaults
+  const clausesToRender = customClauses || contractClauses;
+  
+  clausesToRender.forEach((clause) => {
     checkPageBreak(25);
     
     addSectionTitle(clause.title);
