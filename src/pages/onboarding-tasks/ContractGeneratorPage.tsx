@@ -92,9 +92,11 @@ export default function ContractGeneratorPage() {
   const [isSendingToZapSign, setIsSendingToZapSign] = useState(false);
   const [zapSignSent, setZapSignSent] = useState(false);
   const [lastGeneratedPdfUrl, setLastGeneratedPdfUrl] = useState<string | null>(null);
-  const [companySignerEmail, setCompanySignerEmail] = useState("");
   const [historyZapSignSent, setHistoryZapSignSent] = useState(false);
-  const [historyCompanySignerEmail, setHistoryCompanySignerEmail] = useState("");
+  
+  // E-mail fixo da empresa contratada
+  const COMPANY_SIGNER_EMAIL = "fabricio@universidadevendas.com.br";
+  const COMPANY_SIGNER_NAME = "Universidade de Vendas";
 
   const [formData, setFormData] = useState<ContractFormData>(defaultFormData);
   const [editableClauses, setEditableClauses] = useState<EditableClause[]>(getDefaultEditableClauses());
@@ -228,12 +230,7 @@ export default function ContractGeneratorPage() {
     }
 
     if (!formData.clientEmail) {
-      toast.error("E-mail do cliente é obrigatório para envio via ZapSign.");
-      return;
-    }
-
-    if (!companySignerEmail) {
-      toast.error("E-mail do signatário da empresa é obrigatório.");
+      toast.error("E-mail do cliente (contratante) é obrigatório para envio via ZapSign.");
       return;
     }
 
@@ -248,13 +245,13 @@ export default function ContractGeneratorPage() {
           documentName,
           signers: [
             {
+              name: COMPANY_SIGNER_NAME,
+              email: COMPANY_SIGNER_EMAIL,
+            },
+            {
               name: formData.clientName,
               email: formData.clientEmail,
               phone: formData.clientPhone,
-            },
-            {
-              name: "Empresa Contratante",
-              email: companySignerEmail,
             },
           ],
           sendAutomatically: true,
@@ -285,12 +282,7 @@ export default function ContractGeneratorPage() {
     }
 
     if (!selectedContract.client_email) {
-      toast.error("E-mail do cliente não foi informado neste contrato.");
-      return;
-    }
-
-    if (!historyCompanySignerEmail) {
-      toast.error("E-mail do signatário da empresa é obrigatório.");
+      toast.error("E-mail do cliente (contratante) não foi informado neste contrato.");
       return;
     }
 
@@ -304,13 +296,13 @@ export default function ContractGeneratorPage() {
           documentName,
           signers: [
             {
+              name: COMPANY_SIGNER_NAME,
+              email: COMPANY_SIGNER_EMAIL,
+            },
+            {
               name: selectedContract.client_name,
               email: selectedContract.client_email,
               phone: selectedContract.client_phone || "",
-            },
-            {
-              name: "Empresa Contratante",
-              email: historyCompanySignerEmail,
             },
           ],
           sendAutomatically: true,
@@ -347,14 +339,12 @@ export default function ContractGeneratorPage() {
     setEditableClauses(getDefaultEditableClauses());
     setZapSignSent(false);
     setLastGeneratedPdfUrl(null);
-    setCompanySignerEmail("");
   };
 
   const handleContractClick = (contract: SavedContract) => {
     setSelectedContract(contract);
     setShowContractDialog(true);
     setHistoryZapSignSent(false);
-    setHistoryCompanySignerEmail("");
   };
 
   const handleViewPDF = () => {
@@ -715,27 +705,14 @@ export default function ContractGeneratorPage() {
                 </div>
               ) : (
                 <>
-                  <p className="text-xs text-muted-foreground">
-                    O contrato será enviado para o cliente ({formData.clientEmail || "e-mail não informado"}) e para o signatário da empresa.
-                  </p>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="companySignerEmail" className="text-xs">
-                      E-mail do signatário da empresa *
-                    </Label>
-                    <Input
-                      id="companySignerEmail"
-                      type="email"
-                      placeholder="contrato@suaempresa.com"
-                      value={companySignerEmail}
-                      onChange={(e) => setCompanySignerEmail(e.target.value)}
-                      className="h-9"
-                    />
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p><strong>Contratada:</strong> {COMPANY_SIGNER_EMAIL}</p>
+                    <p><strong>Contratante:</strong> {formData.clientEmail || "e-mail não informado"}</p>
                   </div>
                   
                   <Button
                     onClick={handleSendToZapSign}
-                    disabled={isSendingToZapSign || !formData.clientEmail || !companySignerEmail}
+                    disabled={isSendingToZapSign || !formData.clientEmail}
                     className="w-full"
                     variant="secondary"
                   >
@@ -889,27 +866,14 @@ export default function ContractGeneratorPage() {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        <p className="text-xs text-muted-foreground">
-                          Enviar para: <span className="font-medium">{selectedContract.client_email || "E-mail não informado"}</span>
-                        </p>
-                        
-                        <div className="space-y-1.5">
-                          <Label htmlFor="historyCompanySignerEmail" className="text-xs">
-                            E-mail do signatário da empresa
-                          </Label>
-                          <Input
-                            id="historyCompanySignerEmail"
-                            type="email"
-                            placeholder="contrato@suaempresa.com"
-                            value={historyCompanySignerEmail}
-                            onChange={(e) => setHistoryCompanySignerEmail(e.target.value)}
-                            className="h-9"
-                          />
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <p><strong>Contratada:</strong> {COMPANY_SIGNER_EMAIL}</p>
+                          <p><strong>Contratante:</strong> {selectedContract.client_email || "E-mail não informado"}</p>
                         </div>
                         
                         <Button
                           onClick={handleSendToZapSignFromHistory}
-                          disabled={isSendingToZapSign || !selectedContract.client_email || !historyCompanySignerEmail}
+                          disabled={isSendingToZapSign || !selectedContract.client_email}
                           className="w-full"
                           size="sm"
                         >
