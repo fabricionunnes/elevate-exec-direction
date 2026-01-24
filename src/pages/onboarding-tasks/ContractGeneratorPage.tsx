@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil, Send, Loader2 } from "lucide-react";
+import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil, Send, Loader2, Clock, ExternalLink, Check, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -25,6 +25,14 @@ import { productDetails } from "@/data/productDetails";
 import { formatCurrencyBR } from "@/lib/numberToWords";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+interface ZapSignSigner {
+  name: string;
+  email: string;
+  status: string;
+  signedAt: string | null;
+  signUrl: string;
+}
 
 interface SavedContract {
   id: string;
@@ -48,6 +56,10 @@ interface SavedContract {
   is_recurring: boolean;
   start_date: string | null;
   pdf_url: string | null;
+  zapsign_document_token: string | null;
+  zapsign_document_url: string | null;
+  zapsign_signers: unknown;
+  zapsign_sent_at: string | null;
 }
 
 const defaultFormData: ContractFormData = {
@@ -93,6 +105,12 @@ export default function ContractGeneratorPage() {
   const [zapSignSent, setZapSignSent] = useState(false);
   const [lastGeneratedPdfUrl, setLastGeneratedPdfUrl] = useState<string | null>(null);
   const [historyZapSignSent, setHistoryZapSignSent] = useState(false);
+  const [isLoadingSignatures, setIsLoadingSignatures] = useState(false);
+  const [signatureStatus, setSignatureStatus] = useState<{
+    signers: ZapSignSigner[];
+    allSigned: boolean;
+    signedFileUrl: string | null;
+  } | null>(null);
   
   // E-mail fixo da empresa contratada
   const COMPANY_SIGNER_EMAIL = "fabricio@universidadevendas.com.br";
@@ -316,13 +334,53 @@ export default function ContractGeneratorPage() {
       }
 
       console.log("ZapSign response:", data);
+      
+      // Update contract in database with ZapSign info
+      await supabase
+        .from("generated_contracts")
+        .update({
+          zapsign_document_token: data.documentToken,
+          zapsign_document_url: data.documentUrl,
+          zapsign_signers: data.signers,
+          zapsign_sent_at: new Date().toISOString(),
+        })
+        .eq("id", selectedContract.id);
+      
       setHistoryZapSignSent(true);
+      // Refresh signature status
+      await checkSignatureStatus(data.documentToken);
+      // Reload contracts list
+      loadContracts();
       toast.success(data.message || "Contrato enviado para assinatura!");
     } catch (error) {
       console.error("Erro ao enviar para ZapSign:", error);
       toast.error("Erro ao enviar para ZapSign. Tente novamente.");
     } finally {
       setIsSendingToZapSign(false);
+    }
+  };
+
+  const checkSignatureStatus = async (documentToken: string) => {
+    setIsLoadingSignatures(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-zapsign-status", {
+        body: { documentToken },
+      });
+
+      if (error) {
+        console.error("Erro ao verificar status:", error);
+        return;
+      }
+
+      setSignatureStatus({
+        signers: data.signers || [],
+        allSigned: data.allSigned || false,
+        signedFileUrl: data.signedFileUrl || null,
+      });
+    } catch (error) {
+      console.error("Erro ao verificar status:", error);
+    } finally {
+      setIsLoadingSignatures(false);
     }
   };
 
@@ -341,10 +399,16 @@ export default function ContractGeneratorPage() {
     setLastGeneratedPdfUrl(null);
   };
 
-  const handleContractClick = (contract: SavedContract) => {
+  const handleContractClick = async (contract: SavedContract) => {
     setSelectedContract(contract);
     setShowContractDialog(true);
     setHistoryZapSignSent(false);
+    setSignatureStatus(null);
+    
+    // If contract was sent to ZapSign, check current status
+    if (contract.zapsign_document_token) {
+      await checkSignatureStatus(contract.zapsign_document_token);
+    }
   };
 
   const handleViewPDF = () => {
@@ -853,13 +917,111 @@ export default function ContractGeneratorPage() {
               {selectedContract.pdf_url && (
                 <>
                   <Separator />
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium flex items-center gap-2">
-                      <Send className="h-4 w-4 text-primary" />
-                      Assinatura Digital (ZapSign)
-                    </h4>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium flex items-center gap-2">
+                        <Send className="h-4 w-4 text-primary" />
+                        Assinatura Digital (ZapSign)
+                      </h4>
+                      {selectedContract.zapsign_document_token && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => checkSignatureStatus(selectedContract.zapsign_document_token!)}
+                          disabled={isLoadingSignatures}
+                        >
+                          <RefreshCw className={`h-3 w-3 ${isLoadingSignatures ? "animate-spin" : ""}`} />
+                        </Button>
+                      )}
+                    </div>
                     
-                    {historyZapSignSent ? (
+                    {/* Signature Status Display */}
+                    {isLoadingSignatures ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        <span className="ml-2 text-sm text-muted-foreground">Verificando assinaturas...</span>
+                      </div>
+                    ) : signatureStatus ? (
+                      <div className="space-y-3">
+                        {/* Signers List */}
+                        <div className="space-y-2">
+                          {signatureStatus.signers.map((signer, index) => (
+                            <div 
+                              key={index} 
+                              className={`flex items-center justify-between p-3 rounded-lg border ${
+                                signer.status === 'signed' 
+                                  ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900' 
+                                  : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                {signer.status === 'signed' ? (
+                                  <Check className="h-4 w-4 text-green-600" />
+                                ) : (
+                                  <Clock className="h-4 w-4 text-amber-600" />
+                                )}
+                                <div>
+                                  <p className="text-sm font-medium">{signer.name}</p>
+                                  <p className="text-xs text-muted-foreground">{signer.email}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                {signer.status === 'signed' ? (
+                                  <Badge variant="default" className="bg-green-600">
+                                    Assinado
+                                  </Badge>
+                                ) : (
+                                  <div className="flex flex-col items-end gap-1">
+                                    <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                                      Pendente
+                                    </Badge>
+                                    {signer.signUrl && (
+                                      <a
+                                        href={signer.signUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-primary hover:underline flex items-center gap-1"
+                                      >
+                                        Link para assinar
+                                        <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* All Signed - Download Button */}
+                        {signatureStatus.allSigned && signatureStatus.signedFileUrl && (
+                          <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                              <span className="text-sm font-medium text-green-800 dark:text-green-300">
+                                Todas as partes assinaram!
+                              </span>
+                            </div>
+                            <Button
+                              onClick={() => window.open(signatureStatus.signedFileUrl!, "_blank")}
+                              className="w-full bg-green-600 hover:bg-green-700"
+                              size="sm"
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Baixar Contrato Assinado
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : selectedContract.zapsign_document_token ? (
+                      <div className="text-sm text-muted-foreground text-center py-2">
+                        Contrato enviado para assinatura em{" "}
+                        {selectedContract.zapsign_sent_at 
+                          ? format(new Date(selectedContract.zapsign_sent_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                          : "data desconhecida"
+                        }
+                      </div>
+                    ) : historyZapSignSent ? (
                       <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-lg p-3 text-sm text-green-800 dark:text-green-300">
                         <CheckCircle2 className="h-4 w-4 inline mr-2" />
                         Contrato enviado! Os signatários receberão um e-mail.

@@ -8419,6 +8419,10 @@ export type Database = {
           product_id: string
           product_name: string
           start_date: string | null
+          zapsign_document_token: string | null
+          zapsign_document_url: string | null
+          zapsign_sent_at: string | null
+          zapsign_signers: Json | null
         }
         Insert: {
           client_address?: string | null
@@ -8444,6 +8448,10 @@ export type Database = {
           product_id: string
           product_name: string
           start_date?: string | null
+          zapsign_document_token?: string | null
+          zapsign_document_url?: string | null
+          zapsign_sent_at?: string | null
+          zapsign_signers?: Json | null
         }
         Update: {
           client_address?: string | null
@@ -8469,6 +8477,10 @@ export type Database = {
           product_id?: string
           product_name?: string
           start_date?: string | null
+          zapsign_document_token?: string | null
+          zapsign_document_url?: string | null
+          zapsign_sent_at?: string | null
+          zapsign_signers?: Json | null
         }
         Relationships: [
           {
