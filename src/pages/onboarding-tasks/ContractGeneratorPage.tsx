@@ -125,6 +125,22 @@ export default function ContractGeneratorPage() {
   const [formData, setFormData] = useState<ContractFormData>(defaultFormData);
   const [editableClauses, setEditableClauses] = useState<EditableClause[]>(getDefaultEditableClauses());
 
+  const fetchContractById = async (id: string): Promise<SavedContract | null> => {
+    try {
+      const { data, error } = await supabase
+        .from("generated_contracts")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) throw error;
+      return (data as unknown as SavedContract) || null;
+    } catch (error) {
+      console.error("Erro ao buscar contrato atualizado:", error);
+      return null;
+    }
+  };
+
   const loadContracts = async () => {
     setLoadingHistory(true);
     try {
@@ -361,16 +377,21 @@ export default function ContractGeneratorPage() {
       
       if (updateError) {
         console.error("Erro ao atualizar contrato no banco:", updateError);
+        toast.error("Não consegui salvar o envio para assinatura. Recarregue a página e tente novamente.");
+        return;
       }
-      
-      // Update the selected contract state with the new ZapSign data
-      setSelectedContract({
-        ...selectedContract,
-        zapsign_document_token: data.documentToken,
-        zapsign_document_url: data.documentUrl,
-        zapsign_signers: data.signers,
-        zapsign_sent_at: new Date().toISOString(),
-      });
+
+      // Fetch fresh contract from DB to ensure persistence/UI consistency
+      const fresh = await fetchContractById(selectedContract.id);
+      setSelectedContract(
+        fresh || {
+          ...selectedContract,
+          zapsign_document_token: data.documentToken,
+          zapsign_document_url: data.documentUrl,
+          zapsign_signers: data.signers,
+          zapsign_sent_at: new Date().toISOString(),
+        }
+      );
       
       setHistoryZapSignSent(true);
       // Refresh signature status
@@ -426,14 +447,19 @@ export default function ContractGeneratorPage() {
   };
 
   const handleContractClick = async (contract: SavedContract) => {
-    setSelectedContract(contract);
     setShowContractDialog(true);
-    setHistoryZapSignSent(false);
     setSignatureStatus(null);
-    
+
+    // Always refetch the contract to avoid stale history list data
+    const fresh = await fetchContractById(contract.id);
+    const effective = fresh || contract;
+
+    setSelectedContract(effective);
+    setHistoryZapSignSent(!!effective.zapsign_document_token || !!effective.zapsign_sent_at);
+
     // If contract was sent to ZapSign, check current status
-    if (contract.zapsign_document_token) {
-      await checkSignatureStatus(contract.zapsign_document_token);
+    if (effective.zapsign_document_token) {
+      await checkSignatureStatus(effective.zapsign_document_token);
     }
   };
 
