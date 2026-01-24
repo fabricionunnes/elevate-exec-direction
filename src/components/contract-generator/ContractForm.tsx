@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import {
@@ -40,6 +41,7 @@ export interface ContractFormData {
   contractValue: number;
   paymentMethod: "card" | "pix" | "boleto";
   installments: number;
+  isRecurring: boolean; // New: recurring monthly payment
   dueDate: Date | undefined;
   startDate: Date | undefined;
 }
@@ -323,7 +325,25 @@ export default function ContractForm({
               value={formData.installments}
               onChange={(e) => updateField("installments", parseInt(e.target.value) || 1)}
               placeholder="1"
+              disabled={formData.isRecurring}
             />
+          </div>
+          
+          <div className="md:col-span-2 flex items-center space-x-3">
+            <Checkbox
+              id="isRecurring"
+              checked={formData.isRecurring}
+              onCheckedChange={(checked) => {
+                onChange({ 
+                  ...formData, 
+                  isRecurring: checked === true,
+                  installments: checked === true ? 1 : formData.installments 
+                });
+              }}
+            />
+            <Label htmlFor="isRecurring" className="text-sm font-medium cursor-pointer">
+              Pagamento recorrente mensal (assinatura)
+            </Label>
           </div>
         </CardContent>
       </Card>
