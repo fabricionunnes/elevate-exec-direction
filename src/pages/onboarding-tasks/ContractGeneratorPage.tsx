@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -100,10 +100,11 @@ const CEO_EMAIL = "fabricio@universidadevendas.com.br";
 
 export default function ContractGeneratorPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedBlob, setGeneratedBlob] = useState<Blob | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(() => searchParams.get("history") === "true");
   const [savedContracts, setSavedContracts] = useState<SavedContract[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [selectedContract, setSelectedContract] = useState<SavedContract | null>(null);
