@@ -28,6 +28,15 @@ interface SavedContract {
   created_at: string;
   client_name: string;
   client_document: string;
+  client_address: string | null;
+  client_email: string | null;
+  client_phone: string | null;
+  legal_rep_name: string | null;
+  legal_rep_cpf: string | null;
+  legal_rep_rg: string | null;
+  legal_rep_marital_status: string | null;
+  legal_rep_nationality: string | null;
+  legal_rep_profession: string | null;
   product_id: string;
   product_name: string;
   contract_value: number;
@@ -232,23 +241,74 @@ export default function ContractGeneratorPage() {
   const handleDuplicateContract = () => {
     if (!selectedContract) return;
     
-    // Pre-fill form with selected contract data
+    // Parse address parts from saved address if available
+    // Address format: "Rua, nº 123, Bairro, Cidade - UF, CEP 00000-000"
+    let addressParts = {
+      street: "",
+      number: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      cep: "",
+    };
+    
+    if (selectedContract.client_address) {
+      const parts = selectedContract.client_address.split(", ");
+      if (parts.length >= 5) {
+        addressParts.street = parts[0] || "";
+        const numberMatch = parts[1]?.match(/nº\s*(.+)/);
+        addressParts.number = numberMatch ? numberMatch[1] : parts[1] || "";
+        addressParts.neighborhood = parts[2] || "";
+        // City - State format: "Cidade - UF"
+        const cityStatePart = parts[3] || "";
+        const cityStateMatch = cityStatePart.match(/(.+)\s*-\s*(.+)/);
+        if (cityStateMatch) {
+          addressParts.city = cityStateMatch[1].trim();
+          addressParts.state = cityStateMatch[2].trim();
+        } else {
+          addressParts.city = cityStatePart;
+        }
+        const cepMatch = parts[4]?.match(/CEP\s*(.+)/);
+        addressParts.cep = cepMatch ? cepMatch[1] : "";
+      }
+    }
+    
+    // Pre-fill form with all client and legal rep data, but clear contract/payment details
     setFormData({
-      ...defaultFormData,
-      clientName: selectedContract.client_name,
-      clientDocument: selectedContract.client_document,
-      // Keep product, value, and payment empty for user to choose new ones
-      productId: selectedContract.product_id || "",
-      contractValue: selectedContract.contract_value || 0,
-      paymentMethod: (selectedContract.payment_method as "card" | "pix" | "boleto") || "pix",
-      installments: selectedContract.installments || 1,
-      isRecurring: selectedContract.is_recurring || false,
+      // Company/Client data - all filled
+      clientName: selectedContract.client_name || "",
+      clientDocument: selectedContract.client_document || "",
+      clientCep: addressParts.cep,
+      clientStreet: addressParts.street,
+      clientNumber: addressParts.number,
+      clientComplement: "",
+      clientNeighborhood: addressParts.neighborhood,
+      clientCity: addressParts.city,
+      clientState: addressParts.state,
+      clientEmail: selectedContract.client_email || "",
+      clientPhone: selectedContract.client_phone || "",
+      
+      // Legal representative data - all filled
+      legalRepName: selectedContract.legal_rep_name || "",
+      legalRepCpf: selectedContract.legal_rep_cpf || "",
+      legalRepRg: selectedContract.legal_rep_rg || "",
+      legalRepMaritalStatus: selectedContract.legal_rep_marital_status || "",
+      legalRepNationality: selectedContract.legal_rep_nationality || "brasileiro(a)",
+      legalRepProfession: selectedContract.legal_rep_profession || "",
+      
+      // Contract data - EMPTY for user to fill new values
+      productId: "",
+      contractValue: 0,
+      paymentMethod: "pix",
+      installments: 1,
+      isRecurring: false,
+      dueDate: undefined,
       startDate: new Date(),
     });
     
     setShowContractDialog(false);
     setShowHistory(false);
-    toast.success("Dados do cliente carregados. Ajuste o produto, valor e forma de pagamento conforme necessário.");
+    toast.success("Dados do cliente e responsável legal carregados. Preencha os dados do contrato.");
   };
 
   const getPaymentMethodLabel = (method: string) => {
