@@ -239,16 +239,17 @@ export default function ContractForm({
             <Select
               value={formData.paymentMethod}
               onValueChange={(value: "card" | "pix" | "boleto") => {
-                updateField("paymentMethod", value);
                 if (value === "card") {
-                  updateField("dueDate", undefined);
+                  onChange({ ...formData, paymentMethod: value, dueDate: undefined });
+                } else {
+                  onChange({ ...formData, paymentMethod: value });
                 }
               }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border shadow-lg z-50">
                 <SelectItem value="card">Cartão de Crédito</SelectItem>
                 <SelectItem value="pix">PIX</SelectItem>
                 <SelectItem value="boleto">Boleto Bancário</SelectItem>
