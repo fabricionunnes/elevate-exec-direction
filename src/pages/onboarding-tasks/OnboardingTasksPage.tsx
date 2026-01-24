@@ -1654,7 +1654,7 @@ const OnboardingTasksPage = () => {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => navigate("/contratos")}
+                onClick={() => navigate("/contratos?history=true")}
                 className="gap-2"
               >
                 <FileText className="h-4 w-4" />
