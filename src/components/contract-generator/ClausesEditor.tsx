@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronRight, FileEdit, RotateCcw } from "lucide-react";
 import { contractClauses, type ContractClause } from "@/data/contractTemplate";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface EditableClause {
   id: string;
@@ -20,6 +21,38 @@ interface ClausesEditorProps {
   onChange: (clauses: EditableClause[]) => void;
 }
 
+// Async function to get editable clauses with saved template overrides
+export async function getEditableClausesWithSavedTemplate(): Promise<EditableClause[]> {
+  try {
+    const { data, error } = await supabase
+      .from("contract_template_clauses")
+      .select("*");
+
+    if (error) throw error;
+
+    // Create a map of saved clauses
+    const savedClausesMap = new Map(data?.map((c) => [c.id, c]) || []);
+
+    // Merge default clauses with saved ones
+    return contractClauses.map((defaultClause) => {
+      const saved = savedClausesMap.get(defaultClause.id);
+      const content = saved?.content || defaultClause.content;
+      return {
+        id: defaultClause.id,
+        title: saved?.title || defaultClause.title,
+        content: content,
+        originalContent: content, // Use saved content as "original" for per-contract editing
+        isDynamic: saved?.is_dynamic ?? defaultClause.isDynamic,
+      };
+    });
+  } catch (error) {
+    console.error("Erro ao carregar template salvo:", error);
+    // Fallback to default clauses
+    return getDefaultEditableClauses();
+  }
+}
+
+// Sync function for initial state (fallback)
 export function getDefaultEditableClauses(): EditableClause[] {
   return contractClauses.map((clause) => ({
     id: clause.id,

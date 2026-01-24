@@ -12,14 +12,15 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil, Send, Loader2, Clock, ExternalLink, Check, XCircle, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil, Send, Loader2, Clock, ExternalLink, Check, XCircle, Trash2, Search, ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import ContractForm, { type ContractFormData } from "@/components/contract-generator/ContractForm";
 import ContractPreview from "@/components/contract-generator/ContractPreview";
-import ClausesEditor, { getDefaultEditableClauses, type EditableClause } from "@/components/contract-generator/ClausesEditor";
+import ClausesEditor, { getDefaultEditableClauses, getEditableClausesWithSavedTemplate, type EditableClause } from "@/components/contract-generator/ClausesEditor";
+import TemplateEditorDialog from "@/components/contract-generator/TemplateEditorDialog";
 import { generateContractPDF, downloadContractPDF } from "@/components/contract-generator/generateContractPDF";
 import { productDetails } from "@/data/productDetails";
 import { formatCurrencyBR } from "@/lib/numberToWords";
@@ -130,9 +131,11 @@ export default function ContractGeneratorPage() {
   const COMPANY_SIGNER_NAME = "Universidade de Vendas";
   
   const canDeleteContracts = currentUserEmail === CEO_EMAIL;
+  const canEditTemplate = currentUserEmail === CEO_EMAIL;
 
   const [formData, setFormData] = useState<ContractFormData>(defaultFormData);
   const [editableClauses, setEditableClauses] = useState<EditableClause[]>(getDefaultEditableClauses());
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   
   // History filter and pagination states
   const [historySearchClient, setHistorySearchClient] = useState("");
@@ -198,8 +201,15 @@ export default function ContractGeneratorPage() {
     }
   };
 
+  // Load saved template clauses
+  const loadSavedTemplateClauses = async () => {
+    const clauses = await getEditableClausesWithSavedTemplate();
+    setEditableClauses(clauses);
+  };
+
   useEffect(() => {
     loadContracts();
+    loadSavedTemplateClauses();
     
     // Get current user email
     const getCurrentUser = async () => {
@@ -760,17 +770,36 @@ export default function ContractGeneratorPage() {
                 </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => setShowHistory(!showHistory)}
-              className="gap-2"
-            >
-              <History className="h-4 w-4" />
-              {showHistory ? "Novo Contrato" : "Histórico"}
-            </Button>
+            <div className="flex items-center gap-2">
+              {canEditTemplate && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowTemplateEditor(true)}
+                  title="Editar Template Padrão"
+                >
+                  <Settings className="h-5 w-5" />
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                onClick={() => setShowHistory(!showHistory)}
+                className="gap-2"
+              >
+                <History className="h-4 w-4" />
+                {showHistory ? "Novo Contrato" : "Histórico"}
+              </Button>
+            </div>
           </div>
         </div>
       </header>
+
+      {/* Template Editor Dialog - Only for Fabrício */}
+      <TemplateEditorDialog
+        open={showTemplateEditor}
+        onOpenChange={setShowTemplateEditor}
+        onSave={loadSavedTemplateClauses}
+      />
 
       {/* Content */}
       <main className="container mx-auto px-4 py-6">

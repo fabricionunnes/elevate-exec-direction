@@ -5389,6 +5389,33 @@ export type Database = {
           },
         ]
       }
+      contract_template_clauses: {
+        Row: {
+          content: string
+          id: string
+          is_dynamic: boolean | null
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          content: string
+          id: string
+          is_dynamic?: boolean | null
+          title: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          content?: string
+          id?: string
+          is_dynamic?: boolean | null
+          title?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       crm_activities: {
         Row: {
           completed_at: string | null
