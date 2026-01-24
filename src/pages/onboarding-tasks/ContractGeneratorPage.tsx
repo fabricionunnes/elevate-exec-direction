@@ -349,7 +349,7 @@ export default function ContractGeneratorPage() {
       console.log("ZapSign response:", data);
       
       // Update contract in database with ZapSign info
-      await supabase
+      const { error: updateError } = await supabase
         .from("generated_contracts")
         .update({
           zapsign_document_token: data.documentToken,
@@ -359,11 +359,24 @@ export default function ContractGeneratorPage() {
         })
         .eq("id", selectedContract.id);
       
+      if (updateError) {
+        console.error("Erro ao atualizar contrato no banco:", updateError);
+      }
+      
+      // Update the selected contract state with the new ZapSign data
+      setSelectedContract({
+        ...selectedContract,
+        zapsign_document_token: data.documentToken,
+        zapsign_document_url: data.documentUrl,
+        zapsign_signers: data.signers,
+        zapsign_sent_at: new Date().toISOString(),
+      });
+      
       setHistoryZapSignSent(true);
       // Refresh signature status
       await checkSignatureStatus(data.documentToken);
       // Reload contracts list
-      loadContracts();
+      await loadContracts();
       toast.success(data.message || "Contrato enviado para assinatura!");
     } catch (error) {
       console.error("Erro ao enviar para ZapSign:", error);
