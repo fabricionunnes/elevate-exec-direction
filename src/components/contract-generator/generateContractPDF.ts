@@ -328,28 +328,31 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
   );
   y += 25;
 
-  // Signature lines
+  // Signature lines - properly spaced
   const signatureY = y;
-  const leftX = margin + 15;
-  const rightX = pageWidth - margin - 75;
+  const signatureWidth = 70;
+  const gap = 20; // Gap between signatures
+  const totalSignaturesWidth = signatureWidth * 2 + gap;
+  const leftX = (pageWidth - totalSignaturesWidth) / 2;
+  const rightX = leftX + signatureWidth + gap;
 
   // CONTRATADA signature
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.3);
-  doc.line(leftX, signatureY, leftX + 70, signatureY);
+  doc.line(leftX, signatureY, leftX + signatureWidth, signatureY);
   
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.text(companyInfo.representative.toUpperCase(), leftX + 35, signatureY + 6, { align: "center" });
+  doc.text(companyInfo.representative.toUpperCase(), leftX + signatureWidth / 2, signatureY + 6, { align: "center" });
   
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0, 0, 0);
-  doc.text("CONTRATADA", leftX + 35, signatureY + 12, { align: "center" });
+  doc.text("CONTRATADA", leftX + signatureWidth / 2, signatureY + 12, { align: "center" });
 
   // CONTRATANTE signature
-  doc.line(rightX, signatureY, rightX + 70, signatureY);
+  doc.line(rightX, signatureY, rightX + signatureWidth, signatureY);
   
   // Use legal representative name if available, otherwise client name
   const signerName = formData.legalRepName || formData.clientName;
@@ -357,12 +360,12 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.text(signerName.toUpperCase(), rightX + 35, signatureY + 6, { align: "center" });
+  doc.text(signerName.toUpperCase(), rightX + signatureWidth / 2, signatureY + 6, { align: "center" });
   
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0, 0, 0);
-  doc.text("CONTRATANTE", rightX + 35, signatureY + 12, { align: "center" });
+  doc.text("CONTRATANTE", rightX + signatureWidth / 2, signatureY + 12, { align: "center" });
 
   // Footer on all pages
   const totalPages = doc.getNumberOfPages();
