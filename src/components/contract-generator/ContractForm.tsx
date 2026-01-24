@@ -48,7 +48,7 @@ export interface ContractFormData {
   paymentMethod: "card" | "pix" | "boleto";
   installments: number;
   isRecurring: boolean;
-  dueDate: Date | undefined;
+  dueDay: number | undefined; // Dia do mês para vencimento (1, 5, 10, 15, 20, 25)
   startDate: Date | undefined;
 }
 
@@ -150,7 +150,7 @@ export default function ContractForm({
     ];
     
     if (formData.paymentMethod !== "card") {
-      requiredFields.push(!!formData.dueDate);
+      requiredFields.push(!!formData.dueDay);
     }
     
     return requiredFields.every(Boolean);
@@ -500,7 +500,7 @@ export default function ContractForm({
               value={formData.paymentMethod}
               onValueChange={(value: "card" | "pix" | "boleto") => {
                 if (value === "card") {
-                  onChange({ ...formData, paymentMethod: value, dueDate: undefined });
+                  onChange({ ...formData, paymentMethod: value, dueDay: undefined });
                 } else {
                   onChange({ ...formData, paymentMethod: value });
                 }
@@ -549,33 +549,23 @@ export default function ContractForm({
           
           {showDueDate && (
             <div className="space-y-2">
-              <Label>Data de Vencimento *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !formData.dueDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.dueDate ? (
-                      format(formData.dueDate, "dd/MM/yyyy", { locale: ptBR })
-                    ) : (
-                      "Selecione a data"
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.dueDate}
-                    onSelect={(date) => updateField("dueDate", date)}
-                    locale={ptBR}
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label>Dia de Vencimento *</Label>
+              <Select
+                value={formData.dueDay?.toString() || ""}
+                onValueChange={(value) => updateField("dueDay", parseInt(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o dia" />
+                </SelectTrigger>
+                <SelectContent className="bg-background border shadow-lg z-50">
+                  <SelectItem value="1">Dia 1</SelectItem>
+                  <SelectItem value="5">Dia 5</SelectItem>
+                  <SelectItem value="10">Dia 10</SelectItem>
+                  <SelectItem value="15">Dia 15</SelectItem>
+                  <SelectItem value="20">Dia 20</SelectItem>
+                  <SelectItem value="25">Dia 25</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
         </CardContent>

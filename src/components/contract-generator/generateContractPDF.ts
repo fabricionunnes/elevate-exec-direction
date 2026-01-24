@@ -292,8 +292,8 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
         y += 2;
       }
       
-      if (formData.dueDate) {
-        addText(`Vencimento: ${format(formData.dueDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}.`, 10);
+      if (formData.dueDay) {
+        addText(`Vencimento: Todo dia ${formData.dueDay} de cada mês.`, 10);
         y += 2;
       }
       
