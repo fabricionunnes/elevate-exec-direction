@@ -142,6 +142,29 @@ export default function ContractGeneratorPage() {
     }
   };
 
+  const downloadFileFromUrl = async (url: string, filename: string) => {
+    try {
+      const res = await fetch(url, { method: "GET" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      // Cleanup
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+    } catch (e) {
+      console.error("Erro ao baixar arquivo:", e);
+      toast.error("Não consegui baixar o arquivo assinado. Clique em Atualizar e tente novamente.");
+    }
+  };
+
   const loadContracts = async () => {
     setLoadingHistory(true);
     try {
@@ -1120,7 +1143,12 @@ export default function ContractGeneratorPage() {
                               </span>
                             </div>
                             <Button
-                              onClick={() => window.open(signatureStatus.signedFileUrl!, "_blank")}
+                              onClick={() =>
+                                downloadFileFromUrl(
+                                  signatureStatus.signedFileUrl!,
+                                  `contrato-assinado-${selectedContract.client_name}.pdf`
+                                )
+                              }
                               className="w-full bg-green-600 hover:bg-green-700"
                               size="sm"
                             >
