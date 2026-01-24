@@ -27,6 +27,7 @@ export interface ContractFormData {
   clientCep: string;
   clientStreet: string;
   clientNumber: string;
+  clientComplement: string;
   clientNeighborhood: string;
   clientCity: string;
   clientState: string;
@@ -56,6 +57,7 @@ export const formatFullAddress = (data: ContractFormData): string => {
   const parts = [
     data.clientStreet,
     data.clientNumber ? `nº ${data.clientNumber}` : "",
+    data.clientComplement || "",
     data.clientNeighborhood,
     data.clientCity,
     data.clientState,
@@ -239,7 +241,7 @@ export default function ContractForm({
             {loadingCep && <p className="text-xs text-muted-foreground">Buscando endereço...</p>}
           </div>
           
-          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-6 gap-4">
             <div className="md:col-span-3 space-y-2">
               <Label htmlFor="clientStreet">Rua / Logradouro *</Label>
               <Input
@@ -257,6 +259,16 @@ export default function ContractForm({
                 value={formData.clientNumber}
                 onChange={(e) => updateField("clientNumber", e.target.value)}
                 placeholder="123"
+              />
+            </div>
+            
+            <div className="md:col-span-2 space-y-2">
+              <Label htmlFor="clientComplement">Complemento</Label>
+              <Input
+                id="clientComplement"
+                value={formData.clientComplement}
+                onChange={(e) => updateField("clientComplement", e.target.value)}
+                placeholder="Sala 101, Bloco A, etc."
               />
             </div>
           </div>
