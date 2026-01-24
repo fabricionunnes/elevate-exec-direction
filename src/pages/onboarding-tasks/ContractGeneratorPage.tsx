@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy } from "lucide-react";
+import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -311,6 +311,73 @@ export default function ContractGeneratorPage() {
     toast.success("Dados do cliente e responsável legal carregados. Preencha os dados do contrato.");
   };
 
+  const handleEditContract = () => {
+    if (!selectedContract) return;
+    
+    // Parse address parts from saved address if available
+    let addressParts = {
+      street: "",
+      number: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      cep: "",
+    };
+    
+    if (selectedContract.client_address) {
+      const parts = selectedContract.client_address.split(", ");
+      if (parts.length >= 5) {
+        addressParts.street = parts[0] || "";
+        const numberMatch = parts[1]?.match(/nº\s*(.+)/);
+        addressParts.number = numberMatch ? numberMatch[1] : parts[1] || "";
+        addressParts.neighborhood = parts[2] || "";
+        const cityStatePart = parts[3] || "";
+        const cityStateMatch = cityStatePart.match(/(.+)\s*-\s*(.+)/);
+        if (cityStateMatch) {
+          addressParts.city = cityStateMatch[1].trim();
+          addressParts.state = cityStateMatch[2].trim();
+        } else {
+          addressParts.city = cityStatePart;
+        }
+        const cepMatch = parts[4]?.match(/CEP\s*(.+)/);
+        addressParts.cep = cepMatch ? cepMatch[1] : "";
+      }
+    }
+    
+    // Pre-fill form with ALL contract data for editing
+    setFormData({
+      clientName: selectedContract.client_name || "",
+      clientDocument: selectedContract.client_document || "",
+      clientCep: addressParts.cep,
+      clientStreet: addressParts.street,
+      clientNumber: addressParts.number,
+      clientComplement: "",
+      clientNeighborhood: addressParts.neighborhood,
+      clientCity: addressParts.city,
+      clientState: addressParts.state,
+      clientEmail: selectedContract.client_email || "",
+      clientPhone: selectedContract.client_phone || "",
+      legalRepName: selectedContract.legal_rep_name || "",
+      legalRepCpf: selectedContract.legal_rep_cpf || "",
+      legalRepRg: selectedContract.legal_rep_rg || "",
+      legalRepMaritalStatus: selectedContract.legal_rep_marital_status || "",
+      legalRepNationality: selectedContract.legal_rep_nationality || "brasileiro(a)",
+      legalRepProfession: selectedContract.legal_rep_profession || "",
+      // Contract data - ALL filled for editing
+      productId: selectedContract.product_id || "",
+      contractValue: selectedContract.contract_value || 0,
+      paymentMethod: (selectedContract.payment_method as "card" | "pix" | "boleto") || "pix",
+      installments: selectedContract.installments || 1,
+      isRecurring: selectedContract.is_recurring || false,
+      dueDate: undefined,
+      startDate: selectedContract.start_date ? new Date(selectedContract.start_date) : new Date(),
+    });
+    
+    setShowContractDialog(false);
+    setShowHistory(false);
+    toast.success("Contrato carregado para edição. Faça as alterações necessárias e gere um novo PDF.");
+  };
+
   const getPaymentMethodLabel = (method: string) => {
     const labels: Record<string, string> = {
       card: "Cartão",
@@ -544,6 +611,14 @@ export default function ContractGeneratorPage() {
               <Separator />
               
               <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleEditContract} 
+                  className="flex-1"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Editar
+                </Button>
                 <Button 
                   variant="secondary" 
                   onClick={handleDuplicateContract} 
