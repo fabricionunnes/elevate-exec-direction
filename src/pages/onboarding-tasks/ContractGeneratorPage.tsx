@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil, Send, Loader2, Clock, ExternalLink, Check, XCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil, Send, Loader2, Clock, ExternalLink, Check, XCircle, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -25,6 +25,13 @@ import { productDetails } from "@/data/productDetails";
 import { formatCurrencyBR } from "@/lib/numberToWords";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ZapSignSigner {
   name: string;
@@ -125,6 +132,10 @@ export default function ContractGeneratorPage() {
 
   const [formData, setFormData] = useState<ContractFormData>(defaultFormData);
   const [editableClauses, setEditableClauses] = useState<EditableClause[]>(getDefaultEditableClauses());
+  
+  // History filter states
+  const [historySearchClient, setHistorySearchClient] = useState("");
+  const [historyFilterService, setHistoryFilterService] = useState<string>("all");
 
   const fetchContractById = async (id: string): Promise<SavedContract | null> => {
     try {
@@ -763,12 +774,39 @@ export default function ContractGeneratorPage() {
         {showHistory ? (
           // History View
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <h2 className="text-lg font-semibold">Contratos Gerados</h2>
               <Button variant="ghost" size="sm" onClick={loadContracts} disabled={loadingHistory}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${loadingHistory ? "animate-spin" : ""}`} />
                 Atualizar
               </Button>
+            </div>
+            
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por razão social..."
+                  value={historySearchClient}
+                  onChange={(e) => setHistorySearchClient(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={historyFilterService} onValueChange={setHistoryFilterService}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="Filtrar por serviço" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os serviços</SelectItem>
+                  {/* Get unique product names from saved contracts */}
+                  {Array.from(new Set(savedContracts.map(c => c.product_name))).sort().map((productName) => (
+                    <SelectItem key={productName} value={productName}>
+                      {productName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             {savedContracts.length === 0 ? (
@@ -787,7 +825,19 @@ export default function ContractGeneratorPage() {
               </Card>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {savedContracts.map((contract) => (
+                {savedContracts
+                  .filter((contract) => {
+                    // Filter by client name search
+                    const matchesClient = historySearchClient === "" || 
+                      contract.client_name.toLowerCase().includes(historySearchClient.toLowerCase());
+                    
+                    // Filter by service
+                    const matchesService = historyFilterService === "all" || 
+                      contract.product_name === historyFilterService;
+                    
+                    return matchesClient && matchesService;
+                  })
+                  .map((contract) => (
                   <Card 
                     key={contract.id} 
                     className="hover:shadow-md transition-shadow cursor-pointer"
