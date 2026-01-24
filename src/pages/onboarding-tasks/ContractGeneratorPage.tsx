@@ -788,7 +788,7 @@ export default function ContractGeneratorPage() {
                 className="gap-2"
               >
                 <History className="h-4 w-4" />
-                {showHistory ? "Novo Contrato" : "Histórico"}
+                {showHistory ? "Novo Contrato" : "Contratos"}
               </Button>
             </div>
           </div>
