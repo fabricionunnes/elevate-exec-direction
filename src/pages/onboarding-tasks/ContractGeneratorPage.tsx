@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil, Send, Loader2, Clock, ExternalLink, Check, XCircle, Trash2, Search } from "lucide-react";
+import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil, Send, Loader2, Clock, ExternalLink, Check, XCircle, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -133,9 +133,11 @@ export default function ContractGeneratorPage() {
   const [formData, setFormData] = useState<ContractFormData>(defaultFormData);
   const [editableClauses, setEditableClauses] = useState<EditableClause[]>(getDefaultEditableClauses());
   
-  // History filter states
+  // History filter and pagination states
   const [historySearchClient, setHistorySearchClient] = useState("");
   const [historyFilterService, setHistoryFilterService] = useState<string>("all");
+  const [historyCurrentPage, setHistoryCurrentPage] = useState(1);
+  const contractsPerPage = 10;
 
   const fetchContractById = async (id: string): Promise<SavedContract | null> => {
     try {
@@ -824,81 +826,147 @@ export default function ContractGeneratorPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {savedContracts
-                  .filter((contract) => {
-                    // Filter by client name search
-                    const matchesClient = historySearchClient === "" || 
-                      contract.client_name.toLowerCase().includes(historySearchClient.toLowerCase());
+              (() => {
+                // Filter contracts first (applies across all pages)
+                const filteredContracts = savedContracts.filter((contract) => {
+                  const matchesClient = historySearchClient === "" || 
+                    contract.client_name.toLowerCase().includes(historySearchClient.toLowerCase());
+                  const matchesService = historyFilterService === "all" || 
+                    contract.product_name === historyFilterService;
+                  return matchesClient && matchesService;
+                });
+                
+                // Pagination logic
+                const totalPages = Math.ceil(filteredContracts.length / contractsPerPage);
+                const startIndex = (historyCurrentPage - 1) * contractsPerPage;
+                const paginatedContracts = filteredContracts.slice(startIndex, startIndex + contractsPerPage);
+                
+                // Reset to page 1 if current page exceeds total pages (e.g., after filtering)
+                if (historyCurrentPage > totalPages && totalPages > 0) {
+                  setHistoryCurrentPage(1);
+                }
+                
+                return (
+                  <div className="space-y-4">
+                    {/* Results count */}
+                    <p className="text-sm text-muted-foreground">
+                      Exibindo {paginatedContracts.length} de {filteredContracts.length} contratos
+                      {filteredContracts.length !== savedContracts.length && ` (${savedContracts.length} total)`}
+                    </p>
                     
-                    // Filter by service
-                    const matchesService = historyFilterService === "all" || 
-                      contract.product_name === historyFilterService;
+                    {/* Contracts grid */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {paginatedContracts.map((contract) => (
+                        <Card 
+                          key={contract.id} 
+                          className="hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => handleContractClick(contract)}
+                        >
+                          <CardHeader className="pb-2">
+                            <div className="flex items-start justify-between">
+                              <CardTitle className="text-base font-medium line-clamp-1">
+                                {contract.client_name}
+                              </CardTitle>
+                              <div className="flex gap-1">
+                                {contract.pdf_url && (
+                                  <Badge variant="default" className="text-xs bg-green-600">
+                                    PDF
+                                  </Badge>
+                                )}
+                                {contract.is_recurring && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Recorrente
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {contract.client_document}
+                            </p>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div>
+                              <p className="text-sm font-medium text-primary">
+                                {contract.product_name}
+                              </p>
+                            </div>
+                            
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <DollarSign className="h-3 w-3" />
+                                {formatCurrencyBR(contract.contract_value)}
+                              </span>
+                              <span>
+                                {contract.is_recurring 
+                                  ? "Mensal" 
+                                  : `${contract.installments}x`}
+                              </span>
+                            </div>
+                            
+                            <Separator />
+                            
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {format(new Date(contract.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {getPaymentMethodLabel(contract.payment_method)}
+                              </Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
                     
-                    return matchesClient && matchesService;
-                  })
-                  .map((contract) => (
-                  <Card 
-                    key={contract.id} 
-                    className="hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => handleContractClick(contract)}
-                  >
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="text-base font-medium line-clamp-1">
-                          {contract.client_name}
-                        </CardTitle>
-                        <div className="flex gap-1">
-                          {contract.pdf_url && (
-                            <Badge variant="default" className="text-xs bg-green-600">
-                              PDF
-                            </Badge>
-                          )}
-                          {contract.is_recurring && (
-                            <Badge variant="secondary" className="text-xs">
-                              Recorrente
-                            </Badge>
-                          )}
+                    {/* Pagination controls */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setHistoryCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={historyCurrentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter(page => {
+                              // Show first, last, current, and adjacent pages
+                              return page === 1 || 
+                                     page === totalPages || 
+                                     Math.abs(page - historyCurrentPage) <= 1;
+                            })
+                            .map((page, idx, arr) => (
+                              <span key={page} className="flex items-center">
+                                {idx > 0 && arr[idx - 1] !== page - 1 && (
+                                  <span className="px-2 text-muted-foreground">...</span>
+                                )}
+                                <Button
+                                  variant={historyCurrentPage === page ? "default" : "outline"}
+                                  size="sm"
+                                  className="w-8 h-8 p-0"
+                                  onClick={() => setHistoryCurrentPage(page)}
+                                >
+                                  {page}
+                                </Button>
+                              </span>
+                            ))}
                         </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setHistoryCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={historyCurrentPage === totalPages}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {contract.client_document}
-                      </p>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <p className="text-sm font-medium text-primary">
-                          {contract.product_name}
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
-                          {formatCurrencyBR(contract.contract_value)}
-                        </span>
-                        <span>
-                          {contract.is_recurring 
-                            ? "Mensal" 
-                            : `${contract.installments}x`}
-                        </span>
-                      </div>
-                      
-                      <Separator />
-                      
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {format(new Date(contract.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                        </span>
-                        <Badge variant="outline" className="text-xs">
-                          {getPaymentMethodLabel(contract.payment_method)}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                    )}
+                  </div>
+                );
+              })()
             )}
           </div>
         ) : (
