@@ -214,6 +214,9 @@ const App = () => (
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/onboarding/:productId" element={<OnboardingProductPage />} />
             
+            {/* Contract Generator - Public */}
+            <Route path="/contratos" element={<ContractGeneratorPage />} />
+            
             {/* Staff pages with global notifications */}
             <Route element={<OnboardingStaffLayout />}>
               <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
@@ -242,7 +245,6 @@ const App = () => (
               <Route path="/onboarding-tasks/banco-talentos" element={<GlobalTalentPoolResumesPage />} />
               <Route path="/onboarding-tasks/hotseat" element={<HotseatAdminPage />} />
               <Route path="/onboarding-tasks/client-access" element={<ClientAccessReportPage />} />
-              <Route path="/onboarding-tasks/contract-generator" element={<ContractGeneratorPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
             </Route>
