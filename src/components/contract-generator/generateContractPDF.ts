@@ -261,14 +261,14 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
 • Juros de mora de 1% ao dia`, 10);
       y += 2;
       
+      // Conditional clause IV based on payment type
       if (formData.isRecurring) {
-        addText("IV. Este contrato caracteriza-se como prestação de serviço com pagamento recorrente mensal. O cancelamento da assinatura não isenta a CONTRATANTE das parcelas já vencidas.", 10);
-      } else {
+        // Recurring payment - cancellation clause
+        addText("IV. A rescisão poderá ser feita com aviso prévio de 30 dias do vencimento da próxima parcela.", 10);
+      } else if (formData.paymentMethod === "card") {
+        // Credit card installments - payment obligation clause
         addText("IV. Este contrato caracteriza-se como prestação de serviço com pagamento parcelado. O não uso dos serviços não isenta a CONTRATANTE do pagamento das parcelas acordadas.", 10);
       }
-      y += 2;
-      
-      addText("V. A rescisão poderá ser feita com aviso prévio de 30 dias do vencimento da próxima parcela.", 10);
       y += 3;
     } else {
       // Regular clause
