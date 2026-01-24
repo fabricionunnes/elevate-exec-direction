@@ -15,17 +15,25 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, FileText, Building2, CreditCard } from "lucide-react";
+import { CalendarIcon, FileText, Building2, CreditCard, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { productDetails } from "@/data/productDetails";
 
 export interface ContractFormData {
-  // Cliente
-  clientName: string;
-  clientDocument: string; // CPF ou CNPJ
+  // Cliente (Empresa)
+  clientName: string; // Razão Social ou Nome
+  clientDocument: string; // CNPJ ou CPF da empresa
   clientAddress: string;
   clientEmail: string;
   clientPhone: string;
+  
+  // Responsável Legal
+  legalRepName: string;
+  legalRepCpf: string;
+  legalRepRg: string;
+  legalRepMaritalStatus: string;
+  legalRepNationality: string;
+  legalRepProfession: string;
   
   // Contrato
   productId: string;
@@ -88,12 +96,26 @@ export default function ContractForm({
     }
   };
 
+  const formatCpf = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    return numbers
+      .slice(0, 11)
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  };
+
   const isFormValid = () => {
     const requiredFields = [
       formData.clientName,
       formData.clientDocument,
       formData.clientAddress,
       formData.clientEmail,
+      formData.legalRepName,
+      formData.legalRepCpf,
+      formData.legalRepRg,
+      formData.legalRepMaritalStatus,
+      formData.legalRepProfession,
       formData.productId,
       formData.contractValue > 0,
       formData.installments > 0,
@@ -109,17 +131,17 @@ export default function ContractForm({
 
   return (
     <div className="space-y-6">
-      {/* Dados do Cliente */}
+      {/* Dados da Empresa/Cliente */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Building2 className="h-5 w-5" />
-            Dados do Cliente
+            Dados da Empresa / Cliente
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="clientName">Nome / Razão Social *</Label>
+            <Label htmlFor="clientName">Razão Social / Nome *</Label>
             <Input
               id="clientName"
               value={formData.clientName}
@@ -129,12 +151,12 @@ export default function ContractForm({
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="clientDocument">CPF / CNPJ *</Label>
+            <Label htmlFor="clientDocument">CNPJ / CPF *</Label>
             <Input
               id="clientDocument"
               value={formData.clientDocument}
               onChange={(e) => updateField("clientDocument", formatDocument(e.target.value))}
-              placeholder="000.000.000-00 ou 00.000.000/0001-00"
+              placeholder="00.000.000/0001-00 ou 000.000.000-00"
               maxLength={18}
             />
           </div>
@@ -150,7 +172,7 @@ export default function ContractForm({
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="clientEmail">E-mail</Label>
+            <Label htmlFor="clientEmail">E-mail *</Label>
             <Input
               id="clientEmail"
               type="email"
@@ -167,6 +189,87 @@ export default function ContractForm({
               value={formData.clientPhone}
               onChange={(e) => updateField("clientPhone", e.target.value)}
               placeholder="(00) 00000-0000"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dados do Responsável Legal */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <User className="h-5 w-5" />
+            Responsável Legal
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2 space-y-2">
+            <Label htmlFor="legalRepName">Nome Completo *</Label>
+            <Input
+              id="legalRepName"
+              value={formData.legalRepName}
+              onChange={(e) => updateField("legalRepName", e.target.value)}
+              placeholder="Nome completo do responsável legal"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="legalRepCpf">CPF *</Label>
+            <Input
+              id="legalRepCpf"
+              value={formData.legalRepCpf}
+              onChange={(e) => updateField("legalRepCpf", formatCpf(e.target.value))}
+              placeholder="000.000.000-00"
+              maxLength={14}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="legalRepRg">RG *</Label>
+            <Input
+              id="legalRepRg"
+              value={formData.legalRepRg}
+              onChange={(e) => updateField("legalRepRg", e.target.value)}
+              placeholder="MG-00.000.000"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="legalRepMaritalStatus">Estado Civil *</Label>
+            <Select
+              value={formData.legalRepMaritalStatus}
+              onValueChange={(value) => updateField("legalRepMaritalStatus", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-lg z-50">
+                <SelectItem value="solteiro(a)">Solteiro(a)</SelectItem>
+                <SelectItem value="casado(a)">Casado(a)</SelectItem>
+                <SelectItem value="divorciado(a)">Divorciado(a)</SelectItem>
+                <SelectItem value="viúvo(a)">Viúvo(a)</SelectItem>
+                <SelectItem value="união estável">União Estável</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="legalRepNationality">Nacionalidade</Label>
+            <Input
+              id="legalRepNationality"
+              value={formData.legalRepNationality}
+              onChange={(e) => updateField("legalRepNationality", e.target.value)}
+              placeholder="brasileiro(a)"
+            />
+          </div>
+          
+          <div className="md:col-span-2 space-y-2">
+            <Label htmlFor="legalRepProfession">Profissão *</Label>
+            <Input
+              id="legalRepProfession"
+              value={formData.legalRepProfession}
+              onChange={(e) => updateField("legalRepProfession", e.target.value)}
+              placeholder="Ex: Empresário, Médico, Advogado..."
             />
           </div>
         </CardContent>
