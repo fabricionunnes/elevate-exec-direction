@@ -63,6 +63,7 @@ interface SavedContract {
   installments: number | null;
   is_recurring: boolean;
   start_date: string | null;
+  due_date: string | null;
   pdf_url: string | null;
   zapsign_document_token: string | null;
   zapsign_document_url: string | null;
@@ -93,7 +94,7 @@ const defaultFormData: ContractFormData = {
   paymentMethod: "pix",
   installments: 1,
   isRecurring: false,
-  dueDate: undefined,
+  dueDay: undefined,
   startDate: new Date(),
 };
 
@@ -272,7 +273,7 @@ export default function ContractGeneratorPage() {
           payment_method: formData.paymentMethod,
           installments: formData.isRecurring ? null : formData.installments,
           is_recurring: formData.isRecurring,
-          due_date: formData.dueDate ? format(formData.dueDate, "yyyy-MM-dd") : null,
+          due_date: formData.dueDay ? formData.dueDay.toString() : null,
           start_date: formData.startDate ? format(formData.startDate, "yyyy-MM-dd") : null,
           pdf_url: pdfUrl,
         })
@@ -661,7 +662,7 @@ export default function ContractGeneratorPage() {
       paymentMethod: "pix",
       installments: 1,
       isRecurring: false,
-      dueDate: undefined,
+      dueDay: undefined,
       startDate: new Date(),
     });
     
@@ -728,7 +729,7 @@ export default function ContractGeneratorPage() {
       paymentMethod: (selectedContract.payment_method as "card" | "pix" | "boleto") || "pix",
       installments: selectedContract.installments || 1,
       isRecurring: selectedContract.is_recurring || false,
-      dueDate: undefined,
+      dueDay: selectedContract.due_date ? parseInt(selectedContract.due_date) : undefined,
       startDate: selectedContract.start_date ? new Date(selectedContract.start_date) : new Date(),
     });
     
