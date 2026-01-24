@@ -79,9 +79,9 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
         const gState = doc.GState({ opacity: 0.06 });
         doc.setGState(gState);
         
-        // Large centered watermark
-        const wmWidth = 120;
-        const wmHeight = 100;
+        // Large centered watermark - preserve aspect ratio (logo is roughly 1:1 ratio)
+        const wmWidth = 100;
+        const wmHeight = 100; // Keep same aspect ratio as header logo
         const wmX = (pageWidth - wmWidth) / 2;
         const wmY = (pageHeight - wmHeight) / 2;
         doc.addImage(logoBase64, "PNG", wmX, wmY, wmWidth, wmHeight);
