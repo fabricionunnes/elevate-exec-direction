@@ -8394,6 +8394,92 @@ export type Database = {
           },
         ]
       }
+      generated_contracts: {
+        Row: {
+          client_address: string | null
+          client_document: string
+          client_email: string | null
+          client_name: string
+          client_phone: string | null
+          company_id: string | null
+          contract_value: number
+          created_at: string
+          due_date: string | null
+          id: string
+          installments: number | null
+          is_recurring: boolean | null
+          legal_rep_cpf: string | null
+          legal_rep_marital_status: string | null
+          legal_rep_name: string | null
+          legal_rep_nationality: string | null
+          legal_rep_profession: string | null
+          legal_rep_rg: string | null
+          payment_method: string
+          pdf_url: string | null
+          product_id: string
+          product_name: string
+          start_date: string | null
+        }
+        Insert: {
+          client_address?: string | null
+          client_document: string
+          client_email?: string | null
+          client_name: string
+          client_phone?: string | null
+          company_id?: string | null
+          contract_value: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          installments?: number | null
+          is_recurring?: boolean | null
+          legal_rep_cpf?: string | null
+          legal_rep_marital_status?: string | null
+          legal_rep_name?: string | null
+          legal_rep_nationality?: string | null
+          legal_rep_profession?: string | null
+          legal_rep_rg?: string | null
+          payment_method: string
+          pdf_url?: string | null
+          product_id: string
+          product_name: string
+          start_date?: string | null
+        }
+        Update: {
+          client_address?: string | null
+          client_document?: string
+          client_email?: string | null
+          client_name?: string
+          client_phone?: string | null
+          company_id?: string | null
+          contract_value?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          installments?: number | null
+          is_recurring?: boolean | null
+          legal_rep_cpf?: string | null
+          legal_rep_marital_status?: string | null
+          legal_rep_name?: string | null
+          legal_rep_nationality?: string | null
+          legal_rep_profession?: string | null
+          legal_rep_rg?: string | null
+          payment_method?: string
+          pdf_url?: string | null
+          product_id?: string
+          product_name?: string
+          start_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       google_drive_tokens: {
         Row: {
           access_token: string

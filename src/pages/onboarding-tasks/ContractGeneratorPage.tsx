@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,43 +9,137 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, FileText, Download, CheckCircle2, Home } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
 import ContractForm, { type ContractFormData } from "@/components/contract-generator/ContractForm";
 import ContractPreview from "@/components/contract-generator/ContractPreview";
 import { generateContractPDF, downloadContractPDF } from "@/components/contract-generator/generateContractPDF";
+import { productDetails } from "@/data/productDetails";
+import { formatCurrencyBR } from "@/lib/numberToWords";
+
+interface SavedContract {
+  id: string;
+  created_at: string;
+  client_name: string;
+  client_document: string;
+  product_id: string;
+  product_name: string;
+  contract_value: number;
+  payment_method: string;
+  installments: number | null;
+  is_recurring: boolean;
+  start_date: string | null;
+  pdf_url: string | null;
+}
+
+const defaultFormData: ContractFormData = {
+  clientName: "",
+  clientDocument: "",
+  clientAddress: "",
+  clientEmail: "",
+  clientPhone: "",
+  legalRepName: "",
+  legalRepCpf: "",
+  legalRepRg: "",
+  legalRepMaritalStatus: "",
+  legalRepNationality: "brasileiro(a)",
+  legalRepProfession: "",
+  productId: "",
+  contractValue: 0,
+  paymentMethod: "pix",
+  installments: 1,
+  isRecurring: false,
+  dueDate: undefined,
+  startDate: new Date(),
+};
 
 export default function ContractGeneratorPage() {
   const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedBlob, setGeneratedBlob] = useState<Blob | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [savedContracts, setSavedContracts] = useState<SavedContract[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
-  const [formData, setFormData] = useState<ContractFormData>({
-    clientName: "",
-    clientDocument: "",
-    clientAddress: "",
-    clientEmail: "",
-    clientPhone: "",
-    legalRepName: "",
-    legalRepCpf: "",
-    legalRepRg: "",
-    legalRepMaritalStatus: "",
-    legalRepNationality: "brasileiro(a)",
-    legalRepProfession: "",
-    productId: "",
-    contractValue: 0,
-    paymentMethod: "pix",
-    installments: 1,
-    dueDate: undefined,
-    startDate: new Date(),
-  });
+  const [formData, setFormData] = useState<ContractFormData>(defaultFormData);
+
+  const loadContracts = async () => {
+    setLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from("generated_contracts")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setSavedContracts(data || []);
+    } catch (error) {
+      console.error("Erro ao carregar contratos:", error);
+      toast.error("Erro ao carregar histórico de contratos");
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    loadContracts();
+  }, []);
+
+  const saveContract = async () => {
+    try {
+      const selectedProduct = productDetails[formData.productId];
+      
+      const { error } = await supabase
+        .from("generated_contracts")
+        .insert({
+          client_name: formData.clientName,
+          client_document: formData.clientDocument,
+          client_address: formData.clientAddress,
+          client_email: formData.clientEmail,
+          client_phone: formData.clientPhone,
+          legal_rep_name: formData.legalRepName,
+          legal_rep_cpf: formData.legalRepCpf,
+          legal_rep_rg: formData.legalRepRg,
+          legal_rep_marital_status: formData.legalRepMaritalStatus,
+          legal_rep_nationality: formData.legalRepNationality,
+          legal_rep_profession: formData.legalRepProfession,
+          product_id: formData.productId,
+          product_name: selectedProduct?.name || formData.productId,
+          contract_value: formData.contractValue,
+          payment_method: formData.paymentMethod,
+          installments: formData.isRecurring ? null : formData.installments,
+          is_recurring: formData.isRecurring,
+          due_date: formData.dueDate ? format(formData.dueDate, "yyyy-MM-dd") : null,
+          start_date: formData.startDate ? format(formData.startDate, "yyyy-MM-dd") : null,
+        });
+
+      if (error) throw error;
+      
+      // Reload contracts list
+      loadContracts();
+    } catch (error) {
+      console.error("Erro ao salvar contrato:", error);
+      // Don't show error to user, just log it
+    }
+  };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
       const blob = await generateContractPDF({ formData });
       setGeneratedBlob(blob);
+      
+      // Save contract to database
+      await saveContract();
+      
       setShowSuccessDialog(true);
       toast.success("Contrato gerado com sucesso!");
     } catch (error) {
@@ -65,25 +159,16 @@ export default function ContractGeneratorPage() {
   const handleNewContract = () => {
     setShowSuccessDialog(false);
     setGeneratedBlob(null);
-    setFormData({
-      clientName: "",
-      clientDocument: "",
-      clientAddress: "",
-      clientEmail: "",
-      clientPhone: "",
-      legalRepName: "",
-      legalRepCpf: "",
-      legalRepRg: "",
-      legalRepMaritalStatus: "",
-      legalRepNationality: "brasileiro(a)",
-      legalRepProfession: "",
-      productId: "",
-      contractValue: 0,
-      paymentMethod: "pix",
-      installments: 1,
-      dueDate: undefined,
-      startDate: new Date(),
-    });
+    setFormData(defaultFormData);
+  };
+
+  const getPaymentMethodLabel = (method: string) => {
+    const labels: Record<string, string> = {
+      card: "Cartão",
+      pix: "PIX",
+      boleto: "Boleto",
+    };
+    return labels[method] || method;
   };
 
   return (
@@ -110,30 +195,121 @@ export default function ContractGeneratorPage() {
                 </p>
               </div>
             </div>
+            <Button
+              variant="outline"
+              onClick={() => setShowHistory(!showHistory)}
+              className="gap-2"
+            >
+              <History className="h-4 w-4" />
+              {showHistory ? "Novo Contrato" : "Histórico"}
+            </Button>
           </div>
         </div>
       </header>
 
       {/* Content */}
       <main className="container mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Form - 2 columns */}
-          <div className="lg:col-span-2">
-            <ContractForm
-              formData={formData}
-              onChange={setFormData}
-              onGenerate={handleGenerate}
-              isGenerating={isGenerating}
-            />
+        {showHistory ? (
+          // History View
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Contratos Gerados</h2>
+              <Button variant="ghost" size="sm" onClick={loadContracts} disabled={loadingHistory}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loadingHistory ? "animate-spin" : ""}`} />
+                Atualizar
+              </Button>
+            </div>
+            
+            {savedContracts.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum contrato gerado ainda.</p>
+                  <Button 
+                    variant="link" 
+                    onClick={() => setShowHistory(false)}
+                    className="mt-2"
+                  >
+                    Gerar primeiro contrato
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {savedContracts.map((contract) => (
+                  <Card key={contract.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between">
+                        <CardTitle className="text-base font-medium line-clamp-1">
+                          {contract.client_name}
+                        </CardTitle>
+                        {contract.is_recurring && (
+                          <Badge variant="secondary" className="text-xs">
+                            Recorrente
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {contract.client_document}
+                      </p>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <p className="text-sm font-medium text-primary">
+                          {contract.product_name}
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <DollarSign className="h-3 w-3" />
+                          {formatCurrencyBR(contract.contract_value)}
+                        </span>
+                        <span>
+                          {contract.is_recurring 
+                            ? "Mensal" 
+                            : `${contract.installments}x`}
+                        </span>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {format(new Date(contract.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {getPaymentMethodLabel(contract.payment_method)}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
+        ) : (
+          // Form View
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Form - 2 columns */}
+            <div className="lg:col-span-2">
+              <ContractForm
+                formData={formData}
+                onChange={setFormData}
+                onGenerate={handleGenerate}
+                isGenerating={isGenerating}
+              />
+            </div>
 
-          {/* Preview - 1 column */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-6">
-              <ContractPreview formData={formData} />
+            {/* Preview - 1 column */}
+            <div className="lg:col-span-1">
+              <div className="sticky top-6">
+                <ContractPreview formData={formData} />
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* Success Dialog */}
@@ -145,7 +321,7 @@ export default function ContractGeneratorPage() {
               Contrato Gerado com Sucesso!
             </DialogTitle>
             <DialogDescription>
-              O contrato foi gerado e está pronto para download.
+              O contrato foi gerado e salvo no histórico. Você pode baixá-lo agora ou acessá-lo depois.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2">

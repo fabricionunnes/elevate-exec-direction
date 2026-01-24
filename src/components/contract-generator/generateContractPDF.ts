@@ -215,15 +215,25 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
         boleto: "Boleto Bancário",
       };
       
-      addText(`I. O valor do presente contrato será de ${formatCurrencyWithWords(formData.contractValue)}.`, 10);
-      y += 2;
-      
-      if (formData.installments === 1) {
-        addText(`II. O pagamento será realizado à vista via ${paymentMethodLabels[formData.paymentMethod]}.`, 10);
+      if (formData.isRecurring) {
+        // Recurring payment
+        addText(`I. O valor do presente contrato será de ${formatCurrencyWithWords(formData.contractValue)} mensais, com cobrança recorrente.`, 10);
+        y += 2;
+        
+        addText(`II. O pagamento será realizado mensalmente via ${paymentMethodLabels[formData.paymentMethod]}, de forma recorrente.`, 10);
+        y += 2;
       } else {
-        addText(`II. O pagamento será realizado em ${formData.installments}x de ${formatCurrencyWithWords(installmentValue)}, sem juros, via ${paymentMethodLabels[formData.paymentMethod]}.`, 10);
+        // Regular installments
+        addText(`I. O valor do presente contrato será de ${formatCurrencyWithWords(formData.contractValue)}.`, 10);
+        y += 2;
+        
+        if (formData.installments === 1) {
+          addText(`II. O pagamento será realizado à vista via ${paymentMethodLabels[formData.paymentMethod]}.`, 10);
+        } else {
+          addText(`II. O pagamento será realizado em ${formData.installments}x de ${formatCurrencyWithWords(installmentValue)}, sem juros, via ${paymentMethodLabels[formData.paymentMethod]}.`, 10);
+        }
+        y += 2;
       }
-      y += 2;
       
       if (formData.dueDate) {
         addText(`Vencimento: ${format(formData.dueDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}.`, 10);
@@ -235,7 +245,11 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
 • Juros de mora de 1% ao dia`, 10);
       y += 2;
       
-      addText("IV. Este contrato caracteriza-se como prestação de serviço com pagamento parcelado. O não uso dos serviços não isenta a CONTRATANTE do pagamento das parcelas acordadas.", 10);
+      if (formData.isRecurring) {
+        addText("IV. Este contrato caracteriza-se como prestação de serviço com pagamento recorrente mensal. O cancelamento da assinatura não isenta a CONTRATANTE das parcelas já vencidas.", 10);
+      } else {
+        addText("IV. Este contrato caracteriza-se como prestação de serviço com pagamento parcelado. O não uso dos serviços não isenta a CONTRATANTE do pagamento das parcelas acordadas.", 10);
+      }
       y += 2;
       
       addText("V. A rescisão poderá ser feita com aviso prévio de 30 dias do vencimento da próxima parcela.", 10);
