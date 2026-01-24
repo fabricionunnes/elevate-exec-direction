@@ -99,32 +99,10 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
       doc.addPage();
       addPageDecorations();
       y = margin;
-      addHeader();
+      // No header logo on continuation pages - only watermark
       return true;
     }
     return false;
-  };
-
-  const addHeader = () => {
-    // Logo at top
-    if (logoBase64) {
-      try {
-        doc.addImage(logoBase64, "PNG", pageWidth / 2 - 25, 10, 50, 42);
-      } catch (e) {
-        console.warn("Could not add logo to PDF:", e);
-        // Fallback text
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(12);
-        doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-        doc.text("UNIVERSIDADE NACIONAL DE VENDAS", pageWidth / 2, 18, { align: "center" });
-      }
-    } else {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-      doc.text("UNIVERSIDADE NACIONAL DE VENDAS", pageWidth / 2, 18, { align: "center" });
-    }
-    y = 55;
   };
   
   // Add decorations to first page
