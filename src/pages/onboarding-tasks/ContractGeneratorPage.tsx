@@ -1146,7 +1146,7 @@ export default function ContractGeneratorPage() {
                               onClick={() =>
                                 downloadFileFromUrl(
                                   signatureStatus.signedFileUrl!,
-                                  `contrato-assinado-${selectedContract.client_name}.pdf`
+                                  `${selectedContract.product_name} - ${selectedContract.client_name}.pdf`
                                 )
                               }
                               className="w-full bg-green-600 hover:bg-green-700"
