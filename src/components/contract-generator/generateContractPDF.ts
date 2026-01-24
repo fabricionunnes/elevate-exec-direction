@@ -5,10 +5,10 @@ import { productDetails } from "@/data/productDetails";
 import { contractClauses, companyInfo } from "@/data/contractTemplate";
 import { formatCurrencyWithWords, formatCurrencyBR } from "@/lib/numberToWords";
 import type { ContractFormData } from "./ContractForm";
-import logoUnv from "@/assets/logo-unv-contract.png";
 
 // UNV Brand Colors
 const NAVY = [10, 34, 64] as const; // #0A2240
+const RED = [220, 38, 38] as const; // #DC2626
 
 interface GeneratePDFOptions {
   formData: ContractFormData;
@@ -45,26 +45,59 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
-  const contentWidth = pageWidth - margin * 2;
+  const margin = 25; // Increased margin to account for left stripes
+  const contentWidth = pageWidth - margin - 20; // Right margin stays at 20
   let y = margin;
 
   const selectedProduct = productDetails[formData.productId];
   const today = new Date();
   const installmentValue = formData.contractValue / formData.installments;
 
-  // Load logo
+  // Load logo from public folder
   let logoBase64: string | null = null;
   try {
-    logoBase64 = await loadImage(logoUnv);
+    logoBase64 = await loadImage("/images/unv-logo-contract.png");
   } catch (e) {
     console.warn("Could not load logo:", e);
   }
+
+  // Add page decorations (stripes and watermark)
+  const addPageDecorations = () => {
+    // Left blue stripe (thicker)
+    doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
+    doc.rect(0, 0, 6, pageHeight, "F");
+    
+    // Left red stripe (thinner, next to blue)
+    doc.setFillColor(RED[0], RED[1], RED[2]);
+    doc.rect(6, 0, 2, pageHeight, "F");
+    
+    // Watermark - centered logo with low opacity
+    if (logoBase64) {
+      try {
+        // Add watermark with transparency using GState
+        const gState = doc.GState({ opacity: 0.06 });
+        doc.setGState(gState);
+        
+        // Large centered watermark
+        const wmWidth = 120;
+        const wmHeight = 100;
+        const wmX = (pageWidth - wmWidth) / 2;
+        const wmY = (pageHeight - wmHeight) / 2;
+        doc.addImage(logoBase64, "PNG", wmX, wmY, wmWidth, wmHeight);
+        
+        // Reset opacity
+        doc.setGState(doc.GState({ opacity: 1 }));
+      } catch (e) {
+        console.warn("Could not add watermark:", e);
+      }
+    }
+  };
 
   // Helper functions
   const checkPageBreak = (requiredSpace: number) => {
     if (y + requiredSpace > pageHeight - 30) {
       doc.addPage();
+      addPageDecorations();
       y = margin;
       addHeader();
       return true;
@@ -73,10 +106,10 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
   };
 
   const addHeader = () => {
-    // Logo
+    // Logo at top
     if (logoBase64) {
       try {
-        doc.addImage(logoBase64, "PNG", pageWidth / 2 - 25, 10, 50, 15);
+        doc.addImage(logoBase64, "PNG", pageWidth / 2 - 25, 10, 50, 42);
       } catch (e) {
         console.warn("Could not add logo to PDF:", e);
         // Fallback text
@@ -91,8 +124,11 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
       doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
       doc.text("UNIVERSIDADE NACIONAL DE VENDAS", pageWidth / 2, 18, { align: "center" });
     }
-    y = 35;
+    y = 55;
   };
+  
+  // Add decorations to first page
+  addPageDecorations();
 
   const wrapText = (text: string, maxWidth: number, fontSize: number): string[] => {
     doc.setFontSize(fontSize);
@@ -141,8 +177,8 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
   // ============ FIRST PAGE HEADER ============
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, "PNG", pageWidth / 2 - 30, y, 60, 18);
-      y += 25;
+      doc.addImage(logoBase64, "PNG", pageWidth / 2 - 30, y, 60, 50);
+      y += 58;
     } catch (e) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
