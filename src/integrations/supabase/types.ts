@@ -5394,6 +5394,7 @@ export type Database = {
           content: string
           id: string
           is_dynamic: boolean | null
+          sort_order: number | null
           title: string
           updated_at: string | null
           updated_by: string | null
@@ -5402,6 +5403,7 @@ export type Database = {
           content: string
           id: string
           is_dynamic?: boolean | null
+          sort_order?: number | null
           title: string
           updated_at?: string | null
           updated_by?: string | null
@@ -5410,6 +5412,7 @@ export type Database = {
           content?: string
           id?: string
           is_dynamic?: boolean | null
+          sort_order?: number | null
           title?: string
           updated_at?: string | null
           updated_by?: string | null

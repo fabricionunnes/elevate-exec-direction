@@ -26,25 +26,52 @@ export async function getEditableClausesWithSavedTemplate(): Promise<EditableCla
   try {
     const { data, error } = await supabase
       .from("contract_template_clauses")
-      .select("*");
+      .select("*")
+      .order("sort_order", { ascending: true });
 
     if (error) throw error;
 
-    // Create a map of saved clauses
+    // Create a map of saved clauses with their sort_order
     const savedClausesMap = new Map(data?.map((c) => [c.id, c]) || []);
+    
+    // Check if we have any saved order
+    const hasSavedOrder = data && data.length > 0 && data.some(c => c.sort_order !== null);
 
     // Merge default clauses with saved ones
-    return contractClauses.map((defaultClause) => {
+    const mergedClauses = contractClauses.map((defaultClause, index) => {
       const saved = savedClausesMap.get(defaultClause.id);
       const content = saved?.content || defaultClause.content;
       return {
         id: defaultClause.id,
         title: saved?.title || defaultClause.title,
         content: content,
-        originalContent: content, // Use saved content as "original" for per-contract editing
+        originalContent: content,
         isDynamic: saved?.is_dynamic ?? defaultClause.isDynamic,
+        sortOrder: saved?.sort_order ?? index,
       };
     });
+
+    // Add any custom clauses that aren't in defaults
+    const defaultIds = new Set(contractClauses.map(c => c.id));
+    const customClauses = (data || [])
+      .filter(c => !defaultIds.has(c.id))
+      .map(c => ({
+        id: c.id,
+        title: c.title,
+        content: c.content,
+        originalContent: c.content,
+        isDynamic: c.is_dynamic || false,
+        sortOrder: c.sort_order ?? 999,
+      }));
+
+    // Combine and sort by sort_order if we have saved order
+    let allClauses = [...mergedClauses, ...customClauses];
+    if (hasSavedOrder) {
+      allClauses = allClauses.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    }
+    
+    // Remove sortOrder from final object
+    return allClauses.map(({ sortOrder, ...rest }) => rest);
   } catch (error) {
     console.error("Erro ao carregar template salvo:", error);
     // Fallback to default clauses
