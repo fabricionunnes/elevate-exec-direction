@@ -41,7 +41,12 @@ interface SavedContract {
 const defaultFormData: ContractFormData = {
   clientName: "",
   clientDocument: "",
-  clientAddress: "",
+  clientCep: "",
+  clientStreet: "",
+  clientNumber: "",
+  clientNeighborhood: "",
+  clientCity: "",
+  clientState: "",
   clientEmail: "",
   clientPhone: "",
   legalRepName: "",
@@ -133,7 +138,7 @@ export default function ContractGeneratorPage() {
         .insert({
           client_name: formData.clientName,
           client_document: formData.clientDocument,
-          client_address: formData.clientAddress,
+          client_address: `${formData.clientStreet}, nº ${formData.clientNumber}, ${formData.clientNeighborhood}, ${formData.clientCity} - ${formData.clientState}, CEP ${formData.clientCep}`,
           client_email: formData.clientEmail,
           client_phone: formData.clientPhone,
           legal_rep_name: formData.legalRepName,

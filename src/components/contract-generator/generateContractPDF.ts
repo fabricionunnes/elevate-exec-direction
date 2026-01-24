@@ -5,6 +5,7 @@ import { productDetails } from "@/data/productDetails";
 import { contractClauses, companyInfo } from "@/data/contractTemplate";
 import { formatCurrencyWithWords, formatCurrencyBR } from "@/lib/numberToWords";
 import type { ContractFormData } from "./ContractForm";
+import { formatFullAddress } from "./ContractForm";
 
 // UNV Brand Colors
 const NAVY = [10, 34, 64] as const; // #0A2240
@@ -195,13 +196,14 @@ export async function generateContractPDF({ formData }: GeneratePDFOptions): Pro
   
   // Check if it's a company (CNPJ) or individual (CPF)
   const isCompany = formData.clientDocument.replace(/\D/g, "").length > 11;
+  const fullAddress = formatFullAddress(formData);
   
   if (isCompany) {
     // Company format
-    addText(`${formData.clientName}, sociedade empresária inscrita no CNPJ sob o nº ${formData.clientDocument}, com sede na ${formData.clientAddress}, e endereço eletrônico ${formData.clientEmail}, neste ato representada por ${formData.legalRepName}, ${formData.legalRepNationality || "brasileiro(a)"}, ${formData.legalRepMaritalStatus}, ${formData.legalRepProfession}, portador(a) da Cédula de Identidade RG nº ${formData.legalRepRg}, inscrito(a) no CPF sob o nº ${formData.legalRepCpf}.`, 10);
+    addText(`${formData.clientName}, sociedade empresária inscrita no CNPJ sob o nº ${formData.clientDocument}, com sede na ${fullAddress}, e endereço eletrônico ${formData.clientEmail}, neste ato representada por ${formData.legalRepName}, ${formData.legalRepNationality || "brasileiro(a)"}, ${formData.legalRepMaritalStatus}, ${formData.legalRepProfession}, portador(a) da Cédula de Identidade RG nº ${formData.legalRepRg}, inscrito(a) no CPF sob o nº ${formData.legalRepCpf}.`, 10);
   } else {
     // Individual format
-    addText(`${formData.legalRepName || formData.clientName}, ${formData.legalRepNationality || "brasileiro(a)"}, ${formData.legalRepMaritalStatus}, ${formData.legalRepProfession}, portador(a) da Cédula de Identidade RG nº ${formData.legalRepRg}, inscrito(a) no CPF sob o nº ${formData.legalRepCpf || formData.clientDocument}${formData.clientAddress ? `, residente e domiciliado(a) na ${formData.clientAddress}` : ""}${formData.clientEmail ? `, e-mail: ${formData.clientEmail}` : ""}.`, 10);
+    addText(`${formData.legalRepName || formData.clientName}, ${formData.legalRepNationality || "brasileiro(a)"}, ${formData.legalRepMaritalStatus}, ${formData.legalRepProfession}, portador(a) da Cédula de Identidade RG nº ${formData.legalRepRg}, inscrito(a) no CPF sob o nº ${formData.legalRepCpf || formData.clientDocument}${fullAddress ? `, residente e domiciliado(a) na ${fullAddress}` : ""}${formData.clientEmail ? `, e-mail: ${formData.clientEmail}` : ""}.`, 10);
   }
   y += 8;
 

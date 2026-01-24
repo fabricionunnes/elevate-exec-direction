@@ -121,7 +121,9 @@ export default function ContractPreview({ formData }: ContractPreviewProps) {
               <div className="text-sm space-y-1 text-muted-foreground">
                 <p className="font-medium text-foreground">{formData.clientName}</p>
                 {formData.clientDocument && <p>Doc: {formData.clientDocument}</p>}
-                {formData.clientAddress && <p>{formData.clientAddress}</p>}
+                {formData.clientStreet && (
+                  <p>{formData.clientStreet}{formData.clientNumber ? `, nº ${formData.clientNumber}` : ""}, {formData.clientNeighborhood}, {formData.clientCity} - {formData.clientState}, CEP {formData.clientCep}</p>
+                )}
                 {formData.clientEmail && <p>{formData.clientEmail}</p>}
               </div>
             </div>

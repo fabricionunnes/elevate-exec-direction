@@ -24,7 +24,12 @@ export interface ContractFormData {
   // Cliente (Empresa)
   clientName: string; // Razão Social ou Nome
   clientDocument: string; // CNPJ ou CPF da empresa
-  clientAddress: string;
+  clientCep: string;
+  clientStreet: string;
+  clientNumber: string;
+  clientNeighborhood: string;
+  clientCity: string;
+  clientState: string;
   clientEmail: string;
   clientPhone: string;
   
@@ -41,10 +46,23 @@ export interface ContractFormData {
   contractValue: number;
   paymentMethod: "card" | "pix" | "boleto";
   installments: number;
-  isRecurring: boolean; // New: recurring monthly payment
+  isRecurring: boolean;
   dueDate: Date | undefined;
   startDate: Date | undefined;
 }
+
+// Helper to format full address from parts
+export const formatFullAddress = (data: ContractFormData): string => {
+  const parts = [
+    data.clientStreet,
+    data.clientNumber ? `nº ${data.clientNumber}` : "",
+    data.clientNeighborhood,
+    data.clientCity,
+    data.clientState,
+    data.clientCep ? `CEP ${data.clientCep}` : "",
+  ].filter(Boolean);
+  return parts.join(", ");
+};
 
 interface ContractFormProps {
   formData: ContractFormData;
@@ -111,7 +129,12 @@ export default function ContractForm({
     const requiredFields = [
       formData.clientName,
       formData.clientDocument,
-      formData.clientAddress,
+      formData.clientCep,
+      formData.clientStreet,
+      formData.clientNumber,
+      formData.clientNeighborhood,
+      formData.clientCity,
+      formData.clientState,
       formData.clientEmail,
       formData.legalRepName,
       formData.legalRepCpf,
@@ -129,6 +152,40 @@ export default function ContractForm({
     }
     
     return requiredFields.every(Boolean);
+  };
+
+  // Fetch address from CEP
+  const [loadingCep, setLoadingCep] = useState(false);
+  
+  const fetchAddressFromCep = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, "");
+    if (cleanCep.length !== 8) return;
+    
+    setLoadingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+      
+      if (!data.erro) {
+        onChange({
+          ...formData,
+          clientCep: formatCep(cleanCep),
+          clientStreet: data.logradouro || "",
+          clientNeighborhood: data.bairro || "",
+          clientCity: data.localidade || "",
+          clientState: data.uf || "",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao buscar CEP:", error);
+    } finally {
+      setLoadingCep(false);
+    }
+  };
+
+  const formatCep = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    return numbers.replace(/(\d{5})(\d{1,3})/, "$1-$2").slice(0, 9);
   };
 
   return (
@@ -163,14 +220,82 @@ export default function ContractForm({
             />
           </div>
           
-          <div className="md:col-span-2 space-y-2">
-            <Label htmlFor="clientAddress">Endereço Completo *</Label>
+          <div className="space-y-2">
+            <Label htmlFor="clientCep">CEP *</Label>
             <Input
-              id="clientAddress"
-              value={formData.clientAddress}
-              onChange={(e) => updateField("clientAddress", e.target.value)}
-              placeholder="Rua, número, bairro, cidade - UF, CEP"
+              id="clientCep"
+              value={formData.clientCep}
+              onChange={(e) => {
+                const formatted = formatCep(e.target.value);
+                updateField("clientCep", formatted);
+                if (formatted.replace(/\D/g, "").length === 8) {
+                  fetchAddressFromCep(formatted);
+                }
+              }}
+              placeholder="00000-000"
+              maxLength={9}
+              className={loadingCep ? "opacity-50" : ""}
             />
+            {loadingCep && <p className="text-xs text-muted-foreground">Buscando endereço...</p>}
+          </div>
+          
+          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="md:col-span-3 space-y-2">
+              <Label htmlFor="clientStreet">Rua / Logradouro *</Label>
+              <Input
+                id="clientStreet"
+                value={formData.clientStreet}
+                onChange={(e) => updateField("clientStreet", e.target.value)}
+                placeholder="Rua, Avenida, etc."
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="clientNumber">Número *</Label>
+              <Input
+                id="clientNumber"
+                value={formData.clientNumber}
+                onChange={(e) => updateField("clientNumber", e.target.value)}
+                placeholder="123"
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="clientNeighborhood">Bairro *</Label>
+            <Input
+              id="clientNeighborhood"
+              value={formData.clientNeighborhood}
+              onChange={(e) => updateField("clientNeighborhood", e.target.value)}
+              placeholder="Bairro"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="clientCity">Cidade *</Label>
+            <Input
+              id="clientCity"
+              value={formData.clientCity}
+              onChange={(e) => updateField("clientCity", e.target.value)}
+              placeholder="Cidade"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="clientState">Estado *</Label>
+            <Select
+              value={formData.clientState}
+              onValueChange={(value) => updateField("clientState", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="UF" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-lg z-50 max-h-60">
+                {["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"].map((uf) => (
+                  <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="space-y-2">
