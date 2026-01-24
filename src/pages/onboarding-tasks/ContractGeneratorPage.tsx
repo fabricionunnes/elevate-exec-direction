@@ -93,6 +93,8 @@ export default function ContractGeneratorPage() {
   const [zapSignSent, setZapSignSent] = useState(false);
   const [lastGeneratedPdfUrl, setLastGeneratedPdfUrl] = useState<string | null>(null);
   const [companySignerEmail, setCompanySignerEmail] = useState("");
+  const [historyZapSignSent, setHistoryZapSignSent] = useState(false);
+  const [historyCompanySignerEmail, setHistoryCompanySignerEmail] = useState("");
 
   const [formData, setFormData] = useState<ContractFormData>(defaultFormData);
   const [editableClauses, setEditableClauses] = useState<EditableClause[]>(getDefaultEditableClauses());
@@ -276,6 +278,62 @@ export default function ContractGeneratorPage() {
     }
   };
 
+  const handleSendToZapSignFromHistory = async () => {
+    if (!selectedContract?.pdf_url) {
+      toast.error("PDF não disponível para este contrato.");
+      return;
+    }
+
+    if (!selectedContract.client_email) {
+      toast.error("E-mail do cliente não foi informado neste contrato.");
+      return;
+    }
+
+    if (!historyCompanySignerEmail) {
+      toast.error("E-mail do signatário da empresa é obrigatório.");
+      return;
+    }
+
+    setIsSendingToZapSign(true);
+    try {
+      const documentName = `Contrato - ${selectedContract.client_name} - ${selectedContract.product_name}`;
+
+      const { data, error } = await supabase.functions.invoke("send-to-zapsign", {
+        body: {
+          pdfUrl: selectedContract.pdf_url,
+          documentName,
+          signers: [
+            {
+              name: selectedContract.client_name,
+              email: selectedContract.client_email,
+              phone: selectedContract.client_phone || "",
+            },
+            {
+              name: "Empresa Contratante",
+              email: historyCompanySignerEmail,
+            },
+          ],
+          sendAutomatically: true,
+        },
+      });
+
+      if (error) {
+        console.error("Erro ao enviar para ZapSign:", error);
+        toast.error("Erro ao enviar para ZapSign. Verifique a configuração.");
+        return;
+      }
+
+      console.log("ZapSign response:", data);
+      setHistoryZapSignSent(true);
+      toast.success(data.message || "Contrato enviado para assinatura!");
+    } catch (error) {
+      console.error("Erro ao enviar para ZapSign:", error);
+      toast.error("Erro ao enviar para ZapSign. Tente novamente.");
+    } finally {
+      setIsSendingToZapSign(false);
+    }
+  };
+
   const handleDownload = () => {
     if (generatedBlob) {
       downloadContractPDF(generatedBlob, formData.clientName);
@@ -295,6 +353,8 @@ export default function ContractGeneratorPage() {
   const handleContractClick = (contract: SavedContract) => {
     setSelectedContract(contract);
     setShowContractDialog(true);
+    setHistoryZapSignSent(false);
+    setHistoryCompanySignerEmail("");
   };
 
   const handleViewPDF = () => {
@@ -717,7 +777,7 @@ export default function ContractGeneratorPage() {
 
       {/* Contract Details Dialog */}
       <Dialog open={showContractDialog} onOpenChange={setShowContractDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
@@ -726,26 +786,27 @@ export default function ContractGeneratorPage() {
           </DialogHeader>
           
           {selectedContract && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="space-y-5">
+              {/* Contract Info Grid */}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Cliente</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">Cliente</p>
                   <p className="font-medium">{selectedContract.client_name}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Documento</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">Documento</p>
                   <p className="font-medium">{selectedContract.client_document}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Produto</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">Produto</p>
                   <p className="font-medium text-primary">{selectedContract.product_name}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Valor</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">Valor</p>
                   <p className="font-medium">{formatCurrencyBR(selectedContract.contract_value)}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Pagamento</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">Pagamento</p>
                   <p className="font-medium">
                     {selectedContract.is_recurring 
                       ? "Recorrente Mensal" 
@@ -753,55 +814,127 @@ export default function ContractGeneratorPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Gerado em</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">Gerado em</p>
                   <p className="font-medium">
                     {format(new Date(selectedContract.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </p>
                 </div>
               </div>
               
-              <Separator />
-              
-              <DialogFooter className="flex-col sm:flex-row gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={handleEditContract} 
-                  className="flex-1"
-                >
-                  <Pencil className="h-4 w-4 mr-2" />
-                  Editar
-                </Button>
-                <Button 
-                  variant="secondary" 
-                  onClick={handleDuplicateContract} 
-                  className="flex-1"
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Duplicar
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={handleViewPDF} 
-                  className="flex-1"
-                  disabled={!selectedContract.pdf_url}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  Visualizar
-                </Button>
-                <Button 
-                  onClick={handleDownloadFromHistory} 
-                  className="flex-1"
-                  disabled={!selectedContract.pdf_url}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Baixar PDF
-                </Button>
-              </DialogFooter>
+              {/* Action Buttons - Grouped in 2 rows */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleEditContract} 
+                    className="w-full"
+                    size="sm"
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleDuplicateContract} 
+                    className="w-full"
+                    size="sm"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Duplicar
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleViewPDF} 
+                    className="w-full"
+                    size="sm"
+                    disabled={!selectedContract.pdf_url}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Visualizar
+                  </Button>
+                  <Button 
+                    onClick={handleDownloadFromHistory} 
+                    className="w-full"
+                    size="sm"
+                    disabled={!selectedContract.pdf_url}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Baixar PDF
+                  </Button>
+                </div>
+              </div>
               
               {!selectedContract.pdf_url && (
                 <p className="text-xs text-muted-foreground text-center">
-                  Este contrato foi gerado antes do armazenamento de PDFs. Gere um novo contrato para ter acesso ao PDF.
+                  Este contrato foi gerado antes do armazenamento de PDFs.
                 </p>
+              )}
+
+              {/* ZapSign Integration Section */}
+              {selectedContract.pdf_url && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Send className="h-4 w-4 text-primary" />
+                      Assinatura Digital (ZapSign)
+                    </h4>
+                    
+                    {historyZapSignSent ? (
+                      <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-lg p-3 text-sm text-green-800 dark:text-green-300">
+                        <CheckCircle2 className="h-4 w-4 inline mr-2" />
+                        Contrato enviado! Os signatários receberão um e-mail.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-xs text-muted-foreground">
+                          Enviar para: <span className="font-medium">{selectedContract.client_email || "E-mail não informado"}</span>
+                        </p>
+                        
+                        <div className="space-y-1.5">
+                          <Label htmlFor="historyCompanySignerEmail" className="text-xs">
+                            E-mail do signatário da empresa
+                          </Label>
+                          <Input
+                            id="historyCompanySignerEmail"
+                            type="email"
+                            placeholder="contrato@suaempresa.com"
+                            value={historyCompanySignerEmail}
+                            onChange={(e) => setHistoryCompanySignerEmail(e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                        
+                        <Button
+                          onClick={handleSendToZapSignFromHistory}
+                          disabled={isSendingToZapSign || !selectedContract.client_email || !historyCompanySignerEmail}
+                          className="w-full"
+                          size="sm"
+                        >
+                          {isSendingToZapSign ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Enviando...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="h-4 w-4 mr-2" />
+                              Enviar para Assinatura
+                            </>
+                          )}
+                        </Button>
+                        
+                        {!selectedContract.client_email && (
+                          <p className="text-xs text-destructive">
+                            E-mail do cliente não foi informado neste contrato.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           )}
