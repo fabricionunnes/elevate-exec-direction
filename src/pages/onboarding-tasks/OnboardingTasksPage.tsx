@@ -342,7 +342,25 @@ const OnboardingTasksPage = () => {
         churn_date: p.churn_date,
       })));
 
-      setCompanies(companiesWithProjects);
+      // Sort companies: new companies (last 30 days) first, then by contract_start_date desc
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      const sortedCompanies = companiesWithProjects.sort((a, b) => {
+        const aStartDate = new Date(a.contract_start_date ?? a.created_at);
+        const bStartDate = new Date(b.contract_start_date ?? b.created_at);
+        const aIsNew = aStartDate >= thirtyDaysAgo;
+        const bIsNew = bStartDate >= thirtyDaysAgo;
+        
+        // New companies come first
+        if (aIsNew && !bIsNew) return -1;
+        if (!aIsNew && bIsNew) return 1;
+        
+        // Within the same group, sort by start date descending (most recent first)
+        return bStartDate.getTime() - aStartDate.getTime();
+      });
+
+      setCompanies(sortedCompanies);
     } catch (error: any) {
       console.error("Error fetching companies with metrics:", error);
       toast.error("Erro ao carregar empresas");
