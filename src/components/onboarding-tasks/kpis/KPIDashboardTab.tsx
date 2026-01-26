@@ -255,6 +255,11 @@ export const KPIDashboardTab = ({
 
   // Helper function to get targets based on current filter (unit, team, sector, or salesperson)
   const getFilteredTargetsForKpi = (kpiId: string): Record<string, number> => {
+    // Find the KPI to check its scope and unit_id
+    const kpi = kpis.find(k => k.id === kpiId);
+    // Check if this is a unit-scoped KPI (has unit_id but no other scope-specific IDs)
+    const isUnitScopedKpi = kpi?.unit_id && !kpi?.team_id && !kpi?.salesperson_id && !kpi?.sector_id;
+    
     // Priority: salesperson > team > unit > company > sum of units/salespeople
     let relevantTargets: MonthlyTarget[] = [];
     
@@ -279,6 +284,13 @@ export const KPIDashboardTab = ({
       );
     }
     
+    // For KPIs with unit scope, get targets for their specific unit
+    if (relevantTargets.length === 0 && isUnitScopedKpi && kpi?.unit_id) {
+      relevantTargets = allMonthlyTargets.filter(
+        mt => mt.kpi_id === kpiId && mt.unit_id === kpi.unit_id && mt.team_id === null && mt.salesperson_id === null
+      );
+    }
+    
     if (relevantTargets.length === 0) {
       // Try company-level targets first
       relevantTargets = allMonthlyTargets.filter(
@@ -287,7 +299,14 @@ export const KPIDashboardTab = ({
     }
     
     // If still no targets and we're showing "all", sum targets based on active filters
+    // But skip this for unit-scoped KPIs - they should use their own target_value
     if (relevantTargets.length === 0 && selectedUnit === "all" && selectedTeam === "all" && selectedSalesperson === "all") {
+      // Don't sum targets from other units for unit-scoped KPIs
+      if (isUnitScopedKpi) {
+        // Return empty - will fall back to kpi.target_value
+        return {};
+      }
+      
       // Sum all unit-level targets (or team-level if no unit targets)
       let targetsToSum = allMonthlyTargets.filter(
         mt => mt.kpi_id === kpiId && mt.unit_id !== null && mt.team_id === null && mt.salesperson_id === null
