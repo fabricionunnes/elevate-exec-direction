@@ -15,7 +15,8 @@ import {
   ChevronRight,
   User,
   ClipboardCheck,
-  GraduationCap
+  GraduationCap,
+  ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -91,6 +92,7 @@ const PortalAppLayout = () => {
     { href: "/portal/app/dashboard", icon: BarChart3, label: "Dashboard" },
     { href: "/academy", icon: GraduationCap, label: "Academy" },
     { href: "/portal/app/config", icon: Settings, label: "Configurações" },
+    ...(user?.role !== "admin_unv" ? [{ href: "https://crm.universidadevendas.com.br", icon: ExternalLink, label: "CRM UNV", external: true }] : []),
     ...(user?.role === "admin_unv" ? [{ href: "/portal/app/admin", icon: Settings, label: "Admin UNV" }] : []),
   ];
 
@@ -110,6 +112,28 @@ const PortalAppLayout = () => {
       <div className="flex-1 py-4">
         {navItems.map((item) => {
           const isActive = location.pathname === item.href;
+          const isExternal = 'external' in item && item.external;
+          
+          if (isExternal) {
+            return (
+              <a
+                key={item.href}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-colors",
+                  "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                )}
+              >
+                <item.icon className="w-5 h-5" />
+                <span className="font-medium">{item.label}</span>
+                <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+              </a>
+            );
+          }
+          
           return (
             <Link
               key={item.href}
