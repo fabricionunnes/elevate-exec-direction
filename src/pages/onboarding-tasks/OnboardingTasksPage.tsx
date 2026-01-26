@@ -1236,6 +1236,9 @@ const OnboardingTasksPage = () => {
         } else if (activeMetricFilter.type === "company" && activeMetricFilter.value === "no_consultant") {
           // Filter active companies without consultant
           matchesMetricFilter = company.status === "active" && !company.consultant_id;
+        } else if (activeMetricFilter.type === "projects_active") {
+          // Filter companies that have at least one active project
+          matchesMetricFilter = company.projects?.some(p => p.status === "active") ?? false;
         }
       }
       
