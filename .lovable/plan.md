@@ -1,64 +1,58 @@
 
-# Plano: Adicionar Card de Projetos Ativos
+
+# Plano: Filtrar Empresas ao Clicar no Card "Projetos"
 
 ## Objetivo
-Adicionar um novo card ao dashboard que exiba a quantidade de **projetos ativos**, separado do card de **empresas ativas** já existente.
+Adicionar funcionalidade de clique ao card "Projetos" para filtrar e exibir apenas as empresas que possuem pelo menos um **projeto ativo**.
 
 ## Contexto Atual
-- **Card "Ativas"**: Mostra `companyMetrics.activeCompanies` (empresas com status = "active")
-- **Métrica de projetos**: `projectMetrics.activeProjects` já é calculado no código mas não é exibido em um card dedicado
-- **Grid atual**: 7 colunas em telas grandes (lg:grid-cols-7)
+- O card "Ativas" utiliza `handleCardClick("status", "active")` para filtrar empresas
+- A função `isCardActive()` destaca visualmente o card selecionado
+- O filtro é processado na página principal através de `activeMetricFilter`
 
 ## Implementação
 
-### 1. Ajustar o Grid de Cards
-Alterar o grid para acomodar 8 cards em telas grandes:
-- `lg:grid-cols-7` → `lg:grid-cols-8`
+### 1. Adicionar onClick e Estilo Ativo ao Card "Projetos"
+**Arquivo:** `src/components/onboarding-tasks/DashboardMetrics.tsx` (linhas 854-868)
 
-### 2. Adicionar Novo Card "Projetos"
-Inserir um novo card logo após o card "Ativas" com:
-- **Valor**: `projectMetrics.activeProjects`
-- **Label**: "Projetos"
-- **Ícone**: `Package` (ícone já importado no arquivo)
-- **Cor**: Índigo/roxo para diferenciar visualmente das empresas
+Alterar o card para:
+- Usar `handleCardClick("projects_active", "active")` no clique
+- Adicionar destaque visual com `isCardActive("projects_active", "active")`
 
-### 3. Arquivo a Modificar
-`src/components/onboarding-tasks/DashboardMetrics.tsx`
-
----
-
-## Detalhes Técnicos
-
-### Mudança no Grid (linha 839)
-```text
-Antes:  grid-cols-3 sm:grid-cols-4 lg:grid-cols-7
-Depois: grid-cols-3 sm:grid-cols-4 lg:grid-cols-8
-```
-
-### Novo Card (após linha 852)
 ```tsx
+// De:
 <Card className="cursor-pointer transition-all hover:shadow-md">
-  <CardContent className="p-2 sm:p-3">
-    <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-      <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0">
-        <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-500" />
-      </div>
-      <div className="text-center sm:text-left min-w-0">
-        <p className="text-base sm:text-lg font-bold leading-none text-indigo-500">
-          {projectMetrics.activeProjects}
-        </p>
-        <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate">
-          Projetos
-        </p>
-      </div>
-    </div>
-  </CardContent>
-</Card>
+
+// Para:
+<Card 
+  className={cn(
+    "cursor-pointer transition-all hover:shadow-md", 
+    isCardActive("projects_active", "active") && "ring-2 ring-indigo-500"
+  )} 
+  onClick={() => handleCardClick("projects_active", "active")}
+>
 ```
 
-## Resultado Visual
-| Ativas | Projetos | Solicitou Canc. | Hoje | Atrasadas | NPS | Health | Churn |
-|--------|----------|-----------------|------|-----------|-----|--------|-------|
-| 45     | 52       | 2               | 8    | 3         | 9.2 | 75     | 2%    |
+### 2. Adicionar Lógica de Filtro na Página Principal
+**Arquivo:** `src/pages/onboarding-tasks/OnboardingTasksPage.tsx` (após linha 1239)
 
-O card "Projetos" ficará imediatamente ao lado do card "Ativas", facilitando a comparação entre empresas ativas e projetos ativos.
+Adicionar nova condição no `filteredCompanies`:
+
+```tsx
+} else if (activeMetricFilter.type === "projects_active") {
+  // Filtrar empresas que têm pelo menos um projeto ativo
+  matchesMetricFilter = company.projects?.some(p => p.status === "active") ?? false;
+}
+```
+
+## Comportamento Esperado
+1. **Clique no card "Projetos":** Filtra a lista para mostrar apenas empresas com projetos ativos
+2. **Clique novamente:** Remove o filtro (toggle)
+3. **Visual:** Card fica com borda índigo quando ativo
+
+## Arquivos a Modificar
+| Arquivo | Alteração |
+|---------|-----------|
+| `DashboardMetrics.tsx` | Adicionar onClick e estilo ativo ao card |
+| `OnboardingTasksPage.tsx` | Adicionar lógica de filtro `projects_active` |
+
