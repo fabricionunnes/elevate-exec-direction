@@ -59,6 +59,16 @@ import PortalStrategiesPage from "./pages/portal/PortalStrategiesPage";
 // System Showcase
 import SystemShowcasePage from "./pages/SystemShowcasePage";
 
+// UNV Circle
+import CircleLayout from "./pages/circle/CircleLayout";
+import CircleFeedPage from "./pages/circle/CircleFeedPage";
+import CircleStoriesPage from "./pages/circle/CircleStoriesPage";
+import CircleCommunitiesPage from "./pages/circle/CircleCommunitiesPage";
+import CircleMarketplacePage from "./pages/circle/CircleMarketplacePage";
+import CircleRankingPage from "./pages/circle/CircleRankingPage";
+import CircleProfilePage from "./pages/circle/CircleProfilePage";
+import CircleNotificationsPage from "./pages/circle/CircleNotificationsPage";
+
 // Onboarding pages
 import OnboardingPage from "./pages/OnboardingPage";
 import OnboardingProductPage from "./pages/OnboardingProductPage";
@@ -298,6 +308,18 @@ const App = () => (
             
             {/* System Showcase */}
             <Route path="/sistema" element={<SystemShowcasePage />} />
+            
+            {/* UNV Circle - Social Network */}
+            <Route path="/circle" element={<CircleLayout />}>
+              <Route index element={<CircleFeedPage />} />
+              <Route path="stories" element={<CircleStoriesPage />} />
+              <Route path="communities" element={<CircleCommunitiesPage />} />
+              <Route path="marketplace" element={<CircleMarketplacePage />} />
+              <Route path="ranking" element={<CircleRankingPage />} />
+              <Route path="profile" element={<CircleProfilePage />} />
+              <Route path="profile/:profileId" element={<CircleProfilePage />} />
+              <Route path="notifications" element={<CircleNotificationsPage />} />
+            </Route>
             
             {/* Portal do Planejamento 2026 */}
             <Route path="/portal" element={<PortalLandingPage />} />
