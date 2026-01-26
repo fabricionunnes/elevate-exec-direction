@@ -28,6 +28,7 @@ import {
   Briefcase,
   ChevronRight,
   GraduationCap,
+  ExternalLink,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -597,6 +598,25 @@ const ClientOnboardingPage = () => {
                   <span>Pontuação</span>
                 </Button>
               )}
+
+              {currentUser?.role === "client" && (
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="hidden md:flex gap-2 text-muted-foreground hover:text-primary"
+                >
+                  <a
+                    href="https://crm.universidadevendas.com.br"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    <span>CRM UNV</span>
+                  </a>
+                </Button>
+              )}
+
               <Button 
                 variant="ghost" 
                 size="icon" 
