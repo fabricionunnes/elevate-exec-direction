@@ -2075,8 +2075,12 @@ const OnboardingTasksPage = () => {
                             <h3 className="text-sm sm:text-base md:text-lg font-bold text-[#0A2240] uppercase tracking-wide break-words max-w-full">{company.name}</h3>
                             <div className="flex flex-wrap items-center gap-1">
                               {getStatusBadge(company.status)}
-                              {/* Tag "Empresa Nova" for companies with contract_start_date within last 30 days */}
-                              {company.contract_start_date && differenceInDays(new Date(), new Date(company.contract_start_date)) <= 30 && (
+                              {/* Tag "Empresa Nova" for companies started within last 30 days.
+                                  Fallback: if contract_start_date is missing (ex: leads coming from integrations), use created_at. */}
+                              {differenceInDays(
+                                new Date(),
+                                new Date(company.contract_start_date ?? company.created_at)
+                              ) <= 30 && (
                                 <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] sm:text-xs font-semibold shadow-md animate-pulse">
                                   ✨ Empresa Nova
                                 </Badge>
