@@ -1242,11 +1242,24 @@ const OnboardingTasksPage = () => {
       return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
     });
     
-    // Sort by contract_start_date descending (newest first), nulls last
-    return filtered.sort((a, b) => {
-      const dateA = a.contract_start_date ? new Date(a.contract_start_date).getTime() : 0;
-      const dateB = b.contract_start_date ? new Date(b.contract_start_date).getTime() : 0;
-      return dateB - dateA;
+    // Sort rule (business): companies that entered now (<= 30 days) must appear first.
+    // Fallback for integrations that may not set contract_start_date: use created_at.
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const getStartDate = (c: Company) => new Date(c.contract_start_date ?? c.created_at);
+
+    // IMPORTANT: never mutate `filtered` in-place (it can cause subtle UI issues)
+    return [...filtered].sort((a, b) => {
+      const aStart = getStartDate(a);
+      const bStart = getStartDate(b);
+      const aIsNew = aStart >= thirtyDaysAgo;
+      const bIsNew = bStart >= thirtyDaysAgo;
+
+      if (aIsNew && !bIsNew) return -1;
+      if (!aIsNew && bIsNew) return 1;
+
+      return bStart.getTime() - aStart.getTime();
     });
   }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, companiesGoalRanges, currentUserRole, currentStaffId, allTasks, contractRenewals]);
 
