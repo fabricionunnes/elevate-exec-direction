@@ -836,7 +836,7 @@ const DashboardMetrics = ({
   return (
     <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
       {/* Summary Row - Always Visible - Mobile Optimized */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-1.5 sm:gap-2">
         <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "active") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "active")}>
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
@@ -846,6 +846,22 @@ const DashboardMetrics = ({
               <div className="text-center sm:text-left min-w-0">
                 <p className="text-base sm:text-lg font-bold leading-none">{companyMetrics.activeCompanies}</p>
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate">Ativas</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer transition-all hover:shadow-md">
+          <CardContent className="p-2 sm:p-3">
+            <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0">
+                <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-500" />
+              </div>
+              <div className="text-center sm:text-left min-w-0">
+                <p className="text-base sm:text-lg font-bold leading-none text-indigo-500">
+                  {projectMetrics.activeProjects}
+                </p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate">Projetos</p>
               </div>
             </div>
           </CardContent>
