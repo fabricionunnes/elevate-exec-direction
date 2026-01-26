@@ -1237,8 +1237,8 @@ const OnboardingTasksPage = () => {
           // Filter active companies without consultant
           matchesMetricFilter = company.status === "active" && !company.consultant_id;
         } else if (activeMetricFilter.type === "projects_active") {
-          // Filter companies that have at least one active project
-          matchesMetricFilter = company.projects?.some(p => p.status === "active") ?? false;
+          // Filter companies that have at least one active project (exclude simulators)
+          matchesMetricFilter = !company.is_simulator && (company.projects?.some(p => p.status === "active") ?? false);
         }
       }
       
