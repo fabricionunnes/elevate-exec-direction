@@ -599,6 +599,16 @@ const ClientOnboardingPage = () => {
                 </Button>
               )}
 
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="hidden md:flex gap-2 text-muted-foreground hover:text-primary"
+                onClick={() => navigate("/circle")}
+              >
+                <Users className="h-4 w-4" />
+                <span>UNV Circle</span>
+              </Button>
+
               {currentUser?.role === "client" && (
                 <Button
                   asChild
