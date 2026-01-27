@@ -23,7 +23,6 @@ import {
   Building,
   Briefcase,
   Edit,
-  Camera,
   Store,
   Users
 } from "lucide-react";
@@ -34,6 +33,8 @@ import { ptBR } from "date-fns/locale";
 import { CirclePostCard } from "@/components/circle/CirclePostCard";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 import { SendTestimonialDialog } from "@/components/circle/SendTestimonialDialog";
+import { CircleAvatarUpload } from "@/components/circle/CircleAvatarUpload";
+import { CircleCoverUpload } from "@/components/circle/CircleCoverUpload";
 
 export default function CircleProfilePage() {
   const { profileId } = useParams();
@@ -274,36 +275,49 @@ export default function CircleProfilePage() {
       {/* Profile Header */}
       <Card className="overflow-hidden">
         {/* Cover */}
-        <div 
-          className={cn(
-            "h-48 relative",
-            profile.cover_url 
-              ? "" 
-              : "bg-gradient-to-br from-violet-500 to-pink-500"
-          )}
-          style={profile.cover_url ? { backgroundImage: `url(${profile.cover_url})`, backgroundSize: "cover" } : undefined}
-        >
-          {isOwnProfile && (
-            <Button
-              variant="secondary"
-              size="sm"
-              className="absolute bottom-4 right-4"
-            >
-              <Camera className="h-4 w-4 mr-2" />
-              Alterar capa
-            </Button>
-          )}
-        </div>
+        {isOwnProfile ? (
+          <CircleCoverUpload
+            profileId={profile.id}
+            currentCoverUrl={profile.cover_url}
+            onCoverChange={(url) => {
+              queryClient.invalidateQueries({ queryKey: ["circle-profile", targetProfileId] });
+            }}
+          />
+        ) : (
+          <div 
+            className={cn(
+              "h-48 relative",
+              profile.cover_url 
+                ? "" 
+                : "bg-gradient-to-br from-violet-500 to-pink-500"
+            )}
+            style={profile.cover_url ? { backgroundImage: `url(${profile.cover_url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+          />
+        )}
 
         <CardContent className="relative pt-0 pb-6">
           {/* Avatar */}
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 -mt-16 sm:-mt-12">
-            <Avatar className="h-32 w-32 ring-4 ring-background">
-              <AvatarImage src={profile.avatar_url || undefined} />
-              <AvatarFallback className="text-4xl">
-                {profile.display_name?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            {isOwnProfile ? (
+              <div className="ring-4 ring-background rounded-full">
+                <CircleAvatarUpload
+                  profileId={profile.id}
+                  currentAvatarUrl={profile.avatar_url}
+                  displayName={profile.display_name || "U"}
+                  size="xl"
+                  onAvatarChange={(url) => {
+                    queryClient.invalidateQueries({ queryKey: ["circle-profile", targetProfileId] });
+                  }}
+                />
+              </div>
+            ) : (
+              <Avatar className="h-32 w-32 ring-4 ring-background">
+                <AvatarImage src={profile.avatar_url || undefined} />
+                <AvatarFallback className="text-4xl">
+                  {profile.display_name?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            )}
 
             <div className="flex-1 text-center sm:text-left">
               <h1 className="text-2xl font-bold">{profile.display_name}</h1>
