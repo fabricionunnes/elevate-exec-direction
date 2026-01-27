@@ -12,6 +12,7 @@ export function StoryCameraRecorder({ onVideoRecorded, onCancel }: StoryCameraRe
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
   
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -30,20 +31,41 @@ export function StoryCameraRecorder({ onVideoRecorded, onCancel }: StoryCameraRe
     setError(null);
 
     // Stop previous stream if exists
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     }
 
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: facingMode,
+          // Force portrait capture as much as the device supports
           width: { ideal: 1080 },
           height: { ideal: 1920 },
+          aspectRatio: 9 / 16,
         },
         audio: true,
       });
 
+      // Some devices ignore getUserMedia aspectRatio/width/height.
+      // Try to enforce constraints on the video track.
+      const videoTrack = mediaStream.getVideoTracks()[0];
+      if (videoTrack?.applyConstraints) {
+        try {
+          await videoTrack.applyConstraints({
+            width: { ideal: 1080 },
+            height: { ideal: 1920 },
+            aspectRatio: 9 / 16,
+            frameRate: { ideal: 30 },
+          });
+        } catch (e) {
+          // Non-fatal: fallback to whatever the device provides
+          console.warn("applyConstraints failed:", e);
+        }
+      }
+
+      streamRef.current = mediaStream;
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
@@ -60,8 +82,9 @@ export function StoryCameraRecorder({ onVideoRecorded, onCancel }: StoryCameraRe
     initCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
   }, [facingMode]);
@@ -125,11 +148,12 @@ export function StoryCameraRecorder({ onVideoRecorded, onCancel }: StoryCameraRe
       setIsRecording(false);
       
       // Stop camera stream
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     }
-  }, [isRecording, stream]);
+  }, [isRecording]);
 
   const resetRecording = () => {
     if (previewUrl) {

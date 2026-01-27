@@ -51,6 +51,7 @@ export function StoryViewer({
   const [isPaused, setIsPaused] = useState(false);
   const [viewersModalOpen, setViewersModalOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false); // Start with sound ON
+  const [isVideoRotated, setIsVideoRotated] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const currentStory = stories[currentIndex];
@@ -65,6 +66,7 @@ export function StoryViewer({
       setProgress(0);
       setIsPaused(false);
       setIsMuted(false); // Start with sound ON
+      setIsVideoRotated(false);
     }
   }, [open, initialIndex]);
 
@@ -276,13 +278,33 @@ export function StoryViewer({
                 <video 
                   ref={videoRef}
                   src={currentStory.media_url} 
-                  className="max-w-full max-h-full w-auto h-auto"
+                  className={cn(
+                    isVideoRotated ? "h-full w-auto" : "max-w-full max-h-full w-auto h-auto",
+                    // If the recorded file came in landscape (common on some Android devices),
+                    // rotate it to match the vertical Story frame without distorting.
+                    isVideoRotated && "origin-center"
+                  )}
                   autoPlay
                   muted={isMuted}
                   playsInline
+                  onLoadedMetadata={() => {
+                    const v = videoRef.current;
+                    if (!v || !Number.isFinite(v.videoWidth) || !Number.isFinite(v.videoHeight)) return;
+                    // If the encoded pixels are landscape but we are inside a portrait story frame,
+                    // rotate to match what the user recorded.
+                    setIsVideoRotated(v.videoWidth > v.videoHeight);
+                  }}
                   onTimeUpdate={handleVideoTimeUpdate}
                   onEnded={handleVideoEnded}
                   onClick={(e) => e.stopPropagation()}
+                  style={
+                    isVideoRotated
+                      ? {
+                          transform: "rotate(90deg)",
+                          transformOrigin: "center",
+                        }
+                      : undefined
+                  }
                 />
                 {/* Mute/Unmute button */}
                 <button
