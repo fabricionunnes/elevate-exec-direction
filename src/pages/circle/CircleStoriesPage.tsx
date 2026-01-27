@@ -7,11 +7,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Image, Type, Upload, X, Video } from "lucide-react";
+import { Plus, Image, Type, Upload, X, Video, Camera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 import { StoryViewer } from "@/components/circle/StoryViewer";
+import { StoryCameraRecorder } from "@/components/circle/StoryCameraRecorder";
 
 const backgroundColors = [
   "bg-gradient-to-br from-violet-500 to-pink-500",
@@ -45,7 +46,7 @@ export default function CircleStoriesPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
-  const [storyType, setStoryType] = useState<"text" | "image" | "video">("text");
+  const [storyType, setStoryType] = useState<"text" | "image" | "video" | "record">("text");
   const [content, setContent] = useState("");
   const [selectedBg, setSelectedBg] = useState(backgroundColors[0]);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -54,6 +55,7 @@ export default function CircleStoriesPage() {
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showRecorder, setShowRecorder] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -279,7 +281,7 @@ export default function CircleStoriesPage() {
 
             <div className="space-y-4 pb-4">
               {/* Story Type */}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant={storyType === "text" ? "default" : "outline"}
                   onClick={() => setStoryType("text")}
@@ -297,12 +299,24 @@ export default function CircleStoriesPage() {
                   Imagem
                 </Button>
                 <Button
+                  variant={storyType === "record" ? "default" : "outline"}
+                  onClick={() => {
+                    setStoryType("record");
+                    setShowRecorder(true);
+                  }}
+                  size="sm"
+                  className="bg-gradient-to-r from-pink-500/20 to-violet-500/20 border-pink-500/30 hover:border-pink-500/50"
+                >
+                  <Camera className="h-4 w-4 mr-1 text-pink-500" />
+                  <span className="text-pink-600 dark:text-pink-400">Gravar</span>
+                </Button>
+                <Button
                   variant={storyType === "video" ? "default" : "outline"}
                   onClick={() => setStoryType("video")}
                   size="sm"
                 >
                   <Video className="h-4 w-4 mr-1" />
-                  Vídeo
+                  Enviar
                 </Button>
               </div>
 
@@ -387,6 +401,21 @@ export default function CircleStoriesPage() {
                 </div>
               )}
 
+              {storyType === "record" && (
+                <StoryCameraRecorder
+                  onVideoRecorded={(file, preview) => {
+                    setSelectedVideo(file);
+                    setVideoPreview(preview);
+                    setStoryType("video");
+                    setShowRecorder(false);
+                  }}
+                  onCancel={() => {
+                    setStoryType("text");
+                    setShowRecorder(false);
+                  }}
+                />
+              )}
+
               {storyType === "video" && (
                 <div className="space-y-4">
                   <input
@@ -445,19 +474,21 @@ export default function CircleStoriesPage() {
                 </div>
               )}
 
-              <Button
-                onClick={() => createStoryMutation.mutate()}
-                disabled={
-                  (storyType === "text" && !content.trim()) ||
-                  (storyType === "image" && !selectedImage) ||
-                  (storyType === "video" && !selectedVideo) ||
-                  createStoryMutation.isPending ||
-                  isUploading
-                }
-                className="w-full sticky bottom-0"
-              >
-                {createStoryMutation.isPending || isUploading ? "Publicando..." : "Publicar Story"}
-              </Button>
+              {storyType !== "record" && (
+                <Button
+                  onClick={() => createStoryMutation.mutate()}
+                  disabled={
+                    (storyType === "text" && !content.trim()) ||
+                    (storyType === "image" && !selectedImage) ||
+                    (storyType === "video" && !selectedVideo) ||
+                    createStoryMutation.isPending ||
+                    isUploading
+                  }
+                  className="w-full sticky bottom-0"
+                >
+                  {createStoryMutation.isPending || isUploading ? "Publicando..." : "Publicar Story"}
+                </Button>
+              )}
             </div>
           </DialogContent>
         </Dialog>
