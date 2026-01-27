@@ -134,12 +134,18 @@ export default function CircleMarketplacePage() {
             avatar_url,
             company_name,
             current_level,
-            level_name
+            level_name,
+            trust_score,
+            is_verified
           ),
           images:circle_marketplace_images(
             id,
             image_url,
             sort_order
+          ),
+          analytics:circle_marketplace_analytics(
+            view_count,
+            whatsapp_clicks
           )
         `)
         .eq("status", "active")
@@ -272,28 +278,44 @@ export default function CircleMarketplacePage() {
     const message = encodeURIComponent(listing.whatsapp_message || `Olá! Vi seu anúncio "${listing.title}" no UNV Circle e gostaria de saber mais.`);
     window.open(`https://wa.me/55${phone}?text=${message}`, "_blank");
 
-    // Update contacts count
-    supabase
-      .from("circle_marketplace_listings")
-      .update({ contacts_count: listing.contacts_count + 1 })
-      .eq("id", listing.id)
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ["circle-marketplace-listings"] });
-      });
+    // Update contacts count and log event
+    Promise.all([
+      supabase
+        .from("circle_marketplace_listings")
+        .update({ contacts_count: listing.contacts_count + 1 })
+        .eq("id", listing.id),
+      supabase
+        .from("circle_marketplace_events")
+        .insert({
+          listing_id: listing.id,
+          profile_id: currentProfile?.id || null,
+          event_type: "whatsapp_click",
+        }),
+    ]).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["circle-marketplace-listings"] });
+    });
   };
 
   const handleViewListing = (listing: MarketplaceListing) => {
     setSelectedListing(listing);
     setDetailDialogOpen(true);
 
-    // Update views count
-    supabase
-      .from("circle_marketplace_listings")
-      .update({ views_count: listing.views_count + 1 })
-      .eq("id", listing.id)
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ["circle-marketplace-listings"] });
-      });
+    // Update views count and log event
+    Promise.all([
+      supabase
+        .from("circle_marketplace_listings")
+        .update({ views_count: listing.views_count + 1 })
+        .eq("id", listing.id),
+      supabase
+        .from("circle_marketplace_events")
+        .insert({
+          listing_id: listing.id,
+          profile_id: currentProfile?.id || null,
+          event_type: "view",
+        }),
+    ]).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["circle-marketplace-listings"] });
+    });
   };
 
   const formatPrice = (price: number | null, priceType: string) => {

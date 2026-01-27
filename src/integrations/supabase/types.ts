@@ -2414,10 +2414,15 @@ export type Database = {
       }
       circle_comments: {
         Row: {
+          comment_type: string | null
           content: string
           created_at: string | null
+          hidden_by: string | null
+          hidden_reason: string | null
           id: string
           is_active: boolean | null
+          is_hidden: boolean
+          is_highlighted: boolean
           likes_count: number | null
           parent_id: string | null
           post_id: string
@@ -2425,10 +2430,15 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          comment_type?: string | null
           content: string
           created_at?: string | null
+          hidden_by?: string | null
+          hidden_reason?: string | null
           id?: string
           is_active?: boolean | null
+          is_hidden?: boolean
+          is_highlighted?: boolean
           likes_count?: number | null
           parent_id?: string | null
           post_id: string
@@ -2436,10 +2446,15 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          comment_type?: string | null
           content?: string
           created_at?: string | null
+          hidden_by?: string | null
+          hidden_reason?: string | null
           id?: string
           is_active?: boolean | null
+          is_hidden?: boolean
+          is_highlighted?: boolean
           likes_count?: number | null
           parent_id?: string | null
           post_id?: string
@@ -2447,6 +2462,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "circle_comments_hidden_by_fkey"
+            columns: ["hidden_by"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "circle_comments_parent_id_fkey"
             columns: ["parent_id"]
@@ -2628,6 +2650,94 @@ export type Database = {
         }
         Relationships: []
       }
+      circle_digest_history: {
+        Row: {
+          content: Json
+          id: string
+          profile_id: string
+          sent_at: string
+          sent_via: string
+        }
+        Insert: {
+          content: Json
+          id?: string
+          profile_id: string
+          sent_at?: string
+          sent_via?: string
+        }
+        Update: {
+          content?: Json
+          id?: string
+          profile_id?: string
+          sent_at?: string
+          sent_via?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_digest_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_digest_settings: {
+        Row: {
+          created_at: string
+          email: string | null
+          frequency: string
+          id: string
+          include_community_activity: boolean
+          include_feed_highlights: boolean
+          include_marketplace: boolean
+          include_ranking: boolean
+          is_enabled: boolean
+          last_sent_at: string | null
+          preferred_time: string | null
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          frequency?: string
+          id?: string
+          include_community_activity?: boolean
+          include_feed_highlights?: boolean
+          include_marketplace?: boolean
+          include_ranking?: boolean
+          is_enabled?: boolean
+          last_sent_at?: string | null
+          preferred_time?: string | null
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          frequency?: string
+          id?: string
+          include_community_activity?: boolean
+          include_feed_highlights?: boolean
+          include_marketplace?: boolean
+          include_ranking?: boolean
+          is_enabled?: boolean
+          last_sent_at?: string | null
+          preferred_time?: string | null
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_digest_settings_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circle_follows: {
         Row: {
           created_at: string | null
@@ -2719,6 +2829,80 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "circle_likes_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_marketplace_analytics: {
+        Row: {
+          created_at: string
+          id: string
+          listing_id: string
+          updated_at: string
+          view_count: number
+          whatsapp_clicks: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          listing_id: string
+          updated_at?: string
+          view_count?: number
+          whatsapp_clicks?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          listing_id?: string
+          updated_at?: string
+          view_count?: number
+          whatsapp_clicks?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_marketplace_analytics_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: true
+            referencedRelation: "circle_marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_marketplace_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          listing_id: string
+          profile_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          listing_id: string
+          profile_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          listing_id?: string
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_marketplace_events_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "circle_marketplace_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_marketplace_events_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "circle_profiles"
@@ -3005,11 +3189,14 @@ export type Database = {
       }
       circle_notifications: {
         Row: {
+          action_url: string | null
           actor_profile_id: string | null
+          category: string | null
           created_at: string | null
           id: string
           is_read: boolean | null
           message: string | null
+          priority: string
           profile_id: string
           reference_id: string | null
           reference_type: string | null
@@ -3017,11 +3204,14 @@ export type Database = {
           type: string
         }
         Insert: {
+          action_url?: string | null
           actor_profile_id?: string | null
+          category?: string | null
           created_at?: string | null
           id?: string
           is_read?: boolean | null
           message?: string | null
+          priority?: string
           profile_id: string
           reference_id?: string | null
           reference_type?: string | null
@@ -3029,11 +3219,14 @@ export type Database = {
           type: string
         }
         Update: {
+          action_url?: string | null
           actor_profile_id?: string | null
+          category?: string | null
           created_at?: string | null
           id?: string
           is_read?: boolean | null
           message?: string | null
+          priority?: string
           profile_id?: string
           reference_id?: string | null
           reference_type?: string | null
@@ -3204,6 +3397,7 @@ export type Database = {
       circle_profiles: {
         Row: {
           avatar_url: string | null
+          badges_list: string[] | null
           bio: string | null
           company_name: string | null
           cover_url: string | null
@@ -3213,6 +3407,7 @@ export type Database = {
           id: string
           interests: string[] | null
           is_active: boolean | null
+          is_verified: boolean
           level_name: string | null
           onboarding_user_id: string | null
           privacy_comments: string | null
@@ -3220,12 +3415,15 @@ export type Database = {
           role_title: string | null
           staff_id: string | null
           total_points: number | null
+          trust_score: number
+          trust_score_updated_at: string | null
           updated_at: string | null
           user_id: string | null
           whatsapp: string | null
         }
         Insert: {
           avatar_url?: string | null
+          badges_list?: string[] | null
           bio?: string | null
           company_name?: string | null
           cover_url?: string | null
@@ -3235,6 +3433,7 @@ export type Database = {
           id?: string
           interests?: string[] | null
           is_active?: boolean | null
+          is_verified?: boolean
           level_name?: string | null
           onboarding_user_id?: string | null
           privacy_comments?: string | null
@@ -3242,12 +3441,15 @@ export type Database = {
           role_title?: string | null
           staff_id?: string | null
           total_points?: number | null
+          trust_score?: number
+          trust_score_updated_at?: string | null
           updated_at?: string | null
           user_id?: string | null
           whatsapp?: string | null
         }
         Update: {
           avatar_url?: string | null
+          badges_list?: string[] | null
           bio?: string | null
           company_name?: string | null
           cover_url?: string | null
@@ -3257,6 +3459,7 @@ export type Database = {
           id?: string
           interests?: string[] | null
           is_active?: boolean | null
+          is_verified?: boolean
           level_name?: string | null
           onboarding_user_id?: string | null
           privacy_comments?: string | null
@@ -3264,6 +3467,8 @@ export type Database = {
           role_title?: string | null
           staff_id?: string | null
           total_points?: number | null
+          trust_score?: number
+          trust_score_updated_at?: string | null
           updated_at?: string | null
           user_id?: string | null
           whatsapp?: string | null
@@ -3281,6 +3486,73 @@ export type Database = {
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_reports: {
+        Row: {
+          admin_notes: string | null
+          content_id: string | null
+          content_type: string
+          created_at: string
+          description: string | null
+          id: string
+          reason: string
+          reported_profile_id: string | null
+          reporter_profile_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          content_id?: string | null
+          content_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          reason: string
+          reported_profile_id?: string | null
+          reporter_profile_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          content_id?: string | null
+          content_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          reason?: string
+          reported_profile_id?: string | null
+          reporter_profile_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_reports_reported_profile_id_fkey"
+            columns: ["reported_profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_reports_reporter_profile_id_fkey"
+            columns: ["reporter_profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3575,6 +3847,77 @@ export type Database = {
           },
         ]
       }
+      circle_trust_config: {
+        Row: {
+          created_at: string
+          id: string
+          min_score_boost_posts: number
+          min_score_create_communities: number
+          min_score_create_listings: number
+          min_score_post_links: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          min_score_boost_posts?: number
+          min_score_create_communities?: number
+          min_score_create_listings?: number
+          min_score_post_links?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          min_score_boost_posts?: number
+          min_score_create_communities?: number
+          min_score_create_listings?: number
+          min_score_post_links?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      circle_trust_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          points: number
+          profile_id: string
+          reference_id: string | null
+          reference_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          points: number
+          profile_id: string
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          points?: number
+          profile_id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_trust_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circle_user_badges: {
         Row: {
           badge_id: string
@@ -3605,6 +3948,45 @@ export type Database = {
           {
             foreignKeyName: "circle_user_badges_profile_id_fkey"
             columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_user_blocks: {
+        Row: {
+          blocked_profile_id: string
+          blocker_profile_id: string
+          created_at: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          blocked_profile_id: string
+          blocker_profile_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          blocked_profile_id?: string
+          blocker_profile_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_user_blocks_blocked_profile_id_fkey"
+            columns: ["blocked_profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_user_blocks_blocker_profile_id_fkey"
+            columns: ["blocker_profile_id"]
             isOneToOne: false
             referencedRelation: "circle_profiles"
             referencedColumns: ["id"]

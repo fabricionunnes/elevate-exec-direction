@@ -36,6 +36,7 @@ import { SendTestimonialDialog } from "@/components/circle/SendTestimonialDialog
 import { CircleAvatarUpload } from "@/components/circle/CircleAvatarUpload";
 import { CircleCoverUpload } from "@/components/circle/CircleCoverUpload";
 import { StartConversationButton } from "@/components/circle/StartConversationButton";
+import { TrustScoreBadge } from "@/components/circle/TrustScoreBadge";
 
 export default function CircleProfilePage() {
   const { profileId } = useParams();
@@ -327,7 +328,12 @@ export default function CircleProfilePage() {
                 {profile.role_title && profile.company_name && <span> • </span>}
                 {profile.company_name && <span>{profile.company_name}</span>}
               </p>
-              <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
+              <div className="flex items-center justify-center sm:justify-start gap-2 mt-2 flex-wrap">
+                <TrustScoreBadge 
+                  score={profile.trust_score ?? 50} 
+                  isVerified={profile.is_verified ?? false}
+                  size="sm"
+                />
                 <Badge variant="secondary">
                   <Star className="h-3 w-3 mr-1" />
                   Nível {profile.current_level} - {profile.level_name}
