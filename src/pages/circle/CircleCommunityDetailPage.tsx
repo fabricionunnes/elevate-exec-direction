@@ -23,7 +23,8 @@ import {
   Megaphone,
   UserCheck,
   MoreHorizontal,
-  Calendar
+  Calendar,
+  Camera
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import unvCircleLogo from "@/assets/unv-circle-logo.png";
+import { CommunityImageUpload } from "@/components/circle/CommunityImageUpload";
 
 const categoryConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   vendas: { label: "Vendas", icon: TrendingUp, color: "text-green-500" },
@@ -235,6 +237,7 @@ export default function CircleCommunityDetailPage() {
   });
 
   const isMember = !!membership;
+  const isOwner = community?.owner_profile_id === currentProfile?.id;
 
   if (loadingCommunity) {
     return (
@@ -279,15 +282,43 @@ export default function CircleCommunityDetailPage() {
               className="w-full h-full object-cover"
             />
           )}
+          {/* Owner can change cover */}
+          {isOwner && (
+            <div className="absolute bottom-3 right-3">
+              <CommunityImageUpload
+                communityId={community.id}
+                type="cover"
+                currentUrl={community.cover_url}
+                onImageChange={() => {
+                  queryClient.invalidateQueries({ queryKey: ["circle-community", slug] });
+                }}
+              />
+            </div>
+          )}
         </div>
         <CardContent className="pt-0">
           <div className="flex flex-col sm:flex-row items-start gap-4 -mt-10 sm:-mt-12">
-            <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-4 border-background">
-              <AvatarImage src={community.avatar_url || unvCircleLogo} />
-              <AvatarFallback className="text-2xl">
-                {community.name.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-4 border-background">
+                <AvatarImage src={community.avatar_url || unvCircleLogo} />
+                <AvatarFallback className="text-2xl">
+                  {community.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {/* Owner can change avatar */}
+              {isOwner && (
+                <div className="absolute -bottom-1 -right-1">
+                  <CommunityImageUpload
+                    communityId={community.id}
+                    type="avatar"
+                    currentUrl={community.avatar_url}
+                    onImageChange={() => {
+                      queryClient.invalidateQueries({ queryKey: ["circle-community", slug] });
+                    }}
+                  />
+                </div>
+              )}
+            </div>
 
             <div className="flex-1 pt-2 sm:pt-6">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
