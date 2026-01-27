@@ -6,9 +6,12 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Settings, Bell, Palette, Shield, Save } from "lucide-react";
+import { Settings, Bell, Shield, Save } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ThemeSelector } from "@/components/settings/ThemeSelector";
+import { ColorCustomizer } from "@/components/settings/ColorCustomizer";
+import { ThemePreview } from "@/components/settings/ThemePreview";
 
 export const AcademySettingsPage = () => {
   const userContext = useOutletContext<AcademyUserContext>();
@@ -22,8 +25,6 @@ export const AcademySettingsPage = () => {
     enableProgressNotifications: true,
     enableBadgeNotifications: true,
     enableRankingNotifications: false,
-    primaryColor: "#8B5CF6",
-    darkModeDefault: false,
     requireEmailVerification: true,
     allowSelfEnrollment: false,
   });
@@ -155,47 +156,14 @@ export const AcademySettingsPage = () => {
           </CardContent>
         </Card>
 
-        {/* Appearance Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Palette className="h-5 w-5" />
-              Aparência
-            </CardTitle>
-            <CardDescription>
-              Customize a aparência da plataforma
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="primaryColor">Cor Primária</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="primaryColor"
-                  type="color"
-                  value={settings.primaryColor}
-                  onChange={(e) => setSettings(s => ({ ...s, primaryColor: e.target.value }))}
-                  className="w-16 h-10 p-1"
-                />
-                <Input
-                  value={settings.primaryColor}
-                  onChange={(e) => setSettings(s => ({ ...s, primaryColor: e.target.value }))}
-                  className="flex-1"
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Modo Escuro como Padrão</Label>
-                <p className="text-sm text-muted-foreground">Novos usuários iniciam em modo escuro</p>
-              </div>
-              <Switch
-                checked={settings.darkModeDefault}
-                onCheckedChange={(checked) => setSettings(s => ({ ...s, darkModeDefault: checked }))}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Theme Selector */}
+        <ThemeSelector />
+
+        {/* Color Customizer */}
+        <ColorCustomizer />
+
+        {/* Theme Preview */}
+        <ThemePreview />
 
         {/* Security Settings */}
         <Card>
