@@ -16,7 +16,8 @@ import {
   User,
   ClipboardCheck,
   GraduationCap,
-  ExternalLink
+  ExternalLink,
+  Users
 } from "lucide-react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -91,6 +92,7 @@ const PortalAppLayout = () => {
     { href: "/portal/app/execucao", icon: ClipboardCheck, label: "Execução" },
     { href: "/portal/app/dashboard", icon: BarChart3, label: "Dashboard" },
     { href: "/academy", icon: GraduationCap, label: "Academy" },
+    { href: "/circle", icon: Users, label: "Circle" },
     { href: "/portal/app/config", icon: Settings, label: "Configurações" },
     ...(user?.role !== "admin_unv" ? [{ href: "https://crm.universidadevendas.com.br", icon: ExternalLink, label: "CRM UNV", external: true }] : []),
     ...(user?.role === "admin_unv" ? [{ href: "/portal/app/admin", icon: Settings, label: "Admin UNV" }] : []),
