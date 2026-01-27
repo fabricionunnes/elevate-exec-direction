@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 
 const backgroundColors = [
   "bg-gradient-to-br from-violet-500 to-pink-500",
@@ -50,23 +51,8 @@ export default function CircleStoriesPage() {
   const [content, setContent] = useState("");
   const [selectedBg, setSelectedBg] = useState(backgroundColors[0]);
 
-  // Fetch current profile
-  const { data: currentProfile } = useQuery({
-    queryKey: ["circle-profile-current"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data, error } = await supabase
-        .from("circle_profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Fetch (and ensure) current profile
+  const { data: currentProfile } = useCircleCurrentProfile();
 
   // Fetch stories
   const { data: stories, isLoading } = useQuery({

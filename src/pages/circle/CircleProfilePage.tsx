@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CirclePostCard } from "@/components/circle/CirclePostCard";
+import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 
 export default function CircleProfilePage() {
   const { profileId } = useParams();
@@ -47,23 +48,8 @@ export default function CircleProfilePage() {
   const [roleTitle, setRoleTitle] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
 
-  // Fetch current user's profile
-  const { data: currentProfile } = useQuery({
-    queryKey: ["circle-profile-current"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data, error } = await supabase
-        .from("circle_profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Fetch (and ensure) current user's profile
+  const { data: currentProfile } = useCircleCurrentProfile();
 
   // Determine which profile to show
   const targetProfileId = profileId || currentProfile?.id;

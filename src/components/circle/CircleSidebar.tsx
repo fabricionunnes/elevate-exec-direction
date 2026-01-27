@@ -64,13 +64,19 @@ export function CircleSidebar({ currentProfileId }: CircleSidebarProps) {
   const { data: suggestedProfiles } = useQuery({
     queryKey: ["circle-suggested-profiles", currentProfileId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("circle_profiles")
         .select("id, display_name, avatar_url, company_name, current_level, level_name")
         .eq("is_active", true)
-        .neq("id", currentProfileId || "")
         .order("total_points", { ascending: false })
         .limit(5);
+
+      // Avoid invalid UUID filter ("neq id, ''") when the user profile isn't loaded yet.
+      if (currentProfileId) {
+        query = query.neq("id", currentProfileId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data;
