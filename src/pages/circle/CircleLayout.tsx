@@ -12,7 +12,8 @@ import {
   MessageCircle,
   Settings,
   Bot,
-  Bookmark
+  Bookmark,
+  Megaphone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ const navItems = [
   { path: "/circle/ranking", label: "Ranking", icon: Trophy },
   { path: "/circle/messages", label: "Mensagens", icon: MessageCircle },
   { path: "/circle/saved", label: "Salvos", icon: Bookmark },
+  { path: "/circle/ads", label: "Circle Ads", icon: Megaphone },
   { path: "/circle/mentor", label: "Mentor IA", icon: Bot },
 ];
 
