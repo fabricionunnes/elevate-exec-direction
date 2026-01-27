@@ -22,6 +22,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
+import { FloatingChatBubble } from "@/components/circle/FloatingChatBubble";
 import unvCircleLogo from "@/assets/unv-circle-logo.png";
 
 const navItems = [
@@ -202,6 +203,9 @@ export default function CircleLayout() {
           <Outlet />
         )}
       </main>
+
+      {/* Floating Chat Bubble */}
+      <FloatingChatBubble />
     </div>
   );
 }

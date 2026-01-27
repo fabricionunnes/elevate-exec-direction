@@ -40,6 +40,7 @@ import { TrustScoreBadge } from "@/components/circle/TrustScoreBadge";
 import { AreaReputationCard } from "@/components/circle/AreaReputationCard";
 import { PendingTestimonialsCard } from "@/components/circle/PendingTestimonialsCard";
 import { FollowersFollowingModal } from "@/components/circle/FollowersFollowingModal";
+import { TestimonialCard } from "@/components/circle/TestimonialCard";
 
 export default function CircleProfilePage() {
   const { profileId } = useParams();
@@ -566,31 +567,12 @@ export default function CircleProfilePage() {
         <TabsContent value="testimonials" className="space-y-4 mt-4">
           {testimonials && testimonials.length > 0 ? (
             testimonials.map((testimonial: any) => (
-              <Card key={testimonial.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <Avatar>
-                      <AvatarImage src={testimonial.author?.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {testimonial.author?.display_name?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <p className="font-medium">{testimonial.author?.display_name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {testimonial.author?.company_name}
-                      </p>
-                      <p className="mt-2">{testimonial.content}</p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {formatDistanceToNow(new Date(testimonial.created_at), {
-                          addSuffix: true,
-                          locale: ptBR,
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <TestimonialCard
+                key={testimonial.id}
+                testimonial={testimonial}
+                currentProfileId={currentProfile?.id}
+                isOwnProfile={isOwnProfile}
+              />
             ))
           ) : (
             <div className="text-center py-12 text-muted-foreground">
