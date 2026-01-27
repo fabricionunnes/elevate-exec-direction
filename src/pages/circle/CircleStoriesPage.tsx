@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Image, Type } from "lucide-react";
+import { Plus, Image, Type, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
@@ -47,6 +47,10 @@ export default function CircleStoriesPage() {
   const [storyType, setStoryType] = useState<"text" | "image">("text");
   const [content, setContent] = useState("");
   const [selectedBg, setSelectedBg] = useState(backgroundColors[0]);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch (and ensure) current profile
   const { data: currentProfile } = useCircleCurrentProfile();
@@ -92,10 +96,52 @@ export default function CircleStoriesPage() {
     }, {} as Record<string, { profile: Story["profile"]; stories: Story[] }>);
   }, [stories]);
 
+  // Handle image selection
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: "Imagem muito grande. Máximo 5MB.", variant: "destructive" });
+        return;
+      }
+      setSelectedImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   // Create story mutation
   const createStoryMutation = useMutation({
     mutationFn: async () => {
       if (!currentProfile?.id) throw new Error("Not authenticated");
+
+      setIsUploading(true);
+      let mediaUrl: string | null = null;
+
+      // Upload image if selected
+      if (storyType === "image" && selectedImage) {
+        const fileExt = selectedImage.name.split(".").pop();
+        const fileName = `${currentProfile.id}/${Date.now()}.${fileExt}`;
+
+        const { error: uploadError, data: uploadData } = await supabase.storage
+          .from("circle-media")
+          .upload(fileName, selectedImage);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrl } = supabase.storage
+          .from("circle-media")
+          .getPublicUrl(fileName);
+
+        mediaUrl = publicUrl.publicUrl;
+      }
 
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
@@ -103,6 +149,7 @@ export default function CircleStoriesPage() {
       const { error } = await supabase.from("circle_stories").insert({
         profile_id: currentProfile.id,
         content: storyType === "text" ? content : null,
+        media_url: mediaUrl,
         media_type: storyType,
         background_color: storyType === "text" ? selectedBg : null,
         expires_at: expiresAt.toISOString(),
@@ -114,10 +161,16 @@ export default function CircleStoriesPage() {
       toast({ title: "Story publicado!" });
       setCreateDialogOpen(false);
       setContent("");
+      clearImage();
+      setStoryType("text");
       queryClient.invalidateQueries({ queryKey: ["circle-stories"] });
+      queryClient.invalidateQueries({ queryKey: ["circle-stories-bar"] });
     },
     onError: () => {
       toast({ title: "Erro ao publicar story", variant: "destructive" });
+    },
+    onSettled: () => {
+      setIsUploading(false);
     },
   });
 
@@ -175,7 +228,6 @@ export default function CircleStoriesPage() {
                   variant={storyType === "image" ? "default" : "outline"}
                   onClick={() => setStoryType("image")}
                   className="flex-1"
-                  disabled
                 >
                   <Image className="h-4 w-4 mr-2" />
                   Imagem
@@ -220,12 +272,60 @@ export default function CircleStoriesPage() {
                 </>
               )}
 
+              {storyType === "image" && (
+                <div className="space-y-4">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+
+                  {!imagePreview ? (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="aspect-[9/14] sm:aspect-[9/16] w-full rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 flex flex-col items-center justify-center gap-3 transition-colors"
+                    >
+                      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Upload className="h-8 w-8 text-primary" />
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        Clique para selecionar uma imagem
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Máximo 5MB
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="relative aspect-[9/14] sm:aspect-[9/16] rounded-xl overflow-hidden">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        onClick={clearImage}
+                        className="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
+                      >
+                        <X className="h-4 w-4 text-white" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Button
                 onClick={() => createStoryMutation.mutate()}
-                disabled={!content.trim() || createStoryMutation.isPending}
+                disabled={
+                  (storyType === "text" && !content.trim()) ||
+                  (storyType === "image" && !selectedImage) ||
+                  createStoryMutation.isPending ||
+                  isUploading
+                }
                 className="w-full sticky bottom-0"
               >
-                {createStoryMutation.isPending ? "Publicando..." : "Publicar Story"}
+                {createStoryMutation.isPending || isUploading ? "Publicando..." : "Publicar Story"}
               </Button>
             </div>
           </DialogContent>
@@ -252,21 +352,30 @@ export default function CircleStoriesPage() {
             onClick={() => handleViewStory(group.stories[0])}
             className="aspect-[9/16] rounded-xl overflow-hidden relative group"
           >
-            <div
-              className={cn(
-                "absolute inset-0 flex items-center justify-center p-3",
-                group.stories[0].background_color || "bg-gradient-to-br from-gray-700 to-gray-900"
-              )}
-            >
-              {group.stories[0].content && (
-                <p className="text-white text-sm text-center line-clamp-4">
-                  {group.stories[0].content}
-                </p>
-              )}
-            </div>
+            {/* Background - Image or Color */}
+            {group.stories[0].media_url ? (
+              <img
+                src={group.stories[0].media_url}
+                alt="Story"
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (
+              <div
+                className={cn(
+                  "absolute inset-0 flex items-center justify-center p-3",
+                  group.stories[0].background_color || "bg-gradient-to-br from-gray-700 to-gray-900"
+                )}
+              >
+                {group.stories[0].content && (
+                  <p className="text-white text-sm text-center line-clamp-4">
+                    {group.stories[0].content}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Profile Avatar */}
-            <div className="absolute top-2 left-2">
+            <div className="absolute top-2 left-2 z-10">
               <Avatar className="h-8 w-8 ring-2 ring-primary">
                 <AvatarImage src={group.profile.avatar_url || undefined} />
                 <AvatarFallback className="text-xs">
@@ -277,13 +386,13 @@ export default function CircleStoriesPage() {
 
             {/* Story Count */}
             {group.stories.length > 1 && (
-              <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
+              <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full z-10">
                 {group.stories.length}
               </div>
             )}
 
             {/* Name */}
-            <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
+            <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent z-10">
               <p className="text-white text-xs font-medium truncate">
                 {group.profile.display_name}
               </p>
