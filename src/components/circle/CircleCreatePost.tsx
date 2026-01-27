@@ -82,8 +82,8 @@ export function CircleCreatePost({ profile, communityId, onPostCreated }: Circle
             />
 
             {isExpanded && (
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="flex gap-2 justify-center sm:justify-start">
                   <Button variant="ghost" size="icon" className="h-9 w-9" disabled>
                     <Image className="h-5 w-5 text-green-500" />
                   </Button>
@@ -95,9 +95,10 @@ export function CircleCreatePost({ profile, communityId, onPostCreated }: Circle
                   </Button>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 justify-end">
                   <Button
                     variant="ghost"
+                    size="sm"
                     onClick={() => {
                       setIsExpanded(false);
                       setContent("");
@@ -106,6 +107,7 @@ export function CircleCreatePost({ profile, communityId, onPostCreated }: Circle
                     Cancelar
                   </Button>
                   <Button
+                    size="sm"
                     onClick={handleSubmit}
                     disabled={!content.trim() || createPostMutation.isPending}
                   >

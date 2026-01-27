@@ -149,12 +149,12 @@ export default function CircleStoriesPage() {
               Criar Story
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Criar Story</DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-4">
+            <div className="space-y-4 pb-4">
               {/* Story Type */}
               <div className="flex gap-2">
                 <Button
@@ -181,13 +181,13 @@ export default function CircleStoriesPage() {
                   {/* Background Color */}
                   <div className="space-y-2">
                     <Label>Cor de fundo</Label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {backgroundColors.map((bg) => (
                         <button
                           key={bg}
                           onClick={() => setSelectedBg(bg)}
                           className={cn(
-                            "h-8 w-8 rounded-full",
+                            "h-8 w-8 rounded-full flex-shrink-0",
                             bg,
                             selectedBg === bg && "ring-2 ring-offset-2 ring-primary"
                           )}
@@ -196,10 +196,10 @@ export default function CircleStoriesPage() {
                     </div>
                   </div>
 
-                  {/* Preview */}
+                  {/* Preview - Smaller height on mobile */}
                   <div
                     className={cn(
-                      "aspect-[9/16] rounded-xl flex items-center justify-center p-4",
+                      "aspect-[9/14] sm:aspect-[9/16] rounded-xl flex items-center justify-center p-4",
                       selectedBg
                     )}
                   >
@@ -208,7 +208,7 @@ export default function CircleStoriesPage() {
                       onChange={(e) => setContent(e.target.value)}
                       placeholder="Digite seu texto..."
                       className="bg-transparent border-none text-white text-center text-lg placeholder:text-white/70 resize-none focus-visible:ring-0"
-                      rows={5}
+                      rows={4}
                     />
                   </div>
                 </>
@@ -217,7 +217,7 @@ export default function CircleStoriesPage() {
               <Button
                 onClick={() => createStoryMutation.mutate()}
                 disabled={!content.trim() || createStoryMutation.isPending}
-                className="w-full"
+                className="w-full sticky bottom-0"
               >
                 {createStoryMutation.isPending ? "Publicando..." : "Publicar Story"}
               </Button>
