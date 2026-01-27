@@ -11,7 +11,8 @@ import {
   Share2, 
   Bookmark, 
   MoreHorizontal,
-  Star
+  Star,
+  Play
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -59,6 +60,8 @@ export function CirclePostCard({ post, isLiked, onLike, currentProfileId }: Circ
   const [localLikesCount, setLocalLikesCount] = useState(post.likes_count);
   const [localIsLiked, setLocalIsLiked] = useState(isLiked);
 
+  const isClip = post.post_type === "clip" || post.media_type === "clip";
+
   // Check if post is saved
   const { data: isSaved } = useQuery({
     queryKey: ["circle-post-saved", post.id, currentProfileId],
@@ -101,6 +104,7 @@ export function CirclePostCard({ post, isLiked, onLike, currentProfileId }: Circ
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["circle-post-saved", post.id] });
+      queryClient.invalidateQueries({ queryKey: ["circle-saved-posts"] });
       toast({
         title: isSaved ? "Removido dos salvos" : "Post salvo!",
       });
@@ -127,29 +131,35 @@ export function CirclePostCard({ post, isLiked, onLike, currentProfileId }: Circ
 
   return (
     <Card className="overflow-hidden">
-      <CardContent className="p-4">
+      <CardContent className="p-3 sm:p-4">
         {/* Header */}
-        <div className="flex items-start justify-between mb-3">
+        <div className="flex items-start justify-between mb-3 gap-2">
           <NavLink 
             to={`/circle/profile/${post.profile.id}`}
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity min-w-0 flex-1"
           >
-            <Avatar className="h-10 w-10">
+            <Avatar className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0">
               <AvatarImage src={post.profile.avatar_url || undefined} />
-              <AvatarFallback>
+              <AvatarFallback className="text-sm">
                 {post.profile.display_name?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
 
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-sm">{post.profile.display_name}</p>
-                <Badge variant="secondary" className="text-xs py-0">
-                  <Star className="h-3 w-3 mr-1" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <p className="font-semibold text-sm truncate">{post.profile.display_name}</p>
+                <Badge variant="secondary" className="text-[10px] sm:text-xs py-0 px-1.5 sm:px-2 flex-shrink-0">
+                  <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
                   {post.profile.current_level}
                 </Badge>
+                {isClip && (
+                  <Badge variant="outline" className="text-[10px] sm:text-xs py-0 px-1.5 gap-0.5 text-violet-600 border-violet-500/30 flex-shrink-0">
+                    <Play className="h-2.5 w-2.5 fill-current" />
+                    Clip
+                  </Badge>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                 {post.profile.role_title && post.profile.company_name
                   ? `${post.profile.role_title} • ${post.profile.company_name}`
                   : post.profile.company_name || post.profile.level_name}
@@ -164,11 +174,11 @@ export function CirclePostCard({ post, isLiked, onLike, currentProfileId }: Circ
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="bg-popover">
               <DropdownMenuItem onClick={() => saveMutation.mutate()}>
                 <Bookmark className={cn("h-4 w-4 mr-2", isSaved && "fill-current")} />
                 {isSaved ? "Remover dos salvos" : "Salvar"}
@@ -187,94 +197,109 @@ export function CirclePostCard({ post, isLiked, onLike, currentProfileId }: Circ
 
         {/* Content */}
         {post.content && (
-          <p className="text-sm whitespace-pre-wrap mb-3">{post.content}</p>
+          <p className="text-sm whitespace-pre-wrap mb-3 break-words">{post.content}</p>
         )}
 
         {/* Media */}
         {post.media_urls && post.media_urls.length > 0 && (
           <div className={cn(
-            "grid gap-2 mb-3 rounded-lg overflow-hidden",
-            post.media_urls.length === 1 && "grid-cols-1",
-            post.media_urls.length === 2 && "grid-cols-2",
-            post.media_urls.length >= 3 && "grid-cols-2"
+            "mb-3 rounded-lg overflow-hidden",
+            isClip ? "max-w-sm mx-auto" : "grid gap-1.5 sm:gap-2",
+            !isClip && post.media_urls.length === 1 && "grid-cols-1",
+            !isClip && post.media_urls.length === 2 && "grid-cols-2",
+            !isClip && post.media_urls.length >= 3 && "grid-cols-2"
           )}>
-            {post.media_urls.slice(0, 4).map((url, index) => (
-              <div
-                key={index}
-                className={cn(
-                  "relative aspect-square bg-muted",
-                  post.media_urls!.length === 1 && "aspect-video",
-                  post.media_urls!.length === 3 && index === 0 && "row-span-2 aspect-auto"
-                )}
-              >
-                {post.media_type === "video" ? (
-                  <video
-                    src={url}
-                    className="w-full h-full object-cover"
-                    controls
-                  />
-                ) : (
-                  <img
-                    src={url}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                )}
-                {post.media_urls!.length > 4 && index === 3 && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                    <span className="text-white text-2xl font-bold">
-                      +{post.media_urls!.length - 4}
-                    </span>
-                  </div>
-                )}
+            {isClip ? (
+              // Clip video - vertical format
+              <div className="relative aspect-[9/16] bg-black rounded-xl overflow-hidden">
+                <video
+                  src={post.media_urls[0]}
+                  className="w-full h-full object-contain"
+                  controls
+                  playsInline
+                />
               </div>
-            ))}
+            ) : (
+              post.media_urls.slice(0, 4).map((url, index) => (
+                <div
+                  key={index}
+                  className={cn(
+                    "relative aspect-square bg-muted",
+                    post.media_urls!.length === 1 && "aspect-video",
+                    post.media_urls!.length === 3 && index === 0 && "row-span-2 aspect-auto"
+                  )}
+                >
+                  {post.media_type === "video" ? (
+                    <video
+                      src={url}
+                      className="w-full h-full object-cover"
+                      controls
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={url}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  )}
+                  {post.media_urls!.length > 4 && index === 3 && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <span className="text-white text-xl sm:text-2xl font-bold">
+                        +{post.media_urls!.length - 4}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         )}
 
         {/* Achievement Badge */}
         {post.post_type === "achievement" && (
-          <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-lg p-3 mb-3">
-            <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
+          <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-lg p-2.5 sm:p-3 mb-3">
+            <p className="text-xs sm:text-sm font-medium text-yellow-600 dark:text-yellow-400">
               🏆 Conquista desbloqueada!
             </p>
           </div>
         )}
 
         {/* Actions */}
-        <div className="flex items-center justify-between pt-3 border-t">
-          <div className="flex items-center gap-1">
+        <div className="flex items-center justify-between pt-2 sm:pt-3 border-t">
+          <div className="flex items-center gap-0.5 sm:gap-1">
             <Button
               variant="ghost"
               size="sm"
               className={cn(
-                "gap-2",
+                "gap-1.5 sm:gap-2 px-2 sm:px-3 h-8 sm:h-9",
                 localIsLiked && "text-red-500"
               )}
               onClick={handleLike}
             >
               <Heart className={cn("h-4 w-4", localIsLiked && "fill-current")} />
-              <span>{localLikesCount}</span>
+              <span className="text-xs sm:text-sm">{localLikesCount}</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
-              className="gap-2"
+              className="gap-1.5 sm:gap-2 px-2 sm:px-3 h-8 sm:h-9"
               onClick={() => setShowComments(!showComments)}
             >
               <MessageSquare className="h-4 w-4" />
-              <span>{post.comments_count}</span>
+              <span className="text-xs sm:text-sm">{post.comments_count}</span>
             </Button>
 
             <Button 
               variant="ghost" 
               size="sm" 
-              className="gap-2"
+              className="gap-1.5 sm:gap-2 px-2 sm:px-3 h-8 sm:h-9"
               onClick={handleShare}
             >
               <Share2 className="h-4 w-4" />
-              <span>{post.shares_count}</span>
+              <span className="text-xs sm:text-sm hidden sm:inline">{post.shares_count}</span>
             </Button>
           </div>
 

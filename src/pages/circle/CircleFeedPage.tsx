@@ -6,11 +6,11 @@ import { CircleCreatePost } from "@/components/circle/CircleCreatePost";
 import { CircleStoriesBar } from "@/components/circle/CircleStoriesBar";
 import { CircleSidebar } from "@/components/circle/CircleSidebar";
 import { CircleFeedGrid } from "@/components/circle/CircleFeedGrid";
+import { ClipsUpload } from "@/components/circle/ClipsUpload";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { LayoutGrid, List } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { LayoutGrid, List, Play } from "lucide-react";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 
 interface CirclePost {
@@ -36,10 +36,10 @@ interface CirclePost {
 }
 
 export default function CircleFeedPage() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("all");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [clipsDialogOpen, setClipsDialogOpen] = useState(false);
 
   // Fetch (and ensure) current user's profile
   const { data: currentProfile } = useCircleCurrentProfile();
@@ -80,6 +80,10 @@ export default function CircleFeedPage() {
         } else {
           return [];
         }
+      }
+
+      if (activeTab === "clips") {
+        query = query.eq("post_type", "clip");
       }
 
       const { data, error } = await query;
@@ -140,28 +144,50 @@ export default function CircleFeedPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
       {/* Main Feed */}
-      <div className="lg:col-span-8 space-y-6">
+      <div className="lg:col-span-8 space-y-4 lg:space-y-6">
         {/* Stories Bar */}
         <CircleStoriesBar currentProfileId={currentProfile?.id} />
 
-        {/* Create Post */}
+        {/* Create Post + Clips Button */}
         {currentProfile && (
-          <CircleCreatePost 
-            profile={currentProfile} 
-            onPostCreated={() => queryClient.invalidateQueries({ queryKey: ["circle-posts"] })}
-          />
+          <div className="space-y-3">
+            <CircleCreatePost 
+              profile={currentProfile} 
+              onPostCreated={() => queryClient.invalidateQueries({ queryKey: ["circle-posts"] })}
+            />
+            
+            {/* Clips Button - Mobile prominent */}
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto gap-2 bg-gradient-to-r from-violet-500/10 to-pink-500/10 border-violet-500/30 hover:border-violet-500/50"
+              onClick={() => setClipsDialogOpen(true)}
+            >
+              <Play className="h-4 w-4 text-violet-500" />
+              <span className="text-violet-600 dark:text-violet-400 font-medium">Criar Clip</span>
+            </Button>
+            
+            <ClipsUpload
+              profileId={currentProfile.id}
+              open={clipsDialogOpen}
+              onOpenChange={setClipsDialogOpen}
+            />
+          </div>
         )}
 
         {/* Feed Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="flex items-center gap-2">
-            <TabsList className="flex-1">
-              <TabsTrigger value="all" className="flex-1">Para Você</TabsTrigger>
-              <TabsTrigger value="following" className="flex-1">Seguindo</TabsTrigger>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <TabsList className="w-full sm:flex-1 grid grid-cols-3">
+              <TabsTrigger value="all" className="text-xs sm:text-sm">Para Você</TabsTrigger>
+              <TabsTrigger value="following" className="text-xs sm:text-sm">Seguindo</TabsTrigger>
+              <TabsTrigger value="clips" className="text-xs sm:text-sm gap-1">
+                <Play className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Clips</span>
+              </TabsTrigger>
             </TabsList>
-            <div className="flex gap-1 bg-muted rounded-lg p-1">
+            <div className="flex gap-1 bg-muted rounded-lg p-1 self-end sm:self-auto">
               <Button
                 variant={viewMode === "list" ? "secondary" : "ghost"}
                 size="icon"
@@ -183,25 +209,25 @@ export default function CircleFeedPage() {
 
           <TabsContent value={activeTab} className="space-y-4 mt-4">
             {postsLoading ? (
-              <>
+              <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-card rounded-xl p-4 space-y-4">
+                  <div key={i} className="bg-card rounded-xl p-3 sm:p-4 space-y-4">
                     <div className="flex items-center gap-3">
                       <Skeleton className="h-10 w-10 rounded-full" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-3 w-24" />
+                      <div className="space-y-2 flex-1">
+                        <Skeleton className="h-4 w-24 sm:w-32" />
+                        <Skeleton className="h-3 w-20 sm:w-24" />
                       </div>
                     </div>
-                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-16 sm:h-20 w-full" />
                     <div className="flex gap-4">
-                      <Skeleton className="h-8 w-16" />
-                      <Skeleton className="h-8 w-16" />
-                      <Skeleton className="h-8 w-16" />
+                      <Skeleton className="h-8 w-14 sm:w-16" />
+                      <Skeleton className="h-8 w-14 sm:w-16" />
+                      <Skeleton className="h-8 w-14 sm:w-16" />
                     </div>
                   </div>
                 ))}
-              </>
+              </div>
             ) : posts && posts.length > 0 ? (
               viewMode === "grid" ? (
                 <CircleFeedGrid
@@ -211,20 +237,22 @@ export default function CircleFeedPage() {
                   onLike={handleLike}
                 />
               ) : (
-                posts.map((post) => (
-                  <CirclePostCard
-                    key={post.id}
-                    post={post}
-                    isLiked={userLikes?.includes(post.id) || false}
-                    onLike={() => handleLike(post.id)}
-                    currentProfileId={currentProfile?.id}
-                  />
-                ))
+                <div className="space-y-4">
+                  {posts.map((post) => (
+                    <CirclePostCard
+                      key={post.id}
+                      post={post}
+                      isLiked={userLikes?.includes(post.id) || false}
+                      onLike={() => handleLike(post.id)}
+                      currentProfileId={currentProfile?.id}
+                    />
+                  ))}
+                </div>
               )
             ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                <p>Nenhum post encontrado.</p>
-                <p className="text-sm mt-1">Seja o primeiro a compartilhar algo!</p>
+              <div className="text-center py-8 sm:py-12 text-muted-foreground">
+                <p className="text-sm sm:text-base">Nenhum post encontrado.</p>
+                <p className="text-xs sm:text-sm mt-1">Seja o primeiro a compartilhar algo!</p>
               </div>
             )}
           </TabsContent>
