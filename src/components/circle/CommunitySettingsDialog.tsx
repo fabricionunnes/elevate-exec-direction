@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Settings, UserMinus, Trash2, Crown, Search } from "lucide-react";
+import { Settings, Trash2, Crown, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
@@ -38,13 +38,8 @@ interface CommunitySettingsDialogProps {
   isAdmin: boolean;
 }
 
-export function CommunitySettingsDialog({
-  communityId,
-  communityName,
-  ownerProfileId,
-  currentProfileId,
-  isAdmin,
-}: CommunitySettingsDialogProps) {
+export function CommunitySettingsDialog(props: CommunitySettingsDialogProps) {
+  const { communityId, communityName, ownerProfileId, currentProfileId, isAdmin } = props;
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
@@ -144,7 +139,7 @@ export function CommunitySettingsDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" type="button" onClick={() => setOpen(true)}>
           <Settings className="h-4 w-4 mr-2" />
           Configurações
         </Button>
