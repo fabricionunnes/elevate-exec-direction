@@ -24,8 +24,19 @@ import {
   Handshake,
   Sparkles,
   Filter,
-  Phone
+  Phone,
+  Trash2
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -94,6 +105,7 @@ export default function CircleMarketplacePage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState<MarketplaceListing | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -219,6 +231,28 @@ export default function CircleMarketplacePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["circle-user-favorites"] });
+    },
+  });
+
+  // Delete listing mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (listingId: string) => {
+      const { error } = await supabase
+        .from("circle_marketplace_listings")
+        .delete()
+        .eq("id", listingId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Anúncio excluído com sucesso!" });
+      setDetailDialogOpen(false);
+      setDeleteDialogOpen(false);
+      setSelectedListing(null);
+      queryClient.invalidateQueries({ queryKey: ["circle-marketplace-listings"] });
+    },
+    onError: () => {
+      toast({ title: "Erro ao excluir anúncio", variant: "destructive" });
     },
   });
 
@@ -677,19 +711,54 @@ export default function CircleMarketplacePage() {
                 </div>
 
                 {/* CTA */}
-                <Button 
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  size="lg"
-                  onClick={() => handleContactWhatsApp(selectedListing)}
-                >
-                  <MessageCircle className="h-5 w-5 mr-2" />
-                  Falar no WhatsApp
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <Button 
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    size="lg"
+                    onClick={() => handleContactWhatsApp(selectedListing)}
+                  >
+                    <MessageCircle className="h-5 w-5 mr-2" />
+                    Falar no WhatsApp
+                  </Button>
+
+                  {/* Delete button - only for owner */}
+                  {currentProfile?.id === selectedListing.profile_id && (
+                    <Button 
+                      variant="destructive"
+                      className="w-full"
+                      onClick={() => setDeleteDialogOpen(true)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir Meu Anúncio
+                    </Button>
+                  )}
+                </div>
               </div>
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir anúncio?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O anúncio "{selectedListing?.title}" será permanentemente removido do Marketplace.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selectedListing && deleteMutation.mutate(selectedListing.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
