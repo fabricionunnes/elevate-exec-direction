@@ -270,19 +270,13 @@ export function StoryViewer({
           )}
 
           {/* Content - full screen media container */}
-          <div className="absolute inset-0 z-0 overflow-hidden">
+          <div className="absolute inset-0 z-0 flex items-center justify-center">
             {currentStory.media_url && currentStory.media_type === "video" ? (
               <>
                 <video 
                   ref={videoRef}
                   src={currentStory.media_url} 
-                  className="absolute inset-0 min-w-full min-h-full w-auto h-auto"
-                  style={{ 
-                    objectFit: 'cover',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)'
-                  }}
+                  className="max-w-full max-h-full w-auto h-auto"
                   autoPlay
                   muted={isMuted}
                   playsInline
@@ -305,16 +299,10 @@ export function StoryViewer({
               <img 
                 src={currentStory.media_url} 
                 alt="Story"
-                className="absolute inset-0 min-w-full min-h-full w-auto h-auto"
-                style={{ 
-                  objectFit: 'cover',
-                  left: '50%',
-                  top: '50%',
-                  transform: 'translate(-50%, -50%)'
-                }}
+                className="max-w-full max-h-full w-auto h-auto"
               />
             ) : currentStory.content ? (
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex items-center justify-center w-full h-full">
                 <p className="text-white text-xl text-center font-medium p-4">
                   {currentStory.content}
                 </p>
