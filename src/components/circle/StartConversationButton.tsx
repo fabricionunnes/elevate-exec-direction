@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
@@ -27,6 +27,19 @@ export function StartConversationButton({
   const startConversation = async () => {
     setIsLoading(true);
     try {
+      // Ensure user is authenticated (RLS will block inserts otherwise)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast({
+          title: "Você precisa estar logado para enviar mensagens",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Check if conversation already exists between these two profiles
       const { data: existingParticipations } = await supabase
         .from("circle_conversation_participants")
@@ -80,8 +93,14 @@ export function StartConversationButton({
       navigate(`/circle/messages?conversation=${newConversation.id}`);
     } catch (error) {
       console.error("Error starting conversation:", error);
+      const message =
+        (error as any)?.message ||
+        (error as any)?.error_description ||
+        (error as any)?.hint ||
+        "Erro inesperado";
       toast({
         title: "Erro ao iniciar conversa",
+        description: message,
         variant: "destructive",
       });
     } finally {
