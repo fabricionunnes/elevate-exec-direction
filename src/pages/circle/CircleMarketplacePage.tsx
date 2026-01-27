@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { NavLink } from "react-router-dom";
+import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 
 const categoryConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   servicos: { label: "Serviços", icon: Briefcase, color: "text-blue-500" },
@@ -104,23 +105,8 @@ export default function CircleMarketplacePage() {
   const [whatsapp, setWhatsapp] = useState("");
   const [whatsappMessage, setWhatsappMessage] = useState("Olá, vi seu anúncio no UNV Circle e quero saber mais!");
 
-  // Fetch current profile
-  const { data: currentProfile } = useQuery({
-    queryKey: ["circle-profile-current"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data, error } = await supabase
-        .from("circle_profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Fetch (and ensure) current profile
+  const { data: currentProfile } = useCircleCurrentProfile();
 
   // Fetch listings
   const { data: listings, isLoading } = useQuery({

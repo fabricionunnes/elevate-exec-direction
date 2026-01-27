@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 
 const navItems = [
   { path: "/circle", label: "Feed", icon: Home, exact: true },
@@ -33,23 +34,8 @@ export default function CircleLayout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Fetch current user's circle profile
-  const { data: profile } = useQuery({
-    queryKey: ["circle-profile-current"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data, error } = await supabase
-        .from("circle_profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Fetch (and ensure) current user's circle profile
+  const { data: profile, isLoading: profileLoading } = useCircleCurrentProfile();
 
   // Fetch unread notifications count
   const { data: unreadCount = 0 } = useQuery({
@@ -196,7 +182,23 @@ export default function CircleLayout() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
-        <Outlet />
+        {profileLoading ? (
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          </div>
+        ) : !profile ? (
+          <div className="max-w-md mx-auto text-center py-16 space-y-4">
+            <h1 className="text-2xl font-bold">Entre para acessar o UNV Circle</h1>
+            <p className="text-muted-foreground">
+              Você precisa estar logado para criar posts, comunidades e anúncios.
+            </p>
+            <NavLink to="/onboarding-tasks/login">
+              <Button>Fazer login</Button>
+            </NavLink>
+          </div>
+        ) : (
+          <Outlet />
+        )}
       </main>
     </div>
   );

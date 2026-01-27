@@ -29,6 +29,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { NavLink } from "react-router-dom";
+import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 
 const categoryConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   vendas: { label: "Vendas", icon: TrendingUp, color: "text-green-500" },
@@ -69,23 +70,8 @@ export default function CircleCommunitiesPage() {
   const [category, setCategory] = useState("vendas");
   const [isPrivate, setIsPrivate] = useState(false);
 
-  // Fetch current profile
-  const { data: currentProfile } = useQuery({
-    queryKey: ["circle-profile-current"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data, error } = await supabase
-        .from("circle_profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Fetch (and ensure) current profile
+  const { data: currentProfile } = useCircleCurrentProfile();
 
   // Fetch communities
   const { data: communities, isLoading } = useQuery({

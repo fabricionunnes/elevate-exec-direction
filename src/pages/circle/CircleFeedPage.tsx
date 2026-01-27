@@ -8,6 +8,7 @@ import { CircleSidebar } from "@/components/circle/CircleSidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 
 interface CirclePost {
   id: string;
@@ -36,23 +37,8 @@ export default function CircleFeedPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("all");
 
-  // Fetch current user's profile
-  const { data: currentProfile } = useQuery({
-    queryKey: ["circle-profile-current"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data, error } = await supabase
-        .from("circle_profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Fetch (and ensure) current user's profile
+  const { data: currentProfile } = useCircleCurrentProfile();
 
   // Fetch posts
   const { data: posts, isLoading: postsLoading } = useQuery({
