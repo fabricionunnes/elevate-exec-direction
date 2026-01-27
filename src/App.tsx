@@ -183,15 +183,19 @@ const queryClient = new QueryClient({
   },
 });
 
+// Import ThemeCustomizationProvider
+import { ThemeCustomizationProvider } from "@/contexts/ThemeCustomizationContext";
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <HashRouter>
-          <ScrollToTop />
-          <Routes>
+      <ThemeCustomizationProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <HashRouter>
+            <ScrollToTop />
+            <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/products" element={<ProductsPage />} />
@@ -373,8 +377,9 @@ const App = () => (
             
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </HashRouter>
-      </TooltipProvider>
+          </HashRouter>
+        </TooltipProvider>
+      </ThemeCustomizationProvider>
     </QueryClientProvider>
   </ErrorBoundary>
 );
