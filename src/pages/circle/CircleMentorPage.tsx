@@ -180,11 +180,11 @@ export default function CircleMentorPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Sidebar - Sessions */}
+    <div className="max-w-5xl mx-auto px-1 sm:px-0">
+      <div className="flex flex-col lg:grid lg:grid-cols-4 gap-4">
+        {/* Sidebar - Sessions (horizontal scroll on mobile) */}
         <Card className="lg:col-span-1">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 px-3 sm:px-6">
             <CardTitle className="text-sm flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <History className="h-4 w-4" />
@@ -195,10 +195,10 @@ export default function CircleMentorPage() {
               </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-2">
-            <div className="space-y-2">
+          <CardContent className="pt-2 px-2 sm:px-6">
+            <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 scrollbar-hide">
               {!currentSessionId && (
-                <div className="p-2 rounded-md bg-primary/10 text-sm">
+                <div className="p-2 rounded-md bg-primary/10 text-sm flex-shrink-0 lg:flex-shrink">
                   Nova conversa
                 </div>
               )}
@@ -206,7 +206,7 @@ export default function CircleMentorPage() {
                 <div
                   key={session.id}
                   className={cn(
-                    "group flex items-center justify-between p-2 rounded-md text-sm transition-colors cursor-pointer",
+                    "group flex items-center justify-between p-2 rounded-md text-sm transition-colors cursor-pointer flex-shrink-0 lg:flex-shrink min-w-[120px] lg:min-w-0",
                     currentSessionId === session.id
                       ? "bg-primary/10"
                       : "hover:bg-muted"
@@ -214,20 +214,20 @@ export default function CircleMentorPage() {
                   onClick={() => selectSession(session.id)}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">
+                    <div className="font-medium truncate text-xs sm:text-sm">
                       {session.session_type === "general" ? "Conversa" : session.session_type}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">
                       {new Date(session.created_at).toLocaleDateString("pt-BR")}
                     </div>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                    className="h-6 w-6 sm:h-7 sm:w-7 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive ml-1"
                     onClick={(e) => deleteSession(session.id, e)}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                 </div>
               ))}
@@ -236,48 +236,48 @@ export default function CircleMentorPage() {
         </Card>
 
         {/* Main Chat Area */}
-        <Card className="lg:col-span-3 flex flex-col h-[calc(100vh-12rem)]">
-          <CardHeader className="pb-2 border-b">
+        <Card className="lg:col-span-3 flex flex-col h-[60vh] sm:h-[calc(100vh-12rem)]">
+          <CardHeader className="pb-2 border-b px-3 sm:px-6">
             <CardTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                <Bot className="h-4 w-4 text-white" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                <Bot className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div>
-                <span>Mentor UNV Circle</span>
-                <p className="text-xs font-normal text-muted-foreground">
+                <span className="text-sm sm:text-base">Mentor UNV Circle</span>
+                <p className="text-[10px] sm:text-xs font-normal text-muted-foreground">
                   Seu coach de crescimento pessoal na rede
                 </p>
               </div>
             </CardTitle>
           </CardHeader>
 
-          <CardContent className="flex-1 flex flex-col p-0">
+          <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 p-3 sm:p-4">
               {(!messages || messages.length === 0) && !streamingContent ? (
-                <div className="h-full flex flex-col items-center justify-center text-center space-y-6 py-8">
-                  <Sparkles className="h-12 w-12 text-primary opacity-50" />
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-4 sm:space-y-6 py-4 sm:py-8">
+                  <Sparkles className="h-8 w-8 sm:h-12 sm:w-12 text-primary opacity-50" />
                   <div>
-                    <h3 className="font-semibold mb-1">Olá! Sou seu Mentor</h3>
-                    <p className="text-sm text-muted-foreground max-w-md">
+                    <h3 className="font-semibold mb-1 text-sm sm:text-base">Olá! Sou seu Mentor</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground max-w-md px-4">
                       Posso te ajudar a crescer no UNV Circle, melhorar seu engajamento
                       e construir sua reputação profissional.
                     </p>
                   </div>
 
                   {/* Quick Prompts */}
-                  <div className="grid gap-2 w-full max-w-md">
+                  <div className="grid gap-2 w-full max-w-md px-2 sm:px-0">
                     {QUICK_PROMPTS.map((prompt, idx) => {
                       const Icon = prompt.icon;
                       return (
                         <Button
                           key={idx}
                           variant="outline"
-                          className="justify-start gap-2"
+                          className="justify-start gap-2 text-xs sm:text-sm h-9 sm:h-10"
                           onClick={() => sendMessage(prompt.prompt)}
                           disabled={isStreaming}
                         >
-                          <Icon className="h-4 w-4" />
+                          <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           {prompt.label}
                         </Button>
                       );
@@ -285,41 +285,41 @@ export default function CircleMentorPage() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {messages?.map((msg) => (
                     <div
                       key={msg.id}
                       className={cn(
-                        "flex gap-3",
+                        "flex gap-2 sm:gap-3",
                         msg.role === "user" ? "justify-end" : "justify-start"
                       )}
                     >
                       {msg.role === "assistant" && (
-                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                          <Bot className="h-4 w-4 text-white" />
+                        <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                          <Bot className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                         </div>
                       )}
                       <div
                         className={cn(
-                          "rounded-lg px-4 py-2 max-w-[80%]",
+                          "rounded-lg px-3 py-2 sm:px-4 max-w-[85%] sm:max-w-[80%]",
                           msg.role === "user"
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted"
                         )}
                       >
                         {msg.role === "assistant" ? (
-                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                          <div className="prose prose-sm dark:prose-invert max-w-none text-xs sm:text-sm">
                             <ReactMarkdown>{msg.content}</ReactMarkdown>
                           </div>
                         ) : (
-                          <p className="text-sm">{msg.content}</p>
+                          <p className="text-xs sm:text-sm">{msg.content}</p>
                         )}
                       </div>
                       {msg.role === "user" && (
-                        <Avatar className="h-8 w-8 flex-shrink-0">
+                        <Avatar className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0">
                           <AvatarImage src={currentProfile?.avatar_url || undefined} />
                           <AvatarFallback>
-                            <User className="h-4 w-4" />
+                            <User className="h-3 w-3 sm:h-4 sm:w-4" />
                           </AvatarFallback>
                         </Avatar>
                       )}
@@ -362,16 +362,16 @@ export default function CircleMentorPage() {
             </ScrollArea>
 
             {/* Input */}
-            <form onSubmit={handleSubmit} className="p-4 border-t">
+            <form onSubmit={handleSubmit} className="p-3 sm:p-4 border-t">
               <div className="flex gap-2">
                 <Input
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Pergunte ao mentor..."
                   disabled={isStreaming}
-                  className="flex-1"
+                  className="flex-1 text-sm sm:text-base h-9 sm:h-10"
                 />
-                <Button type="submit" disabled={!message.trim() || isStreaming}>
+                <Button type="submit" size="icon" disabled={!message.trim() || isStreaming} className="h-9 w-9 sm:h-10 sm:w-10">
                   <Send className="h-4 w-4" />
                 </Button>
               </div>

@@ -117,11 +117,11 @@ export default function CircleRankingPage() {
   const currentUserRank = ranking?.findIndex(p => p.id === currentProfile?.id);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 px-1 sm:px-0">
       {/* Header */}
       <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold">🏆 Ranking</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold">🏆 Ranking</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Os membros mais ativos do UNV Circle
         </p>
       </div>
@@ -129,36 +129,38 @@ export default function CircleRankingPage() {
       {/* Current User Stats */}
       {currentProfile && (
         <Card className="bg-gradient-to-r from-violet-500/10 to-pink-500/10 border-primary/20">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16 ring-2 ring-primary">
+          <CardContent className="p-3 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+              <Avatar className="h-12 w-12 sm:h-16 sm:w-16 ring-2 ring-primary">
                 <AvatarImage src={currentProfile.avatar_url || undefined} />
-                <AvatarFallback className="text-xl">
+                <AvatarFallback className="text-lg sm:text-xl">
                   {currentProfile.display_name?.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
 
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg">Sua Posição</h3>
-                <p className="text-muted-foreground">
+              <div className="flex-1 text-center sm:text-left">
+                <h3 className="font-semibold text-base sm:text-lg">Sua Posição</h3>
+                <p className="text-sm text-muted-foreground">
                   {currentUserRank !== undefined && currentUserRank >= 0
                     ? `#${currentUserRank + 1} no ranking`
                     : "Não ranqueado"}
                 </p>
               </div>
 
-              <div className="text-right">
-                <p className="text-3xl font-bold text-primary">
-                  {currentProfile.total_points?.toLocaleString()}
-                </p>
-                <p className="text-sm text-muted-foreground">pontos</p>
-              </div>
+              <div className="flex items-center gap-4 sm:gap-6">
+                <div className="text-center sm:text-right">
+                  <p className="text-xl sm:text-3xl font-bold text-primary">
+                    {currentProfile.total_points?.toLocaleString()}
+                  </p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">pontos</p>
+                </div>
 
-              <div className="text-center px-4 border-l">
-                <Badge variant="secondary" className="text-lg py-1 px-3">
-                  Nível {currentProfile.current_level}
-                </Badge>
-                <p className="text-sm mt-1">{currentProfile.level_name}</p>
+                <div className="text-center px-3 sm:px-4 border-l">
+                  <Badge variant="secondary" className="text-sm sm:text-lg py-0.5 sm:py-1 px-2 sm:px-3">
+                    Nível {currentProfile.current_level}
+                  </Badge>
+                  <p className="text-xs sm:text-sm mt-1">{currentProfile.level_name}</p>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -168,58 +170,58 @@ export default function CircleRankingPage() {
       {/* Tabs */}
       <Tabs value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="all">Geral</TabsTrigger>
-          <TabsTrigger value="month">Este Mês</TabsTrigger>
-          <TabsTrigger value="week">Esta Semana</TabsTrigger>
+          <TabsTrigger value="all" className="text-xs sm:text-sm">Geral</TabsTrigger>
+          <TabsTrigger value="month" className="text-xs sm:text-sm">Este Mês</TabsTrigger>
+          <TabsTrigger value="week" className="text-xs sm:text-sm">Esta Semana</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={period} className="mt-6">
+        <TabsContent value={period} className="mt-4 sm:mt-6">
           {/* Top 3 - show podium if we have at least 1 user */}
           {ranking && ranking.length >= 1 && (
-            <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-4 mb-6 sm:mb-8">
               {/* 2nd Place */}
               {ranking[1] ? (
-                <Card className="text-center pt-8 relative">
-                  <div className="absolute top-2 left-1/2 -translate-x-1/2">
-                    <Medal className="h-8 w-8 text-gray-400" />
+                <Card className="text-center pt-5 sm:pt-8 relative order-1">
+                  <div className="absolute top-1 sm:top-2 left-1/2 -translate-x-1/2">
+                    <Medal className="h-5 w-5 sm:h-8 sm:w-8 text-gray-400" />
                   </div>
-                  <CardContent className="pt-4">
-                    <Avatar className="h-16 w-16 mx-auto ring-2 ring-gray-400">
+                  <CardContent className="pt-2 sm:pt-4 px-1.5 sm:px-6 pb-3 sm:pb-6">
+                    <Avatar className="h-10 w-10 sm:h-16 sm:w-16 mx-auto ring-2 ring-gray-400">
                       <AvatarImage src={ranking[1].avatar_url || undefined} />
-                      <AvatarFallback>
+                      <AvatarFallback className="text-xs sm:text-base">
                         {ranking[1].display_name?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <h3 className="font-semibold mt-3 truncate">{ranking[1].display_name}</h3>
-                    <p className="text-sm text-muted-foreground truncate">
+                    <h3 className="font-semibold mt-2 sm:mt-3 text-xs sm:text-base truncate">{ranking[1].display_name}</h3>
+                    <p className="text-[10px] sm:text-sm text-muted-foreground truncate hidden sm:block">
                       {ranking[1].company_name || ranking[1].level_name}
                     </p>
-                    <p className="text-xl font-bold text-primary mt-2">
+                    <p className="text-sm sm:text-xl font-bold text-primary mt-1 sm:mt-2">
                       {ranking[1].total_points.toLocaleString()}
                     </p>
                   </CardContent>
                 </Card>
               ) : (
-                <div />
+                <div className="order-1" />
               )}
 
               {/* 1st Place */}
-              <Card className="text-center pt-8 relative -mt-4 shadow-lg ring-2 ring-yellow-400">
-                <div className="absolute top-2 left-1/2 -translate-x-1/2">
-                  <Crown className="h-10 w-10 text-yellow-500" />
+              <Card className="text-center pt-5 sm:pt-8 relative -mt-2 sm:-mt-4 shadow-lg ring-2 ring-yellow-400 order-0 sm:order-1">
+                <div className="absolute top-0.5 sm:top-2 left-1/2 -translate-x-1/2">
+                  <Crown className="h-6 w-6 sm:h-10 sm:w-10 text-yellow-500" />
                 </div>
-                <CardContent className="pt-6">
-                  <Avatar className="h-20 w-20 mx-auto ring-4 ring-yellow-400">
+                <CardContent className="pt-3 sm:pt-6 px-1.5 sm:px-6 pb-3 sm:pb-6">
+                  <Avatar className="h-12 w-12 sm:h-20 sm:w-20 mx-auto ring-2 sm:ring-4 ring-yellow-400">
                     <AvatarImage src={ranking[0].avatar_url || undefined} />
-                    <AvatarFallback className="text-xl">
+                    <AvatarFallback className="text-sm sm:text-xl">
                       {ranking[0].display_name?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <h3 className="font-bold text-lg mt-3 truncate">{ranking[0].display_name}</h3>
-                  <p className="text-sm text-muted-foreground truncate">
+                  <h3 className="font-bold text-xs sm:text-lg mt-2 sm:mt-3 truncate">{ranking[0].display_name}</h3>
+                  <p className="text-[10px] sm:text-sm text-muted-foreground truncate hidden sm:block">
                     {ranking[0].company_name || ranking[0].level_name}
                   </p>
-                  <p className="text-2xl font-bold text-primary mt-2">
+                  <p className="text-base sm:text-2xl font-bold text-primary mt-1 sm:mt-2">
                     {ranking[0].total_points.toLocaleString()}
                   </p>
                 </CardContent>
@@ -227,41 +229,41 @@ export default function CircleRankingPage() {
 
               {/* 3rd Place */}
               {ranking[2] ? (
-                <Card className="text-center pt-8 relative">
-                  <div className="absolute top-2 left-1/2 -translate-x-1/2">
-                    <Medal className="h-8 w-8 text-amber-600" />
+                <Card className="text-center pt-5 sm:pt-8 relative order-2">
+                  <div className="absolute top-1 sm:top-2 left-1/2 -translate-x-1/2">
+                    <Medal className="h-5 w-5 sm:h-8 sm:w-8 text-amber-600" />
                   </div>
-                  <CardContent className="pt-4">
-                    <Avatar className="h-16 w-16 mx-auto ring-2 ring-amber-600">
+                  <CardContent className="pt-2 sm:pt-4 px-1.5 sm:px-6 pb-3 sm:pb-6">
+                    <Avatar className="h-10 w-10 sm:h-16 sm:w-16 mx-auto ring-2 ring-amber-600">
                       <AvatarImage src={ranking[2].avatar_url || undefined} />
-                      <AvatarFallback>
+                      <AvatarFallback className="text-xs sm:text-base">
                         {ranking[2].display_name?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <h3 className="font-semibold mt-3 truncate">{ranking[2].display_name}</h3>
-                    <p className="text-sm text-muted-foreground truncate">
+                    <h3 className="font-semibold mt-2 sm:mt-3 text-xs sm:text-base truncate">{ranking[2].display_name}</h3>
+                    <p className="text-[10px] sm:text-sm text-muted-foreground truncate hidden sm:block">
                       {ranking[2].company_name || ranking[2].level_name}
                     </p>
-                    <p className="text-xl font-bold text-primary mt-2">
+                    <p className="text-sm sm:text-xl font-bold text-primary mt-1 sm:mt-2">
                       {ranking[2].total_points.toLocaleString()}
                     </p>
                   </CardContent>
                 </Card>
               ) : (
-                <div />
+                <div className="order-2" />
               )}
             </div>
           )}
 
           {/* Full Ranking List */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
+            <CardHeader className="pb-2 sm:pb-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-xl">
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
                 Ranking Completo
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-1 sm:space-y-2 px-2 sm:px-6">
               {ranking?.slice(3).map((profile, index) => {
                 const levelConfig = levelIcons[profile.current_level] || levelIcons[1];
                 const LevelIcon = levelConfig.icon;
@@ -272,39 +274,39 @@ export default function CircleRankingPage() {
                     key={profile.id}
                     to={`/circle/profile/${profile.id}`}
                     className={cn(
-                      "flex items-center gap-4 p-3 rounded-lg hover:bg-muted transition-colors",
+                      "flex items-center gap-2 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-muted transition-colors",
                       isCurrentUser && "bg-primary/5 ring-1 ring-primary/20"
                     )}
                   >
-                    <span className="w-8 text-center font-bold text-muted-foreground">
+                    <span className="w-6 sm:w-8 text-center font-bold text-muted-foreground text-xs sm:text-base">
                       #{index + 4}
                     </span>
 
-                    <Avatar className="h-10 w-10">
+                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
                       <AvatarImage src={profile.avatar_url || undefined} />
-                      <AvatarFallback>
+                      <AvatarFallback className="text-xs sm:text-sm">
                         {profile.display_name?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
 
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
+                      <p className="font-medium truncate text-sm sm:text-base">
                         {profile.display_name}
                         {isCurrentUser && (
-                          <Badge variant="secondary" className="ml-2 text-xs">Você</Badge>
+                          <Badge variant="secondary" className="ml-1 sm:ml-2 text-[10px] sm:text-xs">Você</Badge>
                         )}
                       </p>
-                      <p className="text-sm text-muted-foreground truncate">
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate hidden sm:block">
                         {profile.company_name || profile.role_title}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="hidden sm:flex items-center gap-2">
                       <LevelIcon className={cn("h-4 w-4", levelConfig.color)} />
                       <Badge variant="outline">{profile.level_name}</Badge>
                     </div>
 
-                    <p className="font-bold text-primary min-w-[80px] text-right">
+                    <p className="font-bold text-primary text-xs sm:text-base min-w-[50px] sm:min-w-[80px] text-right">
                       {profile.total_points.toLocaleString()}
                     </p>
                   </NavLink>
@@ -317,14 +319,14 @@ export default function CircleRankingPage() {
 
       {/* Levels Info */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Star className="h-5 w-5" />
+        <CardHeader className="pb-2 sm:pb-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-xl">
+            <Star className="h-4 w-4 sm:h-5 sm:w-5" />
             Níveis e Pontuação
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <CardContent className="px-2 sm:px-6">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-4">
             {levels?.map((level) => {
               const config = levelIcons[level.level] || levelIcons[1];
               const Icon = config.icon;
@@ -333,13 +335,13 @@ export default function CircleRankingPage() {
                 <div
                   key={level.id}
                   className={cn(
-                    "text-center p-4 rounded-lg border",
+                    "text-center p-2 sm:p-4 rounded-lg border",
                     currentProfile?.current_level === level.level && "bg-primary/5 border-primary"
                   )}
                 >
-                  <Icon className={cn("h-8 w-8 mx-auto mb-2", config.color)} />
-                  <p className="font-semibold">{level.name}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <Icon className={cn("h-5 w-5 sm:h-8 sm:w-8 mx-auto mb-1 sm:mb-2", config.color)} />
+                  <p className="font-semibold text-xs sm:text-base">{level.name}</p>
+                  <p className="text-[10px] sm:text-sm text-muted-foreground">
                     {level.min_points.toLocaleString()}+ pts
                   </p>
                 </div>
@@ -351,29 +353,29 @@ export default function CircleRankingPage() {
 
       {/* Badges */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Award className="h-5 w-5" />
+        <CardHeader className="pb-2 sm:pb-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-xl">
+            <Award className="h-4 w-4 sm:h-5 sm:w-5" />
             Badges Disponíveis
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <CardContent className="px-2 sm:px-6">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-4">
             {badges?.map((badge) => (
               <div
                 key={badge.id}
-                className="text-center p-4 rounded-lg border hover:bg-muted transition-colors"
+                className="text-center p-2 sm:p-4 rounded-lg border hover:bg-muted transition-colors"
               >
                 <div 
                   className={cn(
-                    "h-12 w-12 rounded-full mx-auto mb-2 flex items-center justify-center",
+                    "h-8 w-8 sm:h-12 sm:w-12 rounded-full mx-auto mb-1 sm:mb-2 flex items-center justify-center",
                     `bg-${badge.color}-500/10`
                   )}
                 >
-                  <Award className={cn("h-6 w-6", `text-${badge.color}-500`)} />
+                  <Award className={cn("h-4 w-4 sm:h-6 sm:w-6", `text-${badge.color}-500`)} />
                 </div>
-                <p className="font-medium text-sm">{badge.name}</p>
-                <p className="text-xs text-muted-foreground mt-1">{badge.description}</p>
+                <p className="font-medium text-[10px] sm:text-sm">{badge.name}</p>
+                <p className="text-[8px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 line-clamp-2">{badge.description}</p>
               </div>
             ))}
           </div>

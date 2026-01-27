@@ -210,7 +210,7 @@ export default function CircleMessagesPage() {
   );
 
   return (
-    <div className="h-[calc(100vh-200px)] flex bg-background rounded-lg border overflow-hidden">
+    <div className="h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)] flex bg-background rounded-lg border overflow-hidden">
       {/* Conversations List */}
       <div
         className={cn(
@@ -218,25 +218,25 @@ export default function CircleMessagesPage() {
           selectedConversation && "hidden md:flex"
         )}
       >
-        <div className="p-4 border-b">
-          <h2 className="font-semibold mb-3">Mensagens</h2>
+        <div className="p-3 sm:p-4 border-b">
+          <h2 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Mensagens</h2>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar conversa..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="pl-9 text-sm"
             />
           </div>
         </div>
 
         <ScrollArea className="flex-1">
           {filteredConversations?.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>Nenhuma conversa ainda</p>
-              <p className="text-sm">Inicie uma conversa pelo perfil de alguém</p>
+            <div className="p-6 sm:p-8 text-center text-muted-foreground">
+              <MessageCircle className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 opacity-50" />
+              <p className="text-sm">Nenhuma conversa ainda</p>
+              <p className="text-xs">Inicie uma conversa pelo perfil de alguém</p>
             </div>
           ) : (
             filteredConversations?.map((conv) => (
@@ -244,34 +244,34 @@ export default function CircleMessagesPage() {
                 key={conv.id}
                 onClick={() => setSelectedConversation(conv.id)}
                 className={cn(
-                  "w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left",
+                  "w-full p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3 hover:bg-muted/50 transition-colors text-left",
                   selectedConversation === conv.id && "bg-muted"
                 )}
               >
-                <Avatar className="h-12 w-12">
+                <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
                   <AvatarImage src={conv.other_profile.avatar_url || undefined} />
-                  <AvatarFallback>
+                  <AvatarFallback className="text-xs sm:text-sm">
                     {conv.other_profile.display_name?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium truncate">
+                    <span className="font-medium truncate text-sm">
                       {conv.other_profile.display_name}
                     </span>
                     {conv.unread_count > 0 && (
-                      <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
+                      <span className="bg-primary text-primary-foreground text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0 ml-1">
                         {conv.unread_count}
                       </span>
                     )}
                   </div>
                   {conv.last_message && (
-                    <p className="text-sm text-muted-foreground truncate">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">
                       {conv.last_message.sender_profile_id === currentProfile?.id && "Você: "}
                       {conv.last_message.content}
                     </p>
                   )}
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(conv.last_message_at), {
                       addSuffix: true,
                       locale: ptBR,
@@ -294,29 +294,29 @@ export default function CircleMessagesPage() {
         {selectedConversation && selectedConversationData ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b flex items-center gap-3">
+            <div className="p-3 sm:p-4 border-b flex items-center gap-2.5 sm:gap-3">
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden"
+                className="md:hidden h-8 w-8 flex-shrink-0"
                 onClick={() => setSelectedConversation(null)}
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <Avatar className="h-10 w-10">
+              <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
                 <AvatarImage src={selectedConversationData.other_profile.avatar_url || undefined} />
-                <AvatarFallback>
+                <AvatarFallback className="text-xs sm:text-sm">
                   {selectedConversationData.other_profile.display_name?.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <p className="font-medium">{selectedConversationData.other_profile.display_name}</p>
+              <div className="min-w-0">
+                <p className="font-medium text-sm sm:text-base truncate">{selectedConversationData.other_profile.display_name}</p>
               </div>
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-3">
+            <ScrollArea className="flex-1 p-3 sm:p-4">
+              <div className="space-y-2 sm:space-y-3">
                 {messages?.map((msg) => (
                   <div
                     key={msg.id}
@@ -327,7 +327,7 @@ export default function CircleMessagesPage() {
                   >
                     <div
                       className={cn(
-                        "max-w-[70%] px-4 py-2 rounded-2xl",
+                        "max-w-[80%] sm:max-w-[70%] px-3 py-2 rounded-2xl",
                         msg.sender_profile_id === currentProfile?.id
                           ? "bg-primary text-primary-foreground rounded-br-sm"
                           : "bg-muted rounded-bl-sm"
@@ -336,7 +336,7 @@ export default function CircleMessagesPage() {
                       <p className="text-sm">{msg.content}</p>
                       <p
                         className={cn(
-                          "text-xs mt-1",
+                          "text-[10px] sm:text-xs mt-1",
                           msg.sender_profile_id === currentProfile?.id
                             ? "text-primary-foreground/70"
                             : "text-muted-foreground"
@@ -355,24 +355,24 @@ export default function CircleMessagesPage() {
             </ScrollArea>
 
             {/* Input */}
-            <form onSubmit={handleSend} className="p-4 border-t flex gap-2">
+            <form onSubmit={handleSend} className="p-3 sm:p-4 border-t flex gap-2">
               <Input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Digite uma mensagem..."
-                className="flex-1"
+                className="flex-1 text-sm"
               />
-              <Button type="submit" size="icon" disabled={!newMessage.trim()}>
+              <Button type="submit" size="icon" disabled={!newMessage.trim()} className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0">
                 <Send className="h-4 w-4" />
               </Button>
             </form>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+          <div className="flex-1 flex items-center justify-center text-muted-foreground p-4">
             <div className="text-center">
-              <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg">Selecione uma conversa</p>
-              <p className="text-sm">ou inicie uma nova pelo perfil de alguém</p>
+              <MessageCircle className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4 opacity-50" />
+              <p className="text-base sm:text-lg">Selecione uma conversa</p>
+              <p className="text-xs sm:text-sm">ou inicie uma nova pelo perfil de alguém</p>
             </div>
           </div>
         )}

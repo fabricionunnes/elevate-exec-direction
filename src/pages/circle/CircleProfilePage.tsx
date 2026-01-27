@@ -277,7 +277,7 @@ export default function CircleProfilePage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 px-1 sm:px-0">
       {/* Profile Header */}
       <Card className="overflow-hidden">
         {/* Cover */}
@@ -292,7 +292,7 @@ export default function CircleProfilePage() {
         ) : (
           <div 
             className={cn(
-              "h-48 relative",
+              "h-32 sm:h-48 relative",
               profile.cover_url 
                 ? "" 
                 : "bg-gradient-to-br from-violet-500 to-pink-500"
@@ -301,9 +301,9 @@ export default function CircleProfilePage() {
           />
         )}
 
-        <CardContent className="relative pt-0 pb-6">
+        <CardContent className="relative pt-0 pb-4 sm:pb-6 px-3 sm:px-6">
           {/* Avatar */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 -mt-16 sm:-mt-12">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-3 sm:gap-4 -mt-12 sm:-mt-12">
             {isOwnProfile ? (
               <div className="ring-4 ring-background rounded-full">
                 <CircleAvatarUpload
@@ -317,52 +317,52 @@ export default function CircleProfilePage() {
                 />
               </div>
             ) : (
-              <Avatar className="h-32 w-32 ring-4 ring-background">
+              <Avatar className="h-24 w-24 sm:h-32 sm:w-32 ring-4 ring-background">
                 <AvatarImage src={profile.avatar_url || undefined} />
-                <AvatarFallback className="text-4xl">
+                <AvatarFallback className="text-2xl sm:text-4xl">
                   {profile.display_name?.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             )}
 
             <div className="flex-1 text-center sm:text-left">
-              <h1 className="text-2xl font-bold">{profile.display_name}</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-xl sm:text-2xl font-bold">{profile.display_name}</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
                 {profile.role_title && <span>{profile.role_title}</span>}
                 {profile.role_title && profile.company_name && <span> • </span>}
                 {profile.company_name && <span>{profile.company_name}</span>}
               </p>
-              <div className="flex items-center justify-center sm:justify-start gap-2 mt-2 flex-wrap">
+              <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 mt-2 flex-wrap">
                 <TrustScoreBadge 
                   score={profile.trust_score ?? 50} 
                   isVerified={profile.is_verified ?? false}
                   size="sm"
                 />
-                <Badge variant="secondary">
-                  <Star className="h-3 w-3 mr-1" />
-                  Nível {profile.current_level} - {profile.level_name}
+                <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                  <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+                  Nv {profile.current_level}
                 </Badge>
-                <Badge variant="outline">
-                  {profile.total_points?.toLocaleString()} pontos
+                <Badge variant="outline" className="text-[10px] sm:text-xs">
+                  {profile.total_points?.toLocaleString()} pts
                 </Badge>
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap justify-center sm:justify-end w-full sm:w-auto">
               {isOwnProfile ? (
                 <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Editar Perfil
+                    <Button size="sm" className="text-xs sm:text-sm">
+                      <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                      Editar
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto mx-2 sm:mx-auto">
                     <DialogHeader>
                       <DialogTitle>Editar Perfil</DialogTitle>
                     </DialogHeader>
 
-                    <div className="space-y-4">
+                    <div className="space-y-4 pb-4">
                       <div className="space-y-2">
                         <Label>Nome</Label>
                         <Input
@@ -381,7 +381,7 @@ export default function CircleProfilePage() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Empresa</Label>
                           <Input
@@ -410,7 +410,7 @@ export default function CircleProfilePage() {
                       <Button
                         onClick={() => updateMutation.mutate()}
                         disabled={updateMutation.isPending}
-                        className="w-full"
+                        className="w-full sticky bottom-0"
                       >
                         {updateMutation.isPending ? "Salvando..." : "Salvar"}
                       </Button>
@@ -418,20 +418,22 @@ export default function CircleProfilePage() {
                   </DialogContent>
                 </Dialog>
               ) : (
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap justify-center">
                   <Button
                     onClick={() => followMutation.mutate()}
                     disabled={followMutation.isPending}
                     variant={isFollowing ? "outline" : "default"}
+                    size="sm"
+                    className="text-xs sm:text-sm"
                   >
                     {isFollowing ? (
                       <>
-                        <UserMinus className="h-4 w-4 mr-2" />
+                        <UserMinus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                         Seguindo
                       </>
                     ) : (
                       <>
-                        <UserPlus className="h-4 w-4 mr-2" />
+                        <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                         Seguir
                       </>
                     )}
@@ -461,14 +463,14 @@ export default function CircleProfilePage() {
 
           {/* Bio */}
           {profile.bio && (
-            <p className="mt-4 text-muted-foreground">{profile.bio}</p>
+            <p className="mt-3 sm:mt-4 text-sm sm:text-base text-muted-foreground">{profile.bio}</p>
           )}
 
           {/* Stats */}
-          <div className="flex items-center justify-center sm:justify-start gap-6 mt-6 pt-6 border-t">
+          <div className="flex items-center justify-center sm:justify-start gap-4 sm:gap-6 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t">
             <div className="text-center">
-              <p className="text-2xl font-bold">{stats?.posts || 0}</p>
-              <p className="text-sm text-muted-foreground">Posts</p>
+              <p className="text-lg sm:text-2xl font-bold">{stats?.posts || 0}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Posts</p>
             </div>
             <FollowersFollowingModal
               profileId={targetProfileId!}
@@ -477,8 +479,8 @@ export default function CircleProfilePage() {
               followingCount={stats?.following || 0}
             >
               <button className="text-center hover:opacity-70 transition-opacity">
-                <p className="text-2xl font-bold">{stats?.followers || 0}</p>
-                <p className="text-sm text-muted-foreground">Seguidores</p>
+                <p className="text-lg sm:text-2xl font-bold">{stats?.followers || 0}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Seguidores</p>
               </button>
             </FollowersFollowingModal>
             <FollowersFollowingModal
@@ -488,8 +490,8 @@ export default function CircleProfilePage() {
               followingCount={stats?.following || 0}
             >
               <button className="text-center hover:opacity-70 transition-opacity">
-                <p className="text-2xl font-bold">{stats?.following || 0}</p>
-                <p className="text-sm text-muted-foreground">Seguindo</p>
+                <p className="text-lg sm:text-2xl font-bold">{stats?.following || 0}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Seguindo</p>
               </button>
             </FollowersFollowingModal>
           </div>
