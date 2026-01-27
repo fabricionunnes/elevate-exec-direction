@@ -198,8 +198,8 @@ export default function CircleFeedPage() {
         </Tabs>
       </div>
 
-      {/* Sidebar */}
-      <div className="lg:col-span-4">
+      {/* Sidebar - Hidden on mobile */}
+      <div className="hidden lg:block lg:col-span-4">
         <CircleSidebar currentProfileId={currentProfile?.id} />
       </div>
     </div>

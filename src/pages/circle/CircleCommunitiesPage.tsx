@@ -229,12 +229,12 @@ export default function CircleCommunitiesPage() {
               Criar Comunidade
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Criar Comunidade</DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-4">
+            <div className="space-y-4 pb-4">
               <div className="space-y-2">
                 <Label>Nome</Label>
                 <Input
@@ -290,7 +290,7 @@ export default function CircleCommunitiesPage() {
               <Button
                 onClick={() => createMutation.mutate()}
                 disabled={!name.trim() || createMutation.isPending}
-                className="w-full"
+                className="w-full sticky bottom-0"
               >
                 {createMutation.isPending ? "Criando..." : "Criar Comunidade"}
               </Button>
