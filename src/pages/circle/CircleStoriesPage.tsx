@@ -6,7 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Image, Type, Upload, X } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Plus, Image, Type, Upload, X, Video } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
@@ -44,13 +45,17 @@ export default function CircleStoriesPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
-  const [storyType, setStoryType] = useState<"text" | "image">("text");
+  const [storyType, setStoryType] = useState<"text" | "image" | "video">("text");
   const [content, setContent] = useState("");
   const [selectedBg, setSelectedBg] = useState(backgroundColors[0]);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch (and ensure) current profile
   const { data: currentProfile } = useCircleCurrentProfile();
@@ -117,25 +122,56 @@ export default function CircleStoriesPage() {
     }
   };
 
+  // Handle video selection
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 50 * 1024 * 1024) {
+        toast({ title: "Vídeo muito grande. Máximo 50MB.", variant: "destructive" });
+        return;
+      }
+      if (!file.type.startsWith("video/")) {
+        toast({ title: "Selecione um arquivo de vídeo.", variant: "destructive" });
+        return;
+      }
+      setSelectedVideo(file);
+      setVideoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const clearVideo = () => {
+    if (videoPreview) {
+      URL.revokeObjectURL(videoPreview);
+    }
+    setSelectedVideo(null);
+    setVideoPreview(null);
+    if (videoInputRef.current) {
+      videoInputRef.current.value = "";
+    }
+  };
+
   // Create story mutation
   const createStoryMutation = useMutation({
     mutationFn: async () => {
       if (!currentProfile?.id) throw new Error("Not authenticated");
 
       setIsUploading(true);
+      setUploadProgress(10);
       let mediaUrl: string | null = null;
 
       // Upload image if selected
       if (storyType === "image" && selectedImage) {
         const fileExt = selectedImage.name.split(".").pop();
-        const fileName = `${currentProfile.id}/${Date.now()}.${fileExt}`;
+        const fileName = `${currentProfile.id}/stories/${Date.now()}.${fileExt}`;
 
-        const { error: uploadError, data: uploadData } = await supabase.storage
+        setUploadProgress(30);
+        const { error: uploadError } = await supabase.storage
           .from("circle-media")
           .upload(fileName, selectedImage);
 
         if (uploadError) throw uploadError;
 
+        setUploadProgress(70);
         const { data: publicUrl } = supabase.storage
           .from("circle-media")
           .getPublicUrl(fileName);
@@ -143,6 +179,30 @@ export default function CircleStoriesPage() {
         mediaUrl = publicUrl.publicUrl;
       }
 
+      // Upload video if selected
+      if (storyType === "video" && selectedVideo) {
+        const fileExt = selectedVideo.name.split(".").pop();
+        const fileName = `${currentProfile.id}/stories/${Date.now()}.${fileExt}`;
+
+        setUploadProgress(30);
+        const { error: uploadError } = await supabase.storage
+          .from("circle-media")
+          .upload(fileName, selectedVideo, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        setUploadProgress(70);
+        const { data: publicUrl } = supabase.storage
+          .from("circle-media")
+          .getPublicUrl(fileName);
+
+        mediaUrl = publicUrl.publicUrl;
+      }
+
+      setUploadProgress(90);
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
 
@@ -156,13 +216,16 @@ export default function CircleStoriesPage() {
       });
 
       if (error) throw error;
+      setUploadProgress(100);
     },
     onSuccess: () => {
       toast({ title: "Story publicado!" });
       setCreateDialogOpen(false);
       setContent("");
       clearImage();
+      clearVideo();
       setStoryType("text");
+      setUploadProgress(0);
       queryClient.invalidateQueries({ queryKey: ["circle-stories"] });
       queryClient.invalidateQueries({ queryKey: ["circle-stories-bar"] });
     },
@@ -171,6 +234,7 @@ export default function CircleStoriesPage() {
     },
     onSettled: () => {
       setIsUploading(false);
+      setUploadProgress(0);
     },
   });
 
@@ -215,22 +279,30 @@ export default function CircleStoriesPage() {
 
             <div className="space-y-4 pb-4">
               {/* Story Type */}
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   variant={storyType === "text" ? "default" : "outline"}
                   onClick={() => setStoryType("text")}
-                  className="flex-1"
+                  size="sm"
                 >
-                  <Type className="h-4 w-4 mr-2" />
+                  <Type className="h-4 w-4 mr-1" />
                   Texto
                 </Button>
                 <Button
                   variant={storyType === "image" ? "default" : "outline"}
                   onClick={() => setStoryType("image")}
-                  className="flex-1"
+                  size="sm"
                 >
-                  <Image className="h-4 w-4 mr-2" />
+                  <Image className="h-4 w-4 mr-1" />
                   Imagem
+                </Button>
+                <Button
+                  variant={storyType === "video" ? "default" : "outline"}
+                  onClick={() => setStoryType("video")}
+                  size="sm"
+                >
+                  <Video className="h-4 w-4 mr-1" />
+                  Vídeo
                 </Button>
               </div>
 
@@ -315,11 +387,70 @@ export default function CircleStoriesPage() {
                 </div>
               )}
 
+              {storyType === "video" && (
+                <div className="space-y-4">
+                  <input
+                    ref={videoInputRef}
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoSelect}
+                    className="hidden"
+                  />
+
+                  {!videoPreview ? (
+                    <button
+                      onClick={() => videoInputRef.current?.click()}
+                      className="aspect-[9/14] sm:aspect-[9/16] w-full rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 flex flex-col items-center justify-center gap-3 transition-colors"
+                    >
+                      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Video className="h-8 w-8 text-primary" />
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        Clique para selecionar um vídeo
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        MP4, MOV, WebM • Máximo 50MB
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="relative aspect-[9/14] sm:aspect-[9/16] rounded-xl overflow-hidden bg-black">
+                      <video
+                        src={videoPreview}
+                        className="w-full h-full object-contain"
+                        controls
+                        autoPlay
+                        muted
+                        loop
+                      />
+                      <button
+                        onClick={clearVideo}
+                        disabled={isUploading}
+                        className="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
+                      >
+                        <X className="h-4 w-4 text-white" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Upload Progress */}
+              {isUploading && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Enviando...</span>
+                    <span className="font-medium">{uploadProgress}%</span>
+                  </div>
+                  <Progress value={uploadProgress} />
+                </div>
+              )}
+
               <Button
                 onClick={() => createStoryMutation.mutate()}
                 disabled={
                   (storyType === "text" && !content.trim()) ||
                   (storyType === "image" && !selectedImage) ||
+                  (storyType === "video" && !selectedVideo) ||
                   createStoryMutation.isPending ||
                   isUploading
                 }
@@ -352,8 +483,21 @@ export default function CircleStoriesPage() {
             onClick={() => handleViewStory(group.stories[0])}
             className="aspect-[9/16] rounded-xl overflow-hidden relative group"
           >
-            {/* Background - Image or Color */}
-            {group.stories[0].media_url ? (
+            {/* Background - Image, Video or Color */}
+            {group.stories[0].media_url && group.stories[0].media_type === "video" ? (
+              <>
+                <video
+                  src={group.stories[0].media_url}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  muted
+                  playsInline
+                />
+                {/* Video indicator */}
+                <div className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full z-10">
+                  <Video className="h-3 w-3" />
+                </div>
+              </>
+            ) : group.stories[0].media_url ? (
               <img
                 src={group.stories[0].media_url}
                 alt="Story"

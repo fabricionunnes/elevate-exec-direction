@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { X, ChevronLeft, ChevronRight, Clock, Eye } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Clock, Eye, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -50,8 +50,13 @@ export function StoryViewer({
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [viewersModalOpen, setViewersModalOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const currentStory = stories[currentIndex];
+
+  // Check if current story is a video
+  const isVideoStory = currentStory?.media_type === "video";
 
   // Reset index when dialog opens
   useEffect(() => {
@@ -59,12 +64,13 @@ export function StoryViewer({
       setCurrentIndex(initialIndex);
       setProgress(0);
       setIsPaused(false);
+      setIsMuted(true);
     }
   }, [open, initialIndex]);
 
-  // Auto-advance timer
+  // Auto-advance timer (only for non-video stories or when video ends)
   useEffect(() => {
-    if (!open || isPaused) return;
+    if (!open || isPaused || isVideoStory) return;
 
     const duration = 5000; // 5 seconds per story
     const interval = 50; // Update progress every 50ms
@@ -88,7 +94,26 @@ export function StoryViewer({
     }, interval);
 
     return () => clearInterval(timer);
-  }, [open, currentIndex, stories.length, onOpenChange, isPaused]);
+  }, [open, currentIndex, stories.length, onOpenChange, isPaused, isVideoStory]);
+
+  // Handle video progress
+  const handleVideoTimeUpdate = useCallback(() => {
+    if (videoRef.current) {
+      const video = videoRef.current;
+      const progressPercent = (video.currentTime / video.duration) * 100;
+      setProgress(progressPercent);
+    }
+  }, []);
+
+  // Handle video end
+  const handleVideoEnded = useCallback(() => {
+    if (currentIndex < stories.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setProgress(0);
+    } else {
+      onOpenChange(false);
+    }
+  }, [currentIndex, stories.length, onOpenChange]);
 
   // Record view when story changes
   useEffect(() => {
@@ -246,7 +271,31 @@ export function StoryViewer({
 
           {/* Content */}
           <div className="flex-1 flex items-center justify-center p-4">
-            {currentStory.media_url ? (
+            {currentStory.media_url && currentStory.media_type === "video" ? (
+              <div className="relative w-full h-full flex items-center justify-center">
+                <video 
+                  ref={videoRef}
+                  src={currentStory.media_url} 
+                  className="max-w-full max-h-full object-contain"
+                  autoPlay
+                  muted={isMuted}
+                  playsInline
+                  onTimeUpdate={handleVideoTimeUpdate}
+                  onEnded={handleVideoEnded}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                {/* Mute/Unmute button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsMuted(!isMuted);
+                  }}
+                  className="absolute bottom-2 right-2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+                >
+                  {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                </button>
+              </div>
+            ) : currentStory.media_url ? (
               <img 
                 src={currentStory.media_url} 
                 alt="Story"
