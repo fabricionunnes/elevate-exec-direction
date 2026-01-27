@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { X, ChevronLeft, ChevronRight, Clock, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 import { StoryInteractions } from "./StoryInteractions";
 
 interface Story {
@@ -42,6 +44,7 @@ export function StoryViewer({
   onView,
   currentProfileId 
 }: StoryViewerProps) {
+  const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -141,6 +144,9 @@ export function StoryViewer({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm p-0 overflow-hidden bg-transparent border-none">
+        <VisuallyHidden>
+          <DialogTitle>Story de {currentStory.profile.display_name}</DialogTitle>
+        </VisuallyHidden>
         <div
           className={cn(
             "aspect-[9/16] flex flex-col relative cursor-pointer select-none",
@@ -171,24 +177,34 @@ export function StoryViewer({
 
           {/* Header */}
           <div className="flex items-center gap-3 p-4 pt-6 bg-gradient-to-b from-black/50 to-transparent">
-            <Avatar className="h-10 w-10 ring-2 ring-white">
-              <AvatarImage src={currentStory.profile.avatar_url || undefined} />
-              <AvatarFallback>
-                {currentStory.profile.display_name?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <p className="text-white font-medium text-sm">
-                {currentStory.profile.display_name}
-              </p>
-              <p className="text-white/70 text-xs flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {formatDistanceToNow(new Date(currentStory.created_at), {
-                  addSuffix: true,
-                  locale: ptBR,
-                })}
-              </p>
-            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenChange(false);
+                navigate(`/circle/profile/${currentStory.profile.id}`);
+              }}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <Avatar className="h-10 w-10 ring-2 ring-white">
+                <AvatarImage src={currentStory.profile.avatar_url || undefined} />
+                <AvatarFallback>
+                  {currentStory.profile.display_name?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="text-left">
+                <p className="text-white font-medium text-sm">
+                  {currentStory.profile.display_name}
+                </p>
+                <p className="text-white/70 text-xs flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {formatDistanceToNow(new Date(currentStory.created_at), {
+                    addSuffix: true,
+                    locale: ptBR,
+                  })}
+                </p>
+              </div>
+            </button>
+            <div className="flex-1" />
             <Button
               variant="ghost"
               size="icon"
