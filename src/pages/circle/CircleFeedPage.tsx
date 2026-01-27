@@ -5,8 +5,11 @@ import { CirclePostCard } from "@/components/circle/CirclePostCard";
 import { CircleCreatePost } from "@/components/circle/CircleCreatePost";
 import { CircleStoriesBar } from "@/components/circle/CircleStoriesBar";
 import { CircleSidebar } from "@/components/circle/CircleSidebar";
+import { CircleFeedGrid } from "@/components/circle/CircleFeedGrid";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { LayoutGrid, List } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 
@@ -36,6 +39,7 @@ export default function CircleFeedPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("all");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   // Fetch (and ensure) current user's profile
   const { data: currentProfile } = useCircleCurrentProfile();
@@ -152,10 +156,30 @@ export default function CircleFeedPage() {
 
         {/* Feed Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full">
-            <TabsTrigger value="all" className="flex-1">Para Você</TabsTrigger>
-            <TabsTrigger value="following" className="flex-1">Seguindo</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-2">
+            <TabsList className="flex-1">
+              <TabsTrigger value="all" className="flex-1">Para Você</TabsTrigger>
+              <TabsTrigger value="following" className="flex-1">Seguindo</TabsTrigger>
+            </TabsList>
+            <div className="flex gap-1 bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setViewMode("list")}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "grid" ? "secondary" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setViewMode("grid")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
           <TabsContent value={activeTab} className="space-y-4 mt-4">
             {postsLoading ? (
@@ -179,15 +203,24 @@ export default function CircleFeedPage() {
                 ))}
               </>
             ) : posts && posts.length > 0 ? (
-              posts.map((post) => (
-                <CirclePostCard
-                  key={post.id}
-                  post={post}
-                  isLiked={userLikes?.includes(post.id) || false}
-                  onLike={() => handleLike(post.id)}
+              viewMode === "grid" ? (
+                <CircleFeedGrid
+                  posts={posts}
+                  userLikes={userLikes || []}
                   currentProfileId={currentProfile?.id}
+                  onLike={handleLike}
                 />
-              ))
+              ) : (
+                posts.map((post) => (
+                  <CirclePostCard
+                    key={post.id}
+                    post={post}
+                    isLiked={userLikes?.includes(post.id) || false}
+                    onLike={() => handleLike(post.id)}
+                    currentProfileId={currentProfile?.id}
+                  />
+                ))
+              )
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 <p>Nenhum post encontrado.</p>
