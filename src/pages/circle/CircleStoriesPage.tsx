@@ -520,6 +520,7 @@ export default function CircleStoriesPage() {
                 <video
                   src={group.stories[0].media_url}
                   className="absolute inset-0 w-full h-full object-cover"
+                  style={{ objectPosition: 'center center' }}
                   muted
                   playsInline
                 />
@@ -533,6 +534,7 @@ export default function CircleStoriesPage() {
                 src={group.stories[0].media_url}
                 alt="Story"
                 className="absolute inset-0 w-full h-full object-cover"
+                style={{ objectPosition: 'center center' }}
               />
             ) : (
               <div
