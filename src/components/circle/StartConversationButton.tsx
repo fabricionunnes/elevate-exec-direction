@@ -40,57 +40,20 @@ export function StartConversationButton({
         return;
       }
 
-      // Check if conversation already exists between these two profiles
-      const { data: existingParticipations } = await supabase
-        .from("circle_conversation_participants")
-        .select("conversation_id")
-        .eq("profile_id", currentProfileId);
+      // Start/reuse conversation via backend function (avoids RLS edge cases)
+      const { data: conversationId, error: rpcError } = await supabase.rpc(
+        "circle_start_conversation",
+        {
+          current_profile_id: currentProfileId,
+          target_profile_id: targetProfileId,
+        },
+      );
 
-      if (existingParticipations && existingParticipations.length > 0) {
-        // Check if target is in any of these conversations
-        for (const p of existingParticipations) {
-          const { data: targetParticipation } = await supabase
-            .from("circle_conversation_participants")
-            .select("id")
-            .eq("conversation_id", p.conversation_id)
-            .eq("profile_id", targetProfileId)
-            .maybeSingle();
-
-          if (targetParticipation) {
-            // Conversation exists, navigate to it
-            navigate(`/circle/messages?conversation=${p.conversation_id}`);
-            return;
-          }
-        }
-      }
-
-      // Create new conversation
-      const { data: newConversation, error: convError } = await supabase
-        .from("circle_conversations")
-        .insert({})
-        .select()
-        .single();
-
-      if (convError) throw convError;
-
-      // Add both participants
-      // IMPORTANT: insert the current user first, then the target user.
-      // RLS checks run per-row; inserting both at once can fail for the 2nd row
-      // because membership isn't established yet.
-      const { error: partSelfError } = await supabase
-        .from("circle_conversation_participants")
-        .insert({ conversation_id: newConversation.id, profile_id: currentProfileId });
-
-      if (partSelfError) throw partSelfError;
-
-      const { error: partTargetError } = await supabase
-        .from("circle_conversation_participants")
-        .insert({ conversation_id: newConversation.id, profile_id: targetProfileId });
-
-      if (partTargetError) throw partTargetError;
+      if (rpcError) throw rpcError;
+      if (!conversationId) throw new Error("Não foi possível iniciar a conversa");
 
       queryClient.invalidateQueries({ queryKey: ["circle-conversations"] });
-      navigate(`/circle/messages?conversation=${newConversation.id}`);
+      navigate(`/circle/messages?conversation=${conversationId}`);
     } catch (error) {
       console.error("Error starting conversation:", error);
       const message =
