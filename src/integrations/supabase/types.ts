@@ -3340,6 +3340,7 @@ export type Database = {
           id: string
           image_url: string
           listing_id: string
+          media_type: string | null
           sort_order: number | null
         }
         Insert: {
@@ -3347,6 +3348,7 @@ export type Database = {
           id?: string
           image_url: string
           listing_id: string
+          media_type?: string | null
           sort_order?: number | null
         }
         Update: {
@@ -3354,6 +3356,7 @@ export type Database = {
           id?: string
           image_url?: string
           listing_id?: string
+          media_type?: string | null
           sort_order?: number | null
         }
         Relationships: [
@@ -15106,6 +15109,7 @@ export type Database = {
         }[]
       }
       get_circle_profile_id: { Args: never; Returns: string }
+      get_circle_profile_id_safe: { Args: never; Returns: string }
       get_current_circle_profile_id: { Args: never; Returns: string }
       get_current_client_project: { Args: never; Returns: string }
       get_current_staff_id: { Args: never; Returns: string }
