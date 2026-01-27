@@ -50,7 +50,7 @@ export function StoryViewer({
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [viewersModalOpen, setViewersModalOpen] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false); // Start with sound ON
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const currentStory = stories[currentIndex];
@@ -64,7 +64,7 @@ export function StoryViewer({
       setCurrentIndex(initialIndex);
       setProgress(0);
       setIsPaused(false);
-      setIsMuted(true);
+      setIsMuted(false); // Start with sound ON
     }
   }, [open, initialIndex]);
 
@@ -270,14 +270,19 @@ export function StoryViewer({
           )}
 
           {/* Content - full screen media container */}
-          <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 z-0 bg-black overflow-hidden">
             {currentStory.media_url && currentStory.media_type === "video" ? (
               <>
                 <video 
                   ref={videoRef}
                   src={currentStory.media_url} 
-                  className="absolute inset-0 h-full w-full object-cover"
-                  style={{ objectPosition: 'center center' }}
+                  className="w-full h-full"
+                  style={{ 
+                    objectFit: 'contain',
+                    objectPosition: 'center center',
+                    maxWidth: '100%',
+                    maxHeight: '100%'
+                  }}
                   autoPlay
                   muted={isMuted}
                   playsInline
@@ -300,8 +305,11 @@ export function StoryViewer({
               <img 
                 src={currentStory.media_url} 
                 alt="Story"
-                className="absolute inset-0 h-full w-full object-cover"
-                style={{ objectPosition: 'center center' }}
+                className="w-full h-full"
+                style={{ 
+                  objectFit: 'contain',
+                  objectPosition: 'center center'
+                }}
               />
             ) : currentStory.content ? (
               <div className="absolute inset-0 flex items-center justify-center">
