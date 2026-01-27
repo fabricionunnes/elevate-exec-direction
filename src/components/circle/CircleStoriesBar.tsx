@@ -127,20 +127,20 @@ export function CircleStoriesBar({ currentProfileId }: CircleStoriesBarProps) {
   return (
     <>
       <ScrollArea className="w-full whitespace-nowrap">
-        <div className="flex gap-4 pb-4">
+        <div className="flex gap-3 sm:gap-4 pb-3 sm:pb-4">
           {/* Add Story Button */}
           <NavLink
             to="/circle/stories"
             className="flex flex-col items-center gap-1"
           >
             <div className="relative">
-              <Avatar className="h-16 w-16 border-2 border-dashed border-muted-foreground/30">
+              <Avatar className="h-14 w-14 sm:h-16 sm:w-16 border-2 border-dashed border-muted-foreground/30">
                 <AvatarFallback className="bg-muted">
-                  <Plus className="h-6 w-6 text-muted-foreground" />
+                  <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                 </AvatarFallback>
               </Avatar>
             </div>
-            <span className="text-xs text-muted-foreground">Criar</span>
+            <span className="text-[10px] sm:text-xs text-muted-foreground">Criar</span>
           </NavLink>
 
           {/* Story Avatars - Click to open viewer */}
@@ -158,14 +158,14 @@ export function CircleStoriesBar({ currentProfileId }: CircleStoriesBarProps) {
                     : "bg-muted"
                 )}
               >
-                <Avatar className="h-16 w-16 border-2 border-background">
+                <Avatar className="h-14 w-14 sm:h-16 sm:w-16 border-2 border-background">
                   <AvatarImage src={group.profile.avatar_url || undefined} />
-                  <AvatarFallback>
+                  <AvatarFallback className="text-sm sm:text-base">
                     {group.profile.display_name?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               </div>
-              <span className="text-xs truncate max-w-[70px]">
+              <span className="text-[10px] sm:text-xs truncate max-w-[60px] sm:max-w-[70px]">
                 {group.profile.id === currentProfileId
                   ? "Seu story"
                   : group.profile.display_name?.split(" ")[0]}
