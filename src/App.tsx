@@ -70,6 +70,7 @@ import CircleProfilePage from "./pages/circle/CircleProfilePage";
 import CircleNotificationsPage from "./pages/circle/CircleNotificationsPage";
 import CircleCommunityDetailPage from "./pages/circle/CircleCommunityDetailPage";
 import CircleSettingsPage from "./pages/circle/CircleSettingsPage";
+import CircleMessagesPage from "./components/circle/CircleMessagesPage";
 // Onboarding pages
 import OnboardingPage from "./pages/OnboardingPage";
 import OnboardingProductPage from "./pages/OnboardingProductPage";
@@ -322,6 +323,7 @@ const App = () => (
               <Route path="profile/:profileId" element={<CircleProfilePage />} />
               <Route path="notifications" element={<CircleNotificationsPage />} />
               <Route path="settings" element={<CircleSettingsPage />} />
+              <Route path="messages" element={<CircleMessagesPage />} />
             </Route>
             
             {/* Portal do Planejamento 2026 */}

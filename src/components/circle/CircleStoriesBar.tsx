@@ -183,6 +183,7 @@ export function CircleStoriesBar({ currentProfileId }: CircleStoriesBarProps) {
         open={viewerOpen}
         onOpenChange={setViewerOpen}
         onView={handleRecordView}
+        currentProfileId={currentProfileId}
       />
     </>
   );

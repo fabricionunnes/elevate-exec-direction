@@ -6,6 +6,7 @@ import { X, ChevronLeft, ChevronRight, Clock, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { StoryInteractions } from "./StoryInteractions";
 
 interface Story {
   id: string;
@@ -30,11 +31,20 @@ interface StoryViewerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onView?: (story: Story) => void;
+  currentProfileId?: string;
 }
 
-export function StoryViewer({ stories, initialIndex, open, onOpenChange, onView }: StoryViewerProps) {
+export function StoryViewer({ 
+  stories, 
+  initialIndex, 
+  open, 
+  onOpenChange, 
+  onView,
+  currentProfileId 
+}: StoryViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   const currentStory = stories[currentIndex];
 
@@ -43,12 +53,13 @@ export function StoryViewer({ stories, initialIndex, open, onOpenChange, onView 
     if (open) {
       setCurrentIndex(initialIndex);
       setProgress(0);
+      setIsPaused(false);
     }
   }, [open, initialIndex]);
 
   // Auto-advance timer
   useEffect(() => {
-    if (!open) return;
+    if (!open || isPaused) return;
 
     const duration = 5000; // 5 seconds per story
     const interval = 50; // Update progress every 50ms
@@ -72,7 +83,7 @@ export function StoryViewer({ stories, initialIndex, open, onOpenChange, onView 
     }, interval);
 
     return () => clearInterval(timer);
-  }, [open, currentIndex, stories.length, onOpenChange]);
+  }, [open, currentIndex, stories.length, onOpenChange, isPaused]);
 
   // Record view when story changes
   useEffect(() => {
@@ -112,6 +123,8 @@ export function StoryViewer({ stories, initialIndex, open, onOpenChange, onView 
 
   // Handle click navigation (left/right sides)
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isPaused) return; // Don't navigate when paused (comments open)
+    
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const width = rect.width;
@@ -235,6 +248,15 @@ export function StoryViewer({ stories, initialIndex, open, onOpenChange, onView 
               <span>{currentStory.views_count} visualizações</span>
             </div>
           </div>
+
+          {/* Story Interactions */}
+          <StoryInteractions
+            storyId={currentStory.id}
+            storyOwnerId={currentStory.profile_id}
+            currentProfileId={currentProfileId}
+            onPause={() => setIsPaused(true)}
+            onResume={() => setIsPaused(false)}
+          />
 
           {/* Touch hint indicators */}
           <div className="absolute inset-y-0 left-0 w-1/3" />
