@@ -322,7 +322,7 @@ export default function CircleCommunityDetailPage() {
               </div>
             </div>
 
-            <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 relative z-10">
               {/* Settings button for owner/admin */}
               {canManageCommunity && currentProfile && (
                 <CommunitySettingsDialog
