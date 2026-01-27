@@ -15086,6 +15086,10 @@ export type Database = {
         }
         Returns: number
       }
+      circle_start_conversation: {
+        Args: { current_profile_id: string; target_profile_id: string }
+        Returns: string
+      }
       client_has_company_access: {
         Args: { check_company_id: string }
         Returns: boolean
