@@ -26,11 +26,13 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
+import { useCircleAdmin } from "@/hooks/useCircleAdmin";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import unvCircleLogo from "@/assets/unv-circle-logo.png";
 import { CommunityImageUpload } from "@/components/circle/CommunityImageUpload";
 import { CommunityPostForm } from "@/components/circle/CommunityPostForm";
+import { CommunitySettingsDialog } from "@/components/circle/CommunitySettingsDialog";
 
 const categoryConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   vendas: { label: "Vendas", icon: TrendingUp, color: "text-green-500" },
@@ -78,6 +80,7 @@ export default function CircleCommunityDetailPage() {
   const queryClient = useQueryClient();
 
   const { data: currentProfile } = useCircleCurrentProfile();
+  const { isAdmin } = useCircleAdmin();
 
   // Fetch community details
   const { data: community, isLoading: loadingCommunity } = useQuery({
@@ -204,6 +207,7 @@ export default function CircleCommunityDetailPage() {
 
   const isMember = !!membership;
   const isOwner = community?.owner_profile_id === currentProfile?.id;
+  const canManageCommunity = isOwner || isAdmin;
 
   if (loadingCommunity) {
     return (
@@ -248,8 +252,8 @@ export default function CircleCommunityDetailPage() {
               className="w-full h-full object-cover"
             />
           )}
-          {/* Owner can change cover */}
-          {isOwner && (
+          {/* Owner/Admin can change cover */}
+          {canManageCommunity && (
             <div className="absolute bottom-3 right-3">
               <CommunityImageUpload
                 communityId={community.id}
@@ -271,8 +275,8 @@ export default function CircleCommunityDetailPage() {
                   {community.name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              {/* Owner can change avatar */}
-              {isOwner && (
+              {/* Owner/Admin can change avatar */}
+              {canManageCommunity && (
                 <div className="absolute -bottom-1 -right-1">
                   <CommunityImageUpload
                     communityId={community.id}
@@ -318,7 +322,18 @@ export default function CircleCommunityDetailPage() {
               </div>
             </div>
 
-            <div className="w-full sm:w-auto">
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+              {/* Settings button for owner/admin */}
+              {canManageCommunity && currentProfile && (
+                <CommunitySettingsDialog
+                  communityId={community.id}
+                  communityName={community.name}
+                  ownerProfileId={community.owner_profile_id}
+                  currentProfileId={currentProfile.id}
+                  isAdmin={isAdmin}
+                />
+              )}
+              
               {!isMember ? (
                 <Button onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending}>
                   {joinMutation.isPending ? "Entrando..." : "Entrar na Comunidade"}
