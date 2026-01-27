@@ -29,6 +29,7 @@ const navItems = [
   { path: "/circle/communities", label: "Comunidades", icon: Users },
   { path: "/circle/marketplace", label: "Marketplace", icon: Store },
   { path: "/circle/ranking", label: "Ranking", icon: Trophy },
+  { path: "/circle/messages", label: "Mensagens", icon: MessageCircle },
 ];
 
 export default function CircleLayout() {

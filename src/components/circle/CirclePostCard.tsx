@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CircleCommentsSection } from "./CircleCommentsSection";
+import { useToast } from "@/hooks/use-toast";
 
 interface CirclePostCardProps {
   post: {
@@ -50,14 +53,74 @@ interface CirclePostCardProps {
 }
 
 export function CirclePostCard({ post, isLiked, onLike, currentProfileId }: CirclePostCardProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [showComments, setShowComments] = useState(false);
   const [localLikesCount, setLocalLikesCount] = useState(post.likes_count);
   const [localIsLiked, setLocalIsLiked] = useState(isLiked);
+
+  // Check if post is saved
+  const { data: isSaved } = useQuery({
+    queryKey: ["circle-post-saved", post.id, currentProfileId],
+    queryFn: async () => {
+      if (!currentProfileId) return false;
+      const { data } = await supabase
+        .from("circle_saved_posts")
+        .select("id")
+        .eq("profile_id", currentProfileId)
+        .eq("post_id", post.id)
+        .maybeSingle();
+      return !!data;
+    },
+    enabled: !!currentProfileId,
+  });
 
   const handleLike = () => {
     setLocalIsLiked(!localIsLiked);
     setLocalLikesCount(prev => localIsLiked ? prev - 1 : prev + 1);
     onLike();
+  };
+
+  // Save/unsave mutation
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentProfileId) throw new Error("Not authenticated");
+
+      if (isSaved) {
+        await supabase
+          .from("circle_saved_posts")
+          .delete()
+          .eq("profile_id", currentProfileId)
+          .eq("post_id", post.id);
+      } else {
+        await supabase.from("circle_saved_posts").insert({
+          profile_id: currentProfileId,
+          post_id: post.id,
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["circle-post-saved", post.id] });
+      toast({
+        title: isSaved ? "Removido dos salvos" : "Post salvo!",
+      });
+    },
+  });
+
+  // Share function
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/circle/post/${post.id}`;
+    try {
+      await navigator.share({
+        title: `Post de ${post.profile.display_name}`,
+        text: post.content || "Confira este post no UNV Circle",
+        url: shareUrl,
+      });
+    } catch {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(shareUrl);
+      toast({ title: "Link copiado!" });
+    }
   };
 
   const isOwnPost = currentProfileId === post.profile.id;
@@ -106,9 +169,9 @@ export function CirclePostCard({ post, isLiked, onLike, currentProfileId }: Circ
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>
-                <Bookmark className="h-4 w-4 mr-2" />
-                Salvar
+              <DropdownMenuItem onClick={() => saveMutation.mutate()}>
+                <Bookmark className={cn("h-4 w-4 mr-2", isSaved && "fill-current")} />
+                {isSaved ? "Remover dos salvos" : "Salvar"}
               </DropdownMenuItem>
               {isOwnPost ? (
                 <>
@@ -204,14 +267,24 @@ export function CirclePostCard({ post, isLiked, onLike, currentProfileId }: Circ
               <span>{post.comments_count}</span>
             </Button>
 
-            <Button variant="ghost" size="sm" className="gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="gap-2"
+              onClick={handleShare}
+            >
               <Share2 className="h-4 w-4" />
               <span>{post.shares_count}</span>
             </Button>
           </div>
 
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Bookmark className="h-4 w-4" />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={cn("h-8 w-8", isSaved && "text-primary")}
+            onClick={() => saveMutation.mutate()}
+          >
+            <Bookmark className={cn("h-4 w-4", isSaved && "fill-current")} />
           </Button>
         </div>
 

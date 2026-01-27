@@ -35,6 +35,7 @@ import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 import { SendTestimonialDialog } from "@/components/circle/SendTestimonialDialog";
 import { CircleAvatarUpload } from "@/components/circle/CircleAvatarUpload";
 import { CircleCoverUpload } from "@/components/circle/CircleCoverUpload";
+import { StartConversationButton } from "@/components/circle/StartConversationButton";
 
 export default function CircleProfilePage() {
   const { profileId } = useParams();
@@ -426,6 +427,14 @@ export default function CircleProfilePage() {
                     )}
                   </Button>
                   
+                  {/* Message Button */}
+                  {currentProfile?.id && (
+                    <StartConversationButton
+                      currentProfileId={currentProfile.id}
+                      targetProfileId={profile.id}
+                    />
+                  )}
+
                   {/* Send Testimonial Button */}
                   <SendTestimonialDialog 
                     recipientProfile={{

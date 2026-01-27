@@ -2568,6 +2568,66 @@ export type Database = {
           },
         ]
       }
+      circle_conversation_participants: {
+        Row: {
+          conversation_id: string
+          id: string
+          joined_at: string | null
+          last_read_at: string | null
+          profile_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          joined_at?: string | null
+          last_read_at?: string | null
+          profile_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          joined_at?: string | null
+          last_read_at?: string | null
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "circle_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_conversation_participants_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_conversations: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_message_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       circle_follows: {
         Row: {
           created_at: string | null
@@ -2851,6 +2911,54 @@ export type Database = {
           {
             foreignKeyName: "circle_marketplace_reports_reviewed_by_fkey"
             columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          media_type: string | null
+          media_url: string | null
+          sender_profile_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          sender_profile_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          sender_profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "circle_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_messages_sender_profile_id_fkey"
+            columns: ["sender_profile_id"]
             isOneToOne: false
             referencedRelation: "circle_profiles"
             referencedColumns: ["id"]
@@ -3213,6 +3321,42 @@ export type Database = {
           },
         ]
       }
+      circle_saved_stories: {
+        Row: {
+          created_at: string | null
+          id: string
+          profile_id: string
+          story_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          profile_id: string
+          story_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          profile_id?: string
+          story_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_saved_stories_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_saved_stories_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "circle_stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circle_stories: {
         Row: {
           background_color: string | null
@@ -3256,6 +3400,45 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_story_comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          profile_id: string
+          story_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          profile_id: string
+          story_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          profile_id?: string
+          story_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_story_comments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_story_comments_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "circle_stories"
             referencedColumns: ["id"]
           },
         ]

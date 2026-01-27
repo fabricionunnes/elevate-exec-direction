@@ -408,6 +408,7 @@ export default function CircleStoriesPage() {
         open={viewerOpen}
         onOpenChange={setViewerOpen}
         onView={handleRecordView}
+        currentProfileId={currentProfile?.id}
       />
     </div>
   );
