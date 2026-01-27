@@ -68,7 +68,7 @@ import CircleMarketplacePage from "./pages/circle/CircleMarketplacePage";
 import CircleRankingPage from "./pages/circle/CircleRankingPage";
 import CircleProfilePage from "./pages/circle/CircleProfilePage";
 import CircleNotificationsPage from "./pages/circle/CircleNotificationsPage";
-
+import CircleCommunityDetailPage from "./pages/circle/CircleCommunityDetailPage";
 // Onboarding pages
 import OnboardingPage from "./pages/OnboardingPage";
 import OnboardingProductPage from "./pages/OnboardingProductPage";
@@ -314,6 +314,7 @@ const App = () => (
               <Route index element={<CircleFeedPage />} />
               <Route path="stories" element={<CircleStoriesPage />} />
               <Route path="communities" element={<CircleCommunitiesPage />} />
+              <Route path="community/:slug" element={<CircleCommunityDetailPage />} />
               <Route path="marketplace" element={<CircleMarketplacePage />} />
               <Route path="ranking" element={<CircleRankingPage />} />
               <Route path="profile" element={<CircleProfilePage />} />

@@ -21,6 +21,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
+import unvCircleLogo from "@/assets/unv-circle-logo.png";
 
 const navItems = [
   { path: "/circle", label: "Feed", icon: Home, exact: true },
@@ -94,9 +95,7 @@ export default function CircleLayout() {
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
             <NavLink to="/circle" className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
-                <MessageCircle className="h-4 w-4 text-white" />
-              </div>
+              <img src={unvCircleLogo} alt="UNV Circle" className="h-9 w-9" />
               <span className="font-bold text-lg bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">
                 UNV Circle
               </span>
