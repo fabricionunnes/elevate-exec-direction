@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useLocation } from "react-router-dom";
+import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { 
   Home, 
@@ -40,6 +40,7 @@ const navItems = [
 
 export default function CircleLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Fetch (and ensure) current user's circle profile
@@ -199,9 +200,9 @@ export default function CircleLayout() {
             <p className="text-sm sm:text-base text-muted-foreground">
               Você precisa estar logado para criar posts, comunidades e anúncios.
             </p>
-            <NavLink to="/onboarding-tasks/login">
-              <Button>Fazer login</Button>
-            </NavLink>
+            <Button onClick={() => navigate(`/onboarding-tasks/login?redirect=${encodeURIComponent(location.pathname)}`)}>
+              Fazer login
+            </Button>
           </div>
         ) : (
           <Outlet />

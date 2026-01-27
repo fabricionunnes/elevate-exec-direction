@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,8 @@ import { isClientRole } from "@/types/onboarding";
 
 const OnboardingLoginPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
   
   // Login state
   const [email, setEmail] = useState("");
@@ -56,7 +58,12 @@ const OnboardingLoginPage = () => {
         if (staffMember) {
           // Staff member found - redirect to appropriate page
           toast.success(`Bem-vindo, ${staffMember.name}!`);
-          navigate("/onboarding-tasks");
+          // If there's a redirect URL, use it; otherwise go to default
+          if (redirectTo) {
+            navigate(redirectTo);
+          } else {
+            navigate("/onboarding-tasks");
+          }
           return;
         }
 
@@ -89,6 +96,12 @@ const OnboardingLoginPage = () => {
         const onboardingUser = onboardingUsers[0];
 
         toast.success("Login realizado com sucesso!");
+        
+        // If there's a redirect URL, use it
+        if (redirectTo) {
+          navigate(redirectTo);
+          return;
+        }
         
         // Redirect based on role - all client roles go to client portal
         if (isClientRole(onboardingUser.role)) {
