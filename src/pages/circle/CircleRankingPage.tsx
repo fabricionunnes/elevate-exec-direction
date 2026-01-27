@@ -174,30 +174,34 @@ export default function CircleRankingPage() {
         </TabsList>
 
         <TabsContent value={period} className="mt-6">
-          {/* Top 3 */}
-          {ranking && ranking.length >= 3 && (
+          {/* Top 3 - show podium if we have at least 1 user */}
+          {ranking && ranking.length >= 1 && (
             <div className="grid grid-cols-3 gap-4 mb-8">
               {/* 2nd Place */}
-              <Card className="text-center pt-8 relative">
-                <div className="absolute top-2 left-1/2 -translate-x-1/2">
-                  <Medal className="h-8 w-8 text-gray-400" />
-                </div>
-                <CardContent className="pt-4">
-                  <Avatar className="h-16 w-16 mx-auto ring-2 ring-gray-400">
-                    <AvatarImage src={ranking[1].avatar_url || undefined} />
-                    <AvatarFallback>
-                      {ranking[1].display_name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <h3 className="font-semibold mt-3 truncate">{ranking[1].display_name}</h3>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {ranking[1].company_name || ranking[1].level_name}
-                  </p>
-                  <p className="text-xl font-bold text-primary mt-2">
-                    {ranking[1].total_points.toLocaleString()}
-                  </p>
-                </CardContent>
-              </Card>
+              {ranking[1] ? (
+                <Card className="text-center pt-8 relative">
+                  <div className="absolute top-2 left-1/2 -translate-x-1/2">
+                    <Medal className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <CardContent className="pt-4">
+                    <Avatar className="h-16 w-16 mx-auto ring-2 ring-gray-400">
+                      <AvatarImage src={ranking[1].avatar_url || undefined} />
+                      <AvatarFallback>
+                        {ranking[1].display_name?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <h3 className="font-semibold mt-3 truncate">{ranking[1].display_name}</h3>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {ranking[1].company_name || ranking[1].level_name}
+                    </p>
+                    <p className="text-xl font-bold text-primary mt-2">
+                      {ranking[1].total_points.toLocaleString()}
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div />
+              )}
 
               {/* 1st Place */}
               <Card className="text-center pt-8 relative -mt-4 shadow-lg ring-2 ring-yellow-400">
@@ -222,26 +226,30 @@ export default function CircleRankingPage() {
               </Card>
 
               {/* 3rd Place */}
-              <Card className="text-center pt-8 relative">
-                <div className="absolute top-2 left-1/2 -translate-x-1/2">
-                  <Medal className="h-8 w-8 text-amber-600" />
-                </div>
-                <CardContent className="pt-4">
-                  <Avatar className="h-16 w-16 mx-auto ring-2 ring-amber-600">
-                    <AvatarImage src={ranking[2].avatar_url || undefined} />
-                    <AvatarFallback>
-                      {ranking[2].display_name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <h3 className="font-semibold mt-3 truncate">{ranking[2].display_name}</h3>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {ranking[2].company_name || ranking[2].level_name}
-                  </p>
-                  <p className="text-xl font-bold text-primary mt-2">
-                    {ranking[2].total_points.toLocaleString()}
-                  </p>
-                </CardContent>
-              </Card>
+              {ranking[2] ? (
+                <Card className="text-center pt-8 relative">
+                  <div className="absolute top-2 left-1/2 -translate-x-1/2">
+                    <Medal className="h-8 w-8 text-amber-600" />
+                  </div>
+                  <CardContent className="pt-4">
+                    <Avatar className="h-16 w-16 mx-auto ring-2 ring-amber-600">
+                      <AvatarImage src={ranking[2].avatar_url || undefined} />
+                      <AvatarFallback>
+                        {ranking[2].display_name?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <h3 className="font-semibold mt-3 truncate">{ranking[2].display_name}</h3>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {ranking[2].company_name || ranking[2].level_name}
+                    </p>
+                    <p className="text-xl font-bold text-primary mt-2">
+                      {ranking[2].total_points.toLocaleString()}
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div />
+              )}
             </div>
           )}
 
