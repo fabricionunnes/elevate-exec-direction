@@ -293,6 +293,7 @@ export function CirclePostCard({ post, isLiked, onLike, currentProfileId }: Circ
           <CircleCommentsSection
             postId={post.id}
             currentProfileId={currentProfileId}
+            postOwnerId={post.profile.id}
           />
         )}
       </CardContent>

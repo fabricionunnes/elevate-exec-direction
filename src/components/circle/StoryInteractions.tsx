@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageCircle, Bookmark, Share2, Send, X } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, Share2, Send, X, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -171,6 +171,25 @@ export function StoryInteractions({
     },
   });
 
+  // Delete comment mutation
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      const { error } = await supabase
+        .from("circle_story_comments")
+        .delete()
+        .eq("id", commentId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["circle-story-comments", storyId] });
+      toast({ title: "Comentário apagado!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao apagar comentário", variant: "destructive" });
+    },
+  });
+
   // Share function
   const handleShare = async () => {
     try {
@@ -194,6 +213,12 @@ export function StoryInteractions({
       setShowComments(false);
       onResume();
     }
+  };
+
+  const canDeleteComment = (commentProfileId: string) => {
+    if (!currentProfileId) return false;
+    // Can delete if: author of comment OR owner of story
+    return commentProfileId === currentProfileId || storyOwnerId === currentProfileId;
   };
 
   return (
@@ -275,7 +300,7 @@ export function StoryInteractions({
               <p className="text-white/70 text-center py-8">Nenhum comentário ainda</p>
             ) : (
               comments?.map((comment) => (
-                <div key={comment.id} className="flex gap-2">
+                <div key={comment.id} className="flex gap-2 group">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={comment.profile.avatar_url || undefined} />
                     <AvatarFallback className="text-xs">
@@ -287,12 +312,25 @@ export function StoryInteractions({
                       <span className="font-medium">{comment.profile.display_name}</span>{" "}
                       {comment.content}
                     </p>
-                    <p className="text-white/50 text-xs mt-1">
-                      {formatDistanceToNow(new Date(comment.created_at), {
-                        addSuffix: true,
-                        locale: ptBR,
-                      })}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-white/50 text-xs">
+                        {formatDistanceToNow(new Date(comment.created_at), {
+                          addSuffix: true,
+                          locale: ptBR,
+                        })}
+                      </p>
+                      {canDeleteComment(comment.profile.id) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-white/50 hover:text-red-400"
+                          onClick={() => deleteCommentMutation.mutate(comment.id)}
+                          disabled={deleteCommentMutation.isPending}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))

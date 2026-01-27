@@ -4,11 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Send, Heart } from "lucide-react";
+import { Send, Heart, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { NavLink } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 interface Comment {
   id: string;
@@ -25,10 +26,12 @@ interface Comment {
 interface CircleCommentsSectionProps {
   postId: string;
   currentProfileId?: string;
+  postOwnerId?: string;
 }
 
-export function CircleCommentsSection({ postId, currentProfileId }: CircleCommentsSectionProps) {
+export function CircleCommentsSection({ postId, currentProfileId, postOwnerId }: CircleCommentsSectionProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [newComment, setNewComment] = useState("");
 
   // Fetch comments
@@ -79,10 +82,36 @@ export function CircleCommentsSection({ postId, currentProfileId }: CircleCommen
     },
   });
 
+  // Delete comment mutation
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      const { error } = await supabase
+        .from("circle_comments")
+        .delete()
+        .eq("id", commentId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["circle-comments", postId] });
+      queryClient.invalidateQueries({ queryKey: ["circle-posts"] });
+      toast({ title: "Comentário apagado!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao apagar comentário", variant: "destructive" });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
     createCommentMutation.mutate();
+  };
+
+  const canDeleteComment = (commentProfileId: string) => {
+    if (!currentProfileId) return false;
+    // Can delete if: author of comment OR owner of post
+    return commentProfileId === currentProfileId || postOwnerId === currentProfileId;
   };
 
   return (
@@ -90,7 +119,7 @@ export function CircleCommentsSection({ postId, currentProfileId }: CircleCommen
       {/* Comments List */}
       <div className="space-y-3">
         {comments?.map((comment) => (
-          <div key={comment.id} className="flex gap-2">
+          <div key={comment.id} className="flex gap-2 group">
             <NavLink to={`/circle/profile/${comment.profile.id}`}>
               <Avatar className="h-8 w-8">
                 <AvatarImage src={comment.profile.avatar_url || undefined} />
@@ -101,7 +130,7 @@ export function CircleCommentsSection({ postId, currentProfileId }: CircleCommen
             </NavLink>
 
             <div className="flex-1">
-              <div className="bg-muted rounded-lg px-3 py-2">
+              <div className="bg-muted rounded-lg px-3 py-2 relative">
                 <NavLink 
                   to={`/circle/profile/${comment.profile.id}`}
                   className="font-medium text-sm hover:underline"
@@ -109,6 +138,18 @@ export function CircleCommentsSection({ postId, currentProfileId }: CircleCommen
                   {comment.profile.display_name}
                 </NavLink>
                 <p className="text-sm">{comment.content}</p>
+                
+                {canDeleteComment(comment.profile.id) && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                    onClick={() => deleteCommentMutation.mutate(comment.id)}
+                    disabled={deleteCommentMutation.isPending}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
 
               <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
