@@ -6,10 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   Plus, 
   Search, 
@@ -23,9 +20,8 @@ import {
   GraduationCap,
   Handshake,
   Sparkles,
-  Filter,
-  Phone,
-  Trash2
+  Trash2,
+  Play
 } from "lucide-react";
 import {
   AlertDialog,
@@ -43,6 +39,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { NavLink } from "react-router-dom";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
+import { MarketplaceCreateAd } from "@/components/circle/MarketplaceCreateAd";
 
 const categoryConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   servicos: { label: "Serviços", icon: Briefcase, color: "text-blue-500" },
@@ -107,15 +104,6 @@ export default function CircleMarketplacePage() {
   const [selectedListing, setSelectedListing] = useState<MarketplaceListing | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  // Form state
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("servicos");
-  const [offerType, setOfferType] = useState("servico");
-  const [price, setPrice] = useState("");
-  const [priceType, setPriceType] = useState("negotiable");
-  const [whatsapp, setWhatsapp] = useState("");
-  const [whatsappMessage, setWhatsappMessage] = useState("Olá, vi seu anúncio no UNV Circle e quero saber mais!");
 
   // Fetch (and ensure) current profile
   const { data: currentProfile } = useCircleCurrentProfile();
@@ -187,36 +175,6 @@ export default function CircleMarketplacePage() {
     enabled: !!currentProfile?.id,
   });
 
-  // Create listing mutation
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      if (!currentProfile?.id) throw new Error("Not authenticated");
-
-      const { error } = await supabase.from("circle_marketplace_listings").insert({
-        profile_id: currentProfile.id,
-        title,
-        description,
-        category,
-        offer_type: offerType,
-        price: price ? parseFloat(price) : null,
-        price_type: priceType,
-        whatsapp: whatsapp.replace(/\D/g, ""),
-        whatsapp_message: whatsappMessage || null,
-      });
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: "Anúncio criado com sucesso!" });
-      setCreateDialogOpen(false);
-      resetForm();
-      queryClient.invalidateQueries({ queryKey: ["circle-marketplace-listings"] });
-    },
-    onError: () => {
-      toast({ title: "Erro ao criar anúncio", variant: "destructive" });
-    },
-  });
-
   // Toggle favorite mutation
   const favoriteMutation = useMutation({
     mutationFn: async ({ listingId, isFavorite }: { listingId: string; isFavorite: boolean }) => {
@@ -262,16 +220,6 @@ export default function CircleMarketplacePage() {
     },
   });
 
-  const resetForm = () => {
-    setTitle("");
-    setDescription("");
-    setCategory("servicos");
-    setOfferType("servico");
-    setPrice("");
-    setPriceType("negotiable");
-    setWhatsapp("");
-    setWhatsappMessage("Olá, vi seu anúncio no UNV Circle e quero saber mais!");
-  };
 
   const handleContactWhatsApp = (listing: MarketplaceListing) => {
     const phone = listing.whatsapp.replace(/\D/g, "");
@@ -336,136 +284,18 @@ export default function CircleMarketplacePage() {
           </p>
         </div>
 
-        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Criar Anúncio
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Criar Anúncio</DialogTitle>
-            </DialogHeader>
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Criar Anúncio
+        </Button>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Título *</Label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ex: Consultoria em Vendas B2B"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Descrição *</Label>
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Descreva seu produto, serviço ou oportunidade..."
-                  rows={4}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Categoria</Label>
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(categoryConfig).map(([key, config]) => (
-                        <SelectItem key={key} value={key}>
-                          <div className="flex items-center gap-2">
-                            <config.icon className={cn("h-4 w-4", config.color)} />
-                            {config.label}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Tipo de Oferta</Label>
-                  <Select value={offerType} onValueChange={setOfferType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(offerTypeLabels).map(([key, label]) => (
-                        <SelectItem key={key} value={key}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Preço</Label>
-                  <Input
-                    type="number"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="0,00"
-                    disabled={priceType === "free" || priceType === "contact"}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Tipo de Preço</Label>
-                  <Select value={priceType} onValueChange={setPriceType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(priceTypeLabels).map(([key, label]) => (
-                        <SelectItem key={key} value={key}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>WhatsApp para Contato *</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
-                    placeholder="(11) 99999-9999"
-                    className="pl-9"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Este número será usado para contato via WhatsApp
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Mensagem Padrão</Label>
-                <Textarea
-                  value={whatsappMessage}
-                  onChange={(e) => setWhatsappMessage(e.target.value)}
-                  placeholder="Mensagem que será enviada junto do contato"
-                  rows={2}
-                />
-              </div>
-
-              <Button
-                onClick={() => createMutation.mutate()}
-                disabled={!title.trim() || !description.trim() || !whatsapp.trim() || createMutation.isPending}
-                className="w-full"
-              >
-                {createMutation.isPending ? "Criando..." : "Publicar Anúncio"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {currentProfile?.id && (
+          <MarketplaceCreateAd
+            currentProfileId={currentProfile.id}
+            open={createDialogOpen}
+            onOpenChange={setCreateDialogOpen}
+          />
+        )}
       </div>
 
       {/* Search and Filters */}

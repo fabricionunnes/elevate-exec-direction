@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Users, 
@@ -15,7 +14,6 @@ import {
   Globe,
   ArrowLeft,
   Heart,
-  Send,
   TrendingUp,
   Briefcase,
   Code,
@@ -23,8 +21,7 @@ import {
   Megaphone,
   UserCheck,
   MoreHorizontal,
-  Calendar,
-  Camera
+  Play
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -33,6 +30,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import unvCircleLogo from "@/assets/unv-circle-logo.png";
 import { CommunityImageUpload } from "@/components/circle/CommunityImageUpload";
+import { CommunityPostForm } from "@/components/circle/CommunityPostForm";
 
 const categoryConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   vendas: { label: "Vendas", icon: TrendingUp, color: "text-green-500" },
@@ -78,7 +76,6 @@ export default function CircleCommunityDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [newPostContent, setNewPostContent] = useState("");
 
   const { data: currentProfile } = useCircleCurrentProfile();
 
@@ -202,37 +199,6 @@ export default function CircleCommunityDetailPage() {
     },
     onError: () => {
       toast({ title: "Erro ao entrar na comunidade", variant: "destructive" });
-    },
-  });
-
-  // Create post in circle_posts table
-  const createPostMutation = useMutation({
-    mutationFn: async () => {
-      if (!currentProfile?.id || !community?.id) throw new Error("Not authenticated");
-
-      const { error } = await supabase.from("circle_posts").insert({
-        community_id: community.id,
-        profile_id: currentProfile.id,
-        content: newPostContent,
-        post_type: "text",
-      });
-
-      if (error) throw error;
-
-      // Update posts count
-      await supabase
-        .from("circle_communities")
-        .update({ posts_count: (community.posts_count || 0) + 1 })
-        .eq("id", community.id);
-    },
-    onSuccess: () => {
-      toast({ title: "Post publicado!" });
-      setNewPostContent("");
-      queryClient.invalidateQueries({ queryKey: ["circle-community-posts"] });
-      queryClient.invalidateQueries({ queryKey: ["circle-community", slug] });
-    },
-    onError: () => {
-      toast({ title: "Erro ao publicar", variant: "destructive" });
     },
   });
 
@@ -383,37 +349,16 @@ export default function CircleCommunityDetailPage() {
 
         <TabsContent value="posts" className="space-y-4 mt-4">
           {/* Create post (only for members) */}
-          {isMember && (
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={currentProfile?.avatar_url || undefined} />
-                    <AvatarFallback>
-                      {currentProfile?.display_name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 space-y-2">
-                    <Textarea
-                      value={newPostContent}
-                      onChange={(e) => setNewPostContent(e.target.value)}
-                      placeholder="Compartilhe algo com a comunidade..."
-                      className="min-h-[80px]"
-                    />
-                    <div className="flex justify-end">
-                      <Button
-                        onClick={() => createPostMutation.mutate()}
-                        disabled={!newPostContent.trim() || createPostMutation.isPending}
-                        size="sm"
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        {createPostMutation.isPending ? "Publicando..." : "Publicar"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {isMember && currentProfile && community && slug && (
+            <CommunityPostForm
+              communityId={community.id}
+              communitySlug={slug}
+              currentProfile={{
+                id: currentProfile.id,
+                display_name: currentProfile.display_name || "Usuário",
+                avatar_url: currentProfile.avatar_url,
+              }}
+            />
           )}
 
           {/* Posts list */}
@@ -458,11 +403,39 @@ export default function CircleCommunityDetailPage() {
                       </div>
                       <p className="mt-2 whitespace-pre-wrap">{post.content}</p>
                       {post.media_urls && post.media_urls.length > 0 && (
-                        <img
-                          src={post.media_urls[0]}
-                          alt="Post image"
-                          className="mt-3 rounded-lg max-h-96 object-cover"
-                        />
+                        <div className={cn(
+                          "mt-3 grid gap-2",
+                          post.media_urls.length === 1 ? "grid-cols-1" :
+                          post.media_urls.length === 2 ? "grid-cols-2" :
+                          post.media_urls.length === 3 ? "grid-cols-2" : "grid-cols-2"
+                        )}>
+                          {post.media_urls.slice(0, 4).map((url, idx) => {
+                            const isVideo = url.includes(".mp4") || url.includes(".webm") || url.includes(".mov");
+                            return isVideo ? (
+                              <div key={idx} className="relative rounded-lg overflow-hidden bg-muted">
+                                <video
+                                  src={url}
+                                  controls
+                                  className="w-full max-h-96 object-cover"
+                                />
+                                <div className="absolute top-2 left-2 px-2 py-1 rounded bg-black/50 text-white text-xs flex items-center gap-1">
+                                  <Play className="h-3 w-3" />
+                                  Vídeo
+                                </div>
+                              </div>
+                            ) : (
+                              <img
+                                key={idx}
+                                src={url}
+                                alt={`Post media ${idx + 1}`}
+                                className={cn(
+                                  "rounded-lg object-cover w-full",
+                                  post.media_urls && post.media_urls.length === 1 ? "max-h-96" : "aspect-square"
+                                )}
+                              />
+                            );
+                          })}
+                        </div>
                       )}
                       <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
                         <button className="flex items-center gap-1 hover:text-primary transition-colors">
