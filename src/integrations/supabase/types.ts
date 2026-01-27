@@ -14147,6 +14147,7 @@ export type Database = {
         Args: { check_company_id: string }
         Returns: boolean
       }
+      get_circle_profile_id: { Args: never; Returns: string }
       get_current_circle_profile_id: { Args: never; Returns: string }
       get_current_client_project: { Args: never; Returns: string }
       get_current_staff_id: { Args: never; Returns: string }
@@ -14203,6 +14204,10 @@ export type Database = {
       }
       is_ceo: { Args: never; Returns: boolean }
       is_circle_admin: { Args: never; Returns: boolean }
+      is_circle_conversation_member: {
+        Args: { check_conversation_id: string; check_profile_id: string }
+        Returns: boolean
+      }
       is_crm_admin: { Args: never; Returns: boolean }
       is_financial_admin: { Args: never; Returns: boolean }
       is_onboarding_admin:
