@@ -270,18 +270,18 @@ export function StoryViewer({
           )}
 
           {/* Content - full screen media container */}
-          <div className="absolute inset-0 z-0 bg-black overflow-hidden">
+          <div className="absolute inset-0 z-0 overflow-hidden">
             {currentStory.media_url && currentStory.media_type === "video" ? (
               <>
                 <video 
                   ref={videoRef}
                   src={currentStory.media_url} 
-                  className="w-full h-full"
+                  className="absolute inset-0 min-w-full min-h-full w-auto h-auto"
                   style={{ 
-                    objectFit: 'contain',
-                    objectPosition: 'center center',
-                    maxWidth: '100%',
-                    maxHeight: '100%'
+                    objectFit: 'cover',
+                    left: '50%',
+                    top: '50%',
+                    transform: 'translate(-50%, -50%)'
                   }}
                   autoPlay
                   muted={isMuted}
@@ -305,10 +305,12 @@ export function StoryViewer({
               <img 
                 src={currentStory.media_url} 
                 alt="Story"
-                className="w-full h-full"
+                className="absolute inset-0 min-w-full min-h-full w-auto h-auto"
                 style={{ 
-                  objectFit: 'contain',
-                  objectPosition: 'center center'
+                  objectFit: 'cover',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)'
                 }}
               />
             ) : currentStory.content ? (
