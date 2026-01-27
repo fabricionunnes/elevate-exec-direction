@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,12 +11,12 @@ import {
   User, 
   Bell, 
   Shield, 
-  Camera,
   Save,
   Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
+import { CircleAvatarUpload } from "@/components/circle/CircleAvatarUpload";
 
 export default function CircleSettingsPage() {
   const { toast } = useToast();
@@ -97,16 +96,17 @@ export default function CircleSettingsPage() {
         <CardContent className="space-y-6">
           {/* Avatar */}
           <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback className="text-2xl">
-                {profile?.display_name?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <Button variant="outline" size="sm">
-              <Camera className="h-4 w-4 mr-2" />
-              Alterar foto
-            </Button>
+            {profile && (
+              <CircleAvatarUpload
+                profileId={profile.id}
+                currentAvatarUrl={profile.avatar_url}
+                displayName={profile.display_name || "U"}
+                size="lg"
+                onAvatarChange={() => {
+                  queryClient.invalidateQueries({ queryKey: ["circle-profile-current"] });
+                }}
+              />
+            )}
           </div>
 
           <div className="space-y-4">
