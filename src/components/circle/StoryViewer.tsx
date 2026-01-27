@@ -9,6 +9,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { StoryInteractions } from "./StoryInteractions";
+import { StoryViewersModal } from "./StoryViewersModal";
 
 interface Story {
   id: string;
@@ -48,6 +49,7 @@ export function StoryViewer({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [viewersModalOpen, setViewersModalOpen] = useState(false);
 
   const currentStory = stories[currentIndex];
 
@@ -259,11 +261,39 @@ export function StoryViewer({
 
           {/* Footer */}
           <div className="p-4 bg-gradient-to-t from-black/50 to-transparent">
-            <div className="flex items-center justify-center gap-2 text-white/70 text-sm">
-              <Eye className="h-4 w-4" />
-              <span>{currentStory.views_count} visualizações</span>
-            </div>
+            {/* Only owner can see who viewed */}
+            {currentStory.profile_id === currentProfileId ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsPaused(true);
+                  setViewersModalOpen(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 text-white/70 hover:text-white text-sm transition-colors"
+              >
+                <Eye className="h-4 w-4" />
+                <span>{currentStory.views_count} visualizações</span>
+              </button>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-white/70 text-sm">
+                <Eye className="h-4 w-4" />
+                <span>{currentStory.views_count} visualizações</span>
+              </div>
+            )}
           </div>
+
+          {/* Viewers Modal (only for story owner) */}
+          {currentStory.profile_id === currentProfileId && (
+            <StoryViewersModal
+              storyId={currentStory.id}
+              open={viewersModalOpen}
+              onOpenChange={(open) => {
+                setViewersModalOpen(open);
+                if (!open) setIsPaused(false);
+              }}
+              onCloseParent={() => onOpenChange(false)}
+            />
+          )}
 
           {/* Story Interactions */}
           <StoryInteractions
