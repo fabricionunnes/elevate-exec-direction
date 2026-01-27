@@ -16,7 +16,8 @@ import {
   Target,
   Lightbulb,
   Plus,
-  History
+  History,
+  Trash2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
@@ -145,6 +146,39 @@ export default function CircleMentorPage() {
     setStreamingContent("");
   };
 
+  const deleteSession = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm("Tem certeza que deseja excluir esta conversa?")) return;
+
+    try {
+      // Delete messages first (due to FK constraint)
+      await supabase
+        .from("circle_mentor_messages")
+        .delete()
+        .eq("session_id", sessionId);
+
+      // Then delete session
+      const { error } = await supabase
+        .from("circle_mentor_sessions")
+        .delete()
+        .eq("id", sessionId);
+
+      if (error) throw error;
+
+      // If deleted current session, reset
+      if (currentSessionId === sessionId) {
+        setCurrentSessionId(null);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["circle-mentor-sessions"] });
+      toast({ title: "Conversa excluída" });
+    } catch (err) {
+      console.error("Delete error:", err);
+      toast({ title: "Erro ao excluir conversa", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -169,23 +203,33 @@ export default function CircleMentorPage() {
                 </div>
               )}
               {sessions?.map((session) => (
-                <button
+                <div
                   key={session.id}
-                  onClick={() => selectSession(session.id)}
                   className={cn(
-                    "w-full text-left p-2 rounded-md text-sm transition-colors",
+                    "group flex items-center justify-between p-2 rounded-md text-sm transition-colors cursor-pointer",
                     currentSessionId === session.id
                       ? "bg-primary/10"
                       : "hover:bg-muted"
                   )}
+                  onClick={() => selectSession(session.id)}
                 >
-                  <div className="font-medium truncate">
-                    {session.session_type === "general" ? "Conversa" : session.session_type}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">
+                      {session.session_type === "general" ? "Conversa" : session.session_type}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(session.created_at).toLocaleDateString("pt-BR")}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(session.created_at).toLocaleDateString("pt-BR")}
-                  </div>
-                </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                    onClick={(e) => deleteSession(session.id, e)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               ))}
             </div>
           </CardContent>
