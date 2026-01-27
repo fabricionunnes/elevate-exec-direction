@@ -11,7 +11,8 @@ import {
   Menu,
   X,
   MessageCircle,
-  Settings
+  Settings,
+  Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ const navItems = [
   { path: "/circle/marketplace", label: "Marketplace", icon: Store },
   { path: "/circle/ranking", label: "Ranking", icon: Trophy },
   { path: "/circle/messages", label: "Mensagens", icon: MessageCircle },
+  { path: "/circle/mentor", label: "Mentor IA", icon: Bot },
 ];
 
 export default function CircleLayout() {

@@ -37,6 +37,7 @@ import { CircleAvatarUpload } from "@/components/circle/CircleAvatarUpload";
 import { CircleCoverUpload } from "@/components/circle/CircleCoverUpload";
 import { StartConversationButton } from "@/components/circle/StartConversationButton";
 import { TrustScoreBadge } from "@/components/circle/TrustScoreBadge";
+import { AreaReputationCard } from "@/components/circle/AreaReputationCard";
 
 export default function CircleProfilePage() {
   const { profileId } = useParams();
@@ -502,6 +503,11 @@ export default function CircleProfilePage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Area Reputation */}
+      {targetProfileId && (
+        <AreaReputationCard profileId={targetProfileId} />
       )}
 
       {/* Content Tabs */}
