@@ -33,6 +33,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CirclePostCard } from "@/components/circle/CirclePostCard";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
+import { SendTestimonialDialog } from "@/components/circle/SendTestimonialDialog";
 
 export default function CircleProfilePage() {
   const { profileId } = useParams();
@@ -392,23 +393,35 @@ export default function CircleProfilePage() {
                   </DialogContent>
                 </Dialog>
               ) : (
-                <Button
-                  onClick={() => followMutation.mutate()}
-                  disabled={followMutation.isPending}
-                  variant={isFollowing ? "outline" : "default"}
-                >
-                  {isFollowing ? (
-                    <>
-                      <UserMinus className="h-4 w-4 mr-2" />
-                      Seguindo
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Seguir
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => followMutation.mutate()}
+                    disabled={followMutation.isPending}
+                    variant={isFollowing ? "outline" : "default"}
+                  >
+                    {isFollowing ? (
+                      <>
+                        <UserMinus className="h-4 w-4 mr-2" />
+                        Seguindo
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Seguir
+                      </>
+                    )}
+                  </Button>
+                  
+                  {/* Send Testimonial Button */}
+                  <SendTestimonialDialog 
+                    recipientProfile={{
+                      id: profile.id,
+                      display_name: profile.display_name,
+                      avatar_url: profile.avatar_url,
+                      company_name: profile.company_name,
+                    }}
+                  />
+                </div>
               )}
             </div>
           </div>

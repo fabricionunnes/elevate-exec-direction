@@ -1,0 +1,246 @@
+import { useState, useEffect, useCallback } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { X, ChevronLeft, ChevronRight, Clock, Eye } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+interface Story {
+  id: string;
+  profile_id: string;
+  content: string | null;
+  media_url: string | null;
+  media_type: string | null;
+  background_color: string | null;
+  views_count: number;
+  expires_at: string;
+  created_at: string;
+  profile: {
+    id: string;
+    display_name: string;
+    avatar_url: string | null;
+  };
+}
+
+interface StoryViewerProps {
+  stories: Story[];
+  initialIndex: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onView?: (story: Story) => void;
+}
+
+export function StoryViewer({ stories, initialIndex, open, onOpenChange, onView }: StoryViewerProps) {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [progress, setProgress] = useState(0);
+
+  const currentStory = stories[currentIndex];
+
+  // Reset index when dialog opens
+  useEffect(() => {
+    if (open) {
+      setCurrentIndex(initialIndex);
+      setProgress(0);
+    }
+  }, [open, initialIndex]);
+
+  // Auto-advance timer
+  useEffect(() => {
+    if (!open) return;
+
+    const duration = 5000; // 5 seconds per story
+    const interval = 50; // Update progress every 50ms
+    const increment = (interval / duration) * 100;
+
+    const timer = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          // Move to next story
+          if (currentIndex < stories.length - 1) {
+            setCurrentIndex(currentIndex + 1);
+            return 0;
+          } else {
+            // Close dialog at end
+            onOpenChange(false);
+            return 100;
+          }
+        }
+        return prev + increment;
+      });
+    }, interval);
+
+    return () => clearInterval(timer);
+  }, [open, currentIndex, stories.length, onOpenChange]);
+
+  // Record view when story changes
+  useEffect(() => {
+    if (open && currentStory && onView) {
+      onView(currentStory);
+    }
+  }, [open, currentStory?.id, onView]);
+
+  const goToPrevious = useCallback(() => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+      setProgress(0);
+    }
+  }, [currentIndex]);
+
+  const goToNext = useCallback(() => {
+    if (currentIndex < stories.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setProgress(0);
+    } else {
+      onOpenChange(false);
+    }
+  }, [currentIndex, stories.length, onOpenChange]);
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!open) return;
+      if (e.key === "ArrowLeft") goToPrevious();
+      if (e.key === "ArrowRight") goToNext();
+      if (e.key === "Escape") onOpenChange(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, goToPrevious, goToNext, onOpenChange]);
+
+  // Handle click navigation (left/right sides)
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width;
+    
+    if (x < width / 3) {
+      goToPrevious();
+    } else if (x > (width * 2) / 3) {
+      goToNext();
+    }
+  };
+
+  if (!currentStory) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm p-0 overflow-hidden bg-transparent border-none">
+        <div
+          className={cn(
+            "aspect-[9/16] flex flex-col relative cursor-pointer select-none",
+            currentStory.background_color || "bg-gradient-to-br from-gray-700 to-gray-900"
+          )}
+          onClick={handleClick}
+        >
+          {/* Progress bars */}
+          <div className="absolute top-2 left-2 right-2 flex gap-1 z-10">
+            {stories.map((_, index) => (
+              <div 
+                key={index} 
+                className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden"
+              >
+                <div
+                  className="h-full bg-white transition-all duration-100"
+                  style={{
+                    width: index < currentIndex 
+                      ? "100%" 
+                      : index === currentIndex 
+                        ? `${progress}%` 
+                        : "0%"
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Header */}
+          <div className="flex items-center gap-3 p-4 pt-6 bg-gradient-to-b from-black/50 to-transparent">
+            <Avatar className="h-10 w-10 ring-2 ring-white">
+              <AvatarImage src={currentStory.profile.avatar_url || undefined} />
+              <AvatarFallback>
+                {currentStory.profile.display_name?.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <p className="text-white font-medium text-sm">
+                {currentStory.profile.display_name}
+              </p>
+              <p className="text-white/70 text-xs flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {formatDistanceToNow(new Date(currentStory.created_at), {
+                  addSuffix: true,
+                  locale: ptBR,
+                })}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/20"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenChange(false);
+              }}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Navigation arrows (visible on hover) */}
+          {currentIndex > 0 && (
+            <button
+              className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white opacity-0 hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                goToPrevious();
+              }}
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+          )}
+          {currentIndex < stories.length - 1 && (
+            <button
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white opacity-0 hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                goToNext();
+              }}
+            >
+              <ChevronRight className="h-6 w-6" />
+            </button>
+          )}
+
+          {/* Content */}
+          <div className="flex-1 flex items-center justify-center p-4">
+            {currentStory.media_url ? (
+              <img 
+                src={currentStory.media_url} 
+                alt="Story"
+                className="max-w-full max-h-full object-contain"
+              />
+            ) : currentStory.content ? (
+              <p className="text-white text-xl text-center font-medium">
+                {currentStory.content}
+              </p>
+            ) : null}
+          </div>
+
+          {/* Footer */}
+          <div className="p-4 bg-gradient-to-t from-black/50 to-transparent">
+            <div className="flex items-center justify-center gap-2 text-white/70 text-sm">
+              <Eye className="h-4 w-4" />
+              <span>{currentStory.views_count} visualizações</span>
+            </div>
+          </div>
+
+          {/* Touch hint indicators */}
+          <div className="absolute inset-y-0 left-0 w-1/3" />
+          <div className="absolute inset-y-0 right-0 w-1/3" />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

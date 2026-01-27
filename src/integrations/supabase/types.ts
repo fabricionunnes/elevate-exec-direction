@@ -3344,6 +3344,7 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
+          image_url: string | null
           is_active: boolean | null
           is_approved: boolean | null
           is_public: boolean | null
@@ -3355,6 +3356,7 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           is_approved?: boolean | null
           is_public?: boolean | null
@@ -3366,6 +3368,7 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           is_approved?: boolean | null
           is_public?: boolean | null
