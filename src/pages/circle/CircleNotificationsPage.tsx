@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
@@ -12,13 +13,16 @@ import {
   Store,
   Camera,
   Users,
-  Check,
-  CheckCheck
+  CheckCheck,
+  AlertCircle,
+  AtSign
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { NavLink } from "react-router-dom";
+import { NotificationFilters } from "@/components/circle/NotificationFilters";
+import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 
 const notificationIcons: Record<string, React.ElementType> = {
   like: Heart,
@@ -28,8 +32,22 @@ const notificationIcons: Record<string, React.ElementType> = {
   listing_contact: Store,
   badge_earned: Award,
   community_invite: Users,
-  mention: MessageSquare,
+  mention: AtSign,
   follow: UserPlus,
+  report: AlertCircle,
+};
+
+const categoryMapping: Record<string, string> = {
+  like: "engagement",
+  comment: "comments",
+  testimonial: "engagement",
+  story_reaction: "engagement",
+  listing_contact: "marketplace",
+  badge_earned: "engagement",
+  community_invite: "community",
+  mention: "mention",
+  follow: "engagement",
+  report: "report",
 };
 
 interface CircleNotification {
@@ -42,6 +60,9 @@ interface CircleNotification {
   reference_type: string | null;
   reference_id: string | null;
   is_read: boolean;
+  priority: string;
+  category: string | null;
+  action_url: string | null;
   created_at: string;
   actor?: {
     id: string;
@@ -52,24 +73,9 @@ interface CircleNotification {
 
 export default function CircleNotificationsPage() {
   const queryClient = useQueryClient();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  // Fetch current profile
-  const { data: currentProfile } = useQuery({
-    queryKey: ["circle-profile-current"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data, error } = await supabase
-        .from("circle_profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: currentProfile } = useCircleCurrentProfile();
 
   // Fetch notifications
   const { data: notifications, isLoading } = useQuery({
@@ -89,7 +95,7 @@ export default function CircleNotificationsPage() {
         `)
         .eq("profile_id", currentProfile.id)
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(100);
 
       if (error) throw error;
       return data as CircleNotification[];
@@ -132,11 +138,20 @@ export default function CircleNotificationsPage() {
     },
   });
 
+  // Filter notifications
+  const filteredNotifications = notifications?.filter((n) => {
+    if (!selectedCategory) return true;
+    const notifCategory = n.category || categoryMapping[n.type] || "engagement";
+    return notifCategory === selectedCategory;
+  });
+
   const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
+  const highPriorityCount = notifications?.filter(n => n.priority === "high" && !n.is_read).length || 0;
 
   const getNotificationLink = (notification: CircleNotification) => {
+    if (notification.action_url) return notification.action_url;
     if (notification.reference_type === "post" && notification.reference_id) {
-      return `/circle`; // TODO: link to specific post
+      return `/circle`;
     }
     if (notification.reference_type === "profile" && notification.actor_profile_id) {
       return `/circle/profile/${notification.actor_profile_id}`;
@@ -152,14 +167,19 @@ export default function CircleNotificationsPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold">Notificações</h1>
-          {unreadCount > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {unreadCount} não lida{unreadCount > 1 ? "s" : ""}
-            </p>
-          )}
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            {unreadCount > 0 && (
+              <span>{unreadCount} não lida{unreadCount > 1 ? "s" : ""}</span>
+            )}
+            {highPriorityCount > 0 && (
+              <span className="text-red-500 font-medium">
+                {highPriorityCount} prioritária{highPriorityCount > 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
         </div>
 
         {unreadCount > 0 && (
@@ -175,11 +195,18 @@ export default function CircleNotificationsPage() {
         )}
       </div>
 
+      {/* Filters */}
+      <NotificationFilters
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+      />
+
       <Card>
         <CardContent className="p-0 divide-y">
-          {notifications && notifications.length > 0 ? (
-            notifications.map((notification) => {
+          {filteredNotifications && filteredNotifications.length > 0 ? (
+            filteredNotifications.map((notification) => {
               const Icon = notificationIcons[notification.type] || Bell;
+              const isHighPriority = notification.priority === "high";
 
               return (
                 <NavLink
@@ -187,7 +214,8 @@ export default function CircleNotificationsPage() {
                   to={getNotificationLink(notification)}
                   className={cn(
                     "flex items-start gap-3 p-4 hover:bg-muted transition-colors",
-                    !notification.is_read && "bg-primary/5"
+                    !notification.is_read && "bg-primary/5",
+                    isHighPriority && !notification.is_read && "bg-red-500/5 border-l-2 border-red-500"
                   )}
                   onClick={() => {
                     if (!notification.is_read) {
@@ -204,8 +232,14 @@ export default function CircleNotificationsPage() {
                       </AvatarFallback>
                     </Avatar>
                   ) : (
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Icon className="h-5 w-5 text-primary" />
+                    <div className={cn(
+                      "h-10 w-10 rounded-full flex items-center justify-center",
+                      isHighPriority ? "bg-red-500/10" : "bg-primary/10"
+                    )}>
+                      <Icon className={cn(
+                        "h-5 w-5",
+                        isHighPriority ? "text-red-500" : "text-primary"
+                      )} />
                     </div>
                   )}
 
@@ -227,7 +261,10 @@ export default function CircleNotificationsPage() {
                   </div>
 
                   {!notification.is_read && (
-                    <div className="h-2 w-2 rounded-full bg-primary" />
+                    <div className={cn(
+                      "h-2 w-2 rounded-full",
+                      isHighPriority ? "bg-red-500" : "bg-primary"
+                    )} />
                   )}
                 </NavLink>
               );
@@ -235,7 +272,7 @@ export default function CircleNotificationsPage() {
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhuma notificação</p>
+              <p>Nenhuma notificação{selectedCategory ? " nesta categoria" : ""}</p>
             </div>
           )}
         </CardContent>
