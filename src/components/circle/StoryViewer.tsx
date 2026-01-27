@@ -270,13 +270,13 @@ export function StoryViewer({
           )}
 
           {/* Content */}
-          <div className="flex-1 flex items-center justify-center p-4">
+          <div className="flex-1 flex items-center justify-center overflow-hidden">
             {currentStory.media_url && currentStory.media_type === "video" ? (
-              <div className="relative w-full h-full flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center">
                 <video 
                   ref={videoRef}
                   src={currentStory.media_url} 
-                  className="max-w-full max-h-full object-contain"
+                  className="w-full h-full object-cover"
                   autoPlay
                   muted={isMuted}
                   playsInline
@@ -290,7 +290,7 @@ export function StoryViewer({
                     e.stopPropagation();
                     setIsMuted(!isMuted);
                   }}
-                  className="absolute bottom-2 right-2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+                  className="absolute bottom-20 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors z-20"
                 >
                   {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                 </button>
@@ -299,10 +299,10 @@ export function StoryViewer({
               <img 
                 src={currentStory.media_url} 
                 alt="Story"
-                className="max-w-full max-h-full object-contain"
+                className="absolute inset-0 w-full h-full object-cover"
               />
             ) : currentStory.content ? (
-              <p className="text-white text-xl text-center font-medium">
+              <p className="text-white text-xl text-center font-medium p-4">
                 {currentStory.content}
               </p>
             ) : null}
