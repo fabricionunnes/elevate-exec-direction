@@ -51,7 +51,7 @@ export function StoryViewer({
   const [isPaused, setIsPaused] = useState(false);
   const [viewersModalOpen, setViewersModalOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false); // Start with sound ON
-  const [isVideoRotated, setIsVideoRotated] = useState(false);
+  const [isVideoLandscape, setIsVideoLandscape] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const currentStory = stories[currentIndex];
@@ -66,7 +66,7 @@ export function StoryViewer({
       setProgress(0);
       setIsPaused(false);
       setIsMuted(false); // Start with sound ON
-      setIsVideoRotated(false);
+      setIsVideoLandscape(false);
     }
   }, [open, initialIndex]);
 
@@ -279,10 +279,10 @@ export function StoryViewer({
                   ref={videoRef}
                   src={currentStory.media_url} 
                   className={cn(
-                    isVideoRotated ? "h-full w-auto" : "max-w-full max-h-full w-auto h-auto",
-                    // If the recorded file came in landscape (common on some Android devices),
-                    // rotate it to match the vertical Story frame without distorting.
-                    isVideoRotated && "origin-center"
+                    "w-full h-full",
+                    // Stories are ALWAYS vertical. Portrait videos fill the frame;
+                    // landscape videos are letterboxed (no crop/distortion).
+                    isVideoLandscape ? "object-contain" : "object-cover"
                   )}
                   autoPlay
                   muted={isMuted}
@@ -290,21 +290,17 @@ export function StoryViewer({
                   onLoadedMetadata={() => {
                     const v = videoRef.current;
                     if (!v || !Number.isFinite(v.videoWidth) || !Number.isFinite(v.videoHeight)) return;
-                    // If the encoded pixels are landscape but we are inside a portrait story frame,
-                    // rotate to match what the user recorded.
-                    setIsVideoRotated(v.videoWidth > v.videoHeight);
+                    // Use intrinsic pixels to decide how to fit (cover for portrait, contain for landscape).
+                    setIsVideoLandscape(v.videoWidth > v.videoHeight);
+                    console.debug("[StoryViewer] video metadata", {
+                      videoWidth: v.videoWidth,
+                      videoHeight: v.videoHeight,
+                      isLandscape: v.videoWidth > v.videoHeight,
+                    });
                   }}
                   onTimeUpdate={handleVideoTimeUpdate}
                   onEnded={handleVideoEnded}
                   onClick={(e) => e.stopPropagation()}
-                  style={
-                    isVideoRotated
-                      ? {
-                          transform: "rotate(90deg)",
-                          transformOrigin: "center",
-                        }
-                      : undefined
-                  }
                 />
                 {/* Mute/Unmute button */}
                 <button

@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 import { StoryViewer } from "@/components/circle/StoryViewer";
 import { StoryCameraRecorder } from "@/components/circle/StoryCameraRecorder";
+import { normalizeStoryVideo, type StoryVideoMeta } from "@/lib/video/normalizeStoryVideo";
 
 const backgroundColors = [
   "bg-gradient-to-br from-violet-500 to-pink-500",
@@ -53,6 +54,9 @@ export default function CircleStoriesPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [videoMeta, setVideoMeta] = useState<StoryVideoMeta | null>(null);
+  const [isNormalizingVideo, setIsNormalizingVideo] = useState(false);
+  const [normalizeProgress, setNormalizeProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showRecorder, setShowRecorder] = useState(false);
@@ -125,19 +129,56 @@ export default function CircleStoriesPage() {
   };
 
   // Handle video selection
-  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 50 * 1024 * 1024) {
-        toast({ title: "Vídeo muito grande. Máximo 50MB.", variant: "destructive" });
-        return;
+    if (!file) return;
+
+    if (file.size > 50 * 1024 * 1024) {
+      toast({ title: "Vídeo muito grande. Máximo 50MB.", variant: "destructive" });
+      return;
+    }
+    if (!file.type.startsWith("video/")) {
+      toast({ title: "Selecione um arquivo de vídeo.", variant: "destructive" });
+      return;
+    }
+
+    // Clear previous
+    if (videoPreview) URL.revokeObjectURL(videoPreview);
+    setSelectedVideo(null);
+    setVideoPreview(null);
+    setVideoMeta(null);
+
+    // Normalize BEFORE upload to avoid relying on rotation metadata.
+    setIsNormalizingVideo(true);
+    setNormalizeProgress(0);
+
+    try {
+      const { file: normalizedFile, meta, wasNormalized } = await normalizeStoryVideo(file, {
+        onProgress: (p) => setNormalizeProgress(Math.round(p * 100)),
+        logger: (line) => {
+          // Keep logs available for debugging.
+          if (line.toLowerCase().includes("rotate") || line.toLowerCase().includes("stream")) {
+            console.debug("[StoryVideoNormalize]", line);
+          }
+        },
+      });
+
+      setVideoMeta(meta);
+      setSelectedVideo(normalizedFile);
+      setVideoPreview(URL.createObjectURL(normalizedFile));
+
+      if (wasNormalized) {
+        toast({ title: "Vídeo ajustado automaticamente (orientação corrigida)." });
       }
-      if (!file.type.startsWith("video/")) {
-        toast({ title: "Selecione um arquivo de vídeo.", variant: "destructive" });
-        return;
-      }
-      setSelectedVideo(file);
-      setVideoPreview(URL.createObjectURL(file));
+    } catch (err) {
+      console.error("Video normalization error:", err);
+      toast({
+        title: "Erro de orientação do vídeo. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsNormalizingVideo(false);
+      setNormalizeProgress(0);
     }
   };
 
@@ -147,6 +188,7 @@ export default function CircleStoriesPage() {
     }
     setSelectedVideo(null);
     setVideoPreview(null);
+    setVideoMeta(null);
     if (videoInputRef.current) {
       videoInputRef.current.value = "";
     }
@@ -181,7 +223,7 @@ export default function CircleStoriesPage() {
         mediaUrl = publicUrl.publicUrl;
       }
 
-      // Upload video if selected
+      // Upload video if selected (already normalized)
       if (storyType === "video" && selectedVideo) {
         const fileExt = selectedVideo.name.split(".").pop();
         const fileName = `${currentProfile.id}/stories/${Date.now()}.${fileExt}`;
@@ -451,13 +493,30 @@ export default function CircleStoriesPage() {
                         muted
                         loop
                       />
+                      {videoMeta && (
+                        <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md">
+                          {videoMeta.orientation === "portrait" ? "Vertical" : "Horizontal"}
+                          {" · "}
+                          {videoMeta.width}×{videoMeta.height}
+                        </div>
+                      )}
                       <button
                         onClick={clearVideo}
-                        disabled={isUploading}
+                        disabled={isUploading || isNormalizingVideo}
                         className="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
                       >
                         <X className="h-4 w-4 text-white" />
                       </button>
+                    </div>
+                  )}
+
+                  {isNormalizingVideo && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Ajustando orientação...</span>
+                        <span className="font-medium">{normalizeProgress}%</span>
+                      </div>
+                      <Progress value={normalizeProgress} />
                     </div>
                   )}
                 </div>
@@ -481,6 +540,7 @@ export default function CircleStoriesPage() {
                     (storyType === "text" && !content.trim()) ||
                     (storyType === "image" && !selectedImage) ||
                     (storyType === "video" && !selectedVideo) ||
+                    isNormalizingVideo ||
                     createStoryMutation.isPending ||
                     isUploading
                   }
