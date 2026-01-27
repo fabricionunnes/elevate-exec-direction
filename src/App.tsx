@@ -72,6 +72,7 @@ import CircleCommunityDetailPage from "./pages/circle/CircleCommunityDetailPage"
 import CircleSettingsPage from "./pages/circle/CircleSettingsPage";
 import CircleMessagesPage from "./components/circle/CircleMessagesPage";
 import CircleMentorPage from "./pages/circle/CircleMentorPage";
+import CircleSavedPostsPage from "./pages/circle/CircleSavedPostsPage";
 // Onboarding pages
 import OnboardingPage from "./pages/OnboardingPage";
 import OnboardingProductPage from "./pages/OnboardingProductPage";
@@ -325,6 +326,7 @@ const App = () => (
               <Route path="notifications" element={<CircleNotificationsPage />} />
               <Route path="settings" element={<CircleSettingsPage />} />
               <Route path="messages" element={<CircleMessagesPage />} />
+              <Route path="saved" element={<CircleSavedPostsPage />} />
               <Route path="mentor" element={<CircleMentorPage />} />
             </Route>
             
