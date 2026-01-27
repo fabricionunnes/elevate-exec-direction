@@ -61,14 +61,20 @@ export function StartConversationButton({
       if (convError) throw convError;
 
       // Add both participants
-      const { error: partError } = await supabase
+      // IMPORTANT: insert the current user first, then the target user.
+      // RLS checks run per-row; inserting both at once can fail for the 2nd row
+      // because membership isn't established yet.
+      const { error: partSelfError } = await supabase
         .from("circle_conversation_participants")
-        .insert([
-          { conversation_id: newConversation.id, profile_id: currentProfileId },
-          { conversation_id: newConversation.id, profile_id: targetProfileId },
-        ]);
+        .insert({ conversation_id: newConversation.id, profile_id: currentProfileId });
 
-      if (partError) throw partError;
+      if (partSelfError) throw partSelfError;
+
+      const { error: partTargetError } = await supabase
+        .from("circle_conversation_participants")
+        .insert({ conversation_id: newConversation.id, profile_id: targetProfileId });
+
+      if (partTargetError) throw partTargetError;
 
       queryClient.invalidateQueries({ queryKey: ["circle-conversations"] });
       navigate(`/circle/messages?conversation=${newConversation.id}`);
