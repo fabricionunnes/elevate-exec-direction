@@ -1,5 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
+import { User } from "@supabase/supabase-js";
 
 type CircleProfile = {
   id: string;
@@ -23,19 +25,43 @@ function deriveDisplayNameFromEmail(email?: string | null) {
 }
 
 export function useCircleCurrentProfile() {
-  return useQuery({
-    queryKey: ["circle-profile-current"],
-    queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  const queryClient = useQueryClient();
+  const [authUser, setAuthUser] = useState<User | null | undefined>(undefined);
 
-      if (!user) return null;
+  // Listen for auth state changes to properly track user
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAuthUser(session?.user ?? null);
+    });
+
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        const newUser = session?.user ?? null;
+        setAuthUser(newUser);
+        
+        // Invalidate profile query when auth changes
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          queryClient.invalidateQueries({ queryKey: ["circle-profile-current"] });
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [queryClient]);
+
+  return useQuery({
+    queryKey: ["circle-profile-current", authUser?.id],
+    queryFn: async () => {
+      // Wait for auth to be determined
+      if (authUser === undefined) return null;
+      if (!authUser) return null;
 
       const { data: existing, error: existingError } = await supabase
         .from("circle_profiles")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", authUser.id)
         .maybeSingle();
 
       if (existingError) throw existingError;
@@ -46,28 +72,28 @@ export function useCircleCurrentProfile() {
         supabase
           .from("onboarding_staff")
           .select("name, role")
-          .eq("user_id", user.id)
+          .eq("user_id", authUser.id)
           .maybeSingle(),
         supabase
           .from("onboarding_users")
           .select("name, role")
-          .eq("user_id", user.id)
+          .eq("user_id", authUser.id)
           .maybeSingle(),
       ]);
 
       const displayName =
         staffRes.data?.name ||
         onboardingUserRes.data?.name ||
-        (user.user_metadata as any)?.display_name ||
-        (user.user_metadata as any)?.full_name ||
-        deriveDisplayNameFromEmail(user.email);
+        (authUser.user_metadata as any)?.display_name ||
+        (authUser.user_metadata as any)?.full_name ||
+        deriveDisplayNameFromEmail(authUser.email);
 
       const roleTitle = staffRes.data?.role || onboardingUserRes.data?.role || null;
 
       const { data: created, error: createError } = await supabase
         .from("circle_profiles")
         .insert({
-          user_id: user.id,
+          user_id: authUser.id,
           display_name: displayName,
           role_title: roleTitle,
           total_points: 0,
@@ -81,5 +107,10 @@ export function useCircleCurrentProfile() {
       if (createError) throw createError;
       return created as CircleProfile;
     },
+    // Only run when we know the auth state (not undefined)
+    enabled: authUser !== undefined,
+    // Keep data fresh but don't refetch too aggressively
+    staleTime: 30000,
+    gcTime: 60000,
   });
 }
