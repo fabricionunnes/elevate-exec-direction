@@ -269,14 +269,15 @@ export function StoryViewer({
             </button>
           )}
 
-          {/* Content */}
-          <div className="flex-1 flex items-center justify-center overflow-hidden">
+          {/* Content - full screen media container */}
+          <div className="absolute inset-0 z-0">
             {currentStory.media_url && currentStory.media_type === "video" ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-black">
+              <>
                 <video 
                   ref={videoRef}
                   src={currentStory.media_url} 
-                    className="absolute inset-0 h-full w-full object-cover object-center"
+                  className="absolute inset-0 h-full w-full object-cover"
+                  style={{ objectPosition: 'center center' }}
                   autoPlay
                   muted={isMuted}
                   playsInline
@@ -294,19 +295,25 @@ export function StoryViewer({
                 >
                   {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                 </button>
-              </div>
+              </>
             ) : currentStory.media_url ? (
               <img 
                 src={currentStory.media_url} 
                 alt="Story"
-                className="absolute inset-0 h-full w-full object-cover object-center bg-black"
+                className="absolute inset-0 h-full w-full object-cover"
+                style={{ objectPosition: 'center center' }}
               />
             ) : currentStory.content ? (
-              <p className="text-white text-xl text-center font-medium p-4">
-                {currentStory.content}
-              </p>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <p className="text-white text-xl text-center font-medium p-4">
+                  {currentStory.content}
+                </p>
+              </div>
             ) : null}
           </div>
+          
+          {/* Spacer for content area */}
+          <div className="flex-1" />
 
           {/* Footer */}
           <div className="p-4 bg-gradient-to-t from-black/50 to-transparent">
