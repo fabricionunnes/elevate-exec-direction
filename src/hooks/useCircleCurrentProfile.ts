@@ -58,6 +58,7 @@ export function useCircleCurrentProfile() {
       const displayName =
         staffRes.data?.name ||
         onboardingUserRes.data?.name ||
+        (user.user_metadata as any)?.display_name ||
         (user.user_metadata as any)?.full_name ||
         deriveDisplayNameFromEmail(user.email);
 

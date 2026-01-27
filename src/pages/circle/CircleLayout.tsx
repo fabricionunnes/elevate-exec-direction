@@ -204,11 +204,13 @@ export default function CircleLayout() {
           <div className="max-w-md mx-auto text-center py-12 sm:py-16 space-y-4 px-4">
             <h1 className="text-xl sm:text-2xl font-bold">Entre para acessar o UNV Circle</h1>
             <p className="text-sm sm:text-base text-muted-foreground">
-              Você precisa estar logado para criar posts, comunidades e anúncios.
+              Faça login ou crie uma conta para participar da comunidade.
             </p>
-            <Button onClick={() => navigate(`/onboarding-tasks/login?redirect=${encodeURIComponent(location.pathname)}`)}>
-              Fazer login
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <Button onClick={() => navigate(`/circle/auth?redirect=${encodeURIComponent(location.pathname)}`)}>
+                Entrar ou Criar conta
+              </Button>
+            </div>
           </div>
         ) : (
           <Outlet />

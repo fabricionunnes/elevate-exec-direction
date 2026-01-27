@@ -74,6 +74,7 @@ import CircleMessagesPage from "./components/circle/CircleMessagesPage";
 import CircleMentorPage from "./pages/circle/CircleMentorPage";
 import CircleSavedPostsPage from "./pages/circle/CircleSavedPostsPage";
 import CircleAdsPage from "./pages/circle/CircleAdsPage";
+import CircleAuthPage from "./pages/circle/CircleAuthPage";
 // Onboarding pages
 import OnboardingPage from "./pages/OnboardingPage";
 import OnboardingProductPage from "./pages/OnboardingProductPage";
@@ -315,6 +316,7 @@ const App = () => (
             <Route path="/sistema" element={<SystemShowcasePage />} />
             
             {/* UNV Circle - Social Network */}
+            <Route path="/circle/auth" element={<CircleAuthPage />} />
             <Route path="/circle" element={<CircleLayout />}>
               <Route index element={<CircleFeedPage />} />
               <Route path="stories" element={<CircleStoriesPage />} />
