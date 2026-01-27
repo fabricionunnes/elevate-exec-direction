@@ -1,19 +1,16 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Camera, Image, Type, X, Eye, Clock } from "lucide-react";
+import { Plus, Image, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
+import { StoryViewer } from "@/components/circle/StoryViewer";
 
 const backgroundColors = [
   "bg-gradient-to-br from-violet-500 to-pink-500",
@@ -45,8 +42,8 @@ export default function CircleStoriesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [selectedStory, setSelectedStory] = useState<Story | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
   const [storyType, setStoryType] = useState<"text" | "image">("text");
   const [content, setContent] = useState("");
   const [selectedBg, setSelectedBg] = useState(backgroundColors[0]);
@@ -77,18 +74,23 @@ export default function CircleStoriesPage() {
     },
   });
 
-  // Group stories by profile
-  const groupedStories = stories?.reduce((acc, story) => {
-    const profileId = story.profile_id;
-    if (!acc[profileId]) {
-      acc[profileId] = {
-        profile: story.profile,
-        stories: [],
-      };
-    }
-    acc[profileId].stories.push(story);
-    return acc;
-  }, {} as Record<string, { profile: Story["profile"]; stories: Story[] }>);
+  // Flatten all stories for the viewer
+  const allStories = useMemo(() => stories || [], [stories]);
+
+  // Group stories by profile for display
+  const groupedStories = useMemo(() => {
+    return stories?.reduce((acc, story) => {
+      const profileId = story.profile_id;
+      if (!acc[profileId]) {
+        acc[profileId] = {
+          profile: story.profile,
+          stories: [],
+        };
+      }
+      acc[profileId].stories.push(story);
+      return acc;
+    }, {} as Record<string, { profile: Story["profile"]; stories: Story[] }>);
+  }, [stories]);
 
   // Create story mutation
   const createStoryMutation = useMutation({
@@ -120,9 +122,13 @@ export default function CircleStoriesPage() {
   });
 
   const handleViewStory = (story: Story) => {
-    setSelectedStory(story);
-    setViewDialogOpen(true);
+    // Find the index in the flat list
+    const index = allStories.findIndex(s => s.id === story.id);
+    setViewerInitialIndex(index >= 0 ? index : 0);
+    setViewerOpen(true);
+  };
 
+  const handleRecordView = (story: Story) => {
     // Record view
     if (currentProfile?.id && story.profile_id !== currentProfile.id) {
       supabase
@@ -286,66 +292,14 @@ export default function CircleStoriesPage() {
         ))}
       </div>
 
-      {/* View Story Dialog */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-sm p-0 overflow-hidden">
-          {selectedStory && (
-            <div
-              className={cn(
-                "aspect-[9/16] flex flex-col",
-                selectedStory.background_color || "bg-gradient-to-br from-gray-700 to-gray-900"
-              )}
-            >
-              {/* Header */}
-              <div className="flex items-center gap-3 p-4 bg-gradient-to-b from-black/50 to-transparent">
-                <Avatar className="h-10 w-10 ring-2 ring-white">
-                  <AvatarImage src={selectedStory.profile.avatar_url || undefined} />
-                  <AvatarFallback>
-                    {selectedStory.profile.display_name?.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="text-white font-medium text-sm">
-                    {selectedStory.profile.display_name}
-                  </p>
-                  <p className="text-white/70 text-xs flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {formatDistanceToNow(new Date(selectedStory.created_at), {
-                      addSuffix: true,
-                      locale: ptBR,
-                    })}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white/20"
-                  onClick={() => setViewDialogOpen(false)}
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 flex items-center justify-center p-4">
-                {selectedStory.content && (
-                  <p className="text-white text-xl text-center font-medium">
-                    {selectedStory.content}
-                  </p>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="p-4 bg-gradient-to-t from-black/50 to-transparent">
-                <div className="flex items-center justify-center gap-2 text-white/70 text-sm">
-                  <Eye className="h-4 w-4" />
-                  <span>{selectedStory.views_count} visualizações</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Story Viewer - Instagram style */}
+      <StoryViewer
+        stories={allStories}
+        initialIndex={viewerInitialIndex}
+        open={viewerOpen}
+        onOpenChange={setViewerOpen}
+        onView={handleRecordView}
+      />
     </div>
   );
 }
