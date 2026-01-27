@@ -39,6 +39,7 @@ import { StartConversationButton } from "@/components/circle/StartConversationBu
 import { TrustScoreBadge } from "@/components/circle/TrustScoreBadge";
 import { AreaReputationCard } from "@/components/circle/AreaReputationCard";
 import { PendingTestimonialsCard } from "@/components/circle/PendingTestimonialsCard";
+import { FollowersFollowingModal } from "@/components/circle/FollowersFollowingModal";
 
 export default function CircleProfilePage() {
   const { profileId } = useParams();
@@ -468,14 +469,28 @@ export default function CircleProfilePage() {
               <p className="text-2xl font-bold">{stats?.posts || 0}</p>
               <p className="text-sm text-muted-foreground">Posts</p>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold">{stats?.followers || 0}</p>
-              <p className="text-sm text-muted-foreground">Seguidores</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold">{stats?.following || 0}</p>
-              <p className="text-sm text-muted-foreground">Seguindo</p>
-            </div>
+            <FollowersFollowingModal
+              profileId={targetProfileId!}
+              defaultTab="followers"
+              followersCount={stats?.followers || 0}
+              followingCount={stats?.following || 0}
+            >
+              <button className="text-center hover:opacity-70 transition-opacity">
+                <p className="text-2xl font-bold">{stats?.followers || 0}</p>
+                <p className="text-sm text-muted-foreground">Seguidores</p>
+              </button>
+            </FollowersFollowingModal>
+            <FollowersFollowingModal
+              profileId={targetProfileId!}
+              defaultTab="following"
+              followersCount={stats?.followers || 0}
+              followingCount={stats?.following || 0}
+            >
+              <button className="text-center hover:opacity-70 transition-opacity">
+                <p className="text-2xl font-bold">{stats?.following || 0}</p>
+                <p className="text-sm text-muted-foreground">Seguindo</p>
+              </button>
+            </FollowersFollowingModal>
           </div>
         </CardContent>
       </Card>

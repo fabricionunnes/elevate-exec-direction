@@ -45,7 +45,7 @@ export function CommunityPostForm({ communityId, communitySlug, currentProfile }
         content: content.trim() || null,
         media_urls: mediaUrls.length > 0 ? mediaUrls : null,
         media_type: mediaType,
-        post_type: "text",
+        post_type: "regular",
       });
 
       if (error) throw error;
