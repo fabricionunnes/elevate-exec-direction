@@ -15071,6 +15071,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_add_circle_participant: {
+        Args: { check_conversation_id: string; check_profile_id: string }
+        Returns: boolean
+      }
       can_user_boost: { Args: { check_profile_id: string }; Returns: Json }
       check_notice_period_ending: { Args: never; Returns: undefined }
       circle_add_points: {
