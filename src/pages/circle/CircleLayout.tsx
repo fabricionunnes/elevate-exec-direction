@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 import { FloatingChatBubble } from "@/components/circle/FloatingChatBubble";
+import { isCircleOnlyMode } from "@/lib/domainRouting";
 import unvCircleLogo from "@/assets/unv-circle-logo.png";
 
 const navItems = [
@@ -42,6 +43,7 @@ export default function CircleLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isCircleOnly = isCircleOnlyMode();
 
   // Fetch (and ensure) current user's circle profile
   const { data: profile, isLoading: profileLoading } = useCircleCurrentProfile();
@@ -144,12 +146,14 @@ export default function CircleLayout() {
                 </Button>
               </NavLink>
 
-              {/* Back to Nexus */}
-              <NavLink to="/" className="hidden md:block">
-                <Button variant="outline" size="sm" className="text-xs sm:text-sm">
-                  Voltar ao Nexus
-                </Button>
-              </NavLink>
+              {/* Back to Nexus - hidden on Circle-only domain */}
+              {!isCircleOnly && (
+                <NavLink to="/" className="hidden md:block">
+                  <Button variant="outline" size="sm" className="text-xs sm:text-sm">
+                    Voltar ao Nexus
+                  </Button>
+                </NavLink>
+              )}
 
               {/* Mobile Menu */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -171,14 +175,16 @@ export default function CircleLayout() {
                         <Settings className="h-4 w-4" />
                         <span>Configurações</span>
                       </NavLink>
-                      <NavLink 
-                        to="/" 
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        <X className="h-4 w-4" />
-                        <span>Voltar ao Nexus</span>
-                      </NavLink>
+                      {!isCircleOnly && (
+                        <NavLink 
+                          to="/" 
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          <X className="h-4 w-4" />
+                          <span>Voltar ao Nexus</span>
+                        </NavLink>
+                      )}
                     </div>
                   </div>
                 </SheetContent>

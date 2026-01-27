@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { isCircleDomain } from "./lib/domainRouting";
 
 // Redirect non-hash deep links to hash equivalents for public routes.
 // IMPORTANT: some apps (WhatsApp/Instagram) may drop URL fragments (#/...).
@@ -35,6 +36,23 @@ const forceHashRoute = (routePath: string, query: string) => {
   // Force navigation immediately - always redirect for public routes
   window.location.replace(target);
 };
+
+// Domain-based routing: If accessing from Circle domain, redirect to /circle
+if (isCircleDomain()) {
+  const currentHash = window.location.hash;
+  // If no hash or hash is just "/" or "#/", redirect to Circle
+  if (!currentHash || currentHash === "#" || currentHash === "#/" || currentHash === "#") {
+    window.location.replace(`${window.location.origin}/#/circle`);
+  }
+  // If hash doesn't start with #/circle, redirect to Circle
+  else if (!currentHash.startsWith("#/circle")) {
+    // Allow public routes even on Circle domain
+    const isPublicRoute = publicRoutes.some(route => currentHash.includes(route));
+    if (!isPublicRoute) {
+      window.location.replace(`${window.location.origin}/#/circle`);
+    }
+  }
+}
 
 // Query-based public links (most robust for sharing)
 if (publicParam) {
