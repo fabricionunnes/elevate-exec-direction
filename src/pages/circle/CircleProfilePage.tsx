@@ -38,6 +38,7 @@ import { CircleCoverUpload } from "@/components/circle/CircleCoverUpload";
 import { StartConversationButton } from "@/components/circle/StartConversationButton";
 import { TrustScoreBadge } from "@/components/circle/TrustScoreBadge";
 import { AreaReputationCard } from "@/components/circle/AreaReputationCard";
+import { PendingTestimonialsCard } from "@/components/circle/PendingTestimonialsCard";
 
 export default function CircleProfilePage() {
   const { profileId } = useParams();
@@ -508,6 +509,11 @@ export default function CircleProfilePage() {
       {/* Area Reputation */}
       {targetProfileId && (
         <AreaReputationCard profileId={targetProfileId} />
+      )}
+
+      {/* Pending Testimonials - only show on own profile */}
+      {isOwnProfile && targetProfileId && (
+        <PendingTestimonialsCard profileId={targetProfileId} />
       )}
 
       {/* Content Tabs */}
