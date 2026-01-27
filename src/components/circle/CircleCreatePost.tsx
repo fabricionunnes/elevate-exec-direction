@@ -5,8 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { Image, Video, Smile, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Image, Video, Smile, X, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AIQualityAssistant } from "./AIQualityAssistant";
 
 interface CircleCreatePostProps {
   profile: {
@@ -26,6 +28,8 @@ export function CircleCreatePost({ profile, communityId, onPostCreated }: Circle
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [contentArea, setContentArea] = useState<string>("");
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,6 +66,8 @@ export function CircleCreatePost({ profile, communityId, onPostCreated }: Circle
     setSelectedImages([]);
     setImagePreviews([]);
     setContent("");
+    setContentArea("");
+    setShowAIAssistant(false);
     setIsExpanded(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -98,6 +104,7 @@ export function CircleCreatePost({ profile, communityId, onPostCreated }: Circle
         media_type: mediaUrls.length > 0 ? "image" : null,
         community_id: communityId || null,
         post_type: "regular",
+        content_area: contentArea || null,
       });
 
       if (error) throw error;
@@ -171,6 +178,42 @@ export function CircleCreatePost({ profile, communityId, onPostCreated }: Circle
                       </div>
                     ))}
                   </div>
+                )}
+
+                {/* Content Area Selector */}
+                <div className="flex items-center gap-2">
+                  <Select value={contentArea} onValueChange={setContentArea}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Área (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="vendas">Vendas</SelectItem>
+                      <SelectItem value="gestao">Gestão</SelectItem>
+                      <SelectItem value="marketing">Marketing</SelectItem>
+                      <SelectItem value="rh">RH</SelectItem>
+                      <SelectItem value="tech">Tech</SelectItem>
+                      <SelectItem value="financeiro">Financeiro</SelectItem>
+                      <SelectItem value="lideranca">Liderança</SelectItem>
+                      <SelectItem value="atendimento">Atendimento</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAIAssistant(!showAIAssistant)}
+                    className="gap-1"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    IA
+                  </Button>
+                </div>
+
+                {/* AI Quality Assistant */}
+                {showAIAssistant && content.length >= 10 && (
+                  <AIQualityAssistant 
+                    content={content} 
+                    onApplySuggestion={(tag) => setContent(content + " " + tag)}
+                  />
                 )}
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
