@@ -276,7 +276,7 @@ export function StoryViewer({
                 <video 
                   ref={videoRef}
                   src={currentStory.media_url} 
-                  className="max-w-full max-h-full w-auto h-auto object-contain"
+                    className="absolute inset-0 h-full w-full object-cover object-center"
                   autoPlay
                   muted={isMuted}
                   playsInline
@@ -299,7 +299,7 @@ export function StoryViewer({
               <img 
                 src={currentStory.media_url} 
                 alt="Story"
-                className="absolute inset-0 w-full h-full object-contain bg-black"
+                className="absolute inset-0 h-full w-full object-cover object-center bg-black"
               />
             ) : currentStory.content ? (
               <p className="text-white text-xl text-center font-medium p-4">
