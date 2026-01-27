@@ -15076,6 +15076,10 @@ export type Database = {
         Returns: boolean
       }
       can_user_boost: { Args: { check_profile_id: string }; Returns: Json }
+      check_and_award_circle_badges: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
       check_notice_period_ending: { Args: never; Returns: undefined }
       circle_add_points: {
         Args: {
