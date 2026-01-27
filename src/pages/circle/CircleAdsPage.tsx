@@ -4,15 +4,33 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCircleCurrentProfile } from "@/hooks/useCircleCurrentProfile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, TrendingUp, Eye, MousePointer, Wallet, AlertTriangle } from "lucide-react";
+import { 
+  Plus, 
+  TrendingUp, 
+  Eye, 
+  Wallet, 
+  AlertTriangle, 
+  Sparkles,
+  Users,
+  Shield,
+  Gavel,
+  Lock,
+  BarChart3,
+  Package
+} from "lucide-react";
 import { CircleAdsCampaignsList } from "@/components/circle/ads/CircleAdsCampaignsList";
 import { CircleAdsCreateCampaign } from "@/components/circle/ads/CircleAdsCreateCampaign";
 import { CircleAdsDashboard } from "@/components/circle/ads/CircleAdsDashboard";
 import { CircleAdsWallet } from "@/components/circle/ads/CircleAdsWallet";
 import { CircleAdsModeration } from "@/components/circle/ads/CircleAdsModeration";
-import { useCircleTrustConfig } from "@/hooks/useCircleTrustScore";
+import { AudienceBuilder } from "@/components/circle/ads/AudienceBuilder";
+import { TrustScorePricing } from "@/components/circle/ads/TrustScorePricing";
+import { CircleAdsAI } from "@/components/circle/ads/CircleAdsAI";
+import { MediaPackages } from "@/components/circle/ads/MediaPackages";
+import { AuctionHistory } from "@/components/circle/ads/AuctionHistory";
+import { PrivacySettings } from "@/components/circle/ads/PrivacySettings";
 
 export default function CircleAdsPage() {
   const { data: profile } = useCircleCurrentProfile();
@@ -72,7 +90,7 @@ export default function CircleAdsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 px-2 sm:px-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -80,7 +98,7 @@ export default function CircleAdsPage() {
             Circle Ads
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Crie e gerencie suas campanhas de anúncios
+            Plataforma completa de mídia e anúncios
           </p>
         </div>
 
@@ -119,7 +137,7 @@ export default function CircleAdsPage() {
 
       {/* Quick Stats */}
       {canAdvertise?.allowed && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
@@ -157,7 +175,7 @@ export default function CircleAdsPage() {
                   <Eye className="h-4 w-4 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Campanhas Ativas</p>
+                  <p className="text-xs text-muted-foreground">Campanhas</p>
                   <p className="text-lg font-bold">
                     {canAdvertise.active_campaigns || 0}/{canAdvertise.max_campaigns || 5}
                   </p>
@@ -170,12 +188,13 @@ export default function CircleAdsPage() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg">
-                  <MousePointer className="h-4 w-4 text-pink-600" />
+                  <Shield className="h-4 w-4 text-pink-600" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Desconto</p>
                   <p className="text-lg font-bold">
-                    {(canAdvertise.trust_score || 0) >= 70 ? "20%" : "0%"}
+                    {(canAdvertise.trust_score || 0) >= 80 ? "30%" : 
+                     (canAdvertise.trust_score || 0) >= 60 ? "15%" : "0%"}
                   </p>
                 </div>
               </div>
@@ -184,14 +203,47 @@ export default function CircleAdsPage() {
         </div>
       )}
 
-      {/* Main Content */}
+      {/* Main Content - Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full flex overflow-x-auto">
-          <TabsTrigger value="campaigns" className="flex-1">Campanhas</TabsTrigger>
-          <TabsTrigger value="dashboard" className="flex-1">Dashboard</TabsTrigger>
-          <TabsTrigger value="wallet" className="flex-1">Carteira</TabsTrigger>
+        <TabsList className="w-full flex overflow-x-auto no-scrollbar">
+          <TabsTrigger value="campaigns" className="flex-1 min-w-fit gap-1">
+            <BarChart3 className="h-3 w-3 hidden sm:inline" />
+            Campanhas
+          </TabsTrigger>
+          <TabsTrigger value="ai" className="flex-1 min-w-fit gap-1">
+            <Sparkles className="h-3 w-3 hidden sm:inline" />
+            IA
+          </TabsTrigger>
+          <TabsTrigger value="audiences" className="flex-1 min-w-fit gap-1">
+            <Users className="h-3 w-3 hidden sm:inline" />
+            Públicos
+          </TabsTrigger>
+          <TabsTrigger value="dashboard" className="flex-1 min-w-fit gap-1">
+            <TrendingUp className="h-3 w-3 hidden sm:inline" />
+            Dashboard
+          </TabsTrigger>
+          <TabsTrigger value="pricing" className="flex-1 min-w-fit gap-1">
+            <Shield className="h-3 w-3 hidden sm:inline" />
+            Preços
+          </TabsTrigger>
+          <TabsTrigger value="packages" className="flex-1 min-w-fit gap-1">
+            <Package className="h-3 w-3 hidden sm:inline" />
+            Pacotes
+          </TabsTrigger>
+          <TabsTrigger value="auctions" className="flex-1 min-w-fit gap-1">
+            <Gavel className="h-3 w-3 hidden sm:inline" />
+            Leilões
+          </TabsTrigger>
+          <TabsTrigger value="wallet" className="flex-1 min-w-fit gap-1">
+            <Wallet className="h-3 w-3 hidden sm:inline" />
+            Carteira
+          </TabsTrigger>
+          <TabsTrigger value="privacy" className="flex-1 min-w-fit gap-1">
+            <Lock className="h-3 w-3 hidden sm:inline" />
+            Privacidade
+          </TabsTrigger>
           {isAdmin && (
-            <TabsTrigger value="moderation" className="flex-1">
+            <TabsTrigger value="moderation" className="flex-1 min-w-fit">
               Moderação
               <Badge variant="secondary" className="ml-1 text-xs">Admin</Badge>
             </TabsTrigger>
@@ -205,12 +257,42 @@ export default function CircleAdsPage() {
           />
         </TabsContent>
 
+        <TabsContent value="ai" className="mt-4">
+          <CircleAdsAI 
+            profileId={profile?.id}
+            onCampaignCreated={() => setActiveTab("campaigns")}
+          />
+        </TabsContent>
+
+        <TabsContent value="audiences" className="mt-4">
+          <AudienceBuilder profileId={profile?.id} />
+        </TabsContent>
+
         <TabsContent value="dashboard" className="mt-4">
           <CircleAdsDashboard profileId={profile?.id} />
         </TabsContent>
 
+        <TabsContent value="pricing" className="mt-4">
+          <TrustScorePricing 
+            profileId={profile?.id} 
+            currentTrustScore={canAdvertise?.trust_score || 50}
+          />
+        </TabsContent>
+
+        <TabsContent value="packages" className="mt-4">
+          <MediaPackages profileId={profile?.id} />
+        </TabsContent>
+
+        <TabsContent value="auctions" className="mt-4">
+          <AuctionHistory profileId={profile?.id} />
+        </TabsContent>
+
         <TabsContent value="wallet" className="mt-4">
           <CircleAdsWallet profileId={profile?.id} wallet={wallet} />
+        </TabsContent>
+
+        <TabsContent value="privacy" className="mt-4">
+          <PrivacySettings profileId={profile?.id} />
         </TabsContent>
 
         {isAdmin && (

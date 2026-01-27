@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,10 @@ import {
   TrendingUp, 
   DollarSign,
   BarChart3,
-  Target
+  Target,
+  Trophy,
+  Gavel,
+  Users
 } from "lucide-react";
 import { useState } from "react";
 import { format, subDays } from "date-fns";
@@ -29,11 +33,16 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 
 interface Props {
   profileId?: string;
 }
+
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
 export function CircleAdsDashboard({ profileId }: Props) {
   const [period, setPeriod] = useState("7");
@@ -132,6 +141,24 @@ export function CircleAdsDashboard({ profileId }: Props) {
     enabled: !!profileId,
   });
 
+  // Auction stats
+  const { data: auctionStats } = useQuery({
+    queryKey: ["circle-ads-auction-stats", profileId],
+    queryFn: async () => {
+      if (!profileId) return null;
+      const { data, error } = await supabase
+        .from("circle_ads_auction_history")
+        .select("result")
+        .eq("profile_id", profileId);
+      if (error) throw error;
+      
+      const won = data?.filter(a => a.result === "won").length || 0;
+      const lost = data?.filter(a => a.result === "lost").length || 0;
+      return { won, lost, total: data?.length || 0 };
+    },
+    enabled: !!profileId,
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -139,6 +166,11 @@ export function CircleAdsDashboard({ profileId }: Props) {
       </div>
     );
   }
+
+  const auctionPieData = auctionStats ? [
+    { name: 'Vencidos', value: auctionStats.won },
+    { name: 'Perdidos', value: auctionStats.lost },
+  ] : [];
 
   return (
     <div className="space-y-6">
@@ -310,6 +342,72 @@ export function CircleAdsDashboard({ profileId }: Props) {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Auction Stats */}
+      {auctionStats && auctionStats.total > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Gavel className="h-4 w-4" />
+                Performance em Leilões
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-3xl font-bold text-primary">{auctionStats.total}</p>
+                  <p className="text-sm text-muted-foreground">Total</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-green-500">{auctionStats.won}</p>
+                  <p className="text-sm text-muted-foreground">Vencidos</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-red-500">{auctionStats.lost}</p>
+                  <p className="text-sm text-muted-foreground">Perdidos</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Trophy className="h-4 w-4" />
+                Taxa de Vitória
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[150px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={auctionPieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={60}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {auctionPieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={index === 0 ? '#22c55e' : '#ef4444'} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="text-center text-2xl font-bold">
+                {auctionStats.total > 0 
+                  ? ((auctionStats.won / auctionStats.total) * 100).toFixed(1) 
+                  : 0}%
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

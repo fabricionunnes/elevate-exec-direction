@@ -2427,6 +2427,7 @@ export type Database = {
         Row: {
           ad_set_id: string
           ad_type: Database["public"]["Enums"]["circle_ads_ad_type"]
+          bid_amount: number | null
           content: string
           created_at: string
           cta_type: Database["public"]["Enums"]["circle_ads_cta"]
@@ -2448,6 +2449,7 @@ export type Database = {
         Insert: {
           ad_set_id: string
           ad_type?: Database["public"]["Enums"]["circle_ads_ad_type"]
+          bid_amount?: number | null
           content: string
           created_at?: string
           cta_type?: Database["public"]["Enums"]["circle_ads_cta"]
@@ -2469,6 +2471,7 @@ export type Database = {
         Update: {
           ad_set_id?: string
           ad_type?: Database["public"]["Enums"]["circle_ads_ad_type"]
+          bid_amount?: number | null
           content?: string
           created_at?: string
           cta_type?: Database["public"]["Enums"]["circle_ads_cta"]
@@ -2521,6 +2524,283 @@ export type Database = {
             columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_ads_ai_requests: {
+        Row: {
+          context_data: Json | null
+          created_at: string
+          id: string
+          objective: string
+          profile_id: string
+          status: string | null
+        }
+        Insert: {
+          context_data?: Json | null
+          created_at?: string
+          id?: string
+          objective: string
+          profile_id: string
+          status?: string | null
+        }
+        Update: {
+          context_data?: Json | null
+          created_at?: string
+          id?: string
+          objective?: string
+          profile_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_ads_ai_requests_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_ads_ai_results: {
+        Row: {
+          accepted: boolean | null
+          ad_set_suggestion: Json
+          ad_suggestion: Json
+          audience_suggestion: Json | null
+          budget_suggestion: Json | null
+          campaign_id: string | null
+          campaign_suggestion: Json
+          confidence_score: number | null
+          created_at: string
+          id: string
+          request_id: string
+        }
+        Insert: {
+          accepted?: boolean | null
+          ad_set_suggestion: Json
+          ad_suggestion: Json
+          audience_suggestion?: Json | null
+          budget_suggestion?: Json | null
+          campaign_id?: string | null
+          campaign_suggestion: Json
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          request_id: string
+        }
+        Update: {
+          accepted?: boolean | null
+          ad_set_suggestion?: Json
+          ad_suggestion?: Json
+          audience_suggestion?: Json | null
+          budget_suggestion?: Json | null
+          campaign_id?: string | null
+          campaign_suggestion?: Json
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_ads_ai_results_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "circle_ads_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_ads_ai_results_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "circle_ads_ai_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_ads_auction_history: {
+        Row: {
+          ad_id: string | null
+          auction_id: string
+          bid_amount: number | null
+          competitor_count: number | null
+          created_at: string
+          final_score: number | null
+          id: string
+          profile_id: string
+          result: string
+        }
+        Insert: {
+          ad_id?: string | null
+          auction_id: string
+          bid_amount?: number | null
+          competitor_count?: number | null
+          created_at?: string
+          final_score?: number | null
+          id?: string
+          profile_id: string
+          result: string
+        }
+        Update: {
+          ad_id?: string | null
+          auction_id?: string
+          bid_amount?: number | null
+          competitor_count?: number | null
+          created_at?: string
+          final_score?: number | null
+          id?: string
+          profile_id?: string
+          result?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_ads_auction_history_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "circle_ads_ads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_ads_auction_history_auction_id_fkey"
+            columns: ["auction_id"]
+            isOneToOne: false
+            referencedRelation: "circle_ads_auctions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_ads_auction_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_ads_auctions: {
+        Row: {
+          audience_id: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          placement: string
+          started_at: string | null
+          status:
+            | Database["public"]["Enums"]["circle_ads_auction_status"]
+            | null
+          target_profile_id: string | null
+          total_bids: number | null
+          winning_ad_id: string | null
+          winning_bid_id: string | null
+        }
+        Insert: {
+          audience_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          placement: string
+          started_at?: string | null
+          status?:
+            | Database["public"]["Enums"]["circle_ads_auction_status"]
+            | null
+          target_profile_id?: string | null
+          total_bids?: number | null
+          winning_ad_id?: string | null
+          winning_bid_id?: string | null
+        }
+        Update: {
+          audience_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          placement?: string
+          started_at?: string | null
+          status?:
+            | Database["public"]["Enums"]["circle_ads_auction_status"]
+            | null
+          target_profile_id?: string | null
+          total_bids?: number | null
+          winning_ad_id?: string | null
+          winning_bid_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_ads_auctions_audience_id_fkey"
+            columns: ["audience_id"]
+            isOneToOne: false
+            referencedRelation: "circle_audiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_ads_auctions_target_profile_id_fkey"
+            columns: ["target_profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_ads_bids: {
+        Row: {
+          ad_id: string
+          advertiser_profile_id: string
+          auction_id: string
+          bid_amount: number
+          created_at: string
+          final_score: number
+          id: string
+          is_winner: boolean | null
+          quality_score: number
+          relevance_score: number
+          trust_score: number
+        }
+        Insert: {
+          ad_id: string
+          advertiser_profile_id: string
+          auction_id: string
+          bid_amount: number
+          created_at?: string
+          final_score: number
+          id?: string
+          is_winner?: boolean | null
+          quality_score?: number
+          relevance_score?: number
+          trust_score?: number
+        }
+        Update: {
+          ad_id?: string
+          advertiser_profile_id?: string
+          auction_id?: string
+          bid_amount?: number
+          created_at?: string
+          final_score?: number
+          id?: string
+          is_winner?: boolean | null
+          quality_score?: number
+          relevance_score?: number
+          trust_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_ads_bids_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "circle_ads_ads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_ads_bids_advertiser_profile_id_fkey"
+            columns: ["advertiser_profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_ads_bids_auction_id_fkey"
+            columns: ["auction_id"]
+            isOneToOne: false
+            referencedRelation: "circle_ads_auctions"
             referencedColumns: ["id"]
           },
         ]
@@ -2687,6 +2967,53 @@ export type Database = {
         }
         Relationships: []
       }
+      circle_ads_credits: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          description: string | null
+          expires_at: string | null
+          id: string
+          operation: string
+          profile_id: string
+          reference_id: string | null
+          reference_type: string | null
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          operation: string
+          profile_id: string
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          operation?: string
+          profile_id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_ads_credits_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circle_ads_daily_metrics: {
         Row: {
           ad_id: string
@@ -2809,6 +3136,181 @@ export type Database = {
           },
         ]
       }
+      circle_ads_packages: {
+        Row: {
+          advanced_reports: boolean | null
+          ai_access: boolean | null
+          created_at: string
+          description: string | null
+          features: Json | null
+          id: string
+          is_active: boolean | null
+          max_audiences: number
+          max_campaigns: number
+          monthly_credits: number
+          name: string
+          price_monthly: number
+          priority_boost: number | null
+          tier: Database["public"]["Enums"]["circle_ads_package_tier"]
+        }
+        Insert: {
+          advanced_reports?: boolean | null
+          ai_access?: boolean | null
+          created_at?: string
+          description?: string | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          max_audiences?: number
+          max_campaigns?: number
+          monthly_credits?: number
+          name: string
+          price_monthly?: number
+          priority_boost?: number | null
+          tier: Database["public"]["Enums"]["circle_ads_package_tier"]
+        }
+        Update: {
+          advanced_reports?: boolean | null
+          ai_access?: boolean | null
+          created_at?: string
+          description?: string | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          max_audiences?: number
+          max_campaigns?: number
+          monthly_credits?: number
+          name?: string
+          price_monthly?: number
+          priority_boost?: number | null
+          tier?: Database["public"]["Enums"]["circle_ads_package_tier"]
+        }
+        Relationships: []
+      }
+      circle_ads_pricing_rules: {
+        Row: {
+          cpc_multiplier: number
+          cpm_multiplier: number
+          created_at: string
+          id: string
+          is_active: boolean | null
+          max_trust_score: number
+          min_trust_score: number
+          name: string
+          priority_boost: number
+          reach_multiplier: number
+        }
+        Insert: {
+          cpc_multiplier?: number
+          cpm_multiplier?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          max_trust_score?: number
+          min_trust_score?: number
+          name: string
+          priority_boost?: number
+          reach_multiplier?: number
+        }
+        Update: {
+          cpc_multiplier?: number
+          cpm_multiplier?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          max_trust_score?: number
+          min_trust_score?: number
+          name?: string
+          priority_boost?: number
+          reach_multiplier?: number
+        }
+        Relationships: []
+      }
+      circle_ads_privacy: {
+        Row: {
+          consent: Database["public"]["Enums"]["circle_privacy_consent"] | null
+          consent_date: string
+          data_collection_consent: boolean | null
+          id: string
+          personalized_ads_consent: boolean | null
+          profile_id: string
+          third_party_sharing: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          consent?: Database["public"]["Enums"]["circle_privacy_consent"] | null
+          consent_date?: string
+          data_collection_consent?: boolean | null
+          id?: string
+          personalized_ads_consent?: boolean | null
+          profile_id: string
+          third_party_sharing?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          consent?: Database["public"]["Enums"]["circle_privacy_consent"] | null
+          consent_date?: string
+          data_collection_consent?: boolean | null
+          id?: string
+          personalized_ads_consent?: boolean | null
+          profile_id?: string
+          third_party_sharing?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_ads_privacy_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_ads_quality_scores: {
+        Row: {
+          ad_id: string
+          ctr: number | null
+          engagement_rate: number | null
+          hide_rate: number | null
+          id: string
+          quality_score: number | null
+          relevance_score: number | null
+          report_rate: number | null
+          updated_at: string
+        }
+        Insert: {
+          ad_id: string
+          ctr?: number | null
+          engagement_rate?: number | null
+          hide_rate?: number | null
+          id?: string
+          quality_score?: number | null
+          relevance_score?: number | null
+          report_rate?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ad_id?: string
+          ctr?: number | null
+          engagement_rate?: number | null
+          hide_rate?: number | null
+          id?: string
+          quality_score?: number | null
+          relevance_score?: number | null
+          report_rate?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_ads_quality_scores_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: true
+            referencedRelation: "circle_ads_ads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circle_ads_reports: {
         Row: {
           ad_id: string
@@ -2849,6 +3351,54 @@ export type Database = {
             foreignKeyName: "circle_ads_reports_reporter_profile_id_fkey"
             columns: ["reporter_profile_id"]
             isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_ads_subscriptions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          package_id: string
+          profile_id: string
+          renewed_at: string | null
+          started_at: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          package_id: string
+          profile_id: string
+          renewed_at?: string | null
+          started_at?: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          package_id?: string
+          profile_id?: string
+          renewed_at?: string | null
+          started_at?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_ads_subscriptions_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "circle_ads_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_ads_subscriptions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
             referencedRelation: "circle_profiles"
             referencedColumns: ["id"]
           },
@@ -3055,6 +3605,135 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_audience_members: {
+        Row: {
+          added_at: string
+          audience_id: string
+          id: string
+          match_score: number | null
+          member_profile_id: string
+        }
+        Insert: {
+          added_at?: string
+          audience_id: string
+          id?: string
+          match_score?: number | null
+          member_profile_id: string
+        }
+        Update: {
+          added_at?: string
+          audience_id?: string
+          id?: string
+          match_score?: number | null
+          member_profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_audience_members_audience_id_fkey"
+            columns: ["audience_id"]
+            isOneToOne: false
+            referencedRelation: "circle_audiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_audience_members_member_profile_id_fkey"
+            columns: ["member_profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_audiences: {
+        Row: {
+          avg_trust_score: number | null
+          conversion_rate: number | null
+          created_at: string
+          description: string | null
+          engagement_score: number | null
+          estimated_size: number | null
+          exclusion_audience_ids: string[] | null
+          id: string
+          is_lookalike: boolean | null
+          is_template: boolean | null
+          name: string
+          profile_id: string
+          rule_operator:
+            | Database["public"]["Enums"]["circle_audience_rule_operator"]
+            | null
+          rules: Json
+          source_audience_id: string | null
+          status: string | null
+          template_name: string | null
+          time_window_days: number | null
+          updated_at: string
+          value_score: number | null
+        }
+        Insert: {
+          avg_trust_score?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          description?: string | null
+          engagement_score?: number | null
+          estimated_size?: number | null
+          exclusion_audience_ids?: string[] | null
+          id?: string
+          is_lookalike?: boolean | null
+          is_template?: boolean | null
+          name: string
+          profile_id: string
+          rule_operator?:
+            | Database["public"]["Enums"]["circle_audience_rule_operator"]
+            | null
+          rules?: Json
+          source_audience_id?: string | null
+          status?: string | null
+          template_name?: string | null
+          time_window_days?: number | null
+          updated_at?: string
+          value_score?: number | null
+        }
+        Update: {
+          avg_trust_score?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          description?: string | null
+          engagement_score?: number | null
+          estimated_size?: number | null
+          exclusion_audience_ids?: string[] | null
+          id?: string
+          is_lookalike?: boolean | null
+          is_template?: boolean | null
+          name?: string
+          profile_id?: string
+          rule_operator?:
+            | Database["public"]["Enums"]["circle_audience_rule_operator"]
+            | null
+          rules?: Json
+          source_audience_id?: string | null
+          status?: string | null
+          template_name?: string | null
+          time_window_days?: number | null
+          updated_at?: string
+          value_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_audiences_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_audiences_source_audience_id_fkey"
+            columns: ["source_audience_id"]
+            isOneToOne: false
+            referencedRelation: "circle_audiences"
             referencedColumns: ["id"]
           },
         ]
@@ -4276,6 +4955,47 @@ export type Database = {
           },
           {
             foreignKeyName: "circle_notifications_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "circle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_pixel_events: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: Database["public"]["Enums"]["circle_pixel_event_type"]
+          id: string
+          profile_id: string
+          reference_id: string | null
+          reference_type: string | null
+          session_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: Database["public"]["Enums"]["circle_pixel_event_type"]
+          id?: string
+          profile_id: string
+          reference_id?: string | null
+          reference_type?: string | null
+          session_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: Database["public"]["Enums"]["circle_pixel_event_type"]
+          id?: string
+          profile_id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_pixel_events_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "circle_profiles"
@@ -15631,6 +16351,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_ad_quality_score: { Args: { p_ad_id: string }; Returns: number }
       can_add_circle_participant: {
         Args: { check_conversation_id: string; check_profile_id: string }
         Returns: boolean
@@ -15658,6 +16379,19 @@ export type Database = {
       client_has_company_access: {
         Args: { check_company_id: string }
         Returns: boolean
+      }
+      get_ads_credits_balance: {
+        Args: { p_profile_id: string }
+        Returns: number
+      }
+      get_ads_pricing_multiplier: {
+        Args: { p_trust_score: number }
+        Returns: {
+          cpc_mult: number
+          cpm_mult: number
+          priority_mult: number
+          reach_mult: number
+        }[]
       }
       get_area_reputation_level: {
         Args: { score: number }
@@ -15774,9 +16508,27 @@ export type Database = {
         }
         Returns: undefined
       }
+      run_ads_auction: {
+        Args: {
+          p_audience_id?: string
+          p_placement: string
+          p_target_profile_id?: string
+        }
+        Returns: string
+      }
       staff_has_company_access: {
         Args: { check_company_id: string }
         Returns: boolean
+      }
+      track_circle_pixel_event: {
+        Args: {
+          p_event_data?: Json
+          p_event_type: Database["public"]["Enums"]["circle_pixel_event_type"]
+          p_reference_id?: string
+          p_reference_type?: string
+          p_session_id?: string
+        }
+        Returns: string
       }
       update_client_financial_overdue_status: {
         Args: never
@@ -15791,6 +16543,11 @@ export type Database = {
         | "marketplace_ad"
         | "community_ad"
         | "event_ad"
+      circle_ads_auction_status:
+        | "pending"
+        | "running"
+        | "completed"
+        | "cancelled"
       circle_ads_budget_type: "daily" | "total"
       circle_ads_cta:
         | "whatsapp"
@@ -15805,6 +16562,7 @@ export type Database = {
         | "community_promotion"
         | "marketplace_promotion"
         | "event_promotion"
+      circle_ads_package_tier: "starter" | "growth" | "scale" | "enterprise"
       circle_ads_placement: "feed" | "stories" | "communities" | "marketplace"
       circle_ads_status:
         | "draft"
@@ -15813,6 +16571,26 @@ export type Database = {
         | "paused"
         | "rejected"
         | "completed"
+      circle_audience_rule_operator: "AND" | "OR"
+      circle_pixel_event_type:
+        | "page_view"
+        | "social_view"
+        | "social_like"
+        | "social_comment"
+        | "social_share"
+        | "story_view"
+        | "community_join"
+        | "community_post"
+        | "marketplace_view"
+        | "marketplace_click"
+        | "marketplace_whatsapp"
+        | "academy_lesson"
+        | "academy_quiz"
+        | "academy_track"
+        | "ad_impression"
+        | "ad_click"
+        | "ad_conversion"
+      circle_privacy_consent: "personalized" | "generic_only" | "opt_out"
       onboarding_role:
         | "cs"
         | "consultant"
@@ -15963,6 +16741,12 @@ export const Constants = {
         "community_ad",
         "event_ad",
       ],
+      circle_ads_auction_status: [
+        "pending",
+        "running",
+        "completed",
+        "cancelled",
+      ],
       circle_ads_budget_type: ["daily", "total"],
       circle_ads_cta: [
         "whatsapp",
@@ -15979,6 +16763,7 @@ export const Constants = {
         "marketplace_promotion",
         "event_promotion",
       ],
+      circle_ads_package_tier: ["starter", "growth", "scale", "enterprise"],
       circle_ads_placement: ["feed", "stories", "communities", "marketplace"],
       circle_ads_status: [
         "draft",
@@ -15988,6 +16773,27 @@ export const Constants = {
         "rejected",
         "completed",
       ],
+      circle_audience_rule_operator: ["AND", "OR"],
+      circle_pixel_event_type: [
+        "page_view",
+        "social_view",
+        "social_like",
+        "social_comment",
+        "social_share",
+        "story_view",
+        "community_join",
+        "community_post",
+        "marketplace_view",
+        "marketplace_click",
+        "marketplace_whatsapp",
+        "academy_lesson",
+        "academy_quiz",
+        "academy_track",
+        "ad_impression",
+        "ad_click",
+        "ad_conversion",
+      ],
+      circle_privacy_consent: ["personalized", "generic_only", "opt_out"],
       onboarding_role: [
         "cs",
         "consultant",
