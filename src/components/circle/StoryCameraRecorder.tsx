@@ -164,7 +164,7 @@ export function StoryCameraRecorder({ onVideoRecorded, onCancel }: StoryCameraRe
       <div className="aspect-[9/16] bg-black rounded-xl overflow-hidden relative">
         <video
           src={previewUrl}
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover"
           controls
           autoPlay
           loop
