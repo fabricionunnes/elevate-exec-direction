@@ -240,16 +240,6 @@ export const KPIMetasPanel = ({
                     Unidades
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => setActiveTab("teams")}
-                    className={cn(
-                      "gap-2 cursor-pointer",
-                      activeTab === "teams" && "bg-accent"
-                    )}
-                  >
-                    <UsersRound className="h-4 w-4" />
-                    Equipes
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
                     onClick={() => setActiveTab("sectors")}
                     className={cn(
                       "gap-2 cursor-pointer",
@@ -258,6 +248,16 @@ export const KPIMetasPanel = ({
                   >
                     <Layers className="h-4 w-4" />
                     Setores
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setActiveTab("teams")}
+                    className={cn(
+                      "gap-2 cursor-pointer",
+                      activeTab === "teams" && "bg-accent"
+                    )}
+                  >
+                    <UsersRound className="h-4 w-4" />
+                    Equipes
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setActiveTab("salespeople")}
