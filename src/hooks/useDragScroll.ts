@@ -26,7 +26,7 @@ export function useDragScroll() {
 
     startXRef.current = e.clientX;
     startScrollLeftRef.current = el.scrollLeft;
-    el.setPointerCapture?.(e.pointerId);
+    // Don't use setPointerCapture - it prevents clicks on child elements
   }, []);
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
