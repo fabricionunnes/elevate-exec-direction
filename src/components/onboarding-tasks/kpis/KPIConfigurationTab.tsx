@@ -101,6 +101,12 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
   const [showDialog, setShowDialog] = useState(false);
   const [showMonthlyTargets, setShowMonthlyTargets] = useState(false);
   const [editingKpi, setEditingKpi] = useState<KPI | null>(null);
+  
+  // Filters for the table
+  const [filterUnit, setFilterUnit] = useState<string>("all");
+  const [filterTeam, setFilterTeam] = useState<string>("all");
+  const [filterSector, setFilterSector] = useState<string>("all");
+  
   const [formData, setFormData] = useState({
     name: "",
     kpi_type: "numeric" as "numeric" | "monetary" | "percentage",
@@ -614,6 +620,46 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
     return value.toLocaleString("pt-BR");
   };
 
+  // Filter KPIs based on selected filters
+  const filteredKpis = kpis.filter((kpi) => {
+    // Filter by unit
+    if (filterUnit !== "all") {
+      const kpiUnitIds = kpi.unit_ids || (kpi.unit_id ? [kpi.unit_id] : []);
+      // Include KPIs that are assigned to this unit OR are company-wide
+      const matchesUnit = kpiUnitIds.includes(filterUnit) || kpi.scope === "company";
+      // Also include team/sector/salesperson KPIs if their members belong to this unit
+      const teamBelongsToUnit = teams.filter(t => t.unit_id === filterUnit).map(t => t.id);
+      const salespersonBelongsToUnit = salespeople.filter(sp => sp.unit_id === filterUnit).map(sp => sp.id);
+      const kpiTeamIds = kpi.team_ids || (kpi.team_id ? [kpi.team_id] : []);
+      const kpiSpIds = kpi.salesperson_ids || (kpi.salesperson_id ? [kpi.salesperson_id] : []);
+      const teamMatch = kpiTeamIds.some(tid => teamBelongsToUnit.includes(tid));
+      const spMatch = kpiSpIds.some(spid => salespersonBelongsToUnit.includes(spid));
+      if (!matchesUnit && !teamMatch && !spMatch) return false;
+    }
+    
+    // Filter by team
+    if (filterTeam !== "all") {
+      const kpiTeamIds = kpi.team_ids || (kpi.team_id ? [kpi.team_id] : []);
+      // Include KPIs that are assigned to this team OR are company-wide
+      const matchesTeam = kpiTeamIds.includes(filterTeam) || kpi.scope === "company";
+      // Also include salesperson KPIs if the salesperson belongs to this team
+      const salespersonBelongsToTeam = salespeople.filter(sp => sp.team_id === filterTeam).map(sp => sp.id);
+      const kpiSpIds = kpi.salesperson_ids || (kpi.salesperson_id ? [kpi.salesperson_id] : []);
+      const spMatch = kpiSpIds.some(spid => salespersonBelongsToTeam.includes(spid));
+      if (!matchesTeam && !spMatch) return false;
+    }
+    
+    // Filter by sector
+    if (filterSector !== "all") {
+      const kpiSectorIds = kpi.sector_ids || (kpi.sector_id ? [kpi.sector_id] : []);
+      // Include KPIs that are assigned to this sector OR are company-wide
+      const matchesSector = kpiSectorIds.includes(filterSector) || kpi.scope === "company";
+      if (!matchesSector) return false;
+    }
+    
+    return true;
+  });
+
   if (loading) {
     return <div className="flex justify-center p-8">Carregando...</div>;
   }
@@ -970,11 +1016,94 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
         isClient={isClient}
       />
 
+      {/* Filters */}
+      {kpis.length > 0 && (units.length > 0 || teams.length > 0 || sectors.length > 0) && (
+        <div className="flex flex-wrap gap-3 items-center">
+          {units.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-muted-foreground whitespace-nowrap">Unidade:</Label>
+              <Select value={filterUnit} onValueChange={setFilterUnit}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {units.map((unit) => (
+                    <SelectItem key={unit.id} value={unit.id}>{unit.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {teams.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-muted-foreground whitespace-nowrap">Equipe:</Label>
+              <Select value={filterTeam} onValueChange={setFilterTeam}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {teams.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {sectors.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-muted-foreground whitespace-nowrap">Setor:</Label>
+              <Select value={filterSector} onValueChange={setFilterSector}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {sectors.map((sector) => (
+                    <SelectItem key={sector.id} value={sector.id}>{sector.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {(filterUnit !== "all" || filterTeam !== "all" || filterSector !== "all") && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => {
+                setFilterUnit("all");
+                setFilterTeam("all");
+                setFilterSector("all");
+              }}
+            >
+              Limpar filtros
+            </Button>
+          )}
+        </div>
+      )}
+
       {kpis.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <p>Nenhum KPI configurado ainda.</p>
             <p className="text-sm">Crie KPIs para começar a acompanhar os indicadores da empresa.</p>
+          </CardContent>
+        </Card>
+      ) : filteredKpis.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <p>Nenhum KPI encontrado com os filtros selecionados.</p>
+            <Button 
+              variant="link" 
+              onClick={() => {
+                setFilterUnit("all");
+                setFilterTeam("all");
+                setFilterSector("all");
+              }}
+            >
+              Limpar filtros
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -994,7 +1123,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
               </TableRow>
             </TableHeader>
             <TableBody>
-              {kpis.map((kpi, index) => (
+              {filteredKpis.map((kpi, index) => (
                 <TableRow 
                   key={kpi.id} 
                   className={`${!kpi.is_active ? "opacity-50" : ""} ${draggedKpiId === kpi.id ? "opacity-50 bg-muted" : ""} ${dragOverKpiId === kpi.id ? "border-t-2 border-primary" : ""}`}
