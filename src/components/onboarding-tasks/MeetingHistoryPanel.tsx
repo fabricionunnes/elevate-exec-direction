@@ -1126,6 +1126,15 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
                             variant="collapsible"
                           />
                         </div>
+
+                        {/* Presentation Section for pending meetings */}
+                        <div className="mt-3">
+                          <MeetingPresentationSection
+                            meetingId={meeting.id}
+                            projectId={projectId}
+                            isStaff={isAdmin || isCS || !!currentStaffId}
+                          />
+                        </div>
                       </div>
                       <div className="flex flex-col gap-2">
                         <Button 
