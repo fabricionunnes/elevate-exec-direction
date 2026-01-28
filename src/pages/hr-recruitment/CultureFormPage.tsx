@@ -18,10 +18,10 @@ const FORM_SECTIONS = [
     fields: [
       { key: "respondent_name", label: "Seu nome", type: "text", required: true },
       { key: "respondent_role", label: "Seu cargo", type: "text", required: true },
-      { key: "respondent_email", label: "Seu e-mail", type: "email", required: false },
-      { key: "company_history", label: "Qual é a história da empresa?", type: "textarea", placeholder: "Conte a trajetória da empresa desde o início até hoje..." },
-      { key: "founding_story", label: "Como a empresa foi fundada?", type: "textarea", placeholder: "Descreva o momento e as circunstâncias da fundação..." },
-      { key: "founders_motivation", label: "O que motivou os fundadores?", type: "textarea", placeholder: "Qual foi a inspiração ou problema que quiseram resolver..." },
+      { key: "respondent_email", label: "Seu e-mail", type: "email", required: true },
+      { key: "company_history", label: "Qual é a história da empresa?", type: "textarea", placeholder: "Conte a trajetória da empresa desde o início até hoje...", required: true },
+      { key: "founding_story", label: "Como a empresa foi fundada?", type: "textarea", placeholder: "Descreva o momento e as circunstâncias da fundação...", required: true },
+      { key: "founders_motivation", label: "O que motivou os fundadores?", type: "textarea", placeholder: "Qual foi a inspiração ou problema que quiseram resolver...", required: true },
     ],
   },
   {
@@ -29,10 +29,10 @@ const FORM_SECTIONS = [
     title: "Propósito e Missão",
     description: "Defina a razão de existir da empresa",
     fields: [
-      { key: "company_purpose", label: "Qual é o propósito da empresa?", type: "textarea", placeholder: "Por que a empresa existe além de gerar lucro..." },
-      { key: "mission_statement", label: "Qual é a missão da empresa?", type: "textarea", placeholder: "O que a empresa faz, para quem e como..." },
-      { key: "vision_statement", label: "Qual é a visão de futuro?", type: "textarea", placeholder: "Onde a empresa quer chegar em 5-10 anos..." },
-      { key: "core_values", label: "Quais são os valores centrais?", type: "textarea", placeholder: "Liste os 3-5 valores mais importantes e explique cada um..." },
+      { key: "company_purpose", label: "Qual é o propósito da empresa?", type: "textarea", placeholder: "Por que a empresa existe além de gerar lucro...", required: true },
+      { key: "mission_statement", label: "Qual é a missão da empresa?", type: "textarea", placeholder: "O que a empresa faz, para quem e como...", required: true },
+      { key: "vision_statement", label: "Qual é a visão de futuro?", type: "textarea", placeholder: "Onde a empresa quer chegar em 5-10 anos...", required: true },
+      { key: "core_values", label: "Quais são os valores centrais?", type: "textarea", placeholder: "Liste os 3-5 valores mais importantes e explique cada um...", required: true },
     ],
   },
   {
@@ -40,9 +40,9 @@ const FORM_SECTIONS = [
     title: "Cultura e Comportamento",
     description: "Descreva como as pessoas devem agir",
     fields: [
-      { key: "cultural_principles", label: "Quais são os princípios culturais?", type: "textarea", placeholder: "Os fundamentos que guiam todas as decisões..." },
-      { key: "expected_behaviors", label: "Quais comportamentos são esperados?", type: "textarea", placeholder: "Como as pessoas devem agir no dia a dia..." },
-      { key: "unacceptable_behaviors", label: "Quais comportamentos são inaceitáveis?", type: "textarea", placeholder: "O que não é tolerado de forma alguma..." },
+      { key: "cultural_principles", label: "Quais são os princípios culturais?", type: "textarea", placeholder: "Os fundamentos que guiam todas as decisões...", required: true },
+      { key: "expected_behaviors", label: "Quais comportamentos são esperados?", type: "textarea", placeholder: "Como as pessoas devem agir no dia a dia...", required: true },
+      { key: "unacceptable_behaviors", label: "Quais comportamentos são inaceitáveis?", type: "textarea", placeholder: "O que não é tolerado de forma alguma...", required: true },
     ],
   },
   {
@@ -50,8 +50,8 @@ const FORM_SECTIONS = [
     title: "Liderança",
     description: "Defina o modelo de liderança",
     fields: [
-      { key: "leadership_style", label: "Qual é o estilo de liderança?", type: "textarea", placeholder: "Como os líderes devem se comportar..." },
-      { key: "leadership_expectations", label: "O que se espera dos líderes?", type: "textarea", placeholder: "Responsabilidades e atitudes esperadas..." },
+      { key: "leadership_style", label: "Qual é o estilo de liderança?", type: "textarea", placeholder: "Como os líderes devem se comportar...", required: true },
+      { key: "leadership_expectations", label: "O que se espera dos líderes?", type: "textarea", placeholder: "Responsabilidades e atitudes esperadas...", required: true },
     ],
   },
   {
@@ -59,9 +59,9 @@ const FORM_SECTIONS = [
     title: "Performance e Meritocracia",
     description: "Explique a cultura de resultados",
     fields: [
-      { key: "performance_culture", label: "Como é a cultura de performance?", type: "textarea", placeholder: "Como resultados são mensurados e valorizados..." },
-      { key: "recognition_approach", label: "Como funciona o reconhecimento?", type: "textarea", placeholder: "Como bons resultados são celebrados..." },
-      { key: "meritocracy_principles", label: "Quais são os princípios de meritocracia?", type: "textarea", placeholder: "Como promoções e recompensas funcionam..." },
+      { key: "performance_culture", label: "Como é a cultura de performance?", type: "textarea", placeholder: "Como resultados são mensurados e valorizados...", required: true },
+      { key: "recognition_approach", label: "Como funciona o reconhecimento?", type: "textarea", placeholder: "Como bons resultados são celebrados...", required: true },
+      { key: "meritocracy_principles", label: "Quais são os princípios de meritocracia?", type: "textarea", placeholder: "Como promoções e recompensas funcionam...", required: true },
     ],
   },
   {
@@ -69,8 +69,8 @@ const FORM_SECTIONS = [
     title: "Comunicação",
     description: "Defina os padrões de comunicação",
     fields: [
-      { key: "communication_style", label: "Qual é o estilo de comunicação?", type: "textarea", placeholder: "Como as pessoas devem se comunicar..." },
-      { key: "internal_communication", label: "Como funciona a comunicação interna?", type: "textarea", placeholder: "Canais, frequência, transparência..." },
+      { key: "communication_style", label: "Qual é o estilo de comunicação?", type: "textarea", placeholder: "Como as pessoas devem se comunicar...", required: true },
+      { key: "internal_communication", label: "Como funciona a comunicação interna?", type: "textarea", placeholder: "Canais, frequência, transparência...", required: true },
     ],
   },
   {
@@ -78,8 +78,8 @@ const FORM_SECTIONS = [
     title: "Relacionamento com Clientes",
     description: "Descreva a filosofia de atendimento",
     fields: [
-      { key: "client_relationship", label: "Como deve ser o relacionamento com clientes?", type: "textarea", placeholder: "Postura, atendimento, resolução de problemas..." },
-      { key: "client_experience_vision", label: "Qual é a visão de experiência do cliente?", type: "textarea", placeholder: "Como o cliente deve se sentir..." },
+      { key: "client_relationship", label: "Como deve ser o relacionamento com clientes?", type: "textarea", placeholder: "Postura, atendimento, resolução de problemas...", required: true },
+      { key: "client_experience_vision", label: "Qual é a visão de experiência do cliente?", type: "textarea", placeholder: "Como o cliente deve se sentir...", required: true },
     ],
   },
   {
@@ -87,9 +87,9 @@ const FORM_SECTIONS = [
     title: "Pessoas e Crescimento",
     description: "Defina o perfil ideal do time",
     fields: [
-      { key: "ideal_team_member", label: "Como é o membro ideal do time?", type: "textarea", placeholder: "Perfil, atitudes, competências desejadas..." },
-      { key: "who_should_not_join", label: "Quem NÃO deveria fazer parte do time?", type: "textarea", placeholder: "Perfis que não se encaixam na cultura..." },
-      { key: "growth_opportunities", label: "Quais são as oportunidades de crescimento?", type: "textarea", placeholder: "Como a empresa investe nas pessoas..." },
+      { key: "ideal_team_member", label: "Como é o membro ideal do time?", type: "textarea", placeholder: "Perfil, atitudes, competências desejadas...", required: true },
+      { key: "who_should_not_join", label: "Quem NÃO deveria fazer parte do time?", type: "textarea", placeholder: "Perfis que não se encaixam na cultura...", required: true },
+      { key: "growth_opportunities", label: "Quais são as oportunidades de crescimento?", type: "textarea", placeholder: "Como a empresa investe nas pessoas...", required: true },
     ],
   },
   {
@@ -97,9 +97,9 @@ const FORM_SECTIONS = [
     title: "Futuro e Legado",
     description: "Compartilhe a visão de longo prazo",
     fields: [
-      { key: "company_future_vision", label: "Qual é a visão de futuro da empresa?", type: "textarea", placeholder: "Para onde a empresa está indo..." },
-      { key: "legacy_aspiration", label: "Qual legado a empresa quer deixar?", type: "textarea", placeholder: "O impacto duradouro que deseja criar..." },
-      { key: "final_leadership_message", label: "Qual é a mensagem final da liderança?", type: "textarea", placeholder: "Uma mensagem pessoal e inspiradora para o time..." },
+      { key: "company_future_vision", label: "Qual é a visão de futuro da empresa?", type: "textarea", placeholder: "Para onde a empresa está indo...", required: true },
+      { key: "legacy_aspiration", label: "Qual legado a empresa quer deixar?", type: "textarea", placeholder: "O impacto duradouro que deseja criar...", required: true },
+      { key: "final_leadership_message", label: "Qual é a mensagem final da liderança?", type: "textarea", placeholder: "Uma mensagem pessoal e inspiradora para o time...", required: true },
     ],
   },
 ];
@@ -159,13 +159,16 @@ export default function CultureFormPage() {
   const handleSubmit = async () => {
     if (!formLink) return;
 
-    // Validate required fields
-    const requiredFields = FORM_SECTIONS[0].fields.filter(f => f.required);
-    for (const field of requiredFields) {
-      if (!formData[field.key]) {
-        toast.error(`Por favor, preencha: ${field.label}`);
-        setCurrentSection(0);
-        return;
+    // Validate ALL required fields across ALL sections
+    for (let sectionIndex = 0; sectionIndex < FORM_SECTIONS.length; sectionIndex++) {
+      const section = FORM_SECTIONS[sectionIndex];
+      const requiredFields = section.fields.filter(f => f.required);
+      for (const field of requiredFields) {
+        if (!formData[field.key] || formData[field.key].trim() === "") {
+          toast.error(`Por favor, preencha: ${field.label}`);
+          setCurrentSection(sectionIndex);
+          return;
+        }
       }
     }
 
