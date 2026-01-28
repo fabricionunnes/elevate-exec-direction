@@ -10,7 +10,8 @@ import {
   TrendingUp,
   BarChart3,
   Trophy,
-  Calendar
+  Calendar,
+  DollarSign
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CohortMatrix } from '@/components/retention/CohortMatrix';
@@ -38,7 +39,8 @@ export default function CohortRetentionPage() {
     totalChurned: 0,
     totalProjects: 0,
     retentionRate: 0,
-    avgLifetime: 0
+    avgLifetime: 0,
+    avgTicket: 0
   });
   
   // Staff state for consultant filtering
@@ -129,6 +131,8 @@ export default function CohortRetentionPage() {
 
       // Filter for consultants
       let filteredProjects = projects;
+      let companyIds = new Set<string>();
+      
       if (isConsultant && currentStaffId) {
         // Get companies linked to this consultant
         const { data: companies } = await supabase
@@ -136,7 +140,7 @@ export default function CohortRetentionPage() {
           .select('id')
           .or(`consultant_id.eq.${currentStaffId},cs_id.eq.${currentStaffId}`);
         
-        const companyIds = new Set((companies || []).map((c: any) => c.id));
+        companyIds = new Set((companies || []).map((c: any) => c.id));
         
         filteredProjects = projects.filter((p: any) => 
           p.consultant_id === currentStaffId ||
@@ -162,12 +166,50 @@ export default function CohortRetentionPage() {
         avgLifetime = totalMonths / completedProjects.length;
       }
 
+      // Calculate average ticket from active companies
+      let avgTicket = 0;
+      const projectCompanyIds = [...new Set(filteredProjects.map((p: any) => p.onboarding_company_id).filter(Boolean))];
+      
+      if (projectCompanyIds.length > 0) {
+        const { data: companiesData } = await supabase
+          .from('onboarding_companies')
+          .select('id, contract_value, payment_method, status')
+          .in('id', projectCompanyIds)
+          .eq('status', 'active');
+        
+        if (companiesData && companiesData.length > 0) {
+          // Calculate MRR for each company
+          let totalMRR = 0;
+          companiesData.forEach((c: any) => {
+            const value = Number(c.contract_value) || 0;
+            const paymentMethod = (c.payment_method || "").toLowerCase();
+            
+            if (paymentMethod === "monthly" || paymentMethod === "mensal" || paymentMethod === "recorrente") {
+              totalMRR += value;
+            } else if (paymentMethod === "quarterly" || paymentMethod === "trimestral") {
+              totalMRR += value / 3;
+            } else if (paymentMethod === "semiannual" || paymentMethod === "semestral") {
+              totalMRR += value / 6;
+            } else if (paymentMethod === "annual" || paymentMethod === "anual" || paymentMethod === "card" || paymentMethod === "cartao" || paymentMethod === "cartão" || paymentMethod === "boleto" || paymentMethod === "pix") {
+              totalMRR += value / 12;
+            } else if (value > 1000) {
+              totalMRR += value / 12;
+            } else if (value > 0) {
+              totalMRR += value;
+            }
+          });
+          
+          avgTicket = companiesData.length > 0 ? totalMRR / companiesData.length : 0;
+        }
+      }
+
       setOverallStats({
         totalActive: active,
         totalChurned: churned,
         totalProjects: total,
         retentionRate: total > 0 ? (active / total) * 100 : 0,
-        avgLifetime
+        avgLifetime,
+        avgTicket
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -195,7 +237,7 @@ export default function CohortRetentionPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
@@ -249,6 +291,19 @@ export default function CohortRetentionPage() {
                 <p className="text-xs text-muted-foreground">meses</p>
               </div>
               <Calendar className="h-8 w-8 text-muted-foreground opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-blue-500/50 bg-blue-500/5">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Ticket Médio</p>
+                <p className="text-3xl font-bold text-blue-500">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(overallStats.avgTicket)}
+                </p>
+              </div>
+              <DollarSign className="h-8 w-8 text-blue-500 opacity-50" />
             </div>
           </CardContent>
         </Card>
