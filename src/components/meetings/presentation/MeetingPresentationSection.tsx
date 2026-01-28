@@ -225,8 +225,8 @@ export function MeetingPresentationSection({
                 </div>
 
                 <div className="relative">
-                  <ScrollArea className="w-full">
-                    <div className="flex gap-3 pb-4">
+                  <div className="overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-muted/20" style={{ scrollbarWidth: 'thin' }}>
+                    <div className="flex gap-3 min-w-max">
                       {slides.map((slide, index) => (
                         <div key={slide.id} className="w-40 flex-shrink-0">
                           <PresentationSlidePreview
@@ -238,12 +238,11 @@ export function MeetingPresentationSection({
                         </div>
                       ))}
                     </div>
-                    <div className="h-2" /> {/* Spacer for scrollbar visibility */}
-                  </ScrollArea>
+                  </div>
                   
                   {/* Navigation indicator */}
                   {slides.length > 5 && (
-                    <div className="flex items-center justify-center gap-2 mt-2 text-xs text-muted-foreground">
+                    <div className="flex items-center justify-center gap-2 mt-1 text-xs text-muted-foreground">
                       <span>← Arraste para ver mais slides →</span>
                     </div>
                   )}
