@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useCultureFormLink, useCreateFormLink } from "./useCultureManual";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface CultureFormLinkSectionProps {
   projectId: string;
@@ -29,8 +30,9 @@ export function CultureFormLinkSection({ projectId, canEdit }: CultureFormLinkSe
   const [copied, setCopied] = useState(false);
 
   const getPublicUrl = () => {
-    const baseUrl = "https://elevate-exec-direction.lovable.app";
-    return `${baseUrl}/#/cultura/${formLink?.access_token}`;
+    const baseUrl = getPublicBaseUrl();
+    // Query-based public link is the most robust (apps may drop the # fragment)
+    return `${baseUrl}/?public=cultura&token=${formLink?.access_token}`;
   };
 
   const handleCopyLink = async () => {
