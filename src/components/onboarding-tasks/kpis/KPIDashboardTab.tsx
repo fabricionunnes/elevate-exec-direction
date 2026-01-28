@@ -1431,6 +1431,17 @@ export const KPIDashboardTab = ({
       <MonthlySalesChart 
         companyId={companyId}
         projectId={projectId}
+        salespeople={salespeople.map(sp => ({
+          id: sp.id,
+          team_id: sp.team_id,
+          sector_id: sp.sector_id,
+          unit_id: sp.unit_id,
+        }))}
+        sectorTeams={sectorTeams}
+        selectedUnit={selectedUnit}
+        selectedTeam={selectedTeam}
+        selectedSector={selectedSector}
+        selectedSalesperson={selectedSalesperson}
       />
 
       {/* Sales Comparison Chart - Before vs After UNV */}

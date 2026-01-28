@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,16 +37,40 @@ interface MonthlyTarget {
   target_value: number;
 }
 
+interface SectorTeam {
+  sector_id: string;
+  team_id: string;
+}
+
+interface Salesperson {
+  id: string;
+  team_id: string | null;
+  sector_id: string | null;
+  unit_id?: string | null;
+}
+
 interface MonthlySalesChartProps {
   companyId: string;
   projectId?: string;
   companyName?: string;
+  salespeople?: Salesperson[];
+  sectorTeams?: SectorTeam[];
+  selectedUnit?: string;
+  selectedTeam?: string;
+  selectedSector?: string;
+  selectedSalesperson?: string;
 }
 
 export const MonthlySalesChart = ({ 
   companyId,
   projectId,
-  companyName = ""
+  companyName = "",
+  salespeople = [],
+  sectorTeams = [],
+  selectedUnit,
+  selectedTeam,
+  selectedSector,
+  selectedSalesperson,
 }: MonthlySalesChartProps) => {
   const [chartData, setChartData] = useState<MonthlyDataPoint[]>([]);
   const [mainGoalKpi, setMainGoalKpi] = useState<MainGoalKpi | null>(null);
@@ -55,35 +79,95 @@ export const MonthlySalesChart = ({
   const [aiLoading, setAiLoading] = useState(false);
   const [analysisGenerated, setAnalysisGenerated] = useState(false);
 
+  // Build teamIdsBySectorId map for sector filtering
+  const teamIdsBySectorId = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    sectorTeams.forEach(st => {
+      if (!map[st.sector_id]) {
+        map[st.sector_id] = new Set();
+      }
+      map[st.sector_id].add(st.team_id);
+    });
+    return map;
+  }, [sectorTeams]);
+
+  // Check if a salesperson belongs to a sector (directly or via team)
+  const salespersonBelongsToSector = (sp: Salesperson, sectorId: string): boolean => {
+    if (sp.sector_id === sectorId) return true;
+    if (sp.team_id) {
+      const teamsInSector = teamIdsBySectorId[sectorId];
+      if (teamsInSector && teamsInSector.has(sp.team_id)) return true;
+    }
+    return false;
+  };
+
+  // Get filtered salesperson IDs based on current filters
+  const filteredSalespersonIds = useMemo(() => {
+    if (selectedSalesperson) {
+      return new Set([selectedSalesperson]);
+    }
+    
+    let filtered = salespeople;
+    
+    if (selectedSector) {
+      filtered = filtered.filter(sp => salespersonBelongsToSector(sp, selectedSector));
+    }
+    
+    if (selectedTeam) {
+      filtered = filtered.filter(sp => sp.team_id === selectedTeam);
+    }
+    
+    if (selectedUnit) {
+      // Filter by unit - need to check if salesperson's team is in the unit
+      // For now, filter direct unit_id match
+      filtered = filtered.filter(sp => sp.unit_id === selectedUnit);
+    }
+    
+    return new Set(filtered.map(sp => sp.id));
+  }, [salespeople, selectedSalesperson, selectedSector, selectedTeam, selectedUnit, teamIdsBySectorId]);
+
+  const hasActiveFilters = !!(selectedSalesperson || selectedSector || selectedTeam || selectedUnit);
+
   useEffect(() => {
     fetchData();
-  }, [companyId]);
+  }, [companyId, selectedSalesperson, selectedSector, selectedTeam, selectedUnit, salespeople.length]);
 
   const fetchData = async () => {
     try {
+      setLoading(true);
+      
       // First, find the main goal KPI for this company
-      const { data: mainGoalKpis } = await supabase
+      // When filters are active, look for KPIs that match the filter scope
+      let kpiQuery = supabase
         .from("company_kpis")
         .select("id, name, kpi_type, target_value")
         .eq("company_id", companyId)
-        .eq("is_main_goal", true)
-        .limit(1);
+        .eq("kpi_type", "monetary");
 
+      // If team is selected, prioritize team-scoped KPI
+      if (selectedTeam) {
+        kpiQuery = kpiQuery.eq("team_id", selectedTeam);
+      }
+
+      const { data: monetaryKpis } = await kpiQuery;
+      
       let selectedKpi: MainGoalKpi | null = null;
       
-      if (mainGoalKpis && mainGoalKpis.length > 0) {
-        selectedKpi = mainGoalKpis[0] as MainGoalKpi;
+      if (monetaryKpis && monetaryKpis.length > 0) {
+        // Look for is_main_goal first
+        const mainGoal = monetaryKpis.find((k: any) => k.is_main_goal);
+        selectedKpi = (mainGoal || monetaryKpis[0]) as MainGoalKpi;
       } else {
-        // Fallback to monetary KPI if no main goal
-        const { data: monetaryKpis } = await supabase
+        // Fallback: get any main goal or monetary KPI
+        const { data: fallbackKpis } = await supabase
           .from("company_kpis")
           .select("id, name, kpi_type, target_value")
           .eq("company_id", companyId)
           .eq("kpi_type", "monetary")
           .limit(1);
         
-        if (monetaryKpis && monetaryKpis.length > 0) {
-          selectedKpi = monetaryKpis[0] as MainGoalKpi;
+        if (fallbackKpis && fallbackKpis.length > 0) {
+          selectedKpi = fallbackKpis[0] as MainGoalKpi;
         }
       }
 
@@ -118,51 +202,103 @@ export const MonthlySalesChart = ({
         return selectedKpi.target_value || 0;
       };
 
-      // Fetch historical data from company_sales_history
-      const { data: history, error } = await supabase
-        .from("company_sales_history")
-        .select("*")
-        .eq("company_id", companyId)
-        .order("month_year", { ascending: true });
+      let data: MonthlyDataPoint[] = [];
 
-      if (error) throw error;
-
-      // Build chart data from history
-      const data: MonthlyDataPoint[] = (history || []).map((entry) => ({
-        month: entry.month_year,
-        monthLabel: format(parseISO(entry.month_year), "MMM/yy", { locale: ptBR }),
-        revenue: entry.revenue || 0,
-        target: getMonthlyTarget(entry.month_year),
-        salesCount: entry.sales_count || 0,
-      }));
-
-      // Also fetch current month data from main goal KPI entries
-      const currentMonthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
-      
-      if (selectedKpi) {
-        const { data: currentEntries } = await supabase
-          .from("kpi_entries")
-          .select("value")
+      // When filters are active, calculate from kpi_entries
+      if (hasActiveFilters && filteredSalespersonIds.size > 0) {
+        // Get all monetary KPIs for aggregation
+        const { data: allMonetaryKpis } = await supabase
+          .from("company_kpis")
+          .select("id")
           .eq("company_id", companyId)
-          .eq("kpi_id", selectedKpi.id)
-          .gte("entry_date", currentMonthStart);
+          .eq("kpi_type", "monetary")
+          .eq("is_active", true);
 
-        if (currentEntries && currentEntries.length > 0) {
-          const currentRevenue = currentEntries.reduce((sum, e) => sum + e.value, 0);
-          const currentMonthStr = format(startOfMonth(new Date()), "yyyy-MM-dd");
-          
-          // Check if current month already exists
-          const existingIdx = data.findIndex(d => d.month === currentMonthStr);
-          if (existingIdx >= 0) {
-            data[existingIdx].revenue = Math.max(data[existingIdx].revenue, currentRevenue);
-          } else if (currentRevenue > 0) {
-            data.push({
-              month: currentMonthStr,
-              monthLabel: format(new Date(), "MMM/yy", { locale: ptBR }),
-              revenue: currentRevenue,
-              target: getMonthlyTarget(currentMonthStr),
-              salesCount: 0,
+        const monetaryKpiIds = (allMonetaryKpis || []).map(k => k.id);
+
+        if (monetaryKpiIds.length > 0) {
+          // Fetch ALL kpi_entries for monetary KPIs
+          const { data: entries } = await supabase
+            .from("kpi_entries")
+            .select("*")
+            .eq("company_id", companyId)
+            .in("kpi_id", monetaryKpiIds);
+
+          if (entries && entries.length > 0) {
+            // Filter entries by salesperson
+            const filteredEntries = entries.filter(e => 
+              filteredSalespersonIds.has(e.salesperson_id)
+            );
+
+            // Aggregate by month
+            const monthlyAggregation: Record<string, { revenue: number; count: number }> = {};
+            
+            filteredEntries.forEach(entry => {
+              const monthStr = format(parseISO(entry.entry_date), "yyyy-MM-01");
+              if (!monthlyAggregation[monthStr]) {
+                monthlyAggregation[monthStr] = { revenue: 0, count: 0 };
+              }
+              monthlyAggregation[monthStr].revenue += entry.value;
+              monthlyAggregation[monthStr].count += 1;
             });
+
+            // Convert to chart data
+            data = Object.entries(monthlyAggregation).map(([month, agg]) => ({
+              month,
+              monthLabel: format(parseISO(month), "MMM/yy", { locale: ptBR }),
+              revenue: agg.revenue,
+              target: getMonthlyTarget(month),
+              salesCount: agg.count,
+            }));
+          }
+        }
+      } else {
+        // No filters - use company_sales_history (historical aggregated data)
+        const { data: history, error } = await supabase
+          .from("company_sales_history")
+          .select("*")
+          .eq("company_id", companyId)
+          .order("month_year", { ascending: true });
+
+        if (error) throw error;
+
+        // Build chart data from history
+        data = (history || []).map((entry) => ({
+          month: entry.month_year,
+          monthLabel: format(parseISO(entry.month_year), "MMM/yy", { locale: ptBR }),
+          revenue: entry.revenue || 0,
+          target: getMonthlyTarget(entry.month_year),
+          salesCount: entry.sales_count || 0,
+        }));
+
+        // Also fetch current month data from main goal KPI entries
+        const currentMonthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
+        
+        if (selectedKpi) {
+          const { data: currentEntries } = await supabase
+            .from("kpi_entries")
+            .select("value")
+            .eq("company_id", companyId)
+            .eq("kpi_id", selectedKpi.id)
+            .gte("entry_date", currentMonthStart);
+
+          if (currentEntries && currentEntries.length > 0) {
+            const currentRevenue = currentEntries.reduce((sum, e) => sum + e.value, 0);
+            const currentMonthStr = format(startOfMonth(new Date()), "yyyy-MM-dd");
+            
+            // Check if current month already exists
+            const existingIdx = data.findIndex(d => d.month === currentMonthStr);
+            if (existingIdx >= 0) {
+              data[existingIdx].revenue = Math.max(data[existingIdx].revenue, currentRevenue);
+            } else if (currentRevenue > 0) {
+              data.push({
+                month: currentMonthStr,
+                monthLabel: format(new Date(), "MMM/yy", { locale: ptBR }),
+                revenue: currentRevenue,
+                target: getMonthlyTarget(currentMonthStr),
+                salesCount: 0,
+              });
+            }
           }
         }
       }
