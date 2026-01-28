@@ -17,6 +17,227 @@ interface CulturePDFSectionProps {
   readOnly?: boolean;
 }
 
+// Helper to parse markdown and render formatted text in jsPDF
+function renderMarkdownContent(
+  doc: jsPDF,
+  content: string,
+  startY: number,
+  margin: number,
+  contentWidth: number,
+  pageHeight: number,
+  addPageDecorations: () => void,
+  primaryColor: string
+): number {
+  let yPosition = startY;
+  const lines = content.split("\n");
+  
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    
+    // Check if we need a new page
+    if (yPosition > pageHeight - 35) {
+      doc.addPage();
+      addPageDecorations();
+      yPosition = 30;
+    }
+    
+    // Empty line - add spacing
+    if (!line) {
+      yPosition += 4;
+      continue;
+    }
+    
+    // H2 heading: ## Title
+    if (line.startsWith("## ")) {
+      const headingText = line.replace(/^##\s*/, "").replace(/\*\*/g, "");
+      yPosition += 6; // Extra space before heading
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(primaryColor);
+      
+      const headingLines = doc.splitTextToSize(headingText, contentWidth - 10);
+      for (const hLine of headingLines) {
+        if (yPosition > pageHeight - 35) {
+          doc.addPage();
+          addPageDecorations();
+          yPosition = 30;
+        }
+        doc.text(hLine, margin + 10, yPosition);
+        yPosition += 7;
+      }
+      yPosition += 2;
+      continue;
+    }
+    
+    // H3 heading: ### Title
+    if (line.startsWith("### ")) {
+      const headingText = line.replace(/^###\s*/, "").replace(/\*\*/g, "");
+      yPosition += 4;
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(60, 60, 60);
+      
+      const headingLines = doc.splitTextToSize(headingText, contentWidth - 10);
+      for (const hLine of headingLines) {
+        if (yPosition > pageHeight - 35) {
+          doc.addPage();
+          addPageDecorations();
+          yPosition = 30;
+        }
+        doc.text(hLine, margin + 10, yPosition);
+        yPosition += 6;
+      }
+      yPosition += 2;
+      continue;
+    }
+    
+    // Blockquote: > text
+    if (line.startsWith("> ")) {
+      const quoteText = line.replace(/^>\s*/, "").replace(/\*\*/g, "");
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(80, 80, 80);
+      
+      const quoteLines = doc.splitTextToSize(quoteText, contentWidth - 20);
+      for (const qLine of quoteLines) {
+        if (yPosition > pageHeight - 35) {
+          doc.addPage();
+          addPageDecorations();
+          yPosition = 30;
+        }
+        doc.text(qLine, margin + 15, yPosition);
+        yPosition += 6;
+      }
+      yPosition += 2;
+      continue;
+    }
+    
+    // List item: - text or * text or numbered list
+    if (line.match(/^[-*]\s/) || line.match(/^\d+\.\s/)) {
+      const listText = line.replace(/^[-*]\s/, "• ").replace(/^\d+\.\s/, (match) => match);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(50, 50, 50);
+      
+      // Process bold within list items
+      const processed = processInlineBold(doc, listText, margin + 10, yPosition, contentWidth - 15, pageHeight, addPageDecorations);
+      yPosition = processed;
+      continue;
+    }
+    
+    // Horizontal rule: --- or ***
+    if (line.match(/^[-*]{3,}$/)) {
+      yPosition += 3;
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.3);
+      doc.line(margin + 10, yPosition, margin + contentWidth - 10, yPosition);
+      yPosition += 6;
+      continue;
+    }
+    
+    // Regular paragraph - process bold text
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(50, 50, 50);
+    
+    yPosition = processInlineBold(doc, line, margin + 10, yPosition, contentWidth - 10, pageHeight, addPageDecorations);
+  }
+  
+  return yPosition;
+}
+
+// Process inline bold (**text**) within a line
+function processInlineBold(
+  doc: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  pageHeight: number,
+  addPageDecorations: () => void
+): number {
+  // Simple approach: split by bold markers and alternate styles
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  let currentLine = "";
+  let yPosition = y;
+  
+  // First, build the full text without markers to split properly
+  const cleanText = text.replace(/\*\*/g, "");
+  const wrappedLines = doc.splitTextToSize(cleanText, maxWidth);
+  
+  for (const wrappedLine of wrappedLines) {
+    if (yPosition > pageHeight - 35) {
+      doc.addPage();
+      addPageDecorations();
+      yPosition = 30;
+    }
+    
+    // Check if this line contains bold markers in original text
+    // For simplicity, render the clean line but detect if bold was present
+    const hasBold = text.includes("**");
+    
+    if (hasBold) {
+      // Render with mixed formatting
+      renderMixedLine(doc, text, wrappedLine, x, yPosition);
+    } else {
+      doc.text(wrappedLine, x, yPosition);
+    }
+    
+    yPosition += 6;
+  }
+  
+  return yPosition;
+}
+
+// Render a line with mixed bold/normal text
+function renderMixedLine(doc: jsPDF, fullText: string, lineText: string, x: number, y: number) {
+  // Find which parts of lineText should be bold based on fullText
+  // This is a simplified approach - render the entire line checking for bold patterns
+  const parts = fullText.split(/(\*\*[^*]+\*\*)/g);
+  let xPos = x;
+  
+  // Since jsPDF doesn't easily support inline formatting changes,
+  // we'll render the line as is but try to apply bold to detected segments
+  let lineRemaining = lineText;
+  
+  for (const part of parts) {
+    if (!part) continue;
+    
+    const isBold = part.startsWith("**") && part.endsWith("**");
+    const cleanPart = isBold ? part.slice(2, -2) : part;
+    
+    // Check if this part appears in our current line segment
+    if (lineRemaining.includes(cleanPart)) {
+      const idx = lineRemaining.indexOf(cleanPart);
+      
+      // Render text before this part (if any)
+      if (idx > 0) {
+        const before = lineRemaining.slice(0, idx);
+        doc.setFont("helvetica", "normal");
+        doc.text(before, xPos, y);
+        xPos += doc.getTextWidth(before);
+      }
+      
+      // Render this part
+      doc.setFont("helvetica", isBold ? "bold" : "normal");
+      doc.text(cleanPart, xPos, y);
+      xPos += doc.getTextWidth(cleanPart);
+      
+      // Update remaining text
+      lineRemaining = lineRemaining.slice(idx + cleanPart.length);
+    }
+  }
+  
+  // Render any remaining text
+  if (lineRemaining) {
+    doc.setFont("helvetica", "normal");
+    doc.text(lineRemaining, xPos, y);
+  }
+  
+  // Reset to normal
+  doc.setFont("helvetica", "normal");
+}
+
 export function CulturePDFSection({ projectId, readOnly }: CulturePDFSectionProps) {
   const { data: activeVersion, isLoading: loadingActive } = useActiveManualVersion(projectId);
   const { data: publishedVersion, isLoading: loadingPublished } = usePublishedManualVersion(projectId);
@@ -59,6 +280,7 @@ export function CulturePDFSection({ projectId, readOnly }: CulturePDFSectionProp
         // Footer
         doc.setFontSize(8);
         doc.setTextColor(128, 128, 128);
+        doc.setFont("helvetica", "normal");
         doc.text("Manual de Cultura – Documento Interno", pageWidth / 2, pageHeight - 10, { align: "center" });
         doc.text(new Date().getFullYear().toString(), pageWidth / 2, pageHeight - 6, { align: "center" });
       };
@@ -66,14 +288,23 @@ export function CulturePDFSection({ projectId, readOnly }: CulturePDFSectionProp
       // Cover page
       addPageDecorations();
       
-      // Title
-      doc.setFontSize(32);
+      // Main title - Large and prominent
+      doc.setFontSize(42);
+      doc.setFont("helvetica", "bold");
       doc.setTextColor(primaryColor);
-      doc.text("Manual de Cultura", pageWidth / 2, pageHeight / 2 - 20, { align: "center" });
+      doc.text("MANUAL", pageWidth / 2, pageHeight / 2 - 30, { align: "center" });
+      doc.text("DE CULTURA", pageWidth / 2, pageHeight / 2 - 10, { align: "center" });
       
-      doc.setFontSize(14);
+      // Decorative line
+      doc.setDrawColor(secondaryColor);
+      doc.setLineWidth(1);
+      doc.line(pageWidth / 2 - 40, pageHeight / 2 + 5, pageWidth / 2 + 40, pageHeight / 2 + 5);
+      
+      // Year
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "normal");
       doc.setTextColor(128, 128, 128);
-      doc.text(new Date().getFullYear().toString(), pageWidth / 2, pageHeight / 2, { align: "center" });
+      doc.text(new Date().getFullYear().toString(), pageWidth / 2, pageHeight / 2 + 20, { align: "center" });
 
       // Content pages
       const sortedSections = sections.sort((a, b) => a.sort_order - b.sort_order);
@@ -86,34 +317,30 @@ export function CulturePDFSection({ projectId, readOnly }: CulturePDFSectionProp
 
         let yPosition = 30;
 
-        // Section title
-        doc.setFontSize(18);
+        // Section title - styled header
+        doc.setFontSize(20);
+        doc.setFont("helvetica", "bold");
         doc.setTextColor(primaryColor);
         doc.text(section.section_title, margin + 10, yPosition);
         
         // Title underline
         doc.setDrawColor(secondaryColor);
-        doc.setLineWidth(0.5);
-        doc.line(margin + 10, yPosition + 3, pageWidth - margin, yPosition + 3);
+        doc.setLineWidth(0.8);
+        doc.line(margin + 10, yPosition + 4, pageWidth - margin, yPosition + 4);
         
-        yPosition += 15;
+        yPosition += 18;
 
-        // Section content
-        doc.setFontSize(11);
-        doc.setTextColor(50, 50, 50);
-        
-        const lines = doc.splitTextToSize(section.section_content, contentWidth - 10);
-        const lineHeight = 6;
-        
-        for (const line of lines) {
-          if (yPosition > pageHeight - 30) {
-            doc.addPage();
-            addPageDecorations();
-            yPosition = 30;
-          }
-          doc.text(line, margin + 10, yPosition);
-          yPosition += lineHeight;
-        }
+        // Render markdown content with proper formatting
+        yPosition = renderMarkdownContent(
+          doc,
+          section.section_content,
+          yPosition,
+          margin,
+          contentWidth,
+          pageHeight,
+          addPageDecorations,
+          primaryColor
+        );
       }
 
       // Save the PDF
@@ -244,7 +471,7 @@ export function CulturePDFSection({ projectId, readOnly }: CulturePDFSectionProp
               <li>✓ Layout institucional premium</li>
               <li>✓ Faixas laterais coloridas</li>
               <li>✓ Tipografia profissional</li>
-              <li>✓ Sumário automático</li>
+              <li>✓ Formatação markdown</li>
               <li>✓ Rodapé em todas as páginas</li>
             </ul>
           </div>
