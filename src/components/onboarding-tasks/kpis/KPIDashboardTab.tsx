@@ -281,6 +281,16 @@ export const KPIDashboardTab = ({
       selectedSector !== "all" ||
       selectedSalesperson !== "all";
 
+    // When filtering by Sector (but not by a specific Team/Salesperson), users expect the
+    // sector total to reflect the SUM of all teams inside that sector, not a single "main goal" KPI.
+    if (
+      selectedSector !== "all" &&
+      selectedTeam === "all" &&
+      selectedSalesperson === "all"
+    ) {
+      return filteredKpis.filter((k) => k.kpi_type === "monetary");
+    }
+
     if (!hasAnyOrgFilter) {
       return filteredKpis.filter((k) => k.kpi_type === "monetary");
     }
