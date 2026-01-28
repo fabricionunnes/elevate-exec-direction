@@ -66,6 +66,7 @@ interface Salesperson {
   is_active: boolean;
   unit_id: string | null;
   team_id: string | null;
+  sector_id: string | null;
 }
 
 interface Team {
@@ -125,6 +126,7 @@ export const KPIDashboardTab = ({
   const [units, setUnits] = useState<Unit[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
+  const [sectorTeams, setSectorTeams] = useState<{ sector_id: string; team_id: string }[]>([]);
   const [allMonthlyTargets, setAllMonthlyTargets] = useState<MonthlyTarget[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
@@ -170,7 +172,7 @@ export const KPIDashboardTab = ({
         entriesQuery = entriesQuery.eq("salesperson_id", salespersonId);
       }
 
-      const [kpisRes, salespeopleRes, entriesRes, unitsRes, teamsRes, sectorsRes, companyRes, monthlyTargetsRes] = await Promise.all([
+      const [kpisRes, salespeopleRes, entriesRes, unitsRes, teamsRes, sectorsRes, companyRes, monthlyTargetsRes, sectorTeamsRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
         salespersonId 
           ? supabase.from("company_salespeople").select("*").eq("id", salespersonId)
@@ -181,6 +183,7 @@ export const KPIDashboardTab = ({
         supabase.from("company_sectors").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("onboarding_companies").select("contract_start_date").eq("id", companyId).single(),
         supabase.from("kpi_monthly_targets").select("*").eq("company_id", companyId).eq("month_year", selectedMonthYear).order("level_order"),
+        supabase.from("company_sector_teams").select("sector_id, team_id"),
       ]);
 
       console.log("[KPIDashboardTab] Results:", {
@@ -238,6 +241,7 @@ export const KPIDashboardTab = ({
       setUnits(unitsRes.data || []);
       setTeams(teamsRes.data || []);
       setSectors(sectorsRes.data || []);
+      setSectorTeams(sectorTeamsRes.data || []);
       if (companyRes.data) {
         setContractStartDate(companyRes.data.contract_start_date);
       }
@@ -403,6 +407,30 @@ export const KPIDashboardTab = ({
     return new Map(kpis.map((k) => [k.id, k] as const));
   }, [kpis]);
 
+  // Build a map of sector_id -> team_ids for efficient lookup
+  const teamIdsBySectorId = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    sectorTeams.forEach(st => {
+      if (!map[st.sector_id]) {
+        map[st.sector_id] = new Set();
+      }
+      map[st.sector_id].add(st.team_id);
+    });
+    return map;
+  }, [sectorTeams]);
+
+  // Check if a salesperson belongs to a sector (directly or via team)
+  const salespersonBelongsToSector = (sp: Salesperson, sectorId: string): boolean => {
+    // Direct sector match
+    if (sp.sector_id === sectorId) return true;
+    // Check if salesperson's team is associated with the sector
+    if (sp.team_id) {
+      const teamsInSector = teamIdsBySectorId[sectorId];
+      if (teamsInSector && teamsInSector.has(sp.team_id)) return true;
+    }
+    return false;
+  };
+
   // Normalize entry dimensions because legacy kpi_entries may not have unit_id/team_id/sector_id filled.
   const getEntryDimensions = (e: Entry) => {
     const sp = salespeopleById.get(e.salesperson_id);
@@ -412,16 +440,25 @@ export const KPIDashboardTab = ({
       unit_id: e.unit_id ?? sp?.unit_id ?? null,
       team_id: e.team_id ?? sp?.team_id ?? null,
       // sector is primarily tied to KPI; fallback to entry.sector_id if present
-      sector_id: e.sector_id ?? kpi?.sector_id ?? null,
+      sector_id: e.sector_id ?? kpi?.sector_id ?? sp?.sector_id ?? null,
       salesperson_id: e.salesperson_id,
     };
   };
 
   const matchesActiveFilters = (e: Entry) => {
     const d = getEntryDimensions(e);
+    const sp = salespeopleById.get(e.salesperson_id);
+    
     if (selectedUnit !== "all" && d.unit_id !== selectedUnit) return false;
     if (selectedTeam !== "all" && d.team_id !== selectedTeam) return false;
-    if (selectedSector !== "all" && d.sector_id !== selectedSector) return false;
+    
+    // Sector filter: check if entry's sector matches OR if the salesperson belongs to the sector via team
+    if (selectedSector !== "all") {
+      const directMatch = d.sector_id === selectedSector;
+      const viaSalesperson = sp ? salespersonBelongsToSector(sp, selectedSector) : false;
+      if (!directMatch && !viaSalesperson) return false;
+    }
+    
     if (selectedSalesperson !== "all" && d.salesperson_id !== selectedSalesperson) return false;
     return true;
   };
@@ -650,10 +687,16 @@ export const KPIDashboardTab = ({
     const filteredEntries = entries.filter(e => {
       if (!kpiIdsToUse.includes(e.kpi_id)) return false;
       const dims = getEntryDimensions(e);
+      const sp = salespeopleById.get(e.salesperson_id);
       if (selectedSalesperson !== "all" && dims.salesperson_id !== selectedSalesperson) return false;
       if (selectedUnit !== "all" && dims.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && dims.team_id !== selectedTeam) return false;
-      if (selectedSector !== "all" && dims.sector_id !== selectedSector) return false;
+      // Sector filter: check direct match OR via salesperson's team
+      if (selectedSector !== "all") {
+        const directMatch = dims.sector_id === selectedSector;
+        const viaSalesperson = sp ? salespersonBelongsToSector(sp, selectedSector) : false;
+        if (!directMatch && !viaSalesperson) return false;
+      }
       return true;
     });
 
@@ -686,9 +729,15 @@ export const KPIDashboardTab = ({
     const filteredEntries = entries.filter(e => {
       if (!targetKpiIds.includes(e.kpi_id)) return false;
       const dims = getEntryDimensions(e);
+      const sp = salespeopleById.get(e.salesperson_id);
       if (selectedUnit !== "all" && dims.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && dims.team_id !== selectedTeam) return false;
-      if (selectedSector !== "all" && dims.sector_id !== selectedSector) return false;
+      // Sector filter: check direct match OR via salesperson's team
+      if (selectedSector !== "all") {
+        const directMatch = dims.sector_id === selectedSector;
+        const viaSalesperson = sp ? salespersonBelongsToSector(sp, selectedSector) : false;
+        if (!directMatch && !viaSalesperson) return false;
+      }
       if (selectedSalesperson !== "all" && dims.salesperson_id !== selectedSalesperson) return false;
       return true;
     });
@@ -762,7 +811,10 @@ export const KPIDashboardTab = ({
       if (selectedSalesperson !== "all" && sp.id !== selectedSalesperson) return false;
       if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
-      // Note: salespeople don't have sector_id directly, handled via entries
+      // Sector filter: check if salesperson belongs to sector (directly or via team)
+      if (selectedSector !== "all") {
+        if (!salespersonBelongsToSector(sp, selectedSector)) return false;
+      }
       return true;
     });
       
@@ -775,9 +827,15 @@ export const KPIDashboardTab = ({
     entries.forEach(entry => {
       if (selectedKpi !== "all" && entry.kpi_id !== selectedKpi) return;
       const dims = getEntryDimensions(entry);
+      const sp = salespeopleById.get(entry.salesperson_id);
       if (selectedUnit !== "all" && dims.unit_id !== selectedUnit) return;
       if (selectedTeam !== "all" && dims.team_id !== selectedTeam) return;
-      if (selectedSector !== "all" && dims.sector_id !== selectedSector) return;
+      // Sector filter: check direct match OR via salesperson's team
+      if (selectedSector !== "all") {
+        const directMatch = dims.sector_id === selectedSector;
+        const viaSalesperson = sp ? salespersonBelongsToSector(sp, selectedSector) : false;
+        if (!directMatch && !viaSalesperson) return;
+      }
       if (selectedSalesperson !== "all" && dims.salesperson_id !== selectedSalesperson) return;
       if (rankingMap[entry.salesperson_id]) {
         rankingMap[entry.salesperson_id].total += entry.value;
@@ -1362,6 +1420,7 @@ export const KPIDashboardTab = ({
         units={units}
         teams={teams}
         sectors={sectors}
+        sectorTeams={sectorTeams}
         selectedUnit={selectedUnit}
         selectedTeam={selectedTeam}
         selectedSector={selectedSector}
