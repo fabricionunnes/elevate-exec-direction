@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -1548,6 +1548,13 @@ const OnboardingTasksPage = () => {
                       Resultados
                     </DropdownMenuItem>
                   )}
+                  {/* UNV Circle - visible for all staff */}
+                  {currentUserRole && (
+                    <DropdownMenuItem onClick={() => navigate("/circle")}>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      UNV Circle
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setShowStaffSettings(true)}>
                     <User className="h-4 w-4 mr-2" />
@@ -1705,6 +1712,18 @@ const OnboardingTasksPage = () => {
               >
                 <BarChart3 className="h-4 w-4" />
                 Resultados
+              </Button>
+            )}
+            {/* UNV Circle button - visible for all staff */}
+            {currentUserRole && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate("/circle")}
+                className="gap-2 border-violet-300 text-violet-600 hover:bg-violet-50"
+              >
+                <Sparkles className="h-4 w-4" />
+                UNV Circle
               </Button>
             )}
             {/* Vagas (RH) button - visible for admin, cs, consultant, rh */}
