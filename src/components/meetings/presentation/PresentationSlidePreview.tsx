@@ -14,6 +14,7 @@ import {
   Zap,
   Star
 } from "lucide-react";
+import unvLogoSlides from "@/assets/unv-logo-slides.png";
 
 interface PresentationSlidePreviewProps {
   slide: PresentationSlide;
@@ -83,16 +84,15 @@ export function PresentationSlidePreview({
       />
       
       {/* UNV Logo */}
-      <div 
-        className="flex items-center justify-center rounded px-2 py-0.5 mb-2"
-        style={{ backgroundColor: 'rgba(255,255,255,0.9)' }}
-      >
-        <span 
-          className="text-[8px] font-black tracking-wider"
-          style={{ color: UNV_COLORS.blue.dark }}
-        >
-          UNV
-        </span>
+      <div className="mb-2 bg-white/90 rounded px-2 py-1">
+        <img 
+          src={unvLogoSlides} 
+          alt="UNV" 
+          className={cn(
+            "object-contain",
+            isLarge ? "h-12" : "h-6"
+          )}
+        />
       </div>
       
       {companyName && (
@@ -299,12 +299,11 @@ export function PresentationSlidePreview({
       
       {/* Footer with logo */}
       <div className="flex items-center justify-between px-2 py-1 bg-gray-50 border-t">
-        <div 
-          className="flex items-center justify-center rounded px-1"
-          style={{ backgroundColor: UNV_COLORS.blue.dark }}
-        >
-          <span className="text-white text-[5px] font-bold">UNV</span>
-        </div>
+        <img 
+          src={unvLogoSlides} 
+          alt="UNV" 
+          className="h-4 object-contain"
+        />
         <div className="flex items-center gap-0.5">
           {[UNV_COLORS.blue.dark, UNV_COLORS.red.primary, UNV_COLORS.gold.primary].map((color, i) => (
             <div 
