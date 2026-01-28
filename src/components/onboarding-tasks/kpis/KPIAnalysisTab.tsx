@@ -81,7 +81,7 @@ export const KPIAnalysisTab = ({ companyId, projectId }: KPIAnalysisTabProps) =>
       .eq("is_active", true)
       .maybeSingle();
 
-    setIsAdmin(staff?.role === "admin");
+    setIsAdmin(staff?.role === "admin" || staff?.role === "master");
   };
 
   const handleDeleteAllHistory = async () => {

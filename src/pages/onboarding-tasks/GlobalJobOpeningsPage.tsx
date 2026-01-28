@@ -143,7 +143,7 @@ const GlobalJobOpeningsPage = () => {
           setCurrentStaffId(staffMember.id);
           
           // Redirect if not authorized
-          if (!["admin", "cs", "consultant", "rh"].includes(role)) {
+          if (!["master", "admin", "cs", "consultant", "rh"].includes(role)) {
             toast.error("Você não tem permissão para acessar esta página");
             navigate("/onboarding-tasks");
           } else {

@@ -151,3 +151,18 @@ export const STAFF_ROLE_COLORS: Record<StaffRole, string> = {
 export const isMasterRole = (role: string): boolean => {
   return role === "master";
 };
+
+// Check if a role has admin-level access (master or admin)
+export const hasAdminAccess = (role: string): boolean => {
+  return role === "master" || role === "admin";
+};
+
+// Check if a role has CS-level access (master, admin, or cs)
+export const hasCSAccess = (role: string): boolean => {
+  return role === "master" || role === "admin" || role === "cs";
+};
+
+// Check if a role has consultant-level access (master, admin, cs, or consultant)
+export const hasConsultantAccess = (role: string): boolean => {
+  return role === "master" || role === "admin" || role === "cs" || role === "consultant";
+};

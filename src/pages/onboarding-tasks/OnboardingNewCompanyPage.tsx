@@ -60,8 +60,8 @@ const OnboardingNewCompanyPage = () => {
         .eq("user_id", user.id)
         .single();
 
-      // Only admin and CS can create companies (not consultant)
-      if (staffMember && (staffMember.role === "admin" || staffMember.role === "cs")) {
+      // Only master, admin and CS can create companies (not consultant)
+      if (staffMember && (staffMember.role === "master" || staffMember.role === "admin" || staffMember.role === "cs")) {
         setCanCreate(true);
       } else {
         toast.error("Você não tem permissão para criar empresas");
@@ -136,8 +136,8 @@ const OnboardingNewCompanyPage = () => {
     return null;
   }
 
-  const csList = staffList.filter((s) => s.role === "cs" || s.role === "admin");
-  const consultantList = staffList.filter((s) => s.role === "consultant" || s.role === "admin" || s.role === "cs");
+  const csList = staffList.filter((s) => s.role === "cs" || s.role === "admin" || s.role === "master");
+  const consultantList = staffList.filter((s) => s.role === "consultant" || s.role === "admin" || s.role === "cs" || s.role === "master");
 
   return (
     <div className="min-h-screen bg-background">

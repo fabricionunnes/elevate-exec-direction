@@ -94,7 +94,7 @@ export default function GlobalTalentPoolResumesPage() {
         .eq("user_id", user.id)
         .single();
 
-      if (!staff || !["admin", "cs", "consultant", "rh"].includes(staff.role?.toLowerCase())) {
+      if (!staff || !["master", "admin", "cs", "consultant", "rh"].includes(staff.role?.toLowerCase())) {
         toast.error("Acesso não autorizado");
         navigate("/onboarding-tasks");
         return;

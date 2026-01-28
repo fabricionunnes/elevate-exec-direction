@@ -343,7 +343,7 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
 
     if (data) {
       setCurrentStaffId(data.id);
-      setIsAdmin(data.role === "admin");
+      setIsAdmin(data.role === "admin" || data.role === "master");
       setIsCS(data.role === "cs");
       return { staffId: data.id, role: data.role };
     }

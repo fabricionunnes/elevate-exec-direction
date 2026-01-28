@@ -145,8 +145,8 @@ export default function OnboardingCompaniesReportPage() {
       return;
     }
 
-    // Allow admin and cs to access this page
-    if (staffData.role !== "admin" && staffData.role !== "cs") {
+    // Allow master, admin and cs to access this page
+    if (staffData.role !== "master" && staffData.role !== "admin" && staffData.role !== "cs") {
       toast.error("Acesso restrito");
       navigate("/onboarding-tasks");
       return;
@@ -154,7 +154,7 @@ export default function OnboardingCompaniesReportPage() {
 
     setStaffId(staffData.id);
     setUserRole(staffData.role);
-    setIsAdmin(staffData.role === "admin");
+    setIsAdmin(staffData.role === "admin" || staffData.role === "master");
     setIsCS(staffData.role === "cs");
     fetchData();
   };

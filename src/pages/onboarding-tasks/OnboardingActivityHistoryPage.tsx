@@ -31,8 +31,8 @@ const OnboardingActivityHistoryPage = () => {
         .eq("is_active", true)
         .maybeSingle();
 
-      // Allow admin and cs to access this page
-      if (!staff || (staff.role !== "admin" && staff.role !== "cs")) {
+      // Allow master, admin and cs to access this page
+      if (!staff || (staff.role !== "master" && staff.role !== "admin" && staff.role !== "cs")) {
         navigate("/onboarding-tasks");
         return;
       }

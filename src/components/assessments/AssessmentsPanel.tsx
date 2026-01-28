@@ -78,7 +78,7 @@ export function AssessmentsPanel({ projectId }: Props) {
       .eq("is_active", true)
       .maybeSingle();
 
-    setIsAdmin(staff?.role === "admin");
+    setIsAdmin(staff?.role === "admin" || staff?.role === "master");
   };
 
   useEffect(() => {

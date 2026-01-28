@@ -65,7 +65,7 @@ export default function CustomerPointsLayout() {
           .eq("is_active", true)
           .maybeSingle();
 
-        if (staffData && ["admin", "cs", "consultant"].includes(staffData.role)) {
+        if (staffData && ["master", "admin", "cs", "consultant"].includes(staffData.role)) {
           // Staff member - use companyId from URL params
           setIsStaff(true);
           setStaffRole(staffData.role);

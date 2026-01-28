@@ -70,7 +70,7 @@ export default function LeaderDashboardPage() {
           console.error("Error checking staff:", staffError);
         }
 
-        if (!staff || staff.role !== "admin") {
+        if (!staff || (staff.role !== "admin" && staff.role !== "master")) {
           setIsAuthorized(false);
           setIsLoading(false);
           navigate("/onboarding-tasks");

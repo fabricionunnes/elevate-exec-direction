@@ -71,7 +71,7 @@ export default function HotseatAdminPage() {
         .eq("is_active", true)
         .maybeSingle();
 
-      if (!staff || !["admin", "cs"].includes(staff.role)) {
+      if (!staff || !["master", "admin", "cs"].includes(staff.role)) {
         toast.error("Acesso não autorizado");
         navigate("/onboarding-tasks");
         return;

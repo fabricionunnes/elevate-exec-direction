@@ -334,17 +334,18 @@ const OnboardingCompanyDetailPage = () => {
     );
   }
 
-  const csOptions = staffList.filter((s) => s.role === "cs" || s.role === "admin");
-  const consultantOptions = staffList.filter((s) => s.role === "consultant" || s.role === "admin" || s.role === "cs");
+  const csOptions = staffList.filter((s) => s.role === "cs" || s.role === "admin" || s.role === "master");
+  const consultantOptions = staffList.filter((s) => s.role === "consultant" || s.role === "admin" || s.role === "cs" || s.role === "master");
 
   // Permission logic:
-  // - Admin: can edit everything including CS assignment
+  // - Master/Admin: can edit everything including CS assignment
   // - CS: can edit consultant assignment and other fields, but not CS assignment
   // - Consultant: read-only on company data
-  const canEditCompany = currentUserRole === "admin" || currentUserRole === "cs";
-  const canEditCS = currentUserRole === "admin";
-  const canEditConsultant = currentUserRole === "admin" || currentUserRole === "cs";
-  const canDeleteCompany = currentUserRole === "admin";
+  const isMasterOrAdmin = currentUserRole === "master" || currentUserRole === "admin";
+  const canEditCompany = isMasterOrAdmin || currentUserRole === "cs";
+  const canEditCS = isMasterOrAdmin;
+  const canEditConsultant = isMasterOrAdmin || currentUserRole === "cs";
+  const canDeleteCompany = isMasterOrAdmin;
 
   const handleDeleteCompany = async () => {
     if (!companyId || isNew) return;
@@ -542,7 +543,7 @@ const OnboardingCompanyDetailPage = () => {
                     <Select 
                       value={form.status} 
                       onValueChange={(v) => setForm({ ...form, status: v })}
-                      disabled={currentUserRole !== "admin" && currentUserRole !== "cs"}
+                      disabled={currentUserRole !== "master" && currentUserRole !== "admin" && currentUserRole !== "cs"}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -554,15 +555,15 @@ const OnboardingCompanyDetailPage = () => {
                         <SelectItem value="closed">Encerrado</SelectItem>
                       </SelectContent>
                     </Select>
-                    {currentUserRole !== "admin" && currentUserRole !== "cs" && (
+                    {currentUserRole !== "master" && currentUserRole !== "admin" && currentUserRole !== "cs" && (
                       <p className="text-xs text-muted-foreground">
-                        Apenas CS ou Admin podem alterar o status
+                        Apenas CS, Admin ou Master podem alterar o status
                       </p>
                     )}
                   </div>
                   
-                  {/* Simulator Toggle - Admin only */}
-                  {currentUserRole === "admin" && (
+                  {/* Simulator Toggle - Master/Admin only */}
+                  {(currentUserRole === "master" || currentUserRole === "admin") && (
                     <div className="flex items-center justify-between rounded-lg border p-4 bg-amber-50 dark:bg-amber-950/20">
                       <div className="space-y-0.5">
                         <Label htmlFor="is_simulator" className="text-base font-medium">

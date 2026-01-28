@@ -174,8 +174,8 @@ const OnboardingCompaniesPage = () => {
     }
   };
 
-  // Only admin and CS can create new companies
-  const canCreateCompany = currentUserRole === "admin" || currentUserRole === "cs";
+  // Only master, admin and CS can create new companies
+  const canCreateCompany = currentUserRole === "master" || currentUserRole === "admin" || currentUserRole === "cs";
 
   if (loading) {
     return (

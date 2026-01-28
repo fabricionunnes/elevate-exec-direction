@@ -23,7 +23,7 @@ const HealthScorePage = () => {
             .eq("user_id", user.id)
             .single();
           
-          setIsAdmin(staff?.role === "admin");
+          setIsAdmin(staff?.role === "admin" || staff?.role === "master");
         }
 
         if (projectId) {

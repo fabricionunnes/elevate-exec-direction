@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 
-const CRM_ROLES = ["admin", "head_comercial", "closer", "sdr"];
+const CRM_ROLES = ["master", "admin", "head_comercial", "closer", "sdr"];
 
 interface NavItem {
   title: string;

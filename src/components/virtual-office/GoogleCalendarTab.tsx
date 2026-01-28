@@ -123,7 +123,7 @@ const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
   // Staff selection for CS/Admin
   const [connectedStaff, setConnectedStaff] = useState<StaffMember[]>([]);
   const [selectedStaffUserId, setSelectedStaffUserId] = useState<string | null>(null);
-  const isCSOrAdmin = currentStaff?.role === "cs" || currentStaff?.role === "admin";
+  const isCSOrAdmin = currentStaff?.role === "cs" || currentStaff?.role === "admin" || currentStaff?.role === "master";
   
   // Day detail panel
   const [selectedDayForDetail, setSelectedDayForDetail] = useState<Date>(new Date());

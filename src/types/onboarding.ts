@@ -184,5 +184,5 @@ export const isClientRole = (role: OnboardingRole): role is ClientRole => {
 
 // Check if a role is a staff role
 export const isStaffRole = (role: OnboardingRole): role is StaffRole => {
-  return ["admin", "cs", "consultant"].includes(role);
+  return ["master", "admin", "cs", "consultant"].includes(role);
 };

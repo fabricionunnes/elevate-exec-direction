@@ -1378,12 +1378,13 @@ const OnboardingTasksPage = () => {
     setExpandedCompanyId(expandedCompanyId === companyId ? null : companyId);
   };
 
-  const isAdmin = currentUserRole === "admin";
+  const isMaster = currentUserRole === "master";
+  const isAdmin = currentUserRole === "admin" || isMaster;
   const isCS = currentUserRole === "cs";
   const isConsultant = currentUserRole === "consultant";
   const canCreateCompany = isAdmin || isCS;
   const canAccessAnalytics = isAdmin || isCS || isConsultant;
-  const CRM_ROLES = ["admin", "head_comercial", "closer", "sdr"];
+  const CRM_ROLES = ["admin", "master", "head_comercial", "closer", "sdr"];
   const canAccessCRM = currentUserRole ? CRM_ROLES.includes(currentUserRole) : false;
 
   if (loading) {

@@ -79,7 +79,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess }: Add
       .from("onboarding_staff")
       .select("id, name, role")
       .eq("is_active", true)
-      .in("role", ["admin", "head_comercial", "closer", "sdr"])
+      .in("role", ["master", "admin", "head_comercial", "closer", "sdr"])
       .order("name");
     
     setStaffList(data || []);
