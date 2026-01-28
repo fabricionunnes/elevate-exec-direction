@@ -35,7 +35,8 @@ export function useDragScroll() {
     if (!pointerDownRef.current) return;
 
     const dx = e.clientX - startXRef.current;
-    if (Math.abs(dx) > 4) movedRef.current = true;
+    // Increase threshold to 10px to better differentiate between click and drag
+    if (Math.abs(dx) > 10) movedRef.current = true;
     el.scrollLeft = startScrollLeftRef.current - dx;
   }, []);
 
