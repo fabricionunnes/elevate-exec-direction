@@ -375,25 +375,35 @@ Deno.serve(async (req) => {
     }
 
     // Original flow for admin-created users
-    // Check if user already exists in onboarding_users for this project
+    // Check if user already exists in onboarding_users for this project (exact email match)
     const { data: existingOnboardingUser } = await supabaseAdmin
       .from("onboarding_users")
-      .select("id")
+      .select("id, role, salesperson_id")
       .eq("email", email)
       .eq("project_id", project_id)
-      .single();
+      .maybeSingle();
 
     if (existingOnboardingUser) {
-      // Update existing onboarding user
+      // If changing from one role to another (e.g., financeiro to vendedor), 
+      // update the existing record instead of failing
+      const updateData: Record<string, unknown> = {
+        user_id: userId || existingOnboardingUser.id,
+        name,
+        role,
+        temp_password: password,
+        password_changed: false,
+      };
+
+      // Handle salesperson_id - clear it if not vendedor, set it if vendedor
+      if (salesperson_id) {
+        updateData.salesperson_id = salesperson_id;
+      } else if (role !== "vendedor") {
+        updateData.salesperson_id = null;
+      }
+
       const { error: updateError } = await supabaseAdmin
         .from("onboarding_users")
-        .update({
-          user_id: userId,
-          name,
-          role,
-          temp_password: password,
-          password_changed: false,
-        })
+        .update(updateData)
         .eq("id", existingOnboardingUser.id);
 
       if (updateError) {
@@ -403,6 +413,8 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      
+      console.log(`Updated existing onboarding user: ${email} from ${existingOnboardingUser.role} to ${role}`);
     } else {
       // Create new onboarding user
       const insertData: Record<string, unknown> = {
@@ -431,6 +443,8 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      
+      console.log(`Created new onboarding user: ${email} as ${role}`);
     }
 
     return new Response(
