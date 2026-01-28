@@ -23,7 +23,7 @@ interface KPI {
   target_value: number;
   is_required: boolean;
   sector_id: string | null;
-  scope: "company" | "sector" | "team" | "salesperson" | null;
+  scope: "company" | "sector" | "team" | "salesperson" | "unit" | null;
   team_id: string | null;
   unit_id: string | null;
   salesperson_id: string | null;
@@ -182,6 +182,38 @@ export default function KPIEntryPage() {
 
       if (kpisError) throw kpisError;
 
+      // Fetch multi-select relationships
+      const kpiIds = (allKpisData || []).map((k: any) => k.id);
+      const [kpiUnitsRes, kpiSectorsRes, kpiTeamsRes, kpiSalespeopleRes] = await Promise.all([
+        kpiIds.length > 0 ? supabase.from("kpi_units").select("kpi_id, unit_id").in("kpi_id", kpiIds) : Promise.resolve({ data: [] }),
+        kpiIds.length > 0 ? supabase.from("kpi_sectors").select("kpi_id, sector_id").in("kpi_id", kpiIds) : Promise.resolve({ data: [] }),
+        kpiIds.length > 0 ? supabase.from("kpi_teams").select("kpi_id, team_id").in("kpi_id", kpiIds) : Promise.resolve({ data: [] }),
+        kpiIds.length > 0 ? supabase.from("kpi_salespeople").select("kpi_id, salesperson_id").in("kpi_id", kpiIds) : Promise.resolve({ data: [] }),
+      ]);
+
+      // Build lookup maps for multi-select relationships
+      const kpiUnitIds = new Map<string, string[]>();
+      const kpiSectorIds = new Map<string, string[]>();
+      const kpiTeamIds = new Map<string, string[]>();
+      const kpiSalespersonIds = new Map<string, string[]>();
+
+      (kpiUnitsRes.data || []).forEach((r: any) => {
+        if (!kpiUnitIds.has(r.kpi_id)) kpiUnitIds.set(r.kpi_id, []);
+        kpiUnitIds.get(r.kpi_id)!.push(r.unit_id);
+      });
+      (kpiSectorsRes.data || []).forEach((r: any) => {
+        if (!kpiSectorIds.has(r.kpi_id)) kpiSectorIds.set(r.kpi_id, []);
+        kpiSectorIds.get(r.kpi_id)!.push(r.sector_id);
+      });
+      (kpiTeamsRes.data || []).forEach((r: any) => {
+        if (!kpiTeamIds.has(r.kpi_id)) kpiTeamIds.set(r.kpi_id, []);
+        kpiTeamIds.get(r.kpi_id)!.push(r.team_id);
+      });
+      (kpiSalespeopleRes.data || []).forEach((r: any) => {
+        if (!kpiSalespersonIds.has(r.kpi_id)) kpiSalespersonIds.set(r.kpi_id, []);
+        kpiSalespersonIds.get(r.kpi_id)!.push(r.salesperson_id);
+      });
+
       // Filter KPIs based on scope - show KPIs that match the salesperson's context
       // Logic: A salesperson sees a KPI if:
       // 1. The KPI has NO specific scope restrictions (company-wide)
@@ -199,44 +231,56 @@ export default function KPIEntryPage() {
       filteredKpis = filteredKpis.filter(kpi => {
         // Check if KPI has any specific scope restriction
         const hasSpecificScope = kpi.scope && kpi.scope !== 'company';
-        const hasSectorRestriction = !!kpi.sector_id;
-        const hasTeamRestriction = !!kpi.team_id;
-        const hasUnitRestriction = !!kpi.unit_id;
-        const hasSalespersonRestriction = !!kpi.salesperson_id;
         
-        // If KPI is salesperson-specific, only that salesperson sees it
+        // Get multi-select IDs for this KPI (fallback to legacy single fields)
+        const unitIdsForKpi = kpiUnitIds.get(kpi.id) || (kpi.unit_id ? [kpi.unit_id] : []);
+        const sectorIdsForKpi = kpiSectorIds.get(kpi.id) || (kpi.sector_id ? [kpi.sector_id] : []);
+        const teamIdsForKpi = kpiTeamIds.get(kpi.id) || (kpi.team_id ? [kpi.team_id] : []);
+        const salespersonIdsForKpi = kpiSalespersonIds.get(kpi.id) || (kpi.salesperson_id ? [kpi.salesperson_id] : []);
+
+        const hasUnitRestriction = unitIdsForKpi.length > 0;
+        const hasSectorRestriction = sectorIdsForKpi.length > 0;
+        const hasTeamRestriction = teamIdsForKpi.length > 0;
+        const hasSalespersonRestriction = salespersonIdsForKpi.length > 0;
+        
+        // If KPI is salesperson-specific, only those salespeople see it
         if (kpi.scope === 'salesperson' && hasSalespersonRestriction) {
-          return kpi.salesperson_id === salespersonData.id;
+          return salespersonIdsForKpi.includes(salespersonData.id);
         }
         
-        // If KPI is team-specific, only salespeople in that team see it
+        // If KPI is team-specific, only salespeople in those teams see it
         if (kpi.scope === 'team' && hasTeamRestriction) {
-          return salespersonData.team_id === kpi.team_id;
+          return salespersonData.team_id && teamIdsForKpi.includes(salespersonData.team_id);
         }
         
-        // If KPI is sector-specific, only salespeople in that sector see it
+        // If KPI is sector-specific, only salespeople in those sectors see it
         if (kpi.scope === 'sector' && hasSectorRestriction) {
-          return sectorIds.includes(kpi.sector_id!);
+          return sectorIds.some(sid => sectorIdsForKpi.includes(sid));
+        }
+        
+        // If KPI is unit-specific, only salespeople in those units see it
+        if (kpi.scope === 'unit' && hasUnitRestriction) {
+          return salespersonData.unit_id && unitIdsForKpi.includes(salespersonData.unit_id);
         }
         
         // For company scope or no scope, check if there are additional restrictions
-        // If KPI has a unit restriction, salesperson must match (or have no unit)
-        if (hasUnitRestriction) {
-          if (salespersonData.unit_id && kpi.unit_id !== salespersonData.unit_id) {
+        // If KPI has a unit restriction (without explicit scope), salesperson must match
+        if (hasUnitRestriction && !hasSpecificScope) {
+          if (salespersonData.unit_id && !unitIdsForKpi.includes(salespersonData.unit_id)) {
             return false;
           }
         }
         
-        // Legacy: If KPI has sector_id without explicit scope, respect sector restriction
+        // Legacy: If KPI has sector restriction without explicit scope, respect it
         if (hasSectorRestriction && !hasSpecificScope) {
-          if (sectorIds.length > 0 && !sectorIds.includes(kpi.sector_id!)) {
+          if (sectorIds.length > 0 && !sectorIds.some(sid => sectorIdsForKpi.includes(sid))) {
             return false;
           }
         }
         
-        // Legacy: If KPI has team_id without explicit scope, respect team restriction
+        // Legacy: If KPI has team restriction without explicit scope, respect it
         if (hasTeamRestriction && !hasSpecificScope) {
-          if (salespersonData.team_id && kpi.team_id !== salespersonData.team_id) {
+          if (salespersonData.team_id && !teamIdsForKpi.includes(salespersonData.team_id)) {
             return false;
           }
         }
