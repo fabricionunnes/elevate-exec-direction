@@ -253,12 +253,18 @@ export const KPIDashboardTab = ({
     }
   };
 
+  // KPI "unit scope" is represented by having unit_id set, but no team/salesperson/sector binding.
+  // We must be strict here; some KPIs may carry unit_id for informational purposes and should NOT be treated as unit-scoped.
+  const isUnitScopedKpi = (kpi: KPI | undefined | null) => {
+    if (!kpi) return false;
+    return !!kpi.unit_id && !kpi.team_id && !kpi.salesperson_id && !kpi.sector_id;
+  };
+
   // Helper function to get targets based on current filter (unit, team, sector, or salesperson)
   const getFilteredTargetsForKpi = (kpiId: string): Record<string, number> => {
     // Find the KPI to check its scope and unit_id
     const kpi = kpis.find(k => k.id === kpiId);
-    // Check if this is a unit-scoped KPI (has unit_id but no other scope-specific IDs)
-    const isUnitScopedKpi = kpi?.unit_id && !kpi?.team_id && !kpi?.salesperson_id && !kpi?.sector_id;
+    const unitScoped = isUnitScopedKpi(kpi);
     
     // Priority: salesperson > team > unit > company > sum of units/salespeople
     let relevantTargets: MonthlyTarget[] = [];
@@ -285,7 +291,7 @@ export const KPIDashboardTab = ({
     }
     
     // For KPIs with unit scope, get targets for their specific unit
-    if (relevantTargets.length === 0 && isUnitScopedKpi && kpi?.unit_id) {
+    if (relevantTargets.length === 0 && unitScoped && kpi?.unit_id) {
       relevantTargets = allMonthlyTargets.filter(
         mt => mt.kpi_id === kpiId && mt.unit_id === kpi.unit_id && mt.team_id === null && mt.salesperson_id === null
       );
@@ -302,7 +308,7 @@ export const KPIDashboardTab = ({
     // But skip this for unit-scoped KPIs - they should use their own target_value
     if (relevantTargets.length === 0 && selectedUnit === "all" && selectedTeam === "all" && selectedSalesperson === "all") {
       // Don't sum targets from other units for unit-scoped KPIs
-      if (isUnitScopedKpi) {
+      if (unitScoped) {
         // Return empty - will fall back to kpi.target_value
         return {};
       }
@@ -473,7 +479,7 @@ export const KPIDashboardTab = ({
     
     // For KPIs with unit scope and "all units" filter, filter entries by KPI's unit
     let kpiEntries: Entry[];
-    if (kpi.unit_id && selectedUnit === "all") {
+    if (isUnitScopedKpi(kpi) && selectedUnit === "all") {
       kpiEntries = entries.filter(e => {
         if (e.kpi_id !== kpi.id) return false;
         // Also filter by date range
@@ -550,7 +556,7 @@ export const KPIDashboardTab = ({
       // For KPIs with unit scope, filter entries by that specific unit (using normalized dimensions)
       // This ensures that when viewing "all units", each unit-scoped KPI still shows its own data
       let kpiEntries: Entry[];
-      if (kpi.unit_id && selectedUnit === "all") {
+      if (isUnitScopedKpi(kpi) && selectedUnit === "all") {
         // KPI is unit-scoped and we're viewing all units - filter entries by KPI's unit
         kpiEntries = allMonthEntries.filter(e => {
           if (e.kpi_id !== kpi.id) return false;
