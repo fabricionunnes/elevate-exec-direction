@@ -101,6 +101,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
   const [showDialog, setShowDialog] = useState(false);
   const [showMonthlyTargets, setShowMonthlyTargets] = useState(false);
   const [editingKpi, setEditingKpi] = useState<KPI | null>(null);
+  const [sectorTeams, setSectorTeams] = useState<{ sector_id: string; team_id: string }[]>([]);
   
   // Filters for the table
   const [filterUnit, setFilterUnit] = useState<string>("all");
@@ -129,7 +130,7 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
 
   const fetchData = async () => {
     try {
-      const [kpisRes, sectorsRes, teamsRes, salespeopleRes, unitsRes] = await Promise.all([
+      const [kpisRes, sectorsRes, teamsRes, salespeopleRes, unitsRes, sectorTeamsRes] = await Promise.all([
         supabase
           .from("company_kpis")
           .select("*")
@@ -159,7 +160,12 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
           .eq("company_id", companyId)
           .eq("is_active", true)
           .order("name"),
+        supabase
+          .from("company_sector_teams")
+          .select("sector_id, team_id"),
       ]);
+      
+      setSectorTeams(sectorTeamsRes.data || []);
 
       if (kpisRes.error) throw kpisRes.error;
 
@@ -654,7 +660,22 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
       const kpiSectorIds = kpi.sector_ids || (kpi.sector_id ? [kpi.sector_id] : []);
       // Include KPIs that are assigned to this sector OR are company-wide
       const matchesSector = kpiSectorIds.includes(filterSector) || kpi.scope === "company";
-      if (!matchesSector) return false;
+      
+      // Also include KPIs assigned to teams that belong to this sector
+      const teamsInSector = sectorTeams
+        .filter(st => st.sector_id === filterSector)
+        .map(st => st.team_id);
+      const kpiTeamIds = kpi.team_ids || (kpi.team_id ? [kpi.team_id] : []);
+      const teamBelongsToSector = kpiTeamIds.some(tid => teamsInSector.includes(tid));
+      
+      // Also include KPIs assigned to salespeople in teams of this sector
+      const salespeopleInSector = salespeople.filter(sp => 
+        sp.team_id && teamsInSector.includes(sp.team_id)
+      ).map(sp => sp.id);
+      const kpiSpIds = kpi.salesperson_ids || (kpi.salesperson_id ? [kpi.salesperson_id] : []);
+      const spBelongsToSector = kpiSpIds.some(spid => salespeopleInSector.includes(spid));
+      
+      if (!matchesSector && !teamBelongsToSector && !spBelongsToSector) return false;
     }
     
     return true;
