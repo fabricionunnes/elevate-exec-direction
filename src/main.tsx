@@ -78,6 +78,12 @@ if (publicParam) {
     if (token) {
       forceHashRoute(`/hr-disc/${encodeURIComponent(token)}`, "");
     }
+  } else if (publicParam === "cultura") {
+    // expects token=...
+    const token = urlSearch.get("token");
+    if (token) {
+      forceHashRoute(`/cultura/${encodeURIComponent(token)}`, "");
+    }
   } else if (publicParam === "points") {
     // expects company=... (optional)
     forceHashRoute("/points", window.location.search);
