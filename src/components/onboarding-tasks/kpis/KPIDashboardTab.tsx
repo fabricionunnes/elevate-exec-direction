@@ -33,6 +33,7 @@ import { SalesComparisonChart } from "./SalesComparisonChart";
 import { KPIEntriesHistoryDialog } from "./KPIEntriesHistoryDialog";
 import { SalespeopleComparisonTable } from "./SalespeopleComparisonTable";
 import { MonthlySalesChart } from "./MonthlySalesChart";
+import { TeamsComparisonCard } from "./TeamsComparisonCard";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface KPI {
@@ -496,10 +497,18 @@ export const KPIDashboardTab = ({
       
       // If filtering by sector, show:
       // - KPIs scoped to that specific sector
+      // - KPIs scoped to teams that belong to this sector
       // - KPIs scoped to company (shared across all)
       if (selectedSector !== "all") {
         if (scope === "sector") {
           return kpi.sector_id === selectedSector;
+        }
+        // Show team-scoped KPIs where the team belongs to the selected sector
+        if (scope === "team" && kpi.team_id) {
+          const teamsInSector = teamIdsBySectorId[selectedSector];
+          if (teamsInSector && teamsInSector.has(kpi.team_id)) {
+            return true;
+          }
         }
         // Also show company-scoped KPIs when viewing a sector
         return scope === "company";
@@ -1427,7 +1436,34 @@ export const KPIDashboardTab = ({
         selectedSalesperson={selectedSalesperson}
       />
 
-      {/* Monthly Sales Chart with AI Analysis */}
+      {/* Teams Comparison Card - Only show when there are teams */}
+      {teams.length > 1 && (
+        <TeamsComparisonCard
+          teams={teams}
+          kpis={kpis.map(k => ({
+            id: k.id,
+            name: k.name,
+            kpi_type: k.kpi_type,
+            target_value: k.target_value,
+            effective_target: k.effective_target,
+            team_id: k.team_id,
+            is_main_goal: k.is_main_goal,
+            scope: k.scope,
+          }))}
+          entries={entries.map(e => ({
+            id: e.id,
+            kpi_id: e.kpi_id,
+            salesperson_id: e.salesperson_id,
+            entry_date: e.entry_date,
+            value: e.value,
+          }))}
+          sectorTeams={sectorTeams}
+          selectedSector={selectedSector}
+          monthStart={format(startOfMonth(new Date()), "yyyy-MM-dd")}
+          monthEnd={format(endOfMonth(new Date()), "yyyy-MM-dd")}
+        />
+      )}
+
       <MonthlySalesChart 
         companyId={companyId}
         projectId={projectId}
