@@ -1141,6 +1141,29 @@ export const KPIDashboardTab = ({
               </Select>
             </div>
             )}
+            {sectors.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs sm:text-sm">Setor</Label>
+                <Select value={selectedSector} onValueChange={(value) => {
+                  setSelectedSector(value);
+                  // Reset team and salesperson when sector changes
+                  setSelectedTeam("all");
+                  setSelectedSalesperson("all");
+                }}>
+                  <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    <SelectItem value="all">Todos</SelectItem>
+                    {sectors
+                      .filter(s => selectedUnit === "all" || s.unit_id === selectedUnit || s.unit_id === null)
+                      .map(sector => (
+                        <SelectItem key={sector.id} value={sector.id}>{sector.name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {teams.length > 0 && (
               <div className="space-y-1">
                 <Label className="text-xs sm:text-sm">Equipe</Label>
@@ -1157,31 +1180,17 @@ export const KPIDashboardTab = ({
                   <SelectContent className="bg-background">
                     <SelectItem value="all">Todas</SelectItem>
                     {teams
-                      .filter(t => selectedUnit === "all" || t.unit_id === selectedUnit || t.unit_id === null)
+                      .filter(t => {
+                        if (selectedUnit !== "all" && t.unit_id !== selectedUnit && t.unit_id !== null) return false;
+                        if (selectedSector !== "all") {
+                          // Filter teams that belong to the selected sector
+                          const teamsInSector = sectorTeams.filter(st => st.sector_id === selectedSector).map(st => st.team_id);
+                          if (!teamsInSector.includes(t.id)) return false;
+                        }
+                        return true;
+                      })
                       .map(team => (
                         <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {sectors.length > 0 && (
-              <div className="space-y-1">
-                <Label className="text-xs sm:text-sm">Setor</Label>
-                <Select value={selectedSector} onValueChange={(value) => {
-                  setSelectedSector(value);
-                  // Reset salesperson when sector changes
-                  setSelectedSalesperson("all");
-                }}>
-                  <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background">
-                    <SelectItem value="all">Todos</SelectItem>
-                    {sectors
-                      .filter(s => selectedUnit === "all" || s.unit_id === selectedUnit || s.unit_id === null)
-                      .map(sector => (
-                        <SelectItem key={sector.id} value={sector.id}>{sector.name}</SelectItem>
                       ))}
                   </SelectContent>
                 </Select>

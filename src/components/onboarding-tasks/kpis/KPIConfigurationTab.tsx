@@ -1035,22 +1035,6 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
               </Select>
             </div>
           )}
-          {teams.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Label className="text-sm text-muted-foreground whitespace-nowrap">Equipe:</Label>
-              <Select value={filterTeam} onValueChange={setFilterTeam}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {teams.map((team) => (
-                    <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           {sectors.length > 0 && (
             <div className="flex items-center gap-2">
               <Label className="text-sm text-muted-foreground whitespace-nowrap">Setor:</Label>
@@ -1062,6 +1046,22 @@ export const KPIConfigurationTab = ({ companyId, isAdmin, isClient = false }: KP
                   <SelectItem value="all">Todos</SelectItem>
                   {sectors.map((sector) => (
                     <SelectItem key={sector.id} value={sector.id}>{sector.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {teams.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-muted-foreground whitespace-nowrap">Equipe:</Label>
+              <Select value={filterTeam} onValueChange={setFilterTeam}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {teams.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
