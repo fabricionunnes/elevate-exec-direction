@@ -224,20 +224,30 @@ export function MeetingPresentationSection({
                   </div>
                 </div>
 
-                <ScrollArea className="w-full">
-                  <div className="flex gap-3 pb-2">
-                    {slides.map((slide, index) => (
-                      <div key={slide.id} className="w-40 flex-shrink-0">
-                        <PresentationSlidePreview
-                          slide={slide}
-                          companyName={companyName}
-                          isActive={selectedSlide === index}
-                          onClick={() => setSelectedSlide(index)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
+                <div className="relative">
+                  <ScrollArea className="w-full">
+                    <div className="flex gap-3 pb-4">
+                      {slides.map((slide, index) => (
+                        <div key={slide.id} className="w-40 flex-shrink-0">
+                          <PresentationSlidePreview
+                            slide={slide}
+                            companyName={companyName}
+                            isActive={selectedSlide === index}
+                            onClick={() => setSelectedSlide(index)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="h-2" /> {/* Spacer for scrollbar visibility */}
+                  </ScrollArea>
+                  
+                  {/* Navigation indicator */}
+                  {slides.length > 5 && (
+                    <div className="flex items-center justify-center gap-2 mt-2 text-xs text-muted-foreground">
+                      <span>← Arraste para ver mais slides →</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Selected slide large preview with edit button */}
                 {slides[selectedSlide] && (
