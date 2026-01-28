@@ -22,7 +22,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Users, Building2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Layers } from "lucide-react";
 
 interface Team {
   id: string;
@@ -33,18 +33,19 @@ interface Team {
   is_active: boolean;
   created_at: string;
   salespeople_count?: number;
-  unit_ids?: string[];
+  sector_ids?: string[];
 }
 
-interface Unit {
+interface Sector {
   id: string;
   name: string;
+  unit_id: string | null;
   is_active: boolean;
 }
 
-interface TeamUnit {
+interface SectorTeam {
+  sector_id: string;
   team_id: string;
-  unit_id: string;
 }
 
 interface TeamsTabProps {
@@ -54,15 +55,15 @@ interface TeamsTabProps {
 
 export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
   const [teams, setTeams] = useState<Team[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [teamUnits, setTeamUnits] = useState<TeamUnit[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [sectorTeams, setSectorTeams] = useState<SectorTeam[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     code: "",
-    unit_ids: [] as string[],
+    sector_ids: [] as string[],
   });
 
   const fetchData = async () => {
@@ -91,34 +92,34 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
         }
       });
 
-      // Fetch team-unit associations
-      const { data: teamUnitsData, error: teamUnitsError } = await supabase
-        .from("company_team_units")
-        .select("team_id, unit_id");
+      // Fetch sector-team associations (sectors that contain teams)
+      const { data: sectorTeamsData, error: sectorTeamsError } = await supabase
+        .from("company_sector_teams")
+        .select("sector_id, team_id");
 
-      if (teamUnitsError) throw teamUnitsError;
-      setTeamUnits(teamUnitsData || []);
+      if (sectorTeamsError) throw sectorTeamsError;
+      setSectorTeams(sectorTeamsData || []);
 
       const teamsWithCount = (teamsData || []).map((team) => ({
         ...team,
         salespeople_count: countMap[team.id] || 0,
-        unit_ids: (teamUnitsData || [])
-          .filter(tu => tu.team_id === team.id)
-          .map(tu => tu.unit_id),
+        sector_ids: (sectorTeamsData || [])
+          .filter(st => st.team_id === team.id)
+          .map(st => st.sector_id),
       }));
 
       setTeams(teamsWithCount);
 
-      // Fetch units
-      const { data: unitsData, error: unitsError } = await supabase
-        .from("company_units")
-        .select("id, name, is_active")
+      // Fetch sectors
+      const { data: sectorsData, error: sectorsError } = await supabase
+        .from("company_sectors")
+        .select("id, name, unit_id, is_active")
         .eq("company_id", companyId)
         .eq("is_active", true)
         .order("name");
 
-      if (unitsError) throw unitsError;
-      setUnits(unitsData || []);
+      if (sectorsError) throw sectorsError;
+      setSectors(sectorsData || []);
     } catch (error: any) {
       toast.error("Erro ao carregar equipes: " + error.message);
     } finally {
@@ -131,7 +132,7 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
   }, [companyId]);
 
   const resetForm = () => {
-    setFormData({ name: "", code: "", unit_ids: [] });
+    setFormData({ name: "", code: "", sector_ids: [] });
     setEditingTeam(null);
   };
 
@@ -140,7 +141,7 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
     setFormData({
       name: team.name,
       code: team.code || "",
-      unit_ids: team.unit_ids || [],
+      sector_ids: team.sector_ids || [],
     });
     setDialogOpen(true);
   };
@@ -156,7 +157,6 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
         company_id: companyId,
         name: formData.name.trim(),
         code: formData.code.trim() || null,
-        unit_id: formData.unit_ids.length === 1 ? formData.unit_ids[0] : null, // Legacy compatibility
       };
 
       let teamId: string;
@@ -169,9 +169,9 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
         if (error) throw error;
         teamId = editingTeam.id;
 
-        // Remove existing unit associations
+        // Remove existing sector associations for this team
         await supabase
-          .from("company_team_units")
+          .from("company_sector_teams")
           .delete()
           .eq("team_id", teamId);
 
@@ -187,16 +187,16 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
         toast.success("Equipe cadastrada com sucesso");
       }
 
-      // Insert new unit associations
-      if (formData.unit_ids.length > 0) {
-        const unitAssociations = formData.unit_ids.map(unitId => ({
+      // Insert new sector associations
+      if (formData.sector_ids.length > 0) {
+        const sectorAssociations = formData.sector_ids.map(sectorId => ({
+          sector_id: sectorId,
           team_id: teamId,
-          unit_id: unitId,
         }));
         
         const { error: assocError } = await supabase
-          .from("company_team_units")
-          .insert(unitAssociations);
+          .from("company_sector_teams")
+          .insert(sectorAssociations);
         
         if (assocError) throw assocError;
       }
@@ -248,22 +248,22 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
     }
   };
 
-  const getUnitNames = (unitIds: string[] | undefined) => {
-    if (!unitIds || unitIds.length === 0) return "-";
-    const names = unitIds
-      .map(id => units.find(u => u.id === id)?.name)
+  const getSectorNames = (sectorIds: string[] | undefined) => {
+    if (!sectorIds || sectorIds.length === 0) return "-";
+    const names = sectorIds
+      .map(id => sectors.find(s => s.id === id)?.name)
       .filter(Boolean);
     return names.length > 0 ? names.join(", ") : "-";
   };
 
-  const toggleUnitSelection = (unitId: string) => {
+  const toggleSectorSelection = (sectorId: string) => {
     setFormData(prev => {
-      const isSelected = prev.unit_ids.includes(unitId);
+      const isSelected = prev.sector_ids.includes(sectorId);
       return {
         ...prev,
-        unit_ids: isSelected
-          ? prev.unit_ids.filter(id => id !== unitId)
-          : [...prev.unit_ids, unitId],
+        sector_ids: isSelected
+          ? prev.sector_ids.filter(id => id !== sectorId)
+          : [...prev.sector_ids, sectorId],
       };
     });
   };
@@ -309,7 +309,7 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Código</TableHead>
-                <TableHead>Unidades</TableHead>
+                <TableHead>Setores</TableHead>
                 <TableHead className="text-center">Vendedores</TableHead>
                 <TableHead className="text-center">Status</TableHead>
                 {isAdmin && <TableHead className="text-right">Ações</TableHead>}
@@ -322,13 +322,13 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
                   <TableCell>{team.code || "-"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1 flex-wrap">
-                      {team.unit_ids && team.unit_ids.length > 0 ? (
-                        team.unit_ids.map(unitId => {
-                          const unit = units.find(u => u.id === unitId);
-                          return unit ? (
-                            <Badge key={unitId} variant="outline" className="text-xs">
-                              <Building2 className="h-3 w-3 mr-1" />
-                              {unit.name}
+                      {team.sector_ids && team.sector_ids.length > 0 ? (
+                        team.sector_ids.map(sectorId => {
+                          const sector = sectors.find(s => s.id === sectorId);
+                          return sector ? (
+                            <Badge key={sectorId} variant="outline" className="text-xs">
+                              <Layers className="h-3 w-3 mr-1" />
+                              {sector.name}
                             </Badge>
                           ) : null;
                         })
@@ -420,28 +420,28 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
               />
             </div>
 
-            {units.length > 0 && (
+            {sectors.length > 0 && (
               <div className="space-y-2">
-                <Label>Unidades</Label>
+                <Label>Setores</Label>
                 <div className="border rounded-md p-3 space-y-2 max-h-[200px] overflow-y-auto">
-                  {units.map((unit) => (
-                    <div key={unit.id} className="flex items-center space-x-2">
+                  {sectors.map((sector) => (
+                    <div key={sector.id} className="flex items-center space-x-2">
                       <Checkbox
-                        id={`unit-${unit.id}`}
-                        checked={formData.unit_ids.includes(unit.id)}
-                        onCheckedChange={() => toggleUnitSelection(unit.id)}
+                        id={`sector-${sector.id}`}
+                        checked={formData.sector_ids.includes(sector.id)}
+                        onCheckedChange={() => toggleSectorSelection(sector.id)}
                       />
                       <label
-                        htmlFor={`unit-${unit.id}`}
+                        htmlFor={`sector-${sector.id}`}
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                       >
-                        {unit.name}
+                        {sector.name}
                       </label>
                     </div>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Selecione uma ou mais unidades para esta equipe
+                  Selecione um ou mais setores para esta equipe
                 </p>
               </div>
             )}
