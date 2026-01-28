@@ -31,6 +31,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { useMeetingPresentation } from "./useMeetingPresentation";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { PresentationBriefingForm } from "./PresentationBriefingForm";
 import { PresentationSlidePreview } from "./PresentationSlidePreview";
 import { PresentationViewer } from "./PresentationViewer";
@@ -56,6 +57,7 @@ export function MeetingPresentationSection({
   const [selectedSlide, setSelectedSlide] = useState(0);
   const [editingSlide, setEditingSlide] = useState<PresentationSlide | null>(null);
   const [savingSlide, setSavingSlide] = useState(false);
+  const thumbnailsDrag = useDragScroll();
 
   const {
     presentation,
@@ -225,7 +227,17 @@ export function MeetingPresentationSection({
                 </div>
 
                 <div className="relative">
-                  <div className="overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-muted/20" style={{ scrollbarWidth: 'thin' }}>
+                  <div
+                    ref={thumbnailsDrag.ref}
+                    {...thumbnailsDrag.bind}
+                    className={
+                      "overflow-x-auto pb-3 " +
+                      "scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-muted/20 " +
+                      "select-none touch-pan-x " +
+                      (thumbnailsDrag.isDragging ? "cursor-grabbing" : "cursor-grab")
+                    }
+                    style={{ scrollbarWidth: "thin" }}
+                  >
                     <div className="flex gap-3 min-w-max">
                       {slides.map((slide, index) => (
                         <div key={slide.id} className="w-40 flex-shrink-0">
