@@ -7,9 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDateTimeLocal } from "@/lib/dateUtils";
-import { Video, Calendar, ExternalLink, FileText, Users, Clock } from "lucide-react";
+import { Video, Calendar, ExternalLink, FileText, Users, Clock, Presentation } from "lucide-react";
 import { motion } from "framer-motion";
 import { isFuture } from "date-fns";
+import { MeetingPresentationSection } from "@/components/meetings/presentation/MeetingPresentationSection";
 
 interface MeetingNote {
   id: string;
@@ -280,6 +281,14 @@ export function ClientMeetingsView({ projectId }: ClientMeetingsViewProps) {
                       </Button>
                     )}
                   </div>
+
+                  {/* Presentation Section for Clients */}
+                  <MeetingPresentationSection
+                    meetingId={selectedMeeting.id}
+                    projectId={projectId}
+                    isStaff={false}
+                    isClientView={true}
+                  />
                 </div>
               </ScrollArea>
             );

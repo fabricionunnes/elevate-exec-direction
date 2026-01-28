@@ -61,6 +61,7 @@ import { MeetingSentimentDialog } from "./meeting-sentiment/MeetingSentimentDial
 import { MeetingBriefingSheet } from "./meeting-briefing/MeetingBriefingSheet";
 import { BriefingBadge } from "./meeting-briefing/BriefingBadge";
 import { MeetingLiveNotesEditor } from "./meetings/MeetingLiveNotesEditor";
+import { MeetingPresentationSection } from "@/components/meetings/presentation/MeetingPresentationSection";
 
 interface MeetingNote {
   id: string;
@@ -1780,6 +1781,13 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
                   variant="inline"
                 />
               </div>
+
+              {/* Presentation Section */}
+              <MeetingPresentationSection
+                meetingId={selectedMeeting.id}
+                projectId={projectId}
+                isStaff={isAdmin || isCS || !!currentStaffId}
+              />
 
               {/* Internal Meeting Toggle */}
               {(isAdmin || isCS) && selectedMeeting.is_finalized && (
