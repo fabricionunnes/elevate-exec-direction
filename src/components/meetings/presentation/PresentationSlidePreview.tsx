@@ -3,13 +3,16 @@ import type { PresentationSlide, SlideContent } from "./types";
 import { 
   MessageSquare, 
   Lightbulb, 
-  ArrowLeftRight, 
   TrendingUp,
   Target,
-  FileText,
   BarChart3,
   CheckCircle2,
-  Quote
+  Award,
+  Briefcase,
+  PieChart,
+  ArrowRight,
+  Zap,
+  Star
 } from "lucide-react";
 
 interface PresentationSlidePreviewProps {
@@ -21,45 +24,39 @@ interface PresentationSlidePreviewProps {
 }
 
 // UNV Brand colors
-const UNV_BLUE = "#1E3A5F";
-const UNV_RED = "#E63946";
-
-const getSlideTypeIcon = (type: string) => {
-  switch (type) {
-    case "cover":
-      return null;
-    case "context":
-      return FileText;
-    case "objective":
-      return Target;
-    case "status":
-    case "data":
-      return BarChart3;
-    case "insight":
-      return Lightbulb;
-    case "proposal":
-      return CheckCircle2;
-    case "next_steps":
-      return CheckCircle2;
-    case "interactive":
-      return MessageSquare;
-    default:
-      return FileText;
+const UNV_COLORS = {
+  blue: {
+    dark: "#1E3A5F",
+    primary: "#2A4A6F",
+    gradient: "linear-gradient(135deg, #1E3A5F 0%, #2A4A6F 50%, #3A5A7F 100%)"
+  },
+  red: {
+    primary: "#E63946",
+    gradient: "linear-gradient(135deg, #C62B38 0%, #E63946 50%, #EF5A67 100%)"
+  },
+  gold: {
+    primary: "#D4AF37"
   }
 };
 
-const getInteractiveIcon = (type?: string) => {
-  switch (type) {
-    case "question":
-      return MessageSquare;
-    case "reflection":
-      return Quote;
-    case "decision":
-      return ArrowLeftRight;
-    case "highlight":
-      return TrendingUp;
-    default:
-      return MessageSquare;
+// Get icon for slide type
+const getSlideIcon = (slideType: string, interactiveType?: string) => {
+  if (interactiveType === "question") return MessageSquare;
+  if (interactiveType === "reflection") return Lightbulb;
+  if (interactiveType === "decision") return Target;
+  if (interactiveType === "highlight") return Star;
+  
+  switch (slideType) {
+    case "cover": return Award;
+    case "context": return Briefcase;
+    case "objective": return Target;
+    case "status": return BarChart3;
+    case "data": return PieChart;
+    case "insight": return Lightbulb;
+    case "proposal": return TrendingUp;
+    case "next_steps": return ArrowRight;
+    case "closing": return CheckCircle2;
+    default: return Zap;
   }
 };
 
@@ -72,54 +69,81 @@ export function PresentationSlidePreview({
 }: PresentationSlidePreviewProps) {
   const content = slide.content as SlideContent;
   const isLarge = size === "large";
-  const SlideIcon = slide.is_interactive 
-    ? getInteractiveIcon(slide.interactive_type)
-    : getSlideTypeIcon(slide.slide_type);
+  const SlideIcon = getSlideIcon(slide.slide_type, slide.interactive_type);
 
   const renderCoverSlide = () => (
-    <div className="h-full flex flex-col items-center justify-center text-center p-4">
-      {/* UNV Logo placeholder */}
+    <div 
+      className="h-full flex flex-col items-center justify-center text-center p-3 relative overflow-hidden"
+      style={{ background: UNV_COLORS.blue.gradient }}
+    >
+      {/* Decorative circle */}
       <div 
-        className="text-xs font-bold mb-2"
-        style={{ color: UNV_BLUE }}
+        className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-20"
+        style={{ backgroundColor: UNV_COLORS.red.primary }}
+      />
+      
+      {/* UNV Logo */}
+      <div 
+        className="flex items-center justify-center rounded px-2 py-0.5 mb-2"
+        style={{ backgroundColor: 'rgba(255,255,255,0.9)' }}
       >
-        UNIVERSIDADE VENDAS
+        <span 
+          className="text-[8px] font-black tracking-wider"
+          style={{ color: UNV_COLORS.blue.dark }}
+        >
+          UNV
+        </span>
       </div>
       
       {companyName && (
-        <div className="text-[10px] text-muted-foreground mb-3">
+        <div className="text-[8px] text-white/70 mb-2">
           {companyName}
         </div>
       )}
       
       <h1 
         className={cn(
-          "font-bold leading-tight",
-          isLarge ? "text-lg" : "text-[11px]"
+          "font-bold leading-tight text-white",
+          isLarge ? "text-base" : "text-[10px]"
         )}
-        style={{ color: UNV_BLUE }}
       >
         {slide.title}
       </h1>
       
       {slide.subtitle && (
-        <p className="text-[9px] text-muted-foreground mt-1">
+        <p className="text-[8px] text-white/70 mt-1">
           {slide.subtitle}
         </p>
       )}
+      
+      {/* Bottom accent */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 h-1"
+        style={{ background: UNV_COLORS.red.gradient }}
+      />
     </div>
   );
 
   const renderInteractiveSlide = () => (
-    <div className="h-full flex flex-col p-3">
+    <div 
+      className="h-full flex flex-col p-3 relative overflow-hidden"
+      style={{ 
+        background: slide.interactive_type === "highlight" 
+          ? UNV_COLORS.red.gradient 
+          : '#F8F9FA'
+      }}
+    >
       {/* Interactive indicator */}
       <div 
-        className="flex items-center gap-1 text-[8px] font-medium mb-2"
-        style={{ color: UNV_RED }}
+        className={cn(
+          "flex items-center gap-1 text-[7px] font-bold mb-2 tracking-wider",
+          slide.interactive_type === "highlight" ? "text-white/80" : ""
+        )}
+        style={{ color: slide.interactive_type === "highlight" ? undefined : UNV_COLORS.red.primary }}
       >
-        {SlideIcon && <SlideIcon className="h-3 w-3" />}
-        {slide.interactive_type === "question" && "PERGUNTA ESTRATÉGICA"}
-        {slide.interactive_type === "reflection" && "MOMENTO DE REFLEXÃO"}
+        {SlideIcon && <SlideIcon className="h-2.5 w-2.5" />}
+        {slide.interactive_type === "question" && "PERGUNTA"}
+        {slide.interactive_type === "reflection" && "REFLEXÃO"}
         {slide.interactive_type === "decision" && "DECISÃO"}
         {slide.interactive_type === "highlight" && "DESTAQUE"}
       </div>
@@ -128,22 +152,24 @@ export function PresentationSlidePreview({
       {content.question && (
         <div 
           className={cn(
-            "font-semibold leading-tight",
-            isLarge ? "text-sm" : "text-[10px]"
+            "font-semibold leading-tight flex-1 flex items-center",
+            isLarge ? "text-xs" : "text-[9px]",
+            slide.interactive_type === "highlight" ? "text-white" : ""
           )}
-          style={{ color: UNV_BLUE }}
+          style={{ color: slide.interactive_type === "highlight" ? undefined : UNV_COLORS.blue.dark }}
         >
           {content.question}
         </div>
       )}
 
-      {content.highlight && (
+      {content.highlight && !content.metric_value && (
         <div 
           className={cn(
-            "font-bold text-center my-auto",
-            isLarge ? "text-xl" : "text-sm"
+            "font-black text-center my-auto",
+            isLarge ? "text-lg" : "text-sm",
+            slide.interactive_type === "highlight" ? "text-white" : ""
           )}
-          style={{ color: UNV_RED }}
+          style={{ color: slide.interactive_type === "highlight" ? undefined : UNV_COLORS.red.primary }}
         >
           {content.highlight}
         </div>
@@ -151,17 +177,16 @@ export function PresentationSlidePreview({
 
       {/* Options for decision slides */}
       {content.options && (
-        <div className="flex gap-2 mt-auto">
+        <div className="flex gap-1.5 mt-auto">
           {content.options.map((option, i) => (
             <div
               key={i}
               className={cn(
-                "flex-1 rounded border text-center py-1",
-                isLarge ? "text-xs" : "text-[8px]"
+                "flex-1 rounded text-center py-0.5 font-medium text-white",
+                isLarge ? "text-[9px]" : "text-[7px]"
               )}
               style={{ 
-                borderColor: i === 0 ? UNV_BLUE : UNV_RED,
-                color: i === 0 ? UNV_BLUE : UNV_RED,
+                background: i === 0 ? UNV_COLORS.blue.gradient : UNV_COLORS.red.gradient,
               }}
             >
               {option}
@@ -174,13 +199,22 @@ export function PresentationSlidePreview({
       {content.metric_value && (
         <div className="text-center my-auto">
           <div 
-            className={cn("font-bold", isLarge ? "text-2xl" : "text-lg")}
-            style={{ color: UNV_RED }}
+            className={cn(
+              "font-black",
+              isLarge ? "text-xl" : "text-base",
+              slide.interactive_type === "highlight" ? "text-white" : ""
+            )}
+            style={{ color: slide.interactive_type === "highlight" ? undefined : UNV_COLORS.red.primary }}
           >
             {content.metric_value}
           </div>
           {content.metric_label && (
-            <div className="text-[9px] text-muted-foreground">
+            <div 
+              className={cn(
+                "text-[8px]",
+                slide.interactive_type === "highlight" ? "text-white/70" : "text-muted-foreground"
+              )}
+            >
               {content.metric_label}
             </div>
           )}
@@ -190,66 +224,97 @@ export function PresentationSlidePreview({
   );
 
   const renderContentSlide = () => (
-    <div className="h-full flex flex-col p-3">
-      {/* Title with icon */}
-      <div className="flex items-center gap-1.5 mb-2">
-        {SlideIcon && (
-          <SlideIcon 
-            className="h-3 w-3 flex-shrink-0"
-            style={{ color: UNV_BLUE }}
-          />
-        )}
-        <h2 
-          className={cn(
-            "font-semibold leading-tight line-clamp-1",
-            isLarge ? "text-sm" : "text-[10px]"
+    <div className="h-full flex flex-col relative overflow-hidden">
+      {/* Header */}
+      <div 
+        className="px-3 py-2"
+        style={{ background: UNV_COLORS.blue.gradient }}
+      >
+        <div className="flex items-center gap-1.5">
+          {SlideIcon && (
+            <div 
+              className="w-4 h-4 rounded flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
+            >
+              <SlideIcon className="h-2.5 w-2.5 text-white" />
+            </div>
           )}
-          style={{ color: UNV_BLUE }}
-        >
-          {slide.title}
-        </h2>
+          <h2 
+            className={cn(
+              "font-semibold leading-tight line-clamp-1 text-white",
+              isLarge ? "text-sm" : "text-[9px]"
+            )}
+          >
+            {slide.title}
+          </h2>
+        </div>
+        
+        {/* Red accent line */}
+        <div 
+          className="absolute bottom-0 left-0 right-0 h-0.5"
+          style={{ background: UNV_COLORS.red.gradient }}
+        />
       </div>
 
-      {/* Subtitle */}
-      {slide.subtitle && (
-        <p className="text-[8px] text-muted-foreground mb-2 line-clamp-1">
-          {slide.subtitle}
-        </p>
-      )}
+      {/* Content */}
+      <div className="flex-1 p-2 bg-white">
+        {/* Bullets */}
+        {content.bullets && content.bullets.length > 0 && (
+          <ul className="space-y-0.5">
+            {content.bullets.slice(0, isLarge ? 5 : 3).map((bullet, i) => (
+              <li key={i} className="flex items-start gap-1.5">
+                <div 
+                  className="w-3 h-3 rounded flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style={{ background: UNV_COLORS.red.gradient }}
+                >
+                  <span className="text-white text-[6px] font-bold">{i + 1}</span>
+                </div>
+                <span 
+                  className={cn(
+                    "leading-tight line-clamp-1",
+                    isLarge ? "text-xs" : "text-[7px]"
+                  )}
+                  style={{ color: UNV_COLORS.blue.dark }}
+                >
+                  {bullet}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
 
-      {/* Bullets */}
-      {content.bullets && content.bullets.length > 0 && (
-        <ul className="space-y-0.5 flex-1">
-          {content.bullets.slice(0, isLarge ? 6 : 4).map((bullet, i) => (
-            <li key={i} className="flex items-start gap-1">
-              <span 
-                className="w-1 h-1 rounded-full mt-1 flex-shrink-0"
-                style={{ backgroundColor: UNV_RED }}
-              />
-              <span 
-                className={cn(
-                  "leading-tight line-clamp-2",
-                  isLarge ? "text-xs" : "text-[8px]"
-                )}
-              >
-                {bullet}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Text content */}
-      {content.text && !content.bullets?.length && (
-        <p 
-          className={cn(
-            "leading-tight line-clamp-4",
-            isLarge ? "text-xs" : "text-[8px]"
-          )}
+        {/* Text content */}
+        {content.text && !content.bullets?.length && (
+          <p 
+            className={cn(
+              "leading-tight line-clamp-3",
+              isLarge ? "text-xs" : "text-[7px]"
+            )}
+            style={{ color: UNV_COLORS.blue.dark }}
+          >
+            {content.text}
+          </p>
+        )}
+      </div>
+      
+      {/* Footer with logo */}
+      <div className="flex items-center justify-between px-2 py-1 bg-gray-50 border-t">
+        <div 
+          className="flex items-center justify-center rounded px-1"
+          style={{ backgroundColor: UNV_COLORS.blue.dark }}
         >
-          {content.text}
-        </p>
-      )}
+          <span className="text-white text-[5px] font-bold">UNV</span>
+        </div>
+        <div className="flex items-center gap-0.5">
+          {[UNV_COLORS.blue.dark, UNV_COLORS.red.primary, UNV_COLORS.gold.primary].map((color, i) => (
+            <div 
+              key={i}
+              className="w-1 h-1 rounded-full"
+              style={{ backgroundColor: color }}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 
@@ -257,25 +322,19 @@ export function PresentationSlidePreview({
     <div
       onClick={onClick}
       className={cn(
-        "relative bg-white rounded border-2 transition-all overflow-hidden",
-        isLarge ? "aspect-[16/9] w-full" : "aspect-[16/9] w-full cursor-pointer hover:shadow-md",
-        isActive ? "border-primary ring-2 ring-primary/20" : "border-border",
+        "relative bg-white rounded-lg border-2 transition-all overflow-hidden shadow-sm",
+        isLarge ? "aspect-[16/9] w-full" : "aspect-[16/9] w-full cursor-pointer hover:shadow-lg hover:scale-[1.02]",
+        isActive ? "border-primary ring-2 ring-primary/20" : "border-border/50",
         onClick && "cursor-pointer"
       )}
     >
       {/* Slide number badge */}
       <div 
-        className="absolute top-1 right-1 text-[8px] px-1 rounded text-white"
-        style={{ backgroundColor: UNV_BLUE }}
+        className="absolute top-1.5 right-1.5 z-10 text-[7px] font-bold px-1.5 py-0.5 rounded text-white shadow-sm"
+        style={{ background: UNV_COLORS.blue.gradient }}
       >
         {slide.slide_number}
       </div>
-
-      {/* Accent bar */}
-      <div 
-        className="absolute left-0 top-0 bottom-0 w-1"
-        style={{ backgroundColor: slide.is_interactive ? UNV_RED : UNV_BLUE }}
-      />
 
       {/* Content */}
       {slide.slide_type === "cover" 
