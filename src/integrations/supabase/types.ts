@@ -13853,6 +13853,264 @@ export type Database = {
           },
         ]
       }
+      meeting_presentation_logs: {
+        Row: {
+          action: string
+          details: Json | null
+          id: string
+          performed_at: string | null
+          performed_by: string | null
+          presentation_id: string
+          version_id: string | null
+        }
+        Insert: {
+          action: string
+          details?: Json | null
+          id?: string
+          performed_at?: string | null
+          performed_by?: string | null
+          presentation_id: string
+          version_id?: string | null
+        }
+        Update: {
+          action?: string
+          details?: Json | null
+          id?: string
+          performed_at?: string | null
+          performed_by?: string | null
+          presentation_id?: string
+          version_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_presentation_logs_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_presentation_logs_presentation_id_fkey"
+            columns: ["presentation_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_presentations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_presentation_logs_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_presentation_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_presentation_slides: {
+        Row: {
+          content: Json | null
+          created_at: string | null
+          has_chart: boolean | null
+          has_image: boolean | null
+          id: string
+          image_prompt: string | null
+          interactive_type: string | null
+          is_interactive: boolean | null
+          slide_number: number
+          slide_type: string
+          sort_order: number
+          subtitle: string | null
+          title: string | null
+          version_id: string
+        }
+        Insert: {
+          content?: Json | null
+          created_at?: string | null
+          has_chart?: boolean | null
+          has_image?: boolean | null
+          id?: string
+          image_prompt?: string | null
+          interactive_type?: string | null
+          is_interactive?: boolean | null
+          slide_number: number
+          slide_type: string
+          sort_order: number
+          subtitle?: string | null
+          title?: string | null
+          version_id: string
+        }
+        Update: {
+          content?: Json | null
+          created_at?: string | null
+          has_chart?: boolean | null
+          has_image?: boolean | null
+          id?: string
+          image_prompt?: string | null
+          interactive_type?: string | null
+          is_interactive?: boolean | null
+          slide_number?: number
+          slide_type?: string
+          sort_order?: number
+          subtitle?: string | null
+          title?: string | null
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_presentation_slides_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_presentation_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_presentation_versions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          company_name: string | null
+          created_at: string | null
+          generated_by: string | null
+          id: string
+          meeting_date: string | null
+          pdf_url: string | null
+          presentation_id: string
+          status: Database["public"]["Enums"]["presentation_status"] | null
+          title: string | null
+          version_number: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          generated_by?: string | null
+          id?: string
+          meeting_date?: string | null
+          pdf_url?: string | null
+          presentation_id: string
+          status?: Database["public"]["Enums"]["presentation_status"] | null
+          title?: string | null
+          version_number?: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          generated_by?: string | null
+          id?: string
+          meeting_date?: string | null
+          pdf_url?: string | null
+          presentation_id?: string
+          status?: Database["public"]["Enums"]["presentation_status"] | null
+          title?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_presentation_versions_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_presentation_versions_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_presentation_versions_presentation_id_fkey"
+            columns: ["presentation_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_presentations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_presentations: {
+        Row: {
+          audience: Database["public"]["Enums"]["meeting_audience"] | null
+          central_theme: string
+          created_at: string | null
+          created_by: string | null
+          depth_level: Database["public"]["Enums"]["meeting_depth_level"] | null
+          estimated_duration_minutes: number | null
+          id: string
+          key_metrics: string | null
+          meeting_id: string
+          must_include_points: string | null
+          objective: Database["public"]["Enums"]["meeting_objective"] | null
+          project_id: string
+          subject: string
+          tone: Database["public"]["Enums"]["presentation_tone"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          audience?: Database["public"]["Enums"]["meeting_audience"] | null
+          central_theme: string
+          created_at?: string | null
+          created_by?: string | null
+          depth_level?:
+            | Database["public"]["Enums"]["meeting_depth_level"]
+            | null
+          estimated_duration_minutes?: number | null
+          id?: string
+          key_metrics?: string | null
+          meeting_id: string
+          must_include_points?: string | null
+          objective?: Database["public"]["Enums"]["meeting_objective"] | null
+          project_id: string
+          subject: string
+          tone?: Database["public"]["Enums"]["presentation_tone"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          audience?: Database["public"]["Enums"]["meeting_audience"] | null
+          central_theme?: string
+          created_at?: string | null
+          created_by?: string | null
+          depth_level?:
+            | Database["public"]["Enums"]["meeting_depth_level"]
+            | null
+          estimated_duration_minutes?: number | null
+          id?: string
+          key_metrics?: string | null
+          meeting_id?: string
+          must_include_points?: string | null
+          objective?: Database["public"]["Enums"]["meeting_objective"] | null
+          project_id?: string
+          subject?: string
+          tone?: Database["public"]["Enums"]["presentation_tone"] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_presentations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_presentations_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_meeting_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_presentations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_sentiment_analysis: {
         Row: {
           ai_insights: string | null
@@ -17283,6 +17541,18 @@ export type Database = {
         | "ad_click"
         | "ad_conversion"
       circle_privacy_consent: "personalized" | "generic_only" | "opt_out"
+      meeting_audience:
+        | "empresario"
+        | "diretoria"
+        | "gestores"
+        | "time_operacional"
+      meeting_depth_level: "estrategico" | "tatico" | "operacional"
+      meeting_objective:
+        | "diagnostico"
+        | "alinhamento"
+        | "planejamento"
+        | "resultados"
+        | "decisao"
       onboarding_role:
         | "cs"
         | "consultant"
@@ -17297,6 +17567,12 @@ export type Database = {
       onboarding_ticket_status: "open" | "in_progress" | "resolved" | "closed"
       plan_status: "draft" | "published" | "archived"
       portal_role: "admin_unv" | "admin_company" | "member"
+      presentation_status: "draft" | "approved" | "archived"
+      presentation_tone:
+        | "institucional"
+        | "consultivo"
+        | "provocativo"
+        | "inspirador"
       progress_status: "on_track" | "attention" | "off_track" | "completed"
     }
     CompositeTypes: {
@@ -17486,6 +17762,20 @@ export const Constants = {
         "ad_conversion",
       ],
       circle_privacy_consent: ["personalized", "generic_only", "opt_out"],
+      meeting_audience: [
+        "empresario",
+        "diretoria",
+        "gestores",
+        "time_operacional",
+      ],
+      meeting_depth_level: ["estrategico", "tatico", "operacional"],
+      meeting_objective: [
+        "diagnostico",
+        "alinhamento",
+        "planejamento",
+        "resultados",
+        "decisao",
+      ],
       onboarding_role: [
         "cs",
         "consultant",
@@ -17501,6 +17791,13 @@ export const Constants = {
       onboarding_ticket_status: ["open", "in_progress", "resolved", "closed"],
       plan_status: ["draft", "published", "archived"],
       portal_role: ["admin_unv", "admin_company", "member"],
+      presentation_status: ["draft", "approved", "archived"],
+      presentation_tone: [
+        "institucional",
+        "consultivo",
+        "provocativo",
+        "inspirador",
+      ],
       progress_status: ["on_track", "attention", "off_track", "completed"],
     },
   },
