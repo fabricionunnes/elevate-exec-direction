@@ -632,10 +632,11 @@ export const KPIDashboardTab = ({
     
     const filteredEntries = entries.filter(e => {
       if (!kpiIdsToUse.includes(e.kpi_id)) return false;
-      if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
-      if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
-      if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
-      if (selectedSector !== "all" && e.sector_id !== selectedSector) return false;
+      const dims = getEntryDimensions(e);
+      if (selectedSalesperson !== "all" && dims.salesperson_id !== selectedSalesperson) return false;
+      if (selectedUnit !== "all" && dims.unit_id !== selectedUnit) return false;
+      if (selectedTeam !== "all" && dims.team_id !== selectedTeam) return false;
+      if (selectedSector !== "all" && dims.sector_id !== selectedSector) return false;
       return true;
     });
 
@@ -670,10 +671,11 @@ export const KPIDashboardTab = ({
     // Filter entries to only include target KPIs and apply unit/team/salesperson filter
     const filteredEntries = entries.filter(e => {
       if (!targetKpiIds.includes(e.kpi_id)) return false;
-      if (selectedUnit !== "all" && e.unit_id !== selectedUnit) return false;
-      if (selectedTeam !== "all" && e.team_id !== selectedTeam) return false;
-      if (selectedSector !== "all" && e.sector_id !== selectedSector) return false;
-      if (selectedSalesperson !== "all" && e.salesperson_id !== selectedSalesperson) return false;
+      const dims = getEntryDimensions(e);
+      if (selectedUnit !== "all" && dims.unit_id !== selectedUnit) return false;
+      if (selectedTeam !== "all" && dims.team_id !== selectedTeam) return false;
+      if (selectedSector !== "all" && dims.sector_id !== selectedSector) return false;
+      if (selectedSalesperson !== "all" && dims.salesperson_id !== selectedSalesperson) return false;
       return true;
     });
 
@@ -741,9 +743,14 @@ export const KPIDashboardTab = ({
 
   // Prepare ranking data
   const getRankingData = () => {
-    const filteredSalespeople = selectedUnit !== "all"
-      ? salespeople.filter(sp => sp.unit_id === selectedUnit)
-      : salespeople;
+    // Filter salespeople by all active filters
+    const filteredSalespeople = salespeople.filter(sp => {
+      if (selectedSalesperson !== "all" && sp.id !== selectedSalesperson) return false;
+      if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
+      if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
+      // Note: salespeople don't have sector_id directly, handled via entries
+      return true;
+    });
       
     const rankingMap: Record<string, { name: string; total: number }> = {};
     
@@ -753,7 +760,11 @@ export const KPIDashboardTab = ({
 
     entries.forEach(entry => {
       if (selectedKpi !== "all" && entry.kpi_id !== selectedKpi) return;
-      if (selectedUnit !== "all" && entry.unit_id !== selectedUnit) return;
+      const dims = getEntryDimensions(entry);
+      if (selectedUnit !== "all" && dims.unit_id !== selectedUnit) return;
+      if (selectedTeam !== "all" && dims.team_id !== selectedTeam) return;
+      if (selectedSector !== "all" && dims.sector_id !== selectedSector) return;
+      if (selectedSalesperson !== "all" && dims.salesperson_id !== selectedSalesperson) return;
       if (rankingMap[entry.salesperson_id]) {
         rankingMap[entry.salesperson_id].total += entry.value;
       }
