@@ -241,7 +241,7 @@ export function MeetingPresentationSection({
 
                 {/* Selected slide large preview with edit button */}
                 {slides[selectedSlide] && (
-                  <div className="border rounded-lg overflow-hidden relative group">
+                  <div className="border rounded-lg overflow-hidden relative">
                     <div className="aspect-video max-w-2xl mx-auto">
                       <PresentationSlidePreview
                         slide={slides[selectedSlide]}
@@ -249,13 +249,13 @@ export function MeetingPresentationSection({
                         size="large"
                       />
                     </div>
-                    {/* Edit button overlay */}
+                    {/* Edit button - always visible */}
                     {canEdit && (
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <div className="absolute bottom-3 right-3">
                         <Button
                           variant="secondary"
                           size="sm"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="shadow-lg"
                           onClick={() => setEditingSlide(slides[selectedSlide])}
                         >
                           <Pencil className="h-4 w-4 mr-2" />
