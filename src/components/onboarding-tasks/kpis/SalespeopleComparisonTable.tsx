@@ -18,12 +18,16 @@ interface KPI {
   is_individual: boolean;
   is_main_goal?: boolean;
   unit_id?: string | null;
+  team_id?: string | null;
+  sector_id?: string | null;
 }
 
 interface Salesperson {
   id: string;
   name: string;
   unit_id: string | null;
+  team_id?: string | null;
+  sector_id?: string | null;
 }
 
 interface Entry {
@@ -32,6 +36,8 @@ interface Entry {
   salesperson_id: string;
   value: number;
   unit_id: string | null;
+  team_id?: string | null;
+  sector_id?: string | null;
 }
 
 interface Unit {
@@ -39,12 +45,30 @@ interface Unit {
   name: string;
 }
 
+interface Team {
+  id: string;
+  name: string;
+  unit_id?: string | null;
+}
+
+interface Sector {
+  id: string;
+  name: string;
+  unit_id?: string | null;
+  team_id?: string | null;
+}
+
 interface SalespeopleComparisonTableProps {
   kpis: KPI[];
   salespeople: Salesperson[];
   entries: Entry[];
   units: Unit[];
+  teams: Team[];
+  sectors: Sector[];
   selectedUnit: string;
+  selectedTeam: string;
+  selectedSector: string;
+  selectedSalesperson: string;
 }
 
 export const SalespeopleComparisonTable = ({
@@ -52,13 +76,35 @@ export const SalespeopleComparisonTable = ({
   salespeople,
   entries,
   units,
+  teams,
+  sectors,
   selectedUnit,
+  selectedTeam,
+  selectedSector,
+  selectedSalesperson,
 }: SalespeopleComparisonTableProps) => {
-  // Filter salespeople by unit if selected
+  // Filter salespeople by all selected filters
   const filteredSalespeople = useMemo(() => {
-    if (selectedUnit === "all") return salespeople;
-    return salespeople.filter((sp) => sp.unit_id === selectedUnit);
-  }, [salespeople, selectedUnit]);
+    return salespeople.filter((sp) => {
+      // If specific salesperson selected, show only that one
+      if (selectedSalesperson !== "all") {
+        return sp.id === selectedSalesperson;
+      }
+      // Filter by unit
+      if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) {
+        return false;
+      }
+      // Filter by team
+      if (selectedTeam !== "all" && sp.team_id !== selectedTeam) {
+        return false;
+      }
+      // Filter by sector
+      if (selectedSector !== "all" && sp.sector_id !== selectedSector) {
+        return false;
+      }
+      return true;
+    });
+  }, [salespeople, selectedUnit, selectedTeam, selectedSector, selectedSalesperson]);
 
   // Get ALL monetary KPIs for the comparison
   // This ensures all sales/revenue KPIs are summed together
