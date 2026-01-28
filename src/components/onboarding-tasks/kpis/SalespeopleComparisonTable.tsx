@@ -60,27 +60,16 @@ export const SalespeopleComparisonTable = ({
     return salespeople.filter((sp) => sp.unit_id === selectedUnit);
   }, [salespeople, selectedUnit]);
 
-  // Get the main goal KPI for the comparison (or fallback to monetary)
-  // This is used for the column header display
+  // Get ALL monetary KPIs for the comparison
+  // This ensures all sales/revenue KPIs are summed together
+  const allMonetaryKpis = useMemo(() => {
+    return kpis.filter((k) => k.kpi_type === "monetary");
+  }, [kpis]);
+
+  // Get the main goal KPI for column header display
   const mainGoalKpi = useMemo(() => {
     const mainGoal = kpis.find((k) => k.is_main_goal);
     return mainGoal || kpis.find((k) => k.kpi_type === "monetary");
-  }, [kpis]);
-
-  // Get all monetary/main goal KPIs indexed by unit_id for quick lookup
-  const monetaryKpisByUnit = useMemo(() => {
-    const map = new Map<string | null, KPI>();
-    // First, add main goal KPIs by unit
-    kpis.filter(k => k.is_main_goal).forEach(kpi => {
-      map.set(kpi.unit_id || null, kpi);
-    });
-    // Then, add monetary KPIs for units that don't have a main goal
-    kpis.filter(k => k.kpi_type === "monetary" && !k.is_main_goal).forEach(kpi => {
-      if (!map.has(kpi.unit_id || null)) {
-        map.set(kpi.unit_id || null, kpi);
-      }
-    });
-    return map;
   }, [kpis]);
 
   // Get sales count KPI
@@ -96,25 +85,12 @@ export const SalespeopleComparisonTable = ({
     const data = filteredSalespeople.map((sp) => {
       const spEntries = entries.filter((e) => e.salesperson_id === sp.id);
 
-      // Find the correct monetary KPI for this salesperson's unit
-      // Normalize unit_id (treat undefined as null for Map lookup)
-      const spUnitIdNormalized = sp.unit_id ?? null;
-      
-      // Try unit-specific first, then fallback to company-wide (null unit_id)
-      let spMonetaryKpi = monetaryKpisByUnit.get(spUnitIdNormalized);
-      if (!spMonetaryKpi) {
-        spMonetaryKpi = monetaryKpisByUnit.get(null);
-      }
-      if (!spMonetaryKpi) {
-        spMonetaryKpi = mainGoalKpi;
-      }
-
-      // Main goal total - use the unit-specific monetary KPI
-      const mainGoalTotal = spMonetaryKpi
-        ? spEntries
-            .filter((e) => e.kpi_id === spMonetaryKpi!.id)
-            .reduce((sum, e) => sum + e.value, 0)
-        : 0;
+      // Sum ALL monetary KPIs for this salesperson (not just the main goal)
+      // This ensures all revenue/sales KPIs are included in the comparison
+      const allMonetaryKpiIds = allMonetaryKpis.map(k => k.id);
+      const mainGoalTotal = spEntries
+        .filter((e) => allMonetaryKpiIds.includes(e.kpi_id))
+        .reduce((sum, e) => sum + e.value, 0);
 
       // Sales count total
       const salesTotal = salesKpi
@@ -150,7 +126,7 @@ export const SalespeopleComparisonTable = ({
 
     // Sort by main goal value descending
     return data.sort((a, b) => b.mainGoalValue - a.mainGoalValue);
-  }, [filteredSalespeople, entries, kpis, mainGoalKpi, monetaryKpisByUnit, salesKpi, units]);
+  }, [filteredSalespeople, entries, kpis, mainGoalKpi, allMonetaryKpis, salesKpi, units]);
 
   // Calculate team averages for comparison
   const teamAverages = useMemo(() => {
