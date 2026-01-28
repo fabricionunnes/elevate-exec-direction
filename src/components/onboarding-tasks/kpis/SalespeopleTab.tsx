@@ -74,11 +74,17 @@ interface SalespeopleTabProps {
   isAdmin: boolean;
 }
 
+interface SectorTeam {
+  sector_id: string;
+  team_id: string;
+}
+
 export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
+  const [sectorTeams, setSectorTeams] = useState<SectorTeam[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Salesperson | null>(null);
@@ -102,7 +108,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
 
   const fetchData = async () => {
     try {
-      const [salespeopleRes, unitsRes, teamsRes, sectorsRes, salespersonUnitsRes] = await Promise.all([
+      const [salespeopleRes, unitsRes, teamsRes, sectorsRes, salespersonUnitsRes, sectorTeamsRes] = await Promise.all([
         supabase
           .from("company_salespeople")
           .select("*")
@@ -129,6 +135,9 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
         supabase
           .from("company_salesperson_units")
           .select("salesperson_id, unit_id"),
+        supabase
+          .from("company_sector_teams")
+          .select("sector_id, team_id"),
       ]);
 
       if (salespeopleRes.error) throw salespeopleRes.error;
@@ -136,6 +145,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
       if (teamsRes.error) throw teamsRes.error;
       if (sectorsRes.error) throw sectorsRes.error;
       if (salespersonUnitsRes.error) throw salespersonUnitsRes.error;
+      if (sectorTeamsRes.error) throw sectorTeamsRes.error;
 
       // Map unit_ids to each salesperson
       const salespersonUnitsMap = (salespersonUnitsRes.data || []).reduce((acc, su) => {
@@ -153,6 +163,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
       setUnits(unitsRes.data || []);
       setTeams(teamsRes.data || []);
       setSectors(sectorsRes.data || []);
+      setSectorTeams(sectorTeamsRes.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Erro ao carregar dados");
@@ -347,18 +358,19 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
     ? sectors.filter((s) => !s.unit_id || formData.unit_ids.includes(s.unit_id))
     : sectors;
 
-  // Cascata: Filtrar equipes pelo setor ou unidades selecionadas
+  // Cascata: Filtrar equipes pelo setor selecionado (usando tabela de junção)
   const formFilteredTeams = (() => {
     if (formData.sector_id) {
-      const selectedSector = sectors.find(s => s.id === formData.sector_id);
-      if (selectedSector?.team_id) {
-        // Se o setor tem uma equipe específica, mostrar só ela
-        return teams.filter(t => t.id === selectedSector.team_id);
+      // Buscar equipes vinculadas ao setor selecionado via tabela de junção
+      const teamIdsForSector = sectorTeams
+        .filter(st => st.sector_id === formData.sector_id)
+        .map(st => st.team_id);
+      
+      if (teamIdsForSector.length > 0) {
+        return teams.filter(t => teamIdsForSector.includes(t.id));
       }
-      // Se setor não tem equipe, filtrar por unidade do setor
-      if (selectedSector?.unit_id) {
-        return teams.filter(t => !t.unit_id || t.unit_id === selectedSector.unit_id);
-      }
+      // Se setor não tem equipes vinculadas, não mostrar nenhuma equipe
+      return [];
     }
     if (formData.unit_ids.length > 0) {
       return teams.filter((t) => !t.unit_id || formData.unit_ids.includes(t.unit_id));
