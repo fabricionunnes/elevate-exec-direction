@@ -23,6 +23,7 @@ const publicRoutes = [
   "/points-salesperson",
   "/hr-disc",
   "/hotseat",
+  "/cultura",
 ];
 
 const urlSearch = new URLSearchParams(window.location.search);
