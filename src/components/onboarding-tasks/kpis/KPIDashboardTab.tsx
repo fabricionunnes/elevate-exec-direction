@@ -1335,7 +1335,12 @@ export const KPIDashboardTab = ({
         salespeople={salespeople}
         entries={entries}
         units={units}
+        teams={teams}
+        sectors={sectors}
         selectedUnit={selectedUnit}
+        selectedTeam={selectedTeam}
+        selectedSector={selectedSector}
+        selectedSalesperson={selectedSalesperson}
       />
 
       {/* Monthly Sales Chart with AI Analysis */}
