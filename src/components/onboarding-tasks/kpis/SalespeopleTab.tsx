@@ -29,8 +29,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, RefreshCw, Link, Building2, UsersRound } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Link, Building2, UsersRound, Filter, X } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Salesperson {
   id: string;
@@ -66,6 +67,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [sectors, setSectors] = useState<{ id: string; name: string; unit_id: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Salesperson | null>(null);
@@ -77,13 +79,18 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
     team_id: "",
   });
 
+  // Filter states
+  const [filterUnit, setFilterUnit] = useState("all");
+  const [filterTeam, setFilterTeam] = useState("all");
+  const [filterSector, setFilterSector] = useState("all");
+
   useEffect(() => {
     fetchData();
   }, [companyId]);
 
   const fetchData = async () => {
     try {
-      const [salespeopleRes, unitsRes, teamsRes] = await Promise.all([
+      const [salespeopleRes, unitsRes, teamsRes, sectorsRes] = await Promise.all([
         supabase
           .from("company_salespeople")
           .select("*")
@@ -101,15 +108,23 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
           .eq("company_id", companyId)
           .eq("is_active", true)
           .order("name"),
+        supabase
+          .from("company_sectors")
+          .select("id, name, unit_id")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name"),
       ]);
 
       if (salespeopleRes.error) throw salespeopleRes.error;
       if (unitsRes.error) throw unitsRes.error;
       if (teamsRes.error) throw teamsRes.error;
+      if (sectorsRes.error) throw sectorsRes.error;
 
       setSalespeople(salespeopleRes.data || []);
       setUnits(unitsRes.data || []);
       setTeams(teamsRes.data || []);
+      setSectors(sectorsRes.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Erro ao carregar dados");
@@ -263,10 +278,36 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
     return team ? team.name : "-";
   };
 
-  // Filter teams by selected unit
-  const filteredTeams = formData.unit_id
+  // Filter teams by selected unit (for form)
+  const formFilteredTeams = formData.unit_id
     ? teams.filter((t) => !t.unit_id || t.unit_id === formData.unit_id)
     : teams;
+
+  // Filtered salespeople based on filter states
+  const filteredSalespeople = salespeople.filter((sp) => {
+    // Filter by unit
+    if (filterUnit !== "all" && sp.unit_id !== filterUnit) return false;
+    
+    // Filter by team
+    if (filterTeam !== "all" && sp.team_id !== filterTeam) return false;
+    
+    // Filter by sector - check if team belongs to sector
+    if (filterSector !== "all") {
+      const spTeam = teams.find((t) => t.id === sp.team_id);
+      // Teams may have sector_id, check if it matches
+      if (!spTeam || (spTeam as any).sector_id !== filterSector) return false;
+    }
+    
+    return true;
+  });
+
+  const clearFilters = () => {
+    setFilterUnit("all");
+    setFilterTeam("all");
+    setFilterSector("all");
+  };
+
+  const hasActiveFilters = filterUnit !== "all" || filterTeam !== "all" || filterSector !== "all";
 
   if (loading) {
     return <div className="flex justify-center p-8">Carregando...</div>;
@@ -324,7 +365,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
                   </div>
                 )}
 
-                {filteredTeams.length > 0 && (
+                {formFilteredTeams.length > 0 && (
                   <div>
                     <Label>Equipe (opcional)</Label>
                     <Select
@@ -336,7 +377,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Nenhuma</SelectItem>
-                        {filteredTeams.map((team) => (
+                        {formFilteredTeams.map((team) => (
                           <SelectItem key={team.id} value={team.id}>
                             {team.name}
                           </SelectItem>
@@ -379,6 +420,80 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
         )}
       </div>
 
+      {/* Filter Bar */}
+      {(units.length > 0 || teams.length > 0 || sectors.length > 0) && (
+        <Card className="p-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Filter className="h-4 w-4" />
+              <span>Filtros:</span>
+            </div>
+
+            {units.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Label className="text-sm">Unidade:</Label>
+                <Select value={filterUnit} onValueChange={(v) => { setFilterUnit(v); setFilterTeam("all"); }}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {units.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {sectors.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Label className="text-sm">Setor:</Label>
+                <Select value={filterSector} onValueChange={setFilterSector}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {sectors
+                      .filter((s) => filterUnit === "all" || s.unit_id === filterUnit)
+                      .map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {teams.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Label className="text-sm">Equipe:</Label>
+                <Select value={filterTeam} onValueChange={setFilterTeam}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {teams
+                      .filter((t) => filterUnit === "all" || t.unit_id === filterUnit)
+                      .map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
+                <X className="h-4 w-4 mr-1" />
+                Limpar filtros
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
+
       {salespeople.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
@@ -386,80 +501,89 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
             <p className="text-sm">Cadastre vendedores para que possam lançar suas vendas.</p>
           </CardContent>
         </Card>
+      ) : filteredSalespeople.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <p>Nenhum vendedor encontrado com os filtros selecionados.</p>
+            <Button variant="link" onClick={clearFilters}>Limpar filtros</Button>
+          </CardContent>
+        </Card>
       ) : (
         <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                {units.length > 0 && <TableHead>Unidade</TableHead>}
-                {teams.length > 0 && <TableHead>Equipe</TableHead>}
-                <TableHead>E-mail</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead>Código de Acesso</TableHead>
-                <TableHead>Status</TableHead>
-                {isAdmin && <TableHead className="w-[150px]">Ações</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {salespeople.map((person) => (
-                <TableRow key={person.id} className={!person.is_active ? "opacity-50" : ""}>
-                  <TableCell className="font-medium">{person.name}</TableCell>
-                  {units.length > 0 && (
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Building2 className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm">{getUnitName(person.unit_id)}</span>
-                      </div>
-                    </TableCell>
-                  )}
-                  {teams.length > 0 && (
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <UsersRound className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm">{getTeamName(person.team_id)}</span>
-                      </div>
-                    </TableCell>
-                  )}
-                  <TableCell>{person.email || "-"}</TableCell>
-                  <TableCell>{person.phone || "-"}</TableCell>
-                  <TableCell>
-                    <code className="bg-muted px-2 py-1 rounded text-sm">{person.access_code}</code>
-                  </TableCell>
-                  <TableCell>
-                    {isAdmin ? (
-                      <Switch
-                        checked={person.is_active}
-                        onCheckedChange={(v) => handleToggleActive(person.id, v)}
-                      />
-                    ) : (
-                      <Badge variant={person.is_active ? "default" : "secondary"}>
-                        {person.is_active ? "Ativo" : "Inativo"}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  {isAdmin && (
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => copyAccessLink(person)} title="Copiar link de acesso">
-                          <Link className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleRegenerateCode(person.id)} title="Regenerar código">
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(person)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(person.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  )}
+          <ScrollArea className="max-h-[600px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  {units.length > 0 && <TableHead>Unidade</TableHead>}
+                  {teams.length > 0 && <TableHead>Equipe</TableHead>}
+                  <TableHead>E-mail</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>Código de Acesso</TableHead>
+                  <TableHead>Status</TableHead>
+                  {isAdmin && <TableHead className="w-[150px]">Ações</TableHead>}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredSalespeople.map((person) => (
+                  <TableRow key={person.id} className={!person.is_active ? "opacity-50" : ""}>
+                    <TableCell className="font-medium">{person.name}</TableCell>
+                    {units.length > 0 && (
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Building2 className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm">{getUnitName(person.unit_id)}</span>
+                        </div>
+                      </TableCell>
+                    )}
+                    {teams.length > 0 && (
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <UsersRound className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm">{getTeamName(person.team_id)}</span>
+                        </div>
+                      </TableCell>
+                    )}
+                    <TableCell>{person.email || "-"}</TableCell>
+                    <TableCell>{person.phone || "-"}</TableCell>
+                    <TableCell>
+                      <code className="bg-muted px-2 py-1 rounded text-sm">{person.access_code}</code>
+                    </TableCell>
+                    <TableCell>
+                      {isAdmin ? (
+                        <Switch
+                          checked={person.is_active}
+                          onCheckedChange={(v) => handleToggleActive(person.id, v)}
+                        />
+                      ) : (
+                        <Badge variant={person.is_active ? "default" : "secondary"}>
+                          {person.is_active ? "Ativo" : "Inativo"}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    {isAdmin && (
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => copyAccessLink(person)} title="Copiar link de acesso">
+                            <Link className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleRegenerateCode(person.id)} title="Regenerar código">
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(person)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(person.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
         </Card>
       )}
     </div>
