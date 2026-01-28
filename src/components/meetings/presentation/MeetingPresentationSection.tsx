@@ -24,7 +24,8 @@ import {
   CheckCircle2,
   History,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Pencil
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -34,6 +35,8 @@ import { PresentationBriefingForm } from "./PresentationBriefingForm";
 import { PresentationSlidePreview } from "./PresentationSlidePreview";
 import { PresentationViewer } from "./PresentationViewer";
 import { PresentationPDFExport } from "./PresentationPDFExport";
+import { SlideEditor } from "./SlideEditor";
+import type { PresentationSlide, SlideContent } from "./types";
 
 interface MeetingPresentationSectionProps {
   meetingId: string;
@@ -51,6 +54,8 @@ export function MeetingPresentationSection({
   const [isOpen, setIsOpen] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
   const [selectedSlide, setSelectedSlide] = useState(0);
+  const [editingSlide, setEditingSlide] = useState<PresentationSlide | null>(null);
+  const [savingSlide, setSavingSlide] = useState(false);
 
   const {
     presentation,
@@ -62,10 +67,12 @@ export function MeetingPresentationSection({
     saving,
     companyName,
     meetingDate,
+    meetingTitle,
     saveBriefing,
     generatePresentation,
     approveVersion,
     selectVersion,
+    updateSlide,
     refresh,
   } = useMeetingPresentation(meetingId, projectId);
 
@@ -153,6 +160,7 @@ export function MeetingPresentationSection({
                   onSave={saveBriefing}
                   generating={generating}
                   saving={saving}
+                  meetingTitle={meetingTitle}
                 />
               </div>
             )}
@@ -231,9 +239,9 @@ export function MeetingPresentationSection({
                   </div>
                 </ScrollArea>
 
-                {/* Selected slide large preview */}
+                {/* Selected slide large preview with edit button */}
                 {slides[selectedSlide] && (
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className="border rounded-lg overflow-hidden relative group">
                     <div className="aspect-video max-w-2xl mx-auto">
                       <PresentationSlidePreview
                         slide={slides[selectedSlide]}
@@ -241,6 +249,20 @@ export function MeetingPresentationSection({
                         size="large"
                       />
                     </div>
+                    {/* Edit button overlay */}
+                    {canEdit && (
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => setEditingSlide(slides[selectedSlide])}
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Editar Slide
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -275,6 +297,25 @@ export function MeetingPresentationSection({
               open={showViewer}
               onOpenChange={setShowViewer}
             />
+
+            {/* Slide editor modal */}
+            {editingSlide && (
+              <SlideEditor
+                slide={editingSlide}
+                open={!!editingSlide}
+                onOpenChange={(open) => !open && setEditingSlide(null)}
+                onSave={async (slideId, updates) => {
+                  setSavingSlide(true);
+                  try {
+                    await updateSlide(slideId, updates);
+                    setEditingSlide(null);
+                  } finally {
+                    setSavingSlide(false);
+                  }
+                }}
+                saving={savingSlide}
+              />
+            )}
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
