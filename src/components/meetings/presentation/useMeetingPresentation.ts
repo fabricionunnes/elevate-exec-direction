@@ -19,6 +19,37 @@ interface GeneratedSlide {
   interactive_type?: string;
 }
 
+interface CompanyContext {
+  company_name: string;
+  company_segment?: string;
+  company_description?: string;
+  contract_value?: number;
+  payment_method?: string;
+  health_score?: number;
+  nps_score?: number;
+  main_challenges?: string;
+  goals_short_term?: string;
+}
+
+interface MeetingHistory {
+  date: string;
+  title: string;
+  notes?: string;
+  subject?: string;
+}
+
+interface TaskContext {
+  title: string;
+  description?: string;
+  status: string;
+  phase?: string;
+}
+
+interface BriefingContext {
+  date: string;
+  content: string;
+}
+
 export function useMeetingPresentation(meetingId: string, projectId: string) {
   const [presentation, setPresentation] = useState<MeetingPresentation | null>(null);
   const [versions, setVersions] = useState<PresentationVersion[]>([]);
@@ -31,6 +62,12 @@ export function useMeetingPresentation(meetingId: string, projectId: string) {
   const [companyName, setCompanyName] = useState<string>("");
   const [meetingDate, setMeetingDate] = useState<string>("");
   const [meetingTitle, setMeetingTitle] = useState<string>("");
+  
+  // Rich context for AI
+  const [companyContext, setCompanyContext] = useState<CompanyContext | null>(null);
+  const [meetingHistory, setMeetingHistory] = useState<MeetingHistory[]>([]);
+  const [projectTasks, setProjectTasks] = useState<TaskContext[]>([]);
+  const [previousBriefings, setPreviousBriefings] = useState<BriefingContext[]>([]);
 
   // Fetch current staff
   useEffect(() => {
@@ -50,43 +87,144 @@ export function useMeetingPresentation(meetingId: string, projectId: string) {
     fetchStaff();
   }, []);
 
-  // Fetch company name, meeting date and title
+  // Fetch rich company context
   useEffect(() => {
-    const fetchContext = async () => {
-      // Get project company
-      const { data: project } = await supabase
-        .from("onboarding_projects")
-        .select("onboarding_company_id, product_name")
-        .eq("id", projectId)
-        .maybeSingle();
-
-      if (project?.onboarding_company_id) {
-        const { data: company } = await supabase
-          .from("onboarding_companies")
-          .select("name")
-          .eq("id", project.onboarding_company_id)
+    const fetchRichContext = async () => {
+      try {
+        // Get project data
+        const { data: project } = await supabase
+          .from("onboarding_projects")
+          .select("product_name, onboarding_company_id")
+          .eq("id", projectId)
           .maybeSingle();
-        
-        setCompanyName(company?.name || project.product_name || "");
-      } else if (project?.product_name) {
-        setCompanyName(project.product_name);
-      }
 
-      // Get meeting date and title
-      const { data: meeting } = await supabase
-        .from("onboarding_meeting_notes")
-        .select("meeting_date, meeting_title")
-        .eq("id", meetingId)
-        .maybeSingle();
+        let name = project?.product_name || "";
+        let companyData: CompanyContext | null = null;
 
-      if (meeting?.meeting_date) {
-        setMeetingDate(meeting.meeting_date);
-      }
-      if (meeting?.meeting_title) {
-        setMeetingTitle(meeting.meeting_title);
+        if (project?.onboarding_company_id) {
+          // Get company data with contract info
+          const { data: company } = await supabase
+            .from("onboarding_companies")
+            .select("name, segment, company_description, contract_value, main_challenges, goals_short_term")
+            .eq("id", project.onboarding_company_id)
+            .maybeSingle();
+          
+          if (company) {
+            name = company.name || name;
+            
+            // Get NPS
+            const { data: npsData } = await supabase
+              .from("onboarding_nps_responses")
+              .select("score")
+              .eq("project_id", projectId)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            companyData = {
+              company_name: name,
+              company_segment: company.segment || undefined,
+              company_description: company.company_description || undefined,
+              contract_value: company.contract_value || undefined,
+              main_challenges: company.main_challenges || undefined,
+              goals_short_term: company.goals_short_term || undefined,
+              nps_score: npsData?.score,
+            };
+          }
+        }
+
+        setCompanyName(name);
+        setCompanyContext(companyData);
+
+        // Get meeting date and title
+        const { data: meeting } = await supabase
+          .from("onboarding_meeting_notes")
+          .select("meeting_date, meeting_title")
+          .eq("id", meetingId)
+          .maybeSingle();
+
+        if (meeting?.meeting_date) setMeetingDate(meeting.meeting_date);
+        if (meeting?.meeting_title) setMeetingTitle(meeting.meeting_title);
+
+        // Get meeting history (last 5 finalized meetings)
+        const { data: meetings } = await supabase
+          .from("onboarding_meeting_notes")
+          .select("meeting_date, meeting_title, notes, subject")
+          .eq("project_id", projectId)
+          .eq("is_finalized", true)
+          .neq("id", meetingId)
+          .order("meeting_date", { ascending: false })
+          .limit(5);
+
+        if (meetings?.length) {
+          setMeetingHistory(meetings.map(m => ({
+            date: m.meeting_date || "",
+            title: m.meeting_title || "Reunião",
+            notes: m.notes || undefined,
+            subject: m.subject || undefined,
+          })));
+        }
+
+        // Get previous briefings
+        const { data: briefings } = await supabase
+          .from("onboarding_meeting_briefings")
+          .select("created_at, briefing_content")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false })
+          .limit(3);
+
+        if (briefings?.length) {
+          setPreviousBriefings(briefings.map(b => ({
+            date: new Date(b.created_at).toLocaleDateString('pt-BR'),
+            content: typeof b.briefing_content === 'string' 
+              ? b.briefing_content 
+              : JSON.stringify(b.briefing_content),
+          })));
+        }
+
+        // Get project tasks with phases - using any to bypass type issues
+        const { data: tasksData } = await (supabase as any)
+          .from("onboarding_project_tasks")
+          .select("title, description, status, phase_id")
+          .eq("project_id", projectId)
+          .order("due_date", { ascending: true })
+          .limit(20);
+
+        if (tasksData?.length) {
+          type TaskRow = { title: string; description: string | null; status: string; phase_id: string | null };
+          const typedTasks = tasksData as TaskRow[];
+          
+          // Fetch phase names separately
+          const phaseIds = [...new Set(typedTasks.map(t => t.phase_id).filter(Boolean))] as string[];
+          let phaseMap: Record<string, string> = {};
+          
+          if (phaseIds.length > 0) {
+            const { data: phases } = await (supabase as any)
+              .from("onboarding_phase_templates")
+              .select("id, name")
+              .in("id", phaseIds);
+            
+            if (phases) {
+              type PhaseRow = { id: string; name: string };
+              const typedPhases = phases as PhaseRow[];
+              phaseMap = Object.fromEntries(typedPhases.map(p => [p.id, p.name]));
+            }
+          }
+
+          setProjectTasks(typedTasks.map(t => ({
+            title: t.title,
+            description: t.description || undefined,
+            status: t.status,
+            phase: t.phase_id ? phaseMap[t.phase_id] : undefined,
+          })));
+        }
+
+      } catch (error) {
+        console.error("Error fetching rich context:", error);
       }
     };
-    fetchContext();
+
+    fetchRichContext();
   }, [projectId, meetingId]);
 
   // Fetch presentation data
@@ -205,7 +343,7 @@ export function useMeetingPresentation(meetingId: string, projectId: string) {
     }
   };
 
-  // Generate presentation with AI
+  // Generate presentation with AI - now with rich context
   const generatePresentation = async (briefing: PresentationBriefing) => {
     setGenerating(true);
     try {
@@ -216,13 +354,18 @@ export function useMeetingPresentation(meetingId: string, projectId: string) {
         if (!presentationId) throw new Error("Failed to save briefing");
       }
 
-      // Call AI to generate
+      // Call AI with rich context
       const { data, error } = await supabase.functions.invoke("generate-meeting-presentation", {
         body: {
           briefing: {
             ...briefing,
             company_name: companyName,
-            meeting_date: meetingDate,
+            meeting_date: meetingDate || new Date().toISOString().split('T')[0],
+            // Rich context
+            company_context: companyContext,
+            meeting_history: meetingHistory,
+            previous_briefings: previousBriefings,
+            project_tasks: projectTasks,
           },
         },
       });
@@ -250,7 +393,7 @@ export function useMeetingPresentation(meetingId: string, projectId: string) {
           status: 'draft',
           title: briefing.subject,
           company_name: companyName,
-          meeting_date: meetingDate,
+          meeting_date: meetingDate || new Date().toISOString().split('T')[0],
           generated_by: staffId,
         })
         .select()
@@ -277,12 +420,19 @@ export function useMeetingPresentation(meetingId: string, projectId: string) {
 
       if (slidesError) throw slidesError;
 
-      // Log generation
+      // Log generation with context info
       await supabase.from("meeting_presentation_logs").insert({
         presentation_id: presentationId,
         version_id: newVersion.id,
         action: 'generated',
-        details: { slides_count: data.slides.length },
+        details: { 
+          slides_count: data.slides.length,
+          context_used: {
+            meetings_count: meetingHistory.length,
+            tasks_count: projectTasks.length,
+            briefings_count: previousBriefings.length,
+          }
+        },
         performed_by: staffId,
       });
 
