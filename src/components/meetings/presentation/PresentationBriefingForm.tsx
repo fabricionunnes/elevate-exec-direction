@@ -32,6 +32,7 @@ interface PresentationBriefingFormProps {
   onSave: (briefing: PresentationBriefing) => Promise<string | null>;
   generating: boolean;
   saving: boolean;
+  meetingTitle?: string;
 }
 
 export function PresentationBriefingForm({
@@ -40,6 +41,7 @@ export function PresentationBriefingForm({
   onSave,
   generating,
   saving,
+  meetingTitle,
 }: PresentationBriefingFormProps) {
   const [subject, setSubject] = useState("");
   const [centralTheme, setCentralTheme] = useState("");
@@ -50,8 +52,9 @@ export function PresentationBriefingForm({
   const [keyMetrics, setKeyMetrics] = useState("");
   const [mustInclude, setMustInclude] = useState("");
   const [tone, setTone] = useState<PresentationTone>("consultivo");
+  const [initialized, setInitialized] = useState(false);
 
-  // Load existing data
+  // Load existing data or pre-fill with meeting title
   useEffect(() => {
     if (presentation) {
       setSubject(presentation.subject || "");
@@ -63,8 +66,13 @@ export function PresentationBriefingForm({
       setKeyMetrics(presentation.key_metrics || "");
       setMustInclude(presentation.must_include_points || "");
       setTone(presentation.tone || "consultivo");
+      setInitialized(true);
+    } else if (!initialized && meetingTitle) {
+      // Pre-fill subject with meeting title if no presentation exists
+      setSubject(meetingTitle);
+      setInitialized(true);
     }
-  }, [presentation]);
+  }, [presentation, meetingTitle, initialized]);
 
   const getBriefing = (): PresentationBriefing => ({
     subject,

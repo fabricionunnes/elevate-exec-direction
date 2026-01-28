@@ -30,6 +30,7 @@ export function useMeetingPresentation(meetingId: string, projectId: string) {
   const [staffId, setStaffId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string>("");
   const [meetingDate, setMeetingDate] = useState<string>("");
+  const [meetingTitle, setMeetingTitle] = useState<string>("");
 
   // Fetch current staff
   useEffect(() => {
@@ -49,7 +50,7 @@ export function useMeetingPresentation(meetingId: string, projectId: string) {
     fetchStaff();
   }, []);
 
-  // Fetch company name and meeting date
+  // Fetch company name, meeting date and title
   useEffect(() => {
     const fetchContext = async () => {
       // Get project company
@@ -71,15 +72,18 @@ export function useMeetingPresentation(meetingId: string, projectId: string) {
         setCompanyName(project.product_name);
       }
 
-      // Get meeting date
+      // Get meeting date and title
       const { data: meeting } = await supabase
         .from("onboarding_meeting_notes")
-        .select("meeting_date")
+        .select("meeting_date, meeting_title")
         .eq("id", meetingId)
         .maybeSingle();
 
       if (meeting?.meeting_date) {
         setMeetingDate(meeting.meeting_date);
+      }
+      if (meeting?.meeting_title) {
+        setMeetingTitle(meeting.meeting_title);
       }
     };
     fetchContext();
@@ -333,6 +337,38 @@ export function useMeetingPresentation(meetingId: string, projectId: string) {
     }
   };
 
+  // Update a single slide
+  const updateSlide = async (
+    slideId: string, 
+    updates: { title?: string; subtitle?: string; content: SlideContent }
+  ) => {
+    try {
+      const { error } = await supabase
+        .from("meeting_presentation_slides")
+        .update({
+          title: updates.title,
+          subtitle: updates.subtitle,
+          content: JSON.parse(JSON.stringify(updates.content)),
+        })
+        .eq("id", slideId);
+
+      if (error) throw error;
+
+      // Update local state
+      setSlides(prev => prev.map(s => 
+        s.id === slideId 
+          ? { ...s, ...updates }
+          : s
+      ));
+
+      toast.success("Slide atualizado!");
+    } catch (error) {
+      console.error("Error updating slide:", error);
+      toast.error("Erro ao atualizar slide");
+      throw error;
+    }
+  };
+
   return {
     presentation,
     versions,
@@ -343,10 +379,12 @@ export function useMeetingPresentation(meetingId: string, projectId: string) {
     saving,
     companyName,
     meetingDate,
+    meetingTitle,
     saveBriefing,
     generatePresentation,
     approveVersion,
     selectVersion,
+    updateSlide,
     refresh: fetchPresentation,
   };
 }
