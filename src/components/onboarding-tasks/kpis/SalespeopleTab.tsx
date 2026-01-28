@@ -630,7 +630,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
         </Card>
       ) : (
         <Card>
-          <ScrollArea className="max-h-[600px]">
+          <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px]">
             <Table>
               <TableHeader>
                 <TableRow>
