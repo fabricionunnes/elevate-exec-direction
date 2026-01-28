@@ -249,13 +249,12 @@ export function MeetingPresentationSection({
                         size="large"
                       />
                     </div>
-                    {/* Edit button - always visible */}
+                    {/* Edit button - always visible with high contrast */}
                     {canEdit && (
-                      <div className="absolute bottom-3 right-3">
+                      <div className="absolute bottom-4 right-4 z-10">
                         <Button
-                          variant="secondary"
                           size="sm"
-                          className="shadow-lg"
+                          className="bg-white hover:bg-gray-100 text-gray-900 shadow-xl border border-gray-200 font-medium"
                           onClick={() => setEditingSlide(slides[selectedSlide])}
                         >
                           <Pencil className="h-4 w-4 mr-2" />
