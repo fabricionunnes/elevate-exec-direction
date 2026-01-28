@@ -38,8 +38,16 @@ interface Sector {
   code: string | null;
   description: string | null;
   unit_id: string | null;
+  team_id: string | null;
   is_active: boolean;
   sort_order: number;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  unit_id: string | null;
+  is_active: boolean;
 }
 
 interface Unit {
@@ -56,6 +64,7 @@ interface SectorsTabProps {
 export const SectorsTab = ({ companyId, isAdmin }: SectorsTabProps) => {
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingSector, setEditingSector] = useState<Sector | null>(null);
@@ -64,6 +73,7 @@ export const SectorsTab = ({ companyId, isAdmin }: SectorsTabProps) => {
     code: "",
     description: "",
     unit_id: "",
+    team_id: "",
   });
 
   useEffect(() => {
@@ -72,7 +82,7 @@ export const SectorsTab = ({ companyId, isAdmin }: SectorsTabProps) => {
 
   const fetchData = async () => {
     try {
-      const [sectorsRes, unitsRes] = await Promise.all([
+      const [sectorsRes, unitsRes, teamsRes] = await Promise.all([
         supabase
           .from("company_sectors")
           .select("*")
@@ -84,13 +94,21 @@ export const SectorsTab = ({ companyId, isAdmin }: SectorsTabProps) => {
           .eq("company_id", companyId)
           .eq("is_active", true)
           .order("name"),
+        supabase
+          .from("company_teams")
+          .select("*")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name"),
       ]);
 
       if (sectorsRes.error) throw sectorsRes.error;
       if (unitsRes.error) throw unitsRes.error;
+      if (teamsRes.error) throw teamsRes.error;
 
       setSectors(sectorsRes.data || []);
       setUnits(unitsRes.data || []);
+      setTeams(teamsRes.data || []);
     } catch (error) {
       console.error("Error fetching sectors:", error);
       toast.error("Erro ao carregar setores");
@@ -106,6 +124,10 @@ export const SectorsTab = ({ companyId, isAdmin }: SectorsTabProps) => {
     }
 
     try {
+      // Herdar unit_id da equipe selecionada, se houver
+      const selectedTeam = teams.find(t => t.id === formData.team_id);
+      const unitIdToSave = selectedTeam?.unit_id || formData.unit_id || null;
+
       if (editingSector) {
         const { error } = await supabase
           .from("company_sectors")
@@ -113,7 +135,8 @@ export const SectorsTab = ({ companyId, isAdmin }: SectorsTabProps) => {
             name: formData.name,
             code: formData.code || null,
             description: formData.description || null,
-            unit_id: formData.unit_id || null,
+            unit_id: unitIdToSave,
+            team_id: formData.team_id || null,
           })
           .eq("id", editingSector.id);
 
@@ -126,7 +149,8 @@ export const SectorsTab = ({ companyId, isAdmin }: SectorsTabProps) => {
           name: formData.name,
           code: formData.code || null,
           description: formData.description || null,
-          unit_id: formData.unit_id || null,
+          unit_id: unitIdToSave,
+          team_id: formData.team_id || null,
           sort_order: maxOrder + 1,
         });
 
@@ -184,6 +208,7 @@ export const SectorsTab = ({ companyId, isAdmin }: SectorsTabProps) => {
       code: "",
       description: "",
       unit_id: "",
+      team_id: "",
     });
   };
 
@@ -194,15 +219,27 @@ export const SectorsTab = ({ companyId, isAdmin }: SectorsTabProps) => {
       code: sector.code || "",
       description: sector.description || "",
       unit_id: sector.unit_id || "",
+      team_id: sector.team_id || "",
     });
     setShowDialog(true);
   };
 
   const getUnitName = (unitId: string | null) => {
-    if (!unitId) return "Todas as unidades";
+    if (!unitId) return "-";
     const unit = units.find(u => u.id === unitId);
     return unit ? unit.name : "-";
   };
+
+  const getTeamName = (teamId: string | null) => {
+    if (!teamId) return "-";
+    const team = teams.find(t => t.id === teamId);
+    return team ? team.name : "-";
+  };
+
+  // Filtrar equipes pela unidade selecionada (cascata)
+  const filteredTeams = formData.unit_id
+    ? teams.filter(t => !t.unit_id || t.unit_id === formData.unit_id)
+    : teams;
 
   if (loading) {
     return <div className="flex justify-center p-8">Carregando...</div>;
@@ -241,13 +278,13 @@ export const SectorsTab = ({ companyId, isAdmin }: SectorsTabProps) => {
 
                 {units.length > 0 && (
                   <div>
-                    <Label>Unidade (opcional)</Label>
+                    <Label>Unidade</Label>
                     <Select
                       value={formData.unit_id}
-                      onValueChange={(v) => setFormData({ ...formData, unit_id: v === "all" ? "" : v })}
+                      onValueChange={(v) => setFormData({ ...formData, unit_id: v === "all" ? "" : v, team_id: "" })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Todas as unidades" />
+                        <SelectValue placeholder="Selecione a unidade" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todas as unidades</SelectItem>
@@ -258,8 +295,30 @@ export const SectorsTab = ({ companyId, isAdmin }: SectorsTabProps) => {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                )}
+
+                {filteredTeams.length > 0 && (
+                  <div>
+                    <Label>Equipe</Label>
+                    <Select
+                      value={formData.team_id}
+                      onValueChange={(v) => setFormData({ ...formData, team_id: v === "none" ? "" : v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a equipe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {filteredTeams.map((team) => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Deixe vazio para que o setor esteja disponível em todas as unidades
+                      Se selecionar uma equipe, a unidade será herdada automaticamente
                     </p>
                   </div>
                 )}
@@ -313,6 +372,7 @@ export const SectorsTab = ({ companyId, isAdmin }: SectorsTabProps) => {
                 <TableHead>Nome</TableHead>
                 <TableHead>Código</TableHead>
                 {units.length > 0 && <TableHead>Unidade</TableHead>}
+                {teams.length > 0 && <TableHead>Equipe</TableHead>}
                 <TableHead>Descrição</TableHead>
                 <TableHead>Status</TableHead>
                 {isAdmin && <TableHead className="w-[100px]">Ações</TableHead>}
@@ -338,6 +398,11 @@ export const SectorsTab = ({ companyId, isAdmin }: SectorsTabProps) => {
                         <Building2 className="h-3 w-3 text-muted-foreground" />
                         <span className="text-sm">{getUnitName(sector.unit_id)}</span>
                       </div>
+                    </TableCell>
+                  )}
+                  {teams.length > 0 && (
+                    <TableCell>
+                      <span className="text-sm">{getTeamName(sector.team_id)}</span>
                     </TableCell>
                   )}
                   <TableCell className="max-w-[200px] truncate">

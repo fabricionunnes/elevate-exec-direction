@@ -8589,6 +8589,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           phone: string | null
+          sector_id: string | null
           team_id: string | null
           unit_id: string | null
           updated_at: string | null
@@ -8602,6 +8603,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           phone?: string | null
+          sector_id?: string | null
           team_id?: string | null
           unit_id?: string | null
           updated_at?: string | null
@@ -8615,6 +8617,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           phone?: string | null
+          sector_id?: string | null
           team_id?: string | null
           unit_id?: string | null
           updated_at?: string | null
@@ -8625,6 +8628,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_salespeople_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "company_sectors"
             referencedColumns: ["id"]
           },
           {
@@ -8653,6 +8663,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           sort_order: number | null
+          team_id: string | null
           unit_id: string | null
           updated_at: string | null
         }
@@ -8665,6 +8676,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           sort_order?: number | null
+          team_id?: string | null
           unit_id?: string | null
           updated_at?: string | null
         }
@@ -8677,6 +8689,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           sort_order?: number | null
+          team_id?: string | null
           unit_id?: string | null
           updated_at?: string | null
         }
@@ -8686,6 +8699,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_sectors_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "company_teams"
             referencedColumns: ["id"]
           },
           {

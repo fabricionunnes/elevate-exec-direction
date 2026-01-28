@@ -42,6 +42,7 @@ interface Salesperson {
   is_active: boolean;
   unit_id: string | null;
   team_id: string | null;
+  sector_id: string | null;
 }
 
 interface Unit {
@@ -58,6 +59,14 @@ interface Team {
   is_active: boolean;
 }
 
+interface Sector {
+  id: string;
+  name: string;
+  unit_id: string | null;
+  team_id: string | null;
+  is_active: boolean;
+}
+
 interface SalespeopleTabProps {
   companyId: string;
   isAdmin: boolean;
@@ -67,7 +76,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [sectors, setSectors] = useState<{ id: string; name: string; unit_id: string | null }[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Salesperson | null>(null);
@@ -76,6 +85,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
     email: "",
     phone: "",
     unit_id: "",
+    sector_id: "",
     team_id: "",
   });
 
@@ -110,7 +120,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
           .order("name"),
         supabase
           .from("company_sectors")
-          .select("id, name, unit_id")
+          .select("id, name, unit_id, team_id, is_active")
           .eq("company_id", companyId)
           .eq("is_active", true)
           .order("name"),
@@ -146,8 +156,12 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
     }
 
     try {
-      const unitId = formData.unit_id || (units.length === 1 ? units[0].id : null);
+      // Herdar unit_id da equipe ou setor selecionado
+      const selectedTeam = teams.find(t => t.id === formData.team_id);
+      const selectedSector = sectors.find(s => s.id === formData.sector_id);
+      const unitId = selectedTeam?.unit_id || selectedSector?.unit_id || formData.unit_id || (units.length === 1 ? units[0].id : null);
       const teamId = formData.team_id || null;
+      const sectorId = formData.sector_id || null;
 
       if (editingPerson) {
         const { error } = await supabase
@@ -158,6 +172,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
             phone: formData.phone || null,
             unit_id: unitId,
             team_id: teamId,
+            sector_id: sectorId,
           })
           .eq("id", editingPerson.id);
 
@@ -171,6 +186,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
           phone: formData.phone || null,
           unit_id: unitId,
           team_id: teamId,
+          sector_id: sectorId,
         });
 
         if (error) throw error;
@@ -250,6 +266,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
       email: "",
       phone: "",
       unit_id: "",
+      sector_id: "",
       team_id: "",
     });
   };
@@ -261,9 +278,16 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
       email: person.email || "",
       phone: person.phone || "",
       unit_id: person.unit_id || "",
+      sector_id: person.sector_id || "",
       team_id: person.team_id || "",
     });
     setShowDialog(true);
+  };
+
+  const getSectorName = (sectorId: string | null) => {
+    if (!sectorId) return "-";
+    const sector = sectors.find((s) => s.id === sectorId);
+    return sector ? sector.name : "-";
   };
 
   const getUnitName = (unitId: string | null) => {
@@ -278,25 +302,40 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
     return team ? team.name : "-";
   };
 
-  // Filter teams by selected unit (for form)
-  const formFilteredTeams = formData.unit_id
-    ? teams.filter((t) => !t.unit_id || t.unit_id === formData.unit_id)
-    : teams;
+  // Cascata: Filtrar setores pela unidade selecionada
+  const formFilteredSectors = formData.unit_id
+    ? sectors.filter((s) => !s.unit_id || s.unit_id === formData.unit_id)
+    : sectors;
+
+  // Cascata: Filtrar equipes pelo setor ou unidade selecionados
+  const formFilteredTeams = (() => {
+    if (formData.sector_id) {
+      const selectedSector = sectors.find(s => s.id === formData.sector_id);
+      if (selectedSector?.team_id) {
+        // Se o setor tem uma equipe específica, mostrar só ela
+        return teams.filter(t => t.id === selectedSector.team_id);
+      }
+      // Se setor não tem equipe, filtrar por unidade do setor
+      if (selectedSector?.unit_id) {
+        return teams.filter(t => !t.unit_id || t.unit_id === selectedSector.unit_id);
+      }
+    }
+    if (formData.unit_id) {
+      return teams.filter((t) => !t.unit_id || t.unit_id === formData.unit_id);
+    }
+    return teams;
+  })();
 
   // Filtered salespeople based on filter states
   const filteredSalespeople = salespeople.filter((sp) => {
     // Filter by unit
     if (filterUnit !== "all" && sp.unit_id !== filterUnit) return false;
     
+    // Filter by sector - now using sector_id directly
+    if (filterSector !== "all" && sp.sector_id !== filterSector) return false;
+    
     // Filter by team
     if (filterTeam !== "all" && sp.team_id !== filterTeam) return false;
-    
-    // Filter by sector - check if team belongs to sector
-    if (filterSector !== "all") {
-      const spTeam = teams.find((t) => t.id === sp.team_id);
-      // Teams may have sector_id, check if it matches
-      if (!spTeam || (spTeam as any).sector_id !== filterSector) return false;
-    }
     
     return true;
   });
@@ -349,7 +388,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
                     <Label>Unidade *</Label>
                     <Select
                       value={formData.unit_id}
-                      onValueChange={(v) => setFormData({ ...formData, unit_id: v, team_id: "" })}
+                      onValueChange={(v) => setFormData({ ...formData, unit_id: v, sector_id: "", team_id: "" })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a unidade" />
@@ -358,6 +397,28 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
                         {units.map((unit) => (
                           <SelectItem key={unit.id} value={unit.id}>
                             {unit.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {formFilteredSectors.length > 0 && (
+                  <div>
+                    <Label>Setor (opcional)</Label>
+                    <Select
+                      value={formData.sector_id}
+                      onValueChange={(v) => setFormData({ ...formData, sector_id: v === "none" ? "" : v, team_id: "" })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o setor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {formFilteredSectors.map((sector) => (
+                          <SelectItem key={sector.id} value={sector.id}>
+                            {sector.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -516,6 +577,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   {units.length > 0 && <TableHead>Unidade</TableHead>}
+                  {sectors.length > 0 && <TableHead>Setor</TableHead>}
                   {teams.length > 0 && <TableHead>Equipe</TableHead>}
                   <TableHead>E-mail</TableHead>
                   <TableHead>Telefone</TableHead>
@@ -534,6 +596,11 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
                           <Building2 className="h-3 w-3 text-muted-foreground" />
                           <span className="text-sm">{getUnitName(person.unit_id)}</span>
                         </div>
+                      </TableCell>
+                    )}
+                    {sectors.length > 0 && (
+                      <TableCell>
+                        <span className="text-sm">{getSectorName(person.sector_id)}</span>
                       </TableCell>
                     )}
                     {teams.length > 0 && (
