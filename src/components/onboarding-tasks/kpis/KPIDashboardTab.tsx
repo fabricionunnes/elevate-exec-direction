@@ -33,7 +33,7 @@ import { SalesComparisonChart } from "./SalesComparisonChart";
 import { KPIEntriesHistoryDialog } from "./KPIEntriesHistoryDialog";
 import { SalespeopleComparisonTable } from "./SalespeopleComparisonTable";
 import { MonthlySalesChart } from "./MonthlySalesChart";
-import { TeamsComparisonCard } from "./TeamsComparisonCard";
+import { PerformanceComparisonCard } from "./PerformanceComparisonCard";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface KPI {
@@ -128,6 +128,7 @@ export const KPIDashboardTab = ({
   const [teams, setTeams] = useState<Team[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [sectorTeams, setSectorTeams] = useState<{ sector_id: string; team_id: string }[]>([]);
+  const [teamUnits, setTeamUnits] = useState<{ team_id: string; unit_id: string }[]>([]);
   const [allMonthlyTargets, setAllMonthlyTargets] = useState<MonthlyTarget[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
@@ -173,7 +174,7 @@ export const KPIDashboardTab = ({
         entriesQuery = entriesQuery.eq("salesperson_id", salespersonId);
       }
 
-      const [kpisRes, salespeopleRes, entriesRes, unitsRes, teamsRes, sectorsRes, companyRes, monthlyTargetsRes, sectorTeamsRes] = await Promise.all([
+      const [kpisRes, salespeopleRes, entriesRes, unitsRes, teamsRes, sectorsRes, companyRes, monthlyTargetsRes, sectorTeamsRes, teamUnitsRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
         salespersonId 
           ? supabase.from("company_salespeople").select("*").eq("id", salespersonId)
@@ -185,6 +186,7 @@ export const KPIDashboardTab = ({
         supabase.from("onboarding_companies").select("contract_start_date").eq("id", companyId).single(),
         supabase.from("kpi_monthly_targets").select("*").eq("company_id", companyId).eq("month_year", selectedMonthYear).order("level_order"),
         supabase.from("company_sector_teams").select("sector_id, team_id"),
+        supabase.from("company_team_units").select("team_id, unit_id"),
       ]);
 
       console.log("[KPIDashboardTab] Results:", {
@@ -243,6 +245,7 @@ export const KPIDashboardTab = ({
       setTeams(teamsRes.data || []);
       setSectors(sectorsRes.data || []);
       setSectorTeams(sectorTeamsRes.data || []);
+      setTeamUnits(teamUnitsRes.data || []);
       if (companyRes.data) {
         setContractStartDate(companyRes.data.contract_start_date);
       }
@@ -1436,10 +1439,20 @@ export const KPIDashboardTab = ({
         selectedSalesperson={selectedSalesperson}
       />
 
-      {/* Teams Comparison Card - Only show when there are teams */}
-      {teams.length > 1 && (
-        <TeamsComparisonCard
+      {/* Performance Comparison Card - Compare by units, sectors, teams, or salespeople */}
+      {(teams.length > 1 || units.length > 1 || sectors.length > 1 || salespeople.length > 1) && (
+        <PerformanceComparisonCard
           teams={teams}
+          units={units}
+          sectors={sectors}
+          salespeople={salespeople.map(sp => ({
+            id: sp.id,
+            name: sp.name,
+            is_active: sp.is_active,
+            team_id: sp.team_id,
+            unit_id: sp.unit_id,
+            sector_id: sp.sector_id,
+          }))}
           kpis={kpis.map(k => ({
             id: k.id,
             name: k.name,
@@ -1447,6 +1460,9 @@ export const KPIDashboardTab = ({
             target_value: k.target_value,
             effective_target: k.effective_target,
             team_id: k.team_id,
+            unit_id: k.unit_id,
+            sector_id: k.sector_id,
+            salesperson_id: k.salesperson_id,
             is_main_goal: k.is_main_goal,
             scope: k.scope,
           }))}
@@ -1458,7 +1474,10 @@ export const KPIDashboardTab = ({
             value: e.value,
           }))}
           sectorTeams={sectorTeams}
+          teamUnits={teamUnits}
+          selectedUnit={selectedUnit}
           selectedSector={selectedSector}
+          selectedTeam={selectedTeam}
           monthStart={format(startOfMonth(new Date()), "yyyy-MM-dd")}
           monthEnd={format(endOfMonth(new Date()), "yyyy-MM-dd")}
         />
