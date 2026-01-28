@@ -501,18 +501,34 @@ export const KPIDashboardTab = ({
       // If filtering by sector, show:
       // - KPIs scoped to that specific sector
       // - KPIs scoped to teams that belong to this sector
+      // - KPIs scoped to salespeople that belong to teams in this sector
       // - KPIs scoped to company (shared across all)
       if (selectedSector !== "all") {
         if (scope === "sector") {
           return kpi.sector_id === selectedSector;
         }
+        
+        // Get all teams that belong to the selected sector
+        const teamsInSector = teamIdsBySectorId[selectedSector];
+        
         // Show team-scoped KPIs where the team belongs to the selected sector
         if (scope === "team" && kpi.team_id) {
-          const teamsInSector = teamIdsBySectorId[selectedSector];
           if (teamsInSector && teamsInSector.has(kpi.team_id)) {
             return true;
           }
         }
+        
+        // Show salesperson-scoped KPIs where the salesperson belongs to a team in this sector
+        if (scope === "salesperson" && kpi.salesperson_id) {
+          const sp = salespeople.find(s => s.id === kpi.salesperson_id);
+          if (sp) {
+            // Check if salesperson belongs to the sector (directly or via team)
+            if (salespersonBelongsToSector(sp, selectedSector)) {
+              return true;
+            }
+          }
+        }
+        
         // Also show company-scoped KPIs when viewing a sector
         return scope === "company";
       }
