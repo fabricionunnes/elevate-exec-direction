@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -20,15 +21,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Building2 } from "lucide-react";
 
 interface Team {
   id: string;
@@ -39,12 +33,18 @@ interface Team {
   is_active: boolean;
   created_at: string;
   salespeople_count?: number;
+  unit_ids?: string[];
 }
 
 interface Unit {
   id: string;
   name: string;
   is_active: boolean;
+}
+
+interface TeamUnit {
+  team_id: string;
+  unit_id: string;
 }
 
 interface TeamsTabProps {
@@ -55,13 +55,14 @@ interface TeamsTabProps {
 export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [teamUnits, setTeamUnits] = useState<TeamUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     code: "",
-    unit_id: "",
+    unit_ids: [] as string[],
   });
 
   const fetchData = async () => {
@@ -90,9 +91,20 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
         }
       });
 
+      // Fetch team-unit associations
+      const { data: teamUnitsData, error: teamUnitsError } = await supabase
+        .from("company_team_units")
+        .select("team_id, unit_id");
+
+      if (teamUnitsError) throw teamUnitsError;
+      setTeamUnits(teamUnitsData || []);
+
       const teamsWithCount = (teamsData || []).map((team) => ({
         ...team,
         salespeople_count: countMap[team.id] || 0,
+        unit_ids: (teamUnitsData || [])
+          .filter(tu => tu.team_id === team.id)
+          .map(tu => tu.unit_id),
       }));
 
       setTeams(teamsWithCount);
@@ -119,7 +131,7 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
   }, [companyId]);
 
   const resetForm = () => {
-    setFormData({ name: "", code: "", unit_id: "" });
+    setFormData({ name: "", code: "", unit_ids: [] });
     setEditingTeam(null);
   };
 
@@ -128,7 +140,7 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
     setFormData({
       name: team.name,
       code: team.code || "",
-      unit_id: team.unit_id || "",
+      unit_ids: team.unit_ids || [],
     });
     setDialogOpen(true);
   };
@@ -144,8 +156,10 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
         company_id: companyId,
         name: formData.name.trim(),
         code: formData.code.trim() || null,
-        unit_id: formData.unit_id || null,
+        unit_id: formData.unit_ids.length === 1 ? formData.unit_ids[0] : null, // Legacy compatibility
       };
+
+      let teamId: string;
 
       if (editingTeam) {
         const { error } = await supabase
@@ -153,11 +167,38 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
           .update(payload)
           .eq("id", editingTeam.id);
         if (error) throw error;
+        teamId = editingTeam.id;
+
+        // Remove existing unit associations
+        await supabase
+          .from("company_team_units")
+          .delete()
+          .eq("team_id", teamId);
+
         toast.success("Equipe atualizada com sucesso");
       } else {
-        const { error } = await supabase.from("company_teams").insert(payload);
+        const { data, error } = await supabase
+          .from("company_teams")
+          .insert(payload)
+          .select("id")
+          .single();
         if (error) throw error;
+        teamId = data.id;
         toast.success("Equipe cadastrada com sucesso");
+      }
+
+      // Insert new unit associations
+      if (formData.unit_ids.length > 0) {
+        const unitAssociations = formData.unit_ids.map(unitId => ({
+          team_id: teamId,
+          unit_id: unitId,
+        }));
+        
+        const { error: assocError } = await supabase
+          .from("company_team_units")
+          .insert(unitAssociations);
+        
+        if (assocError) throw assocError;
       }
 
       setDialogOpen(false);
@@ -207,10 +248,24 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
     }
   };
 
-  const getUnitName = (unitId: string | null) => {
-    if (!unitId) return "-";
-    const unit = units.find((u) => u.id === unitId);
-    return unit?.name || "-";
+  const getUnitNames = (unitIds: string[] | undefined) => {
+    if (!unitIds || unitIds.length === 0) return "-";
+    const names = unitIds
+      .map(id => units.find(u => u.id === id)?.name)
+      .filter(Boolean);
+    return names.length > 0 ? names.join(", ") : "-";
+  };
+
+  const toggleUnitSelection = (unitId: string) => {
+    setFormData(prev => {
+      const isSelected = prev.unit_ids.includes(unitId);
+      return {
+        ...prev,
+        unit_ids: isSelected
+          ? prev.unit_ids.filter(id => id !== unitId)
+          : [...prev.unit_ids, unitId],
+      };
+    });
   };
 
   if (loading) {
@@ -254,7 +309,7 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Código</TableHead>
-                <TableHead>Unidade</TableHead>
+                <TableHead>Unidades</TableHead>
                 <TableHead className="text-center">Vendedores</TableHead>
                 <TableHead className="text-center">Status</TableHead>
                 {isAdmin && <TableHead className="text-right">Ações</TableHead>}
@@ -265,7 +320,23 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
                 <TableRow key={team.id}>
                   <TableCell className="font-medium">{team.name}</TableCell>
                   <TableCell>{team.code || "-"}</TableCell>
-                  <TableCell>{getUnitName(team.unit_id)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {team.unit_ids && team.unit_ids.length > 0 ? (
+                        team.unit_ids.map(unitId => {
+                          const unit = units.find(u => u.id === unitId);
+                          return unit ? (
+                            <Badge key={unitId} variant="outline" className="text-xs">
+                              <Building2 className="h-3 w-3 mr-1" />
+                              {unit.name}
+                            </Badge>
+                          ) : null;
+                        })
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-center">
                     <Badge variant="secondary">
                       {team.salespeople_count || 0}
@@ -349,30 +420,31 @@ export function TeamsTab({ companyId, isAdmin }: TeamsTabProps) {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="unit">Unidade (opcional)</Label>
-              <Select
-                value={formData.unit_id}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, unit_id: value === "none" ? "" : value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma unidade" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhuma</SelectItem>
+            {units.length > 0 && (
+              <div className="space-y-2">
+                <Label>Unidades</Label>
+                <div className="border rounded-md p-3 space-y-2 max-h-[200px] overflow-y-auto">
                   {units.map((unit) => (
-                    <SelectItem key={unit.id} value={unit.id}>
-                      {unit.name}
-                    </SelectItem>
+                    <div key={unit.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`unit-${unit.id}`}
+                        checked={formData.unit_ids.includes(unit.id)}
+                        onCheckedChange={() => toggleUnitSelection(unit.id)}
+                      />
+                      <label
+                        htmlFor={`unit-${unit.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {unit.name}
+                      </label>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Vincular a equipe a uma unidade é opcional
-              </p>
-            </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Selecione uma ou mais unidades para esta equipe
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

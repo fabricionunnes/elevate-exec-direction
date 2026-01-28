@@ -8653,6 +8653,42 @@ export type Database = {
           },
         ]
       }
+      company_sector_teams: {
+        Row: {
+          created_at: string
+          id: string
+          sector_id: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sector_id: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sector_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_sector_teams_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "company_sectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_sector_teams_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "company_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_sectors: {
         Row: {
           code: string | null
@@ -8710,6 +8746,42 @@ export type Database = {
           },
           {
             foreignKeyName: "company_sectors_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "company_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_team_units: {
+        Row: {
+          created_at: string
+          id: string
+          team_id: string
+          unit_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          team_id: string
+          unit_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          team_id?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_team_units_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "company_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_team_units_unit_id_fkey"
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "company_units"
