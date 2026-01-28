@@ -472,7 +472,7 @@ export const AddTaskDialog = ({
                     <SelectContent>
                       {availableCalendars.map((staff) => (
                         <SelectItem key={staff.id} value={staff.id}>
-                          {staff.name} ({staff.role === "admin" ? "Admin" : staff.role === "cs" ? "CS" : "Consultor"})
+                          {staff.name} ({staff.role === "master" ? "Master" : staff.role === "admin" ? "Admin" : staff.role === "cs" ? "CS" : "Consultor"})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -523,7 +523,7 @@ export const AddTaskDialog = ({
                 <SelectContent>
                   {staffList.map((staff) => (
                     <SelectItem key={staff.id} value={staff.id}>
-                      {staff.name} ({staff.role === "admin" ? "Admin" : staff.role === "cs" ? "CS" : "Consultor"})
+                      {staff.name} ({staff.role === "master" ? "Master" : staff.role === "admin" ? "Admin" : staff.role === "cs" ? "CS" : "Consultor"})
                     </SelectItem>
                   ))}
                 </SelectContent>

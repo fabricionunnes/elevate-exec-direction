@@ -106,7 +106,7 @@ export const CRMDashboardPage = () => {
             .from("onboarding_staff")
             .select("id, name, role")
             .eq("is_active", true)
-            .in("role", ["admin", "head_comercial", "closer", "sdr"]);
+            .in("role", ["master", "admin", "head_comercial", "closer", "sdr"]);
           setStaff(staffData || []);
         }
 

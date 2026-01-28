@@ -216,7 +216,7 @@ const VirtualOfficePage = () => {
       }
 
       setCurrentStaff(staffData);
-      setIsAdmin(staffData.role === "admin");
+      setIsAdmin(staffData.role === "admin" || staffData.role === "master");
       // Apenas este email pode ver o histórico de conversas
       setCanViewHistory(staffData.email === "fabricio@universidadevendas.com.br");
 
@@ -238,8 +238,8 @@ const VirtualOfficePage = () => {
       const visibleRooms = allRooms.filter((room) => {
         // Non-restricted rooms are visible to everyone
         if (!room.is_restricted) return true;
-        // Admins can see all rooms
-        if (staffData.role === "admin") return true;
+        // Master/Admins can see all rooms
+        if (staffData.role === "admin" || staffData.role === "master") return true;
         // Check if staff has access
         return allAccess.some((a) => a.room_id === room.id && a.staff_id === staffData.id);
       });

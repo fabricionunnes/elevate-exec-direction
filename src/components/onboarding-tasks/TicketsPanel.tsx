@@ -187,7 +187,7 @@ export const TicketsPanel = ({ projectId, users }: TicketsPanelProps) => {
                 user_id: user.id,
                 name: staffMember.name,
                 email: staffMember.email,
-                role: staffMember.role === 'admin' ? 'admin' : staffMember.role as 'cs' | 'consultant',
+                role: (staffMember.role === 'admin' || staffMember.role === 'master') ? 'admin' : staffMember.role as 'cs' | 'consultant',
                 password_changed: true,
               })
               .select("id")
@@ -274,7 +274,7 @@ export const TicketsPanel = ({ projectId, users }: TicketsPanelProps) => {
                 user_id: user.id,
                 name: staffMember.name,
                 email: staffMember.email,
-                role: staffMember.role === 'admin' ? 'admin' : staffMember.role as 'cs' | 'consultant',
+                role: (staffMember.role === 'admin' || staffMember.role === 'master') ? 'admin' : staffMember.role as 'cs' | 'consultant',
                 password_changed: true,
               })
               .select("id")

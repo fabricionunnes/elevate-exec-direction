@@ -405,8 +405,8 @@ export function CandidatesTab({ projectId, canEdit, isStaff, userRole = '', onUp
         onOpenChange={setShowDetailSheet}
         candidate={selectedCandidate}
         canEdit={canEdit}
-        canDelete={userRole === 'admin' || userRole === 'cs'}
-        canManageResumes={['admin', 'cs', 'rh'].includes(userRole)}
+        canDelete={userRole === 'master' || userRole === 'admin' || userRole === 'cs'}
+        canManageResumes={['master', 'admin', 'cs', 'rh'].includes(userRole)}
         userRole={userRole}
         projectId={projectId}
         onUpdate={() => {

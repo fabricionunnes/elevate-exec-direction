@@ -98,7 +98,7 @@ export function ReferralsPanel() {
         .eq("is_active", true)
         .single();
 
-      setIsAdmin(staff?.role === "admin");
+      setIsAdmin(staff?.role === "admin" || staff?.role === "master");
     };
 
     checkAdminRole();

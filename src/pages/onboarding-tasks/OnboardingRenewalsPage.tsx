@@ -256,8 +256,8 @@ export default function OnboardingRenewalsPage() {
       return;
     }
 
-    // Allow admin and cs to access this page
-    if (staff.role !== "admin" && staff.role !== "cs") {
+    // Allow master, admin and cs to access this page
+    if (staff.role !== "master" && staff.role !== "admin" && staff.role !== "cs") {
       toast.error("Acesso restrito");
       navigate("/onboarding-tasks");
       return;
@@ -265,7 +265,7 @@ export default function OnboardingRenewalsPage() {
 
     setStaffId(staff.id);
     setUserRole(staff.role);
-    setIsAdmin(staff.role === "admin");
+    setIsAdmin(staff.role === "admin" || staff.role === "master");
     setIsCS(staff.role === "cs");
     fetchData();
   };

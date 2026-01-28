@@ -389,7 +389,7 @@ const OnboardingProjectPage = () => {
           staffId = staffMember.id;
           staffRole = staffMember.role;
           setCurrentUserId(staffMember.id);
-          if (staffMember.role === "admin") {
+          if (staffMember.role === "admin" || staffMember.role === "master") {
             setIsStaffAdmin(true);
             setCurrentUserRole("admin");
           } else {
@@ -600,7 +600,8 @@ const OnboardingProjectPage = () => {
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    if (!isStaffAdmin && currentUserRole !== "admin") {
+    // isStaffAdmin is already set to true for both admin and master roles
+    if (!isStaffAdmin) {
       toast.error("Apenas administradores podem excluir tarefas");
       return;
     }
@@ -1288,7 +1289,7 @@ const OnboardingProjectPage = () => {
                   </SelectTrigger>
                   <SelectContent className="bg-background">
                     <SelectItem value="none">Nenhum</SelectItem>
-                    {staffList.filter(s => s.role === "consultant" || s.role === "admin" || s.role === "cs").map((s) => (
+                    {staffList.filter(s => s.role === "consultant" || s.role === "admin" || s.role === "cs" || s.role === "master").map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1305,7 +1306,7 @@ const OnboardingProjectPage = () => {
                   </SelectTrigger>
                   <SelectContent className="bg-background">
                     <SelectItem value="none">Nenhum</SelectItem>
-                    {staffList.filter(s => s.role === "cs" || s.role === "admin").map((s) => (
+                    {staffList.filter(s => s.role === "cs" || s.role === "admin" || s.role === "master").map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>

@@ -103,8 +103,8 @@ export function CandidateDetailSheet({
 
   const { stages: pipelineStages } = usePipelineStages(projectId);
 
-  // Check if user can manage resumes (admin, cs, rh)
-  const canManage = canManageResumes || ['admin', 'cs', 'rh'].includes(userRole);
+  // Check if user can manage resumes (master, admin, cs, rh)
+  const canManage = canManageResumes || ['master', 'admin', 'cs', 'rh'].includes(userRole);
 
   useEffect(() => {
     if (candidate && open) {

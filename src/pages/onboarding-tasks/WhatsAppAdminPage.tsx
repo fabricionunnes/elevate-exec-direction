@@ -167,7 +167,7 @@ const WhatsAppAdminPage = () => {
       setCurrentUserRole(staff.role);
       setCurrentStaffId(staff.id);
       
-      if (staff.role !== "admin") {
+      if (staff.role !== "admin" && staff.role !== "master") {
         toast.error("Acesso restrito a administradores");
         navigate("/onboarding-tasks");
       }

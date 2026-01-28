@@ -132,8 +132,8 @@ const OnboardingResultsPage = () => {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      // Admin, CS and Consultants can access
-      if (!staff || (staff.role !== "admin" && staff.role !== "cs" && staff.role !== "consultant")) {
+      // Master, Admin, CS and Consultants can access
+      if (!staff || (staff.role !== "master" && staff.role !== "admin" && staff.role !== "cs" && staff.role !== "consultant")) {
         toast.error("Acesso restrito");
         navigate("/onboarding-tasks");
         return;
@@ -684,8 +684,8 @@ const OnboardingResultsPage = () => {
             <KPIDashboardTab 
               companyId={selectedCompanyId} 
               projectId={getProjectForCompany(selectedCompanyId)?.id}
-              canDeleteEntries={currentStaff.role === "admin" || currentStaff.role === "cs" || currentStaff.role === "consultant"}
-              canEditSalesHistory={currentStaff.role === "admin" || currentStaff.role === "cs" || currentStaff.role === "consultant"}
+              canDeleteEntries={currentStaff.role === "master" || currentStaff.role === "admin" || currentStaff.role === "cs" || currentStaff.role === "consultant"}
+              canEditSalesHistory={currentStaff.role === "master" || currentStaff.role === "admin" || currentStaff.role === "cs" || currentStaff.role === "consultant"}
             />
           </div>
         ) : (

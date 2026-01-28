@@ -90,7 +90,7 @@ export const AcademyLayout = () => {
           .eq("is_active", true)
           .maybeSingle();
 
-        if (staff && ["admin", "cs", "consultant"].includes(staff.role)) {
+        if (staff && ["master", "admin", "cs", "consultant"].includes(staff.role)) {
           setUserContext({
             isAdmin: true,
             isClientManager: false,

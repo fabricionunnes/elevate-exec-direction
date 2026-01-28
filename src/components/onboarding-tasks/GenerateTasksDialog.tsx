@@ -174,7 +174,7 @@ export const GenerateTasksDialog = ({
         .from("onboarding_staff")
         .select("id, name")
         .eq("is_active", true)
-        .in("role", ["admin", "cs", "consultant"])
+        .in("role", ["master", "admin", "cs", "consultant"])
         .order("name");
 
       setStaffMembers(staffData || []);
