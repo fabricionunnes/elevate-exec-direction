@@ -420,8 +420,8 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
         )}
       </div>
 
-      {/* Filter Bar */}
-      {(units.length > 0 || teams.length > 0 || sectors.length > 0) && (
+      {/* Filter Bar - Show when there's something to filter */}
+      {(units.length > 1 || teams.length > 0 || sectors.length > 0) && (
         <Card className="p-4">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -429,7 +429,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
               <span>Filtros:</span>
             </div>
 
-            {units.length > 0 && (
+            {units.length > 1 && (
               <div className="flex items-center gap-2">
                 <Label className="text-sm">Unidade:</Label>
                 <Select value={filterUnit} onValueChange={(v) => { setFilterUnit(v); setFilterTeam("all"); }}>
