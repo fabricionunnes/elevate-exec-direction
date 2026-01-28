@@ -29,8 +29,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, RefreshCw, Link, Building2, UsersRound, Filter, X } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Link, Building2, UsersRound, Filter, X, Check } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Salesperson {
@@ -43,6 +44,7 @@ interface Salesperson {
   unit_id: string | null;
   team_id: string | null;
   sector_id: string | null;
+  unit_ids?: string[];
 }
 
 interface Unit {
@@ -84,7 +86,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
     name: "",
     email: "",
     phone: "",
-    unit_id: "",
+    unit_ids: [] as string[],
     sector_id: "",
     team_id: "",
   });
@@ -100,7 +102,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
 
   const fetchData = async () => {
     try {
-      const [salespeopleRes, unitsRes, teamsRes, sectorsRes] = await Promise.all([
+      const [salespeopleRes, unitsRes, teamsRes, sectorsRes, salespersonUnitsRes] = await Promise.all([
         supabase
           .from("company_salespeople")
           .select("*")
@@ -124,14 +126,30 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
           .eq("company_id", companyId)
           .eq("is_active", true)
           .order("name"),
+        supabase
+          .from("company_salesperson_units")
+          .select("salesperson_id, unit_id"),
       ]);
 
       if (salespeopleRes.error) throw salespeopleRes.error;
       if (unitsRes.error) throw unitsRes.error;
       if (teamsRes.error) throw teamsRes.error;
       if (sectorsRes.error) throw sectorsRes.error;
+      if (salespersonUnitsRes.error) throw salespersonUnitsRes.error;
 
-      setSalespeople(salespeopleRes.data || []);
+      // Map unit_ids to each salesperson
+      const salespersonUnitsMap = (salespersonUnitsRes.data || []).reduce((acc, su) => {
+        if (!acc[su.salesperson_id]) acc[su.salesperson_id] = [];
+        acc[su.salesperson_id].push(su.unit_id);
+        return acc;
+      }, {} as Record<string, string[]>);
+
+      const salespeopleWithUnits = (salespeopleRes.data || []).map(sp => ({
+        ...sp,
+        unit_ids: salespersonUnitsMap[sp.id] || (sp.unit_id ? [sp.unit_id] : []),
+      }));
+
+      setSalespeople(salespeopleWithUnits);
       setUnits(unitsRes.data || []);
       setTeams(teamsRes.data || []);
       setSectors(sectorsRes.data || []);
@@ -149,19 +167,19 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
       return;
     }
 
-    // If there are multiple units, require unit selection
-    if (units.length > 1 && !formData.unit_id) {
-      toast.error("Selecione a unidade do vendedor");
+    // If there are multiple units, require at least one unit selection
+    if (units.length > 1 && formData.unit_ids.length === 0) {
+      toast.error("Selecione pelo menos uma unidade para o vendedor");
       return;
     }
 
     try {
-      // Herdar unit_id da equipe ou setor selecionado
-      const selectedTeam = teams.find(t => t.id === formData.team_id);
-      const selectedSector = sectors.find(s => s.id === formData.sector_id);
-      const unitId = selectedTeam?.unit_id || selectedSector?.unit_id || formData.unit_id || (units.length === 1 ? units[0].id : null);
+      // Use first unit_id for legacy column, or auto-assign if only one unit
+      const primaryUnitId = formData.unit_ids[0] || (units.length === 1 ? units[0].id : null);
       const teamId = formData.team_id || null;
       const sectorId = formData.sector_id || null;
+
+      let salespersonId: string;
 
       if (editingPerson) {
         const { error } = await supabase
@@ -170,27 +188,49 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
             name: formData.name,
             email: formData.email || null,
             phone: formData.phone || null,
-            unit_id: unitId,
+            unit_id: primaryUnitId,
             team_id: teamId,
             sector_id: sectorId,
           })
           .eq("id", editingPerson.id);
 
         if (error) throw error;
+        salespersonId = editingPerson.id;
+
+        // Update unit associations
+        await supabase
+          .from("company_salesperson_units")
+          .delete()
+          .eq("salesperson_id", salespersonId);
+
         toast.success("Vendedor atualizado");
       } else {
-        const { error } = await supabase.from("company_salespeople").insert({
+        const { data, error } = await supabase.from("company_salespeople").insert({
           company_id: companyId,
           name: formData.name,
           email: formData.email || null,
           phone: formData.phone || null,
-          unit_id: unitId,
+          unit_id: primaryUnitId,
           team_id: teamId,
           sector_id: sectorId,
-        });
+        }).select("id").single();
 
         if (error) throw error;
+        salespersonId = data.id;
         toast.success("Vendedor cadastrado");
+      }
+
+      // Insert unit associations
+      const unitIdsToInsert = formData.unit_ids.length > 0 
+        ? formData.unit_ids 
+        : (units.length === 1 ? [units[0].id] : []);
+      
+      if (unitIdsToInsert.length > 0) {
+        const associations = unitIdsToInsert.map(unitId => ({
+          salesperson_id: salespersonId,
+          unit_id: unitId,
+        }));
+        await supabase.from("company_salesperson_units").insert(associations);
       }
 
       setShowDialog(false);
@@ -265,7 +305,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
       name: "",
       email: "",
       phone: "",
-      unit_id: "",
+      unit_ids: [],
       sector_id: "",
       team_id: "",
     });
@@ -277,7 +317,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
       name: person.name,
       email: person.email || "",
       phone: person.phone || "",
-      unit_id: person.unit_id || "",
+      unit_ids: person.unit_ids || (person.unit_id ? [person.unit_id] : []),
       sector_id: person.sector_id || "",
       team_id: person.team_id || "",
     });
@@ -302,12 +342,12 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
     return team ? team.name : "-";
   };
 
-  // Cascata: Filtrar setores pela unidade selecionada
-  const formFilteredSectors = formData.unit_id
-    ? sectors.filter((s) => !s.unit_id || s.unit_id === formData.unit_id)
+  // Cascata: Filtrar setores pelas unidades selecionadas
+  const formFilteredSectors = formData.unit_ids.length > 0
+    ? sectors.filter((s) => !s.unit_id || formData.unit_ids.includes(s.unit_id))
     : sectors;
 
-  // Cascata: Filtrar equipes pelo setor ou unidade selecionados
+  // Cascata: Filtrar equipes pelo setor ou unidades selecionadas
   const formFilteredTeams = (() => {
     if (formData.sector_id) {
       const selectedSector = sectors.find(s => s.id === formData.sector_id);
@@ -320,16 +360,28 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
         return teams.filter(t => !t.unit_id || t.unit_id === selectedSector.unit_id);
       }
     }
-    if (formData.unit_id) {
-      return teams.filter((t) => !t.unit_id || t.unit_id === formData.unit_id);
+    if (formData.unit_ids.length > 0) {
+      return teams.filter((t) => !t.unit_id || formData.unit_ids.includes(t.unit_id));
     }
     return teams;
   })();
 
+  const toggleUnitSelection = (unitId: string) => {
+    setFormData(prev => {
+      const newUnitIds = prev.unit_ids.includes(unitId)
+        ? prev.unit_ids.filter(id => id !== unitId)
+        : [...prev.unit_ids, unitId];
+      return { ...prev, unit_ids: newUnitIds, sector_id: "", team_id: "" };
+    });
+  };
+
   // Filtered salespeople based on filter states
   const filteredSalespeople = salespeople.filter((sp) => {
-    // Filter by unit
-    if (filterUnit !== "all" && sp.unit_id !== filterUnit) return false;
+    // Filter by unit - check if salesperson has any of the selected units
+    if (filterUnit !== "all") {
+      const hasUnit = sp.unit_ids?.includes(filterUnit) || sp.unit_id === filterUnit;
+      if (!hasUnit) return false;
+    }
     
     // Filter by sector - now using sector_id directly
     if (filterSector !== "all" && sp.sector_id !== filterSector) return false;
@@ -385,22 +437,29 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
 
                 {units.length > 1 && (
                   <div>
-                    <Label>Unidade *</Label>
-                    <Select
-                      value={formData.unit_id}
-                      onValueChange={(v) => setFormData({ ...formData, unit_id: v, sector_id: "", team_id: "" })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a unidade" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {units.map((unit) => (
-                          <SelectItem key={unit.id} value={unit.id}>
+                    <Label>Unidades *</Label>
+                    <div className="border rounded-md p-3 max-h-[150px] overflow-y-auto space-y-2 mt-1">
+                      {units.map((unit) => (
+                        <div key={unit.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`unit-${unit.id}`}
+                            checked={formData.unit_ids.includes(unit.id)}
+                            onCheckedChange={() => toggleUnitSelection(unit.id)}
+                          />
+                          <label
+                            htmlFor={`unit-${unit.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                          >
                             {unit.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    {formData.unit_ids.length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formData.unit_ids.length} unidade(s) selecionada(s)
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -576,7 +635,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  {units.length > 0 && <TableHead>Unidade</TableHead>}
+                  {units.length > 0 && <TableHead>Unidades</TableHead>}
                   {sectors.length > 0 && <TableHead>Setor</TableHead>}
                   {teams.length > 0 && <TableHead>Equipe</TableHead>}
                   <TableHead>E-mail</TableHead>
@@ -592,9 +651,16 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
                     <TableCell className="font-medium">{person.name}</TableCell>
                     {units.length > 0 && (
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Building2 className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm">{getUnitName(person.unit_id)}</span>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <Building2 className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                          {(person.unit_ids && person.unit_ids.length > 0 ? person.unit_ids : (person.unit_id ? [person.unit_id] : [])).map((unitId, idx) => (
+                            <Badge key={unitId} variant="secondary" className="text-xs">
+                              {getUnitName(unitId)}
+                            </Badge>
+                          ))}
+                          {(!person.unit_ids || person.unit_ids.length === 0) && !person.unit_id && (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
                         </div>
                       </TableCell>
                     )}
