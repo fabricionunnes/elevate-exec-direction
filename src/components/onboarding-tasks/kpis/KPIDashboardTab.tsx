@@ -260,6 +260,27 @@ export const KPIDashboardTab = ({
     return !!kpi.unit_id && !kpi.team_id && !kpi.salesperson_id && !kpi.sector_id;
   };
 
+  /**
+   * For revenue-focused widgets (Projeção do Mês, evolução diária e Target vs Realizado):
+   * - With ANY org filter active (unit/team/sector/salesperson), we keep the "main goal first" behavior.
+   * - With NO org filters active, users expect the total to be the SUM of all teams, so we aggregate
+   *   all monetary KPIs instead of only the single main goal.
+   */
+  const getRevenueKpisForContext = (filteredKpis: KPI[]) => {
+    const hasAnyOrgFilter =
+      selectedUnit !== "all" ||
+      selectedTeam !== "all" ||
+      selectedSector !== "all" ||
+      selectedSalesperson !== "all";
+
+    if (!hasAnyOrgFilter) {
+      return filteredKpis.filter((k) => k.kpi_type === "monetary");
+    }
+
+    const mainGoalKpis = filteredKpis.filter((k) => k.is_main_goal);
+    return mainGoalKpis.length > 0 ? mainGoalKpis : filteredKpis.filter((k) => k.kpi_type === "monetary");
+  };
+
   // Helper function to get targets based on current filter (unit, team, sector, or salesperson)
   const getFilteredTargetsForKpi = (kpiId: string): Record<string, number> => {
     // Find the KPI to check its scope and unit_id
@@ -534,14 +555,8 @@ export const KPIDashboardTab = ({
 
     const filteredKpis = getFilteredKpis();
     
-    // Check if there are main goal KPIs configured (now can be multiple with different scopes)
-    const mainGoalKpis = filteredKpis.filter(kpi => kpi.is_main_goal);
-    const kpisForProjection = mainGoalKpis.length > 0 ? mainGoalKpis : filteredKpis.filter(kpi => kpi.kpi_type === "monetary");
-    
-    // Determine the display type based on the first main goal KPI or fallback to monetary
-    const displayType = mainGoalKpis.length > 0 
-      ? mainGoalKpis[0].kpi_type 
-      : "monetary";
+    const kpisForProjection = getRevenueKpisForContext(filteredKpis);
+    const displayType = kpisForProjection[0]?.kpi_type ?? "monetary";
 
     // Build individual projections for each main goal KPI
     const individualProjections: Array<{
@@ -581,7 +596,7 @@ export const KPIDashboardTab = ({
       totalRealized += kpiTotal;
       totalTarget += monthlyTarget;
 
-      // Store individual projection for main goal KPIs
+      // Store individual projection (only for KPIs explicitly marked as main goal)
       if (kpi.is_main_goal && monthlyTarget > 0) {
         const kpiProjectionPercent = timeProgress > 0 ? ((kpiTotal / monthlyTarget) / timeProgress) * 100 : 0;
         const kpiProjectedValue = timeProgress > 0 ? kpiTotal / timeProgress : 0;
@@ -625,11 +640,7 @@ export const KPIDashboardTab = ({
   const getDailyChartData = () => {
     const filteredKpis = getFilteredKpis();
     
-    // First check for main goal KPIs, then fallback to monetary
-    const mainGoalKpis = filteredKpis.filter(k => k.is_main_goal);
-    const targetKpis = mainGoalKpis.length > 0 
-      ? mainGoalKpis 
-      : filteredKpis.filter(k => k.kpi_type === "monetary");
+    const targetKpis = getRevenueKpisForContext(filteredKpis);
     
     // If a specific KPI is selected, use that instead
     const kpiIdsToUse = selectedKpi !== "all" 
@@ -666,11 +677,8 @@ export const KPIDashboardTab = ({
   const getTargetVsRealizedData = () => {
     const filteredKpis = getFilteredKpis();
     
-    // First check for main goal KPIs, then fallback to monetary
+    const targetKpis = getRevenueKpisForContext(filteredKpis);
     const mainGoalKpis = filteredKpis.filter(k => k.is_main_goal);
-    const targetKpis = mainGoalKpis.length > 0 
-      ? mainGoalKpis 
-      : filteredKpis.filter(k => k.kpi_type === "monetary");
     
     const targetKpiIds = targetKpis.map(k => k.id);
     
@@ -723,7 +731,7 @@ export const KPIDashboardTab = ({
     const totalDays = sortedDates.length;
 
     // Determine KPI type for formatting
-    const kpiType = mainGoalKpis.length > 0 ? mainGoalKpis[0].kpi_type : "monetary";
+    const kpiType = targetKpis[0]?.kpi_type ?? (mainGoalKpis[0]?.kpi_type ?? "monetary");
 
     // Build cumulative chart data
     let cumulativeValue = 0;
