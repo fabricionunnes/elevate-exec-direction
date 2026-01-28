@@ -8653,6 +8653,42 @@ export type Database = {
           },
         ]
       }
+      company_salesperson_units: {
+        Row: {
+          created_at: string | null
+          id: string
+          salesperson_id: string
+          unit_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          salesperson_id: string
+          unit_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          salesperson_id?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_salesperson_units_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "company_salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_salesperson_units_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "company_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_sector_teams: {
         Row: {
           created_at: string
