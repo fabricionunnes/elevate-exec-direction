@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import type { PresentationSlide, SlideContent } from "./types";
+import unvLogoSlides from "@/assets/unv-logo-slides.png";
 
 // UNV Brand colors - Enhanced palette
 const UNV_COLORS = {
@@ -277,44 +278,20 @@ export function PresentationViewer({
     });
   };
 
-  // UNV Logo Component
-  const UNVLogo = ({ size = "md", variant = "full" }: { size?: "sm" | "md" | "lg"; variant?: "full" | "icon" }) => {
-    const sizes = {
-      sm: { text: "text-sm", icon: 16 },
-      md: { text: "text-lg", icon: 24 },
-      lg: { text: "text-2xl", icon: 32 }
+  // UNV Logo Component - now using actual image
+  const UNVLogo = ({ size = "md" }: { size?: "sm" | "md" | "lg"; variant?: "full" | "icon" }) => {
+    const heights = {
+      sm: "h-8",
+      md: "h-12",
+      lg: "h-20"
     };
     
     return (
-      <div className="flex items-center gap-2">
-        <div 
-          className="flex items-center justify-center rounded-lg"
-          style={{ 
-            background: UNV_COLORS.blue.gradient,
-            padding: size === "lg" ? "8px 12px" : size === "md" ? "6px 10px" : "4px 8px"
-          }}
-        >
-          <span className={cn("font-black text-white tracking-wider", sizes[size].text)}>
-            UNV
-          </span>
-        </div>
-        {variant === "full" && (
-          <div className="flex flex-col">
-            <span 
-              className={cn("font-bold leading-tight", size === "lg" ? "text-base" : "text-xs")}
-              style={{ color: UNV_COLORS.blue.dark }}
-            >
-              UNIVERSIDADE
-            </span>
-            <span 
-              className={cn("font-bold leading-tight", size === "lg" ? "text-base" : "text-xs")}
-              style={{ color: UNV_COLORS.red.primary }}
-            >
-              VENDAS
-            </span>
-          </div>
-        )}
-      </div>
+      <img 
+        src={unvLogoSlides} 
+        alt="Universidade Nacional de Vendas" 
+        className={cn("object-contain", heights[size])}
+      />
     );
   };
 
