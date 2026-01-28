@@ -12942,6 +12942,78 @@ export type Database = {
           },
         ]
       }
+      kpi_salespeople: {
+        Row: {
+          created_at: string
+          id: string
+          kpi_id: string
+          salesperson_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kpi_id: string
+          salesperson_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kpi_id?: string
+          salesperson_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_salespeople_kpi_id_fkey"
+            columns: ["kpi_id"]
+            isOneToOne: false
+            referencedRelation: "company_kpis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_salespeople_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "company_salespeople"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kpi_sectors: {
+        Row: {
+          created_at: string
+          id: string
+          kpi_id: string
+          sector_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kpi_id: string
+          sector_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kpi_id?: string
+          sector_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_sectors_kpi_id_fkey"
+            columns: ["kpi_id"]
+            isOneToOne: false
+            referencedRelation: "company_kpis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_sectors_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "company_sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kpi_target_levels: {
         Row: {
           company_id: string
@@ -12973,6 +13045,78 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kpi_teams: {
+        Row: {
+          created_at: string
+          id: string
+          kpi_id: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kpi_id: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kpi_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_teams_kpi_id_fkey"
+            columns: ["kpi_id"]
+            isOneToOne: false
+            referencedRelation: "company_kpis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_teams_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "company_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kpi_units: {
+        Row: {
+          created_at: string
+          id: string
+          kpi_id: string
+          unit_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kpi_id: string
+          unit_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kpi_id?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_units_kpi_id_fkey"
+            columns: ["kpi_id"]
+            isOneToOne: false
+            referencedRelation: "company_kpis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_units_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "company_units"
             referencedColumns: ["id"]
           },
         ]
