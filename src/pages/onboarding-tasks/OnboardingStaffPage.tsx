@@ -40,13 +40,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2, LogOut, Key, Eye, EyeOff, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2, LogOut, Key, Eye, EyeOff, Loader2, Shield, Crown } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
+import { StaffPermissionsDialog } from "@/components/onboarding-tasks/StaffPermissionsDialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-type StaffRole = "cs" | "consultant" | "admin" | "closer" | "sdr" | "rh" | "marketing" | "financeiro";
+type StaffRole = "master" | "cs" | "consultant" | "admin" | "closer" | "sdr" | "rh" | "marketing" | "financeiro";
 
 interface Staff {
   id: string;
@@ -90,9 +91,34 @@ const OnboardingStaffPage = () => {
   const [showMemberPassword, setShowMemberPassword] = useState(false);
   const [savingMemberPassword, setSavingMemberPassword] = useState(false);
 
+  // Estado para permissões
+  const [permissionsStaff, setPermissionsStaff] = useState<Staff | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+
   useEffect(() => {
     fetchStaff();
+    checkCurrentUserRole();
   }, []);
+
+  const checkCurrentUserRole = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      
+      if (staffData) {
+        setCurrentUserRole(staffData.role);
+      }
+    } catch (error) {
+      console.error("Error checking user role:", error);
+    }
+  };
 
   const fetchStaff = async () => {
     try {
@@ -320,6 +346,8 @@ const OnboardingStaffPage = () => {
 
   const getRoleBadge = (role: string) => {
     switch (role) {
+      case "master":
+        return <Badge className="bg-gradient-to-r from-amber-500 to-yellow-400 text-white flex items-center gap-1"><Crown className="h-3 w-3" />Master</Badge>;
       case "admin":
         return <Badge className="bg-amber-500">Admin</Badge>;
       case "cs":
@@ -340,6 +368,8 @@ const OnboardingStaffPage = () => {
         return <Badge variant="outline">{role}</Badge>;
     }
   };
+
+  const isMaster = currentUserRole === "master";
 
   if (loading) {
     return (
@@ -477,6 +507,17 @@ const OnboardingStaffPage = () => {
                           title="Alterar senha"
                         >
                           <Key className="h-4 w-4 text-amber-500" />
+                        </Button>
+                      )}
+                      {/* Permissions button - only for master */}
+                      {isMaster && member.role !== "master" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setPermissionsStaff(member)}
+                          title="Gerenciar permissões"
+                        >
+                          <Shield className="h-4 w-4 text-violet-500" />
                         </Button>
                       )}
                       <Button
@@ -739,6 +780,14 @@ const OnboardingStaffPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de permissões */}
+      <StaffPermissionsDialog
+        open={!!permissionsStaff}
+        onOpenChange={(open) => !open && setPermissionsStaff(null)}
+        staff={permissionsStaff}
+        onSaved={fetchStaff}
+      />
     </div>
   );
 };

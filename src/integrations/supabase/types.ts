@@ -15710,6 +15710,45 @@ export type Database = {
           },
         ]
       }
+      staff_menu_permissions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          menu_key: string
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          menu_key: string
+          staff_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          menu_key?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_menu_permissions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_menu_permissions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_room_sessions: {
         Row: {
           attended_at: string | null
@@ -16464,6 +16503,7 @@ export type Database = {
       }
       is_crm_admin: { Args: never; Returns: boolean }
       is_financial_admin: { Args: never; Returns: boolean }
+      is_master: { Args: never; Returns: boolean }
       is_onboarding_admin:
         | { Args: never; Returns: boolean }
         | { Args: { check_user_id: string }; Returns: boolean }
@@ -16518,6 +16558,10 @@ export type Database = {
       }
       staff_has_company_access: {
         Args: { check_company_id: string }
+        Returns: boolean
+      }
+      staff_has_menu_permission: {
+        Args: { check_menu_key: string; check_staff_id: string }
         Returns: boolean
       }
       track_circle_pixel_event: {
