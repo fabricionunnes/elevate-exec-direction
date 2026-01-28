@@ -23,12 +23,10 @@ interface CompanyContext {
   company_name: string;
   company_segment?: string;
   company_description?: string;
-  contract_value?: number;
-  payment_method?: string;
-  health_score?: number;
-  nps_score?: number;
   main_challenges?: string;
-  goals_short_term?: string;
+  short_term_goals?: string;
+  // Note: Internal metrics (contract_value, health_score, nps_score) are excluded
+  // to avoid exposing confidential data in client-facing presentations
 }
 
 interface MeetingHistory {
@@ -102,33 +100,24 @@ export function useMeetingPresentation(meetingId: string, projectId: string) {
         let companyData: CompanyContext | null = null;
 
         if (project?.onboarding_company_id) {
-          // Get company data with contract info
+          // Get company data - excluding internal metrics (contract_value, NPS, health_score)
           const { data: company } = await supabase
             .from("onboarding_companies")
-            .select("name, segment, company_description, contract_value, main_challenges, goals_short_term")
+            .select("name, segment, company_description, main_challenges, goals_short_term")
             .eq("id", project.onboarding_company_id)
             .maybeSingle();
           
           if (company) {
             name = company.name || name;
             
-            // Get NPS
-            const { data: npsData } = await supabase
-              .from("onboarding_nps_responses")
-              .select("score")
-              .eq("project_id", projectId)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
+            // Only include non-confidential company context
             companyData = {
               company_name: name,
               company_segment: company.segment || undefined,
               company_description: company.company_description || undefined,
-              contract_value: company.contract_value || undefined,
               main_challenges: company.main_challenges || undefined,
-              goals_short_term: company.goals_short_term || undefined,
-              nps_score: npsData?.score,
+              short_term_goals: company.goals_short_term || undefined,
+              // Internal metrics intentionally excluded from presentations
             };
           }
         }

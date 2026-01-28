@@ -11,10 +11,10 @@ interface CompanyContext {
   company_name: string;
   company_segment?: string;
   company_description?: string;
-  contract_value?: number;
-  payment_method?: string;
-  health_score?: number;
-  nps_score?: number;
+  main_challenges?: string;
+  short_term_goals?: string;
+  // Note: Internal metrics (contract_value, health_score, nps_score) are excluded
+  // to avoid exposing confidential data in client-facing presentations
 }
 
 interface MeetingHistory {
@@ -118,10 +118,9 @@ function formatCompanyContext(ctx?: CompanyContext): string {
   const lines: string[] = [];
   if (ctx.company_segment) lines.push(`Segmento: ${ctx.company_segment}`);
   if (ctx.company_description) lines.push(`Descrição: ${ctx.company_description}`);
-  if (ctx.contract_value) lines.push(`Valor do contrato: R$ ${ctx.contract_value.toLocaleString('pt-BR')}`);
-  if (ctx.payment_method) lines.push(`Forma de pagamento: ${ctx.payment_method}`);
-  if (ctx.health_score !== undefined) lines.push(`Health Score: ${ctx.health_score}/100`);
-  if (ctx.nps_score !== undefined) lines.push(`NPS: ${ctx.nps_score}`);
+  if (ctx.main_challenges) lines.push(`Principais desafios: ${ctx.main_challenges}`);
+  if (ctx.short_term_goals) lines.push(`Metas de curto prazo: ${ctx.short_term_goals}`);
+  // Internal metrics are intentionally excluded from presentations
   
   return lines.length ? lines.join("\n") : "";
 }
@@ -181,6 +180,13 @@ REGRAS OBRIGATÓRIAS:
 8. MENCIONE tarefas em andamento e próximos passos concretos
 9. Slides devem ter pouco texto e muito impacto visual
 10. Inclua perguntas estratégicas baseadas no contexto real
+
+DADOS CONFIDENCIAIS - NUNCA MENCIONE:
+- Health Score, saúde do cliente, ou qualquer pontuação interna
+- Valores de contrato, mensalidade, ou termos financeiros do acordo
+- Tempo de contrato, data de início/fim do contrato
+- NPS, notas de satisfação internas
+- Qualquer métrica interna da UNV sobre o cliente
 
 ESTRUTURA OBRIGATÓRIA:
 - Slide de capa (sempre primeiro)
