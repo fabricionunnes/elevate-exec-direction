@@ -9831,6 +9831,382 @@ export type Database = {
           },
         ]
       }
+      culture_form_links: {
+        Row: {
+          access_token: string
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          project_id: string
+        }
+        Insert: {
+          access_token?: string
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          project_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "culture_form_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "culture_form_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      culture_form_responses: {
+        Row: {
+          additional_notes: string | null
+          client_experience_vision: string | null
+          client_relationship: string | null
+          communication_style: string | null
+          company_future_vision: string | null
+          company_history: string | null
+          company_purpose: string | null
+          core_values: string | null
+          cultural_principles: string | null
+          expected_behaviors: string | null
+          final_leadership_message: string | null
+          form_link_id: string | null
+          founders_motivation: string | null
+          founding_story: string | null
+          growth_opportunities: string | null
+          id: string
+          ideal_team_member: string | null
+          internal_communication: string | null
+          is_complete: boolean | null
+          leadership_expectations: string | null
+          leadership_style: string | null
+          legacy_aspiration: string | null
+          meritocracy_principles: string | null
+          mission_statement: string | null
+          performance_culture: string | null
+          project_id: string
+          recognition_approach: string | null
+          respondent_email: string | null
+          respondent_name: string | null
+          respondent_role: string | null
+          submitted_at: string | null
+          unacceptable_behaviors: string | null
+          vision_statement: string | null
+          who_should_not_join: string | null
+        }
+        Insert: {
+          additional_notes?: string | null
+          client_experience_vision?: string | null
+          client_relationship?: string | null
+          communication_style?: string | null
+          company_future_vision?: string | null
+          company_history?: string | null
+          company_purpose?: string | null
+          core_values?: string | null
+          cultural_principles?: string | null
+          expected_behaviors?: string | null
+          final_leadership_message?: string | null
+          form_link_id?: string | null
+          founders_motivation?: string | null
+          founding_story?: string | null
+          growth_opportunities?: string | null
+          id?: string
+          ideal_team_member?: string | null
+          internal_communication?: string | null
+          is_complete?: boolean | null
+          leadership_expectations?: string | null
+          leadership_style?: string | null
+          legacy_aspiration?: string | null
+          meritocracy_principles?: string | null
+          mission_statement?: string | null
+          performance_culture?: string | null
+          project_id: string
+          recognition_approach?: string | null
+          respondent_email?: string | null
+          respondent_name?: string | null
+          respondent_role?: string | null
+          submitted_at?: string | null
+          unacceptable_behaviors?: string | null
+          vision_statement?: string | null
+          who_should_not_join?: string | null
+        }
+        Update: {
+          additional_notes?: string | null
+          client_experience_vision?: string | null
+          client_relationship?: string | null
+          communication_style?: string | null
+          company_future_vision?: string | null
+          company_history?: string | null
+          company_purpose?: string | null
+          core_values?: string | null
+          cultural_principles?: string | null
+          expected_behaviors?: string | null
+          final_leadership_message?: string | null
+          form_link_id?: string | null
+          founders_motivation?: string | null
+          founding_story?: string | null
+          growth_opportunities?: string | null
+          id?: string
+          ideal_team_member?: string | null
+          internal_communication?: string | null
+          is_complete?: boolean | null
+          leadership_expectations?: string | null
+          leadership_style?: string | null
+          legacy_aspiration?: string | null
+          meritocracy_principles?: string | null
+          mission_statement?: string | null
+          performance_culture?: string | null
+          project_id?: string
+          recognition_approach?: string | null
+          respondent_email?: string | null
+          respondent_name?: string | null
+          respondent_role?: string | null
+          submitted_at?: string | null
+          unacceptable_behaviors?: string | null
+          vision_statement?: string | null
+          who_should_not_join?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "culture_form_responses_form_link_id_fkey"
+            columns: ["form_link_id"]
+            isOneToOne: false
+            referencedRelation: "culture_form_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "culture_form_responses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      culture_manual_audit_log: {
+        Row: {
+          action: string
+          action_details: Json | null
+          id: string
+          ip_address: string | null
+          performed_at: string | null
+          performed_by_staff_id: string | null
+          performed_by_user_id: string | null
+          project_id: string
+          version_id: string | null
+        }
+        Insert: {
+          action: string
+          action_details?: Json | null
+          id?: string
+          ip_address?: string | null
+          performed_at?: string | null
+          performed_by_staff_id?: string | null
+          performed_by_user_id?: string | null
+          project_id: string
+          version_id?: string | null
+        }
+        Update: {
+          action?: string
+          action_details?: Json | null
+          id?: string
+          ip_address?: string | null
+          performed_at?: string | null
+          performed_by_staff_id?: string | null
+          performed_by_user_id?: string | null
+          project_id?: string
+          version_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "culture_manual_audit_log_performed_by_staff_id_fkey"
+            columns: ["performed_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "culture_manual_audit_log_performed_by_user_id_fkey"
+            columns: ["performed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "culture_manual_audit_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "culture_manual_audit_log_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "culture_manual_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      culture_manual_sections: {
+        Row: {
+          id: string
+          is_locked: boolean | null
+          last_edited_at: string | null
+          last_edited_by: string | null
+          locked_at: string | null
+          locked_by: string | null
+          section_content: string | null
+          section_key: string
+          section_title: string
+          sort_order: number | null
+          version_id: string
+        }
+        Insert: {
+          id?: string
+          is_locked?: boolean | null
+          last_edited_at?: string | null
+          last_edited_by?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          section_content?: string | null
+          section_key: string
+          section_title: string
+          sort_order?: number | null
+          version_id: string
+        }
+        Update: {
+          id?: string
+          is_locked?: boolean | null
+          last_edited_at?: string | null
+          last_edited_by?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          section_content?: string | null
+          section_key?: string
+          section_title?: string
+          sort_order?: number | null
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "culture_manual_sections_last_edited_by_fkey"
+            columns: ["last_edited_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "culture_manual_sections_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "culture_manual_sections_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "culture_manual_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      culture_manual_versions: {
+        Row: {
+          company_logo_url: string | null
+          created_at: string | null
+          created_by: string | null
+          generated_by_ai: boolean | null
+          id: string
+          is_active: boolean | null
+          is_published: boolean | null
+          notes: string | null
+          primary_color: string | null
+          project_id: string
+          published_at: string | null
+          published_by: string | null
+          secondary_color: string | null
+          version_name: string | null
+          version_number: number
+        }
+        Insert: {
+          company_logo_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          generated_by_ai?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          is_published?: boolean | null
+          notes?: string | null
+          primary_color?: string | null
+          project_id: string
+          published_at?: string | null
+          published_by?: string | null
+          secondary_color?: string | null
+          version_name?: string | null
+          version_number?: number
+        }
+        Update: {
+          company_logo_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          generated_by_ai?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          is_published?: boolean | null
+          notes?: string | null
+          primary_color?: string | null
+          project_id?: string
+          published_at?: string | null
+          published_by?: string | null
+          secondary_color?: string | null
+          version_name?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "culture_manual_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "culture_manual_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "culture_manual_versions_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_points_clients: {
         Row: {
           birth_date: string | null
