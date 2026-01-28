@@ -75,11 +75,19 @@ export function CultureEditorSection({ projectId, canEdit }: CultureEditorSectio
         generatedByAi: true,
       });
 
-      // Update sections with AI content
+      // IMPORTANT: After creating a new version, we must update the *new version's* section rows,
+      // not the sections from the previously active version.
       if (data.sections && version) {
+        const { data: newVersionSections, error: newSectionsError } = await supabase
+          .from("culture_manual_sections")
+          .select("id, section_key")
+          .eq("version_id", version.id);
+
+        if (newSectionsError) throw newSectionsError;
+
         for (const section of data.sections) {
-          const dbSection = sections?.find(s => s.section_key === section.key);
-          if (dbSection) {
+          const dbSection = newVersionSections?.find((s) => s.section_key === section.key);
+          if (dbSection && section.content) {
             await updateSection.mutateAsync({
               sectionId: dbSection.id,
               content: section.content,
