@@ -29,13 +29,13 @@ IMPORTANTE:
 - Seja específico, não genérico`;
 
 async function generateWithAI(prompt: string): Promise<string> {
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  
+  const response = await fetch(`${supabaseUrl}/functions/v1/ai-gateway`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${Deno.env.get("OPENROUTER_API_KEY")}`,
-      "HTTP-Referer": "https://elevate-exec-direction.lovable.app",
-      "X-Title": "UNV Culture Manual Generator",
+      "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
     },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
