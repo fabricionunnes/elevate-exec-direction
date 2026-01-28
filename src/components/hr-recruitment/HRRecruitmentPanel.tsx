@@ -8,7 +8,8 @@ import {
   MessageSquare, 
   FileText, 
   BarChart3,
-  UserCheck
+  UserCheck,
+  BookOpen
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { JobOpeningsTab } from "./tabs/JobOpeningsTab";
@@ -17,9 +18,9 @@ import { PipelineTab } from "./tabs/PipelineTab";
 import { DISCEvaluationsTab } from "./tabs/DISCEvaluationsTab";
 import { InterviewsTab } from "./tabs/InterviewsTab";
 import { ResumesTab } from "./tabs/ResumesTab";
-
 import { HRDashboardTab } from "./tabs/HRDashboardTab";
 import { TalentPoolTab } from "./tabs/TalentPoolTab";
+import { CultureManualTab } from "./tabs/CultureManualTab";
 
 interface HRRecruitmentPanelProps {
   projectId: string;
@@ -147,6 +148,10 @@ export function HRRecruitmentPanel({
             <UserCheck className="h-4 w-4" />
             <span className="hidden sm:inline">Banco de Talentos</span>
           </TabsTrigger>
+          <TabsTrigger value="culture-manual" className="gap-2">
+            <BookOpen className="h-4 w-4" />
+            <span className="hidden sm:inline">Manual de Cultura</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-6">
@@ -206,6 +211,14 @@ export function HRRecruitmentPanel({
           <TalentPoolTab 
             projectId={projectId} 
             canEdit={canEdit}
+          />
+        </TabsContent>
+
+        <TabsContent value="culture-manual" className="mt-6">
+          <CultureManualTab 
+            projectId={projectId} 
+            canEdit={canEdit}
+            isStaff={isStaff}
           />
         </TabsContent>
 
