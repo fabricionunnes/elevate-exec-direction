@@ -58,6 +58,11 @@ interface Sector {
   team_id?: string | null;
 }
 
+interface SectorTeam {
+  sector_id: string;
+  team_id: string;
+}
+
 interface SalespeopleComparisonTableProps {
   kpis: KPI[];
   salespeople: Salesperson[];
@@ -65,6 +70,7 @@ interface SalespeopleComparisonTableProps {
   units: Unit[];
   teams: Team[];
   sectors: Sector[];
+  sectorTeams: SectorTeam[];
   selectedUnit: string;
   selectedTeam: string;
   selectedSector: string;
@@ -78,11 +84,36 @@ export const SalespeopleComparisonTable = ({
   units,
   teams,
   sectors,
+  sectorTeams,
   selectedUnit,
   selectedTeam,
   selectedSector,
   selectedSalesperson,
 }: SalespeopleComparisonTableProps) => {
+  // Build a map of sector_id -> team_ids for efficient lookup
+  const teamIdsBySectorId = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    sectorTeams.forEach(st => {
+      if (!map[st.sector_id]) {
+        map[st.sector_id] = new Set();
+      }
+      map[st.sector_id].add(st.team_id);
+    });
+    return map;
+  }, [sectorTeams]);
+
+  // Check if a salesperson belongs to a sector (directly or via team)
+  const salespersonBelongsToSector = (sp: Salesperson, sectorId: string): boolean => {
+    // Direct sector match
+    if (sp.sector_id === sectorId) return true;
+    // Check if salesperson's team is associated with the sector
+    if (sp.team_id) {
+      const teamsInSector = teamIdsBySectorId[sectorId];
+      if (teamsInSector && teamsInSector.has(sp.team_id)) return true;
+    }
+    return false;
+  };
+
   // Filter salespeople by all selected filters
   const filteredSalespeople = useMemo(() => {
     return salespeople.filter((sp) => {
@@ -98,13 +129,15 @@ export const SalespeopleComparisonTable = ({
       if (selectedTeam !== "all" && sp.team_id !== selectedTeam) {
         return false;
       }
-      // Filter by sector
-      if (selectedSector !== "all" && sp.sector_id !== selectedSector) {
-        return false;
+      // Filter by sector (direct match OR via team association)
+      if (selectedSector !== "all") {
+        if (!salespersonBelongsToSector(sp, selectedSector)) {
+          return false;
+        }
       }
       return true;
     });
-  }, [salespeople, selectedUnit, selectedTeam, selectedSector, selectedSalesperson]);
+  }, [salespeople, selectedUnit, selectedTeam, selectedSector, selectedSalesperson, teamIdsBySectorId]);
 
   // Get ALL monetary KPIs for the comparison
   // This ensures all sales/revenue KPIs are summed together
