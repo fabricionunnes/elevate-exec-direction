@@ -241,7 +241,7 @@ export function MeetingPresentationSection({
 
                 {/* Selected slide large preview with edit button */}
                 {slides[selectedSlide] && (
-                  <div className="border rounded-lg overflow-hidden relative">
+                  <div className="border rounded-lg relative">
                     <div className="aspect-video max-w-2xl mx-auto">
                       <PresentationSlidePreview
                         slide={slides[selectedSlide]}
@@ -251,7 +251,7 @@ export function MeetingPresentationSection({
                     </div>
                     {/* Edit button - always visible with high contrast */}
                     {canEdit && (
-                      <div className="absolute bottom-4 right-4 z-10">
+                      <div className="absolute bottom-4 right-4 z-50">
                         <Button
                           size="sm"
                           className="bg-white hover:bg-gray-100 text-gray-900 shadow-xl border border-gray-200 font-medium"
