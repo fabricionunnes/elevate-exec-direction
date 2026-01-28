@@ -18,5 +18,7 @@ export const getPublicBaseUrl = (): string => {
   // In local dev, keep links on localhost for easier testing.
   if (window.location.hostname === "localhost") return window.location.origin;
 
+  // IMPORTANT: preview domains are not reliably accessible without internal tokens,
+  // so shareable public links must always use the canonical published domain.
   return PUBLIC_DOMAIN;
 };
