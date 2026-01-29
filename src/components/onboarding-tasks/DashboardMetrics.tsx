@@ -873,7 +873,7 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "cancellation_signaled") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("status", "cancellation_signaled")}>
+        <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "churn_signaled") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("status", "churn_signaled")}>
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
               <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
