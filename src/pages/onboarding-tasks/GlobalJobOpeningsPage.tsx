@@ -116,6 +116,7 @@ const GlobalJobOpeningsPage = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDelayed, setFilterDelayed] = useState("all");
   const [filterType, setFilterType] = useState("all");
+  const [filterCandidates, setFilterCandidates] = useState("all");
 
   // Dialogs
   const [selectedJob, setSelectedJob] = useState<JobOpeningWithDetails | null>(null);
@@ -345,6 +346,10 @@ const GlobalJobOpeningsPage = () => {
         filterDelayed === "all" ||
         (filterDelayed === "delayed" && isJobDelayed(job)) ||
         (filterDelayed === "on_time" && !isJobDelayed(job));
+      const matchesCandidates =
+        filterCandidates === "all" ||
+        (filterCandidates === "no_candidates" && job.candidates_count === 0) ||
+        (filterCandidates === "has_candidates" && job.candidates_count > 0);
 
       return (
         matchesSearch &&
@@ -353,10 +358,11 @@ const GlobalJobOpeningsPage = () => {
         matchesRH &&
         matchesStatus &&
         matchesType &&
-        matchesDelayed
+        matchesDelayed &&
+        matchesCandidates
       );
     });
-  }, [jobs, searchTerm, filterCompany, filterConsultant, filterRH, filterStatus, filterType, filterDelayed]);
+  }, [jobs, searchTerm, filterCompany, filterConsultant, filterRH, filterStatus, filterType, filterDelayed, filterCandidates]);
 
   // Calculate metrics
   const metrics = useMemo(() => {
@@ -747,7 +753,19 @@ const GlobalJobOpeningsPage = () => {
                 </SelectContent>
               </Select>
 
-              {(filterCompany !== "all" || filterConsultant !== "all" || filterRH !== "all" || filterStatus !== "all" || filterType !== "all" || filterDelayed !== "all" || searchTerm) && (
+              <Select value={filterCandidates} onValueChange={setFilterCandidates}>
+                <SelectTrigger className="w-[160px]">
+                  <Users className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Candidatos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="no_candidates">Sem candidatos</SelectItem>
+                  <SelectItem value="has_candidates">Com candidatos</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {(filterCompany !== "all" || filterConsultant !== "all" || filterRH !== "all" || filterStatus !== "all" || filterType !== "all" || filterDelayed !== "all" || filterCandidates !== "all" || searchTerm) && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -759,6 +777,7 @@ const GlobalJobOpeningsPage = () => {
                     setFilterStatus("all");
                     setFilterType("all");
                     setFilterDelayed("all");
+                    setFilterCandidates("all");
                   }}
                 >
                   Limpar filtros
