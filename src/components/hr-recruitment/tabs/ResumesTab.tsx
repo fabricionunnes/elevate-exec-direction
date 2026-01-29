@@ -76,23 +76,34 @@ export function ResumesTab({ projectId, canEdit, isStaff }: ResumesTabProps) {
 
   const fetchData = async () => {
     setLoading(true);
+    
+    // First get candidates for this project
+    const { data: projectCandidates } = await supabase
+      .from("candidates")
+      .select("id")
+      .eq("project_id", projectId);
+    
+    const candidateIds = projectCandidates?.map(c => c.id) || [];
+    
     const [resumesRes, jobsRes] = await Promise.all([
-      supabase
-        .from("candidate_resumes")
-        .select(`
-          *,
-          candidate:candidates!inner(
-            id, 
-            full_name, 
-            email, 
-            current_stage, 
-            job_opening_id,
-            project_id,
-            job_opening:job_openings(id, title)
-          )
-        `)
-        .eq("candidate.project_id", projectId)
-        .order("created_at", { ascending: false }),
+      candidateIds.length > 0 
+        ? supabase
+            .from("candidate_resumes")
+            .select(`
+              *,
+              candidate:candidates(
+                id, 
+                full_name, 
+                email, 
+                current_stage, 
+                job_opening_id,
+                project_id,
+                job_opening:job_openings(id, title)
+              )
+            `)
+            .in("candidate_id", candidateIds)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
       supabase
         .from("job_openings")
         .select("id, title")
