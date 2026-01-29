@@ -158,3 +158,6 @@ verify_jwt = false
 
 [functions.circle-ads-ai]
 verify_jwt = false
+
+[functions.cancel-zapsign]
+verify_jwt = false
