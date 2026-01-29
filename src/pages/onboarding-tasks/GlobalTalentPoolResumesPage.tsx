@@ -24,8 +24,12 @@ import {
   Star,
   Sparkles,
   Filter,
-  User
+  User,
+  Link2,
+  Copy,
+  Check
 } from "lucide-react";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -75,6 +79,20 @@ export default function GlobalTalentPoolResumesPage() {
   const [search, setSearch] = useState("");
   const [filterCompany, setFilterCompany] = useState<string>("all");
   const [filterDisc, setFilterDisc] = useState<string>("all");
+  const [copied, setCopied] = useState(false);
+
+  const publicLink = `${getPublicBaseUrl()}/?public=banco-talentos`;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(publicLink);
+      setCopied(true);
+      toast.success("Link copiado!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast.error("Erro ao copiar link");
+    }
+  };
 
   useEffect(() => {
     checkPermissions();
@@ -252,23 +270,44 @@ export default function GlobalTalentPoolResumesPage() {
       {/* Header */}
       <div className="bg-white border-b shadow-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => navigate("/onboarding-tasks/vagas")}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold text-slate-900 flex items-center gap-2">
-                <Star className="h-6 w-6 text-amber-500" />
-                Banco de Talentos Global
-              </h1>
-              <p className="text-sm text-muted-foreground hidden md:block">
-                Todos os candidatos no banco de talentos de todas as empresas
-              </p>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => navigate("/onboarding-tasks/vagas")}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-slate-900 flex items-center gap-2">
+                  <Star className="h-6 w-6 text-amber-500" />
+                  Banco de Talentos Global
+                </h1>
+                <p className="text-sm text-muted-foreground hidden md:block">
+                  Todos os candidatos no banco de talentos de todas as empresas
+                </p>
+              </div>
             </div>
+            
+            <Button 
+              variant="outline" 
+              onClick={handleCopyLink}
+              className="gap-2 shrink-0"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4 text-green-500" />
+                  <span className="hidden sm:inline">Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Link2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Copiar Link Público</span>
+                  <Copy className="h-4 w-4 sm:hidden" />
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </div>
