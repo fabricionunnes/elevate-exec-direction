@@ -107,6 +107,7 @@ import AssessmentReportsPage from "./pages/assessments/AssessmentReportsPage";
 import UnifiedAssessmentPage from "./pages/assessments/UnifiedAssessmentPage";
 import HrCandidateDiscPage from "./pages/hr-recruitment/HrCandidateDiscPage";
 import PublicJobApplicationPage from "./pages/hr-recruitment/PublicJobApplicationPage";
+import PublicTalentPoolPage from "./pages/hr-recruitment/PublicTalentPoolPage";
 import CultureFormPage from "./pages/hr-recruitment/CultureFormPage";
 import HealthScorePage from "./pages/onboarding-tasks/HealthScorePage";
 import FinancialModulePage from "./pages/onboarding-tasks/FinancialModulePage";
@@ -290,6 +291,7 @@ const App = () => (
             <Route path="/avaliacao" element={<UnifiedAssessmentPage />} />
             <Route path="/hr-disc/:token" element={<HrCandidateDiscPage />} />
             <Route path="/job-application" element={<PublicJobApplicationPage />} />
+            <Route path="/banco-talentos" element={<PublicTalentPoolPage />} />
             <Route path="/cultura/:token" element={<CultureFormPage />} />
             <Route path="/onboarding-tasks/:projectId/reports" element={<AssessmentReportsPage />} />
             
