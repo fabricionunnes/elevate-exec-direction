@@ -100,6 +100,22 @@ const defaultFormData: ContractFormData = {
 
 const CEO_EMAIL = "fabricio@universidadevendas.com.br";
 
+const toISODate = (date: Date) => format(date, "yyyy-MM-dd");
+
+const computeDueDateISO = (startDate: Date, dueDay: number) => {
+  // Base: same month/year as startDate with chosen day
+  const base = new Date(startDate);
+  base.setHours(12, 0, 0, 0);
+  base.setDate(dueDay);
+
+  // If the chosen day already passed in the start month, move to next month
+  if (base < startDate) {
+    base.setMonth(base.getMonth() + 1);
+  }
+
+  return toISODate(base);
+};
+
 export default function ContractGeneratorPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -249,10 +265,16 @@ export default function ContractGeneratorPage() {
     }
   };
 
-  const saveContract = async (pdfUrl: string | null): Promise<string | null> => {
+  const saveContract = async (pdfUrl: string | null): Promise<string> => {
+    const selectedProduct = productDetails[formData.productId];
+
+    // due_date is a DATE column in the backend. We must store an ISO date (yyyy-MM-dd), not just the day number.
+    const dueDate =
+      formData.paymentMethod === "card" || !formData.dueDay || !formData.startDate
+        ? null
+        : computeDueDateISO(formData.startDate, formData.dueDay);
+
     try {
-      const selectedProduct = productDetails[formData.productId];
-      
       const { data, error } = await supabase
         .from("generated_contracts")
         .insert({
@@ -273,21 +295,28 @@ export default function ContractGeneratorPage() {
           payment_method: formData.paymentMethod,
           installments: formData.isRecurring ? null : formData.installments,
           is_recurring: formData.isRecurring,
-          due_date: formData.dueDay ? formData.dueDay.toString() : null,
-          start_date: formData.startDate ? format(formData.startDate, "yyyy-MM-dd") : null,
+          due_date: dueDate,
+          start_date: formData.startDate ? toISODate(formData.startDate) : null,
           pdf_url: pdfUrl,
         })
         .select("id")
         .single();
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       // Reload contracts list
       loadContracts();
-      return data?.id || null;
+      if (!data?.id) {
+        throw new Error("Contrato não retornou ID após salvar.");
+      }
+
+      return data.id;
     } catch (error) {
       console.error("Erro ao salvar contrato:", error);
-      return null;
+      toast.error("Não consegui salvar o contrato no histórico. Verifique os campos e tente novamente.");
+      throw error;
     }
   };
 
