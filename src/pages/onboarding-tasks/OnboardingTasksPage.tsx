@@ -769,6 +769,9 @@ const OnboardingTasksPage = () => {
     setActiveMetricFilter(filter);
     
     if (filter?.type === "status") {
+      // Always show the companies list when a status metric card is clicked
+      setActiveDashboardTab("empresas");
+
       // IMPORTANT: some metric filters are "virtual" (not actual project statuses).
       // Example: "churn_signaled" represents (cancellation_signaled OR notice_period).
       // Setting filterStatus to it would zero the list because no project has that status.
