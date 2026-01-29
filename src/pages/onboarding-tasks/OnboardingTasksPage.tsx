@@ -769,7 +769,14 @@ const OnboardingTasksPage = () => {
     setActiveMetricFilter(filter);
     
     if (filter?.type === "status") {
-      setFilterStatus(filter.value);
+      // IMPORTANT: some metric filters are "virtual" (not actual project statuses).
+      // Example: "churn_signaled" represents (cancellation_signaled OR notice_period).
+      // Setting filterStatus to it would zero the list because no project has that status.
+      if (filter.value === "churn_signaled") {
+        setFilterStatus("all");
+      } else {
+        setFilterStatus(filter.value);
+      }
     } else if (filter === null && previousFilter?.type === "status") {
       // When clearing a status filter, reset to "all"
       setFilterStatus("all");
