@@ -131,6 +131,10 @@ export default function ContractGeneratorPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [lastSavedContractId, setLastSavedContractId] = useState<string | null>(null);
   
+  // Editing mode: track the contract being edited and its old ZapSign token
+  const [editingContractId, setEditingContractId] = useState<string | null>(null);
+  const [editingOldZapSignToken, setEditingOldZapSignToken] = useState<string | null>(null);
+  
   // ZapSign integration states
   const [isSendingToZapSign, setIsSendingToZapSign] = useState(false);
   const [zapSignSent, setZapSignSent] = useState(false);
@@ -142,6 +146,7 @@ export default function ContractGeneratorPage() {
     allSigned: boolean;
     signedFileUrl: string | null;
   } | null>(null);
+  const [wasEditMode, setWasEditMode] = useState(false); // Track if last generation was an edit
   
   // E-mail fixo da empresa contratada
   const COMPANY_SIGNER_EMAIL = "fabricio@universidadevendas.com.br";
@@ -265,6 +270,30 @@ export default function ContractGeneratorPage() {
     }
   };
 
+  // Cancel old ZapSign document when editing
+  const cancelOldZapSignDocument = async (documentToken: string) => {
+    try {
+      console.log("Cancelling old ZapSign document:", documentToken);
+      const { data, error } = await supabase.functions.invoke("cancel-zapsign", {
+        body: { documentToken },
+      });
+
+      if (error) {
+        console.error("Error cancelling ZapSign document:", error);
+        // Don't block the flow, just log the error
+        return;
+      }
+
+      console.log("ZapSign cancel result:", data);
+      if (data?.success) {
+        toast.info("Documento anterior cancelado na ZapSign.");
+      }
+    } catch (err) {
+      console.error("Failed to cancel ZapSign document:", err);
+      // Don't block the flow
+    }
+  };
+
   const saveContract = async (pdfUrl: string | null): Promise<string> => {
     const selectedProduct = productDetails[formData.productId];
 
@@ -274,55 +303,88 @@ export default function ContractGeneratorPage() {
         ? null
         : computeDueDateISO(formData.startDate, formData.dueDay);
 
-    try {
-      const { data, error } = await supabase
-        .from("generated_contracts")
-        .insert({
-          client_name: formData.clientName,
-          client_document: formData.clientDocument,
-          client_address: `${formData.clientStreet}, nº ${formData.clientNumber}, ${formData.clientNeighborhood}, ${formData.clientCity} - ${formData.clientState}, CEP ${formData.clientCep}`,
-          client_email: formData.clientEmail,
-          client_phone: formData.clientPhone,
-          legal_rep_name: formData.legalRepName,
-          legal_rep_cpf: formData.legalRepCpf,
-          legal_rep_rg: formData.legalRepRg,
-          legal_rep_marital_status: formData.legalRepMaritalStatus,
-          legal_rep_nationality: formData.legalRepNationality,
-          legal_rep_profession: formData.legalRepProfession,
-          product_id: formData.productId,
-          product_name: selectedProduct?.name || formData.productId,
-          contract_value: formData.contractValue,
-          payment_method: formData.paymentMethod,
-          installments: formData.isRecurring ? null : formData.installments,
-          is_recurring: formData.isRecurring,
-          due_date: dueDate,
-          start_date: formData.startDate ? toISODate(formData.startDate) : null,
-          pdf_url: pdfUrl,
-        })
-        .select("id")
-        .single();
+    const contractData = {
+      client_name: formData.clientName,
+      client_document: formData.clientDocument,
+      client_address: `${formData.clientStreet}, nº ${formData.clientNumber}, ${formData.clientNeighborhood}, ${formData.clientCity} - ${formData.clientState}, CEP ${formData.clientCep}`,
+      client_email: formData.clientEmail,
+      client_phone: formData.clientPhone,
+      legal_rep_name: formData.legalRepName,
+      legal_rep_cpf: formData.legalRepCpf,
+      legal_rep_rg: formData.legalRepRg,
+      legal_rep_marital_status: formData.legalRepMaritalStatus,
+      legal_rep_nationality: formData.legalRepNationality,
+      legal_rep_profession: formData.legalRepProfession,
+      product_id: formData.productId,
+      product_name: selectedProduct?.name || formData.productId,
+      contract_value: formData.contractValue,
+      payment_method: formData.paymentMethod,
+      installments: formData.isRecurring ? null : formData.installments,
+      is_recurring: formData.isRecurring,
+      due_date: dueDate,
+      start_date: formData.startDate ? toISODate(formData.startDate) : null,
+      pdf_url: pdfUrl,
+    };
 
-      if (error) {
-        throw error;
+    try {
+      let contractId: string;
+      let isNewContract = true;
+
+      // If editing an existing contract, update it and cancel old ZapSign document
+      if (editingContractId) {
+        isNewContract = false;
+        
+        // Cancel old ZapSign document if it exists
+        if (editingOldZapSignToken) {
+          await cancelOldZapSignDocument(editingOldZapSignToken);
+        }
+
+        // Update existing contract and clear ZapSign data (new document will be sent)
+        const { error } = await supabase
+          .from("generated_contracts")
+          .update({
+            ...contractData,
+            // Clear ZapSign data since document was cancelled
+            zapsign_document_token: null,
+            zapsign_document_url: null,
+            zapsign_signers: null,
+            zapsign_sent_at: null,
+          })
+          .eq("id", editingContractId);
+
+        if (error) throw error;
+        contractId = editingContractId;
+
+        // Clear editing state
+        setEditingContractId(null);
+        setEditingOldZapSignToken(null);
+      } else {
+        // Insert new contract
+        const { data, error } = await supabase
+          .from("generated_contracts")
+          .insert(contractData)
+          .select("id")
+          .single();
+
+        if (error) throw error;
+        if (!data?.id) throw new Error("Contrato não retornou ID após salvar.");
+        contractId = data.id;
       }
 
       // Reload contracts list
       loadContracts();
-      if (!data?.id) {
-        throw new Error("Contrato não retornou ID após salvar.");
-      }
 
-      // Notify Fabrício about new contract to sign
+      // Notify Fabrício about contract (new or updated)
       const FABRICIO_STAFF_ID = "6e007dbe-bfcb-4252-a6fc-80769a4e9b5e";
-      const contractLink = `${window.location.origin}/#/contratos?history=true&contractId=${data.id}`;
+      const contractLink = `${window.location.origin}/#/contratos?history=true&contractId=${contractId}`;
       
       try {
         await supabase.from("onboarding_notifications").insert({
           staff_id: FABRICIO_STAFF_ID,
           type: "contract",
-          title: "📄 Novo contrato para assinar",
-          message: `Contrato gerado para ${formData.clientName} - ${selectedProduct?.name || formData.productId}. Clique para visualizar e assinar.`,
-          reference_id: data.id,
+          title: isNewContract ? "📄 Novo contrato para assinar" : "📝 Contrato atualizado para assinar",
+          message: `Contrato ${isNewContract ? "gerado" : "atualizado"} para ${formData.clientName} - ${selectedProduct?.name || formData.productId}. Clique para visualizar e assinar.`,
+          reference_id: contractId,
           reference_type: "contract",
           is_read: false,
         });
@@ -331,7 +393,7 @@ export default function ContractGeneratorPage() {
         // Don't fail the whole operation if notification fails
       }
 
-      return data.id;
+      return contractId;
     } catch (error) {
       console.error("Erro ao salvar contrato:", error);
       toast.error("Não consegui salvar o contrato no histórico. Verifique os campos e tente novamente.");
@@ -343,6 +405,11 @@ export default function ContractGeneratorPage() {
     setIsGenerating(true);
     setZapSignSent(false);
     setLastSavedContractId(null);
+    
+    // Track if this is an edit (before saveContract clears the state)
+    const isEditMode = !!editingContractId;
+    setWasEditMode(isEditMode);
+    
     try {
       // Convert editable clauses to format expected by PDF generator
       const customClauses = editableClauses.map((c) => ({
@@ -359,12 +426,12 @@ export default function ContractGeneratorPage() {
       const pdfUrl = await uploadPDF(blob, formData.clientName);
       setLastGeneratedPdfUrl(pdfUrl);
       
-      // Save contract to database with PDF URL
+      // Save contract to database with PDF URL (will cancel old ZapSign if editing)
       const savedId = await saveContract(pdfUrl);
       setLastSavedContractId(savedId);
       
       setShowSuccessDialog(true);
-      toast.success("Contrato gerado com sucesso!");
+      toast.success(isEditMode ? "Contrato atualizado com sucesso!" : "Contrato gerado com sucesso!");
     } catch (error) {
       console.error("Erro ao gerar contrato:", error);
       toast.error("Erro ao gerar o contrato. Tente novamente.");
@@ -722,6 +789,10 @@ export default function ContractGeneratorPage() {
   const handleEditContract = () => {
     if (!selectedContract) return;
     
+    // Store the contract ID and ZapSign token for editing mode
+    setEditingContractId(selectedContract.id);
+    setEditingOldZapSignToken(selectedContract.zapsign_document_token || null);
+    
     // Parse address parts from saved address if available
     let addressParts = {
       street: "",
@@ -783,7 +854,13 @@ export default function ContractGeneratorPage() {
     
     setShowContractDialog(false);
     setShowHistory(false);
-    toast.success("Contrato carregado para edição. Faça as alterações necessárias e gere um novo PDF.");
+    
+    const hasZapSign = !!selectedContract.zapsign_document_token;
+    toast.success(
+      hasZapSign 
+        ? "Contrato carregado para edição. Ao gerar o novo PDF, o documento antigo será cancelado na ZapSign."
+        : "Contrato carregado para edição. Faça as alterações necessárias e gere um novo PDF."
+    );
   };
 
   const getPaymentMethodLabel = (method: string) => {
@@ -830,9 +907,33 @@ export default function ContractGeneratorPage() {
                   <Settings className="h-5 w-5" />
                 </Button>
               )}
+              {editingContractId && !showHistory && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setEditingContractId(null);
+                    setEditingOldZapSignToken(null);
+                    setFormData(defaultFormData);
+                    toast.info("Modo edição cancelado. Você pode criar um novo contrato.");
+                  }}
+                  className="text-destructive hover:text-destructive gap-1"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Cancelar Edição
+                </Button>
+              )}
               <Button
                 variant="outline"
-                onClick={() => setShowHistory(!showHistory)}
+                onClick={() => {
+                  if (showHistory) {
+                    // Going to "Novo Contrato" - clear editing state
+                    setEditingContractId(null);
+                    setEditingOldZapSignToken(null);
+                    setFormData(defaultFormData);
+                  }
+                  setShowHistory(!showHistory);
+                }}
                 className="gap-2"
               >
                 <History className="h-4 w-4" />
@@ -1050,7 +1151,36 @@ export default function ContractGeneratorPage() {
           </div>
         ) : (
           // Form View
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="space-y-6">
+            {/* Edit Mode Banner */}
+            {editingContractId && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+                <Pencil className="h-5 w-5 text-amber-600 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-medium text-amber-900">Modo Edição</h3>
+                  <p className="text-sm text-amber-700">
+                    Você está editando um contrato existente. Ao gerar o novo PDF, o documento anterior será cancelado na ZapSign
+                    e você poderá enviar o novo contrato para assinatura.
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setEditingContractId(null);
+                    setEditingOldZapSignToken(null);
+                    setFormData(defaultFormData);
+                    toast.info("Modo edição cancelado.");
+                  }}
+                  className="text-amber-600 hover:text-amber-800 hover:bg-amber-100"
+                >
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Cancelar
+                </Button>
+              </div>
+            )}
+            
+            <div className="grid lg:grid-cols-3 gap-6">
             {/* Form + Clauses Editor - 2 columns */}
             <div className="lg:col-span-2 space-y-6">
               <ContractForm
@@ -1074,6 +1204,7 @@ export default function ContractGeneratorPage() {
               </div>
             </div>
           </div>
+          </div>
         )}
       </main>
 
@@ -1083,10 +1214,13 @@ export default function ContractGeneratorPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-500" />
-              Contrato Gerado com Sucesso!
+              {wasEditMode ? "Contrato Atualizado com Sucesso!" : "Contrato Gerado com Sucesso!"}
             </DialogTitle>
             <DialogDescription>
-              O contrato foi gerado e salvo no histórico. Você pode baixá-lo ou enviar para assinatura digital via ZapSign.
+              {wasEditMode 
+                ? "O contrato foi atualizado e o documento anterior na ZapSign foi cancelado. Você pode baixá-lo ou enviar para nova assinatura digital."
+                : "O contrato foi gerado e salvo no histórico. Você pode baixá-lo ou enviar para assinatura digital via ZapSign."
+              }
             </DialogDescription>
           </DialogHeader>
           
