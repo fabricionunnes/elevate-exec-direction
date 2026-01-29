@@ -27,12 +27,14 @@ import {
   User,
   Link2,
   Copy,
-  Check
+  Check,
+  Eye
 } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { TalentPoolCandidateSheet } from "@/components/hr-recruitment/sheets/TalentPoolCandidateSheet";
 
 interface TalentCandidate {
   id: string;
@@ -80,6 +82,7 @@ export default function GlobalTalentPoolResumesPage() {
   const [filterCompany, setFilterCompany] = useState<string>("all");
   const [filterDisc, setFilterDisc] = useState<string>("all");
   const [copied, setCopied] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<TalentCandidate | null>(null);
 
   const publicLink = `${getPublicBaseUrl()}/?public=banco-talentos`;
 
@@ -399,7 +402,11 @@ export default function GlobalTalentPoolResumesPage() {
         ) : (
           <div className="space-y-3">
             {filteredCandidates.map((candidate) => (
-              <Card key={candidate.id} className="hover:shadow-md transition-shadow">
+              <Card 
+                key={candidate.id} 
+                className="hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => setSelectedCandidate(candidate)}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     <Avatar className="h-12 w-12">
@@ -410,7 +417,7 @@ export default function GlobalTalentPoolResumesPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h4 className="font-medium">{candidate.full_name}</h4>
+                        <h4 className="font-medium hover:text-primary transition-colors">{candidate.full_name}</h4>
                         {candidate.disc_profile && (
                           <Badge className={`${getDISCColor(candidate.disc_profile)} text-white`}>
                             {candidate.disc_profile}
@@ -510,6 +517,13 @@ export default function GlobalTalentPoolResumesPage() {
           </div>
         )}
       </div>
+
+      {/* Candidate Detail Sheet */}
+      <TalentPoolCandidateSheet
+        open={!!selectedCandidate}
+        onOpenChange={(open) => !open && setSelectedCandidate(null)}
+        candidate={selectedCandidate}
+      />
     </div>
   );
 }
