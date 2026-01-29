@@ -269,10 +269,77 @@ export const KPIDashboardTab = ({
   };
 
   /**
+   * Helper to categorize monetary KPIs into "faturamento" (billing/invoiced) vs "receita" (actual cash received)
+   * Based on common naming patterns in Portuguese.
+   */
+  const categorizeMonetaryKpi = (kpi: KPI): "faturamento" | "receita" | "other" => {
+    const nameLower = kpi.name.toLowerCase();
+    
+    // Patterns for "faturamento" (billing, invoiced value, closed contracts)
+    const faturamentoPatterns = [
+      'faturamento', 'faturado', 'fatura', 'contrato', 'fechado', 'fechamento',
+      'venda', 'vendido', 'vendas', 'pedido', 'orçamento aprovado', 'orcamento aprovado'
+    ];
+    
+    // Patterns for "receita" (actual cash received, money in)
+    const receitaPatterns = [
+      'receita', 'recebido', 'recebimento', 'entrada', 'caixa', 
+      'dinheiro', 'pagamento recebido', 'pago', 'baixado'
+    ];
+    
+    // Check for receita first (more specific pattern like "dinheiro que entrou")
+    if (receitaPatterns.some(pattern => nameLower.includes(pattern))) {
+      return "receita";
+    }
+    
+    // Then check for faturamento
+    if (faturamentoPatterns.some(pattern => nameLower.includes(pattern))) {
+      return "faturamento";
+    }
+    
+    return "other";
+  };
+
+  /**
+   * Group monetary KPIs by category (faturamento vs receita vs other)
+   */
+  const groupMonetaryKpisByCategory = (kpis: KPI[]) => {
+    const monetaryKpis = kpis.filter(k => k.kpi_type === "monetary");
+    
+    const groups: Record<"faturamento" | "receita" | "other", KPI[]> = {
+      faturamento: [],
+      receita: [],
+      other: []
+    };
+    
+    monetaryKpis.forEach(kpi => {
+      const category = categorizeMonetaryKpi(kpi);
+      groups[category].push(kpi);
+    });
+    
+    return groups;
+  };
+
+  /**
+   * Check if there are distinct monetary categories (faturamento AND receita)
+   * If so, we should NOT sum them together
+   */
+  const hasDistinctMonetaryCategories = (kpis: KPI[]) => {
+    const groups = groupMonetaryKpisByCategory(kpis);
+    const categoriesWithKpis = Object.entries(groups)
+      .filter(([, kpiList]) => kpiList.length > 0)
+      .map(([category]) => category);
+    
+    // Return true if we have both faturamento AND receita (they shouldn't be summed)
+    return categoriesWithKpis.includes("faturamento") && categoriesWithKpis.includes("receita");
+  };
+
+  /**
    * For revenue-focused widgets (Projeção do Mês, evolução diária e Target vs Realizado):
    * - With ANY org filter active (unit/team/sector/salesperson), we keep the "main goal first" behavior.
    * - With NO org filters active, users expect the total to be the SUM of all teams, so we aggregate
    *   all monetary KPIs instead of only the single main goal.
+   * - NEW: If there are distinct categories (faturamento vs receita), DON'T sum them - return only main goals
    */
   const getRevenueKpisForContext = (filteredKpis: KPI[]) => {
     const hasAnyOrgFilter =
@@ -288,10 +355,22 @@ export const KPIDashboardTab = ({
       selectedTeam === "all" &&
       selectedSalesperson === "all"
     ) {
+      // But check if we have distinct categories - if so, prefer main goals
+      if (hasDistinctMonetaryCategories(filteredKpis)) {
+        const mainGoalKpis = filteredKpis.filter((k) => k.is_main_goal && k.kpi_type === "monetary");
+        if (mainGoalKpis.length > 0) return mainGoalKpis;
+      }
       return filteredKpis.filter((k) => k.kpi_type === "monetary");
     }
 
     if (!hasAnyOrgFilter) {
+      // NEW: Check if there are distinct monetary categories (faturamento vs receita)
+      // If so, DON'T sum them together - show main goals separately instead
+      if (hasDistinctMonetaryCategories(filteredKpis)) {
+        const mainGoalKpis = filteredKpis.filter((k) => k.is_main_goal && k.kpi_type === "monetary");
+        if (mainGoalKpis.length > 0) return mainGoalKpis;
+        // If no main goals, return all monetary but they'll be shown separately in the UI
+      }
       return filteredKpis.filter((k) => k.kpi_type === "monetary");
     }
 
@@ -632,14 +711,20 @@ export const KPIDashboardTab = ({
     
     const kpisForProjection = getRevenueKpisForContext(filteredKpis);
     const displayType = kpisForProjection[0]?.kpi_type ?? "monetary";
+    
+    // Check if we have distinct monetary categories (faturamento vs receita)
+    // If so, we should NOT sum them in the consolidated view
+    const hasDistinctCategories = hasDistinctMonetaryCategories(filteredKpis);
+    const monetaryGroups = hasDistinctCategories ? groupMonetaryKpisByCategory(filteredKpis) : null;
 
-    // Build individual projections for each main goal KPI
+    // Build individual projections for each KPI
     const individualProjections: Array<{
       kpi: KPI;
       realized: number;
       target: number;
       projectionPercent: number;
       projectedValue: number;
+      category?: "faturamento" | "receita" | "other";
     }> = [];
 
     kpisForProjection.forEach(kpi => {
@@ -668,11 +753,23 @@ export const KPIDashboardTab = ({
         monthlyTarget = baseTarget * Math.ceil(daysInMonth / 7);
       }
 
-      totalRealized += kpiTotal;
-      totalTarget += monthlyTarget;
+      // Determine category for this KPI
+      const category = kpi.kpi_type === "monetary" ? categorizeMonetaryKpi(kpi) : undefined;
 
-      // Store individual projection (only for KPIs explicitly marked as main goal)
-      if (kpi.is_main_goal && monthlyTarget > 0) {
+      // Only sum to totals if we DON'T have distinct categories
+      // OR if the KPI is a main goal (which means user explicitly wants it in the consolidated view)
+      if (!hasDistinctCategories || kpi.is_main_goal) {
+        totalRealized += kpiTotal;
+        totalTarget += monthlyTarget;
+      }
+
+      // Store individual projection for:
+      // 1. KPIs explicitly marked as main goal
+      // 2. When we have distinct monetary categories (faturamento vs receita) - show each separately
+      const shouldShowIndividual = kpi.is_main_goal || 
+        (hasDistinctCategories && kpi.kpi_type === "monetary" && (category === "faturamento" || category === "receita"));
+      
+      if (shouldShowIndividual && monthlyTarget > 0) {
         const kpiProjectionPercent = timeProgress > 0 ? ((kpiTotal / monthlyTarget) / timeProgress) * 100 : 0;
         const kpiProjectedValue = timeProgress > 0 ? kpiTotal / timeProgress : 0;
         individualProjections.push({
@@ -681,9 +778,13 @@ export const KPIDashboardTab = ({
           target: monthlyTarget,
           projectionPercent: kpiProjectionPercent,
           projectedValue: kpiProjectedValue,
+          category,
         });
       }
     });
+
+    // If we have distinct categories but no main goals, we need to show a note about not consolidating
+    const showDistinctCategoriesWarning = hasDistinctCategories && !kpisForProjection.some(k => k.is_main_goal);
 
     // Calculate projection: (realized / target) / time_progress * 100
     let projectionPercent = 0;
@@ -704,8 +805,10 @@ export const KPIDashboardTab = ({
       daysRemaining,
       timeProgress: timeProgress * 100,
       displayType,
-      individualProjections, // Array of individual main goal projections
+      individualProjections, // Array of individual projections (main goals + distinct categories)
       hasMultipleMainGoals: individualProjections.length > 1,
+      hasDistinctCategories,
+      showDistinctCategoriesWarning,
     };
   };
 
@@ -1280,88 +1383,101 @@ export const KPIDashboardTab = ({
       </Card>
 
       {/* Monthly Projection Card - Shows individual main goals when there are multiple */}
-      {projection.target > 0 && (
+      {(projection.target > 0 || projection.hasDistinctCategories) && (
         <div className="space-y-4">
-          {/* Main consolidated projection card - NOW FIRST */}
-          <Card className={`border-2 ${
-            projection.projectionPercent >= 100 ? 'border-green-500 bg-green-500/5' :
-            projection.projectionPercent >= 70 ? 'border-amber-500 bg-amber-500/5' :
-            'border-destructive bg-destructive/5'
-          }`}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Target className="h-5 w-5" />
-                  {projection.hasMultipleMainGoals ? 'Projeção Consolidada do Mês' : 'Projeção do Mês'}
-                </CardTitle>
-                <Badge variant="outline" className="gap-1">
-                  <CalendarDays className="h-3 w-3" />
-                  Dia {projection.currentDay} de {projection.daysInMonth} ({projection.daysRemaining} restantes)
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Realizado</p>
-                  <p className="text-2xl font-bold">{formatValue(projection.realized, projection.displayType)}</p>
+          {/* Warning when we have distinct categories (faturamento vs receita) that shouldn't be summed */}
+          {projection.showDistinctCategoriesWarning && projection.individualProjections.length > 0 && (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                ⚠️ Esta empresa possui KPIs de <strong>Faturamento</strong> e <strong>Receita</strong> separados. 
+                Eles são exibidos individualmente abaixo pois representam métricas distintas: 
+                Faturamento = contratos fechados, Receita = dinheiro que entrou no caixa.
+              </p>
+            </div>
+          )}
+          
+          {/* Main consolidated projection card - only show if we DON'T have distinct categories warning */}
+          {!projection.showDistinctCategoriesWarning && projection.target > 0 && (
+            <Card className={`border-2 ${
+              projection.projectionPercent >= 100 ? 'border-green-500 bg-green-500/5' :
+              projection.projectionPercent >= 70 ? 'border-amber-500 bg-amber-500/5' :
+              'border-destructive bg-destructive/5'
+            }`}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    {projection.hasMultipleMainGoals ? 'Projeção Consolidada do Mês' : 'Projeção do Mês'}
+                  </CardTitle>
+                  <Badge variant="outline" className="gap-1">
+                    <CalendarDays className="h-3 w-3" />
+                    Dia {projection.currentDay} de {projection.daysInMonth} ({projection.daysRemaining} restantes)
+                  </Badge>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Meta do Mês</p>
-                  <p className="text-2xl font-bold">{formatValue(projection.target, projection.displayType)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Valor Projetado</p>
-                  <p className="text-2xl font-bold">{formatValue(projection.projectedValue, projection.displayType)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Projeção</p>
-                  <div className="flex items-center gap-2">
-                    <p className={`text-2xl font-bold ${
-                      projection.projectionPercent >= 100 ? 'text-green-600' :
-                      projection.projectionPercent >= 70 ? 'text-amber-600' :
-                      'text-destructive'
-                    }`}>
-                      {projection.projectionPercent.toFixed(0)}%
-                    </p>
-                    {projection.projectionPercent >= 100 ? (
-                      <TrendingUp className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <TrendingDown className="h-5 w-5 text-destructive" />
-                    )}
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Realizado</p>
+                    <p className="text-2xl font-bold">{formatValue(projection.realized, projection.displayType)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Meta do Mês</p>
+                    <p className="text-2xl font-bold">{formatValue(projection.target, projection.displayType)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Valor Projetado</p>
+                    <p className="text-2xl font-bold">{formatValue(projection.projectedValue, projection.displayType)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Projeção</p>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-2xl font-bold ${
+                        projection.projectionPercent >= 100 ? 'text-green-600' :
+                        projection.projectionPercent >= 70 ? 'text-amber-600' :
+                        'text-destructive'
+                      }`}>
+                        {projection.projectionPercent.toFixed(0)}%
+                      </p>
+                      {projection.projectionPercent >= 100 ? (
+                        <TrendingUp className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <TrendingDown className="h-5 w-5 text-destructive" />
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="mt-4">
-                <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                  <span>Progresso do mês: {projection.timeProgress.toFixed(0)}%</span>
-                  <span>Atingimento: {projection.target > 0 ? ((projection.realized / projection.target) * 100).toFixed(0) : 0}%</span>
+                <div className="mt-4">
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>Progresso do mês: {projection.timeProgress.toFixed(0)}%</span>
+                    <span>Atingimento: {projection.target > 0 ? ((projection.realized / projection.target) * 100).toFixed(0) : 0}%</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-3 relative">
+                    <div 
+                      className="absolute h-full w-0.5 bg-foreground/50 z-10"
+                      style={{ left: `${Math.min(projection.timeProgress, 100)}%` }}
+                    />
+                    <div
+                      className={`h-3 rounded-full transition-all ${
+                        projection.projectionPercent >= 100 ? 'bg-green-500' :
+                        projection.projectionPercent >= 70 ? 'bg-amber-500' :
+                        'bg-destructive'
+                      }`}
+                      style={{ width: `${Math.min((projection.realized / projection.target) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    {projection.projectionPercent >= 100 
+                      ? "✅ A empresa está no ritmo para bater a meta!"
+                      : projection.projectionPercent >= 70
+                      ? "⚠️ Atenção: a projeção está abaixo da meta esperada"
+                      : "🚨 Alerta: a empresa está bem abaixo do ritmo necessário"
+                    }
+                  </p>
                 </div>
-                <div className="w-full bg-muted rounded-full h-3 relative">
-                  <div 
-                    className="absolute h-full w-0.5 bg-foreground/50 z-10"
-                    style={{ left: `${Math.min(projection.timeProgress, 100)}%` }}
-                  />
-                  <div
-                    className={`h-3 rounded-full transition-all ${
-                      projection.projectionPercent >= 100 ? 'bg-green-500' :
-                      projection.projectionPercent >= 70 ? 'bg-amber-500' :
-                      'bg-destructive'
-                    }`}
-                    style={{ width: `${Math.min((projection.realized / projection.target) * 100, 100)}%` }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                  {projection.projectionPercent >= 100 
-                    ? "✅ A empresa está no ritmo para bater a meta!"
-                    : projection.projectionPercent >= 70
-                    ? "⚠️ Atenção: a projeção está abaixo da meta esperada"
-                    : "🚨 Alerta: a empresa está bem abaixo do ritmo necessário"
-                  }
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Show individual main goal cards when there are multiple - NOW AFTER CONSOLIDATED */}
           {projection.hasMultipleMainGoals && projection.individualProjections.length > 0 && (
@@ -1383,6 +1499,20 @@ export const KPIDashboardTab = ({
                   return 'Empresa';
                 };
 
+                // Get category label for monetary KPIs
+                const getCategoryLabel = (category?: "faturamento" | "receita" | "other") => {
+                  switch (category) {
+                    case "faturamento":
+                      return "💰 Faturamento";
+                    case "receita":
+                      return "💵 Receita";
+                    default:
+                      return null;
+                  }
+                };
+
+                const categoryLabel = getCategoryLabel(proj.category);
+
                 return (
                   <Card 
                     key={proj.kpi.id}
@@ -1399,9 +1529,23 @@ export const KPIDashboardTab = ({
                             <Target className="h-4 w-4" />
                             {proj.kpi.name}
                           </CardTitle>
-                          <Badge variant="secondary" className="w-fit text-xs">
-                            {getScopeLabel(proj.kpi)}
-                          </Badge>
+                          <div className="flex gap-1 flex-wrap">
+                            {categoryLabel && (
+                              <Badge 
+                                variant="outline" 
+                                className={`w-fit text-xs ${
+                                  proj.category === "faturamento" 
+                                    ? "border-blue-500 text-blue-700 dark:text-blue-400" 
+                                    : "border-green-500 text-green-700 dark:text-green-400"
+                                }`}
+                              >
+                                {categoryLabel}
+                              </Badge>
+                            )}
+                            <Badge variant="secondary" className="w-fit text-xs">
+                              {getScopeLabel(proj.kpi)}
+                            </Badge>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <p className={`text-2xl font-bold ${
