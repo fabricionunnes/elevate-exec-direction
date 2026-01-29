@@ -1362,6 +1362,45 @@ const OnboardingTasksPage = () => {
     });
   }, [allProjects, allTasks, companies, filterConsultant, filterService, filterStatus]);
 
+  // TEMP DEBUG: diagnose why the "Solicitou Canc." card shows 5 but the list/card becomes 0 after click
+  useEffect(() => {
+    try {
+      const churnProjectsInFiltered = filteredProjects.filter(
+        (p) => p.status === "cancellation_signaled" || p.status === "notice_period"
+      );
+      const churnProjectsInAll = allProjects.filter(
+        (p) => p.status === "cancellation_signaled" || p.status === "notice_period"
+      );
+
+      console.debug("[dashboard-debug] state", {
+        activeMetricFilter,
+        filterStatus,
+        filterConsultant,
+        filterService,
+        activeDashboardTab,
+        companiesCount: companies.length,
+        filteredCompaniesCount: filteredCompanies.length,
+        filteredProjectsCount: filteredProjects.length,
+        churnProjectsInFilteredCount: churnProjectsInFiltered.length,
+        churnProjectsInAllCount: churnProjectsInAll.length,
+      });
+    } catch (e) {
+      console.debug("[dashboard-debug] failed to log", e);
+    }
+  }, [
+    activeMetricFilter,
+    filterStatus,
+    filterConsultant,
+    filterService,
+    activeDashboardTab,
+    companies.length,
+    filteredCompanies.length,
+    filteredProjects.length,
+    allProjects.length,
+    filteredProjects,
+    allProjects,
+  ]);
+
   // For consultants, don't show consultant filter as active since it's auto-applied
   const hasActiveFilters = (currentUserRole !== "consultant" && filterConsultant !== "all") || filterService !== "all" || filterStatus !== "all" || activeMetricFilter !== null;
 
