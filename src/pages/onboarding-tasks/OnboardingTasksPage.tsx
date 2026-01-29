@@ -1204,11 +1204,10 @@ const OnboardingTasksPage = () => {
           }) ?? false;
         } else if (activeMetricFilter.type === "status" && activeMetricFilter.value === "churn_signaled") {
           // Special filter: includes both cancellation_signaled AND notice_period
-          matchesMetricFilter = company.projects?.some(p => {
-            if (p.status !== "cancellation_signaled" && p.status !== "notice_period") return false;
-            const updatedAt = new Date(p.updated_at);
-            return isWithinInterval(updatedAt, { start: dateRange.start, end: dateRange.end });
-          }) ?? false;
+          // No date filter here - matches how projectMetrics.churnSignaled is calculated
+          matchesMetricFilter = company.projects?.some(p => 
+            p.status === "cancellation_signaled" || p.status === "notice_period"
+          ) ?? false;
         } else if (activeMetricFilter.type === "status") {
           // For status filters from cards (active, cancellation_signaled, notice_period), 
           // filter by projects that changed to this status in the selected period
