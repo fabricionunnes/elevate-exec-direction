@@ -312,6 +312,25 @@ export default function ContractGeneratorPage() {
         throw new Error("Contrato não retornou ID após salvar.");
       }
 
+      // Notify Fabrício about new contract to sign
+      const FABRICIO_STAFF_ID = "6e007dbe-bfcb-4252-a6fc-80769a4e9b5e";
+      const contractLink = `${window.location.origin}/#/contratos?history=true&contractId=${data.id}`;
+      
+      try {
+        await supabase.from("onboarding_notifications").insert({
+          staff_id: FABRICIO_STAFF_ID,
+          type: "contract",
+          title: "📄 Novo contrato para assinar",
+          message: `Contrato gerado para ${formData.clientName} - ${selectedProduct?.name || formData.productId}. Clique para visualizar e assinar.`,
+          reference_id: data.id,
+          reference_type: "contract",
+          is_read: false,
+        });
+      } catch (notifyError) {
+        console.warn("Falha ao notificar sobre contrato:", notifyError);
+        // Don't fail the whole operation if notification fails
+      }
+
       return data.id;
     } catch (error) {
       console.error("Erro ao salvar contrato:", error);
