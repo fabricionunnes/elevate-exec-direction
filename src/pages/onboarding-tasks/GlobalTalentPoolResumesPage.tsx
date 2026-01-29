@@ -303,7 +303,7 @@ export default function GlobalTalentPoolResumesPage() {
               ) : (
                 <>
                   <Link2 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Copiar Link Público</span>
+                  <span className="hidden sm:inline">Enviar currículo</span>
                   <Copy className="h-4 w-4 sm:hidden" />
                 </>
               )}
