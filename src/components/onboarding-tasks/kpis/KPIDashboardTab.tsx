@@ -766,11 +766,16 @@ export const KPIDashboardTab = ({
       // Store individual projection for:
       // 1. KPIs explicitly marked as main goal
       // 2. When we have distinct monetary categories (faturamento vs receita) - show each separately
+      // Note: Always show individual cards when hasDistinctCategories, even if target is 0 (to show realized)
       const shouldShowIndividual = kpi.is_main_goal || 
         (hasDistinctCategories && kpi.kpi_type === "monetary" && (category === "faturamento" || category === "receita"));
       
-      if (shouldShowIndividual && monthlyTarget > 0) {
-        const kpiProjectionPercent = timeProgress > 0 ? ((kpiTotal / monthlyTarget) / timeProgress) * 100 : 0;
+      // Show card even without target (monthlyTarget === 0) when we have distinct categories
+      // This ensures Faturamento and Receita are always visible
+      if (shouldShowIndividual && (monthlyTarget > 0 || hasDistinctCategories)) {
+        const kpiProjectionPercent = timeProgress > 0 && monthlyTarget > 0 
+          ? ((kpiTotal / monthlyTarget) / timeProgress) * 100 
+          : 0;
         const kpiProjectedValue = timeProgress > 0 ? kpiTotal / timeProgress : 0;
         individualProjections.push({
           kpi,
@@ -1479,8 +1484,10 @@ export const KPIDashboardTab = ({
             </Card>
           )}
 
-          {/* Show individual main goal cards when there are multiple - NOW AFTER CONSOLIDATED */}
-          {projection.hasMultipleMainGoals && projection.individualProjections.length > 0 && (
+          {/* Show individual projection cards when:
+               1. There are multiple main goals (hasMultipleMainGoals)
+               2. OR there are distinct categories (faturamento vs receita) that need separate display */}
+          {(projection.hasMultipleMainGoals || (projection.hasDistinctCategories && projection.individualProjections.length > 0)) && (
             <div className="grid gap-4 md:grid-cols-2">
               {projection.individualProjections.map((proj) => {
                 const getScopeLabel = (kpi: KPI) => {
