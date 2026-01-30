@@ -83,6 +83,14 @@ export const ScheduleLeadMeetingDialog = ({
   const loadConnectedStaff = async () => {
     setLoadingStaff(true);
     try {
+      // Fetch staff with CRM access (master role or explicit permission)
+      const { data: crmPermissions } = await supabase
+        .from("staff_menu_permissions")
+        .select("staff_id")
+        .eq("menu_key", "crm");
+
+      const staffIdsWithCRMAccess = new Set((crmPermissions || []).map(p => p.staff_id));
+
       const { data, error } = await supabase.functions.invoke(
         "google-calendar?action=list-connected-staff",
         { body: {} }
@@ -91,10 +99,15 @@ export const ScheduleLeadMeetingDialog = ({
       if (error) throw error;
 
       if (data?.staff) {
-        setConnectedStaff(data.staff);
+        // Filter to only show staff with CRM access (master always has access, others need permission)
+        const filteredStaff = data.staff.filter((staff: StaffMember) => 
+          staff.role === "master" || staffIdsWithCRMAccess.has(staff.id)
+        );
+        
+        setConnectedStaff(filteredStaff);
         // Auto-select first staff if available
-        if (data.staff.length > 0 && !selectedStaffUserId) {
-          setSelectedStaffUserId(data.staff[0].user_id);
+        if (filteredStaff.length > 0 && !selectedStaffUserId) {
+          setSelectedStaffUserId(filteredStaff[0].user_id);
         }
       }
     } catch (error) {
