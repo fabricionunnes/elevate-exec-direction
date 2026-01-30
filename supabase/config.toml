@@ -164,3 +164,6 @@ verify_jwt = false
 
 [functions.cancel-zapsign]
 verify_jwt = false
+
+[functions.instagram-oauth]
+verify_jwt = false
