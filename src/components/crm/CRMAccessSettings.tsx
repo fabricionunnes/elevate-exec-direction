@@ -229,7 +229,7 @@ export const CRMAccessSettings = () => {
                     <Switch
                       checked={member.has_crm_access}
                       onCheckedChange={() => handleToggleAccess(member)}
-                      disabled={saving === member.id || member.role === "master" || member.role === "admin"}
+                      disabled={saving === member.id || member.role === "master"}
                     />
                   ) : (
                     <span className="text-xs text-muted-foreground">Acesso automático</span>
