@@ -102,6 +102,16 @@ export const CRMGoalsTab = () => {
   const loadData = async () => {
     setLoading(true);
     try {
+      // Load staff members with CRM roles that have CRM access
+      const { data: staffWithAccess, error: accessError } = await supabase
+        .from("staff_menu_permissions")
+        .select("staff_id")
+        .eq("menu_key", "crm");
+
+      if (accessError) throw accessError;
+
+      const staffIdsWithAccess = (staffWithAccess || []).map((p) => p.staff_id);
+
       // Load staff members with CRM roles
       const { data: staffData, error: staffError } = await supabase
         .from("onboarding_staff")
@@ -111,7 +121,13 @@ export const CRMGoalsTab = () => {
         .order("name");
 
       if (staffError) throw staffError;
-      setStaffMembers(staffData || []);
+
+      // Filter only staff with CRM access (or master/admin roles which have automatic access)
+      const filteredStaff = (staffData || []).filter(
+        (s) => staffIdsWithAccess.includes(s.id) || s.role === "master" || s.role === "admin"
+      );
+
+      setStaffMembers(filteredStaff);
 
       // Load goals for selected month/year
       const { data: goalsData, error: goalsError } = await supabase

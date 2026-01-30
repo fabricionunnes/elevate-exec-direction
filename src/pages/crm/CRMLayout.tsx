@@ -45,7 +45,7 @@ export const useCRMContext = () => {
 };
 
 const navTabs = [
-  { title: "Indicadores", href: "/crm/reports" },
+  { title: "Dashboard", href: "/crm/reports" },
   { title: "Negócios", href: "/crm/pipeline" },
   { title: "Contatos", href: "/crm/leads" },
   { title: "Atividades", href: "/crm/activities" },
