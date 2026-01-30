@@ -38,13 +38,13 @@ import {
   Plus,
   QrCode,
   Pencil,
-  Camera,
   Trash2,
-  MoreHorizontal,
   ChevronLeft,
   MessageCircle,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ImportFromStevoModal } from "./ImportFromStevoModal";
 import { WhatsAppQRCodeModal } from "@/components/onboarding-tasks/WhatsAppQRCodeModal";
 
 interface WhatsAppInstance {
@@ -84,6 +84,7 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
   // Modal states
   const [showNewDevice, setShowNewDevice] = useState(false);
   const [showEditDevice, setShowEditDevice] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [selectedInstance, setSelectedInstance] = useState<WhatsAppInstance | null>(null);
   const [qrModalInstance, setQrModalInstance] = useState<WhatsAppInstance | null>(null);
   
@@ -309,8 +310,12 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
             <h3 className="text-lg font-medium">Seus dispositivos</h3>
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground">
-                {instances.length} / {instances.length} Dispositivos
+                {instances.length} Dispositivo{instances.length !== 1 ? "s" : ""}
               </span>
+              <Button variant="outline" onClick={() => setShowImportModal(true)}>
+                <Download className="h-4 w-4 mr-2" />
+                Importar do STEVO
+              </Button>
               <Button onClick={() => setShowNewDevice(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Novo dispositivo
@@ -529,6 +534,14 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
           }}
         />
       )}
+
+      {/* Import from STEVO Modal */}
+      <ImportFromStevoModal
+        open={showImportModal}
+        onOpenChange={setShowImportModal}
+        existingInstanceNames={instances.map((i) => i.instance_name)}
+        onImported={loadData}
+      />
     </div>
   );
 };
