@@ -52,6 +52,7 @@ interface Lead {
   company: string | null;
   phone: string | null;
   email: string | null;
+  document: string | null;
   stage_id: string;
   origin_id: string | null;
   owner_staff_id: string | null;

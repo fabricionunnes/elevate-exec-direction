@@ -29,6 +29,8 @@ import { WhatsAppConversation } from "@/hooks/useWhatsAppConversations";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCRMContext } from "@/pages/crm/CRMLayout";
+import { useLinkedLeads } from "@/hooks/useLinkedLeads";
+import { LinkedLeadsSection } from "@/components/crm/LinkedLeadsSection";
 
 interface CRMStaff {
   id: string;
@@ -60,7 +62,13 @@ export function ConversationSidebar({
   const [contactOpen, setContactOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [assignedOpen, setAssignedOpen] = useState(true);
+  const [linkedLeadsOpen, setLinkedLeadsOpen] = useState(true);
   const [loading, setLoading] = useState(false);
+  
+  // Linked leads based on phone
+  const { leads: linkedLeads, loading: loadingLinkedLeads, refetch: refetchLinkedLeads } = useLinkedLeads({
+    phone: conversation.contact?.phone,
+  });
   
   // CRM Staff for assignment
   const [crmStaff, setCrmStaff] = useState<CRMStaff[]>([]);
@@ -115,6 +123,7 @@ export function ConversationSidebar({
     name: conversation.contact?.name || "",
     email: "",
     phone: conversation.contact?.phone || "",
+    document: "",
     company: "",
     value: "",
     origin_group_id: "",
@@ -252,6 +261,7 @@ export function ConversationSidebar({
           name: dealData.name.trim(),
           email: dealData.email || null,
           phone: dealData.phone || null,
+          document: dealData.document || null,
           company: dealData.company || null,
           opportunity_value: dealData.value ? parseFloat(dealData.value.replace(/\D/g, "")) / 100 : 0,
           created_by: staffId,
@@ -275,6 +285,7 @@ export function ConversationSidebar({
 
         toast.success("Negócio criado e vinculado!");
         onLeadCreated?.(lead.id);
+        refetchLinkedLeads(); // Refresh linked leads list
       }
 
       setShowAddDealDialog(false);
@@ -283,6 +294,7 @@ export function ConversationSidebar({
         ...prev,
         name: conversation.contact?.name || "",
         email: "",
+        document: "",
         company: "",
         value: "",
       }));
@@ -515,12 +527,23 @@ export function ConversationSidebar({
         </CollapsibleContent>
       </Collapsible>
 
+      {/* Linked Leads Section - Show if there are linked leads */}
+      {(linkedLeads.length > 0 || loadingLinkedLeads) && (
+        <LinkedLeadsSection 
+          leads={linkedLeads} 
+          loading={loadingLinkedLeads} 
+          defaultOpen={linkedLeadsOpen}
+        />
+      )}
+
       {/* Add Deal Button */}
       <div className="p-4 border-b border-border">
         <Button 
           variant="outline" 
           className="w-full justify-between"
-          onClick={() => setShowAddDealDialog(true)}
+          onClick={() => {
+            setShowAddDealDialog(true);
+          }}
         >
           <span className="flex items-center gap-2">
             <UserPlus className="h-4 w-4" />

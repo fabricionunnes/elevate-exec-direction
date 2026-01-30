@@ -9532,6 +9532,7 @@ export type Database = {
           company: string | null
           created_at: string
           created_by: string | null
+          document: string | null
           email: string | null
           employee_count: string | null
           entered_pipeline_at: string | null
@@ -9569,6 +9570,7 @@ export type Database = {
           company?: string | null
           created_at?: string
           created_by?: string | null
+          document?: string | null
           email?: string | null
           employee_count?: string | null
           entered_pipeline_at?: string | null
@@ -9606,6 +9608,7 @@ export type Database = {
           company?: string | null
           created_at?: string
           created_by?: string | null
+          document?: string | null
           email?: string | null
           employee_count?: string | null
           entered_pipeline_at?: string | null
@@ -10666,6 +10669,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          lead_id: string | null
           name: string | null
           phone: string
           profile_picture_url: string | null
@@ -10674,6 +10678,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          lead_id?: string | null
           name?: string | null
           phone: string
           profile_picture_url?: string | null
@@ -10682,12 +10687,21 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          lead_id?: string | null
           name?: string | null
           phone?: string
           profile_picture_url?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "crm_whatsapp_contacts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crm_whatsapp_conversations: {
         Row: {
