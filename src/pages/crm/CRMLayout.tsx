@@ -212,10 +212,6 @@ export const CRMLayout = () => {
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
             </Button>
 
-            <Button size="sm" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Novo
-            </Button>
 
             {/* Profile Dropdown */}
             <DropdownMenu>
