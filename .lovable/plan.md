@@ -1,195 +1,79 @@
 
-# Plano: Refazer Integração WhatsApp no CRM Comercial
+# Correção de Permissões para Criação de Dispositivos WhatsApp
 
-## Análise do Problema Atual
+## Problema Identificado
 
-A integração existente com a Evolution API apresenta falhas porque:
+O usuário com role **master** não consegue criar dispositivos WhatsApp porque as políticas de segurança (RLS) da tabela `whatsapp_instances` permitem apenas usuários com role **admin**.
 
-1. **QR Code não é gerado consistentemente** - A API v2.2.3 nem sempre retorna o QR via JSON
-2. **Falta de webhook para receber mensagens** - Não há fluxo para receber mensagens em tempo real
-3. **Interface usa dados mockados** - A página de Inbox (`CRMInboxPage.tsx`) usa dados estáticos
-4. **Sem tabelas de conversas** - Faltam tabelas dedicadas para armazenar conversas e mensagens do WhatsApp
-
----
-
-## Solução Proposta
-
-Refazer a integração do zero com uma arquitetura mais robusta:
-
-```text
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│ WhatsApp User   │◄──►│ Evolution API    │◄──►│ Webhook         │
-│ (celular)       │    │ (VPS externo)    │    │ (Edge Function) │
-└─────────────────┘    └──────────────────┘    └────────┬────────┘
-                                                        │
-                                                        ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│ CRM Atendimento │◄──►│ Supabase DB      │◄───│ Realtime        │
-│ (React)         │    │ (conversas/msgs) │    │ (push updates)  │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+**Erro atual:**
+```
+new row violates row-level security policy for table "whatsapp_instances"
 ```
 
----
+**Usuário afetado:** Fabricio (role: `master`)
 
-## Etapas de Implementação
+## Solução
 
-### 1. Novas Tabelas no Banco de Dados
+Atualizar as políticas RLS para incluir tanto `admin` quanto `master` nas permissões de gerenciamento de dispositivos.
 
-Criar tabelas específicas para o módulo de atendimento:
+## Alterações no Banco de Dados
 
-| Tabela | Descrição |
-|--------|-----------|
-| `crm_whatsapp_contacts` | Contatos do WhatsApp (nome, telefone, foto) |
-| `crm_whatsapp_conversations` | Conversas ativas com status e atribuições |
-| `crm_whatsapp_messages` | Histórico de mensagens enviadas/recebidas |
+Serão atualizadas 3 políticas na tabela `whatsapp_instances`:
 
-**Estrutura `crm_whatsapp_conversations`:**
-- `id`, `instance_id`, `contact_phone`, `contact_name`
-- `status` (open, pending, closed)
-- `assigned_to` (staff_id)
-- `last_message_at`, `unread_count`
-- `lead_id` (vínculo opcional com CRM)
-
-**Estrutura `crm_whatsapp_messages`:**
-- `id`, `conversation_id`, `content`, `type` (text, image, audio, document)
-- `direction` (inbound, outbound)
-- `status` (sent, delivered, read)
-- `media_url`, `created_at`
-
-### 2. Nova Edge Function: Webhook para Evolution API
-
-Criar `evolution-webhook` para receber eventos em tempo real:
-
-- **Mensagens recebidas** → Salvar no banco e atualizar conversa
-- **Status de mensagem** → Atualizar status (entregue, lido)
-- **Conexão/Desconexão** → Atualizar status da instância
-
-### 3. Refatorar Página de Atendimento
-
-Atualizar `CRMInboxPage.tsx` para:
-
-- Buscar conversas reais do banco de dados
-- Implementar Supabase Realtime para atualizações instantâneas
-- Enviar mensagens via edge function
-- Vincular conversas a leads do CRM
-
-### 4. Novo Fluxo de Conexão WhatsApp
-
-Simplificar o fluxo de conexão:
-
-1. Criar dispositivo no banco
-2. Chamar Evolution API para criar instância E já registrar webhook
-3. Abrir modal com QR Code
-4. Webhook notifica quando conectado → atualiza status automaticamente
-
-### 5. Configurar Webhook na Evolution API
-
-Ao criar instância, registrar webhook apontando para:
-```
-https://czmyjgdixwhpfasfugkm.supabase.co/functions/v1/evolution-webhook
-```
-
----
-
-## Detalhes Técnicos
-
-### Migração SQL
+1. **INSERT**: Permitir `admin` E `master` criarem dispositivos
+2. **UPDATE**: Permitir `admin` E `master` atualizarem dispositivos  
+3. **DELETE**: Permitir `admin` E `master` excluírem dispositivos
 
 ```sql
--- Contatos WhatsApp
-CREATE TABLE crm_whatsapp_contacts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  phone TEXT NOT NULL UNIQUE,
-  name TEXT,
-  profile_picture_url TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+-- Remover políticas antigas
+DROP POLICY IF EXISTS "Admins can insert instances" ON whatsapp_instances;
+DROP POLICY IF EXISTS "Admins can update instances" ON whatsapp_instances;
+DROP POLICY IF EXISTS "Admins can delete instances" ON whatsapp_instances;
+
+-- Criar novas políticas incluindo master
+CREATE POLICY "Admins and masters can insert instances" 
+ON whatsapp_instances FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM onboarding_staff
+    WHERE onboarding_staff.user_id = auth.uid()
+    AND onboarding_staff.role IN ('admin', 'master')
+  )
 );
 
--- Conversas
-CREATE TABLE crm_whatsapp_conversations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  instance_id UUID REFERENCES whatsapp_instances(id) ON DELETE SET NULL,
-  contact_id UUID REFERENCES crm_whatsapp_contacts(id) ON DELETE CASCADE,
-  status TEXT DEFAULT 'open' CHECK (status IN ('open', 'pending', 'closed')),
-  assigned_to UUID REFERENCES onboarding_staff(id) ON DELETE SET NULL,
-  lead_id UUID REFERENCES crm_leads(id) ON DELETE SET NULL,
-  sector_id UUID REFERENCES crm_service_sectors(id) ON DELETE SET NULL,
-  last_message TEXT,
-  last_message_at TIMESTAMPTZ,
-  unread_count INT DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+CREATE POLICY "Admins and masters can update instances" 
+ON whatsapp_instances FOR UPDATE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM onboarding_staff
+    WHERE onboarding_staff.user_id = auth.uid()
+    AND onboarding_staff.role IN ('admin', 'master')
+  )
 );
 
--- Mensagens
-CREATE TABLE crm_whatsapp_messages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_id UUID REFERENCES crm_whatsapp_conversations(id) ON DELETE CASCADE,
-  remote_id TEXT, -- ID da Evolution API
-  content TEXT,
-  type TEXT DEFAULT 'text' CHECK (type IN ('text', 'image', 'audio', 'video', 'document', 'sticker')),
-  direction TEXT NOT NULL CHECK (direction IN ('inbound', 'outbound')),
-  status TEXT DEFAULT 'sent' CHECK (status IN ('pending', 'sent', 'delivered', 'read', 'failed')),
-  media_url TEXT,
-  media_mimetype TEXT,
-  quoted_message_id UUID REFERENCES crm_whatsapp_messages(id),
-  sent_by UUID REFERENCES onboarding_staff(id),
-  created_at TIMESTAMPTZ DEFAULT now()
+CREATE POLICY "Admins and masters can delete instances" 
+ON whatsapp_instances FOR DELETE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM onboarding_staff
+    WHERE onboarding_staff.user_id = auth.uid()
+    AND onboarding_staff.role IN ('admin', 'master')
+  )
 );
-
--- Habilitar Realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE crm_whatsapp_conversations;
-ALTER PUBLICATION supabase_realtime ADD TABLE crm_whatsapp_messages;
-
--- Índices
-CREATE INDEX idx_conversations_instance ON crm_whatsapp_conversations(instance_id);
-CREATE INDEX idx_conversations_assigned ON crm_whatsapp_conversations(assigned_to);
-CREATE INDEX idx_messages_conversation ON crm_whatsapp_messages(conversation_id);
-CREATE INDEX idx_messages_created ON crm_whatsapp_messages(created_at DESC);
 ```
 
-### Edge Function: evolution-webhook
+## Impacto
 
-```typescript
-// Recebe eventos da Evolution API
-serve(async (req) => {
-  const body = await req.json();
-  const event = body.event;
-  
-  switch (event) {
-    case 'messages.upsert':
-      // Nova mensagem recebida
-      await handleIncomingMessage(body.data);
-      break;
-    case 'messages.update':
-      // Status atualizado (entregue/lido)
-      await handleMessageStatusUpdate(body.data);
-      break;
-    case 'connection.update':
-      // Status de conexão alterado
-      await handleConnectionUpdate(body.data);
-      break;
-  }
-});
-```
+- Usuários **master** poderão gerenciar dispositivos WhatsApp
+- Usuários **admin** continuarão com as mesmas permissões
+- Não afeta a visualização (SELECT) que já é liberada para todos os autenticados
+- Não requer alterações no código frontend
 
-### Componentes React a Atualizar
+## Observação sobre o VPS
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `CRMInboxPage.tsx` | Remover mocks, conectar ao banco real, adicionar Realtime |
-| `DevicesSection.tsx` | Registrar webhook ao criar instância |
-| Novo: `useWhatsAppConversations.ts` | Hook para gerenciar conversas |
-| Novo: `useWhatsAppMessages.ts` | Hook para mensagens com Realtime |
-
----
-
-## Benefícios
-
-1. **Mensagens em tempo real** via Supabase Realtime
-2. **Histórico persistente** de todas as conversas
-3. **Atribuição de atendentes** por conversa
-4. **Vínculo com leads** do CRM Comercial
-5. **Múltiplos dispositivos** funcionando simultaneamente
-6. **Status de conexão** atualizado automaticamente via webhook
+Após corrigir as permissões RLS, ainda há o problema da Evolution API (servidor externo) que está offline:
+- Erro: `Connection refused (os error 111)` para `104.236.13.238:8080`
+- O dispositivo será criado no banco, mas a conexão com WhatsApp precisará ser feita quando o servidor estiver online novamente
