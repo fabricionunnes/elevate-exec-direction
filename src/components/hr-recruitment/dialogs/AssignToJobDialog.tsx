@@ -60,14 +60,14 @@ export function AssignToJobDialog({
   const fetchOpenJobs = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // First, fetch job openings
+      const { data: jobsData, error: jobsError } = await supabase
         .from("job_openings")
         .select(`
           id,
           title,
           status,
           project_id,
-          candidates_count,
           project:onboarding_projects(
             id,
             product_name,
@@ -77,14 +77,30 @@ export function AssignToJobDialog({
         .eq("status", "open")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (jobsError) throw jobsError;
 
-      const mappedJobs: JobOpening[] = (data || []).map((job: any) => ({
+      // Get candidate counts for each job
+      const jobIds = (jobsData || []).map((j: any) => j.id);
+      let candidateCounts: Record<string, number> = {};
+      
+      if (jobIds.length > 0) {
+        const { data: candidates } = await supabase
+          .from("candidates")
+          .select("job_opening_id")
+          .in("job_opening_id", jobIds);
+        
+        candidateCounts = (candidates || []).reduce((acc: Record<string, number>, c: any) => {
+          acc[c.job_opening_id] = (acc[c.job_opening_id] || 0) + 1;
+          return acc;
+        }, {});
+      }
+
+      const mappedJobs: JobOpening[] = (jobsData || []).map((job: any) => ({
         id: job.id,
         title: job.title,
         status: job.status,
         project_id: job.project_id,
-        candidates_count: job.candidates_count || 0,
+        candidates_count: candidateCounts[job.id] || 0,
         company_name: job.project?.company?.name || null,
         project_name: job.project?.product_name || "Projeto",
       }));
@@ -121,26 +137,6 @@ export function AssignToJobDialog({
         .eq("id", candidateId);
 
       if (error) throw error;
-
-      // Count will be recalculated based on actual candidates
-      // No need to manually increment since candidates_count can be a computed value
-      try {
-        // Update job candidates count
-        const { count } = await supabase
-          .from("candidates")
-          .select("*", { count: "exact", head: true })
-          .eq("job_opening_id", selectedJobId);
-
-        if (count !== null) {
-          await supabase
-            .from("job_openings")
-            .update({ candidates_count: count } as any)
-            .eq("id", selectedJobId);
-        }
-      } catch (e) {
-        // Silently fail - count will be recalculated on next page load
-        console.log("Could not update candidates count");
-      }
 
       // Log history
       const { data: staff } = await supabase
