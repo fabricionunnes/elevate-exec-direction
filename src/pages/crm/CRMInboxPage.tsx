@@ -156,7 +156,12 @@ export const CRMInboxPage = () => {
   }, [selectedConversation?.id]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Use setTimeout to ensure the DOM has updated before scrolling
+    setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
+    }, 100);
   };
 
   const handleSendMessage = async () => {
@@ -209,7 +214,7 @@ export const CRMInboxPage = () => {
   const hasConnectedDevice = connectedInstances.length > 0;
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex overflow-hidden">
       {/* Conversations List */}
       <div className="w-[300px] border-r border-border flex flex-col bg-card">
         {/* Search Header */}
@@ -373,7 +378,7 @@ export const CRMInboxPage = () => {
 
       {/* Chat Area */}
       {selectedConversation ? (
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Chat Header */}
           <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-card">
             <div className="flex items-center gap-3">
