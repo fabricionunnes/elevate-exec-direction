@@ -14172,6 +14172,365 @@ export type Database = {
           },
         ]
       }
+      instagram_contacts: {
+        Row: {
+          created_at: string
+          followed_at: string | null
+          id: string
+          instagram_user_id: string
+          instance_id: string | null
+          is_follower: boolean | null
+          name: string | null
+          profile_picture_url: string | null
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          followed_at?: string | null
+          id?: string
+          instagram_user_id: string
+          instance_id?: string | null
+          is_follower?: boolean | null
+          name?: string | null
+          profile_picture_url?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          followed_at?: string | null
+          id?: string
+          instagram_user_id?: string
+          instance_id?: string | null
+          is_follower?: boolean | null
+          name?: string | null
+          profile_picture_url?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_contacts_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_conversations: {
+        Row: {
+          assigned_to: string | null
+          contact_id: string
+          created_at: string
+          id: string
+          instance_id: string | null
+          last_message: string | null
+          last_message_at: string | null
+          lead_id: string | null
+          status: string
+          thread_id: string | null
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          contact_id: string
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          last_message?: string | null
+          last_message_at?: string | null
+          lead_id?: string | null
+          status?: string
+          thread_id?: string | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          contact_id?: string
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          last_message?: string | null
+          last_message_at?: string | null
+          lead_id?: string | null
+          status?: string
+          thread_id?: string | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_conversations_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instagram_conversations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instagram_conversations_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instagram_conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_follower_events: {
+        Row: {
+          contact_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          instagram_user_id: string
+          instance_id: string
+          name: string | null
+          processed: boolean | null
+          profile_picture_url: string | null
+          username: string | null
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          instagram_user_id: string
+          instance_id: string
+          name?: string | null
+          processed?: boolean | null
+          profile_picture_url?: string | null
+          username?: string | null
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          instagram_user_id?: string
+          instance_id?: string
+          name?: string | null
+          processed?: boolean | null
+          profile_picture_url?: string | null
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_follower_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instagram_follower_events_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_instance_access: {
+        Row: {
+          can_reply: boolean
+          can_view: boolean
+          created_at: string
+          granted_by: string | null
+          id: string
+          instance_id: string
+          staff_id: string
+        }
+        Insert: {
+          can_reply?: boolean
+          can_view?: boolean
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          instance_id: string
+          staff_id: string
+        }
+        Update: {
+          can_reply?: boolean
+          can_view?: boolean
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          instance_id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_instance_access_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instagram_instance_access_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instagram_instance_access_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_instances: {
+        Row: {
+          access_token: string
+          connected_by: string | null
+          created_at: string
+          id: string
+          instagram_account_id: string
+          instagram_username: string | null
+          instance_name: string
+          page_id: string
+          page_name: string | null
+          profile_picture_url: string | null
+          project_id: string | null
+          status: string
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          connected_by?: string | null
+          created_at?: string
+          id?: string
+          instagram_account_id: string
+          instagram_username?: string | null
+          instance_name: string
+          page_id: string
+          page_name?: string | null
+          profile_picture_url?: string | null
+          project_id?: string | null
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          connected_by?: string | null
+          created_at?: string
+          id?: string
+          instagram_account_id?: string
+          instagram_username?: string | null
+          instance_name?: string
+          page_id?: string
+          page_name?: string | null
+          profile_picture_url?: string | null
+          project_id?: string | null
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_instances_connected_by_fkey"
+            columns: ["connected_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instagram_instances_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_messages: {
+        Row: {
+          content: string | null
+          conversation_id: string
+          created_at: string
+          direction: string
+          id: string
+          is_reaction: boolean | null
+          media_url: string | null
+          message_id: string
+          message_type: string
+          reaction_emoji: string | null
+          sent_by: string | null
+          status: string | null
+          story_url: string | null
+          timestamp: string
+        }
+        Insert: {
+          content?: string | null
+          conversation_id: string
+          created_at?: string
+          direction: string
+          id?: string
+          is_reaction?: boolean | null
+          media_url?: string | null
+          message_id: string
+          message_type?: string
+          reaction_emoji?: string | null
+          sent_by?: string | null
+          status?: string | null
+          story_url?: string | null
+          timestamp?: string
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          is_reaction?: boolean | null
+          media_url?: string | null
+          message_id?: string
+          message_type?: string
+          reaction_emoji?: string | null
+          sent_by?: string | null
+          status?: string | null
+          story_url?: string | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instagram_messages_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interview_scorecard_criteria: {
         Row: {
           created_at: string | null
