@@ -9,8 +9,8 @@ import { toast } from "sonner";
 
 // Roles that can access CRM (commercial sector)
 const CRM_ELIGIBLE_ROLES = ["closer", "sdr", "head_comercial", "social_setter", "bdr"];
-// Admin no longer has automatic access - only master does
-const ALL_ROLES_WITH_CRM = ["master", ...CRM_ELIGIBLE_ROLES];
+// Only master has automatic access
+const COMMERCIAL_AND_ADMIN_ROLES = ["admin", ...CRM_ELIGIBLE_ROLES];
 
 const ROLE_LABELS: Record<string, string> = {
   master: "Master",
@@ -64,11 +64,12 @@ export const CRMAccessSettings = () => {
   const loadStaffWithCRMAccess = async () => {
     setLoading(true);
     try {
-      // Fetch all active staff
+      // Fetch only staff from commercial sector + admins (exclude other roles)
       const { data: staff, error: staffError } = await supabase
         .from("onboarding_staff")
         .select("id, name, email, role, avatar_url, is_active")
         .eq("is_active", true)
+        .in("role", ["master", ...COMMERCIAL_AND_ADMIN_ROLES])
         .order("name");
 
       if (staffError) throw staffError;
@@ -145,7 +146,7 @@ export const CRMAccessSettings = () => {
     }
   };
 
-  // Group staff by role type
+  // Group staff by role type - only commercial sector
   const commercialStaff = staffMembers.filter(s => 
     CRM_ELIGIBLE_ROLES.includes(s.role)
   );
@@ -153,14 +154,9 @@ export const CRMAccessSettings = () => {
   const masterStaff = staffMembers.filter(s => 
     s.role === "master"
   );
-  // Admins are now configurable like other staff
+  // Admins are configurable
   const adminStaff = staffMembers.filter(s => 
     s.role === "admin"
-  );
-  const otherStaff = staffMembers.filter(s => 
-    !CRM_ELIGIBLE_ROLES.includes(s.role) && 
-    s.role !== "master" && 
-    s.role !== "admin"
   );
 
   if (loading) {
@@ -293,16 +289,6 @@ export const CRMAccessSettings = () => {
         icon={Users}
       />
 
-      {/* Other Staff - Configurable */}
-      {otherStaff.length > 0 && (
-        <StaffList
-          staff={otherStaff}
-          title="Outras Áreas"
-          description="Outros membros da equipe que podem precisar de acesso ao CRM"
-          allowToggle={true}
-          icon={Users}
-        />
-      )}
     </div>
   );
 };
