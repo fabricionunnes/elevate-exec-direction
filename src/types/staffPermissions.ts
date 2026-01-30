@@ -7,6 +7,8 @@ export type StaffRole =
   | "head_comercial"
   | "closer"
   | "sdr"
+  | "social_setter"
+  | "bdr"
   | "rh"
   | "financeiro"
   | "marketing";
@@ -128,6 +130,8 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   head_comercial: "Head Comercial",
   closer: "Closer",
   sdr: "SDR",
+  social_setter: "Social Setter",
+  bdr: "BDR",
   rh: "RH",
   financeiro: "Financeiro",
   marketing: "Marketing",
@@ -142,10 +146,15 @@ export const STAFF_ROLE_COLORS: Record<StaffRole, string> = {
   head_comercial: "bg-orange-100 text-orange-800",
   closer: "bg-cyan-100 text-cyan-800",
   sdr: "bg-teal-100 text-teal-800",
+  social_setter: "bg-indigo-100 text-indigo-800",
+  bdr: "bg-emerald-100 text-emerald-800",
   rh: "bg-pink-100 text-pink-800",
-  financeiro: "bg-indigo-100 text-indigo-800",
+  financeiro: "bg-slate-100 text-slate-800",
   marketing: "bg-rose-100 text-rose-800",
 };
+
+// Commercial roles that can access CRM
+export const CRM_ELIGIBLE_ROLES = ["closer", "sdr", "head_comercial", "social_setter", "bdr"] as const;
 
 // Check if a role is master (full access)
 export const isMasterRole = (role: string): boolean => {
