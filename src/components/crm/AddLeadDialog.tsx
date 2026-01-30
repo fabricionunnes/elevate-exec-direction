@@ -22,21 +22,11 @@ interface AddLeadDialogProps {
   initialStageId?: string;
 }
 
-const ORIGINS = [
-  "Orgânico",
-  "Anúncio",
-  "Indicação",
-  "Evento",
-  "Cold Call",
-  "LinkedIn",
-  "Site",
-  "Outro",
-];
-
 export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initialStageId }: AddLeadDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [stages, setStages] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
+  const [originsList, setOriginsList] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -45,7 +35,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
     role: "",
     city: "",
     state: "",
-    origin: "",
+    origin_id: "",
     stage_id: "",
     opportunity_value: "",
     segment: "",
@@ -59,6 +49,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
     if (pipelineId && open) {
       loadStages();
       loadStaff();
+      loadOrigins();
     }
   }, [pipelineId, open]);
 
@@ -86,6 +77,21 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
       .order("name");
     
     setStaffList(data || []);
+  };
+
+  const loadOrigins = async () => {
+    const { data } = await supabase
+      .from("crm_origins")
+      .select("id, name, pipeline_id")
+      .eq("is_active", true)
+      .eq("pipeline_id", pipelineId)
+      .order("sort_order");
+    
+    setOriginsList(data || []);
+    // Auto-select first origin if only one exists
+    if (data && data.length === 1) {
+      setFormData(prev => ({ ...prev, origin_id: data[0].id }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -126,7 +132,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
           role: formData.role || null,
           city: formData.city || null,
           state: formData.state || null,
-          origin: formData.origin || null,
+          origin_id: formData.origin_id || null,
           pipeline_id: pipelineId,
           stage_id: formData.stage_id,
           opportunity_value: formData.opportunity_value ? parseFloat(formData.opportunity_value) : 0,
@@ -152,7 +158,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
         role: "",
         city: "",
         state: "",
-        origin: "",
+        origin_id: originsList[0]?.id || "",
         stage_id: stages[0]?.id || "",
         opportunity_value: "",
         segment: "",
@@ -272,17 +278,17 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
             </div>
 
             <div>
-              <Label htmlFor="origin">Origem</Label>
+              <Label htmlFor="origin">Origem/Funil *</Label>
               <Select
-                value={formData.origin}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, origin: value }))}
+                value={formData.origin_id}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, origin_id: value }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
+                  <SelectValue placeholder="Selecione a origem" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ORIGINS.map(origin => (
-                    <SelectItem key={origin} value={origin}>{origin}</SelectItem>
+                  {originsList.map(origin => (
+                    <SelectItem key={origin.id} value={origin.id}>{origin.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
