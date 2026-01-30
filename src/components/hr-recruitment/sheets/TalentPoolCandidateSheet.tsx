@@ -26,10 +26,12 @@ import {
   History,
   User,
   Sparkles,
+  Briefcase,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { AssignToJobDialog } from "@/components/hr-recruitment/dialogs/AssignToJobDialog";
 
 interface TalentCandidate {
   id: string;
@@ -91,17 +93,20 @@ interface TalentPoolCandidateSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   candidate: TalentCandidate | null;
+  onCandidateAssigned?: () => void;
 }
 
 export function TalentPoolCandidateSheet({
   open,
   onOpenChange,
   candidate,
+  onCandidateAssigned,
 }: TalentPoolCandidateSheetProps) {
   const [discResults, setDiscResults] = useState<DISCResult[]>([]);
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
 
   useEffect(() => {
     if (open && candidate) {
@@ -244,6 +249,17 @@ export function TalentPoolCandidateSheet({
             </div>
           </div>
         </SheetHeader>
+
+        {/* Action Button */}
+        <div className="py-3 border-b">
+          <Button 
+            onClick={() => setShowAssignDialog(true)}
+            className="w-full gap-2"
+          >
+            <Briefcase className="h-4 w-4" />
+            Vincular a uma Vaga
+          </Button>
+        </div>
 
         {/* Contact Info */}
         <div className="py-4 border-b space-y-2">
@@ -561,6 +577,18 @@ export function TalentPoolCandidateSheet({
             </TabsContent>
           </ScrollArea>
         </Tabs>
+
+        {/* Assign to Job Dialog */}
+        <AssignToJobDialog
+          open={showAssignDialog}
+          onOpenChange={setShowAssignDialog}
+          candidateId={candidate.id}
+          candidateName={candidate.full_name}
+          onSuccess={() => {
+            onOpenChange(false);
+            onCandidateAssigned?.();
+          }}
+        />
       </SheetContent>
     </Sheet>
   );
