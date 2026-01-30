@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +80,7 @@ const defaultFilters: CRMFilters = {
 };
 
 export const CRMPipelinePage = () => {
+  const navigate = useNavigate();
   const { selectedOrigin, selectedPipeline, setSelectedPipeline, isAdmin } = useCRMContext();
   const [pipelines, setPipelines] = useState<any[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
@@ -349,6 +350,52 @@ export const CRMPipelinePage = () => {
     return stageLeads.reduce((sum, lead) => sum + (lead.opportunity_value || 0), 0);
   };
 
+  // Navigate to inbox with the lead's WhatsApp conversation
+  const handleOpenChat = async (e: React.MouseEvent, lead: Lead) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!lead.phone) {
+      toast.error("Este lead não possui telefone cadastrado");
+      return;
+    }
+    
+    // Clean phone number (remove non-digits)
+    const cleanPhone = lead.phone.replace(/\D/g, "");
+    
+    try {
+      // Find contact by phone
+      const { data: contact } = await supabase
+        .from("crm_whatsapp_contacts")
+        .select("id")
+        .eq("phone", cleanPhone)
+        .maybeSingle();
+      
+      if (contact) {
+        // Find conversation for this contact
+        const { data: conversation } = await supabase
+          .from("crm_whatsapp_conversations")
+          .select("id")
+          .eq("contact_id", contact.id)
+          .order("last_message_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (conversation) {
+          navigate(`/crm/inbox?conversation=${conversation.id}`);
+          return;
+        }
+      }
+      
+      // No existing conversation found - navigate to inbox anyway
+      toast.info("Nenhuma conversa encontrada para este contato");
+      navigate("/crm/inbox");
+    } catch (error) {
+      console.error("Error finding conversation:", error);
+      navigate("/crm/inbox");
+    }
+  };
+
   const selectedOriginName = selectedOrigin 
     ? originOptions.find(o => o.id === selectedOrigin)?.name 
     : "Negócio";
@@ -503,7 +550,16 @@ export const CRMPipelinePage = () => {
                               )}
                               {lead.phone && <Phone className="h-3 w-3 text-muted-foreground" />}
                               {lead.email && <Mail className="h-3 w-3 text-muted-foreground" />}
-                              <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                              {lead.phone && (
+                                <button
+                                  onClick={(e) => handleOpenChat(e, lead)}
+                                  className="p-1 rounded hover:bg-primary/10 transition-colors group"
+                                  title="Abrir conversa no WhatsApp"
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary" />
+                                </button>
+                              )}
+                              {!lead.phone && <MessageSquare className="h-3 w-3 text-muted-foreground/50" />}
                             </div>
                             
                             {lead.opportunity_value && (

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,8 @@ import { useWhatsAppMessages, WhatsAppMessage } from "@/hooks/useWhatsAppMessage
 import { ConversationSidebar } from "@/components/crm/inbox/ConversationSidebar";
 
 export const CRMInboxPage = () => {
+  const [searchParams] = useSearchParams();
+  const conversationIdFromUrl = searchParams.get("conversation");
   const { staffId, staffName, isAdmin, staffRole } = useCRMContext();
   const [selectedConversation, setSelectedConversation] = useState<WhatsAppConversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
@@ -158,6 +161,16 @@ export const CRMInboxPage = () => {
       }
     }
   }, [conversations]);
+
+  // Auto-select conversation from URL parameter
+  useEffect(() => {
+    if (conversationIdFromUrl && conversations.length > 0 && !selectedConversation) {
+      const conv = conversations.find(c => c.id === conversationIdFromUrl);
+      if (conv) {
+        setSelectedConversation(conv);
+      }
+    }
+  }, [conversationIdFromUrl, conversations, selectedConversation]);
 
   // Mark as read when selecting conversation
   useEffect(() => {
