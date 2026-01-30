@@ -121,14 +121,18 @@ export const CRMPermissionsManager = () => {
     setHasChanges(changed);
   }, [permissions, originalPermissions]);
 
+  // Roles that should appear in CRM access management
+  const CRM_VISIBLE_ROLES = ["master", "admin", "closer", "sdr", "head_comercial", "social_setter", "bdr"];
+
   const loadData = async () => {
     setLoading(true);
     try {
-      // Fetch all active staff
+      // Fetch only staff from commercial sector + admins (exclude cs and consultant)
       const { data: staff, error: staffError } = await supabase
         .from("onboarding_staff")
         .select("id, name, email, role, avatar_url")
         .eq("is_active", true)
+        .in("role", CRM_VISIBLE_ROLES)
         .order("name");
 
       if (staffError) throw staffError;
@@ -143,10 +147,10 @@ export const CRMPermissionsManager = () => {
 
       const crmAccessSet = new Set((menuPerms || []).map(p => p.staff_id));
 
-      // Map all staff with their CRM access status
+      // Map all staff with their CRM access status - only master has automatic access
       const allStaff: StaffMember[] = (staff || []).map(s => ({
         ...s,
-        has_crm_access: s.role === "master" || s.role === "admin" || crmAccessSet.has(s.id)
+        has_crm_access: s.role === "master" || crmAccessSet.has(s.id)
       }));
 
       // Fetch granular permissions only for those with CRM access
@@ -190,8 +194,9 @@ export const CRMPermissionsManager = () => {
   };
 
   const handleToggleCRMAccess = async (member: StaffMember) => {
-    if (member.role === "master" || member.role === "admin") {
-      toast.info("Administradores sempre têm acesso ao CRM");
+    // Only master has automatic access that can't be toggled
+    if (member.role === "master") {
+      toast.info("O usuário Master sempre tem acesso ao CRM");
       return;
     }
 
@@ -268,7 +273,8 @@ export const CRMPermissionsManager = () => {
     try {
       for (const staffId of Object.keys(permissions)) {
         const staff = staffMembers.find(s => s.id === staffId);
-        if (!staff || staff.role === "master" || staff.role === "admin" || !staff.has_crm_access) continue;
+        // Only skip master (they have full access) and those without CRM access
+        if (!staff || staff.role === "master" || !staff.has_crm_access) continue;
 
         const currentPerms = permissions[staffId];
         const originalPerms = originalPermissions[staffId] || new Set();
@@ -333,7 +339,8 @@ export const CRMPermissionsManager = () => {
     );
   }
 
-  const isAdminRole = (role: string) => role === "master" || role === "admin";
+  // Only master has automatic full access now
+  const isMasterRole = (role: string) => role === "master";
   const allPermsCount = CRM_PERMISSIONS.reduce((acc, cat) => acc + cat.permissions.length, 0);
 
   return (
@@ -344,10 +351,10 @@ export const CRMPermissionsManager = () => {
           <div className="flex items-start gap-3">
             <Settings2 className="h-6 w-6 text-blue-600 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-blue-900">Acessos e Permissões do CRM</h3>
+            <h3 className="font-semibold text-blue-900">Acessos e Permissões do CRM</h3>
               <p className="text-sm text-blue-700 mt-1">
                 Habilite ou desabilite o acesso ao CRM para cada membro e clique para expandir e configurar permissões específicas.
-                Master e Administradores têm acesso total automaticamente.
+                Somente o Master tem acesso total automático. Administradores precisam de liberação explícita.
               </p>
             </div>
           </div>
@@ -382,10 +389,10 @@ export const CRMPermissionsManager = () => {
       ) : (
         <div className="space-y-3">
           {staffMembers.map(member => {
-            const isAdmin = isAdminRole(member.role);
+            const isMaster = isMasterRole(member.role);
             const isExpanded = expandedStaff.has(member.id);
             const memberPerms = permissions[member.id] || new Set();
-            const grantedCount = isAdmin ? allPermsCount : memberPerms.size;
+            const grantedCount = isMaster ? allPermsCount : memberPerms.size;
             const canExpand = member.has_crm_access;
 
             return (
@@ -415,7 +422,7 @@ export const CRMPermissionsManager = () => {
                         <Badge className={ROLE_COLORS[member.role] || "bg-gray-100 text-gray-800"}>
                           {ROLE_LABELS[member.role] || member.role}
                         </Badge>
-                        {isAdmin && (
+                        {isMaster && (
                           <Badge variant="outline" className="text-xs">
                             <Shield className="h-3 w-3 mr-1" />
                             Acesso total
@@ -439,7 +446,7 @@ export const CRMPermissionsManager = () => {
                       <Switch
                         checked={member.has_crm_access}
                         onCheckedChange={() => handleToggleCRMAccess(member)}
-                        disabled={togglingAccess === member.id || isAdmin}
+                        disabled={togglingAccess === member.id || isMaster}
                       />
                       <span className="text-xs text-muted-foreground">
                         {member.has_crm_access ? "Ativo" : "Inativo"}
@@ -451,11 +458,11 @@ export const CRMPermissionsManager = () => {
                 {/* Expanded Permissions */}
                 {canExpand && isExpanded && (
                   <CardContent className="pt-0 border-t">
-                    {isAdmin ? (
+                    {isMaster ? (
                       <div className="bg-muted/50 p-4 rounded-lg text-center mt-4">
                         <Shield className="h-8 w-8 mx-auto text-primary mb-2" />
                         <p className="text-sm text-muted-foreground">
-                          Usuários Master e Administradores têm acesso total automático a todas as funcionalidades do CRM.
+                          O usuário Master tem acesso total automático a todas as funcionalidades do CRM.
                         </p>
                       </div>
                     ) : (
