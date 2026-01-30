@@ -86,7 +86,8 @@ export const CRMLayout = () => {
           return;
         }
 
-        if (staff.role === "master" || staff.role === "admin") {
+        // Only master has automatic access - admins need explicit permission
+        if (staff.role === "master") {
           setHasAccess(true);
           setStaffRole(staff.role);
           setStaffName(staff.name);
