@@ -140,7 +140,7 @@ export function ConversationSidebar({
     loadOriginGroups();
   }, []);
 
-  // Load pipelines when origin group changes
+  // Load pipelines (origins) when origin group changes
   useEffect(() => {
     const loadPipelines = async () => {
       if (!dealData.origin_group_id) {
@@ -151,9 +151,9 @@ export function ConversationSidebar({
         // @ts-ignore - Deep type instantiation issue with Supabase types
         const { data, error } = await supabase
           .from("crm_origins")
-          .select("id, name")
+          .select("id, name, pipeline_id")
           .eq("is_active", true)
-          .eq("origin_group_id", dealData.origin_group_id)
+          .eq("group_id", dealData.origin_group_id)
           .order("sort_order");
         if (!error) setPipelinesForGroup(data || []);
       } catch (e) {
@@ -163,7 +163,7 @@ export function ConversationSidebar({
     loadPipelines();
   }, [dealData.origin_group_id]);
 
-  // Load stages when pipeline changes
+  // Load stages when pipeline (origin) changes
   useEffect(() => {
     const loadStages = async () => {
       if (!dealData.pipeline_id) {
@@ -171,11 +171,20 @@ export function ConversationSidebar({
         return;
       }
       try {
+        // First, get the actual pipeline_id from the selected origin
+        const selectedOrigin = pipelinesForGroup.find(p => p.id === dealData.pipeline_id);
+        const actualPipelineId = selectedOrigin?.pipeline_id;
+        
+        if (!actualPipelineId) {
+          setStagesForPipeline([]);
+          return;
+        }
+        
         // @ts-ignore - Deep type instantiation issue with Supabase types
         const { data, error } = await supabase
           .from("crm_stages")
           .select("id, name")
-          .eq("pipeline_id", dealData.pipeline_id)
+          .eq("pipeline_id", actualPipelineId)
           .order("sort_order");
         if (!error) {
           setStagesForPipeline(data || []);
@@ -189,7 +198,7 @@ export function ConversationSidebar({
       }
     };
     loadStages();
-  }, [dealData.pipeline_id]);
+  }, [dealData.pipeline_id, pipelinesForGroup]);
 
   const [contactData, setContactData] = useState({
     name: conversation.contact?.name || "",
@@ -225,6 +234,15 @@ export function ConversationSidebar({
       return;
     }
 
+    // Get the actual pipeline_id from the selected origin
+    const selectedOrigin = pipelinesForGroup.find(p => p.id === dealData.pipeline_id);
+    const actualPipelineId = selectedOrigin?.pipeline_id;
+    
+    if (!actualPipelineId) {
+      toast.error("Erro ao identificar o funil");
+      return;
+    }
+
     setLoading(true);
     try {
       // Create lead in CRM with pipeline and stage
@@ -238,7 +256,8 @@ export function ConversationSidebar({
           opportunity_value: dealData.value ? parseFloat(dealData.value.replace(/\D/g, "")) / 100 : 0,
           created_by: staffId,
           owner_staff_id: staffId,
-          pipeline_id: dealData.pipeline_id,
+          origin_id: dealData.pipeline_id, // This is actually the origin id
+          pipeline_id: actualPipelineId,
           stage_id: dealData.stage_id,
           entered_pipeline_at: new Date().toISOString(),
         })
