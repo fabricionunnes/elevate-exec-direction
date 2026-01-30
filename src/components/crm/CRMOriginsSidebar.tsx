@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +65,8 @@ export const CRMOriginsSidebar = ({
   onToggleCollapse,
 }: CRMOriginsSidebarProps) => {
   const { selectedOrigin, setSelectedOrigin, selectedPipeline, setSelectedPipeline, isAdmin } = useCRMContext();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [groups, setGroups] = useState<OriginGroup[]>([]);
   const [origins, setOrigins] = useState<Origin[]>([]);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -121,6 +124,10 @@ export const CRMOriginsSidebar = ({
     setSelectedOrigin(origin.id);
     if (origin.pipeline_id) {
       setSelectedPipeline(origin.pipeline_id);
+    }
+    // Navigate to pipeline page if not already there
+    if (!location.pathname.includes("/crm/pipeline")) {
+      navigate("/crm/pipeline");
     }
   };
 
