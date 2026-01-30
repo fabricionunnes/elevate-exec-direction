@@ -6,7 +6,7 @@ const EVOLUTION_API_FUNC_VERSION = "2026-01-14-v6-route-prefixes";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 // Route prefixes to try (Evolution API v2.x sometimes uses different base paths)
@@ -80,24 +80,44 @@ serve(async (req) => {
     // Make a raw fetch to any URL with Evolution headers
     const fetchEvolutionRaw = async (fullUrl: string, init?: RequestInit) => {
       console.log(`[evolution-api] Calling: ${init?.method || 'GET'} ${fullUrl}`);
-      
-      const res = await fetch(fullUrl, {
-        ...init,
-        headers: { ...evolutionHeaders, ...(init?.headers || {}) },
-      });
 
-      const text = await res.text();
-      let json: any = null;
       try {
-        json = text ? JSON.parse(text) : null;
-      } catch {
-        json = { raw: text };
+        const res = await fetch(fullUrl, {
+          ...init,
+          headers: { ...evolutionHeaders, ...(init?.headers || {}) },
+        });
+
+        const text = await res.text();
+        let json: any = null;
+        try {
+          json = text ? JSON.parse(text) : null;
+        } catch {
+          json = { raw: text };
+        }
+
+        console.log(`[evolution-api] Response status: ${res.status}`);
+        console.log(`[evolution-api] Response body:`, JSON.stringify(json).substring(0, 500));
+
+        return { res, json };
+      } catch (err) {
+        // When the VPS is offline / port blocked, fetch throws (ECONNREFUSED).
+        // Return a controlled 503 instead of crashing the function (which causes blank screens in the app).
+        console.error('[evolution-api] Network error calling Evolution API:', err);
+
+        const json = {
+          error: 'Evolution API offline',
+          hint: 'O servidor do WhatsApp parece estar offline ou inacessível. Tente novamente mais tarde.',
+          details: String(err),
+          _version: EVOLUTION_API_FUNC_VERSION,
+        };
+
+        const res = new Response(JSON.stringify(json), {
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+        return { res, json };
       }
-
-      console.log(`[evolution-api] Response status: ${res.status}`);
-      console.log(`[evolution-api] Response body:`, JSON.stringify(json).substring(0, 500));
-
-      return { res, json };
     };
 
     const fetchEvolutionJson = async (endpoint: string, init?: RequestInit) => {
