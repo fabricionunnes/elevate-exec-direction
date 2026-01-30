@@ -138,7 +138,12 @@ async function handleIncomingMessage(supabase: any, instanceId: string, data: an
   let mediaUrl = null;
   let mediaMimetype = null;
 
-  const msg = message.message || data.message?.message;
+  // Evolution payload formats vary. Common cases:
+  // 1) data.message.message => { conversation | extendedTextMessage | imageMessage | ... }
+  // 2) data.message => { conversation | imageMessage | audioMessage | ... } (no nested .message)
+  // 3) data => { message: { ... }, key: { ... } }
+  const msgContainer = data?.data?.message || data?.message || message;
+  const msg = msgContainer?.message ?? msgContainer;
   
   if (msg) {
     // Text messages - check all possible text fields
@@ -197,15 +202,11 @@ async function handleIncomingMessage(supabase: any, instanceId: string, data: an
     }
   }
 
-  // If we still have no content, try to get from messageType
+  // If we still have no content, skip safely (no substring on undefined)
   if (!content && type === 'text') {
     const messageType = data.messageType || message.messageType;
-    if (messageType === 'conversation' && msg?.conversation) {
-      content = msg.conversation;
-    } else {
-      console.log('Skipping message with no content. MessageType:', messageType);
-      return;
-    }
+    console.log('Skipping message with no content. MessageType:', messageType);
+    return;
   }
 
   // Check for duplicate message
