@@ -31,12 +31,14 @@ import {
   ExternalLink,
   UserPlus,
   Tag,
-  XCircle
+  XCircle,
+  Upload
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
+import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 
 interface Lead {
   id: string;
@@ -67,6 +69,7 @@ export const CRMLeadsPage = () => {
   const [tags, setTags] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [addLeadOpen, setAddLeadOpen] = useState(false);
+  const [importLeadsOpen, setImportLeadsOpen] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
 
   // Filters
@@ -210,10 +213,16 @@ export const CRMLeadsPage = () => {
           </p>
         </div>
 
-        <Button onClick={() => setAddLeadOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Lead
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportLeadsOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Importar
+          </Button>
+          <Button onClick={() => setAddLeadOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Lead
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -432,6 +441,12 @@ export const CRMLeadsPage = () => {
         open={addLeadOpen}
         onOpenChange={setAddLeadOpen}
         pipelineId={pipelines[0]?.id || ""}
+        onSuccess={loadData}
+      />
+
+      <ImportLeadsDialog
+        open={importLeadsOpen}
+        onOpenChange={setImportLeadsOpen}
         onSuccess={loadData}
       />
     </div>
