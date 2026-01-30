@@ -61,6 +61,7 @@ import { useWhatsAppConversations, WhatsAppConversation } from "@/hooks/useWhats
 import { useWhatsAppMessages, WhatsAppMessage } from "@/hooks/useWhatsAppMessages";
 import { ConversationSidebar } from "@/components/crm/inbox/ConversationSidebar";
 import { ConversationFilters, ConversationFiltersData, defaultFilters } from "@/components/crm/inbox/ConversationFilters";
+import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
 
 export const CRMInboxPage = () => {
   const [searchParams] = useSearchParams();
@@ -629,21 +630,7 @@ export const CRMInboxPage = () => {
                           )}
                         </div>
                       ) : message.type === "audio" && message.media_url ? (
-                        <div className="space-y-2">
-                          <audio 
-                            src={message.media_url} 
-                            controls 
-                            className="max-w-full"
-                            onError={(e) => {
-                              const target = e.target as HTMLAudioElement;
-                              target.style.display = 'none';
-                              target.nextElementSibling?.classList.remove('hidden');
-                            }}
-                          />
-                          <div className="hidden text-sm text-muted-foreground italic">
-                            🎤 Áudio não disponível
-                          </div>
-                        </div>
+                        <AudioPlayer src={message.media_url} />
                       ) : message.type === "document" && message.media_url ? (
                         <a 
                           href={message.media_url} 
