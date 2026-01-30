@@ -69,7 +69,8 @@ serve(async (req) => {
     }
 
     const url = new URL(req.url);
-    const action = url.searchParams.get('action');
+    // Action can come from query param OR from body (frontend sends in body)
+    let action = url.searchParams.get('action');
 
     const evolutionHeaders = {
       'Content-Type': 'application/json',
@@ -133,6 +134,10 @@ serve(async (req) => {
     let body: any = {};
     if (req.method === 'POST') {
       body = await req.json();
+      // If action not in query params, check body
+      if (!action && body.action) {
+        action = body.action;
+      }
     }
 
     console.log(`[evolution-api] Action: ${action}`, JSON.stringify(body).substring(0, 200));
