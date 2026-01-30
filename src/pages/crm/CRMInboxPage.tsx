@@ -226,7 +226,7 @@ export const CRMInboxPage = () => {
   const hasConnectedDevice = connectedInstances.length > 0;
 
   return (
-    <div className="h-full flex overflow-hidden">
+    <div className="h-full max-h-full flex overflow-hidden">
       {/* Conversations List */}
       <div className="w-[300px] border-r border-border flex flex-col bg-card">
         {/* Search Header */}

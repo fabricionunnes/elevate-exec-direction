@@ -283,8 +283,11 @@ export const CRMLayout = () => {
             />
           )}
 
-          {/* Main Content */}
-          <main className="flex-1 overflow-auto">
+          {/* Main Content - use overflow-hidden for inbox page to contain scroll internally */}
+          <main className={cn(
+            "flex-1",
+            location.pathname.includes("/crm/inbox") ? "overflow-hidden" : "overflow-auto"
+          )}>
             <Outlet context={{ staffRole, isAdmin, staffId }} />
           </main>
         </div>
