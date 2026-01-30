@@ -66,7 +66,22 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
 
     // Open a new tab synchronously (required to avoid popup blockers)
     // We'll navigate it after we receive the OAuth URL.
-    const popup = window.open("about:blank", "_blank", "noopener,noreferrer");
+    let popup: Window | null = null;
+    try {
+      const openerWindow: Window = window.top && window.top !== window.self ? window.top : window;
+      popup = openerWindow.open("about:blank", "_blank");
+      // If possible, show a small loading message
+      try {
+        popup?.document?.write(
+          "<title>Conectando Instagram...</title><p style='font-family:system-ui;padding:16px'>Aguarde, redirecionando para o Instagram...</p>"
+        );
+      } catch {
+        // ignore
+      }
+    } catch {
+      popup = null;
+    }
+
     if (!popup) {
       toast.error("Seu navegador bloqueou o pop-up. Permita pop-ups para conectar o Instagram.");
       setIsConnecting(false);
@@ -89,9 +104,19 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
         throw new Error(data?.error || error?.message);
       }
 
+      if (!data?.authUrl) {
+        throw new Error("Não foi possível gerar a URL de autorização do Instagram.");
+      }
+
       console.log("Redirecting to:", data.authUrl);
+
       // Navigate the tab we already opened (avoids popup blockers)
-      popup.location.assign(data.authUrl);
+      // Some browsers are finicky; set href and also try assign as fallback.
+      try {
+        popup.location.href = data.authUrl;
+      } catch {
+        popup.location.assign(data.authUrl);
+      }
     } catch (err: any) {
       console.error("Error getting auth URL:", err);
       toast.error(err.message || "Erro ao iniciar conexão");
