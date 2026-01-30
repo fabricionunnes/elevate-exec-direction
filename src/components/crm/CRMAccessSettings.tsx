@@ -9,7 +9,8 @@ import { toast } from "sonner";
 
 // Roles that can access CRM (commercial sector)
 const CRM_ELIGIBLE_ROLES = ["closer", "sdr", "head_comercial", "social_setter", "bdr"];
-const ALL_ROLES_WITH_CRM = ["master", "admin", ...CRM_ELIGIBLE_ROLES];
+// Admin no longer has automatic access - only master does
+const ALL_ROLES_WITH_CRM = ["master", ...CRM_ELIGIBLE_ROLES];
 
 const ROLE_LABELS: Record<string, string> = {
   master: "Master",
@@ -82,12 +83,11 @@ export const CRMAccessSettings = () => {
 
       const permissionSet = new Set((permissions || []).map(p => p.staff_id));
 
-      // Map staff with CRM access info
+      // Map staff with CRM access info - only master has automatic access
       const staffWithAccess: StaffMember[] = (staff || []).map(s => ({
         ...s,
         has_crm_access: 
           s.role === "master" || 
-          s.role === "admin" || 
           permissionSet.has(s.id)
       }));
 
@@ -101,9 +101,9 @@ export const CRMAccessSettings = () => {
   };
 
   const handleToggleAccess = async (staff: StaffMember) => {
-    // Can't toggle access for master/admin - they always have access
-    if (staff.role === "master" || staff.role === "admin") {
-      toast.info("Administradores sempre têm acesso ao CRM");
+    // Can't toggle access for master - they always have access
+    if (staff.role === "master") {
+      toast.info("O usuário Master sempre tem acesso ao CRM");
       return;
     }
 
@@ -149,8 +149,13 @@ export const CRMAccessSettings = () => {
   const commercialStaff = staffMembers.filter(s => 
     CRM_ELIGIBLE_ROLES.includes(s.role)
   );
+  // Only master has automatic access now
+  const masterStaff = staffMembers.filter(s => 
+    s.role === "master"
+  );
+  // Admins are now configurable like other staff
   const adminStaff = staffMembers.filter(s => 
-    s.role === "master" || s.role === "admin"
+    s.role === "admin"
   );
   const otherStaff = staffMembers.filter(s => 
     !CRM_ELIGIBLE_ROLES.includes(s.role) && 
@@ -249,22 +254,32 @@ export const CRMAccessSettings = () => {
               <h3 className="font-semibold text-blue-900">Controle de Acessos ao CRM</h3>
               <p className="text-sm text-blue-700 mt-1">
                 Defina quais membros da equipe têm acesso ao módulo de CRM. 
-                Administradores e Master sempre têm acesso. Para o setor comercial 
-                (Closer, SDR, Head Comercial, Social Setter, BDR), você pode 
-                habilitar ou desabilitar individualmente.
+                Somente o Master tem acesso automático. Todos os demais membros,
+                incluindo Administradores, precisam de liberação explícita.
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Admin Staff - Always have access */}
+      {/* Master Staff - Always have access */}
+      {masterStaff.length > 0 && (
+        <StaffList
+          staff={masterStaff}
+          title="Master"
+          description="Usuário Master sempre tem acesso total ao CRM"
+          allowToggle={false}
+          icon={Shield}
+        />
+      )}
+
+      {/* Admin Staff - Now configurable */}
       {adminStaff.length > 0 && (
         <StaffList
           staff={adminStaff}
-          title="Administração"
-          description="Master e Administradores sempre têm acesso total ao CRM"
-          allowToggle={false}
+          title="Administradores"
+          description="Administradores que podem receber acesso ao CRM"
+          allowToggle={true}
           icon={Shield}
         />
       )}
