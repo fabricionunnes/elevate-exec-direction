@@ -153,7 +153,12 @@ serve(async (req) => {
 
     let body: any = {};
     if (req.method === 'POST') {
-      body = await req.json();
+      try {
+        const text = await req.text();
+        body = text ? JSON.parse(text) : {};
+      } catch {
+        body = {};
+      }
       // If action not in query params, check body
       if (!action && body.action) {
         action = body.action;
