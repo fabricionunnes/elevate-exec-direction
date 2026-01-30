@@ -47,10 +47,12 @@ import {
   Folder,
   Copy,
   Zap,
-  Users
+  Users,
+  TrendingUp
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { CRMPermissionsManager } from "@/components/crm/CRMPermissionsManager";
+import { CRMGoalsTab } from "@/components/crm/settings/CRMGoalsTab";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -660,6 +662,10 @@ export const CRMSettingsPage = () => {
           <TabsTrigger value="access" className="gap-2">
             <Users className="h-4 w-4" />
             Acessos
+          </TabsTrigger>
+          <TabsTrigger value="goals" className="gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Metas
           </TabsTrigger>
         </TabsList>
 
@@ -1549,6 +1555,11 @@ export const CRMSettingsPage = () => {
         {/* Access Tab */}
         <TabsContent value="access" className="mt-6">
           <CRMPermissionsManager />
+        </TabsContent>
+
+        {/* Goals Tab */}
+        <TabsContent value="goals" className="mt-6">
+          <CRMGoalsTab />
         </TabsContent>
       </Tabs>
 

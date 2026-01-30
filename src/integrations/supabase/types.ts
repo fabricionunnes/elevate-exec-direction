@@ -10280,6 +10280,68 @@ export type Database = {
           },
         ]
       }
+      crm_staff_goals: {
+        Row: {
+          created_at: string
+          hiper_meta_agendamentos: number | null
+          hiper_meta_reunioes: number | null
+          hiper_meta_vendas: number | null
+          id: string
+          meta_agendamentos: number | null
+          meta_reunioes: number | null
+          meta_vendas: number | null
+          month: number
+          staff_id: string
+          super_meta_agendamentos: number | null
+          super_meta_reunioes: number | null
+          super_meta_vendas: number | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          hiper_meta_agendamentos?: number | null
+          hiper_meta_reunioes?: number | null
+          hiper_meta_vendas?: number | null
+          id?: string
+          meta_agendamentos?: number | null
+          meta_reunioes?: number | null
+          meta_vendas?: number | null
+          month: number
+          staff_id: string
+          super_meta_agendamentos?: number | null
+          super_meta_reunioes?: number | null
+          super_meta_vendas?: number | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          hiper_meta_agendamentos?: number | null
+          hiper_meta_reunioes?: number | null
+          hiper_meta_vendas?: number | null
+          id?: string
+          meta_agendamentos?: number | null
+          meta_reunioes?: number | null
+          meta_vendas?: number | null
+          month?: number
+          staff_id?: string
+          super_meta_agendamentos?: number | null
+          super_meta_reunioes?: number | null
+          super_meta_vendas?: number | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_staff_goals_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_staff_permissions: {
         Row: {
           created_at: string
