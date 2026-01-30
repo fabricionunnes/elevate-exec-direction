@@ -63,31 +63,6 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
     }
 
     setIsConnecting(true);
-
-    // Open a new tab synchronously (required to avoid popup blockers)
-    // We'll navigate it after we receive the OAuth URL.
-    let popup: Window | null = null;
-    try {
-      const openerWindow: Window = window.top && window.top !== window.self ? window.top : window;
-      popup = openerWindow.open("about:blank", "_blank");
-      // If possible, show a small loading message
-      try {
-        popup?.document?.write(
-          "<title>Conectando Instagram...</title><p style='font-family:system-ui;padding:16px'>Aguarde, redirecionando para o Instagram...</p>"
-        );
-      } catch {
-        // ignore
-      }
-    } catch {
-      popup = null;
-    }
-
-    if (!popup) {
-      toast.error("Seu navegador bloqueou o pop-up. Permita pop-ups para conectar o Instagram.");
-      setIsConnecting(false);
-      return;
-    }
-
     try {
       // Use origin as redirect URI - callback will be handled by checking URL params
       const redirectUri = window.location.origin;
@@ -110,22 +85,26 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
 
       console.log("Redirecting to:", data.authUrl);
 
-      // Navigate the tab we already opened (avoids popup blockers)
-      // Some browsers are finicky; set href and also try assign as fallback.
-      try {
-        popup.location.href = data.authUrl;
-      } catch {
-        popup.location.assign(data.authUrl);
+      // Open OAuth URL directly in new tab
+      const opened = window.open(data.authUrl, "_blank");
+      
+      if (!opened) {
+        // Popup was blocked - copy URL to clipboard and show message
+        try {
+          await navigator.clipboard.writeText(data.authUrl);
+          toast.info(
+            "Pop-up bloqueado. A URL foi copiada para sua área de transferência. Cole em uma nova aba para conectar.",
+            { duration: 10000 }
+          );
+        } catch {
+          // Clipboard failed too, show prompt
+          prompt("Copie esta URL e cole em uma nova aba:", data.authUrl);
+        }
       }
     } catch (err: any) {
       console.error("Error getting auth URL:", err);
       toast.error(err.message || "Erro ao iniciar conexão");
-      // Close the opened tab if we couldn't proceed
-      try {
-        popup.close();
-      } catch {
-        // ignore
-      }
+    } finally {
       setIsConnecting(false);
     }
   };
