@@ -17,8 +17,10 @@ import {
   ChevronLeft,
   Search,
   MessageCircle,
+  Settings2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { InstanceAccessDialog } from "./InstanceAccessDialog";
 
 interface StaffMember {
   id: string;
@@ -44,6 +46,8 @@ export const UsersPermissionsSection = ({ onBack }: UsersPermissionsSectionProps
   const [staffDevices, setStaffDevices] = useState<Record<string, StaffDevice[]>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+  const [accessDialogOpen, setAccessDialogOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -60,17 +64,20 @@ export const UsersPermissionsSection = ({ onBack }: UsersPermissionsSectionProps
 
       setStaff(staffData || []);
 
-      // Load device assignments
-      const { data: devicesData } = await supabase
-        .from("crm_service_staff_devices")
+      // Load device assignments from whatsapp_instance_access
+      const { data: accessData } = await supabase
+        .from("whatsapp_instance_access")
         .select(`
           staff_id,
           instance_id,
+          can_view,
+          can_send,
           instance:whatsapp_instances(instance_name, display_name)
-        `);
+        `)
+        .eq("can_view", true);
 
       const deviceMap: Record<string, StaffDevice[]> = {};
-      (devicesData || []).forEach((d: any) => {
+      (accessData || []).forEach((d: any) => {
         if (!deviceMap[d.staff_id]) deviceMap[d.staff_id] = [];
         if (d.instance) {
           deviceMap[d.staff_id].push({
@@ -87,6 +94,11 @@ export const UsersPermissionsSection = ({ onBack }: UsersPermissionsSectionProps
     } finally {
       setLoading(false);
     }
+  };
+
+  const openAccessDialog = (member: StaffMember) => {
+    setSelectedStaff(member);
+    setAccessDialogOpen(true);
   };
 
   const getRoleBadge = (role: string) => {
@@ -171,20 +183,34 @@ export const UsersPermissionsSection = ({ onBack }: UsersPermissionsSectionProps
               </TableCell>
               <TableCell>
                 {(staffDevices[member.id] || []).length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {staffDevices[member.id].map((d) => (
-                      <div
-                        key={d.instance_id}
-                        className="flex items-center gap-1 p-1 rounded bg-green-100 text-green-700"
-                        title={d.instance_name}
-                      >
-                        <MessageCircle className="h-3.5 w-3.5" />
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap gap-1">
+                      {staffDevices[member.id].map((d) => (
+                        <div
+                          key={d.instance_id}
+                          className="flex items-center gap-1 px-2 py-1 rounded bg-green-100 text-green-700 text-xs"
+                          title={d.instance_name}
+                        >
+                          <MessageCircle className="h-3 w-3" />
+                          <span className="max-w-[80px] truncate">{d.instance_name}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => openAccessDialog(member)}
+                    >
+                      <Settings2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 ) : (
-                  <button className="text-sm text-primary hover:underline">
-                    + Vincular conta ou dispositivo
+                  <button
+                    className="text-sm text-primary hover:underline"
+                    onClick={() => openAccessDialog(member)}
+                  >
+                    + Vincular conexão
                   </button>
                 )}
               </TableCell>
@@ -193,6 +219,17 @@ export const UsersPermissionsSection = ({ onBack }: UsersPermissionsSectionProps
           ))}
         </TableBody>
       </Table>
+
+      {/* Instance Access Dialog */}
+      {selectedStaff && (
+        <InstanceAccessDialog
+          open={accessDialogOpen}
+          onOpenChange={setAccessDialogOpen}
+          staffId={selectedStaff.id}
+          staffName={selectedStaff.name}
+          onAccessUpdated={loadData}
+        />
+      )}
     </div>
   );
 };
