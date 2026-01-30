@@ -53,6 +53,7 @@ export const CRMInboxPage = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [loadingAccess, setLoadingAccess] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesScrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Use real data hooks
   const { 
@@ -156,12 +157,23 @@ export const CRMInboxPage = () => {
   }, [selectedConversation?.id]);
 
   const scrollToBottom = () => {
-    // Use setTimeout to ensure the DOM has updated before scrolling
+    // IMPORTANT: avoid scrollIntoView() because it may scroll the whole page.
+    // Instead, scroll the internal Radix ScrollArea viewport.
     setTimeout(() => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+      const root = messagesScrollAreaRef.current;
+      const viewport = root?.querySelector(
+        "[data-radix-scroll-area-viewport]",
+      ) as HTMLElement | null;
+
+      if (viewport) {
+        viewport.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" });
+        return;
       }
-    }, 100);
+
+      // Fallback: if viewport isn't found (should be rare), try the end ref.
+      // Use block: 'nearest' to reduce the chance of scrolling outer containers.
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 50);
   };
 
   const handleSendMessage = async () => {
@@ -417,7 +429,7 @@ export const CRMInboxPage = () => {
           </div>
 
           {/* Messages */}
-          <ScrollArea className="flex-1 p-4 bg-muted/30">
+          <ScrollArea ref={messagesScrollAreaRef} className="flex-1 p-4 bg-muted/30">
             <div className="space-y-4 max-w-3xl mx-auto">
               {loadingMessages ? (
                 <div className="flex items-center justify-center py-8">
