@@ -440,7 +440,87 @@ export const CRMInboxPage = () => {
                           : "bg-card border border-border"
                       )}
                     >
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      {/* Render media content based on message type */}
+                      {message.type === "image" && message.media_url ? (
+                        <div className="space-y-2">
+                          <img 
+                            src={message.media_url} 
+                            alt="Imagem" 
+                            className="max-w-full rounded-md cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => window.open(message.media_url!, '_blank')}
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                          <div className="hidden text-sm text-muted-foreground italic">
+                            📷 Imagem não disponível
+                          </div>
+                          {message.content && message.content !== "[Imagem]" && (
+                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                          )}
+                        </div>
+                      ) : message.type === "video" && message.media_url ? (
+                        <div className="space-y-2">
+                          <video 
+                            src={message.media_url} 
+                            controls 
+                            className="max-w-full rounded-md"
+                            onError={(e) => {
+                              const target = e.target as HTMLVideoElement;
+                              target.style.display = 'none';
+                              target.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                          <div className="hidden text-sm text-muted-foreground italic">
+                            🎥 Vídeo não disponível
+                          </div>
+                          {message.content && message.content !== "[Vídeo]" && (
+                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                          )}
+                        </div>
+                      ) : message.type === "audio" && message.media_url ? (
+                        <div className="space-y-2">
+                          <audio 
+                            src={message.media_url} 
+                            controls 
+                            className="max-w-full"
+                            onError={(e) => {
+                              const target = e.target as HTMLAudioElement;
+                              target.style.display = 'none';
+                              target.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                          <div className="hidden text-sm text-muted-foreground italic">
+                            🎤 Áudio não disponível
+                          </div>
+                        </div>
+                      ) : message.type === "document" && message.media_url ? (
+                        <a 
+                          href={message.media_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm text-primary hover:underline"
+                        >
+                          <Paperclip className="h-4 w-4" />
+                          {message.content || "Documento"}
+                        </a>
+                      ) : message.type === "sticker" ? (
+                        <div className="text-2xl">🎭</div>
+                      ) : message.type === "location" ? (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span>📍</span>
+                          <span className="text-muted-foreground">Localização compartilhada</span>
+                        </div>
+                      ) : message.type === "contact" ? (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span>👤</span>
+                          <span>{message.content || "Contato compartilhado"}</span>
+                        </div>
+                      ) : (
+                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      )}
                       <div className="flex items-center justify-end gap-1 mt-1">
                         <span className="text-[10px] text-muted-foreground">
                           {format(new Date(message.created_at), "HH:mm")}
