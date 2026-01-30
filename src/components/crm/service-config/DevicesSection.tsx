@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Select,
   SelectContent,
@@ -440,10 +441,9 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
             </div>
             <div className="space-y-2">
               <Label>Número do WhatsApp</Label>
-              <Input
+              <PhoneInput
                 value={newPhone}
-                onChange={(e) => setNewPhone(e.target.value)}
-                placeholder="+55 (11) 99999-9999"
+                onChange={(value) => setNewPhone(value)}
               />
             </div>
             <div className="space-y-2">
@@ -490,10 +490,9 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
             </div>
             <div className="space-y-2">
               <Label>Número do WhatsApp</Label>
-              <Input
+              <PhoneInput
                 value={newPhone}
-                onChange={(e) => setNewPhone(e.target.value)}
-                placeholder="+55 (11) 99999-9999"
+                onChange={(value) => setNewPhone(value)}
               />
             </div>
             <div className="space-y-2">
