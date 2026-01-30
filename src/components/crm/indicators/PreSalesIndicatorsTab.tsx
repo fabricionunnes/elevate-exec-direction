@@ -134,14 +134,21 @@ export const PreSalesIndicatorsTab = () => {
       
       const crmStaffIds = new Set((crmPermissions || []).map(p => p.staff_id));
       
-      const { data: allSdrStaff } = await supabase
+      // Load SDR staff:
+      // - must be active
+      // - must have CRM access
+      // - must be a real pre-sales role (SDR / Social Setter / BDR)
+      // Defensive filtering in JS guarantees admin/master never appear even if they have CRM permission.
+      const { data: allActiveStaff } = await supabase
         .from("onboarding_staff")
         .select("id, name, role")
-        .in("role", ["sdr", "social_setter", "bdr"])
         .eq("is_active", true);
-      
-      // Filter to only include staff with CRM access
-      const sdrStaff = (allSdrStaff || []).filter(s => crmStaffIds.has(s.id));
+
+      const allowedPreSalesRoles = new Set(["sdr", "social_setter", "bdr"]);
+      const sdrStaff = (allActiveStaff || []).filter((s) => {
+        const role = String((s as any).role ?? "").toLowerCase();
+        return crmStaffIds.has(s.id) && allowedPreSalesRoles.has(role);
+      });
 
       // Load daily activities
       const { data: dailyActivities } = await supabase
