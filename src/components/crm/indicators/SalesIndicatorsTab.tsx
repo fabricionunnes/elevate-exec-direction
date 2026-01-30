@@ -134,12 +134,26 @@ export const SalesIndicatorsTab = () => {
       const daysInMonth = getDaysInMonth(now);
       const currentDay = getDate(now);
 
-      // Load closers (staff with closer role)
+      // Load closers (staff with closer role who have CRM access)
+      // First get staff IDs with CRM access
+      const { data: crmAccessData } = await supabase
+        .from("staff_menu_permissions")
+        .select("staff_id")
+        .eq("menu_key", "crm");
+      
+      const crmStaffIds = crmAccessData?.map(a => a.staff_id) || [];
+
+      // Load closers - only those with CRM access or master role
       const { data: closerStaff } = await supabase
         .from("onboarding_staff")
         .select("id, name, role")
         .in("role", ["closer", "head_comercial", "admin", "master"])
         .eq("is_active", true);
+
+      // Filter to only include staff with CRM access (or master which has automatic access)
+      const filteredCloserStaff = (closerStaff || []).filter(staff => 
+        staff.role === "master" || crmStaffIds.includes(staff.id)
+      );
 
       // Load scheduled calls
       const { data: calls } = await supabase
@@ -232,14 +246,14 @@ export const SalesIndicatorsTab = () => {
         noShowPercent,
       });
 
-      // Calculate closer metrics
-      const closerMetrics: CloserMetrics[] = (closerStaff || []).map(closer => {
+      // Calculate closer metrics (use filtered staff)
+      const closerMetrics: CloserMetrics[] = filteredCloserStaff.map(closer => {
         const closerCalls = (calls || []).filter(c => c.assigned_to === closer.id);
         const closerSales = (salesData || []).filter(s => s.closer_staff_id === closer.id);
         const closerRevenue = closerSales.reduce((sum, s) => sum + (s.revenue_value || 0), 0);
         const closerCompleted = closerCalls.filter(c => c.status === "completed").length;
         const closerTarget = targets?.find(t => t.staff_id === closer.id);
-        const closerMeta = closerTarget?.target_value || (metaReceita / (closerStaff?.length || 1));
+        const closerMeta = closerTarget?.target_value || (metaReceita / (filteredCloserStaff.length || 1));
 
         return {
           id: closer.id,
