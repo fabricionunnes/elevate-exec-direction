@@ -487,6 +487,8 @@ export const CRMLeadDetailPage = () => {
         <TabsContent value="activities" className="flex-1 mt-0 overflow-hidden">
           <LeadActivitiesTab
             leadId={lead.id}
+            leadName={lead.name}
+            leadEmail={lead.email}
             stages={stages}
             currentStageId={lead.stage_id}
             activities={activities}

@@ -11,6 +11,12 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Phone,
   Mail,
   MessageSquare,
@@ -28,6 +34,8 @@ import { format, startOfDay, addDays, isSameDay, isAfter, isBefore } from "date-
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
+import { ScheduleLeadMeetingDialog } from "./ScheduleLeadMeetingDialog";
 
 interface Stage {
   id: string;
@@ -57,6 +65,8 @@ interface ChecklistItem {
 
 interface LeadActivitiesTabProps {
   leadId: string;
+  leadName: string;
+  leadEmail?: string;
   stages: Stage[];
   currentStageId: string | null;
   activities: Activity[];
@@ -67,6 +77,8 @@ interface LeadActivitiesTabProps {
 
 export const LeadActivitiesTab = ({
   leadId,
+  leadName,
+  leadEmail,
   stages,
   currentStageId,
   activities,
@@ -74,6 +86,8 @@ export const LeadActivitiesTab = ({
   onStageChange,
   onRefresh,
 }: LeadActivitiesTabProps) => {
+  const [showAddActivityDialog, setShowAddActivityDialog] = useState(false);
+  const [showScheduleMeetingDialog, setShowScheduleMeetingDialog] = useState(false);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([
     { id: "1", text: "Adicionar Tag com o nome ao iniciar o atendimento de um lead.", completed: false },
     { id: "2", text: "Adiciona nome em: Negócio → SDR. quando finalizar a qualificação", completed: false },
@@ -267,10 +281,25 @@ export const LeadActivitiesTab = ({
 
           {/* Add Activity Button */}
           <div className="p-4 border-t border-border">
-            <Button variant="ghost" className="w-full justify-start text-muted-foreground">
-              <Plus className="h-4 w-4 mr-2" />
-              Nova atividade
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="w-full justify-start text-muted-foreground">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova atividade
+                  <ChevronDown className="h-4 w-4 ml-auto" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuItem onClick={() => setShowAddActivityDialog(true)}>
+                  <Phone className="h-4 w-4 mr-2" />
+                  Atividade (Ligação, Email, etc)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowScheduleMeetingDialog(true)}>
+                  <Video className="h-4 w-4 mr-2" />
+                  Agendar Reunião (Google Calendar)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </ScrollArea>
       </div>
@@ -314,6 +343,23 @@ export const LeadActivitiesTab = ({
           </CollapsibleContent>
         </Collapsible>
       </div>
+
+      {/* Dialogs */}
+      <AddActivityDialog
+        open={showAddActivityDialog}
+        onOpenChange={setShowAddActivityDialog}
+        leadId={leadId}
+        onSuccess={onRefresh}
+      />
+      
+      <ScheduleLeadMeetingDialog
+        open={showScheduleMeetingDialog}
+        onOpenChange={setShowScheduleMeetingDialog}
+        leadId={leadId}
+        leadName={leadName}
+        leadEmail={leadEmail}
+        onSuccess={onRefresh}
+      />
     </div>
   );
 };
