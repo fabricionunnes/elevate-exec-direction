@@ -9518,6 +9518,35 @@ export type Database = {
           },
         ]
       }
+      crm_staff_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          permission_key: string
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission_key: string
+          staff_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission_key?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_staff_permissions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_stage_actions: {
         Row: {
           activity_description: string | null
@@ -17386,6 +17415,10 @@ export type Database = {
         Returns: boolean
       }
       has_crm_access: { Args: never; Returns: boolean }
+      has_crm_permission: {
+        Args: { check_permission: string; check_staff_id: string }
+        Returns: boolean
+      }
       has_hr_edit_access: {
         Args: { check_project_id: string }
         Returns: boolean
