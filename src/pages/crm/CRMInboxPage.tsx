@@ -189,13 +189,42 @@ export const CRMInboxPage = () => {
 
   // Auto-select conversation from URL parameter
   useEffect(() => {
-    if (conversationIdFromUrl && conversations.length > 0 && !selectedConversation) {
-      const conv = conversations.find(c => c.id === conversationIdFromUrl);
-      if (conv) {
-        setSelectedConversation(conv);
-      }
+    if (!conversationIdFromUrl) return;
+    
+    // If already selected the correct conversation, skip
+    if (selectedConversation?.id === conversationIdFromUrl) return;
+    
+    // Try to find in loaded conversations first
+    const conv = conversations.find(c => c.id === conversationIdFromUrl);
+    if (conv) {
+      setSelectedConversation(conv);
+      return;
     }
-  }, [conversationIdFromUrl, conversations, selectedConversation]);
+    
+    // If not in list but we have conversations loaded, fetch directly
+    if (conversations.length > 0 && !loadingConversations) {
+      const fetchConversationById = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('crm_whatsapp_conversations')
+            .select(`
+              *,
+              contact:crm_whatsapp_contacts(*),
+              assigned_staff:onboarding_staff(id, name, avatar_url)
+            `)
+            .eq('id', conversationIdFromUrl)
+            .single();
+          
+          if (data && !error) {
+            setSelectedConversation(data);
+          }
+        } catch (err) {
+          console.error('Error fetching conversation by ID:', err);
+        }
+      };
+      fetchConversationById();
+    }
+  }, [conversationIdFromUrl, conversations, selectedConversation, loadingConversations]);
 
   // Mark as read when selecting conversation
   useEffect(() => {
