@@ -448,6 +448,7 @@ export const CRMInboxPage = () => {
           projectId={projectId || undefined}
           onLeadCreated={() => refetchConversations()}
           onContactUpdated={() => refetchConversations()}
+          onAssignmentChanged={() => refetchConversations()}
         />
       )}
 
