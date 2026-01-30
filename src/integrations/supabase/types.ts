@@ -9108,6 +9108,144 @@ export type Database = {
           },
         ]
       }
+      crm_custom_field_values: {
+        Row: {
+          created_at: string
+          field_id: string
+          id: string
+          lead_id: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          field_id: string
+          id?: string
+          lead_id: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          field_id?: string
+          id?: string
+          lead_id?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_custom_field_values_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "crm_custom_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_custom_field_values_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_custom_fields: {
+        Row: {
+          context: string
+          created_at: string
+          field_label: string
+          field_name: string
+          field_type: string
+          id: string
+          is_active: boolean | null
+          is_required: boolean | null
+          is_system: boolean | null
+          options: Json | null
+          section: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          context: string
+          created_at?: string
+          field_label: string
+          field_name: string
+          field_type?: string
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          is_system?: boolean | null
+          options?: Json | null
+          section?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          context?: string
+          created_at?: string
+          field_label?: string
+          field_name?: string
+          field_type?: string
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          is_system?: boolean | null
+          options?: Json | null
+          section?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_lead_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          lead_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          lead_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          lead_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_files_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_files_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_lead_history: {
         Row: {
           action: string
