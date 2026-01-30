@@ -9296,6 +9296,99 @@ export type Database = {
           },
         ]
       }
+      crm_goal_types: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          has_hiper_meta: boolean
+          has_super_meta: boolean
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          unit_type: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          has_hiper_meta?: boolean
+          has_super_meta?: boolean
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          unit_type?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          has_hiper_meta?: boolean
+          has_super_meta?: boolean
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          unit_type?: string
+        }
+        Relationships: []
+      }
+      crm_goal_values: {
+        Row: {
+          created_at: string
+          goal_type_id: string
+          hiper_meta_value: number | null
+          id: string
+          meta_value: number
+          month: number
+          staff_id: string
+          super_meta_value: number | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          goal_type_id: string
+          hiper_meta_value?: number | null
+          id?: string
+          meta_value?: number
+          month: number
+          staff_id: string
+          super_meta_value?: number | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          goal_type_id?: string
+          hiper_meta_value?: number | null
+          id?: string
+          meta_value?: number
+          month?: number
+          staff_id?: string
+          super_meta_value?: number | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_goal_values_goal_type_id_fkey"
+            columns: ["goal_type_id"]
+            isOneToOne: false
+            referencedRelation: "crm_goal_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_goal_values_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_lead_files: {
         Row: {
           created_at: string
