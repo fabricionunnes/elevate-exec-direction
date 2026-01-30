@@ -163,9 +163,15 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
         },
       });
 
-      if (evolutionError) {
-        console.error('Evolution API error:', evolutionError);
-        // Continue creating in database even if Evolution fails
+      // If Evolution fails, do NOT create a DB record (otherwise we end up with stale instances
+      // that don't exist on the STEVO server and QR/connect will always 404).
+      if (evolutionError || (evolutionResponse as any)?.error) {
+        console.error('Evolution API error:', evolutionError || evolutionResponse);
+        const msg =
+          (evolutionResponse as any)?.error ||
+          (evolutionError as any)?.message ||
+          'Falha ao criar instância no servidor do WhatsApp';
+        throw new Error(msg);
       }
       
       // Create in database
