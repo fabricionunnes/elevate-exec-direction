@@ -110,31 +110,60 @@ async function handleIncomingMessage(supabase: any, instanceId: string, data: an
   let mediaUrl = null;
   let mediaMimetype = null;
 
-  if (message.message) {
-    if (message.message.conversation) {
-      content = message.message.conversation;
-    } else if (message.message.extendedTextMessage) {
-      content = message.message.extendedTextMessage.text;
-    } else if (message.message.imageMessage) {
+  const msg = message.message;
+  
+  if (msg) {
+    // Text messages - check all possible text fields
+    if (msg.conversation) {
+      content = msg.conversation;
+    } else if (msg.extendedTextMessage?.text) {
+      content = msg.extendedTextMessage.text;
+    } else if (msg.buttonsResponseMessage?.selectedButtonId) {
+      content = msg.buttonsResponseMessage.selectedDisplayText || msg.buttonsResponseMessage.selectedButtonId;
+    } else if (msg.listResponseMessage?.title) {
+      content = msg.listResponseMessage.title;
+    } else if (msg.templateButtonReplyMessage?.selectedDisplayText) {
+      content = msg.templateButtonReplyMessage.selectedDisplayText;
+    } else if (msg.imageMessage) {
       type = 'image';
-      content = message.message.imageMessage.caption || '[Imagem]';
-      mediaMimetype = message.message.imageMessage.mimetype;
-    } else if (message.message.audioMessage) {
+      content = msg.imageMessage.caption || '[Imagem]';
+      mediaMimetype = msg.imageMessage.mimetype;
+    } else if (msg.audioMessage) {
       type = 'audio';
       content = '[Áudio]';
-      mediaMimetype = message.message.audioMessage.mimetype;
-    } else if (message.message.videoMessage) {
+      mediaMimetype = msg.audioMessage.mimetype;
+    } else if (msg.videoMessage) {
       type = 'video';
-      content = message.message.videoMessage.caption || '[Vídeo]';
-      mediaMimetype = message.message.videoMessage.mimetype;
-    } else if (message.message.documentMessage) {
+      content = msg.videoMessage.caption || '[Vídeo]';
+      mediaMimetype = msg.videoMessage.mimetype;
+    } else if (msg.documentMessage) {
       type = 'document';
-      content = message.message.documentMessage.fileName || '[Documento]';
-      mediaMimetype = message.message.documentMessage.mimetype;
-    } else if (message.message.stickerMessage) {
+      content = msg.documentMessage.fileName || '[Documento]';
+      mediaMimetype = msg.documentMessage.mimetype;
+    } else if (msg.stickerMessage) {
       type = 'sticker';
       content = '[Sticker]';
+    } else if (msg.contactMessage) {
+      type = 'contact';
+      content = msg.contactMessage.displayName || '[Contato]';
+    } else if (msg.locationMessage) {
+      type = 'location';
+      content = '[Localização]';
+    } else if (msg.reactionMessage) {
+      // Skip reaction messages - they don't have content to display
+      console.log('Skipping reaction message');
+      return;
+    } else if (msg.protocolMessage || msg.senderKeyDistributionMessage) {
+      // Skip protocol/system messages - they're not user content
+      console.log('Skipping protocol/system message');
+      return;
     }
+  }
+
+  // If we still have no content, skip this message
+  if (!content && type === 'text') {
+    console.log('Skipping message with no content:', JSON.stringify(msg, null, 2).substring(0, 500));
+    return;
   }
 
   // Insert message
