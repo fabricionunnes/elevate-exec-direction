@@ -13,6 +13,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Mail,
   Phone,
   Linkedin,
@@ -27,6 +37,8 @@ import {
   User,
   Sparkles,
   Briefcase,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -94,6 +106,8 @@ interface TalentPoolCandidateSheetProps {
   onOpenChange: (open: boolean) => void;
   candidate: TalentCandidate | null;
   onCandidateAssigned?: () => void;
+  isAdmin?: boolean;
+  onCandidateDeleted?: () => void;
 }
 
 export function TalentPoolCandidateSheet({
@@ -101,12 +115,16 @@ export function TalentPoolCandidateSheet({
   onOpenChange,
   candidate,
   onCandidateAssigned,
+  isAdmin = false,
+  onCandidateDeleted,
 }: TalentPoolCandidateSheetProps) {
   const [discResults, setDiscResults] = useState<DISCResult[]>([]);
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (open && candidate) {
@@ -155,6 +173,40 @@ export function TalentPoolCandidateSheet({
       console.error("Error fetching candidate data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteCandidate = async () => {
+    if (!candidate) return;
+    
+    setDeleting(true);
+    try {
+      // Delete related records first
+      await Promise.all([
+        supabase.from("candidate_resumes").delete().eq("candidate_id", candidate.id),
+        supabase.from("candidate_disc_results").delete().eq("candidate_id", candidate.id),
+        supabase.from("hiring_history").delete().eq("candidate_id", candidate.id),
+        supabase.from("candidate_tags").delete().eq("candidate_id", candidate.id),
+        supabase.from("candidate_ai_evaluations").delete().eq("candidate_id", candidate.id),
+      ]);
+
+      // Delete the candidate
+      const { error } = await supabase
+        .from("candidates")
+        .delete()
+        .eq("id", candidate.id);
+
+      if (error) throw error;
+
+      toast.success("Candidato excluído com sucesso");
+      setShowDeleteDialog(false);
+      onOpenChange(false);
+      onCandidateDeleted?.();
+    } catch (error) {
+      console.error("Error deleting candidate:", error);
+      toast.error("Erro ao excluir candidato");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -250,15 +302,25 @@ export function TalentPoolCandidateSheet({
           </div>
         </SheetHeader>
 
-        {/* Action Button */}
-        <div className="py-3 border-b">
+        {/* Action Buttons */}
+        <div className="py-3 border-b flex gap-2">
           <Button 
             onClick={() => setShowAssignDialog(true)}
-            className="w-full gap-2"
+            className="flex-1 gap-2"
           >
             <Briefcase className="h-4 w-4" />
             Vincular a uma Vaga
           </Button>
+          {isAdmin && (
+            <Button 
+              variant="destructive"
+              size="icon"
+              onClick={() => setShowDeleteDialog(true)}
+              title="Excluir candidato"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         {/* Contact Info */}
@@ -589,6 +651,40 @@ export function TalentPoolCandidateSheet({
             onCandidateAssigned?.();
           }}
         />
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir Candidato</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir <strong>{candidate.full_name}</strong> do banco de talentos?
+                <br /><br />
+                Esta ação é irreversível e irá remover todos os dados relacionados: currículos, resultados DISC, histórico e avaliações.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteCandidate}
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Excluindo...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );

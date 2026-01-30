@@ -83,6 +83,7 @@ export default function GlobalTalentPoolResumesPage() {
   const [filterDisc, setFilterDisc] = useState<string>("all");
   const [copied, setCopied] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<TalentCandidate | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const publicLink = `${getPublicBaseUrl()}/?public=banco-talentos`;
 
@@ -120,6 +121,9 @@ export default function GlobalTalentPoolResumesPage() {
         navigate("/onboarding-tasks");
         return;
       }
+
+      // Check if user is admin
+      setIsAdmin(["master", "admin"].includes(staff.role?.toLowerCase()));
 
       fetchData();
     } catch (error) {
@@ -523,7 +527,12 @@ export default function GlobalTalentPoolResumesPage() {
         open={!!selectedCandidate}
         onOpenChange={(open) => !open && setSelectedCandidate(null)}
         candidate={selectedCandidate}
+        isAdmin={isAdmin}
         onCandidateAssigned={() => {
+          setSelectedCandidate(null);
+          fetchData();
+        }}
+        onCandidateDeleted={() => {
           setSelectedCandidate(null);
           fetchData();
         }}
