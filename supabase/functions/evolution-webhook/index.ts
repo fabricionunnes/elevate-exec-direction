@@ -86,7 +86,8 @@ async function handleIncomingMessage(supabase: any, instanceId: string, data: an
     return;
   }
 
-  const remoteJid = key.remoteJid;
+  // Use remoteJidAlt if available (new @lid format), otherwise use remoteJid
+  const remoteJid = key.remoteJidAlt || key.remoteJid;
   const fromMe = key.fromMe;
   const messageId = key.id;
 
@@ -95,8 +96,14 @@ async function handleIncomingMessage(supabase: any, instanceId: string, data: an
     return;
   }
 
+  // Skip @lid format without alternative (system messages)
+  if (remoteJid.endsWith('@lid') && !key.remoteJidAlt) {
+    console.log('Skipping @lid message without alternative JID');
+    return;
+  }
+
   // Extract phone number
-  const phone = remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', '');
+  const phone = remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', '').replace('@lid', '');
   
   // Get or create contact
   let contact = await getOrCreateContact(supabase, phone, message.pushName);
@@ -157,6 +164,11 @@ async function handleIncomingMessage(supabase: any, instanceId: string, data: an
       // Skip protocol/system messages - they're not user content
       console.log('Skipping protocol/system message');
       return;
+    } else if (msg.templateMessage) {
+      // Handle template messages (WhatsApp Business)
+      type = 'template';
+      const template = msg.templateMessage?.interactiveMessageTemplate || msg.templateMessage?.hydratedFourRowTemplate;
+      content = template?.body?.text || '[Mensagem de Template]';
     }
   }
 
