@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { OAuthRedirectHandler } from "./components/OAuthRedirectHandler";
 import ErrorBoundary from "./components/ErrorBoundary";
 import HomePage from "./pages/HomePage";
 import HowItWorksPage from "./pages/HowItWorksPage";
@@ -40,6 +41,7 @@ import DiagnosticResponsesPage from "./pages/DiagnosticResponsesPage";
 import AdminSetupPage from "./pages/AdminSetupPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
+import InstagramOAuthCallback from "./pages/InstagramOAuthCallback";
 
 // Portal pages
 import PortalLandingPage from "./pages/portal/PortalLandingPage";
@@ -198,6 +200,7 @@ const App = () => (
           <Sonner />
           <HashRouter>
             <ScrollToTop />
+            <OAuthRedirectHandler />
             <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
@@ -232,6 +235,9 @@ const App = () => (
             <Route path="/diagnostic-responses" element={<DiagnosticResponsesPage />} />
             <Route path="/admin-setup" element={<AdminSetupPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            
+            {/* OAuth Callbacks */}
+            <Route path="/auth/instagram/callback" element={<InstagramOAuthCallback />} />
             
             {/* Onboarding CS */}
             <Route path="/onboarding" element={<OnboardingPage />} />
