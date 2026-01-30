@@ -68,7 +68,20 @@ export const ImportFromStevoModal = ({
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
 
-      const allInstances: StevoInstance[] = data?.instances || [];
+      // The API returns instances directly in data.instances or as the array itself
+      let rawInstances = data?.instances || data || [];
+      if (!Array.isArray(rawInstances)) rawInstances = [];
+
+      // Map Evolution API response to our interface
+      const allInstances: StevoInstance[] = rawInstances.map((inst: any) => ({
+        instanceName: inst.name || inst.instanceName,
+        instanceId: inst.id,
+        status: inst.connectionStatus || inst.status,
+        owner: inst.ownerJid,
+        profileName: inst.profileName,
+        profilePictureUrl: inst.profilePicUrl,
+        number: inst.number || (inst.ownerJid ? inst.ownerJid.split("@")[0] : null),
+      }));
       
       // Filter out instances that are already imported
       const availableInstances = allInstances.filter(
