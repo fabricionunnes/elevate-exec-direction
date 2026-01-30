@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import {
   Select,
   SelectContent,
@@ -44,6 +45,62 @@ interface LeadCustomFieldsTabProps {
   leadData: Record<string, any>;
   onUpdate: () => void;
 }
+
+// Wrapper component for currency field with debounced save
+const CurrencyFieldWrapper = ({
+  field,
+  value,
+  onSave,
+  isSaving,
+}: {
+  field: CustomField;
+  value: string;
+  onSave: (field: CustomField, value: string) => void;
+  isSaving: boolean;
+}) => {
+  const [localValue, setLocalValue] = useState<number>(value ? parseFloat(value) : 0);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setLocalValue(value ? parseFloat(value) : 0);
+  }, [value]);
+
+  const handleChange = useCallback((newValue: number) => {
+    setLocalValue(newValue);
+    
+    // Debounce the save
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      onSave(field, newValue.toString());
+    }, 500);
+  }, [field, onSave]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
+  return (
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+        R$
+      </span>
+      <CurrencyInput
+        value={localValue}
+        onChange={handleChange}
+        disabled={isSaving}
+        className="pl-10"
+        placeholder="0,00"
+      />
+    </div>
+  );
+};
 
 export const LeadCustomFieldsTab = ({
   leadId,
@@ -278,12 +335,24 @@ export const LeadCustomFieldsTab = ({
           </div>
         );
       case "number":
+        // Check if this is a currency field (opportunity_value)
+        const isCurrencyField = field.field_name === "opportunity_value";
+        if (isCurrencyField) {
+          return (
+            <CurrencyFieldWrapper
+              field={field}
+              value={value}
+              onSave={handleFieldChange}
+              isSaving={isSaving}
+            />
+          );
+        }
         return (
           <Input
             type="number"
             value={value}
             onChange={(e) => handleFieldChange(field, e.target.value)}
-            placeholder="R$ 0,00"
+            placeholder="0"
             disabled={isSaving}
           />
         );
