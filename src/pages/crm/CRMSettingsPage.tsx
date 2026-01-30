@@ -154,6 +154,7 @@ export const CRMSettingsPage = () => {
   const [newOriginName, setNewOriginName] = useState("");
   const [newOriginGroupId, setNewOriginGroupId] = useState<string>("");
   const [newOriginPipelineId, setNewOriginPipelineId] = useState<string>("");
+  const [editPipelineOriginGroupId, setEditPipelineOriginGroupId] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -226,6 +227,7 @@ export const CRMSettingsPage = () => {
     if (!editingPipeline || !newPipelineName.trim()) return;
     setSaving(true);
     try {
+      // Update pipeline basic info
       const { error } = await supabase
         .from("crm_pipelines")
         .update({ 
@@ -235,11 +237,46 @@ export const CRMSettingsPage = () => {
         .eq("id", editingPipeline.id);
       
       if (error) throw error;
+
+      // Handle origin group association
+      const existingOrigin = origins.find(o => o.pipeline_id === editingPipeline.id);
+      
+      if (editPipelineOriginGroupId) {
+        if (existingOrigin) {
+          // Update existing origin to new group
+          const { error: originError } = await supabase
+            .from("crm_origins")
+            .update({ group_id: editPipelineOriginGroupId })
+            .eq("id", existingOrigin.id);
+          if (originError) throw originError;
+        } else {
+          // Create new origin linking pipeline to group
+          const maxOrder = Math.max(0, ...origins.map(o => o.sort_order));
+          const { error: originError } = await supabase
+            .from("crm_origins")
+            .insert({ 
+              name: newPipelineName,
+              pipeline_id: editingPipeline.id,
+              group_id: editPipelineOriginGroupId,
+              sort_order: maxOrder + 1
+            });
+          if (originError) throw originError;
+        }
+      } else if (existingOrigin) {
+        // Remove origin group association (set to null)
+        const { error: originError } = await supabase
+          .from("crm_origins")
+          .update({ group_id: null })
+          .eq("id", existingOrigin.id);
+        if (originError) throw originError;
+      }
+
       toast.success("Pipeline atualizado");
       setEditPipelineOpen(false);
       setEditingPipeline(null);
       setNewPipelineName("");
       setNewPipelineDesc("");
+      setEditPipelineOriginGroupId("");
       loadData();
     } catch (error: any) {
       toast.error(error.message || "Erro ao atualizar pipeline");
@@ -314,6 +351,9 @@ export const CRMSettingsPage = () => {
     setEditingPipeline(pipeline);
     setNewPipelineName(pipeline.name);
     setNewPipelineDesc(pipeline.description || "");
+    // Find current origin group for this pipeline
+    const originForPipeline = origins.find(o => o.pipeline_id === pipeline.id);
+    setEditPipelineOriginGroupId(originForPipeline?.group_id || "");
     setEditPipelineOpen(true);
   };
 
@@ -676,6 +716,7 @@ export const CRMSettingsPage = () => {
                 setEditingPipeline(null);
                 setNewPipelineName("");
                 setNewPipelineDesc("");
+                setEditPipelineOriginGroupId("");
               }
             }}>
               <DialogContent>
@@ -698,6 +739,28 @@ export const CRMSettingsPage = () => {
                       onChange={(e) => setNewPipelineDesc(e.target.value)}
                       placeholder="Descrição opcional..."
                     />
+                  </div>
+                  <div>
+                    <Label>Grupo de Origem</Label>
+                    <Select
+                      value={editPipelineOriginGroupId}
+                      onValueChange={setEditPipelineOriginGroupId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um grupo (opcional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Nenhum grupo</SelectItem>
+                        {originGroups.filter(g => g.is_active).map(group => (
+                          <SelectItem key={group.id} value={group.id}>
+                            {group.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Vincule este pipeline a um grupo de origens para organização
+                    </p>
                   </div>
                   <Button onClick={handleUpdatePipeline} disabled={saving} className="w-full">
                     {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
