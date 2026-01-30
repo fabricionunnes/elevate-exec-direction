@@ -25,7 +25,6 @@ import {
   Image,
   Clock,
   CheckCheck,
-  ChevronRight,
   MessageSquare,
   Settings,
   RefreshCw,
@@ -40,6 +39,7 @@ import { toast } from "sonner";
 import { ServiceConfigDialog } from "@/components/crm/service-config/ServiceConfigDialog";
 import { useWhatsAppConversations, WhatsAppConversation } from "@/hooks/useWhatsAppConversations";
 import { useWhatsAppMessages, WhatsAppMessage } from "@/hooks/useWhatsAppMessages";
+import { ConversationSidebar } from "@/components/crm/inbox/ConversationSidebar";
 
 export const CRMInboxPage = () => {
   const { staffId, staffName, isAdmin } = useCRMContext();
@@ -49,6 +49,7 @@ export const CRMInboxPage = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [connectedInstances, setConnectedInstances] = useState<string[]>([]);
+  const [projectId, setProjectId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Use real data hooks
@@ -71,19 +72,31 @@ export const CRMInboxPage = () => {
     refetch: refetchMessages,
   } = useWhatsAppMessages(selectedConversation?.id || null);
 
-  // Fetch connected instances
+  // Fetch connected instances and project ID
   useEffect(() => {
-    const fetchInstances = async () => {
-      const { data } = await supabase
+    const fetchInitialData = async () => {
+      // Fetch instances
+      const { data: instances } = await supabase
         .from("whatsapp_instances")
         .select("id, instance_name, status")
         .eq("status", "connected");
       
-      if (data) {
-        setConnectedInstances(data.map(i => i.id));
+      if (instances) {
+        setConnectedInstances(instances.map((i: any) => i.id));
+      }
+
+      // Get project ID from staff/company chain
+      const { data: staff } = await supabase
+        .from("onboarding_staff")
+        .select("company:onboarding_companies(projects:onboarding_projects(id))")
+        .maybeSingle();
+      
+      const projects = (staff?.company as any)?.projects;
+      if (projects && projects.length > 0) {
+        setProjectId(projects[0].id);
       }
     };
-    fetchInstances();
+    fetchInitialData();
   }, []);
 
   // Scroll to bottom when messages change
@@ -428,97 +441,14 @@ export const CRMInboxPage = () => {
         </div>
       )}
 
-      {/* Right Sidebar - Lead Info */}
+      {/* Right Sidebar - Lead Info & Actions */}
       {selectedConversation && (
-        <div className="w-[320px] border-l border-border bg-card flex flex-col">
-          <div className="p-4 border-b border-border">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-muted-foreground uppercase">Contato</span>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={selectedConversation.contact?.profile_picture_url || undefined} />
-                <AvatarFallback>
-                  {(selectedConversation.contact?.name || selectedConversation.contact?.phone || "?").slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <p className="font-medium">
-                  {selectedConversation.contact?.name || "Sem nome"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {selectedConversation.contact?.phone}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="p-3 border-b border-border flex flex-wrap gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Phone className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Video className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Clock className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Conversation Status */}
-          <div className="p-4 border-b border-border">
-            <p className="text-xs text-muted-foreground uppercase mb-2">Status da Conversa</p>
-            <div className="flex gap-2">
-              <Button 
-                variant={selectedConversation.status === "open" ? "default" : "outline"}
-                size="sm" 
-                className="flex-1"
-                onClick={() => reopenConversation(selectedConversation.id)}
-              >
-                Aberto
-              </Button>
-              <Button 
-                variant={selectedConversation.status === "closed" ? "default" : "outline"}
-                size="sm" 
-                className="flex-1"
-                onClick={() => closeConversation(selectedConversation.id)}
-              >
-                Fechado
-              </Button>
-            </div>
-          </div>
-
-          {/* Assigned Staff */}
-          <div className="p-4 border-b border-border">
-            <p className="text-xs text-muted-foreground uppercase mb-2">Atribuído a</p>
-            {selectedConversation.assigned_staff ? (
-              <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={selectedConversation.assigned_staff.avatar_url || undefined} />
-                  <AvatarFallback>
-                    {selectedConversation.assigned_staff.name.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm">{selectedConversation.assigned_staff.name}</span>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Nenhum atendente atribuído</p>
-            )}
-          </div>
-
-          {/* Lead Link */}
-          {selectedConversation.lead_id && (
-            <div className="p-4">
-              <p className="text-xs text-muted-foreground uppercase mb-2">Lead Vinculado</p>
-              <Button variant="outline" size="sm" className="w-full">
-                Ver Lead <ChevronRight className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
-          )}
-        </div>
+        <ConversationSidebar 
+          conversation={selectedConversation}
+          projectId={projectId || undefined}
+          onLeadCreated={() => refetchConversations()}
+          onContactUpdated={() => refetchConversations()}
+        />
       )}
 
       {/* Config Dialog */}
