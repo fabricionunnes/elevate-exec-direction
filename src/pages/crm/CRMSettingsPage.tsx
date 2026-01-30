@@ -134,11 +134,13 @@ export const CRMSettingsPage = () => {
   const [editStageOpen, setEditStageOpen] = useState(false);
   const [editOriginGroupOpen, setEditOriginGroupOpen] = useState(false);
   const [editOriginOpen, setEditOriginOpen] = useState(false);
+  const [editReasonOpen, setEditReasonOpen] = useState(false);
   const [stageActionsOpen, setStageActionsOpen] = useState(false);
   const [editingPipeline, setEditingPipeline] = useState<Pipeline | null>(null);
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
   const [editingOriginGroup, setEditingOriginGroup] = useState<OriginGroup | null>(null);
   const [editingOrigin, setEditingOrigin] = useState<Origin | null>(null);
+  const [editingReason, setEditingReason] = useState<LossReason | null>(null);
   const [actionsStage, setActionsStage] = useState<Stage | null>(null);
 
   // Form states
@@ -434,6 +436,49 @@ export const CRMSettingsPage = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleUpdateReason = async () => {
+    if (!editingReason || !newReasonName.trim()) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("crm_loss_reasons")
+        .update({ name: newReasonName })
+        .eq("id", editingReason.id);
+      
+      if (error) throw error;
+      toast.success("Motivo atualizado");
+      setEditReasonOpen(false);
+      setEditingReason(null);
+      setNewReasonName("");
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar motivo");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleReasonActive = async (reason: LossReason) => {
+    try {
+      const { error } = await supabase
+        .from("crm_loss_reasons")
+        .update({ is_active: !reason.is_active })
+        .eq("id", reason.id);
+      
+      if (error) throw error;
+      toast.success(reason.is_active ? "Motivo desativado" : "Motivo ativado");
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar motivo");
+    }
+  };
+
+  const openEditReason = (reason: LossReason) => {
+    setEditingReason(reason);
+    setNewReasonName(reason.name);
+    setEditReasonOpen(true);
   };
 
   const handleCreateTag = async () => {
@@ -1455,22 +1500,64 @@ export const CRMSettingsPage = () => {
                 {lossReasons.map(reason => (
                   <div
                     key={reason.id}
-                    className="p-3 rounded-lg border border-border flex items-center justify-between"
+                    className={`p-3 rounded-lg border border-border flex items-center justify-between ${!reason.is_active ? 'opacity-50 bg-muted/50' : ''}`}
                   >
-                    <span>{reason.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => setDeleteDialog({ type: "reason", id: reason.id, name: reason.name })}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-3">
+                      <span className={!reason.is_active ? 'line-through' : ''}>{reason.name}</span>
+                      {!reason.is_active && (
+                        <Badge variant="secondary" className="text-xs">Inativo</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={reason.is_active}
+                        onCheckedChange={() => handleToggleReasonActive(reason)}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => openEditReason(reason)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => setDeleteDialog({ type: "reason", id: reason.id, name: reason.name })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
+
+          {/* Edit Reason Dialog */}
+          <Dialog open={editReasonOpen} onOpenChange={setEditReasonOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Editar Motivo de Perda</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>Nome</Label>
+                  <Input
+                    value={newReasonName}
+                    onChange={(e) => setNewReasonName(e.target.value)}
+                    placeholder="Ex: Preço, Concorrente..."
+                  />
+                </div>
+                <Button onClick={handleUpdateReason} disabled={saving} className="w-full">
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Salvar
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Tags Tab */}
