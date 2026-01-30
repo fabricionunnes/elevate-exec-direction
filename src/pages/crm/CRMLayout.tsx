@@ -129,7 +129,7 @@ export const CRMLayout = () => {
     return null;
   }
 
-  const isAdmin = staffRole === "admin" || staffRole === "head_comercial";
+  const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
   const filteredNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
 
   const NavContent = () => (
