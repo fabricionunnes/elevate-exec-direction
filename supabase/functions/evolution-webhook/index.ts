@@ -445,6 +445,9 @@ async function handleQRCodeUpdate(supabase: any, instanceId: string, data: any) 
 }
 
 async function getOrCreateContact(supabase: any, phone: string, name?: string) {
+  // Check if this is a group (18+ digit numbers are WhatsApp groups)
+  const isGroup = phone.length >= 18;
+  
   // Try to find existing contact
   const { data: existingContact } = await supabase
     .from('crm_whatsapp_contacts')
@@ -453,22 +456,36 @@ async function getOrCreateContact(supabase: any, phone: string, name?: string) {
     .single();
 
   if (existingContact) {
-    // Update name if provided and different
-    if (name && name !== existingContact.name) {
+    // Only update name if:
+    // 1. A new name is provided (pushName)
+    // 2. It's NOT a group (groups should not be renamed by pushName)
+    // 3. The current name is still the default (same as phone number)
+    // This preserves any manual renames done in the system
+    const shouldUpdateName = name && 
+                             !isGroup && 
+                             existingContact.name === existingContact.phone;
+    
+    if (shouldUpdateName) {
+      console.log(`Updating contact name from "${existingContact.name}" to "${name}"`);
       await supabase
         .from('crm_whatsapp_contacts')
         .update({ name: name })
         .eq('id', existingContact.id);
+      existingContact.name = name;
     }
     return existingContact;
   }
 
   // Create new contact
+  // For groups, use the phone as name (no pushName rename)
+  // For individual contacts, use pushName if available
+  const contactName = isGroup ? phone : (name || phone);
+  
   const { data: newContact, error } = await supabase
     .from('crm_whatsapp_contacts')
     .insert({
       phone: phone,
-      name: name || phone,
+      name: contactName,
     })
     .select()
     .single();
@@ -478,6 +495,7 @@ async function getOrCreateContact(supabase: any, phone: string, name?: string) {
     throw error;
   }
 
+  console.log(`Created new contact: ${phone}, name: ${contactName}, isGroup: ${isGroup}`);
   return newContact;
 }
 
