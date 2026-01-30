@@ -9435,6 +9435,7 @@ export type Database = {
         Row: {
           city: string | null
           closed_at: string | null
+          closer_staff_id: string | null
           company: string | null
           created_at: string
           created_by: string | null
@@ -9469,6 +9470,7 @@ export type Database = {
         Insert: {
           city?: string | null
           closed_at?: string | null
+          closer_staff_id?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null
@@ -9503,6 +9505,7 @@ export type Database = {
         Update: {
           city?: string | null
           closed_at?: string | null
+          closer_staff_id?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null
@@ -9535,6 +9538,13 @@ export type Database = {
           urgency?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_leads_closer_staff_id_fkey"
+            columns: ["closer_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "crm_leads_created_by_fkey"
             columns: ["created_by"]

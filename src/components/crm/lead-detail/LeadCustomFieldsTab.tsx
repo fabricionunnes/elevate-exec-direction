@@ -102,6 +102,45 @@ const CurrencyFieldWrapper = ({
   );
 };
 
+// Staff select wrapper for closer and SDR fields
+const StaffSelectWrapper = ({
+  field,
+  value,
+  onSave,
+  isSaving,
+  staffList,
+}: {
+  field: CustomField;
+  value: string;
+  onSave: (field: CustomField, value: string) => void;
+  isSaving: boolean;
+  staffList: { id: string; name: string; role: string }[];
+}) => {
+  const selectedStaff = staffList.find(s => s.id === value);
+  
+  return (
+    <Select
+      value={value || "none"}
+      onValueChange={(v) => onSave(field, v === "none" ? "" : v)}
+      disabled={isSaving}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder="Selecionar">
+          {selectedStaff?.name || "Selecionar"}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">Nenhum</SelectItem>
+        {staffList.map((staff) => (
+          <SelectItem key={staff.id} value={staff.id}>
+            {staff.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
 export const LeadCustomFieldsTab = ({
   leadId,
   context,
@@ -114,10 +153,37 @@ export const LeadCustomFieldsTab = ({
   const [saving, setSaving] = useState<string | null>(null);
   const [hideEmptyFields, setHideEmptyFields] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["Informações Gerais"]));
+  const [closerStaff, setCloserStaff] = useState<{ id: string; name: string; role: string }[]>([]);
+  const [sdrStaff, setSdrStaff] = useState<{ id: string; name: string; role: string }[]>([]);
 
   useEffect(() => {
     loadFields();
+    if (context === "deal") {
+      loadStaff();
+    }
   }, [leadId, context]);
+
+  const loadStaff = async () => {
+    // Load closers
+    const { data: closers } = await supabase
+      .from("onboarding_staff")
+      .select("id, name, role")
+      .eq("is_active", true)
+      .eq("role", "closer")
+      .order("name");
+    
+    setCloserStaff(closers || []);
+
+    // Load SDRs, Social Setters, and BDRs
+    const { data: sdrs } = await supabase
+      .from("onboarding_staff")
+      .select("id, name, role")
+      .eq("is_active", true)
+      .in("role", ["sdr", "social_setter", "bdr"])
+      .order("name");
+    
+    setSdrStaff(sdrs || []);
+  };
 
   const loadFields = async () => {
     setLoading(true);
@@ -168,6 +234,8 @@ export const LeadCustomFieldsTab = ({
       opportunity_value: "opportunity_value",
       origin_name: "origin",
       notes: "notes",
+      closer_staff_id: "closer_staff_id",
+      sdr_staff_id: "sdr_staff_id",
     };
 
     const key = mapping[fieldName];
@@ -202,6 +270,8 @@ export const LeadCustomFieldsTab = ({
         employee_count: "employee_count",
         opportunity_value: "opportunity_value",
         notes: "notes",
+        closer_staff_id: "closer_staff_id",
+        sdr_staff_id: "sdr_staff_id",
       };
 
       const dbField = fieldMapping[field.field_name];
@@ -210,6 +280,13 @@ export const LeadCustomFieldsTab = ({
       setSaving(field.id);
       try {
         const updateData: Record<string, any> = {};
+        if (field.field_type === "number") {
+          updateData[dbField] = value ? parseFloat(value) : null;
+        } else if (field.field_name === "closer_staff_id" || field.field_name === "sdr_staff_id") {
+          updateData[dbField] = value || null;
+        } else {
+          updateData[dbField] = value || null;
+        }
         if (field.field_type === "number") {
           updateData[dbField] = value ? parseFloat(value) : null;
         } else {
@@ -298,6 +375,29 @@ export const LeadCustomFieldsTab = ({
           />
         );
       case "select":
+        // Special handling for closer and SDR fields
+        if (field.field_name === "closer_staff_id") {
+          return (
+            <StaffSelectWrapper
+              field={field}
+              value={value}
+              onSave={handleFieldChange}
+              isSaving={isSaving}
+              staffList={closerStaff}
+            />
+          );
+        }
+        if (field.field_name === "sdr_staff_id") {
+          return (
+            <StaffSelectWrapper
+              field={field}
+              value={value}
+              onSave={handleFieldChange}
+              isSaving={isSaving}
+              staffList={sdrStaff}
+            />
+          );
+        }
         return (
           <Select
             value={value}
