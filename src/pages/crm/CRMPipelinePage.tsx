@@ -1,13 +1,12 @@
-import { useEffect, useState, useCallback } from "react";
-import { useOutletContext, Link } from "react-router-dom";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -17,15 +16,16 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Plus, 
-  Search, 
   Phone, 
+  MessageSquare,
   Mail, 
   Building2, 
   Clock,
   AlertTriangle,
   DollarSign,
   GripVertical,
-  Loader2
+  Loader2,
+  MoreHorizontal,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -33,6 +33,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
 import { createStageActivities } from "@/hooks/useStageActions";
+import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
+import { useCRMContext } from "./CRMLayout";
 
 interface Stage {
   id: string;
@@ -51,24 +53,46 @@ interface Lead {
   phone: string | null;
   email: string | null;
   stage_id: string;
+  origin_id: string | null;
+  owner_staff_id: string | null;
   opportunity_value: number | null;
   probability: number | null;
   last_activity_at: string | null;
   next_activity_at: string | null;
   urgency: string | null;
   created_at: string;
+  origin?: { name: string } | null;
+  owner?: { name: string } | null;
+  tags?: { tag: { id: string; name: string; color: string } }[];
 }
 
+const defaultFilters: CRMFilters = {
+  search: "",
+  dateRange: undefined,
+  fields: [],
+  tags: [],
+  owners: [],
+  status: [],
+  stages: [],
+  origins: [],
+  valueMin: null,
+  valueMax: null,
+};
+
 export const CRMPipelinePage = () => {
-  const { isAdmin } = useOutletContext<{ staffRole: string; isAdmin: boolean }>();
+  const { selectedOrigin, selectedPipeline, setSelectedPipeline, isAdmin } = useCRMContext();
   const [pipelines, setPipelines] = useState<any[]>([]);
-  const [selectedPipeline, setSelectedPipeline] = useState<string>("");
   const [stages, setStages] = useState<Stage[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState<CRMFilters>(defaultFilters);
   const [loading, setLoading] = useState(true);
   const [addLeadOpen, setAddLeadOpen] = useState(false);
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
+  
+  // Filter options
+  const [tagOptions, setTagOptions] = useState<{ id: string; name: string; color: string }[]>([]);
+  const [ownerOptions, setOwnerOptions] = useState<{ id: string; name: string }[]>([]);
+  const [originOptions, setOriginOptions] = useState<{ id: string; name: string }[]>([]);
   
   // Stage move dialog state
   const [stageMoveDialog, setStageMoveDialog] = useState<{
@@ -93,12 +117,24 @@ export const CRMPipelinePage = () => {
     }
   };
 
+  const loadFilterOptions = async () => {
+    const [tagsRes, ownersRes, originsRes] = await Promise.all([
+      supabase.from("crm_tags").select("id, name, color").eq("is_active", true),
+      supabase.from("onboarding_staff").select("id, name").eq("is_active", true)
+        .in("role", ["master", "admin", "head_comercial", "closer", "sdr"]),
+      supabase.from("crm_origins").select("id, name").eq("is_active", true),
+    ]);
+
+    setTagOptions(tagsRes.data || []);
+    setOwnerOptions(ownersRes.data || []);
+    setOriginOptions(originsRes.data || []);
+  };
+
   const loadStagesAndLeads = useCallback(async () => {
     if (!selectedPipeline) return;
 
     setLoading(true);
     try {
-      // Load stages
       const { data: stagesData } = await supabase
         .from("crm_stages")
         .select("*")
@@ -107,13 +143,23 @@ export const CRMPipelinePage = () => {
 
       setStages(stagesData || []);
 
-      // Load leads
-      const { data: leadsData } = await supabase
+      let query = supabase
         .from("crm_leads")
-        .select("*")
+        .select(`
+          *,
+          origin:crm_origins(name),
+          owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name),
+          tags:crm_lead_tags(tag:crm_tags(id, name, color))
+        `)
         .eq("pipeline_id", selectedPipeline)
         .order("created_at", { ascending: false });
 
+      // Apply origin filter from sidebar
+      if (selectedOrigin) {
+        query = query.eq("origin_id", selectedOrigin);
+      }
+
+      const { data: leadsData } = await query;
       setLeads(leadsData || []);
     } catch (error) {
       console.error("Error loading pipeline data:", error);
@@ -121,10 +167,11 @@ export const CRMPipelinePage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedPipeline]);
+  }, [selectedPipeline, selectedOrigin]);
 
   useEffect(() => {
     loadPipelines();
+    loadFilterOptions();
   }, []);
 
   useEffect(() => {
@@ -156,6 +203,51 @@ export const CRMPipelinePage = () => {
     };
   }, [selectedPipeline, loadStagesAndLeads]);
 
+  // Filter leads
+  const filteredLeads = useMemo(() => {
+    return leads.filter(lead => {
+      // Search filter
+      if (filters.search) {
+        const search = filters.search.toLowerCase();
+        const matchesSearch = 
+          lead.name.toLowerCase().includes(search) ||
+          lead.company?.toLowerCase().includes(search) ||
+          lead.email?.toLowerCase().includes(search) ||
+          lead.phone?.includes(search);
+        if (!matchesSearch) return false;
+      }
+
+      // Tags filter
+      if (filters.tags.length > 0) {
+        const leadTagIds = lead.tags?.map(t => t.tag.id) || [];
+        if (!filters.tags.some(tagId => leadTagIds.includes(tagId))) return false;
+      }
+
+      // Owner filter
+      if (filters.owners.length > 0) {
+        if (!lead.owner_staff_id || !filters.owners.includes(lead.owner_staff_id)) return false;
+      }
+
+      // Stage filter
+      if (filters.stages.length > 0) {
+        if (!filters.stages.includes(lead.stage_id)) return false;
+      }
+
+      // Value filter
+      if (filters.valueMin !== null && (lead.opportunity_value || 0) < filters.valueMin) return false;
+      if (filters.valueMax !== null && (lead.opportunity_value || 0) > filters.valueMax) return false;
+
+      // Date filter
+      if (filters.dateRange?.from) {
+        const leadDate = new Date(lead.created_at);
+        if (leadDate < filters.dateRange.from) return false;
+        if (filters.dateRange.to && leadDate > filters.dateRange.to) return false;
+      }
+
+      return true;
+    });
+  }, [leads, filters]);
+
   const handleDragStart = (e: React.DragEvent, lead: Lead) => {
     setDraggedLead(lead);
     e.dataTransfer.effectAllowed = "move";
@@ -174,10 +266,8 @@ export const CRMPipelinePage = () => {
       return;
     }
 
-    // Find target stage name
     const targetStage = stages.find(s => s.id === stageId);
     
-    // Open dialog to ask for note
     setStageMoveDialog({
       open: true,
       leadId: draggedLead.id,
@@ -193,7 +283,6 @@ export const CRMPipelinePage = () => {
     
     setMovingLead(true);
     
-    // Optimistic update
     setLeads(prev =>
       prev.map(l =>
         l.id === stageMoveDialog.leadId ? { ...l, stage_id: stageMoveDialog.targetStageId } : l
@@ -201,7 +290,6 @@ export const CRMPipelinePage = () => {
     );
 
     try {
-      // Update lead stage
       const { error } = await supabase
         .from("crm_leads")
         .update({ stage_id: stageMoveDialog.targetStageId })
@@ -209,7 +297,6 @@ export const CRMPipelinePage = () => {
 
       if (error) throw error;
       
-      // Add note if provided
       if (stageNote.trim()) {
         await supabase
           .from("crm_lead_history")
@@ -222,7 +309,6 @@ export const CRMPipelinePage = () => {
           });
       }
       
-      // Create automatic activities for this stage
       await createStageActivities(stageMoveDialog.leadId, stageMoveDialog.targetStageId);
       
       toast.success("Lead movido com sucesso");
@@ -230,22 +316,11 @@ export const CRMPipelinePage = () => {
     } catch (error) {
       console.error("Error moving lead:", error);
       toast.error("Erro ao mover lead");
-      loadStagesAndLeads(); // Revert
+      loadStagesAndLeads();
     } finally {
       setMovingLead(false);
     }
   };
-
-  const filteredLeads = leads.filter(lead => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    return (
-      lead.name.toLowerCase().includes(search) ||
-      lead.company?.toLowerCase().includes(search) ||
-      lead.email?.toLowerCase().includes(search) ||
-      lead.phone?.includes(search)
-    );
-  });
 
   const getLeadsByStage = (stageId: string) => {
     return filteredLeads.filter(lead => lead.stage_id === stageId);
@@ -273,52 +348,50 @@ export const CRMPipelinePage = () => {
     return stageLeads.reduce((sum, lead) => sum + (lead.opportunity_value || 0), 0);
   };
 
+  const selectedOriginName = selectedOrigin 
+    ? originOptions.find(o => o.id === selectedOrigin)?.name 
+    : "Negócio";
+
+  const stageOptions = stages.map(s => ({ id: s.id, name: s.name, color: s.color }));
+
   if (loading && !stages.length) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-screen">
+      <div className="flex-1 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-border bg-card flex flex-col sm:flex-row sm:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <Select value={selectedPipeline} onValueChange={setSelectedPipeline}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Selecione um pipeline" />
-            </SelectTrigger>
-            <SelectContent>
-              {pipelines.map(p => (
-                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar leads..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 w-[200px]"
-            />
-          </div>
-        </div>
-
-        <div className="sm:ml-auto">
-          <Button onClick={() => setAddLeadOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Lead
+    <div className="h-full flex flex-col">
+      {/* Origin Header */}
+      <div className="px-4 pt-4 pb-2">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">Negócios da origem</p>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold">
+            {selectedOriginName || "Funil"}
+          </h1>
+          <Button onClick={() => setAddLeadOpen(true)} className="gap-2">
+            Negócio <Plus className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
+      {/* Filters Bar */}
+      <CRMFiltersBar
+        filters={filters}
+        onFiltersChange={setFilters}
+        tagOptions={tagOptions}
+        ownerOptions={ownerOptions}
+        stageOptions={stageOptions}
+        originOptions={originOptions}
+        totalCount={filteredLeads.length}
+        entityName={selectedOriginName || "Negócio"}
+      />
+
       {/* Kanban Board */}
-      <div className="flex-1 overflow-x-auto p-4">
-        <div className="flex gap-4 h-full min-w-max">
+      <div className="flex-1 overflow-x-auto px-4 pb-4">
+        <div className="flex gap-3 h-full min-w-max">
           {stages.map(stage => {
             const stageLeads = getLeadsByStage(stage.id);
             const stageTotal = getStageTotal(stage.id);
@@ -326,25 +399,33 @@ export const CRMPipelinePage = () => {
             return (
               <div
                 key={stage.id}
-                className="w-[300px] flex-shrink-0 flex flex-col bg-muted/30 rounded-lg"
+                className="w-[280px] flex-shrink-0 flex flex-col bg-muted/30 rounded-lg"
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, stage.id)}
               >
                 {/* Stage Header */}
                 <div 
-                  className="p-3 border-b border-border flex items-center gap-2"
-                  style={{ borderTopColor: stage.color, borderTopWidth: 3 }}
+                  className="p-3 flex items-center gap-2 rounded-t-lg"
+                  style={{ borderTop: `3px solid ${stage.color}` }}
                 >
-                  <span className="font-medium flex-1">{stage.name}</span>
-                  <Badge variant="secondary" className="text-xs">
+                  <span className="font-medium text-sm flex-1">{stage.name}</span>
+                  <Badge variant="secondary" className="text-xs h-5">
                     {stageLeads.length}
                   </Badge>
                   {stageTotal > 0 && (
-                    <Badge variant="outline" className="text-xs text-green-600">
+                    <span className="text-xs text-muted-foreground">
                       {formatCurrency(stageTotal)}
-                    </Badge>
+                    </span>
                   )}
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
                 </div>
+
+                {/* Add Deal Button */}
+                <button className="mx-2 py-2 text-sm text-muted-foreground hover:text-foreground border border-dashed border-border rounded-md hover:border-primary/50 transition-colors">
+                  + Adicionar negócio
+                </button>
 
                 {/* Lead Cards */}
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -355,12 +436,18 @@ export const CRMPipelinePage = () => {
                       draggable
                       onDragStart={(e) => handleDragStart(e, lead)}
                       className={cn(
-                        "block bg-card border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-all",
+                        "block bg-card border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-all shadow-sm",
                         draggedLead?.id === lead.id && "opacity-50"
                       )}
                     >
+                      {/* Origin Tag */}
+                      {lead.origin?.name && (
+                        <Badge variant="secondary" className="text-[10px] mb-2 bg-pink-100 text-pink-700 border-0">
+                          novo contato via {lead.origin.name}
+                        </Badge>
+                      )}
+
                       <div className="flex items-start gap-2">
-                        <GripVertical className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-sm truncate">{lead.name}</p>
@@ -372,41 +459,65 @@ export const CRMPipelinePage = () => {
                           </div>
 
                           {lead.company && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                               <Building2 className="h-3 w-3" />
                               <span className="truncate">{lead.company}</span>
                             </div>
                           )}
 
-                          <div className="flex items-center gap-3 mt-2">
-                            {lead.opportunity_value && (
-                              <div className="flex items-center gap-1 text-xs text-green-600">
-                                <DollarSign className="h-3 w-3" />
-                                {formatCurrency(lead.opportunity_value)}
-                              </div>
-                            )}
-
-                            {isOverdue(lead) && (
-                              <div className="flex items-center gap-1 text-xs text-red-500">
-                                <AlertTriangle className="h-3 w-3" />
-                                Atrasado
-                              </div>
-                            )}
-                          </div>
-
-                          {lead.next_activity_at && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                              <Clock className="h-3 w-3" />
-                              {format(new Date(lead.next_activity_at), "dd/MM HH:mm", { locale: ptBR })}
+                          {/* Tags */}
+                          {lead.tags && lead.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {lead.tags.slice(0, 2).map(t => (
+                                <Badge
+                                  key={t.tag.id}
+                                  variant="outline"
+                                  className="text-[10px] px-1.5"
+                                  style={{ borderColor: t.tag.color, color: t.tag.color }}
+                                >
+                                  {t.tag.name}
+                                </Badge>
+                              ))}
                             </div>
                           )}
+
+                          {/* Footer with icons */}
+                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border">
+                            <div className="flex items-center gap-1">
+                              {lead.owner?.name && (
+                                <Avatar className="h-5 w-5">
+                                  <AvatarFallback className="text-[10px]">
+                                    {lead.owner.name.slice(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                              )}
+                              {lead.phone && <Phone className="h-3 w-3 text-muted-foreground" />}
+                              {lead.email && <Mail className="h-3 w-3 text-muted-foreground" />}
+                              <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                            </div>
+                            
+                            {lead.opportunity_value && (
+                              <span className="text-xs text-green-600 ml-auto">
+                                {formatCurrency(lead.opportunity_value)}
+                              </span>
+                            )}
+
+                            {lead.last_activity_at && (
+                              <span className="text-[10px] text-muted-foreground">
+                                {formatDistanceToNow(new Date(lead.last_activity_at), { 
+                                  locale: ptBR, 
+                                  addSuffix: false 
+                                })}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </Link>
                   ))}
 
                   {stageLeads.length === 0 && (
-                    <div className="text-center py-8 text-sm text-muted-foreground">
+                    <div className="text-center py-6 text-xs text-muted-foreground">
                       Arraste leads para cá
                     </div>
                   )}
@@ -420,7 +531,7 @@ export const CRMPipelinePage = () => {
       <AddLeadDialog
         open={addLeadOpen}
         onOpenChange={setAddLeadOpen}
-        pipelineId={selectedPipeline}
+        pipelineId={selectedPipeline || ""}
         onSuccess={loadStagesAndLeads}
       />
 
@@ -430,7 +541,6 @@ export const CRMPipelinePage = () => {
         onOpenChange={(open) => {
           if (!open && !movingLead) {
             setStageMoveDialog({ open: false, leadId: "", targetStageId: "", targetStageName: "" });
-            // Revert optimistic update if cancelled
             loadStagesAndLeads();
           }
         }}

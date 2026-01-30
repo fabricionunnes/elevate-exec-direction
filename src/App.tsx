@@ -155,6 +155,7 @@ import {
   CRMActivitiesPage,
   CRMReportsPage,
   CRMSettingsPage,
+  CRMInboxPage,
 } from "./pages/crm";
 
 // Customer Points Pages
@@ -316,6 +317,7 @@ const App = () => (
               <Route path="leads" element={<CRMLeadsPage />} />
               <Route path="leads/:id" element={<CRMLeadDetailPage />} />
               <Route path="activities" element={<CRMActivitiesPage />} />
+              <Route path="inbox" element={<CRMInboxPage />} />
               <Route path="reports" element={<CRMReportsPage />} />
               <Route path="settings" element={<CRMSettingsPage />} />
             </Route>
