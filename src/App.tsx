@@ -312,7 +312,7 @@ const App = () => (
             
             {/* CRM Comercial */}
             <Route path="/crm" element={<CRMLayout />}>
-              <Route index element={<CRMDashboardPage />} />
+              <Route index element={<CRMReportsPage />} />
               <Route path="pipeline" element={<CRMPipelinePage />} />
               <Route path="leads" element={<CRMLeadsPage />} />
               <Route path="leads/:id" element={<CRMLeadDetailPage />} />
