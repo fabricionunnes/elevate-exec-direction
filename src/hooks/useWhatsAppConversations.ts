@@ -103,14 +103,21 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
               }
             });
           } else if (payload.eventType === 'UPDATE') {
-            setConversations((prev) =>
-              prev.map((c) => {
+            setConversations((prev) => {
+              // Update the conversation
+              const updated = prev.map((c) => {
                 if (c.id === payload.new.id) {
                   return { ...c, ...payload.new };
                 }
                 return c;
-              })
-            );
+              });
+              // Re-sort by last_message_at (most recent first)
+              return updated.sort((a, b) => {
+                const dateA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+                const dateB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+                return dateB - dateA;
+              });
+            });
           } else if (payload.eventType === 'DELETE') {
             setConversations((prev) =>
               prev.filter((c) => c.id !== payload.old.id)
