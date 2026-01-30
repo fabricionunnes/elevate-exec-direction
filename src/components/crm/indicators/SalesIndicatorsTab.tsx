@@ -176,19 +176,20 @@ export const SalesIndicatorsTab = () => {
         .select("staff_id")
         .eq("menu_key", "crm");
       
-      const crmStaffIds = crmAccessData?.map(a => a.staff_id) || [];
+      const crmStaffIds = new Set((crmAccessData || []).map(a => a.staff_id));
 
-      // Load closers - only commercial roles (closer, head_comercial) with CRM access
-      const { data: closerStaff } = await supabase
+      // Load all active staff, then filter in JS to guarantee admin/master never appear
+      const { data: allActiveStaff } = await supabase
         .from("onboarding_staff")
         .select("id, name, role")
-        .in("role", ["closer", "head_comercial"])
         .eq("is_active", true);
 
-      // Filter to only include staff with CRM access
-      const filteredCloserStaff = (closerStaff || []).filter(staff => 
-        crmStaffIds.includes(staff.id)
-      );
+      // Only allow closer and head_comercial roles (never admin/master)
+      const allowedCloserRoles = new Set(["closer", "head_comercial"]);
+      const filteredCloserStaff = (allActiveStaff || []).filter(staff => {
+        const role = String((staff as any).role ?? "").toLowerCase();
+        return crmStaffIds.has(staff.id) && allowedCloserRoles.has(role);
+      });
 
       // Load scheduled calls using date range
       const { data: calls } = await supabase
