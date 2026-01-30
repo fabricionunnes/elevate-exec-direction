@@ -148,6 +148,27 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
     setSaving(true);
     try {
       const instanceName = `crm_${Date.now()}`;
+      
+      // Get webhook URL for Evolution API
+      const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`;
+      
+      // Create instance in Evolution API with webhook
+      const { data: evolutionResponse, error: evolutionError } = await supabase.functions.invoke('evolution-api', {
+        body: {
+          action: 'create-instance',
+          instanceName,
+          number: newPhone.trim() || undefined,
+          qrcode: true,
+          webhookUrl,
+        },
+      });
+
+      if (evolutionError) {
+        console.error('Evolution API error:', evolutionError);
+        // Continue creating in database even if Evolution fails
+      }
+      
+      // Create in database
       const { error } = await supabase.from("whatsapp_instances").insert({
         instance_name: instanceName,
         display_name: newName.trim(),

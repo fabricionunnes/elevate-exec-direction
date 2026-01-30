@@ -146,6 +146,7 @@ serve(async (req) => {
           number,
           qrcode = true,
           integration = 'WHATSAPP-BAILEYS',
+          webhookUrl,
         } = body;
 
         if (!instanceName) {
@@ -155,15 +156,33 @@ serve(async (req) => {
           );
         }
 
+        // Prepare instance creation payload
+        const createPayload: any = {
+          instanceName,
+          token: instanceToken,
+          number,
+          qrcode,
+          integration,
+        };
+
+        // If webhook URL is provided, include webhook configuration
+        if (webhookUrl) {
+          createPayload.webhook = {
+            url: webhookUrl,
+            webhook_by_events: true,
+            webhook_base64: false,
+            events: [
+              'MESSAGES_UPSERT',
+              'MESSAGES_UPDATE', 
+              'CONNECTION_UPDATE',
+              'QRCODE_UPDATED',
+            ],
+          };
+        }
+
         const { res, json } = await fetchEvolutionJson('/instance/create', {
           method: 'POST',
-          body: JSON.stringify({
-            instanceName,
-            token: instanceToken,
-            number,
-            qrcode,
-            integration,
-          }),
+          body: JSON.stringify(createPayload),
         });
 
         if (!res.ok) {
@@ -176,6 +195,83 @@ serve(async (req) => {
         return new Response(
           JSON.stringify(json),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'set-webhook': {
+        // Set webhook for an existing instance
+        const { instanceName, webhookUrl, events } = body;
+
+        if (!instanceName || !webhookUrl) {
+          return new Response(
+            JSON.stringify({ error: 'instanceName and webhookUrl are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const webhookPayload = {
+          url: webhookUrl,
+          webhook_by_events: true,
+          webhook_base64: false,
+          events: events || [
+            'MESSAGES_UPSERT',
+            'MESSAGES_UPDATE',
+            'CONNECTION_UPDATE',
+            'QRCODE_UPDATED',
+          ],
+        };
+
+        const { res, json } = await fetchEvolutionJson(`/webhook/set/${encodeURIComponent(instanceName)}`, {
+          method: 'POST',
+          body: JSON.stringify(webhookPayload),
+        });
+
+        console.log('[evolution-api] Set webhook response:', json);
+
+        return new Response(
+          JSON.stringify({ ...json, _version: EVOLUTION_API_FUNC_VERSION }),
+          { status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'sendText': {
+        // Send text message (alias for send-text, used by frontend)
+        const { instanceId, phone, message } = body;
+        
+        // Get instance name from database
+        const supabaseService = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+
+        const { data: instance, error: instanceError } = await supabaseService
+          .from('whatsapp_instances')
+          .select('instance_name')
+          .eq('id', instanceId)
+          .single();
+
+        if (instanceError || !instance) {
+          return new Response(
+            JSON.stringify({ error: 'Instance not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const response = await fetch(`${evolutionBaseUrl}/message/sendText/${instance.instance_name}`, {
+          method: 'POST',
+          headers: evolutionHeaders,
+          body: JSON.stringify({
+            number: phone.includes('@') ? phone : `${phone}@s.whatsapp.net`,
+            text: message,
+          }),
+        });
+
+        const data = await response.json();
+        console.log('[evolution-api] SendText response:', data);
+
+        return new Response(
+          JSON.stringify(data),
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -698,7 +794,9 @@ serve(async (req) => {
               'status',
               'list-instances',
               'send-text',
+              'sendText',
               'send-media',
+              'set-webhook',
               'delete-instance',
               'logout',
               'restart',
