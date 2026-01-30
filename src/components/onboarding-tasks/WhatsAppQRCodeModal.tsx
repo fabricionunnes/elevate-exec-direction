@@ -117,6 +117,13 @@ export const WhatsAppQRCodeModal = ({
     const data = await response.json().catch(() => ({ error: 'Resposta inválida' }));
 
     if (!response.ok) {
+      // Check for Evolution API offline (503 Service Unavailable)
+      if (response.status === 503 || data?.error?.toLowerCase()?.includes('offline')) {
+        const offlineError = new Error('Evolution API offline');
+        (offlineError as any).isOffline = true;
+        throw offlineError;
+      }
+
       // Extract detailed error message
       const errorMsg = 
         data?.error || 
@@ -267,8 +274,7 @@ export const WhatsAppQRCodeModal = ({
       console.error("[QR Modal] Error fetching QR:", error);
 
       // If the WhatsApp server (Evolution) is offline, stop retrying to avoid spam + perceived blank screen.
-      const offlineMsg = (error?.message || '').toLowerCase();
-      if (offlineMsg.includes('connection refused') || offlineMsg.includes('evolution api offline')) {
+      if (error?.isOffline || error?.message?.toLowerCase()?.includes('evolution api offline')) {
         toast.error("Servidor do WhatsApp está offline. Tente novamente mais tarde.");
         return { success: false, qrReady: false };
       }
@@ -489,9 +495,11 @@ export const WhatsAppQRCodeModal = ({
           onConnected();
         }, 1500);
       }
-    } catch (error) {
-      // Silent fail for status checks
-      console.log("[QR Modal] Status check error:", error);
+    } catch (error: any) {
+      // Silent fail for status checks - don't spam toast if server is offline
+      if (!error?.isOffline) {
+        console.log("[QR Modal] Status check error:", error);
+      }
     } finally {
       setChecking(false);
     }
