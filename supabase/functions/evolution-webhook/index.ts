@@ -6,6 +6,102 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper to download media from Evolution API and upload to Supabase Storage
+async function downloadAndStoreMedia(
+  supabase: any,
+  instanceName: string,
+  messageId: string,
+  mediaType: string,
+  mimetype: string
+): Promise<string | null> {
+  try {
+    const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL');
+    const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY');
+
+    if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
+      console.error('Evolution API credentials not configured for media download');
+      return null;
+    }
+
+    const baseUrl = EVOLUTION_API_URL.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
+
+    // Call Evolution API to get base64 media
+    const response = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${instanceName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': EVOLUTION_API_KEY,
+      },
+      body: JSON.stringify({
+        message: { key: { id: messageId } },
+        convertToMp4: mediaType === 'audio', // Convert audio to mp4 for better compatibility
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to get base64 from Evolution:', response.status, await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    const base64Data = data.base64;
+
+    if (!base64Data) {
+      console.error('No base64 data returned from Evolution API');
+      return null;
+    }
+
+    // Determine file extension
+    const extMap: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'image/gif': 'gif',
+      'video/mp4': 'mp4',
+      'video/3gpp': '3gp',
+      'audio/ogg; codecs=opus': 'ogg',
+      'audio/mpeg': 'mp3',
+      'audio/mp4': 'm4a',
+      'application/pdf': 'pdf',
+    };
+    const ext = extMap[mimetype] || mimetype.split('/')[1] || 'bin';
+    const fileName = `${messageId}.${ext}`;
+    const storagePath = `whatsapp/${mediaType}/${fileName}`;
+
+    // Convert base64 to Uint8Array
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from('whatsapp-media')
+      .upload(storagePath, bytes, {
+        contentType: mimetype,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('Error uploading to storage:', uploadError);
+      return null;
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('whatsapp-media')
+      .getPublicUrl(storagePath);
+
+    console.log('Media stored successfully:', urlData.publicUrl);
+    return urlData.publicUrl;
+
+  } catch (error) {
+    console.error('Error downloading/storing media:', error);
+    return null;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -42,7 +138,7 @@ serve(async (req) => {
 
     switch (event) {
       case 'messages.upsert':
-        await handleIncomingMessage(supabase, instance.id, data);
+        await handleIncomingMessage(supabase, instance.id, instanceName, data);
         break;
       
       case 'messages.update':
@@ -75,7 +171,7 @@ serve(async (req) => {
   }
 });
 
-async function handleIncomingMessage(supabase: any, instanceId: string, data: any) {
+async function handleIncomingMessage(supabase: any, instanceId: string, instanceName: string, data: any) {
   console.log('Processing incoming message:', JSON.stringify(data, null, 2));
 
   const message = data.message || data;
@@ -221,6 +317,25 @@ async function handleIncomingMessage(supabase: any, instanceId: string, data: an
     return;
   }
 
+  // If this is a media message, download and store in Supabase Storage
+  let storedMediaUrl = mediaUrl;
+  if (mediaUrl && ['image', 'video', 'audio', 'document'].includes(type)) {
+    console.log(`Downloading ${type} media for message ${messageId}...`);
+    const downloadedUrl = await downloadAndStoreMedia(
+      supabase,
+      instanceName,
+      messageId,
+      type,
+      mediaMimetype || 'application/octet-stream'
+    );
+    if (downloadedUrl) {
+      storedMediaUrl = downloadedUrl;
+      console.log(`Media stored at: ${storedMediaUrl}`);
+    } else {
+      console.log('Failed to download media, keeping original URL (may expire)');
+    }
+  }
+
   // Insert message
   const { error: msgError } = await supabase
     .from('crm_whatsapp_messages')
@@ -231,7 +346,7 @@ async function handleIncomingMessage(supabase: any, instanceId: string, data: an
       type: type,
       direction: fromMe ? 'outbound' : 'inbound',
       status: 'delivered',
-      media_url: mediaUrl,
+      media_url: storedMediaUrl,
       media_mimetype: mediaMimetype,
     });
 
