@@ -86,27 +86,48 @@ async function handleIncomingMessage(supabase: any, instanceId: string, data: an
     return;
   }
 
-  // Use remoteJidAlt if available (new @lid format), otherwise use remoteJid
-  const remoteJid = key.remoteJidAlt || key.remoteJid;
+  // Get the correct phone number:
+  // - remoteJid usually has the phone@s.whatsapp.net format
+  // - remoteJidAlt may have @lid format (new WhatsApp format)
+  // We need to use remoteJid if it contains the phone number
+  let remoteJid = key.remoteJid || '';
+  const remoteJidAlt = key.remoteJidAlt || '';
+  
+  // If remoteJid is @lid format, try to use remoteJidAlt instead
+  if (remoteJid.endsWith('@lid') && remoteJidAlt.includes('@s.whatsapp.net')) {
+    remoteJid = remoteJidAlt;
+  }
+  // If remoteJidAlt is @lid and remoteJid is valid phone, use remoteJid
+  // (This is already the case since remoteJid is used by default)
+  
   const fromMe = key.fromMe;
   const messageId = key.id;
 
   // Skip status messages
   if (remoteJid === 'status@broadcast') {
+    console.log('Skipping status broadcast');
     return;
   }
 
-  // Skip @lid format without alternative (system messages)
-  if (remoteJid.endsWith('@lid') && !key.remoteJidAlt) {
-    console.log('Skipping @lid message without alternative JID');
+  // Skip if we can't extract a valid phone number
+  if (remoteJid.endsWith('@lid') || !remoteJid.includes('@')) {
+    console.log('Skipping message - cannot extract phone from JID:', remoteJid);
     return;
   }
 
-  // Extract phone number
-  const phone = remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', '').replace('@lid', '');
+  // Extract phone number from JID
+  const phone = remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', '');
   
-  // Get or create contact
-  let contact = await getOrCreateContact(supabase, phone, message.pushName);
+  if (!phone || phone.length < 8) {
+    console.log('Invalid phone number extracted:', phone);
+    return;
+  }
+
+  console.log('Extracted phone:', phone, 'fromMe:', fromMe);
+  
+  // Get or create contact - use pushName from data level
+  const pushName = data.pushName || message.pushName;
+  let contact = await getOrCreateContact(supabase, phone, pushName);
   
   // Get or create conversation
   let conversation = await getOrCreateConversation(supabase, instanceId, contact.id);
@@ -117,7 +138,7 @@ async function handleIncomingMessage(supabase: any, instanceId: string, data: an
   let mediaUrl = null;
   let mediaMimetype = null;
 
-  const msg = message.message;
+  const msg = message.message || data.message?.message;
   
   if (msg) {
     // Text messages - check all possible text fields
@@ -135,18 +156,22 @@ async function handleIncomingMessage(supabase: any, instanceId: string, data: an
       type = 'image';
       content = msg.imageMessage.caption || '[Imagem]';
       mediaMimetype = msg.imageMessage.mimetype;
+      mediaUrl = msg.imageMessage.url;
     } else if (msg.audioMessage) {
       type = 'audio';
       content = '[Áudio]';
       mediaMimetype = msg.audioMessage.mimetype;
+      mediaUrl = msg.audioMessage.url;
     } else if (msg.videoMessage) {
       type = 'video';
       content = msg.videoMessage.caption || '[Vídeo]';
       mediaMimetype = msg.videoMessage.mimetype;
+      mediaUrl = msg.videoMessage.url;
     } else if (msg.documentMessage) {
       type = 'document';
       content = msg.documentMessage.fileName || '[Documento]';
       mediaMimetype = msg.documentMessage.mimetype;
+      mediaUrl = msg.documentMessage.url;
     } else if (msg.stickerMessage) {
       type = 'sticker';
       content = '[Sticker]';
@@ -172,9 +197,26 @@ async function handleIncomingMessage(supabase: any, instanceId: string, data: an
     }
   }
 
-  // If we still have no content, skip this message
+  // If we still have no content, try to get from messageType
   if (!content && type === 'text') {
-    console.log('Skipping message with no content:', JSON.stringify(msg, null, 2).substring(0, 500));
+    const messageType = data.messageType || message.messageType;
+    if (messageType === 'conversation' && msg?.conversation) {
+      content = msg.conversation;
+    } else {
+      console.log('Skipping message with no content. MessageType:', messageType);
+      return;
+    }
+  }
+
+  // Check for duplicate message
+  const { data: existingMessage } = await supabase
+    .from('crm_whatsapp_messages')
+    .select('id')
+    .eq('remote_id', messageId)
+    .maybeSingle();
+
+  if (existingMessage) {
+    console.log('Message already exists, skipping:', messageId);
     return;
   }
 
@@ -216,7 +258,7 @@ async function handleIncomingMessage(supabase: any, instanceId: string, data: an
     .update(updateData)
     .eq('id', conversation.id);
 
-  console.log('Message processed successfully');
+  console.log('Message processed successfully:', { phone, content: content.substring(0, 50), type, fromMe });
 }
 
 async function handleMessageStatusUpdate(supabase: any, data: any) {
