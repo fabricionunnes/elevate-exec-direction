@@ -34,55 +34,6 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
     }
   }, [staffId]);
 
-  // Handle OAuth callback
-  useEffect(() => {
-    const handleCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get("code");
-      const state = urlParams.get("state");
-      const error = urlParams.get("error");
-
-      if (error) {
-        toast.error("Conexão cancelada ou negada");
-        // Clean URL
-        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
-        return;
-      }
-
-      if (code && state && staffId) {
-        setIsConnecting(true);
-        try {
-          const decodedState = JSON.parse(atob(state));
-          
-          const { data, error: exchangeError } = await supabase.functions.invoke("instagram-oauth", {
-            body: {
-              action: "exchange",
-              code,
-              redirectUri: decodedState.redirectUri,
-              staffId: decodedState.staffId,
-            },
-          });
-
-          if (exchangeError || data?.error) {
-            throw new Error(data?.error || exchangeError?.message);
-          }
-
-          toast.success(`${data.count} conta(s) Instagram conectada(s) com sucesso!`);
-          loadInstances();
-        } catch (err: any) {
-          console.error("OAuth callback error:", err);
-          toast.error(err.message || "Erro ao conectar conta Instagram");
-        } finally {
-          setIsConnecting(false);
-          // Clean URL
-          window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
-        }
-      }
-    };
-
-    handleCallback();
-  }, [staffId]);
-
   const loadInstances = async () => {
     if (!staffId) return;
     
@@ -113,8 +64,8 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
 
     setIsConnecting(true);
     try {
-      // Build redirect URI - current URL without query params
-      const redirectUri = `${window.location.origin}${window.location.pathname}`;
+      // Use origin as redirect URI - callback will be handled by checking URL params
+      const redirectUri = window.location.origin;
 
       const { data, error } = await supabase.functions.invoke("instagram-oauth", {
         body: {
