@@ -127,19 +127,20 @@ export const CRMGoalValuesManager = () => {
         .select("staff_id")
         .eq("menu_key", "crm");
 
-      const staffIdsWithAccess = (staffWithAccess || []).map((p) => p.staff_id);
+      const staffIdsWithCRMAccess = new Set((staffWithAccess || []).map((p) => p.staff_id));
 
+      // Load all active staff members
       const { data: staffData, error: staffError } = await supabase
         .from("onboarding_staff")
         .select("id, name, role")
         .eq("is_active", true)
-        .in("role", CRM_ROLES)
         .order("name");
 
       if (staffError) throw staffError;
 
+      // Filter to only show staff with CRM access (master always has access, others need permission)
       const filteredStaff = (staffData || []).filter(
-        (s) => staffIdsWithAccess.includes(s.id) || s.role === "master" || s.role === "admin"
+        (s) => s.role === "master" || staffIdsWithCRMAccess.has(s.id)
       );
       setStaffMembers(filteredStaff);
 
