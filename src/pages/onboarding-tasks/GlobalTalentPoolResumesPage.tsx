@@ -523,6 +523,10 @@ export default function GlobalTalentPoolResumesPage() {
         open={!!selectedCandidate}
         onOpenChange={(open) => !open && setSelectedCandidate(null)}
         candidate={selectedCandidate}
+        onCandidateAssigned={() => {
+          setSelectedCandidate(null);
+          fetchData();
+        }}
       />
     </div>
   );
