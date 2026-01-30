@@ -103,6 +103,7 @@ export const OriginsManagementDialog = ({
   } | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("#6366f1");
+  const [linkingPipelineToGroup, setLinkingPipelineToGroup] = useState<string | null>(null);
 
   const colors = [
     "#6366f1", "#8b5cf6", "#a855f7", "#d946ef", "#ec4899",
@@ -250,6 +251,60 @@ export const OriginsManagementDialog = ({
       console.error("Error creating origin:", error);
       toast.error("Erro ao criar funil");
     }
+  };
+
+  // Link existing pipeline to a group
+  const handleLinkExistingPipeline = async (pipelineId: string, groupId: string) => {
+    try {
+      // Check if origin already exists for this pipeline
+      const existingOrigin = origins.find((o) => o.pipeline_id === pipelineId);
+      
+      if (existingOrigin) {
+        // Just move the origin to this group
+        const { error } = await supabase
+          .from("crm_origins")
+          .update({ group_id: groupId })
+          .eq("id", existingOrigin.id);
+        
+        if (error) throw error;
+        
+        setOrigins(origins.map((o) => 
+          o.id === existingOrigin.id ? { ...o, group_id: groupId } : o
+        ));
+        toast.success("Funil vinculado ao grupo");
+      } else {
+        // Create new origin for this pipeline
+        const pipeline = pipelines.find((p) => p.id === pipelineId);
+        const { data: origin, error } = await supabase
+          .from("crm_origins")
+          .insert({
+            name: pipeline?.name || "Funil",
+            group_id: groupId,
+            pipeline_id: pipelineId,
+            sort_order: getGroupOrigins(groupId).length,
+            is_active: true,
+          })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        
+        setOrigins([...origins, origin]);
+        toast.success("Funil vinculado ao grupo");
+      }
+      
+      setLinkingPipelineToGroup(null);
+      onRefresh?.();
+    } catch (error) {
+      console.error("Error linking pipeline:", error);
+      toast.error("Erro ao vincular funil");
+    }
+  };
+
+  // Get pipelines not yet linked to any origin (unassigned)
+  const getUnlinkedPipelines = () => {
+    const linkedPipelineIds = new Set(origins.map((o) => o.pipeline_id).filter(Boolean));
+    return pipelines.filter((p) => !linkedPipelineIds.has(p.id));
   };
 
   // Add new stage to an origin's pipeline
@@ -472,7 +527,16 @@ export const OriginsManagementDialog = ({
                               }}
                             >
                               <Plus className="h-4 w-4 mr-2" />
-                              Adicionar Funil
+                              Criar Novo Funil
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLinkingPipelineToGroup(group.id);
+                              }}
+                            >
+                              <ArrowRight className="h-4 w-4 mr-2" />
+                              Vincular Funil Existente
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={(e) => {
@@ -490,6 +554,43 @@ export const OriginsManagementDialog = ({
 
                       <CollapsibleContent>
                         <div className="border-t border-border">
+                          {/* Link existing pipeline selector */}
+                          {linkingPipelineToGroup === group.id && (
+                            <div className="p-3 bg-muted/50 border-b border-border">
+                              <Label className="text-xs text-muted-foreground mb-2 block">
+                                Selecione um funil para vincular:
+                              </Label>
+                              <Select
+                                onValueChange={(value) => handleLinkExistingPipeline(value, group.id)}
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue placeholder="Selecione um funil..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getUnlinkedPipelines().length === 0 ? (
+                                    <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                      Todos os funis já estão vinculados
+                                    </div>
+                                  ) : (
+                                    getUnlinkedPipelines().map((pipeline) => (
+                                      <SelectItem key={pipeline.id} value={pipeline.id}>
+                                        {pipeline.name}
+                                      </SelectItem>
+                                    ))
+                                  )}
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="mt-2 text-xs"
+                                onClick={() => setLinkingPipelineToGroup(null)}
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
+                          )}
+                          
                           {groupOrigins.map((origin) => {
                             const originStages = getOriginStages(origin);
                             const isOriginExpanded = expandedOrigins.has(origin.id);
