@@ -226,9 +226,9 @@ export const CRMInboxPage = () => {
   const hasConnectedDevice = connectedInstances.length > 0;
 
   return (
-    <div className="h-full max-h-full flex overflow-hidden">
+    <div className="h-full min-h-0 flex overflow-hidden">
       {/* Conversations List */}
-      <div className="w-[300px] border-r border-border flex flex-col bg-card">
+      <div className="w-[300px] min-h-0 border-r border-border flex flex-col bg-card">
         {/* Search Header */}
         <div className="p-3 border-b border-border">
           <div className="flex items-center gap-2">
@@ -305,7 +305,7 @@ export const CRMInboxPage = () => {
         </div>
 
         {/* Conversations */}
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
           {loadingConversations || loadingAccess ? (
             <div className="flex items-center justify-center py-8">
               <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -429,7 +429,7 @@ export const CRMInboxPage = () => {
           </div>
 
           {/* Messages */}
-          <ScrollArea ref={messagesScrollAreaRef} className="flex-1 p-4 bg-muted/30">
+          <ScrollArea ref={messagesScrollAreaRef} className="flex-1 min-h-0 p-4 bg-muted/30">
             <div className="space-y-4 max-w-3xl mx-auto">
               {loadingMessages ? (
                 <div className="flex items-center justify-center py-8">
