@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Select,
   SelectContent,
@@ -524,19 +525,11 @@ export const LeadCustomFieldsTab = ({
         );
       case "phone":
         return (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 px-2 py-1.5 border rounded-md bg-muted text-sm">
-              🇧🇷 <span className="text-muted-foreground">▾</span>
-            </div>
-            <Input
-              type="tel"
-              value={value}
-              onChange={(e) => handleFieldChange(field, e.target.value)}
-              placeholder="+55"
-              className="flex-1"
-              disabled={isSaving}
-            />
-          </div>
+          <PhoneInput
+            value={value}
+            onChange={(v) => handleFieldChange(field, v)}
+            disabled={isSaving}
+          />
         );
       case "number":
         // Check if this is a currency field (opportunity_value)

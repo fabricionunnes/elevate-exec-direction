@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Select,
@@ -771,10 +772,9 @@ export function ConversationSidebar({
             </div>
             <div>
               <Label>Telefone</Label>
-              <Input
+              <PhoneInput
                 value={contactData.phone}
-                onChange={(e) => setContactData({ ...contactData, phone: e.target.value })}
-                placeholder="+55 31 99999-9999"
+                onChange={(value) => setContactData({ ...contactData, phone: value })}
               />
             </div>
             <Button onClick={handleEditContact} className="w-full" disabled={loading}>

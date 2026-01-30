@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -200,11 +201,10 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
 
             <div>
               <Label htmlFor="phone">Telefone/WhatsApp</Label>
-              <Input
+              <PhoneInput
                 id="phone"
                 value={formData.phone}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder="(11) 99999-9999"
+                onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
               />
             </div>
 
