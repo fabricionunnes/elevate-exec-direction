@@ -45,11 +45,11 @@ export const useCRMContext = () => {
 };
 
 const navTabs = [
+  { title: "Indicadores", href: "/crm/reports" },
   { title: "Negócios", href: "/crm/pipeline" },
   { title: "Contatos", href: "/crm/leads" },
   { title: "Atividades", href: "/crm/activities" },
   { title: "Atendimento", href: "/crm/inbox", badge: true },
-  { title: "Indicadores", href: "/crm/reports" },
 ];
 
 export const CRMLayout = () => {
@@ -142,8 +142,8 @@ export const CRMLayout = () => {
   const initials = staffName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "U";
 
   const isTabActive = (href: string) => {
-    if (href === "/crm/pipeline") {
-      return location.pathname === "/crm" || location.pathname.startsWith("/crm/pipeline");
+    if (href === "/crm/reports") {
+      return location.pathname === "/crm" || location.pathname.startsWith("/crm/reports");
     }
     return location.pathname.startsWith(href);
   };
