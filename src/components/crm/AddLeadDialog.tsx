@@ -31,6 +31,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
     name: "",
     phone: "",
     email: "",
+    document: "",
     company: "",
     role: "",
     city: "",
@@ -128,6 +129,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
           name: formData.name,
           phone: formData.phone || null,
           email: formData.email || null,
+          document: formData.document || null,
           company: formData.company || null,
           role: formData.role || null,
           city: formData.city || null,
@@ -154,6 +156,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
         name: "",
         phone: "",
         email: "",
+        document: "",
         company: "",
         role: "",
         city: "",
@@ -213,6 +216,16 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 placeholder="email@empresa.com"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="document">CPF/CNPJ</Label>
+              <Input
+                id="document"
+                value={formData.document}
+                onChange={(e) => setFormData(prev => ({ ...prev, document: e.target.value }))}
+                placeholder="000.000.000-00 ou 00.000.000/0000-00"
               />
             </div>
 

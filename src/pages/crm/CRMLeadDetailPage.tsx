@@ -57,6 +57,7 @@ interface Lead {
   name: string;
   phone: string | null;
   email: string | null;
+  document: string | null;
   company: string | null;
   role: string | null;
   city: string | null;

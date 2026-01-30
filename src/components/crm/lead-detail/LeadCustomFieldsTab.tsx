@@ -315,6 +315,7 @@ export const LeadCustomFieldsTab = ({
       sdr_staff_id: "sdr_staff_id",
       product_id: "product_id",
       plan_id: "plan_id",
+      document: "document",
     };
 
     const key = mapping[fieldName];
@@ -353,6 +354,7 @@ export const LeadCustomFieldsTab = ({
         sdr_staff_id: "sdr_staff_id",
         product_id: "product_id",
         plan_id: "plan_id",
+        document: "document",
       };
 
       const dbField = fieldMapping[field.field_name];

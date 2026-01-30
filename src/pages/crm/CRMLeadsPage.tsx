@@ -46,6 +46,7 @@ interface Lead {
   company: string | null;
   phone: string | null;
   email: string | null;
+  document: string | null;
   stage_id: string;
   stage: { name: string; color: string; is_final: boolean; final_type: string | null } | null;
   pipeline: { name: string } | null;
