@@ -19,7 +19,6 @@ import {
   ShoppingCart,
   Folder,
   Plus,
-  LayoutGrid,
   Eye,
   Clock,
 } from "lucide-react";
@@ -45,10 +44,12 @@ interface Origin {
   lead_count?: number;
 }
 
-interface Pipeline {
+interface Stage {
   id: string;
   name: string;
-  is_default: boolean;
+  color: string;
+  pipeline_id: string;
+  sort_order: number;
 }
 
 interface CRMOriginsSidebarProps {
@@ -70,7 +71,7 @@ export const CRMOriginsSidebar = ({
   const { selectedOrigin, setSelectedOrigin, selectedPipeline, setSelectedPipeline, isAdmin } = useCRMContext();
   const [groups, setGroups] = useState<OriginGroup[]>([]);
   const [origins, setOrigins] = useState<Origin[]>([]);
-  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [stages, setStages] = useState<Stage[]>([]);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedOrigins, setExpandedOrigins] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,7 +84,7 @@ export const CRMOriginsSidebar = ({
   const loadData = async () => {
     setLoading(true);
     try {
-      const [groupsRes, originsRes, pipelinesRes] = await Promise.all([
+      const [groupsRes, originsRes, stagesRes] = await Promise.all([
         supabase
           .from("crm_origin_groups")
           .select("*")
@@ -95,25 +96,18 @@ export const CRMOriginsSidebar = ({
           .eq("is_active", true)
           .order("sort_order"),
         supabase
-          .from("crm_pipelines")
-          .select("id, name, is_default")
-          .eq("is_active", true)
-          .order("is_default", { ascending: false }),
+          .from("crm_stages")
+          .select("id, name, color, pipeline_id, sort_order")
+          .order("sort_order"),
       ]);
 
       setGroups(groupsRes.data || []);
       setOrigins(originsRes.data || []);
-      setPipelines(pipelinesRes.data || []);
+      setStages(stagesRes.data || []);
 
       // Expand all groups by default
       if (groupsRes.data) {
         setExpandedGroups(new Set(groupsRes.data.map((g) => g.id)));
-      }
-
-      // Set default pipeline if none selected
-      if (!selectedPipeline && pipelinesRes.data && pipelinesRes.data.length > 0) {
-        const defaultPipeline = pipelinesRes.data.find(p => p.is_default) || pipelinesRes.data[0];
-        setSelectedPipeline(defaultPipeline.id);
       }
     } catch (error) {
       console.error("Error loading origins:", error);
@@ -151,11 +145,14 @@ export const CRMOriginsSidebar = ({
     if (origin.pipeline_id) {
       setSelectedPipeline(origin.pipeline_id);
     }
+    // Toggle expansion when clicking
+    toggleOrigin(origin.id);
   };
 
-  const handlePipelineClick = (pipelineId: string, originId: string) => {
-    setSelectedOrigin(originId);
-    setSelectedPipeline(pipelineId);
+  // Get stages for a specific origin's pipeline
+  const getOriginStages = (origin: Origin) => {
+    if (!origin.pipeline_id) return [];
+    return stages.filter((s) => s.pipeline_id === origin.pipeline_id);
   };
 
   const filteredOrigins = origins.filter((o) =>
@@ -294,50 +291,46 @@ export const CRMOriginsSidebar = ({
                   {groupOrigins.map((origin) => {
                     const isOriginExpanded = expandedOrigins.has(origin.id);
                     const isSelected = selectedOrigin === origin.id;
+                    const originStages = getOriginStages(origin);
 
                     return (
                       <div key={origin.id}>
                         <button
-                          onClick={() => {
-                            if (pipelines.length > 1) {
-                              toggleOrigin(origin.id);
-                            }
-                            handleOriginClick(origin);
-                          }}
+                          onClick={() => handleOriginClick(origin)}
                           className={cn(
-                            "w-full flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors text-left",
+                            "w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-xs transition-colors text-left",
                             isSelected
                               ? "bg-primary/10 text-primary font-medium"
                               : "hover:bg-muted text-muted-foreground hover:text-foreground"
                           )}
                         >
-                          {pipelines.length > 1 && (
+                          {originStages.length > 0 ? (
                             isOriginExpanded ? (
                               <ChevronDown className="h-3 w-3" />
                             ) : (
                               <ChevronRight className="h-3 w-3" />
                             )
+                          ) : (
+                            <span className="w-3" />
                           )}
+                          <Target className="h-3 w-3" />
                           <span className="truncate flex-1">{origin.name}</span>
                         </button>
 
-                        {/* Pipelines inside origin */}
-                        {isOriginExpanded && pipelines.length > 1 && (
-                          <div className="ml-4 mt-0.5 space-y-0.5">
-                            {pipelines.map((pipeline) => (
-                              <button
-                                key={pipeline.id}
-                                onClick={() => handlePipelineClick(pipeline.id, origin.id)}
-                                className={cn(
-                                  "w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition-colors text-left",
-                                  selectedOrigin === origin.id && selectedPipeline === pipeline.id
-                                    ? "bg-primary/10 text-primary font-medium"
-                                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                                )}
+                        {/* Stages inside origin (the funnel stages) */}
+                        {isOriginExpanded && originStages.length > 0 && (
+                          <div className="ml-5 mt-0.5 space-y-0.5 border-l border-border pl-2">
+                            {originStages.map((stage) => (
+                              <div
+                                key={stage.id}
+                                className="flex items-center gap-1.5 px-2 py-1 text-[11px] text-muted-foreground"
                               >
-                                <LayoutGrid className="h-3 w-3" />
-                                <span className="truncate">{pipeline.name}</span>
-                              </button>
+                                <span
+                                  className="w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: stage.color }}
+                                />
+                                <span className="truncate">{stage.name}</span>
+                              </div>
                             ))}
                           </div>
                         )}
@@ -361,20 +354,52 @@ export const CRMOriginsSidebar = ({
               <p className="px-2 py-1 text-[10px] text-muted-foreground uppercase tracking-wide">
                 Sem Grupo
               </p>
-              {ungroupedOrigins.map((origin) => (
-                <button
-                  key={origin.id}
-                  onClick={() => handleOriginClick(origin)}
-                  className={cn(
-                    "w-full flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors text-left",
-                    selectedOrigin === origin.id
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <span className="truncate">{origin.name}</span>
-                </button>
-              ))}
+              {ungroupedOrigins.map((origin) => {
+                const isOriginExpanded = expandedOrigins.has(origin.id);
+                const originStages = getOriginStages(origin);
+
+                return (
+                  <div key={origin.id}>
+                    <button
+                      onClick={() => handleOriginClick(origin)}
+                      className={cn(
+                        "w-full flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors text-left",
+                        selectedOrigin === origin.id
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {originStages.length > 0 ? (
+                        isOriginExpanded ? (
+                          <ChevronDown className="h-3 w-3" />
+                        ) : (
+                          <ChevronRight className="h-3 w-3" />
+                        )
+                      ) : (
+                        <span className="w-3" />
+                      )}
+                      <span className="truncate">{origin.name}</span>
+                    </button>
+
+                    {isOriginExpanded && originStages.length > 0 && (
+                      <div className="ml-5 mt-0.5 space-y-0.5 border-l border-border pl-2">
+                        {originStages.map((stage) => (
+                          <div
+                            key={stage.id}
+                            className="flex items-center gap-1.5 px-2 py-1 text-[11px] text-muted-foreground"
+                          >
+                            <span
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: stage.color }}
+                            />
+                            <span className="truncate">{stage.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
