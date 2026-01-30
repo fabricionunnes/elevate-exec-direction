@@ -63,6 +63,16 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
     }
 
     setIsConnecting(true);
+
+    // Open a new tab synchronously (required to avoid popup blockers)
+    // We'll navigate it after we receive the OAuth URL.
+    const popup = window.open("about:blank", "_blank", "noopener,noreferrer");
+    if (!popup) {
+      toast.error("Seu navegador bloqueou o pop-up. Permita pop-ups para conectar o Instagram.");
+      setIsConnecting(false);
+      return;
+    }
+
     try {
       // Use origin as redirect URI - callback will be handled by checking URL params
       const redirectUri = window.location.origin;
@@ -79,29 +89,18 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
         throw new Error(data?.error || error?.message);
       }
 
-      // Facebook/Meta pages commonly block being loaded inside iframes (X-Frame-Options/CSP),
-      // which shows up as a white screen in the preview. Force a top-level navigation or open a new tab.
       console.log("Redirecting to:", data.authUrl);
-
-      try {
-        // If we're inside an iframe, navigate the top window
-        if (window.top && window.top !== window.self) {
-          window.top.location.assign(data.authUrl);
-          return;
-        }
-      } catch {
-        // Accessing window.top can throw in some sandboxed contexts; fallback below.
-      }
-
-      // Fallback: open in a new tab/window
-      const opened = window.open(data.authUrl, "_blank", "noopener,noreferrer");
-      if (!opened) {
-        // Final fallback
-        window.location.assign(data.authUrl);
-      }
+      // Navigate the tab we already opened (avoids popup blockers)
+      popup.location.assign(data.authUrl);
     } catch (err: any) {
       console.error("Error getting auth URL:", err);
       toast.error(err.message || "Erro ao iniciar conexão");
+      // Close the opened tab if we couldn't proceed
+      try {
+        popup.close();
+      } catch {
+        // ignore
+      }
       setIsConnecting(false);
     }
   };
