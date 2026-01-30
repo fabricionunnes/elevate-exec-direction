@@ -35,7 +35,9 @@ import {
   X,
   Plus,
   Smile,
+  Trash2,
 } from "lucide-react";
+import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -115,6 +117,7 @@ export const CRMLeadDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [wonDialogOpen, setWonDialogOpen] = useState(false);
   const [lostDialogOpen, setLostDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedLossReason, setSelectedLossReason] = useState("");
   const [activeTab, setActiveTab] = useState("activities");
 
@@ -283,6 +286,26 @@ export const CRMLeadDetailPage = () => {
     }
   };
 
+  const handleDeleteLead = async () => {
+    if (!lead) return;
+
+    try {
+      const { error } = await supabase
+        .from("crm_leads")
+        .delete()
+        .eq("id", lead.id);
+
+      if (error) throw error;
+
+      toast.success("Lead excluído com sucesso");
+      setDeleteDialogOpen(false);
+      navigate("/crm/pipeline");
+    } catch (error) {
+      console.error("Error deleting lead:", error);
+      toast.error("Erro ao excluir lead");
+    }
+  };
+
   const handleRemoveTag = async (tagId: string) => {
     if (!lead) return;
     try {
@@ -408,6 +431,18 @@ export const CRMLeadDetailPage = () => {
                   <XCircle className="h-4 w-4 mr-2 text-red-500" />
                   Marcar como Perdido
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => setDeleteDialogOpen(true)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir Lead
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
             <Button variant="ghost" size="icon" className="ml-2">
@@ -584,6 +619,27 @@ export const CRMLeadDetailPage = () => {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleMarkLost} className="bg-red-600 hover:bg-red-700">
               Confirmar Perda
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Lead</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o lead "{lead.name}"? Esta ação não pode ser desfeita e todas as atividades, arquivos e histórico serão removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteLead} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir Lead
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
