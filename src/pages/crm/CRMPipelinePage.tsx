@@ -87,6 +87,7 @@ export const CRMPipelinePage = () => {
   const [filters, setFilters] = useState<CRMFilters>(defaultFilters);
   const [loading, setLoading] = useState(true);
   const [addLeadOpen, setAddLeadOpen] = useState(false);
+  const [addLeadStageId, setAddLeadStageId] = useState<string | undefined>(undefined);
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
   
   // Filter options
@@ -371,7 +372,10 @@ export const CRMPipelinePage = () => {
           <h1 className="text-xl font-bold">
             {selectedOriginName || "Funil"}
           </h1>
-          <Button onClick={() => setAddLeadOpen(true)} className="gap-2">
+          <Button onClick={() => {
+            setAddLeadStageId(undefined);
+            setAddLeadOpen(true);
+          }} className="gap-2">
             Negócio <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -423,7 +427,13 @@ export const CRMPipelinePage = () => {
                 </div>
 
                 {/* Add Deal Button */}
-                <button className="mx-2 py-2 text-sm text-muted-foreground hover:text-foreground border border-dashed border-border rounded-md hover:border-primary/50 transition-colors">
+                <button 
+                  onClick={() => {
+                    setAddLeadStageId(stage.id);
+                    setAddLeadOpen(true);
+                  }}
+                  className="mx-2 py-2 text-sm text-muted-foreground hover:text-foreground border border-dashed border-border rounded-md hover:border-primary/50 transition-colors"
+                >
                   + Adicionar negócio
                 </button>
 
@@ -530,9 +540,13 @@ export const CRMPipelinePage = () => {
 
       <AddLeadDialog
         open={addLeadOpen}
-        onOpenChange={setAddLeadOpen}
+        onOpenChange={(open) => {
+          setAddLeadOpen(open);
+          if (!open) setAddLeadStageId(undefined);
+        }}
         pipelineId={selectedPipeline || ""}
         onSuccess={loadStagesAndLeads}
+        initialStageId={addLeadStageId}
       />
 
       {/* Stage Move Confirmation Dialog */}
