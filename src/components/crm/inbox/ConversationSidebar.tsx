@@ -117,7 +117,79 @@ export function ConversationSidebar({
     phone: conversation.contact?.phone || "",
     company: "",
     value: "",
+    origin_group_id: "",
+    pipeline_id: "",
+    stage_id: "",
   });
+
+  // Origin groups and pipelines
+  const [originGroups, setOriginGroups] = useState<any[]>([]);
+  const [pipelinesForGroup, setPipelinesForGroup] = useState<any[]>([]);
+  const [stagesForPipeline, setStagesForPipeline] = useState<any[]>([]);
+
+  // Load origin groups
+  useEffect(() => {
+    const loadOriginGroups = async () => {
+      const { data } = await supabase
+        .from("crm_origin_groups")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("sort_order");
+      setOriginGroups(data || []);
+    };
+    loadOriginGroups();
+  }, []);
+
+  // Load pipelines when origin group changes
+  useEffect(() => {
+    const loadPipelines = async () => {
+      if (!dealData.origin_group_id) {
+        setPipelinesForGroup([]);
+        return;
+      }
+      try {
+        // @ts-ignore - Deep type instantiation issue with Supabase types
+        const { data, error } = await supabase
+          .from("crm_origins")
+          .select("id, name")
+          .eq("is_active", true)
+          .eq("origin_group_id", dealData.origin_group_id)
+          .order("sort_order");
+        if (!error) setPipelinesForGroup(data || []);
+      } catch (e) {
+        console.error("Error loading pipelines:", e);
+      }
+    };
+    loadPipelines();
+  }, [dealData.origin_group_id]);
+
+  // Load stages when pipeline changes
+  useEffect(() => {
+    const loadStages = async () => {
+      if (!dealData.pipeline_id) {
+        setStagesForPipeline([]);
+        return;
+      }
+      try {
+        // @ts-ignore - Deep type instantiation issue with Supabase types
+        const { data, error } = await supabase
+          .from("crm_stages")
+          .select("id, name")
+          .eq("pipeline_id", dealData.pipeline_id)
+          .order("sort_order");
+        if (!error) {
+          setStagesForPipeline(data || []);
+          // Auto-select first stage
+          if (data && data.length > 0) {
+            setDealData(prev => ({ ...prev, stage_id: data[0].id }));
+          }
+        }
+      } catch (e) {
+        console.error("Error loading stages:", e);
+      }
+    };
+    loadStages();
+  }, [dealData.pipeline_id]);
 
   const [contactData, setContactData] = useState({
     name: conversation.contact?.name || "",
@@ -138,24 +210,37 @@ export function ConversationSidebar({
   });
 
   const handleAddDeal = async () => {
-    if (!dealData.name || !projectId) {
+    if (!dealData.name.trim()) {
       toast.error("Nome é obrigatório");
+      return;
+    }
+
+    if (!dealData.pipeline_id) {
+      toast.error("Selecione um funil");
+      return;
+    }
+
+    if (!dealData.stage_id) {
+      toast.error("Selecione uma etapa");
       return;
     }
 
     setLoading(true);
     try {
-      // Create lead in CRM
+      // Create lead in CRM with pipeline and stage
       const { data: lead, error } = await supabase
         .from("crm_leads")
         .insert({
-          project_id: projectId,
-          name: dealData.name,
+          name: dealData.name.trim(),
           email: dealData.email || null,
           phone: dealData.phone || null,
           company: dealData.company || null,
-          deal_value: dealData.value ? parseFloat(dealData.value.replace(/\D/g, "")) / 100 : null,
+          opportunity_value: dealData.value ? parseFloat(dealData.value.replace(/\D/g, "")) / 100 : 0,
           created_by: staffId,
+          owner_staff_id: staffId,
+          pipeline_id: dealData.pipeline_id,
+          stage_id: dealData.stage_id,
+          entered_pipeline_at: new Date().toISOString(),
         })
         .select()
         .single();
@@ -174,9 +259,17 @@ export function ConversationSidebar({
       }
 
       setShowAddDealDialog(false);
-    } catch (error) {
+      // Reset form
+      setDealData(prev => ({
+        ...prev,
+        name: conversation.contact?.name || "",
+        email: "",
+        company: "",
+        value: "",
+      }));
+    } catch (error: any) {
       console.error("Error creating deal:", error);
-      toast.error("Erro ao criar negócio");
+      toast.error(error.message || "Erro ao criar negócio");
     } finally {
       setLoading(false);
     }
@@ -495,12 +588,83 @@ export function ConversationSidebar({
       
       {/* Add Deal Dialog */}
       <Dialog open={showAddDealDialog} onOpenChange={setShowAddDealDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Adicionar Negócio</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+            {/* Grupo de Origem */}
             <div>
+              <Label>Grupo de Origem *</Label>
+              <Select
+                value={dealData.origin_group_id}
+                onValueChange={(value) => setDealData({ 
+                  ...dealData, 
+                  origin_group_id: value,
+                  pipeline_id: "",
+                  stage_id: ""
+                })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o grupo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {originGroups.map((group) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Funil */}
+            <div>
+              <Label>Funil *</Label>
+              <Select
+                value={dealData.pipeline_id}
+                onValueChange={(value) => setDealData({ 
+                  ...dealData, 
+                  pipeline_id: value,
+                  stage_id: ""
+                })}
+                disabled={!dealData.origin_group_id}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={dealData.origin_group_id ? "Selecione o funil" : "Selecione um grupo primeiro"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelinesForGroup.map((pipeline) => (
+                    <SelectItem key={pipeline.id} value={pipeline.id}>
+                      {pipeline.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Etapa */}
+            <div>
+              <Label>Etapa *</Label>
+              <Select
+                value={dealData.stage_id}
+                onValueChange={(value) => setDealData({ ...dealData, stage_id: value })}
+                disabled={!dealData.pipeline_id}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={dealData.pipeline_id ? "Selecione a etapa" : "Selecione um funil primeiro"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {stagesForPipeline.map((stage) => (
+                    <SelectItem key={stage.id} value={stage.id}>
+                      {stage.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="border-t border-border pt-4">
               <Label>Nome *</Label>
               <Input
                 value={dealData.name}
