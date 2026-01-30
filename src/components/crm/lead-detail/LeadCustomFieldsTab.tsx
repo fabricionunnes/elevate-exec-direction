@@ -141,6 +141,47 @@ const StaffSelectWrapper = ({
   );
 };
 
+// Generic select wrapper for products and plans
+const EntitySelectWrapper = ({
+  field,
+  value,
+  onSave,
+  isSaving,
+  options,
+  placeholder = "Selecionar",
+}: {
+  field: CustomField;
+  value: string;
+  onSave: (field: CustomField, value: string) => void;
+  isSaving: boolean;
+  options: { id: string; name: string }[];
+  placeholder?: string;
+}) => {
+  const selectedOption = options.find(o => o.id === value);
+  
+  return (
+    <Select
+      value={value || "none"}
+      onValueChange={(v) => onSave(field, v === "none" ? "" : v)}
+      disabled={isSaving}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder={placeholder}>
+          {selectedOption?.name || placeholder}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">Nenhum</SelectItem>
+        {options.map((option) => (
+          <SelectItem key={option.id} value={option.id}>
+            {option.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
 export const LeadCustomFieldsTab = ({
   leadId,
   context,
@@ -155,11 +196,14 @@ export const LeadCustomFieldsTab = ({
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["Informações Gerais"]));
   const [closerStaff, setCloserStaff] = useState<{ id: string; name: string; role: string }[]>([]);
   const [sdrStaff, setSdrStaff] = useState<{ id: string; name: string; role: string }[]>([]);
+  const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
+  const [plans, setPlans] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     loadFields();
     if (context === "deal") {
       loadStaff();
+      loadProductsAndPlans();
     }
   }, [leadId, context]);
 
@@ -183,6 +227,26 @@ export const LeadCustomFieldsTab = ({
       .order("name");
     
     setSdrStaff(sdrs || []);
+  };
+
+  const loadProductsAndPlans = async () => {
+    // Load active products
+    const { data: productsData } = await supabase
+      .from("crm_products")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("sort_order");
+    
+    setProducts(productsData || []);
+
+    // Load active plans
+    const { data: plansData } = await supabase
+      .from("crm_plans")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("sort_order");
+    
+    setPlans(plansData || []);
   };
 
   const loadFields = async () => {
@@ -236,6 +300,8 @@ export const LeadCustomFieldsTab = ({
       notes: "notes",
       closer_staff_id: "closer_staff_id",
       sdr_staff_id: "sdr_staff_id",
+      product_id: "product_id",
+      plan_id: "plan_id",
     };
 
     const key = mapping[fieldName];
@@ -272,6 +338,8 @@ export const LeadCustomFieldsTab = ({
         notes: "notes",
         closer_staff_id: "closer_staff_id",
         sdr_staff_id: "sdr_staff_id",
+        product_id: "product_id",
+        plan_id: "plan_id",
       };
 
       const dbField = fieldMapping[field.field_name];
@@ -282,13 +350,8 @@ export const LeadCustomFieldsTab = ({
         const updateData: Record<string, any> = {};
         if (field.field_type === "number") {
           updateData[dbField] = value ? parseFloat(value) : null;
-        } else if (field.field_name === "closer_staff_id" || field.field_name === "sdr_staff_id") {
+        } else if (["closer_staff_id", "sdr_staff_id", "product_id", "plan_id"].includes(field.field_name)) {
           updateData[dbField] = value || null;
-        } else {
-          updateData[dbField] = value || null;
-        }
-        if (field.field_type === "number") {
-          updateData[dbField] = value ? parseFloat(value) : null;
         } else {
           updateData[dbField] = value || null;
         }
@@ -395,6 +458,32 @@ export const LeadCustomFieldsTab = ({
               onSave={handleFieldChange}
               isSaving={isSaving}
               staffList={sdrStaff}
+            />
+          );
+        }
+        // Special handling for product field
+        if (field.field_name === "product_id") {
+          return (
+            <EntitySelectWrapper
+              field={field}
+              value={value}
+              onSave={handleFieldChange}
+              isSaving={isSaving}
+              options={products}
+              placeholder="Selecionar produto"
+            />
+          );
+        }
+        // Special handling for plan field
+        if (field.field_name === "plan_id") {
+          return (
+            <EntitySelectWrapper
+              field={field}
+              value={value}
+              onSave={handleFieldChange}
+              isSaving={isSaving}
+              options={plans}
+              placeholder="Selecionar plano"
             />
           );
         }

@@ -9457,7 +9457,9 @@ export type Database = {
           owner_staff_id: string | null
           phone: string | null
           pipeline_id: string | null
+          plan_id: string | null
           probability: number | null
+          product_id: string | null
           role: string | null
           sdr_staff_id: string | null
           segment: string | null
@@ -9492,7 +9494,9 @@ export type Database = {
           owner_staff_id?: string | null
           phone?: string | null
           pipeline_id?: string | null
+          plan_id?: string | null
           probability?: number | null
+          product_id?: string | null
           role?: string | null
           sdr_staff_id?: string | null
           segment?: string | null
@@ -9527,7 +9531,9 @@ export type Database = {
           owner_staff_id?: string | null
           phone?: string | null
           pipeline_id?: string | null
+          plan_id?: string | null
           probability?: number | null
+          product_id?: string | null
           role?: string | null
           sdr_staff_id?: string | null
           segment?: string | null
@@ -9578,6 +9584,20 @@ export type Database = {
             columns: ["pipeline_id"]
             isOneToOne: false
             referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "crm_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "crm_products"
             referencedColumns: ["id"]
           },
           {
@@ -9738,6 +9758,50 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          price: number | null
+          product_id: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          price?: number | null
+          product_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number | null
+          product_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_plans_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "crm_products"
             referencedColumns: ["id"]
           },
         ]
