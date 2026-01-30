@@ -20,6 +20,7 @@ import {
 import { ChevronDown, Settings, EyeOff, Flag } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ManageCustomFieldsDialog } from "./ManageCustomFieldsDialog";
 
 interface CustomField {
   id: string;
@@ -198,14 +199,26 @@ export const LeadCustomFieldsTab = ({
   const [sdrStaff, setSdrStaff] = useState<{ id: string; name: string; role: string }[]>([]);
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
   const [plans, setPlans] = useState<{ id: string; name: string }[]>([]);
+  const [isMaster, setIsMaster] = useState(false);
+  const [showManageFields, setShowManageFields] = useState(false);
 
   useEffect(() => {
     loadFields();
+    checkMasterRole();
     if (context === "deal") {
       loadStaff();
       loadProductsAndPlans();
     }
   }, [leadId, context]);
+
+  const checkMasterRole = async () => {
+    try {
+      const { data } = await supabase.rpc("is_master");
+      setIsMaster(data === true);
+    } catch (error) {
+      console.error("Error checking master role:", error);
+    }
+  };
 
   const loadStaff = async () => {
     // Load closers
@@ -591,12 +604,27 @@ export const LeadCustomFieldsTab = ({
             <EyeOff className="h-4 w-4 mr-2" />
             {hideEmptyFields ? "Mostrar todos" : "Ocultar Campos vazios"}
           </Button>
-          <Button variant="ghost" size="sm" className="text-muted-foreground">
-            <Settings className="h-4 w-4 mr-2" />
-            Gerenciar campos
-          </Button>
+          {isMaster && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-muted-foreground"
+              onClick={() => setShowManageFields(true)}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Gerenciar campos
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Manage Fields Dialog */}
+      <ManageCustomFieldsDialog
+        open={showManageFields}
+        onOpenChange={setShowManageFields}
+        context={context}
+        onFieldsUpdated={loadFields}
+      />
 
       {/* Fields by Section */}
       <div className="p-6">
