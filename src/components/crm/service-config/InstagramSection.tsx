@@ -79,9 +79,26 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
         throw new Error(data?.error || error?.message);
       }
 
-      // Redirect to Facebook OAuth - use assign for better iframe compatibility
+      // Facebook/Meta pages commonly block being loaded inside iframes (X-Frame-Options/CSP),
+      // which shows up as a white screen in the preview. Force a top-level navigation or open a new tab.
       console.log("Redirecting to:", data.authUrl);
-      window.location.assign(data.authUrl);
+
+      try {
+        // If we're inside an iframe, navigate the top window
+        if (window.top && window.top !== window.self) {
+          window.top.location.assign(data.authUrl);
+          return;
+        }
+      } catch {
+        // Accessing window.top can throw in some sandboxed contexts; fallback below.
+      }
+
+      // Fallback: open in a new tab/window
+      const opened = window.open(data.authUrl, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        // Final fallback
+        window.location.assign(data.authUrl);
+      }
     } catch (err: any) {
       console.error("Error getting auth URL:", err);
       toast.error(err.message || "Erro ao iniciar conexão");
