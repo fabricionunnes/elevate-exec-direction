@@ -14,6 +14,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Search,
   Filter,
   Phone,
@@ -31,6 +48,8 @@ import {
   RefreshCw,
   Wifi,
   WifiOff,
+  Trash2,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -55,6 +74,8 @@ export const CRMInboxPage = () => {
   const [allowedInstanceIds, setAllowedInstanceIds] = useState<string[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [loadingAccess, setLoadingAccess] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingConversation, setDeletingConversation] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -218,6 +239,40 @@ export const CRMInboxPage = () => {
       toast.success("Mensagem enviada!");
     } catch (error) {
       toast.error("Erro ao enviar mensagem");
+    }
+  };
+
+  // Delete conversation (master only)
+  const handleDeleteConversation = async () => {
+    if (!selectedConversation || staffRole !== "master") return;
+    
+    setDeletingConversation(true);
+    try {
+      // First delete all messages
+      const { error: messagesError } = await supabase
+        .from("crm_whatsapp_messages")
+        .delete()
+        .eq("conversation_id", selectedConversation.id);
+      
+      if (messagesError) throw messagesError;
+      
+      // Then delete the conversation
+      const { error: convError } = await supabase
+        .from("crm_whatsapp_conversations")
+        .delete()
+        .eq("id", selectedConversation.id);
+      
+      if (convError) throw convError;
+      
+      toast.success("Conversa excluída com sucesso");
+      setSelectedConversation(null);
+      setDeleteDialogOpen(false);
+      refetchConversations();
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      toast.error("Erro ao excluir conversa");
+    } finally {
+      setDeletingConversation(false);
     }
   };
 
@@ -445,9 +500,31 @@ export const CRMInboxPage = () => {
               <Button variant="ghost" size="icon">
                 <Video className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => closeConversation(selectedConversation.id)}>
+                    <X className="h-4 w-4 mr-2" />
+                    Fechar conversa
+                  </DropdownMenuItem>
+                  {staffRole === "master" && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => setDeleteDialogOpen(true)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir conversa
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -631,6 +708,29 @@ export const CRMInboxPage = () => {
         open={showConfigDialog} 
         onOpenChange={setShowConfigDialog}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conversa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá excluir permanentemente toda a conversa e suas mensagens. 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingConversation}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConversation}
+              disabled={deletingConversation}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingConversation ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
