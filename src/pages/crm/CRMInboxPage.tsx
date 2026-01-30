@@ -60,6 +60,7 @@ import { ServiceConfigDialog } from "@/components/crm/service-config/ServiceConf
 import { useWhatsAppConversations, WhatsAppConversation } from "@/hooks/useWhatsAppConversations";
 import { useWhatsAppMessages, WhatsAppMessage } from "@/hooks/useWhatsAppMessages";
 import { ConversationSidebar } from "@/components/crm/inbox/ConversationSidebar";
+import { ConversationFilters, ConversationFiltersData, defaultFilters } from "@/components/crm/inbox/ConversationFilters";
 
 export const CRMInboxPage = () => {
   const [searchParams] = useSearchParams();
@@ -76,6 +77,8 @@ export const CRMInboxPage = () => {
   const [loadingAccess, setLoadingAccess] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingConversation, setDeletingConversation] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<ConversationFiltersData>(defaultFilters);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -277,6 +280,7 @@ export const CRMInboxPage = () => {
   };
 
   const filteredConversations = conversations.filter(conv => {
+    // Text search
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       const contactName = conv.contact?.name || "";
@@ -285,6 +289,28 @@ export const CRMInboxPage = () => {
         return false;
       }
     }
+
+    // Conversation filters
+    if (filters.assignedToMe && conv.assigned_to !== staffId) return false;
+    if (filters.unassigned && conv.assigned_to !== null) return false;
+    if (filters.read && conv.unread_count > 0) return false;
+    if (filters.unread && conv.unread_count === 0) return false;
+    if (filters.status && conv.status !== filters.status) return false;
+    if (filters.assignedTo && conv.assigned_to !== filters.assignedTo) return false;
+    if (filters.sectorId && conv.sector_id !== filters.sectorId) return false;
+    if (filters.instanceId && conv.instance_id !== filters.instanceId) return false;
+    
+    // Deal filters
+    if (filters.hasDeal === "with" && !conv.lead_id) return false;
+    if (filters.hasDeal === "without" && conv.lead_id) return false;
+
+    // Date filter
+    if (filters.createdAt) {
+      const convDate = new Date(conv.created_at);
+      const filterDate = new Date(filters.createdAt);
+      if (convDate.toDateString() !== filterDate.toDateString()) return false;
+    }
+
     return true;
   });
 
@@ -373,7 +399,12 @@ export const CRMInboxPage = () => {
           </Select>
 
           <div className="flex gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7">
+            <Button 
+              variant={showFilters ? "secondary" : "ghost"} 
+              size="icon" 
+              className="h-7 w-7"
+              onClick={() => setShowFilters(!showFilters)}
+            >
               <Filter className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -731,6 +762,15 @@ export const CRMInboxPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Filters Panel */}
+      <ConversationFilters
+        open={showFilters}
+        onClose={() => setShowFilters(false)}
+        filters={filters}
+        onFiltersChange={setFilters}
+        currentStaffId={staffId}
+      />
     </div>
   );
 };
