@@ -172,10 +172,12 @@ export const CRMInboxPage = () => {
     fetchInitialData();
   }, []);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when messages change or conversation is selected
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages, selectedConversation?.id]);
 
   // Sync selectedConversation with conversations when they update (e.g., from realtime)
   useEffect(() => {
