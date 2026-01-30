@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 
-const CRM_ROLES = ["master", "admin", "head_comercial", "closer", "sdr"];
+const CRM_ROLES = ["master", "admin", "head_comercial", "closer", "sdr", "social_setter", "bdr"];
 
 interface NavItem {
   title: string;
@@ -71,8 +71,33 @@ export const CRMLayout = () => {
           return;
         }
 
+        // Master and admin always have access
+        if (staff.role === "master" || staff.role === "admin") {
+          console.log("[CRM] Access granted for admin role:", staff.role);
+          setHasAccess(true);
+          setStaffRole(staff.role);
+          setStaffName(staff.name);
+          setIsLoading(false);
+          return;
+        }
+
+        // Check if role is in commercial sector
         if (!CRM_ROLES.includes(staff.role)) {
           console.log("[CRM] Staff role", staff.role, "not in CRM_ROLES:", CRM_ROLES);
+          navigate("/onboarding-tasks");
+          return;
+        }
+
+        // For commercial roles, check if they have CRM permission
+        const { data: permission } = await supabase
+          .from("staff_menu_permissions")
+          .select("id")
+          .eq("staff_id", staff.id)
+          .eq("menu_key", "crm")
+          .maybeSingle();
+
+        if (!permission) {
+          console.log("[CRM] Staff doesn't have CRM permission");
           navigate("/onboarding-tasks");
           return;
         }

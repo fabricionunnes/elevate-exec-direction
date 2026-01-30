@@ -46,9 +46,11 @@ import {
   Target,
   Folder,
   Copy,
-  Zap
+  Zap,
+  Users
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
+import { CRMAccessSettings } from "@/components/crm/CRMAccessSettings";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -598,7 +600,7 @@ export const CRMSettingsPage = () => {
       </div>
 
       <Tabs defaultValue="pipelines" className="w-full">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="pipelines" className="gap-2">
             <Kanban className="h-4 w-4" />
             Pipelines
@@ -614,6 +616,10 @@ export const CRMSettingsPage = () => {
           <TabsTrigger value="tags" className="gap-2">
             <Tag className="h-4 w-4" />
             Tags
+          </TabsTrigger>
+          <TabsTrigger value="access" className="gap-2">
+            <Users className="h-4 w-4" />
+            Acessos
           </TabsTrigger>
         </TabsList>
 
@@ -1475,6 +1481,11 @@ export const CRMSettingsPage = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Access Tab */}
+        <TabsContent value="access" className="mt-6">
+          <CRMAccessSettings />
         </TabsContent>
       </Tabs>
 
