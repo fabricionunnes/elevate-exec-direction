@@ -7,6 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
   Phone, 
   Calendar, 
   ListTodo, 
@@ -15,25 +22,35 @@ import {
   Pencil,
   MessageSquare,
   History,
-  Flag
+  Flag,
+  User
 } from "lucide-react";
 import { WhatsAppConversation } from "@/hooks/useWhatsAppConversations";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCRMContext } from "@/pages/crm/CRMLayout";
 
+interface CRMStaff {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  role: string;
+}
+
 interface ConversationSidebarProps {
   conversation: WhatsAppConversation;
   projectId?: string;
   onLeadCreated?: (leadId: string) => void;
   onContactUpdated?: () => void;
+  onAssignmentChanged?: () => void;
 }
 
 export function ConversationSidebar({ 
   conversation, 
   projectId,
   onLeadCreated,
-  onContactUpdated 
+  onContactUpdated,
+  onAssignmentChanged
 }: ConversationSidebarProps) {
   const { staffId } = useCRMContext();
   const [showAddDealDialog, setShowAddDealDialog] = useState(false);
@@ -42,7 +59,56 @@ export function ConversationSidebar({
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [assignedOpen, setAssignedOpen] = useState(true);
   const [loading, setLoading] = useState(false);
+  
+  // CRM Staff for assignment
+  const [crmStaff, setCrmStaff] = useState<CRMStaff[]>([]);
+  const [loadingStaff, setLoadingStaff] = useState(false);
+
+  // Fetch CRM staff (commercial roles)
+  useEffect(() => {
+    const fetchCRMStaff = async () => {
+      setLoadingStaff(true);
+      try {
+        const crmRoles = ['master', 'admin', 'head_comercial', 'closer', 'sdr', 'social_setter', 'bdr'];
+        const { data, error } = await supabase
+          .from("onboarding_staff")
+          .select("id, name, avatar_url, role")
+          .in("role", crmRoles)
+          .eq("is_active", true)
+          .order("name");
+
+        if (error) throw error;
+        setCrmStaff(data || []);
+      } catch (error) {
+        console.error("Error fetching CRM staff:", error);
+      } finally {
+        setLoadingStaff(false);
+      }
+    };
+    fetchCRMStaff();
+  }, []);
+
+  const handleAssignStaff = async (staffIdToAssign: string | null) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("crm_whatsapp_conversations")
+        .update({ assigned_to: staffIdToAssign })
+        .eq("id", conversation.id);
+
+      if (error) throw error;
+
+      toast.success(staffIdToAssign ? "Atendente atribuído!" : "Atribuição removida!");
+      onAssignmentChanged?.();
+    } catch (error) {
+      console.error("Error assigning staff:", error);
+      toast.error("Erro ao atribuir atendente");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Form states
   const [dealData, setDealData] = useState({
@@ -277,6 +343,65 @@ export function ConversationSidebar({
           </Button>
         </div>
       </div>
+
+      {/* Assignment Section */}
+      <Collapsible open={assignedOpen} onOpenChange={setAssignedOpen}>
+        <CollapsibleTrigger asChild>
+          <button className="w-full p-4 border-b border-border flex items-center justify-between hover:bg-muted/50 transition-colors">
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <User className="h-4 w-4" />
+              Atribuído a
+            </span>
+            <ChevronRight className={`h-4 w-4 transition-transform ${assignedOpen ? "rotate-90" : ""}`} />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="border-b border-border">
+          <div className="p-4 space-y-3">
+            {conversation.assigned_staff ? (
+              <div className="flex items-center gap-2 mb-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={conversation.assigned_staff.avatar_url || undefined} />
+                  <AvatarFallback>
+                    {conversation.assigned_staff.name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium">{conversation.assigned_staff.name}</span>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground mb-2">Nenhum atendente atribuído</p>
+            )}
+            
+            <Select
+              value={conversation.assigned_to || "none"}
+              onValueChange={(value) => handleAssignStaff(value === "none" ? null : value)}
+              disabled={loading || loadingStaff}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecionar atendente..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">
+                  <span className="text-muted-foreground">Sem atribuição</span>
+                </SelectItem>
+                {crmStaff.map((staff) => (
+                  <SelectItem key={staff.id} value={staff.id}>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-5 w-5">
+                        <AvatarImage src={staff.avatar_url || undefined} />
+                        <AvatarFallback className="text-[10px]">
+                          {staff.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{staff.name}</span>
+                      <span className="text-xs text-muted-foreground capitalize">({staff.role})</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Add Deal Button */}
       <div className="p-4 border-b border-border">
