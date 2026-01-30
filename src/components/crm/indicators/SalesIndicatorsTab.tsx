@@ -6,6 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -22,9 +26,10 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { format, subDays, startOfMonth, endOfMonth, getDaysInMonth, getDate } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth, getDaysInMonth, getDate, startOfWeek, endOfWeek, startOfQuarter, endOfQuarter } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Trophy, Target, Phone, TrendingUp, DollarSign, Percent, Users } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface CloserMetrics {
   id: string;
@@ -59,6 +64,8 @@ interface ForecastRecord {
   value: number;
 }
 
+type DateFilterType = "today" | "week" | "month" | "quarter" | "custom";
+
 export const SalesIndicatorsTab = () => {
   const [loading, setLoading] = useState(true);
   const [closers, setClosers] = useState<CloserMetrics[]>([]);
@@ -68,19 +75,24 @@ export const SalesIndicatorsTab = () => {
   const [selectedProduct, setSelectedProduct] = useState<string>("all");
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
   
+  // Date filter state
+  const [dateFilter, setDateFilter] = useState<DateFilterType>("month");
+  const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>(undefined);
+  const [customDateTo, setCustomDateTo] = useState<Date | undefined>(undefined);
+  
   // Main metrics
   const [metrics, setMetrics] = useState({
-    metaReceita: 140000,
+    metaReceita: 0,
     receita: 0,
-    faltaReceita: 140000,
+    faltaReceita: 0,
     vendas: 0,
     ticketMedio: 0,
     qtr: 0,
     conversao: 0,
-    superMeta: 200000,
-    hiperMeta: 280000,
-    faltaSuper: 200000,
-    faltaHiper: 280000,
+    superMeta: 0,
+    hiperMeta: 0,
+    faltaSuper: 0,
+    faltaHiper: 0,
     forecast: 0,
     projecaoReceita: 0,
     projecaoPercent: 0,
@@ -110,10 +122,32 @@ export const SalesIndicatorsTab = () => {
   // Product distribution
   const [productDistribution, setProductDistribution] = useState<{ name: string; value: number; color: string }[]>([]);
 
+  // Get date range based on filter
+  const getDateRange = () => {
+    const now = new Date();
+    switch (dateFilter) {
+      case "today":
+        return { start: now, end: now };
+      case "week":
+        return { start: startOfWeek(now, { locale: ptBR }), end: endOfWeek(now, { locale: ptBR }) };
+      case "month":
+        return { start: startOfMonth(now), end: endOfMonth(now) };
+      case "quarter":
+        return { start: startOfQuarter(now), end: endOfQuarter(now) };
+      case "custom":
+        return { 
+          start: customDateFrom || startOfMonth(now), 
+          end: customDateTo || endOfMonth(now) 
+        };
+      default:
+        return { start: startOfMonth(now), end: endOfMonth(now) };
+    }
+  };
+
   useEffect(() => {
     loadData();
     loadProducts();
-  }, []);
+  }, [dateFilter, customDateFrom, customDateTo]);
 
   const loadProducts = async () => {
     const { data } = await supabase
@@ -129,10 +163,11 @@ export const SalesIndicatorsTab = () => {
     setLoading(true);
     try {
       const now = new Date();
-      const monthStart = startOfMonth(now);
-      const monthEnd = endOfMonth(now);
-      const daysInMonth = getDaysInMonth(now);
+      const { start: filterStart, end: filterEnd } = getDateRange();
+      const daysInMonth = getDaysInMonth(filterStart);
       const currentDay = getDate(now);
+      const filterMonth = filterStart.getMonth() + 1;
+      const filterYear = filterStart.getFullYear();
 
       // Load closers (staff with closer role who have CRM access)
       // First get staff IDs with CRM access
@@ -155,7 +190,7 @@ export const SalesIndicatorsTab = () => {
         staff.role === "master" || crmStaffIds.includes(staff.id)
       );
 
-      // Load scheduled calls
+      // Load scheduled calls using date range
       const { data: calls } = await supabase
         .from("crm_scheduled_calls")
         .select(`
@@ -163,10 +198,10 @@ export const SalesIndicatorsTab = () => {
           scheduled_by_staff:onboarding_staff!crm_scheduled_calls_scheduled_by_fkey(id, name),
           assigned_to_staff:onboarding_staff!crm_scheduled_calls_assigned_to_fkey(id, name)
         `)
-        .gte("scheduled_at", monthStart.toISOString())
-        .lte("scheduled_at", monthEnd.toISOString());
+        .gte("scheduled_at", filterStart.toISOString())
+        .lte("scheduled_at", filterEnd.toISOString());
 
-      // Load sales
+      // Load sales using date range
       const { data: salesData } = await supabase
         .from("crm_sales")
         .select(`
@@ -177,8 +212,8 @@ export const SalesIndicatorsTab = () => {
           product:crm_products(id, name),
           lead:crm_leads(id, name, company)
         `)
-        .gte("sale_date", format(monthStart, "yyyy-MM-dd"))
-        .lte("sale_date", format(monthEnd, "yyyy-MM-dd"));
+        .gte("sale_date", format(filterStart, "yyyy-MM-dd"))
+        .lte("sale_date", format(filterEnd, "yyyy-MM-dd"));
 
       // Load forecasts
       const { data: forecastData } = await supabase
@@ -190,13 +225,44 @@ export const SalesIndicatorsTab = () => {
         `)
         .eq("status", "open");
 
-      // Load targets
-      const { data: targets } = await supabase
-        .from("crm_sales_targets")
-        .select("*")
-        .eq("month", now.getMonth() + 1)
-        .eq("year", now.getFullYear())
-        .eq("target_type", "revenue");
+      // Load goal type for "Vendas" (currency type)
+      const { data: goalTypeData } = await supabase
+        .from("crm_goal_types")
+        .select("id")
+        .eq("name", "Vendas")
+        .eq("is_active", true)
+        .single();
+
+      // Load goals from crm_goal_values (correct table)
+      let metaReceita = 0;
+      let superMeta = 0;
+      let hiperMeta = 0;
+
+      // Map of staff_id -> goal values
+      const staffGoalsMap = new Map<string, { meta: number; super: number; hiper: number }>();
+
+      if (goalTypeData?.id) {
+        const { data: goalValues } = await supabase
+          .from("crm_goal_values")
+          .select("*")
+          .eq("goal_type_id", goalTypeData.id)
+          .eq("month", filterMonth)
+          .eq("year", filterYear);
+
+        // Sum all staff goals for total and build map
+        if (goalValues && goalValues.length > 0) {
+          goalValues.forEach(g => {
+            staffGoalsMap.set(g.staff_id, {
+              meta: g.meta_value || 0,
+              super: g.super_meta_value || 0,
+              hiper: g.hiper_meta_value || 0,
+            });
+          });
+          metaReceita = goalValues.reduce((sum, g) => sum + (g.meta_value || 0), 0);
+          superMeta = goalValues.reduce((sum, g) => sum + (g.super_meta_value || 0), 0);
+          hiperMeta = goalValues.reduce((sum, g) => sum + (g.hiper_meta_value || 0), 0);
+        }
+      }
 
       // Calculate metrics
       const totalRevenue = (salesData || []).reduce((sum, s) => sum + (s.revenue_value || 0), 0);
@@ -208,12 +274,6 @@ export const SalesIndicatorsTab = () => {
       const totalNoShow = (calls || []).filter(c => c.status === "no_show").length;
       const noShowPercent = totalScheduled > 0 ? (totalNoShow / totalScheduled) * 100 : 0;
       const conversion = totalCompleted > 0 ? (totalSales / totalCompleted) * 100 : 0;
-
-      // Get target values
-      const mainTarget = targets?.find(t => !t.staff_id);
-      const metaReceita = mainTarget?.target_value || 140000;
-      const superMeta = mainTarget?.super_target || 200000;
-      const hiperMeta = mainTarget?.hyper_target || 280000;
 
       // Calculate projection
       const dailyAvg = currentDay > 0 ? totalRevenue / currentDay : 0;
@@ -252,8 +312,9 @@ export const SalesIndicatorsTab = () => {
         const closerSales = (salesData || []).filter(s => s.closer_staff_id === closer.id);
         const closerRevenue = closerSales.reduce((sum, s) => sum + (s.revenue_value || 0), 0);
         const closerCompleted = closerCalls.filter(c => c.status === "completed").length;
-        const closerTarget = targets?.find(t => t.staff_id === closer.id);
-        const closerMeta = closerTarget?.target_value || (metaReceita / (filteredCloserStaff.length || 1));
+        // Use the preloaded goals map
+        const closerGoal = staffGoalsMap.get(closer.id);
+        const closerMeta = closerGoal?.meta || (metaReceita / (filteredCloserStaff.length || 1));
 
         return {
           id: closer.id,
@@ -391,6 +452,74 @@ export const SalesIndicatorsTab = () => {
             Bônus: 0
           </Badge>
         </div>
+        
+        {/* Date filter */}
+        <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilterType)}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Período" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="today">Hoje</SelectItem>
+            <SelectItem value="week">Esta Semana</SelectItem>
+            <SelectItem value="month">Este Mês</SelectItem>
+            <SelectItem value="quarter">Trimestre</SelectItem>
+            <SelectItem value="custom">Personalizado</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Custom date range */}
+        {dateFilter === "custom" && (
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[130px] justify-start text-left font-normal",
+                    !customDateFrom && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {customDateFrom ? format(customDateFrom, "dd/MM/yyyy") : "De"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={customDateFrom}
+                  onSelect={setCustomDateFrom}
+                  initialFocus
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
+            <span className="text-muted-foreground">até</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[130px] justify-start text-left font-normal",
+                    !customDateTo && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {customDateTo ? format(customDateTo, "dd/MM/yyyy") : "Até"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={customDateTo}
+                  onSelect={setCustomDateTo}
+                  initialFocus
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+        
         <Select value={selectedCloser} onValueChange={setSelectedCloser}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Closer" />
@@ -414,7 +543,9 @@ export const SalesIndicatorsTab = () => {
           </SelectContent>
         </Select>
         <Badge variant="secondary" className="ml-auto">
-          {format(new Date(), "MMMM yyyy", { locale: ptBR })}
+          {dateFilter === "custom" && customDateFrom && customDateTo
+            ? `${format(customDateFrom, "dd/MM")} - ${format(customDateTo, "dd/MM/yyyy")}`
+            : format(getDateRange().start, "MMMM yyyy", { locale: ptBR })}
         </Badge>
       </div>
 
