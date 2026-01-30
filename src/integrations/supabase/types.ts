@@ -18368,6 +18368,58 @@ export type Database = {
           },
         ]
       }
+      whatsapp_instance_access: {
+        Row: {
+          can_send: boolean | null
+          can_view: boolean | null
+          created_at: string | null
+          granted_by: string | null
+          id: string
+          instance_id: string
+          staff_id: string
+        }
+        Insert: {
+          can_send?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          granted_by?: string | null
+          id?: string
+          instance_id: string
+          staff_id: string
+        }
+        Update: {
+          can_send?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          granted_by?: string | null
+          id?: string
+          instance_id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_instance_access_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_instance_access_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_instance_access_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_instances: {
         Row: {
           created_at: string | null
@@ -18608,6 +18660,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      has_whatsapp_instance_access: {
+        Args: { _instance_id: string; _staff_id: string }
         Returns: boolean
       }
       is_ceo: { Args: never; Returns: boolean }

@@ -42,19 +42,21 @@ import { useWhatsAppMessages, WhatsAppMessage } from "@/hooks/useWhatsAppMessage
 import { ConversationSidebar } from "@/components/crm/inbox/ConversationSidebar";
 
 export const CRMInboxPage = () => {
-  const { staffId, staffName, isAdmin } = useCRMContext();
+  const { staffId, staffName, isAdmin, staffRole } = useCRMContext();
   const [selectedConversation, setSelectedConversation] = useState<WhatsAppConversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [connectedInstances, setConnectedInstances] = useState<string[]>([]);
+  const [allowedInstanceIds, setAllowedInstanceIds] = useState<string[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [loadingAccess, setLoadingAccess] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Use real data hooks
   const { 
-    conversations, 
+    conversations: allConversations, 
     loading: loadingConversations, 
     refetch: refetchConversations,
     markAsRead,
@@ -64,6 +66,16 @@ export const CRMInboxPage = () => {
     status: filterStatus !== "all" ? filterStatus : undefined,
   });
 
+  // Filter conversations based on user's instance access
+  const conversations = allConversations.filter((conv) => {
+    // Master has access to all
+    if (staffRole === "master") return true;
+    // If no instance_id, show to all (orphan conversations)
+    if (!conv.instance_id) return true;
+    // Check if user has access to this instance
+    return allowedInstanceIds.includes(conv.instance_id);
+  });
+
   const { 
     messages, 
     loading: loadingMessages, 
@@ -71,6 +83,38 @@ export const CRMInboxPage = () => {
     sendMessage,
     refetch: refetchMessages,
   } = useWhatsAppMessages(selectedConversation?.id || null);
+
+  // Fetch allowed instances for this user
+  useEffect(() => {
+    const fetchAllowedInstances = async () => {
+      if (!staffId) return;
+
+      setLoadingAccess(true);
+      try {
+        // Master has access to all instances
+        if (staffRole === "master") {
+          const { data: allInstances } = await supabase
+            .from("whatsapp_instances")
+            .select("id");
+          setAllowedInstanceIds((allInstances || []).map((i: any) => i.id));
+        } else {
+          // Get instances this user has explicit access to
+          const { data: accessData } = await supabase
+            .from("whatsapp_instance_access")
+            .select("instance_id")
+            .eq("staff_id", staffId)
+            .eq("can_view", true);
+          
+          setAllowedInstanceIds((accessData || []).map((a: any) => a.instance_id));
+        }
+      } catch (error) {
+        console.error("Error fetching allowed instances:", error);
+      } finally {
+        setLoadingAccess(false);
+      }
+    };
+    fetchAllowedInstances();
+  }, [staffId, staffRole]);
 
   // Fetch connected instances and project ID
   useEffect(() => {
@@ -245,9 +289,19 @@ export const CRMInboxPage = () => {
 
         {/* Conversations */}
         <ScrollArea className="flex-1">
-          {loadingConversations ? (
+          {loadingConversations || loadingAccess ? (
             <div className="flex items-center justify-center py-8">
               <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : allowedInstanceIds.length === 0 && staffRole !== "master" ? (
+            <div className="text-center py-8 px-4">
+              <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+              <p className="text-sm text-muted-foreground font-medium">
+                Sem acesso a conexões
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Solicite ao administrador para vincular seu usuário a uma conexão WhatsApp
+              </p>
             </div>
           ) : filteredConversations.length === 0 ? (
             <div className="text-center py-8">
@@ -257,7 +311,7 @@ export const CRMInboxPage = () => {
                   ? "Nenhuma conversa encontrada" 
                   : "Conecte um dispositivo WhatsApp"}
               </p>
-              {!hasConnectedDevice && (
+              {!hasConnectedDevice && isAdmin && (
                 <Button 
                   variant="link" 
                   size="sm" 
