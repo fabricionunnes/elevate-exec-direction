@@ -64,6 +64,7 @@ export const WhatsAppQRCodeModal = ({
   const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
+  const offlineDetectedRef = useRef(false);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -78,7 +79,8 @@ export const WhatsAppQRCodeModal = ({
   // Start status checking on mount
   useEffect(() => {
     statusIntervalRef.current = setInterval(() => {
-      if (!connected) checkStatus();
+      // If Evolution is offline, stop background checks to avoid error spam / perceived blank screen.
+      if (!connected && !offlineDetectedRef.current) checkStatus();
     }, STATUS_CHECK_INTERVAL);
 
     return () => {
@@ -300,6 +302,9 @@ export const WhatsAppQRCodeModal = ({
 
   const startQrPolling = useCallback(async () => {
     if (!mountedRef.current) return;
+
+    // Reset offline flag when user explicitly starts polling again.
+    offlineDetectedRef.current = false;
     
     setIsPolling(true);
     setPollingAttempt(0);
@@ -496,10 +501,21 @@ export const WhatsAppQRCodeModal = ({
         }, 1500);
       }
     } catch (error: any) {
-      // Silent fail for status checks - don't spam toast if server is offline
-      if (!error?.isOffline) {
-        console.log("[QR Modal] Status check error:", error);
+      // If Evolution is offline, stop all polling/intervals and show a single toast.
+      if (error?.isOffline) {
+        if (!offlineDetectedRef.current) {
+          offlineDetectedRef.current = true;
+          if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
+          if (statusIntervalRef.current) clearInterval(statusIntervalRef.current);
+          setIsPolling(false);
+          setLoading(false);
+          toast.error("Servidor do WhatsApp está offline. Tente novamente mais tarde.");
+        }
+        return;
       }
+
+      // Silent fail for other status check errors
+      console.log("[QR Modal] Status check error:", error);
     } finally {
       setChecking(false);
     }
