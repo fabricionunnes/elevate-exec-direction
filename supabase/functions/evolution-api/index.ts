@@ -233,6 +233,7 @@ serve(async (req) => {
 
       case 'set-webhook': {
         // Set webhook for an existing instance
+        // Evolution API v2.x expects the webhook config nested inside a "webhook" property
         const { instanceName, webhookUrl, events } = body;
 
         if (!instanceName || !webhookUrl) {
@@ -242,28 +243,52 @@ serve(async (req) => {
           );
         }
 
+        // Evolution API v2.x format - webhook config wrapped in "webhook" object
         const webhookPayload = {
-          url: webhookUrl,
-          webhook_by_events: true,
-          webhook_base64: false,
-          events: events || [
-            'MESSAGES_UPSERT',
-            'MESSAGES_UPDATE',
-            'CONNECTION_UPDATE',
-            'QRCODE_UPDATED',
-          ],
+          webhook: {
+            enabled: true,
+            url: webhookUrl,
+            webhookByEvents: true,
+            webhookBase64: false,
+            events: events || [
+              'MESSAGES_UPSERT',
+              'MESSAGES_UPDATE',
+              'CONNECTION_UPDATE',
+              'QRCODE_UPDATED',
+            ],
+          },
         };
 
-        const { res, json } = await fetchEvolutionJson(`/webhook/set/${encodeURIComponent(instanceName)}`, {
-          method: 'POST',
-          body: JSON.stringify(webhookPayload),
-        });
+        // Try multiple endpoint formats for different Evolution API versions
+        const endpoints = [
+          `/webhook/set/${encodeURIComponent(instanceName)}`,
+          `/instance/update/${encodeURIComponent(instanceName)}`,
+        ];
 
-        console.log('[evolution-api] Set webhook response:', json);
+        let lastRes: Response | null = null;
+        let lastJson: any = null;
+
+        for (const endpoint of endpoints) {
+          const { res, json } = await fetchEvolutionJson(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(webhookPayload),
+          });
+          
+          lastRes = res;
+          lastJson = json;
+
+          if (res.ok) {
+            console.log(`[evolution-api] Set webhook succeeded with endpoint: ${endpoint}`);
+            break;
+          }
+          console.log(`[evolution-api] Set webhook failed with endpoint ${endpoint}: ${res.status}`, json);
+        }
+
+        console.log('[evolution-api] Set webhook final response:', lastJson);
 
         return new Response(
-          JSON.stringify({ ...json, _version: EVOLUTION_API_FUNC_VERSION }),
-          { status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ ...lastJson, _version: EVOLUTION_API_FUNC_VERSION }),
+          { status: lastRes?.status || 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
