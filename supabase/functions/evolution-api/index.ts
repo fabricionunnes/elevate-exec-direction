@@ -210,10 +210,13 @@ serve(async (req) => {
           };
         }
 
-        const { res, json } = await fetchEvolutionJson('/instance/create', {
+        // Evolution API route can vary by install/version; try common prefixes
+        const { res, json, prefix } = await fetchWithPrefixes('/instance/create', {
           method: 'POST',
           body: JSON.stringify(createPayload),
         });
+
+        console.log(`[evolution-api] create-instance used prefix: "${prefix}"`);
 
         if (!res.ok) {
           return new Response(
