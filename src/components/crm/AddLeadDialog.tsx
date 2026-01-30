@@ -19,6 +19,7 @@ interface AddLeadDialogProps {
   onOpenChange: (open: boolean) => void;
   pipelineId: string;
   onSuccess: () => void;
+  initialStageId?: string;
 }
 
 const ORIGINS = [
@@ -32,7 +33,7 @@ const ORIGINS = [
   "Outro",
 ];
 
-export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess }: AddLeadDialogProps) => {
+export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initialStageId }: AddLeadDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [stages, setStages] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
@@ -70,7 +71,9 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess }: Add
     
     setStages(data || []);
     if (data && data.length > 0) {
-      setFormData(prev => ({ ...prev, stage_id: data[0].id }));
+      // Use initialStageId if provided, otherwise use the first stage
+      const defaultStageId = initialStageId || data[0].id;
+      setFormData(prev => ({ ...prev, stage_id: defaultStageId }));
     }
   };
 
