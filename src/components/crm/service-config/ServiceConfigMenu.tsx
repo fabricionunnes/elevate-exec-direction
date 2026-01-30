@@ -8,6 +8,7 @@ import {
   Bell,
   X,
   ChevronRight,
+  Instagram,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,12 @@ const menuItems: ServiceConfigMenuItem[] = [
     icon: <Bell className="h-5 w-5" />,
     title: "Notificações",
     description: "Fique por dentro de todas as notificações de atendimento que você tem acesso.",
+  },
+  {
+    id: "instagram",
+    icon: <Instagram className="h-5 w-5 text-pink-500" />,
+    title: "Instagram",
+    description: "Conecte suas contas Instagram para gerenciar DMs, comentários e seguidores.",
   },
 ];
 

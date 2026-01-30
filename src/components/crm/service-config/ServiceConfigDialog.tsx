@@ -10,6 +10,7 @@ import { QuickResponsesSection } from "./QuickResponsesSection";
 import { UsersPermissionsSection } from "./UsersPermissionsSection";
 import { ScheduledMessagesSection } from "./ScheduledMessagesSection";
 import { NotificationsSection } from "./NotificationsSection";
+import { InstagramSection } from "./InstagramSection";
 
 interface ServiceConfigDialogProps {
   open: boolean;
@@ -42,6 +43,8 @@ export const ServiceConfigDialog = ({ open, onOpenChange }: ServiceConfigDialogP
         return <ScheduledMessagesSection onBack={handleBack} />;
       case "notifications":
         return <NotificationsSection onBack={handleBack} />;
+      case "instagram":
+        return <InstagramSection onBack={handleBack} />;
       default:
         return (
           <ServiceConfigMenu
