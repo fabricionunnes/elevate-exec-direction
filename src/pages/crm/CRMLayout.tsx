@@ -1,37 +1,55 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, createContext, useContext } from "react";
 import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  LayoutDashboard,
-  Kanban,
-  Users,
-  CalendarCheck,
-  BarChart3,
-  Settings,
-  ChevronLeft,
-  Menu,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  ChevronLeft,
+  Settings,
+  User,
+  LogOut,
+  HelpCircle,
+  Plus,
+  Bell,
+} from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
+import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
 
 const CRM_ROLES = ["master", "admin", "head_comercial", "closer", "sdr", "social_setter", "bdr"];
 
-interface NavItem {
-  title: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  adminOnly?: boolean;
+interface CRMContextType {
+  staffRole: string | null;
+  staffName: string | null;
+  staffId: string | null;
+  isAdmin: boolean;
+  selectedOrigin: string | null;
+  setSelectedOrigin: (id: string | null) => void;
+  selectedPipeline: string | null;
+  setSelectedPipeline: (id: string | null) => void;
 }
 
-const navItems: NavItem[] = [
-  { title: "Dashboard", href: "/crm", icon: LayoutDashboard },
-  { title: "Pipeline", href: "/crm/pipeline", icon: Kanban },
-  { title: "Leads", href: "/crm/leads", icon: Users },
-  { title: "Atividades", href: "/crm/activities", icon: CalendarCheck },
-  { title: "Relatórios", href: "/crm/reports", icon: BarChart3 },
-  { title: "Configurações", href: "/crm/settings", icon: Settings, adminOnly: true },
+const CRMContext = createContext<CRMContextType | null>(null);
+
+export const useCRMContext = () => {
+  const context = useContext(CRMContext);
+  if (!context) throw new Error("useCRMContext must be used within CRMLayout");
+  return context;
+};
+
+const navTabs = [
+  { title: "Negócios", href: "/crm/pipeline" },
+  { title: "Contatos", href: "/crm/leads" },
+  { title: "Atividades", href: "/crm/activities" },
+  { title: "Atendimento", href: "/crm/inbox", badge: true },
+  { title: "Indicadores", href: "/crm/reports" },
 ];
 
 export const CRMLayout = () => {
@@ -39,7 +57,10 @@ export const CRMLayout = () => {
   const [hasAccess, setHasAccess] = useState(false);
   const [staffRole, setStaffRole] = useState<string | null>(null);
   const [staffName, setStaffName] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [staffId, setStaffId] = useState<string | null>(null);
+  const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
+  const [selectedPipeline, setSelectedPipeline] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -48,10 +69,7 @@ export const CRMLayout = () => {
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
-        console.log("[CRM] Auth check - user:", user?.id, "error:", authError?.message);
-        
         if (authError || !user) {
-          console.log("[CRM] No user found, redirecting to login");
           navigate("/onboarding-tasks/login");
           return;
         }
@@ -63,32 +81,25 @@ export const CRMLayout = () => {
           .eq("is_active", true)
           .maybeSingle();
 
-        console.log("[CRM] Staff check - staff:", staff, "error:", staffError?.message);
-
         if (!staff) {
-          console.log("[CRM] No staff record found for user");
           navigate("/onboarding-tasks");
           return;
         }
 
-        // Master and admin always have access
         if (staff.role === "master" || staff.role === "admin") {
-          console.log("[CRM] Access granted for admin role:", staff.role);
           setHasAccess(true);
           setStaffRole(staff.role);
           setStaffName(staff.name);
+          setStaffId(staff.id);
           setIsLoading(false);
           return;
         }
 
-        // Check if role is in commercial sector
         if (!CRM_ROLES.includes(staff.role)) {
-          console.log("[CRM] Staff role", staff.role, "not in CRM_ROLES:", CRM_ROLES);
           navigate("/onboarding-tasks");
           return;
         }
 
-        // For commercial roles, check if they have CRM permission
         const { data: permission } = await supabase
           .from("staff_menu_permissions")
           .select("id")
@@ -97,17 +108,16 @@ export const CRMLayout = () => {
           .maybeSingle();
 
         if (!permission) {
-          console.log("[CRM] Staff doesn't have CRM permission");
           navigate("/onboarding-tasks");
           return;
         }
 
-        console.log("[CRM] Access granted for role:", staff.role);
         setHasAccess(true);
         setStaffRole(staff.role);
         setStaffName(staff.name);
+        setStaffId(staff.id);
       } catch (error) {
-        console.error("[CRM] Error checking CRM access:", error);
+        console.error("[CRM] Error checking access:", error);
         navigate("/onboarding-tasks/login");
       } finally {
         setIsLoading(false);
@@ -125,95 +135,163 @@ export const CRMLayout = () => {
     );
   }
 
-  if (!hasAccess) {
-    return null;
-  }
+  if (!hasAccess) return null;
 
   const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
-  const filteredNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
+  const initials = staffName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "U";
 
-  const NavContent = () => (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="p-4 border-b border-border">
-        <Link to="/crm" className="flex items-center gap-2">
-          <img src={logoUnv} alt="UNV Nexus" className="h-8" />
-          <span className="font-semibold text-primary">CRM</span>
-        </Link>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
-        {filteredNavItems.map((item) => {
-          const isActive = location.pathname === item.href || 
-            (item.href !== "/crm" && location.pathname.startsWith(item.href));
-          
-          return (
-            <Link
-              key={item.href}
-              to={item.href}
-              onClick={() => setSidebarOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.title}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Footer */}
-      <div className="p-4 border-t border-border">
-        <Link
-          to="/onboarding-tasks"
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Voltar ao Nexus
-        </Link>
-        {staffName && (
-          <p className="mt-2 text-xs text-muted-foreground truncate">
-            {staffName}
-          </p>
-        )}
-      </div>
-    </div>
-  );
+  const isTabActive = (href: string) => {
+    if (href === "/crm/pipeline") {
+      return location.pathname === "/crm" || location.pathname.startsWith("/crm/pipeline");
+    }
+    return location.pathname.startsWith(href);
+  };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 border-r border-border flex-col bg-card">
-        <NavContent />
-      </aside>
+    <CRMContext.Provider value={{
+      staffRole,
+      staffName,
+      staffId,
+      isAdmin,
+      selectedOrigin,
+      setSelectedOrigin,
+      selectedPipeline,
+      setSelectedPipeline,
+    }}>
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Top Header */}
+        <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-4 sticky top-0 z-50">
+          {/* Logo */}
+          <Link to="/crm" className="flex items-center gap-2 mr-4">
+            <img src={logoUnv} alt="UNV Nexus" className="h-7" />
+          </Link>
 
-      {/* Mobile Header + Sidebar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
-        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
+          {/* Navigation Tabs */}
+          <nav className="flex items-center gap-1 flex-1">
+            {navTabs.map((tab) => (
+              <Link
+                key={tab.href}
+                to={tab.href}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium rounded-md transition-colors relative",
+                  isTabActive(tab.href)
+                    ? "text-primary bg-primary/10"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+              >
+                {tab.title}
+                {tab.badge && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" />
+                )}
+              </Link>
+            ))}
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-muted-foreground">
+                  ⋮ Mais
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem asChild>
+                  <Link to="/crm">Dashboard</Link>
+                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/crm/settings">Configurações</Link>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </nav>
+
+          {/* Right Actions */}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
             </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64">
-            <NavContent />
-          </SheetContent>
-        </Sheet>
-        <Link to="/crm" className="flex items-center gap-2">
-          <img src={logoUnv} alt="UNV Nexus" className="h-6" />
-          <span className="font-semibold text-primary text-sm">CRM</span>
-        </Link>
-      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 lg:p-0 pt-16 lg:pt-0">
-        <Outlet context={{ staffRole, isAdmin }} />
-      </main>
-    </div>
+            <Button size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Novo
+            </Button>
+
+            {/* Profile Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-2 py-1.5">
+                  <p className="font-medium text-sm">{staffName}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{staffRole}</p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/crm/settings" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Conta
+                  </Link>
+                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/crm/settings" className="flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      Configurações
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem className="flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4" />
+                  Ajuda
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/onboarding-tasks" className="flex items-center gap-2">
+                    <ChevronLeft className="h-4 w-4" />
+                    Voltar ao Nexus
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="flex items-center gap-2 text-red-600"
+                  onClick={() => {
+                    supabase.auth.signOut();
+                    navigate("/onboarding-tasks/login");
+                  }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+
+        {/* Main Content with Sidebar */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Origins Sidebar - Only show on pipeline/leads pages */}
+          {(location.pathname.includes("/crm/pipeline") || 
+            location.pathname === "/crm" ||
+            location.pathname.includes("/crm/leads")) && (
+            <CRMOriginsSidebar
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+            />
+          )}
+
+          {/* Main Content */}
+          <main className="flex-1 overflow-auto">
+            <Outlet context={{ staffRole, isAdmin, staffId }} />
+          </main>
+        </div>
+      </div>
+    </CRMContext.Provider>
   );
 };
