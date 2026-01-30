@@ -21,9 +21,11 @@ import {
   Plus,
   Eye,
   Clock,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCRMContext } from "@/pages/crm/CRMLayout";
+import { OriginsManagementDialog } from "./OriginsManagementDialog";
 
 interface OriginGroup {
   id: string;
@@ -76,6 +78,7 @@ export const CRMOriginsSidebar = ({
   const [expandedOrigins, setExpandedOrigins] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [manageDialogOpen, setManageDialogOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -215,6 +218,17 @@ export const CRMOriginsSidebar = ({
           Origens
         </h3>
         <div className="flex gap-1">
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setManageDialogOpen(true)}
+              title="Gerenciar Origens e Funis"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="h-6 w-6">
             <Search className="h-3.5 w-3.5" />
           </Button>
@@ -452,6 +466,13 @@ export const CRMOriginsSidebar = ({
           </CollapsibleContent>
         </Collapsible>
       </div>
+
+      {/* Management Dialog */}
+      <OriginsManagementDialog
+        open={manageDialogOpen}
+        onOpenChange={setManageDialogOpen}
+        onRefresh={loadData}
+      />
     </div>
   );
 };
