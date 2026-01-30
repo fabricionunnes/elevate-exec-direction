@@ -231,13 +231,13 @@ export const OriginsSidebar = ({
                   </Badge>
                 </CollapsibleTrigger>
 
-                <CollapsibleContent className="ml-4 space-y-0.5 mt-0.5">
+                <CollapsibleContent className="ml-6 space-y-0.5 mt-0.5">
                   {groupOrigins.map((origin) => (
                     <button
                       key={origin.id}
                       onClick={() => handleOriginClick(origin)}
                       className={cn(
-                        "w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors text-left",
+                        "w-full flex items-center px-3 py-1.5 rounded-md text-sm transition-colors text-left",
                         selectedOrigin === origin.id
                           ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
                           : "hover:bg-muted text-muted-foreground hover:text-foreground"
