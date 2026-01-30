@@ -429,12 +429,6 @@ export const CRMActivitiesPage = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[40px]">
-                <Checkbox
-                  checked={selectedActivities.length === filteredActivities.length && filteredActivities.length > 0}
-                  onCheckedChange={toggleSelectAll}
-                />
-              </TableHead>
               <TableHead className="w-[50px]">Concluído</TableHead>
               <TableHead>Atividade</TableHead>
               <TableHead>Status</TableHead>
@@ -454,12 +448,6 @@ export const CRMActivitiesPage = () => {
                   activity.status === "completed" && "bg-muted/30"
                 )}
               >
-                <TableCell>
-                  <Checkbox
-                    checked={selectedActivities.includes(activity.id)}
-                    onCheckedChange={() => toggleSelectActivity(activity.id)}
-                  />
-                </TableCell>
                 <TableCell>
                   <Checkbox
                     checked={activity.status === "completed"}
