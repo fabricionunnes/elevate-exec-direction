@@ -743,14 +743,14 @@ export const CRMSettingsPage = () => {
                   <div>
                     <Label>Grupo de Origem</Label>
                     <Select
-                      value={editPipelineOriginGroupId}
-                      onValueChange={setEditPipelineOriginGroupId}
+                      value={editPipelineOriginGroupId || "none"}
+                      onValueChange={(val) => setEditPipelineOriginGroupId(val === "none" ? "" : val)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um grupo (opcional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nenhum grupo</SelectItem>
+                        <SelectItem value="none">Nenhum grupo</SelectItem>
                         {originGroups.filter(g => g.is_active).map(group => (
                           <SelectItem key={group.id} value={group.id}>
                             {group.name}
