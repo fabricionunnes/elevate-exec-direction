@@ -364,52 +364,36 @@ export const CRMPipelinePage = () => {
     // Clean phone number (remove non-digits)
     const cleanPhone = lead.phone.replace(/\D/g, "");
     
-    // Get last 9 digits for flexible matching (handles DDI differences)
-    const phoneSuffix = cleanPhone.slice(-9);
+    // Extract core phone parts for flexible matching
+    // Brazilian phones can have DDI (55), DDD (2 digits), and phone (8-9 digits)
+    // Some systems store with extra 9 digit, others without
+    // Use last 8 digits as the most stable identifier
+    const phoneSuffix8 = cleanPhone.slice(-8);
+    const phoneSuffix9 = cleanPhone.slice(-9);
     
     try {
-      // Find contact by phone - try exact match first, then suffix match
+      // Find contact by phone using flexible matching
+      // Search for contacts ending with these digits
+      const { data: suffixMatches } = await supabase
+        .from("crm_whatsapp_contacts")
+        .select("id, phone")
+        .or(`phone.ilike.%${phoneSuffix8},phone.ilike.%${phoneSuffix9}`);
+      
       let contact: { id: string } | null = null;
       
-      // Try exact match
-      const { data: exactMatch } = await supabase
-        .from("crm_whatsapp_contacts")
-        .select("id")
-        .eq("phone", cleanPhone)
-        .maybeSingle();
-      
-      if (exactMatch) {
-        contact = exactMatch;
-      } else {
-        // Try with DDI 55 prefix
-        const { data: withDDI } = await supabase
-          .from("crm_whatsapp_contacts")
-          .select("id")
-          .eq("phone", `55${cleanPhone}`)
-          .maybeSingle();
+      if (suffixMatches && suffixMatches.length > 0) {
+        // Filter to find valid phone contacts (not groups)
+        const validContact = suffixMatches.find(c => {
+          const cPhone = c.phone.replace(/\D/g, "");
+          // Skip group IDs (too long, contain @, or have special formats)
+          if (cPhone.length > 13 || cPhone.length < 8) return false;
+          if (c.phone.includes("@") || c.phone.includes("-")) return false;
+          // Check if the phone ends with our suffix
+          return cPhone.slice(-8) === phoneSuffix8 || cPhone.slice(-9) === phoneSuffix9;
+        });
         
-        if (withDDI) {
-          contact = withDDI;
-        } else {
-          // Try suffix match using ilike for last 9 digits
-          const { data: suffixMatches } = await supabase
-            .from("crm_whatsapp_contacts")
-            .select("id, phone")
-            .ilike("phone", `%${phoneSuffix}`);
-          
-          // Filter to find actual matches (phone numbers, not groups)
-          if (suffixMatches && suffixMatches.length > 0) {
-            // Prefer contacts whose phone is purely numeric and matches our suffix
-            const validContact = suffixMatches.find(c => {
-              const cPhone = c.phone.replace(/\D/g, "");
-              // Skip group IDs (too long) and invalid formats
-              if (cPhone.length > 13 || cPhone.length < 9) return false;
-              return cPhone.slice(-9) === phoneSuffix;
-            });
-            if (validContact) {
-              contact = { id: validContact.id };
-            }
-          }
+        if (validContact) {
+          contact = { id: validContact.id };
         }
       }
       
