@@ -12,6 +12,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
   ChevronLeft,
   Settings,
   User,
@@ -19,9 +26,11 @@ import {
   HelpCircle,
   Plus,
   Bell,
+  Menu,
 } from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const CRM_ROLES = ["master", "admin", "head_comercial", "closer", "sdr", "social_setter", "bdr"];
 
@@ -61,8 +70,11 @@ export const CRMLayout = () => {
   const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -169,14 +181,62 @@ export const CRMLayout = () => {
         )}
       >
         {/* Top Header */}
-        <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-4 sticky top-0 z-50">
+        <header className="h-14 border-b border-border bg-card flex items-center px-2 sm:px-4 gap-2 sm:gap-4 sticky top-0 z-50">
+          {/* Mobile Menu Toggle */}
+          {isMobile && (
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="shrink-0">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[280px] p-0">
+                <SheetHeader className="p-4 border-b border-border">
+                  <SheetTitle className="flex items-center gap-2">
+                    <img src={logoUnv} alt="UNV Nexus" className="h-6" />
+                  </SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col p-2">
+                  {navTabs.map((tab) => (
+                    <Link
+                      key={tab.href}
+                      to={tab.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={cn(
+                        "px-4 py-3 text-sm font-medium rounded-md transition-colors relative flex items-center gap-2",
+                        isTabActive(tab.href)
+                          ? "text-primary bg-primary/10"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      {tab.title}
+                      {tab.badge && (
+                        <span className="w-2 h-2 bg-green-500 rounded-full" />
+                      )}
+                    </Link>
+                  ))}
+                  {isAdmin && (
+                    <Link
+                      to="/crm/settings"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-4 py-3 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-2"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Configurações
+                    </Link>
+                  )}
+                </nav>
+              </SheetContent>
+            </Sheet>
+          )}
+
           {/* Logo */}
-          <Link to="/crm" className="flex items-center gap-2 mr-4">
-            <img src={logoUnv} alt="UNV Nexus" className="h-7" />
+          <Link to="/crm" className="flex items-center gap-2 shrink-0">
+            <img src={logoUnv} alt="UNV Nexus" className="h-6 sm:h-7" />
           </Link>
 
-          {/* Navigation Tabs */}
-          <nav className="flex items-center gap-1 flex-1">
+          {/* Navigation Tabs - Hidden on Mobile */}
+          <nav className="hidden md:flex items-center gap-1 flex-1">
             {navTabs.map((tab) => (
               <Link
                 key={tab.href}
@@ -215,19 +275,19 @@ export const CRMLayout = () => {
           </nav>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+          <div className="flex items-center gap-1 sm:gap-2 ml-auto">
+            <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9">
+              <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="absolute top-0 right-0 sm:top-1 sm:right-1 w-2 h-2 bg-red-500 rounded-full" />
             </Button>
 
 
             {/* Profile Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-9 sm:w-9">
+                  <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
@@ -281,14 +341,37 @@ export const CRMLayout = () => {
 
         {/* Main Content with Sidebar */}
         <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Origins Sidebar - Only show on pipeline/leads pages */}
-          {(location.pathname.includes("/crm/pipeline") || 
+          {/* Origins Sidebar - Hidden on Mobile, use Sheet instead */}
+          {!isMobile && (location.pathname.includes("/crm/pipeline") || 
             location.pathname === "/crm" ||
             location.pathname.includes("/crm/leads")) && (
             <CRMOriginsSidebar
               collapsed={sidebarCollapsed}
               onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
             />
+          )}
+
+          {/* Mobile Sidebar Sheet */}
+          {isMobile && (location.pathname.includes("/crm/pipeline") || 
+            location.pathname === "/crm" ||
+            location.pathname.includes("/crm/leads")) && (
+            <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+              <SheetTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="fixed bottom-4 left-4 z-40 shadow-lg"
+                >
+                  Origens
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[280px] p-0">
+                <CRMOriginsSidebar
+                  collapsed={false}
+                  onToggleCollapse={() => setMobileSidebarOpen(false)}
+                />
+              </SheetContent>
+            </Sheet>
           )}
 
           {/* Main Content - use overflow-hidden for inbox page to contain scroll internally */}

@@ -204,46 +204,46 @@ export const CRMLeadsPage = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Leads</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold">Leads</h1>
+          <p className="text-sm text-muted-foreground">
             {filteredLeads.length} leads encontrados
           </p>
         </div>
 
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setImportLeadsOpen(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Importar
+          <Button variant="outline" size="sm" onClick={() => setImportLeadsOpen(true)}>
+            <Upload className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Importar</span>
           </Button>
-          <Button onClick={() => setAddLeadOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Lead
+          <Button size="sm" onClick={() => setAddLeadOpen(true)}>
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Novo Lead</span>
           </Button>
         </div>
       </div>
 
       {/* Filters */}
       <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="col-span-2 md:col-span-1 lg:col-span-2">
+        <CardContent className="p-3 sm:p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+            <div className="col-span-2 sm:col-span-1 lg:col-span-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar leads..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 h-9"
                 />
               </div>
             </div>
 
             <Select value={filterPipeline} onValueChange={setFilterPipeline}>
-              <SelectTrigger>
+              <SelectTrigger className="h-9 text-xs sm:text-sm">
                 <SelectValue placeholder="Pipeline" />
               </SelectTrigger>
               <SelectContent>
@@ -255,7 +255,7 @@ export const CRMLeadsPage = () => {
             </Select>
 
             <Select value={filterStage} onValueChange={setFilterStage}>
-              <SelectTrigger>
+              <SelectTrigger className="h-9 text-xs sm:text-sm">
                 <SelectValue placeholder="Etapa" />
               </SelectTrigger>
               <SelectContent>
@@ -268,7 +268,7 @@ export const CRMLeadsPage = () => {
 
             {isAdmin && (
               <Select value={filterOwner} onValueChange={setFilterOwner}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9 text-xs sm:text-sm">
                   <SelectValue placeholder="Responsável" />
                 </SelectTrigger>
                 <SelectContent>
@@ -281,7 +281,7 @@ export const CRMLeadsPage = () => {
             )}
 
             <Select value={filterUrgency} onValueChange={setFilterUrgency}>
-              <SelectTrigger>
+              <SelectTrigger className="h-9 text-xs sm:text-sm">
                 <SelectValue placeholder="Urgência" />
               </SelectTrigger>
               <SelectContent>
