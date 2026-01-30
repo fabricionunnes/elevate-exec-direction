@@ -301,10 +301,12 @@ export const OriginsManagementDialog = ({
     }
   };
 
-  // Get pipelines not yet linked to any origin (unassigned)
-  const getUnlinkedPipelines = () => {
-    const linkedPipelineIds = new Set(origins.map((o) => o.pipeline_id).filter(Boolean));
-    return pipelines.filter((p) => !linkedPipelineIds.has(p.id));
+  // Get pipelines not in this specific group (for linking)
+  const getPipelinesNotInGroup = (groupId: string) => {
+    const groupOriginPipelineIds = new Set(
+      origins.filter((o) => o.group_id === groupId).map((o) => o.pipeline_id).filter(Boolean)
+    );
+    return pipelines.filter((p) => !groupOriginPipelineIds.has(p.id));
   };
 
   // Add new stage to an origin's pipeline
@@ -567,12 +569,12 @@ export const OriginsManagementDialog = ({
                                   <SelectValue placeholder="Selecione um funil..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {getUnlinkedPipelines().length === 0 ? (
+                                  {getPipelinesNotInGroup(group.id).length === 0 ? (
                                     <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                                      Todos os funis já estão vinculados
+                                      Todos os funis já estão neste grupo
                                     </div>
                                   ) : (
-                                    getUnlinkedPipelines().map((pipeline) => (
+                                    getPipelinesNotInGroup(group.id).map((pipeline) => (
                                       <SelectItem key={pipeline.id} value={pipeline.id}>
                                         {pipeline.name}
                                       </SelectItem>
