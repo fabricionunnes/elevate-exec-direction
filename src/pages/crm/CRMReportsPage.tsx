@@ -3,18 +3,20 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
-  BarChart3, 
   TrendingUp, 
   Users, 
   Trophy,
   XCircle,
   Target,
-  Clock
+  CalendarIcon
 } from "lucide-react";
-import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import {
   BarChart,
   Bar,
@@ -44,9 +46,15 @@ interface ProductivityData {
   value: number;
 }
 
+type DateFilterType = "today" | "week" | "month" | "quarter" | "year" | "custom";
+
 export const CRMReportsPage = () => {
   const { isAdmin } = useOutletContext<{ staffRole: string; isAdmin: boolean }>();
-  const [period, setPeriod] = useState("month");
+  const [period, setPeriod] = useState<DateFilterType>("month");
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  });
   const [conversionData, setConversionData] = useState<ConversionData[]>([]);
   const [productivityData, setProductivityData] = useState<ProductivityData[]>([]);
   const [lossReasonsData, setLossReasonsData] = useState<any[]>([]);
@@ -64,14 +72,27 @@ export const CRMReportsPage = () => {
   const getDateRange = () => {
     const now = new Date();
     switch (period) {
+      case "today":
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        return { start: todayStart, end: todayEnd };
       case "week":
-        return { start: subDays(now, 7), end: now };
+        return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
       case "month":
         return { start: startOfMonth(now), end: endOfMonth(now) };
       case "quarter":
         return { start: subMonths(now, 3), end: now };
       case "year":
         return { start: subMonths(now, 12), end: now };
+      case "custom":
+        if (customDateRange.from && customDateRange.to) {
+          const fromStart = new Date(customDateRange.from);
+          fromStart.setHours(0, 0, 0, 0);
+          const toEnd = new Date(customDateRange.to);
+          toEnd.setHours(23, 59, 59, 999);
+          return { start: fromStart, end: toEnd };
+        }
+        return { start: startOfMonth(now), end: endOfMonth(now) };
       default:
         return { start: startOfMonth(now), end: now };
     }
@@ -219,17 +240,54 @@ export const CRMReportsPage = () => {
           </p>
         </div>
 
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="week">Última Semana</SelectItem>
-            <SelectItem value="month">Este Mês</SelectItem>
-            <SelectItem value="quarter">Trimestre</SelectItem>
-            <SelectItem value="year">Ano</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={period} onValueChange={(val) => setPeriod(val as DateFilterType)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Hoje</SelectItem>
+              <SelectItem value="week">Esta Semana</SelectItem>
+              <SelectItem value="month">Este Mês</SelectItem>
+              <SelectItem value="quarter">Trimestre</SelectItem>
+              <SelectItem value="year">Ano</SelectItem>
+              <SelectItem value="custom">Personalizado</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {period === "custom" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("justify-start text-left font-normal", !customDateRange.from && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {customDateRange.from ? (
+                    customDateRange.to ? (
+                      <>
+                        {format(customDateRange.from, "dd/MM/yy", { locale: ptBR })} - {format(customDateRange.to, "dd/MM/yy", { locale: ptBR })}
+                      </>
+                    ) : (
+                      format(customDateRange.from, "dd/MM/yyyy", { locale: ptBR })
+                    )
+                  ) : (
+                    <span>Selecionar período</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={customDateRange.from}
+                  selected={{ from: customDateRange.from, to: customDateRange.to }}
+                  onSelect={(range) => setCustomDateRange({ from: range?.from, to: range?.to })}
+                  numberOfMonths={2}
+                  locale={ptBR}
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
       </div>
 
       {/* Summary Cards */}
