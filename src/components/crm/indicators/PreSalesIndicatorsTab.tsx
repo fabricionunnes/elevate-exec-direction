@@ -125,12 +125,23 @@ export const PreSalesIndicatorsTab = () => {
       const daysInMonth = getDaysInMonth(now);
       const currentDay = getDate(now);
 
-      // Load SDR staff (only actual SDR roles, not admins)
-      const { data: sdrStaff } = await supabase
+      // Load SDR staff (only actual SDR roles with CRM access)
+      // First get staff with CRM permission
+      const { data: crmPermissions } = await supabase
+        .from("staff_menu_permissions")
+        .select("staff_id")
+        .eq("menu_key", "crm");
+      
+      const crmStaffIds = new Set((crmPermissions || []).map(p => p.staff_id));
+      
+      const { data: allSdrStaff } = await supabase
         .from("onboarding_staff")
         .select("id, name, role")
         .in("role", ["sdr", "social_setter", "bdr"])
         .eq("is_active", true);
+      
+      // Filter to only include staff with CRM access
+      const sdrStaff = (allSdrStaff || []).filter(s => crmStaffIds.has(s.id));
 
       // Load daily activities
       const { data: dailyActivities } = await supabase
