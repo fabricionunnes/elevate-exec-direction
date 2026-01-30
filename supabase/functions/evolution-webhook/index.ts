@@ -222,7 +222,9 @@ async function handleIncomingMessage(supabase: any, instanceId: string, instance
   console.log('Extracted phone:', phone, 'fromMe:', fromMe);
   
   // Get or create contact - use pushName from data level
-  const pushName = data.pushName || message.pushName;
+  // IMPORTANT: Only use pushName when message is NOT from me (fromMe: false)
+  // When fromMe is true, pushName is the device owner's name, not the contact's name
+  const pushName = fromMe ? undefined : (data.pushName || message.pushName);
   let contact = await getOrCreateContact(supabase, phone, pushName);
   
   // Get or create conversation
