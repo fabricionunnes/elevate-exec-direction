@@ -125,11 +125,11 @@ export const PreSalesIndicatorsTab = () => {
       const daysInMonth = getDaysInMonth(now);
       const currentDay = getDate(now);
 
-      // Load SDR staff
+      // Load SDR staff (only actual SDR roles, not admins)
       const { data: sdrStaff } = await supabase
         .from("onboarding_staff")
         .select("id, name, role")
-        .in("role", ["sdr", "social_setter", "bdr", "admin", "master"])
+        .in("role", ["sdr", "social_setter", "bdr"])
         .eq("is_active", true);
 
       // Load daily activities
