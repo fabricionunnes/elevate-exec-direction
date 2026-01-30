@@ -149,6 +149,16 @@ export const CRMInboxPage = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Sync selectedConversation with conversations when they update (e.g., from realtime)
+  useEffect(() => {
+    if (selectedConversation) {
+      const updated = conversations.find(c => c.id === selectedConversation.id);
+      if (updated && JSON.stringify(updated) !== JSON.stringify(selectedConversation)) {
+        setSelectedConversation(updated);
+      }
+    }
+  }, [conversations]);
+
   // Mark as read when selecting conversation
   useEffect(() => {
     if (selectedConversation && selectedConversation.unread_count > 0) {
