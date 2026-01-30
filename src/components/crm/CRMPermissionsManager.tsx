@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Loader2, Users, Shield, ChevronDown, ChevronRight, Save, Settings2 } from "lucide-react";
@@ -49,9 +50,6 @@ const CRM_PERMISSIONS = [
   }
 ];
 
-// Roles that can access CRM (commercial sector)
-const CRM_ELIGIBLE_ROLES = ["closer", "sdr", "head_comercial", "social_setter", "bdr"];
-
 const ROLE_LABELS: Record<string, string> = {
   master: "Master",
   admin: "Administrador",
@@ -60,6 +58,11 @@ const ROLE_LABELS: Record<string, string> = {
   head_comercial: "Head Comercial",
   social_setter: "Social Setter",
   bdr: "BDR",
+  cs: "CS",
+  consultant: "Consultor",
+  rh: "RH",
+  financeiro: "Financeiro",
+  marketing: "Marketing",
 };
 
 const ROLE_COLORS: Record<string, string> = {
@@ -70,6 +73,11 @@ const ROLE_COLORS: Record<string, string> = {
   head_comercial: "bg-orange-100 text-orange-800",
   social_setter: "bg-indigo-100 text-indigo-800",
   bdr: "bg-emerald-100 text-emerald-800",
+  cs: "bg-blue-100 text-blue-800",
+  consultant: "bg-green-100 text-green-800",
+  rh: "bg-pink-100 text-pink-800",
+  financeiro: "bg-slate-100 text-slate-800",
+  marketing: "bg-rose-100 text-rose-800",
 };
 
 interface StaffMember {
@@ -88,6 +96,7 @@ interface StaffPermissions {
 export const CRMPermissionsManager = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [togglingAccess, setTogglingAccess] = useState<string | null>(null);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [permissions, setPermissions] = useState<StaffPermissions>({});
   const [originalPermissions, setOriginalPermissions] = useState<StaffPermissions>({});
@@ -115,7 +124,7 @@ export const CRMPermissionsManager = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Fetch staff with CRM access
+      // Fetch all active staff
       const { data: staff, error: staffError } = await supabase
         .from("onboarding_staff")
         .select("id, name, email, role, avatar_url")
@@ -134,20 +143,16 @@ export const CRMPermissionsManager = () => {
 
       const crmAccessSet = new Set((menuPerms || []).map(p => p.staff_id));
 
-      // Filter staff who have CRM access (including admins/master who always have access)
-      const crmStaff: StaffMember[] = (staff || [])
-        .filter(s => 
-          s.role === "master" || 
-          s.role === "admin" || 
-          crmAccessSet.has(s.id)
-        )
-        .map(s => ({
-          ...s,
-          has_crm_access: true
-        }));
+      // Map all staff with their CRM access status
+      const allStaff: StaffMember[] = (staff || []).map(s => ({
+        ...s,
+        has_crm_access: s.role === "master" || s.role === "admin" || crmAccessSet.has(s.id)
+      }));
 
-      // Fetch granular permissions
-      const staffIds = crmStaff.map(s => s.id);
+      // Fetch granular permissions only for those with CRM access
+      const staffWithAccess = allStaff.filter(s => s.has_crm_access);
+      const staffIds = staffWithAccess.map(s => s.id);
+      
       const { data: granularPerms, error: permError } = await supabase
         .from("crm_staff_permissions")
         .select("staff_id, permission_key")
@@ -157,7 +162,7 @@ export const CRMPermissionsManager = () => {
 
       // Build permissions map
       const permsMap: StaffPermissions = {};
-      for (const s of crmStaff) {
+      for (const s of allStaff) {
         permsMap[s.id] = new Set();
       }
       for (const p of granularPerms || []) {
@@ -166,19 +171,66 @@ export const CRMPermissionsManager = () => {
         }
       }
 
-      setStaffMembers(crmStaff);
+      setStaffMembers(allStaff);
       setPermissions(permsMap);
-      setOriginalPermissions(JSON.parse(JSON.stringify(permsMap, (_key, value) => 
-        value instanceof Set ? Array.from(value) : value
-      ), (_key, value) => 
-        Array.isArray(value) ? new Set(value) : value
-      ));
+      
+      // Deep clone for original
+      const clonedPerms: StaffPermissions = {};
+      for (const [key, value] of Object.entries(permsMap)) {
+        clonedPerms[key] = new Set(value);
+      }
+      setOriginalPermissions(clonedPerms);
 
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Erro ao carregar dados");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleCRMAccess = async (member: StaffMember) => {
+    if (member.role === "master" || member.role === "admin") {
+      toast.info("Administradores sempre têm acesso ao CRM");
+      return;
+    }
+
+    setTogglingAccess(member.id);
+    try {
+      if (member.has_crm_access) {
+        // Remove CRM access
+        const { error } = await supabase
+          .from("staff_menu_permissions")
+          .delete()
+          .eq("staff_id", member.id)
+          .eq("menu_key", "crm");
+        
+        if (error) throw error;
+        
+        // Also remove all granular permissions
+        await supabase
+          .from("crm_staff_permissions")
+          .delete()
+          .eq("staff_id", member.id);
+
+        toast.success(`Acesso ao CRM removido para ${member.name}`);
+      } else {
+        // Grant CRM access
+        const { error } = await supabase
+          .from("staff_menu_permissions")
+          .insert({ staff_id: member.id, menu_key: "crm" });
+        
+        if (error) throw error;
+        toast.success(`Acesso ao CRM concedido para ${member.name}`);
+      }
+
+      // Reload data to refresh state
+      await loadData();
+    } catch (error: any) {
+      console.error("Error toggling access:", error);
+      toast.error(error.message || "Erro ao alterar acesso");
+    } finally {
+      setTogglingAccess(null);
     }
   };
 
@@ -214,20 +266,16 @@ export const CRMPermissionsManager = () => {
   const savePermissions = async () => {
     setSaving(true);
     try {
-      // For each staff member, sync their permissions
       for (const staffId of Object.keys(permissions)) {
         const staff = staffMembers.find(s => s.id === staffId);
-        if (!staff || staff.role === "master" || staff.role === "admin") continue;
+        if (!staff || staff.role === "master" || staff.role === "admin" || !staff.has_crm_access) continue;
 
         const currentPerms = permissions[staffId];
         const originalPerms = originalPermissions[staffId] || new Set();
 
-        // Find permissions to add
         const toAdd = Array.from(currentPerms).filter(p => !originalPerms.has(p));
-        // Find permissions to remove
         const toRemove = Array.from(originalPerms).filter(p => !currentPerms.has(p));
 
-        // Remove permissions
         if (toRemove.length > 0) {
           const { error } = await supabase
             .from("crm_staff_permissions")
@@ -238,7 +286,6 @@ export const CRMPermissionsManager = () => {
           if (error) throw error;
         }
 
-        // Add permissions
         if (toAdd.length > 0) {
           const { error } = await supabase
             .from("crm_staff_permissions")
@@ -287,6 +334,7 @@ export const CRMPermissionsManager = () => {
   }
 
   const isAdminRole = (role: string) => role === "master" || role === "admin";
+  const allPermsCount = CRM_PERMISSIONS.reduce((acc, cat) => acc + cat.permissions.length, 0);
 
   return (
     <div className="space-y-6">
@@ -296,9 +344,9 @@ export const CRMPermissionsManager = () => {
           <div className="flex items-start gap-3">
             <Settings2 className="h-6 w-6 text-blue-600 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-blue-900">Permissões Granulares do CRM</h3>
+              <h3 className="font-semibold text-blue-900">Acessos e Permissões do CRM</h3>
               <p className="text-sm text-blue-700 mt-1">
-                Configure exatamente o que cada membro da equipe pode fazer no CRM. 
+                Habilite ou desabilite o acesso ao CRM para cada membro e clique para expandir e configurar permissões específicas.
                 Master e Administradores têm acesso total automaticamente.
               </p>
             </div>
@@ -323,140 +371,154 @@ export const CRMPermissionsManager = () => {
         </div>
       )}
 
-      {/* Staff List with Permissions */}
+      {/* Staff List */}
       {staffMembers.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">
-              Nenhum membro com acesso ao CRM encontrado.
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Primeiro habilite o acesso ao CRM na aba "Acessos".
-            </p>
+            <p className="text-muted-foreground">Nenhum membro da equipe encontrado.</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {staffMembers.map(member => {
             const isAdmin = isAdminRole(member.role);
             const isExpanded = expandedStaff.has(member.id);
             const memberPerms = permissions[member.id] || new Set();
-            const allPermsCount = CRM_PERMISSIONS.reduce((acc, cat) => acc + cat.permissions.length, 0);
             const grantedCount = isAdmin ? allPermsCount : memberPerms.size;
+            const canExpand = member.has_crm_access;
 
             return (
-              <Collapsible
-                key={member.id}
-                open={isExpanded}
-                onOpenChange={() => toggleExpanded(member.id)}
-              >
-                <Card>
-                  <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          {isExpanded ? (
-                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                          )}
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={member.avatar_url || undefined} />
-                            <AvatarFallback>
-                              {member.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{member.name}</span>
-                              <Badge className={ROLE_COLORS[member.role] || "bg-gray-100 text-gray-800"}>
-                                {ROLE_LABELS[member.role] || member.role}
-                              </Badge>
-                              {isAdmin && (
-                                <Badge variant="outline" className="text-xs">
-                                  <Shield className="h-3 w-3 mr-1" />
-                                  Acesso total
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground">{member.email}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-sm font-medium">
-                            {grantedCount}/{allPermsCount}
-                          </span>
-                          <p className="text-xs text-muted-foreground">permissões</p>
-                        </div>
-                      </div>
-                    </CardHeader>
-                  </CollapsibleTrigger>
-
-                  <CollapsibleContent>
-                    <CardContent className="pt-0">
-                      {isAdmin ? (
-                        <div className="bg-muted/50 p-4 rounded-lg text-center">
-                          <Shield className="h-8 w-8 mx-auto text-primary mb-2" />
-                          <p className="text-sm text-muted-foreground">
-                            Usuários Master e Administradores têm acesso total automático a todas as funcionalidades do CRM.
-                          </p>
-                        </div>
+              <Card key={member.id} className={!member.has_crm_access ? "opacity-60" : ""}>
+                <div className="flex items-center justify-between p-4">
+                  <div 
+                    className={`flex items-center gap-3 flex-1 ${canExpand ? "cursor-pointer" : ""}`}
+                    onClick={() => canExpand && toggleExpanded(member.id)}
+                  >
+                    {canExpand && (
+                      isExpanded ? (
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
                       ) : (
-                        <div className="space-y-6">
-                          {/* Quick Actions */}
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => toggleAllForStaff(member.id, true)}
-                            >
-                              Marcar todas
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => toggleAllForStaff(member.id, false)}
-                            >
-                              Desmarcar todas
-                            </Button>
-                          </div>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      )
+                    )}
+                    {!canExpand && <div className="w-5" />}
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={member.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {member.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{member.name}</span>
+                        <Badge className={ROLE_COLORS[member.role] || "bg-gray-100 text-gray-800"}>
+                          {ROLE_LABELS[member.role] || member.role}
+                        </Badge>
+                        {isAdmin && (
+                          <Badge variant="outline" className="text-xs">
+                            <Shield className="h-3 w-3 mr-1" />
+                            Acesso total
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{member.email}</p>
+                    </div>
+                  </div>
 
-                          {/* Permission Categories */}
-                          {CRM_PERMISSIONS.map(category => (
-                            <div key={category.category}>
-                              <h4 className="font-medium text-sm mb-3">{category.category}</h4>
-                              <div className="grid sm:grid-cols-2 gap-3">
-                                {category.permissions.map(perm => (
-                                  <div
-                                    key={perm.key}
-                                    className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                                  >
-                                    <Checkbox
-                                      id={`${member.id}-${perm.key}`}
-                                      checked={memberPerms.has(perm.key)}
-                                      onCheckedChange={() => togglePermission(member.id, perm.key)}
-                                    />
-                                    <label 
-                                      htmlFor={`${member.id}-${perm.key}`}
-                                      className="flex-1 cursor-pointer"
-                                    >
-                                      <span className="font-medium text-sm">{perm.label}</span>
-                                      <p className="text-xs text-muted-foreground mt-0.5">
-                                        {perm.description}
-                                      </p>
-                                    </label>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
+                  <div className="flex items-center gap-4">
+                    {member.has_crm_access && (
+                      <div className="text-right mr-2">
+                        <span className="text-sm font-medium">
+                          {grantedCount}/{allPermsCount}
+                        </span>
+                        <p className="text-xs text-muted-foreground">permissões</p>
+                      </div>
+                    )}
+                    <div className="flex flex-col items-center gap-1">
+                      <Switch
+                        checked={member.has_crm_access}
+                        onCheckedChange={() => handleToggleCRMAccess(member)}
+                        disabled={togglingAccess === member.id || isAdmin}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {member.has_crm_access ? "Ativo" : "Inativo"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expanded Permissions */}
+                {canExpand && isExpanded && (
+                  <CardContent className="pt-0 border-t">
+                    {isAdmin ? (
+                      <div className="bg-muted/50 p-4 rounded-lg text-center mt-4">
+                        <Shield className="h-8 w-8 mx-auto text-primary mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                          Usuários Master e Administradores têm acesso total automático a todas as funcionalidades do CRM.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-6 mt-4">
+                        {/* Quick Actions */}
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleAllForStaff(member.id, true);
+                            }}
+                          >
+                            Marcar todas
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleAllForStaff(member.id, false);
+                            }}
+                          >
+                            Desmarcar todas
+                          </Button>
                         </div>
-                      )}
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
+
+                        {/* Permission Categories */}
+                        {CRM_PERMISSIONS.map(category => (
+                          <div key={category.category}>
+                            <h4 className="font-medium text-sm mb-3">{category.category}</h4>
+                            <div className="grid sm:grid-cols-2 gap-3">
+                              {category.permissions.map(perm => (
+                                <div
+                                  key={perm.key}
+                                  className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Checkbox
+                                    id={`${member.id}-${perm.key}`}
+                                    checked={memberPerms.has(perm.key)}
+                                    onCheckedChange={() => togglePermission(member.id, perm.key)}
+                                  />
+                                  <label 
+                                    htmlFor={`${member.id}-${perm.key}`}
+                                    className="flex-1 cursor-pointer"
+                                  >
+                                    <span className="font-medium text-sm">{perm.label}</span>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                      {perm.description}
+                                    </p>
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                )}
+              </Card>
             );
           })}
         </div>
