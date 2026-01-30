@@ -10662,6 +10662,181 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_whatsapp_contacts: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string | null
+          phone: string
+          profile_picture_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          phone: string
+          profile_picture_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          phone?: string
+          profile_picture_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      crm_whatsapp_conversations: {
+        Row: {
+          assigned_to: string | null
+          contact_id: string | null
+          created_at: string | null
+          id: string
+          instance_id: string | null
+          last_message: string | null
+          last_message_at: string | null
+          lead_id: string | null
+          sector_id: string | null
+          status: string | null
+          unread_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          contact_id?: string | null
+          created_at?: string | null
+          id?: string
+          instance_id?: string | null
+          last_message?: string | null
+          last_message_at?: string | null
+          lead_id?: string | null
+          sector_id?: string | null
+          status?: string | null
+          unread_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          contact_id?: string | null
+          created_at?: string | null
+          id?: string
+          instance_id?: string | null
+          last_message?: string | null
+          last_message_at?: string | null
+          lead_id?: string | null
+          sector_id?: string | null
+          status?: string | null
+          unread_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_whatsapp_conversations_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_whatsapp_conversations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "crm_whatsapp_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_whatsapp_conversations_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_whatsapp_conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_whatsapp_conversations_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "crm_service_sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_whatsapp_messages: {
+        Row: {
+          content: string | null
+          conversation_id: string | null
+          created_at: string | null
+          direction: string
+          id: string
+          media_mimetype: string | null
+          media_url: string | null
+          quoted_message_id: string | null
+          remote_id: string | null
+          sent_by: string | null
+          status: string | null
+          type: string | null
+        }
+        Insert: {
+          content?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          direction: string
+          id?: string
+          media_mimetype?: string | null
+          media_url?: string | null
+          quoted_message_id?: string | null
+          remote_id?: string | null
+          sent_by?: string | null
+          status?: string | null
+          type?: string | null
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          direction?: string
+          id?: string
+          media_mimetype?: string | null
+          media_url?: string | null
+          quoted_message_id?: string | null
+          remote_id?: string | null
+          sent_by?: string | null
+          status?: string | null
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_whatsapp_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "crm_whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_whatsapp_messages_quoted_message_id_fkey"
+            columns: ["quoted_message_id"]
+            isOneToOne: false
+            referencedRelation: "crm_whatsapp_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_whatsapp_messages_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       csat_configs: {
         Row: {
           created_at: string

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -12,12 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Search,
   Filter,
@@ -33,158 +27,129 @@ import {
   CheckCheck,
   ChevronRight,
   MessageSquare,
-  Plus,
   Settings,
   RefreshCw,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useCRMContext } from "./CRMLayout";
 import { toast } from "sonner";
 import { ServiceConfigDialog } from "@/components/crm/service-config/ServiceConfigDialog";
-
-interface Conversation {
-  id: string;
-  contact_name: string;
-  contact_phone: string;
-  contact_avatar?: string;
-  last_message: string;
-  last_message_at: string;
-  unread_count: number;
-  status: "open" | "pending" | "closed";
-  assigned_to?: string;
-  lead_id?: string;
-  origin?: string;
-  pipeline?: string;
-}
-
-interface Message {
-  id: string;
-  content: string;
-  type: "text" | "image" | "audio" | "document";
-  direction: "inbound" | "outbound";
-  status: "sent" | "delivered" | "read";
-  created_at: string;
-  media_url?: string;
-}
-
-// Mock data for demonstration
-const mockConversations: Conversation[] = [
-  {
-    id: "1",
-    contact_name: "Rafael Cardoso",
-    contact_phone: "5531999999999",
-    last_message: "Rafael?",
-    last_message_at: new Date().toISOString(),
-    unread_count: 0,
-    status: "open",
-  },
-  {
-    id: "2",
-    contact_name: "Raphael",
-    contact_phone: "5531988888888",
-    last_message: "Oi Raphael",
-    last_message_at: new Date(Date.now() - 300000).toISOString(),
-    unread_count: 0,
-    status: "open",
-  },
-  {
-    id: "3",
-    contact_name: "Milton Soares",
-    contact_phone: "5531977777777",
-    last_message: "Diagnóstico Milton Sexta-feira...",
-    last_message_at: new Date(Date.now() - 600000).toISOString(),
-    unread_count: 0,
-    status: "open",
-  },
-  {
-    id: "4",
-    contact_name: "Natallia Amador SDR",
-    contact_phone: "5531966666666",
-    last_message: "🔔 NOTIFICAÇÃO | RESPOSTA...",
-    last_message_at: new Date(Date.now() - 900000).toISOString(),
-    unread_count: 1,
-    status: "pending",
-  },
-];
-
-const mockMessages: Message[] = [
-  {
-    id: "1",
-    content: "Oi, equipe CHARBELL PROFESSIONAL! Passando só pra alinhar: o pagamento vencido em 2026-01-25 ainda não foi identificado.\n⚠️ Após o vencimento, há multa e juros.\nLink: https://faturas.contaazul.com/#/fatura/visualizar/7c19a300-f84f-11f0-a8ca-2bc18d296956 — me avisa se houver qualquer problema.",
-    type: "text",
-    direction: "outbound",
-    status: "delivered",
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: "2",
-    content: "Oi, equipe CHARBELL PROFESSIONAL! Último lembrete por aqui: o pagamento vencido em 2026-01-25 ainda está em aberto.\n⚠️ Com o atraso, o sistema aplica multa e juros.\nConsegue regularizar agora pelo link?\nhttps://faturas.contaazul.com/#/fatura/visualizar/7c19a300-f84f-11f0-a8ca-2bc18d296956",
-    type: "text",
-    direction: "outbound",
-    status: "read",
-    created_at: new Date().toISOString(),
-  },
-];
+import { useWhatsAppConversations, WhatsAppConversation } from "@/hooks/useWhatsAppConversations";
+import { useWhatsAppMessages, WhatsAppMessage } from "@/hooks/useWhatsAppMessages";
 
 export const CRMInboxPage = () => {
   const { staffId, staffName, isAdmin } = useCRMContext();
-  const [conversations, setConversations] = useState<Conversation[]>(mockConversations);
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<WhatsAppConversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [loading, setLoading] = useState(false);
-  const [connected, setConnected] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [connectedInstances, setConnectedInstances] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Use real data hooks
+  const { 
+    conversations, 
+    loading: loadingConversations, 
+    refetch: refetchConversations,
+    markAsRead,
+    closeConversation,
+    reopenConversation,
+  } = useWhatsAppConversations({
+    status: filterStatus !== "all" ? filterStatus : undefined,
+  });
+
+  const { 
+    messages, 
+    loading: loadingMessages, 
+    sending,
+    sendMessage,
+    refetch: refetchMessages,
+  } = useWhatsAppMessages(selectedConversation?.id || null);
+
+  // Fetch connected instances
   useEffect(() => {
-    if (selectedConversation) {
-      setMessages(mockMessages);
-      scrollToBottom();
+    const fetchInstances = async () => {
+      const { data } = await supabase
+        .from("whatsapp_instances")
+        .select("id, instance_name, status")
+        .eq("status", "connected");
+      
+      if (data) {
+        setConnectedInstances(data.map(i => i.id));
+      }
+    };
+    fetchInstances();
+  }, []);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Mark as read when selecting conversation
+  useEffect(() => {
+    if (selectedConversation && selectedConversation.unread_count > 0) {
+      markAsRead(selectedConversation.id);
     }
-  }, [selectedConversation]);
+  }, [selectedConversation?.id]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation) return;
+    if (!newMessage.trim() || !selectedConversation || !selectedConversation.instance_id) {
+      if (!selectedConversation?.instance_id) {
+        toast.error("Conversa sem dispositivo associado");
+      }
+      return;
+    }
 
-    const message: Message = {
-      id: Date.now().toString(),
-      content: newMessage,
-      type: "text",
-      direction: "outbound",
-      status: "sent",
-      created_at: new Date().toISOString(),
-    };
-
-    setMessages(prev => [...prev, message]);
-    setNewMessage("");
-    scrollToBottom();
-
-    // TODO: Send via Evolution API
-    toast.success("Mensagem enviada!");
+    try {
+      await sendMessage(
+        newMessage,
+        selectedConversation.instance_id,
+        selectedConversation.contact?.phone || "",
+        staffId
+      );
+      setNewMessage("");
+      toast.success("Mensagem enviada!");
+    } catch (error) {
+      toast.error("Erro ao enviar mensagem");
+    }
   };
 
   const filteredConversations = conversations.filter(conv => {
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
-      if (!conv.contact_name.toLowerCase().includes(search) &&
-          !conv.contact_phone.includes(search)) {
+      const contactName = conv.contact?.name || "";
+      const contactPhone = conv.contact?.phone || "";
+      if (!contactName.toLowerCase().includes(search) && !contactPhone.includes(search)) {
         return false;
       }
     }
-    if (filterStatus !== "all" && conv.status !== filterStatus) {
-      return false;
-    }
     return true;
   });
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "sent":
+        return <CheckCheck className="h-3 w-3 text-muted-foreground" />;
+      case "delivered":
+        return <CheckCheck className="h-3 w-3 text-muted-foreground" />;
+      case "read":
+        return <CheckCheck className="h-3 w-3 text-blue-500" />;
+      default:
+        return <Clock className="h-3 w-3 text-muted-foreground" />;
+    }
+  };
+
+  const hasConnectedDevice = connectedInstances.length > 0;
 
   return (
     <div className="h-full flex">
@@ -216,6 +181,31 @@ export const CRMInboxPage = () => {
           </div>
         </div>
 
+        {/* Connection Status */}
+        <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {hasConnectedDevice ? (
+              <>
+                <Wifi className="h-4 w-4 text-green-500" />
+                <span className="text-xs text-green-600">WhatsApp conectado</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-4 w-4 text-destructive" />
+                <span className="text-xs text-destructive">Sem dispositivo</span>
+              </>
+            )}
+          </div>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-7 w-7"
+            onClick={() => refetchConversations()}
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
+
         {/* Filter Tabs */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border">
           <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -242,50 +232,74 @@ export const CRMInboxPage = () => {
 
         {/* Conversations */}
         <ScrollArea className="flex-1">
-          {filteredConversations.map((conv) => (
-            <button
-              key={conv.id}
-              onClick={() => setSelectedConversation(conv)}
-              className={cn(
-                "w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors text-left border-b border-border",
-                selectedConversation?.id === conv.id && "bg-muted"
-              )}
-            >
-              <Avatar className="h-10 w-10">
-                <AvatarFallback>
-                  {conv.contact_name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm truncate">{conv.contact_name}</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {format(new Date(conv.last_message_at), "HH:mm")}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 mt-0.5">
-                  {conv.status === "pending" && (
-                    <Badge variant="destructive" className="h-4 px-1 text-[10px]">
-                      <MessageSquare className="h-3 w-3 mr-0.5" />
-                    </Badge>
-                  )}
-                  <p className="text-xs text-muted-foreground truncate">
-                    {conv.last_message}
-                  </p>
-                </div>
-              </div>
-              {conv.unread_count > 0 && (
-                <Badge className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]">
-                  {conv.unread_count}
-                </Badge>
-              )}
-            </button>
-          ))}
-
-          {filteredConversations.length === 0 && (
-            <div className="text-center py-8 text-sm text-muted-foreground">
-              Nenhuma conversa encontrada
+          {loadingConversations ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
+          ) : filteredConversations.length === 0 ? (
+            <div className="text-center py-8">
+              <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+              <p className="text-sm text-muted-foreground">
+                {hasConnectedDevice 
+                  ? "Nenhuma conversa encontrada" 
+                  : "Conecte um dispositivo WhatsApp"}
+              </p>
+              {!hasConnectedDevice && (
+                <Button 
+                  variant="link" 
+                  size="sm" 
+                  onClick={() => setShowConfigDialog(true)}
+                  className="mt-2"
+                >
+                  Configurar dispositivo
+                </Button>
+              )}
+            </div>
+          ) : (
+            filteredConversations.map((conv) => (
+              <button
+                key={conv.id}
+                onClick={() => setSelectedConversation(conv)}
+                className={cn(
+                  "w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors text-left border-b border-border",
+                  selectedConversation?.id === conv.id && "bg-muted"
+                )}
+              >
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={conv.contact?.profile_picture_url || undefined} />
+                  <AvatarFallback>
+                    {(conv.contact?.name || conv.contact?.phone || "?").slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm truncate">
+                      {conv.contact?.name || conv.contact?.phone || "Desconhecido"}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {conv.last_message_at 
+                        ? format(new Date(conv.last_message_at), "HH:mm") 
+                        : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    {conv.status === "pending" && (
+                      <Badge variant="destructive" className="h-4 px-1 text-[10px]">
+                        <MessageSquare className="h-3 w-3 mr-0.5" />
+                      </Badge>
+                    )}
+                    <p className="text-xs text-muted-foreground truncate">
+                      {conv.last_message || "Sem mensagens"}
+                    </p>
+                  </div>
+                </div>
+                {conv.unread_count > 0 && (
+                  <Badge className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]">
+                    {conv.unread_count}
+                  </Badge>
+                )}
+              </button>
+            ))
           )}
         </ScrollArea>
       </div>
@@ -297,14 +311,20 @@ export const CRMInboxPage = () => {
           <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-card">
             <div className="flex items-center gap-3">
               <Avatar className="h-9 w-9">
+                <AvatarImage src={selectedConversation.contact?.profile_picture_url || undefined} />
                 <AvatarFallback>
-                  {selectedConversation.contact_name.slice(0, 2).toUpperCase()}
+                  {(selectedConversation.contact?.name || selectedConversation.contact?.phone || "?").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-medium text-sm">{selectedConversation.contact_name}</p>
+                <p className="font-medium text-sm">
+                  {selectedConversation.contact?.name || selectedConversation.contact?.phone}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  WhatsApp - UNV Comercial <span className="text-green-500">●</span>
+                  {selectedConversation.contact?.phone}
+                  {selectedConversation.instance_id && (
+                    <span className="text-green-500 ml-2">● WhatsApp</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -327,37 +347,43 @@ export const CRMInboxPage = () => {
           {/* Messages */}
           <ScrollArea className="flex-1 p-4 bg-muted/30">
             <div className="space-y-4 max-w-3xl mx-auto">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex",
-                    message.direction === "outbound" ? "justify-end" : "justify-start"
-                  )}
-                >
+              {loadingMessages ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhuma mensagem ainda</p>
+                </div>
+              ) : (
+                messages.map((message) => (
                   <div
+                    key={message.id}
                     className={cn(
-                      "max-w-[70%] rounded-lg p-3",
-                      message.direction === "outbound"
-                        ? "bg-primary/10 text-foreground"
-                        : "bg-card border border-border"
+                      "flex",
+                      message.direction === "outbound" ? "justify-end" : "justify-start"
                     )}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    <div className="flex items-center justify-end gap-1 mt-1">
-                      <span className="text-[10px] text-muted-foreground">
-                        {format(new Date(message.created_at), "HH:mm")}
-                      </span>
-                      {message.direction === "outbound" && (
-                        <CheckCheck className={cn(
-                          "h-3 w-3",
-                          message.status === "read" ? "text-blue-500" : "text-muted-foreground"
-                        )} />
+                    <div
+                      className={cn(
+                        "max-w-[70%] rounded-lg p-3",
+                        message.direction === "outbound"
+                          ? "bg-primary/10 text-foreground"
+                          : "bg-card border border-border"
                       )}
+                    >
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <div className="flex items-center justify-end gap-1 mt-1">
+                        <span className="text-[10px] text-muted-foreground">
+                          {format(new Date(message.created_at), "HH:mm")}
+                        </span>
+                        {message.direction === "outbound" && getStatusIcon(message.status)}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
@@ -382,12 +408,13 @@ export const CRMInboxPage = () => {
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
                 className="flex-1"
+                disabled={sending}
               />
               <Button variant="ghost" size="icon" className="h-9 w-9">
                 <Mic className="h-5 w-5" />
               </Button>
-              <Button onClick={handleSendMessage} className="gap-2">
-                Enviar <Send className="h-4 w-4" />
+              <Button onClick={handleSendMessage} className="gap-2" disabled={sending || !newMessage.trim()}>
+                {sending ? "Enviando..." : "Enviar"} <Send className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -406,23 +433,24 @@ export const CRMInboxPage = () => {
         <div className="w-[320px] border-l border-border bg-card flex flex-col">
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-muted-foreground uppercase">Próximo Negócio</span>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <Filter className="h-3 w-3" />
-                </Button>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </div>
+              <span className="text-xs text-muted-foreground uppercase">Contato</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </div>
 
             <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={selectedConversation.contact?.profile_picture_url || undefined} />
                 <AvatarFallback>
-                  {selectedConversation.contact_name.slice(0, 2).toUpperCase()}
+                  {(selectedConversation.contact?.name || selectedConversation.contact?.phone || "?").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <p className="font-medium">{selectedConversation.contact_name}</p>
+                <p className="font-medium">
+                  {selectedConversation.contact?.name || "Sem nome"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedConversation.contact?.phone}
+                </p>
               </div>
             </div>
           </div>
@@ -440,68 +468,63 @@ export const CRMInboxPage = () => {
             </Button>
           </div>
 
-          {/* Deal Info */}
+          {/* Conversation Status */}
           <div className="p-4 border-b border-border">
-            <p className="text-xs text-muted-foreground uppercase mb-2">Negócio Selecionado</p>
-            <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-3">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="text-xs">FC</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-muted-foreground">Funis comerciais &gt; Funil SS</p>
-                <p className="font-medium">R$ 1.000,00</p>
-              </div>
-            </div>
-
-            {/* Status Buttons */}
-            <div className="flex gap-2 mt-3">
-              <Button variant="outline" size="sm" className="flex-1 border-green-500 text-green-600 hover:bg-green-50">
-                Ganho ✓
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1 border-red-500 text-red-600 hover:bg-red-50">
-                Perdido
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1">
+            <p className="text-xs text-muted-foreground uppercase mb-2">Status da Conversa</p>
+            <div className="flex gap-2">
+              <Button 
+                variant={selectedConversation.status === "open" ? "default" : "outline"}
+                size="sm" 
+                className="flex-1"
+                onClick={() => reopenConversation(selectedConversation.id)}
+              >
                 Aberto
+              </Button>
+              <Button 
+                variant={selectedConversation.status === "closed" ? "default" : "outline"}
+                size="sm" 
+                className="flex-1"
+                onClick={() => closeConversation(selectedConversation.id)}
+              >
+                Fechado
               </Button>
             </div>
           </div>
 
-          {/* Expandable Sections */}
-          <ScrollArea className="flex-1">
-            <div className="p-4 space-y-3">
-              <button className="w-full flex items-center justify-between py-2 hover:bg-muted/50 rounded px-2">
-                <span className="font-medium text-sm">Contato</span>
-                <ChevronRight className="h-4 w-4" />
-              </button>
-              <button className="w-full flex items-center justify-between py-2 hover:bg-muted/50 rounded px-2">
-                <span className="font-medium text-sm">Negócio</span>
-                <ChevronRight className="h-4 w-4" />
-              </button>
-              <button className="w-full flex items-center justify-between py-2 hover:bg-muted/50 rounded px-2">
-                <span className="font-medium text-sm">Notas</span>
-                <ChevronRight className="h-4 w-4" />
-              </button>
-              <button className="w-full flex items-center justify-between py-2 hover:bg-muted/50 rounded px-2">
-                <span className="font-medium text-sm">Histórico</span>
-                <ChevronRight className="h-4 w-4" />
-              </button>
-              <button className="w-full flex items-center justify-between py-2 hover:bg-muted/50 rounded px-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">Conversas</span>
-                  <Badge variant="secondary" className="h-5 px-1.5 text-xs">5</Badge>
-                </div>
-                <ChevronRight className="h-4 w-4" />
-              </button>
+          {/* Assigned Staff */}
+          <div className="p-4 border-b border-border">
+            <p className="text-xs text-muted-foreground uppercase mb-2">Atribuído a</p>
+            {selectedConversation.assigned_staff ? (
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={selectedConversation.assigned_staff.avatar_url || undefined} />
+                  <AvatarFallback>
+                    {selectedConversation.assigned_staff.name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm">{selectedConversation.assigned_staff.name}</span>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhum atendente atribuído</p>
+            )}
+          </div>
+
+          {/* Lead Link */}
+          {selectedConversation.lead_id && (
+            <div className="p-4">
+              <p className="text-xs text-muted-foreground uppercase mb-2">Lead Vinculado</p>
+              <Button variant="outline" size="sm" className="w-full">
+                Ver Lead <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
             </div>
-          </ScrollArea>
+          )}
         </div>
       )}
 
-      {/* Service Config Dialog */}
+      {/* Config Dialog */}
       <ServiceConfigDialog 
         open={showConfigDialog} 
-        onOpenChange={setShowConfigDialog} 
+        onOpenChange={setShowConfigDialog}
       />
     </div>
   );
