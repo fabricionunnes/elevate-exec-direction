@@ -1,92 +1,97 @@
 
 
-## Plano: Seleção em Cascata para Estrutura Organizacional
+## Plano: Corrigir Links Públicos para Vagas e Banco de Talentos
 
-### Objetivo
-Implementar uma hierarquia em cascata onde:
-- **Equipes** pertencem a uma **Unidade**
-- **Setores** pertencem a uma **Equipe** (e herdam a Unidade)
-- **Vendedores** pertencem a uma **Equipe** (e herdam a Unidade via cascata)
+### Problema Identificado
 
----
+Os dois links públicos estão conflitando por causa das políticas de segurança do banco de dados:
 
-### Resumo das Mudanças
+| Link | Página | Comportamento Atual |
+|------|--------|---------------------|
+| `?public=vagas&job=...` ou `/#/job-application?job=...` | Candidatura em Vaga | Exige `source='website'` + vaga aberta |
+| `?public=banco-talentos` ou `/#/banco-talentos` | Banco de Talentos | Usa `source='public_link'` + sem vaga |
 
-1. **Adicionar campo `team_id` na tabela de Setores** - Atualmente setores só têm `unit_id`, precisamos adicionar `team_id` para a cascata
-2. **Adicionar campo `sector_id` na tabela de Vendedores** - Para vincular vendedores a setores específicos
-3. **Atualizar formulário de Equipes** - Manter seleção de Unidade (já existe)
-4. **Atualizar formulário de Setores** - Adicionar seleção de Unidade → Equipe em cascata
-5. **Atualizar formulário de Vendedores** - Adicionar seleção completa: Unidade → Setor → Equipe
+A política RLS atual só aceita candidaturas com `source='website'` E uma vaga válida. O Banco de Talentos não atende nenhum desses critérios.
 
 ---
 
-### Detalhes Técnicos
+### Solução
 
-#### 1. Alterações no Banco de Dados
+Ajustar as políticas de segurança para permitir **ambos os cenários** de forma independente:
+
+1. **Candidatura em Vaga**: `source='website'` + `job_opening_id` válido
+2. **Banco de Talentos**: `source='public_link'` + `job_opening_id IS NULL` + `project_id` do projeto mestre
+
+---
+
+### Implementação
+
+#### Parte 1: Atualizar Política RLS para `candidates`
+
+Modificar a política "Public can submit job applications" para aceitar dois cenários:
 
 ```sql
--- Adicionar team_id à tabela de setores
-ALTER TABLE company_sectors ADD COLUMN team_id UUID REFERENCES company_teams(id);
+-- Cenário 1: Candidatura para vaga específica
+(EXISTS (SELECT 1 FROM job_openings jo 
+         WHERE jo.id = candidates.job_opening_id 
+         AND jo.status = 'open') 
+ AND source = 'website')
 
--- Adicionar sector_id à tabela de vendedores
-ALTER TABLE company_salespeople ADD COLUMN sector_id UUID REFERENCES company_sectors(id);
-
--- Criar índices para performance
-CREATE INDEX IF NOT EXISTS idx_sectors_team ON company_sectors(team_id);
-CREATE INDEX IF NOT EXISTS idx_salespeople_sector ON company_salespeople(sector_id);
+-- OU Cenário 2: Banco de Talentos
+(job_opening_id IS NULL 
+ AND source = 'public_link' 
+ AND project_id = '00000000-0000-0000-0000-000000000001')
 ```
 
-#### 2. Atualizar `TeamsTab.tsx`
-- Já possui seleção de Unidade - manter como está
-- A equipe é o segundo nível da hierarquia
+#### Parte 2: Atualizar Política RLS para `candidate_resumes`
 
-#### 3. Atualizar `SectorsTab.tsx`
-- Adicionar dropdown de **Unidade** (primeiro nível)
-- Adicionar dropdown de **Equipe** (filtrado pela Unidade selecionada)
-- Quando selecionar Unidade, resetar Equipe
-- Herdar `unit_id` da equipe selecionada automaticamente
+Garantir que currículos possam ser enviados em ambos os cenários:
 
-#### 4. Atualizar `SalespeopleTab.tsx`
-- Adicionar seleção em cascata no formulário:
-  1. **Unidade** (primeiro nível)
-  2. **Setor** (filtrado pela Unidade)
-  3. **Equipe** (filtrado pelo Setor ou Unidade)
-- Quando mudar Unidade → resetar Setor e Equipe
-- Quando mudar Setor → resetar Equipe (mostrar apenas equipes do setor)
-- Exibir coluna de Setor na tabela de listagem
-
-#### 5. Lógica de Cascata
-
+```sql
+-- Aceitar upload de currículos tanto para vagas quanto banco de talentos
+EXISTS (SELECT 1 FROM candidates c
+        LEFT JOIN job_openings jo ON jo.id = c.job_opening_id
+        WHERE c.id = candidate_resumes.candidate_id
+        AND (
+          -- Cenário 1: Candidatura em vaga
+          (c.source = 'website' AND jo.status = 'open')
+          OR
+          -- Cenário 2: Banco de Talentos
+          (c.source = 'public_link' AND c.job_opening_id IS NULL)
+        ))
 ```
-Unidade
-  └── Equipe (pertence à Unidade)
-        └── Setor (pertence à Equipe, herda Unidade)
-              └── Vendedor (pertence ao Setor/Equipe, herda tudo)
+
+#### Parte 3: Atualizar Política de Verificação de Duplicatas
+
+Permitir verificação de duplicatas para ambos os cenários:
+
+```sql
+-- Verificar duplicatas em vagas
+(EXISTS (SELECT 1 FROM job_openings jo 
+         WHERE jo.id = candidates.job_opening_id AND jo.status = 'open'))
+OR
+-- Verificar duplicatas no banco de talentos
+(job_opening_id IS NULL AND current_stage = 'talent_pool')
 ```
 
 ---
 
-### Arquivos a Modificar
+### Resultado Esperado
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `supabase/migrations/` | Nova migração para `team_id` em setores e `sector_id` em vendedores |
-| `SectorsTab.tsx` | Formulário com cascata Unidade → Equipe |
-| `SalespeopleTab.tsx` | Formulário com cascata Unidade → Setor → Equipe + nova coluna na tabela |
-| `TeamsTab.tsx` | Nenhuma alteração necessária (já tem seleção de Unidade) |
+| Ação | Link Vagas | Link Banco Talentos |
+|------|------------|---------------------|
+| Criar candidato | Funciona | Funciona |
+| Upload currículo | Funciona | Funciona |
+| Verificar duplicatas | Funciona | Funciona |
+| Visualizar (staff) | Funciona | Funciona |
 
 ---
 
-### Comportamento Esperado
+### Arquivos Modificados
 
-**No formulário de Setor:**
-1. Selecionar Unidade (opcional, filtra equipes)
-2. Selecionar Equipe (mostra apenas equipes da Unidade selecionada)
-3. Se selecionar Equipe, o `unit_id` é preenchido automaticamente baseado na equipe
+1. **Migração SQL** - Novas políticas RLS para `candidates` e `candidate_resumes`
 
-**No formulário de Vendedor:**
-1. Selecionar Unidade (filtra setores e equipes disponíveis)
-2. Selecionar Setor (opcional, filtra equipes do setor)
-3. Selecionar Equipe (mostra equipes do setor ou unidade)
-4. Todos os IDs são salvos para rastreabilidade completa
+Nenhuma mudança de código será necessária, pois as páginas já estão implementadas corretamente:
+- `PublicJobApplicationPage.tsx` usa `source: 'website'`
+- `PublicTalentPoolPage.tsx` usa `source: 'public_link'`
 
