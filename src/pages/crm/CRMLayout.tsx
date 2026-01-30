@@ -272,7 +272,7 @@ export const CRMLayout = () => {
         </header>
 
         {/* Main Content with Sidebar */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Origins Sidebar - Only show on pipeline/leads pages */}
           {(location.pathname.includes("/crm/pipeline") || 
             location.pathname === "/crm" ||
@@ -285,7 +285,7 @@ export const CRMLayout = () => {
 
           {/* Main Content - use overflow-hidden for inbox page to contain scroll internally */}
           <main className={cn(
-            "flex-1",
+            "flex-1 min-h-0",
             location.pathname.includes("/crm/inbox") ? "overflow-hidden" : "overflow-auto"
           )}>
             <Outlet context={{ staffRole, isAdmin, staffId }} />
