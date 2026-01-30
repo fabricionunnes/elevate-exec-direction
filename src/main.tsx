@@ -25,6 +25,7 @@ const publicRoutes = [
   "/hotseat",
   "/cultura",
   "/banco-talentos",
+  "/job-application",
 ];
 
 const urlSearch = new URLSearchParams(window.location.search);
@@ -95,6 +96,9 @@ if (publicParam) {
     forceHashRoute("/hotseat", "");
   } else if (publicParam === "banco-talentos") {
     forceHashRoute("/banco-talentos", "");
+  } else if (publicParam === "vagas") {
+    // expects job=...
+    forceHashRoute("/job-application", window.location.search);
   }
 } else {
   // Path-based public links
