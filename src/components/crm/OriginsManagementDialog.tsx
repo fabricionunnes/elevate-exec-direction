@@ -32,8 +32,16 @@ import {
   Folder,
   Target,
   Save,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 interface OriginGroup {
@@ -366,6 +374,28 @@ export const OriginsManagementDialog = ({
     }
   };
 
+  // Move origin to another group
+  const handleMoveOrigin = async (originId: string, newGroupId: string) => {
+    try {
+      const { error } = await supabase
+        .from("crm_origins")
+        .update({ group_id: newGroupId })
+        .eq("id", originId);
+
+      if (error) throw error;
+
+      setOrigins(origins.map((o) => 
+        o.id === originId ? { ...o, group_id: newGroupId } : o
+      ));
+
+      toast.success("Funil movido com sucesso");
+      onRefresh?.();
+    } catch (error) {
+      console.error("Error moving origin:", error);
+      toast.error("Erro ao mover funil");
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
@@ -514,7 +544,7 @@ export const OriginsManagementDialog = ({
                                           <MoreHorizontal className="h-3.5 w-3.5" />
                                         </Button>
                                       </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
+                                      <DropdownMenuContent align="end" className="w-56">
                                         <DropdownMenuItem
                                           onClick={(e) => {
                                             e.stopPropagation();
@@ -538,6 +568,37 @@ export const OriginsManagementDialog = ({
                                           <Plus className="h-4 w-4 mr-2" />
                                           Adicionar Etapa
                                         </DropdownMenuItem>
+                                        
+                                        {/* Move to another group */}
+                                        {groups.length > 1 && (
+                                          <div className="px-2 py-1.5">
+                                            <Label className="text-xs text-muted-foreground mb-1 block">
+                                              Mover para grupo:
+                                            </Label>
+                                            <Select
+                                              value={origin.group_id || ""}
+                                              onValueChange={(newGroupId) => {
+                                                if (newGroupId !== origin.group_id) {
+                                                  handleMoveOrigin(origin.id, newGroupId);
+                                                }
+                                              }}
+                                            >
+                                              <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue placeholder="Selecionar grupo" />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                {groups
+                                                  .filter((g) => g.id !== origin.group_id)
+                                                  .map((g) => (
+                                                    <SelectItem key={g.id} value={g.id}>
+                                                      {g.name}
+                                                    </SelectItem>
+                                                  ))}
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                        )}
+                                        
                                         <DropdownMenuItem
                                           onClick={(e) => {
                                             e.stopPropagation();
