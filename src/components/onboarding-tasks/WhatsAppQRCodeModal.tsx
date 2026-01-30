@@ -265,6 +265,13 @@ export const WhatsAppQRCodeModal = ({
       return { success: true, qrReady: false };
     } catch (error: any) {
       console.error("[QR Modal] Error fetching QR:", error);
+
+      // If the WhatsApp server (Evolution) is offline, stop retrying to avoid spam + perceived blank screen.
+      const offlineMsg = (error?.message || '').toLowerCase();
+      if (offlineMsg.includes('connection refused') || offlineMsg.includes('evolution api offline')) {
+        toast.error("Servidor do WhatsApp está offline. Tente novamente mais tarde.");
+        return { success: false, qrReady: false };
+      }
       
       // Check if this is a stale instance error
       const errorMsg = error.message?.toLowerCase() || '';
@@ -308,7 +315,14 @@ export const WhatsAppQRCodeModal = ({
       }
 
       setPollingAttempt(attempt);
-      const { qrReady, staleInstance } = await fetchQrCode();
+      const { success, qrReady, staleInstance } = await fetchQrCode();
+
+      // If Evolution is offline (or any hard failure), stop polling and keep modal usable.
+      if (!success && !staleInstance) {
+        setIsPolling(false);
+        setLoading(false);
+        return;
+      }
 
       // If instance was stale, close modal and trigger refresh
       if (staleInstance) {
