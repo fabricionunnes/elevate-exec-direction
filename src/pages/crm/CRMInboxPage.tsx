@@ -42,6 +42,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useCRMContext } from "./CRMLayout";
 import { toast } from "sonner";
+import { ServiceConfigDialog } from "@/components/crm/service-config/ServiceConfigDialog";
 
 interface Conversation {
   id: string;
@@ -137,6 +138,7 @@ export const CRMInboxPage = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -190,14 +192,27 @@ export const CRMInboxPage = () => {
       <div className="w-[300px] border-r border-border flex flex-col bg-card">
         {/* Search Header */}
         <div className="p-3 border-b border-border">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Pesquisar"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-9"
-            />
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Pesquisar"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-9"
+              />
+            </div>
+            {isAdmin && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 shrink-0"
+                onClick={() => setShowConfigDialog(true)}
+                title="Configurações de atendimento"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
 
@@ -482,6 +497,12 @@ export const CRMInboxPage = () => {
           </ScrollArea>
         </div>
       )}
+
+      {/* Service Config Dialog */}
+      <ServiceConfigDialog 
+        open={showConfigDialog} 
+        onOpenChange={setShowConfigDialog} 
+      />
     </div>
   );
 };

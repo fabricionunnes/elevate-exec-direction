@@ -9624,6 +9624,288 @@ export type Database = {
           },
         ]
       }
+      crm_quick_responses: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          shortcut: string | null
+          sort_order: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          shortcut?: string | null
+          sort_order?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          shortcut?: string | null
+          sort_order?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_quick_responses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_scheduled_messages: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          instance_id: string | null
+          message: string
+          phone_number: string
+          scheduled_at: string
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          instance_id?: string | null
+          message: string
+          phone_number: string
+          scheduled_at: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          instance_id?: string | null
+          message?: string
+          phone_number?: string
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_scheduled_messages_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_scheduled_messages_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_service_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          notify_assignment: boolean | null
+          notify_new_lead: boolean | null
+          notify_new_message: boolean | null
+          notify_sound: boolean | null
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notify_assignment?: boolean | null
+          notify_new_lead?: boolean | null
+          notify_new_message?: boolean | null
+          notify_sound?: boolean | null
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notify_assignment?: boolean | null
+          notify_new_lead?: boolean | null
+          notify_new_message?: boolean | null
+          notify_sound?: boolean | null
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_service_notifications_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_service_sector_staff: {
+        Row: {
+          created_at: string
+          id: string
+          sector_id: string
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sector_id: string
+          staff_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sector_id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_service_sector_staff_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "crm_service_sectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_service_sector_staff_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_service_sectors: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_service_staff_devices: {
+        Row: {
+          created_at: string
+          id: string
+          instance_id: string
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instance_id: string
+          staff_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instance_id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_service_staff_devices_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_service_staff_devices_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_service_staff_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          is_allowed: boolean | null
+          permission_key: string
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_allowed?: boolean | null
+          permission_key: string
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_allowed?: boolean | null
+          permission_key?: string
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_service_staff_permissions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_settings: {
         Row: {
           id: string
@@ -17350,6 +17632,7 @@ export type Database = {
           is_default: boolean | null
           phone_number: string | null
           qr_code: string | null
+          sector_id: string | null
           status: string | null
           updated_at: string | null
         }
@@ -17362,6 +17645,7 @@ export type Database = {
           is_default?: boolean | null
           phone_number?: string | null
           qr_code?: string | null
+          sector_id?: string | null
           status?: string | null
           updated_at?: string | null
         }
@@ -17374,6 +17658,7 @@ export type Database = {
           is_default?: boolean | null
           phone_number?: string | null
           qr_code?: string | null
+          sector_id?: string | null
           status?: string | null
           updated_at?: string | null
         }
@@ -17383,6 +17668,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_instances_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "crm_service_sectors"
             referencedColumns: ["id"]
           },
         ]
