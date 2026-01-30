@@ -4,9 +4,12 @@ import { CRMPipelinePage } from "./CRMPipelinePage";
 import { CRMLeadsPage } from "./CRMLeadsPage";
 import { CRMLeadDetailPage } from "./CRMLeadDetailPage";
 import { CRMActivitiesPage } from "./CRMActivitiesPage";
-import { CRMReportsPage } from "./CRMReportsPage";
+import { CRMIndicatorsPage } from "./CRMIndicatorsPage";
 import { CRMSettingsPage } from "./CRMSettingsPage";
 import { CRMInboxPage } from "./CRMInboxPage";
+
+// Keep old name for backward compatibility
+export const CRMReportsPage = CRMIndicatorsPage;
 
 export {
   CRMLayout,
@@ -16,7 +19,7 @@ export {
   CRMLeadsPage,
   CRMLeadDetailPage,
   CRMActivitiesPage,
-  CRMReportsPage,
+  CRMIndicatorsPage,
   CRMSettingsPage,
   CRMInboxPage,
 };
