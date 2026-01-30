@@ -104,6 +104,60 @@ const CurrencyFieldWrapper = ({
   );
 };
 
+// Wrapper component for phone field with debounced save
+const PhoneFieldWrapper = ({
+  field,
+  value,
+  onSave,
+  isSaving,
+}: {
+  field: CustomField;
+  value: string;
+  onSave: (field: CustomField, value: string) => void;
+  isSaving: boolean;
+}) => {
+  const [localValue, setLocalValue] = useState(value || "");
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const isExternalUpdate = useRef(false);
+
+  // Only sync external value changes (not from our own typing)
+  useEffect(() => {
+    if (value !== localValue && !debounceRef.current) {
+      setLocalValue(value || "");
+    }
+  }, [value]);
+
+  const handleChange = useCallback((newValue: string) => {
+    setLocalValue(newValue);
+    
+    // Debounce the save
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      onSave(field, newValue);
+    }, 800);
+  }, [field, onSave]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
+  return (
+    <PhoneInput
+      value={localValue}
+      onChange={handleChange}
+      disabled={isSaving}
+    />
+  );
+};
+
 // Staff select wrapper for closer and SDR fields
 const StaffSelectWrapper = ({
   field,
@@ -525,10 +579,11 @@ export const LeadCustomFieldsTab = ({
         );
       case "phone":
         return (
-          <PhoneInput
+          <PhoneFieldWrapper
+            field={field}
             value={value}
-            onChange={(v) => handleFieldChange(field, v)}
-            disabled={isSaving}
+            onSave={handleFieldChange}
+            isSaving={isSaving}
           />
         );
       case "number":
