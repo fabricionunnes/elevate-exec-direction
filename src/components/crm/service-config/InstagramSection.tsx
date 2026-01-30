@@ -79,8 +79,9 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
         throw new Error(data?.error || error?.message);
       }
 
-      // Redirect to Facebook OAuth
-      window.location.href = data.authUrl;
+      // Redirect to Facebook OAuth - use assign for better iframe compatibility
+      console.log("Redirecting to:", data.authUrl);
+      window.location.assign(data.authUrl);
     } catch (err: any) {
       console.error("Error getting auth URL:", err);
       toast.error(err.message || "Erro ao iniciar conexão");
