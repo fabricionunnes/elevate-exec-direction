@@ -31,6 +31,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
   Search,
   Filter,
   Phone,
@@ -50,6 +55,8 @@ import {
   WifiOff,
   Trash2,
   X,
+  ChevronLeft,
+  Info,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -62,6 +69,7 @@ import { useWhatsAppMessages, WhatsAppMessage } from "@/hooks/useWhatsAppMessage
 import { ConversationSidebar } from "@/components/crm/inbox/ConversationSidebar";
 import { ConversationFilters, ConversationFiltersData, defaultFilters } from "@/components/crm/inbox/ConversationFilters";
 import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const CRMInboxPage = () => {
   const [searchParams] = useSearchParams();
@@ -80,8 +88,10 @@ export const CRMInboxPage = () => {
   const [deletingConversation, setDeletingConversation] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<ConversationFiltersData>(defaultFilters);
+  const [showMobileInfo, setShowMobileInfo] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollAreaRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   // Use real data hooks
   const { 
@@ -363,10 +373,13 @@ export const CRMInboxPage = () => {
 
   return (
     <div className="h-full min-h-0 flex overflow-hidden">
-      {/* Conversations List */}
-      <div className="w-[300px] min-h-0 border-r border-border flex flex-col bg-card">
+      {/* Conversations List - Hidden on mobile when conversation is selected */}
+      <div className={cn(
+        "min-h-0 border-r border-border flex flex-col bg-card",
+        isMobile ? (selectedConversation ? "hidden" : "w-full") : "w-[300px]"
+      )}>
         {/* Search Header */}
-        <div className="p-3 border-b border-border">
+        <div className="p-2 sm:p-3 border-b border-border">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -392,7 +405,7 @@ export const CRMInboxPage = () => {
         </div>
 
         {/* Connection Status */}
-        <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+        <div className="px-2 sm:px-3 py-2 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             {hasConnectedDevice ? (
               <>
@@ -417,7 +430,7 @@ export const CRMInboxPage = () => {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+        <div className="flex items-center justify-between px-2 sm:px-3 py-2 border-b border-border">
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-[100px] h-7 text-xs">
               <SelectValue />
@@ -531,41 +544,66 @@ export const CRMInboxPage = () => {
 
       {/* Chat Area */}
       {selectedConversation ? (
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className={cn(
+          "flex-1 flex flex-col min-h-0 overflow-hidden",
+          isMobile && !selectedConversation && "hidden"
+        )}>
           {/* Chat Header */}
-          <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-card">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-9 w-9">
+          <div className="h-14 border-b border-border flex items-center justify-between px-2 sm:px-4 bg-card">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Back button for mobile */}
+              {isMobile && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 shrink-0"
+                  onClick={() => setSelectedConversation(null)}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+              )}
+              <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
                 <AvatarImage src={selectedConversation.contact?.profile_picture_url || undefined} />
                 <AvatarFallback>
                   {(selectedConversation.contact?.name || selectedConversation.contact?.phone || "?").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <p className="font-medium text-sm">
+              <div className="min-w-0">
+                <p className="font-medium text-sm truncate">
                   {selectedConversation.contact?.name || selectedConversation.contact?.phone}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground truncate">
                   {selectedConversation.contact?.phone}
                   {selectedConversation.instance_id && (
-                    <span className="text-green-500 ml-2">● WhatsApp</span>
+                    <span className="text-green-500 ml-2 hidden sm:inline">● WhatsApp</span>
                   )}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon">
+            <div className="flex items-center gap-0.5 sm:gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:flex">
                 <Clock className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:flex">
                 <Phone className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:flex">
                 <Video className="h-4 w-4" />
               </Button>
+              {/* Mobile info button */}
+              {isMobile && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8"
+                  onClick={() => setShowMobileInfo(true)}
+                >
+                  <Info className="h-4 w-4" />
+                </Button>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -702,9 +740,9 @@ export const CRMInboxPage = () => {
           </ScrollArea>
 
           {/* Message Input */}
-          <div className="border-t border-border p-3 bg-card">
-            <div className="flex items-center gap-2 max-w-3xl mx-auto">
-              <div className="flex gap-1">
+          <div className="border-t border-border p-2 sm:p-3 bg-card">
+            <div className="flex items-center gap-1 sm:gap-2 max-w-3xl mx-auto">
+              <div className="hidden sm:flex gap-1">
                 <Button variant="ghost" size="icon" className="h-9 w-9">
                   <Smile className="h-5 w-5" />
                 </Button>
@@ -715,6 +753,10 @@ export const CRMInboxPage = () => {
                   <Image className="h-5 w-5" />
                 </Button>
               </div>
+              {/* Mobile attachment button */}
+              <Button variant="ghost" size="icon" className="h-9 w-9 sm:hidden shrink-0">
+                <Paperclip className="h-5 w-5" />
+              </Button>
               <Input
                 placeholder="Mensagem"
                 value={newMessage}
@@ -723,17 +765,23 @@ export const CRMInboxPage = () => {
                 className="flex-1"
                 disabled={sending}
               />
-              <Button variant="ghost" size="icon" className="h-9 w-9">
-                <Mic className="h-5 w-5" />
-              </Button>
-              <Button onClick={handleSendMessage} className="gap-2" disabled={sending || !newMessage.trim()}>
-                {sending ? "Enviando..." : "Enviar"} <Send className="h-4 w-4" />
+              <Button 
+                onClick={handleSendMessage} 
+                size={isMobile ? "icon" : "default"}
+                className="shrink-0" 
+                disabled={sending || !newMessage.trim()}
+              >
+                <Send className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">{sending ? "Enviando..." : "Enviar"}</span>
               </Button>
             </div>
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center bg-muted/30">
+        <div className={cn(
+          "flex-1 flex items-center justify-center bg-muted/30",
+          isMobile && "hidden"
+        )}>
           <div className="text-center">
             <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/50" />
             <p className="mt-2 text-muted-foreground">Selecione uma conversa</p>
@@ -741,8 +789,8 @@ export const CRMInboxPage = () => {
         </div>
       )}
 
-      {/* Right Sidebar - Lead Info & Actions */}
-      {selectedConversation && (
+      {/* Right Sidebar - Lead Info & Actions - Hidden on Mobile */}
+      {selectedConversation && !isMobile && (
         <ConversationSidebar 
           conversation={selectedConversation}
           projectId={projectId || undefined}
@@ -750,6 +798,21 @@ export const CRMInboxPage = () => {
           onContactUpdated={() => refetchConversations()}
           onAssignmentChanged={() => refetchConversations()}
         />
+      )}
+
+      {/* Mobile Info Sheet */}
+      {isMobile && selectedConversation && (
+        <Sheet open={showMobileInfo} onOpenChange={setShowMobileInfo}>
+          <SheetContent side="right" className="w-full sm:w-[400px] p-0">
+            <ConversationSidebar 
+              conversation={selectedConversation}
+              projectId={projectId || undefined}
+              onLeadCreated={() => refetchConversations()}
+              onContactUpdated={() => refetchConversations()}
+              onAssignmentChanged={() => refetchConversations()}
+            />
+          </SheetContent>
+        </Sheet>
       )}
 
       {/* Config Dialog */}

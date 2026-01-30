@@ -231,18 +231,18 @@ export const CRMReportsPage = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Relatórios</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold">Relatórios</h1>
+          <p className="text-sm text-muted-foreground">
             Análise de desempenho do funil de vendas
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={period} onValueChange={(val) => setPeriod(val as DateFilterType)}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-[130px] sm:w-[160px] h-9 text-xs sm:text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -258,18 +258,18 @@ export const CRMReportsPage = () => {
           {period === "custom" && (
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("justify-start text-left font-normal", !customDateRange.from && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
+                <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal h-9 text-xs sm:text-sm", !customDateRange.from && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   {customDateRange.from ? (
                     customDateRange.to ? (
                       <>
-                        {format(customDateRange.from, "dd/MM/yy", { locale: ptBR })} - {format(customDateRange.to, "dd/MM/yy", { locale: ptBR })}
+                        {format(customDateRange.from, "dd/MM", { locale: ptBR })} - {format(customDateRange.to, "dd/MM", { locale: ptBR })}
                       </>
                     ) : (
-                      format(customDateRange.from, "dd/MM/yyyy", { locale: ptBR })
+                      format(customDateRange.from, "dd/MM/yy", { locale: ptBR })
                     )
                   ) : (
-                    <span>Selecionar período</span>
+                    <span>Período</span>
                   )}
                 </Button>
               </PopoverTrigger>
@@ -280,7 +280,7 @@ export const CRMReportsPage = () => {
                   defaultMonth={customDateRange.from}
                   selected={{ from: customDateRange.from, to: customDateRange.to }}
                   onSelect={(range) => setCustomDateRange({ from: range?.from, to: range?.to })}
-                  numberOfMonths={2}
+                  numberOfMonths={1}
                   locale={ptBR}
                   className="pointer-events-auto"
                 />
@@ -291,62 +291,62 @@ export const CRMReportsPage = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-500" />
-              <div>
-                <p className="text-2xl font-bold">{metrics.totalLeads}</p>
-                <p className="text-xs text-muted-foreground">Total Leads</p>
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold">{metrics.totalLeads}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total Leads</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-green-500" />
-              <div>
-                <p className="text-2xl font-bold">{metrics.wonLeads}</p>
-                <p className="text-xs text-muted-foreground">Ganhos</p>
+              <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold">{metrics.wonLeads}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Ganhos</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-red-500" />
-              <div>
-                <p className="text-2xl font-bold">{metrics.lostLeads}</p>
-                <p className="text-xs text-muted-foreground">Perdidos</p>
+              <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold">{metrics.lostLeads}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Perdidos</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-amber-500" />
-              <div>
-                <p className="text-2xl font-bold">{metrics.conversionRate}%</p>
-                <p className="text-xs text-muted-foreground">Conversão</p>
+              <Target className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold">{metrics.conversionRate}%</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Conversão</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="col-span-2">
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-emerald-500" />
-              <div>
-                <p className="text-xl font-bold">{formatCurrency(metrics.totalValue)}</p>
-                <p className="text-xs text-muted-foreground">Valor Fechado</p>
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-base sm:text-xl font-bold truncate">{formatCurrency(metrics.totalValue)}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Valor Fechado</p>
               </div>
             </div>
           </CardContent>
@@ -354,18 +354,18 @@ export const CRMReportsPage = () => {
       </div>
 
       {/* Charts */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
         {/* Funnel Chart */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Funil de Conversão</CardTitle>
+          <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-2">
+            <CardTitle className="text-base sm:text-lg">Funil de Conversão</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+          <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+            <div className="h-[200px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={conversionData} layout="vertical">
-                  <XAxis type="number" />
-                  <YAxis dataKey="stage" type="category" width={120} tick={{ fontSize: 12 }} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} />
+                  <YAxis dataKey="stage" type="category" width={80} tick={{ fontSize: 10 }} />
                   <Tooltip
                     formatter={(value: number, name: string) => [`${value} leads`, "Quantidade"]}
                   />

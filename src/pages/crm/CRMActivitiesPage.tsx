@@ -259,37 +259,37 @@ export const CRMActivitiesPage = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-3 sm:px-4 pt-3 sm:pt-4 pb-2">
         <p className="text-xs text-muted-foreground uppercase tracking-wide">
           Listagem de atividades da sua conta
         </p>
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Atividades</h1>
-          <Button className="gap-2">
-            Atividade <Plus className="h-4 w-4" />
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-lg sm:text-xl font-bold">Atividades</h1>
+          <Button className="gap-2 shrink-0" size="sm">
+            <span className="hidden sm:inline">Atividade</span> <Plus className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {/* Filters Bar */}
-      <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border">
+      <div className="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-2 sm:py-3 border-b border-border overflow-x-auto">
         {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-[250px]">
+        <div className="relative flex-1 min-w-[150px] sm:min-w-[200px] max-w-[250px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-9"
+            className="pl-9 h-8 sm:h-9 text-sm"
           />
         </div>
 
         {/* Date Filter */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-2">
-              <CalendarIcon className="h-4 w-4" />
-              Data
+            <Button variant="outline" size="sm" className="h-8 sm:h-9 gap-1 sm:gap-2 text-xs sm:text-sm">
+              <CalendarIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Data</span>
               <ChevronDown className="h-3 w-3" />
             </Button>
           </PopoverTrigger>
@@ -299,14 +299,14 @@ export const CRMActivitiesPage = () => {
               selected={dateRange}
               onSelect={setDateRange}
               locale={ptBR}
-              numberOfMonths={2}
+              numberOfMonths={1}
             />
           </PopoverContent>
         </Popover>
 
         {/* Activity Type Filter */}
         <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[140px] h-9">
+          <SelectTrigger className="w-[100px] sm:w-[140px] h-8 sm:h-9 text-xs sm:text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -320,7 +320,7 @@ export const CRMActivitiesPage = () => {
 
         {/* Status Filter */}
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[150px] h-9">
+          <SelectTrigger className="w-[100px] sm:w-[150px] h-8 sm:h-9 text-xs sm:text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -330,7 +330,8 @@ export const CRMActivitiesPage = () => {
           </SelectContent>
         </Select>
 
-        {/* Origin Filter */}
+        {/* More Filters - Hidden on mobile */}
+        <div className="hidden md:flex items-center gap-2">
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-9 gap-2">
@@ -411,15 +412,16 @@ export const CRMActivitiesPage = () => {
 
         {/* Status Badge */}
         <Badge variant="secondary" className="h-7">{filterStatus === "pending" ? "2" : "0"}</Badge>
+        </div>
 
         {/* Refresh */}
-        <Button variant="ghost" size="icon" className="h-9 w-9 ml-auto" onClick={loadActivities}>
+        <Button variant="ghost" size="icon" className="h-8 sm:h-9 w-8 sm:w-9 ml-auto shrink-0" onClick={loadActivities}>
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Results Count */}
-      <div className="px-4 py-2 text-sm text-muted-foreground border-b border-border">
+      <div className="px-3 sm:px-4 py-2 text-xs sm:text-sm text-muted-foreground border-b border-border">
         <span className="font-medium text-foreground">{filteredActivities.length}</span> atividades de{" "}
         <span className="font-medium text-foreground">{activities.length}</span> negócios
       </div>

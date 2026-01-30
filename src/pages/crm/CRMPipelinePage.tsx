@@ -439,17 +439,17 @@ export const CRMPipelinePage = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Origin Header */}
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-3 sm:px-4 pt-3 sm:pt-4 pb-2">
         <p className="text-xs text-muted-foreground uppercase tracking-wide">Negócios da origem</p>
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-lg sm:text-xl font-bold truncate">
             {selectedOriginName || "Funil"}
           </h1>
           <Button onClick={() => {
             setAddLeadStageId(undefined);
             setAddLeadOpen(true);
-          }} className="gap-2">
-            Negócio <Plus className="h-4 w-4" />
+          }} className="gap-2 shrink-0" size="sm">
+            <span className="hidden sm:inline">Negócio</span> <Plus className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -467,8 +467,8 @@ export const CRMPipelinePage = () => {
       />
 
       {/* Kanban Board */}
-      <div className="flex-1 overflow-x-auto px-4 pb-4">
-        <div className="flex gap-3 h-full min-w-max">
+      <div className="flex-1 overflow-x-auto px-2 sm:px-4 pb-4">
+        <div className="flex gap-2 sm:gap-3 h-full min-w-max">
           {stages.map(stage => {
             const stageLeads = getLeadsByStage(stage.id);
             const stageTotal = getStageTotal(stage.id);
@@ -476,26 +476,26 @@ export const CRMPipelinePage = () => {
             return (
               <div
                 key={stage.id}
-                className="w-[280px] flex-shrink-0 flex flex-col bg-muted/30 rounded-lg"
+                className="w-[260px] sm:w-[280px] flex-shrink-0 flex flex-col bg-muted/30 rounded-lg"
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, stage.id)}
               >
                 {/* Stage Header */}
                 <div 
-                  className="p-3 flex items-center gap-2 rounded-t-lg"
+                  className="p-2 sm:p-3 flex items-center gap-2 rounded-t-lg"
                   style={{ borderTop: `3px solid ${stage.color}` }}
                 >
-                  <span className="font-medium text-sm flex-1">{stage.name}</span>
-                  <Badge variant="secondary" className="text-xs h-5">
+                  <span className="font-medium text-xs sm:text-sm flex-1 truncate">{stage.name}</span>
+                  <Badge variant="secondary" className="text-[10px] sm:text-xs h-4 sm:h-5">
                     {stageLeads.length}
                   </Badge>
                   {stageTotal > 0 && (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:inline">
                       {formatCurrency(stageTotal)}
                     </span>
                   )}
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                    <MoreHorizontal className="h-4 w-4" />
+                  <Button variant="ghost" size="icon" className="h-5 w-5 sm:h-6 sm:w-6">
+                    <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                 </div>
 
