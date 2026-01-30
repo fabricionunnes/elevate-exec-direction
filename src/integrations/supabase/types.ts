@@ -9198,6 +9198,104 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_daily_activities: {
+        Row: {
+          activity_date: string
+          approaches: number | null
+          connections: number | null
+          created_at: string | null
+          id: string
+          qualifications: number | null
+          scheduled: number | null
+          staff_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          activity_date?: string
+          approaches?: number | null
+          connections?: number | null
+          created_at?: string | null
+          id?: string
+          qualifications?: number | null
+          scheduled?: number | null
+          staff_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          activity_date?: string
+          approaches?: number | null
+          connections?: number | null
+          created_at?: string | null
+          id?: string
+          qualifications?: number | null
+          scheduled?: number | null
+          staff_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_daily_activities_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_forecasts: {
+        Row: {
+          closer_staff_id: string | null
+          created_at: string | null
+          expected_close_date: string | null
+          forecast_value: number
+          id: string
+          lead_id: string | null
+          notes: string | null
+          product_name: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          closer_staff_id?: string | null
+          created_at?: string | null
+          expected_close_date?: string | null
+          forecast_value?: number
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          product_name?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          closer_staff_id?: string | null
+          created_at?: string | null
+          expected_close_date?: string | null
+          forecast_value?: number
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          product_name?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_forecasts_closer_staff_id_fkey"
+            columns: ["closer_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_forecasts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_lead_files: {
         Row: {
           created_at: string
@@ -9360,6 +9458,7 @@ export type Database = {
           pipeline_id: string | null
           probability: number | null
           role: string | null
+          sdr_staff_id: string | null
           segment: string | null
           stage_id: string | null
           state: string | null
@@ -9393,6 +9492,7 @@ export type Database = {
           pipeline_id?: string | null
           probability?: number | null
           role?: string | null
+          sdr_staff_id?: string | null
           segment?: string | null
           stage_id?: string | null
           state?: string | null
@@ -9426,6 +9526,7 @@ export type Database = {
           pipeline_id?: string | null
           probability?: number | null
           role?: string | null
+          sdr_staff_id?: string | null
           segment?: string | null
           stage_id?: string | null
           state?: string | null
@@ -9467,6 +9568,13 @@ export type Database = {
             columns: ["pipeline_id"]
             isOneToOne: false
             referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_sdr_staff_id_fkey"
+            columns: ["sdr_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
             referencedColumns: ["id"]
           },
           {
@@ -9624,6 +9732,36 @@ export type Database = {
           },
         ]
       }
+      crm_products: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price?: number | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       crm_quick_responses: {
         Row: {
           category: string | null
@@ -9665,6 +9803,210 @@ export type Database = {
           {
             foreignKeyName: "crm_quick_responses_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_sales: {
+        Row: {
+          billing_value: number | null
+          closer_staff_id: string | null
+          created_at: string | null
+          id: string
+          lead_id: string | null
+          notes: string | null
+          payment_status: string | null
+          pipeline_id: string | null
+          product_id: string | null
+          product_name: string | null
+          revenue_value: number
+          sale_date: string
+          sdr_staff_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          billing_value?: number | null
+          closer_staff_id?: string | null
+          created_at?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          payment_status?: string | null
+          pipeline_id?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          revenue_value?: number
+          sale_date?: string
+          sdr_staff_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          billing_value?: number | null
+          closer_staff_id?: string | null
+          created_at?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          payment_status?: string | null
+          pipeline_id?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          revenue_value?: number
+          sale_date?: string
+          sdr_staff_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_sales_closer_staff_id_fkey"
+            columns: ["closer_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_sales_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_sales_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "crm_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_sales_sdr_staff_id_fkey"
+            columns: ["sdr_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_sales_targets: {
+        Row: {
+          created_at: string | null
+          hyper_target: number | null
+          id: string
+          month: number
+          staff_id: string | null
+          super_target: number | null
+          target_type: string
+          target_value: number
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          hyper_target?: number | null
+          id?: string
+          month: number
+          staff_id?: string | null
+          super_target?: number | null
+          target_type?: string
+          target_value?: number
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          hyper_target?: number | null
+          id?: string
+          month?: number
+          staff_id?: string | null
+          super_target?: number | null
+          target_type?: string
+          target_value?: number
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_sales_targets_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_scheduled_calls: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string | null
+          duration_minutes: number | null
+          id: string
+          lead_id: string | null
+          no_show_at: string | null
+          notes: string | null
+          reschedule_count: number | null
+          scheduled_at: string
+          scheduled_by: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          lead_id?: string | null
+          no_show_at?: string | null
+          notes?: string | null
+          reschedule_count?: number | null
+          scheduled_at: string
+          scheduled_by?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          lead_id?: string | null
+          no_show_at?: string | null
+          notes?: string | null
+          reschedule_count?: number | null
+          scheduled_at?: string
+          scheduled_by?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_scheduled_calls_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_scheduled_calls_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_scheduled_calls_scheduled_by_fkey"
+            columns: ["scheduled_by"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
             referencedColumns: ["id"]
