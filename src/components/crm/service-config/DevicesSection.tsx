@@ -43,6 +43,8 @@ import {
   ChevronLeft,
   MessageCircle,
   Download,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ImportFromStevoModal } from "./ImportFromStevoModal";
@@ -57,6 +59,8 @@ interface WhatsAppInstance {
   qr_code: string | null;
   sector_id: string | null;
   is_default: boolean;
+  api_url: string | null;
+  api_key: string | null;
 }
 
 interface Sector {
@@ -93,6 +97,9 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newSector, setNewSector] = useState("");
+  const [newApiUrl, setNewApiUrl] = useState("");
+  const [newApiKey, setNewApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -212,6 +219,8 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
           display_name: newName.trim(),
           phone_number: newPhone.trim() || null,
           sector_id: newSector || null,
+          api_url: newApiUrl.trim() || null,
+          api_key: newApiKey.trim() || null,
         })
         .eq("id", selectedInstance.id);
 
@@ -220,6 +229,7 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
       toast.success("Dispositivo atualizado");
       setShowEditDevice(false);
       setSelectedInstance(null);
+      setShowApiKey(false);
       loadData();
     } catch (error: any) {
       toast.error(error.message || "Erro ao atualizar dispositivo");
@@ -250,6 +260,9 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
     setNewName(instance.display_name || instance.instance_name);
     setNewPhone(instance.phone_number || "");
     setNewSector(instance.sector_id || "");
+    setNewApiUrl(instance.api_url || "");
+    setNewApiKey(instance.api_key || "");
+    setShowApiKey(false);
     setShowEditDevice(true);
   };
 
@@ -509,6 +522,45 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            
+            {/* API Configuration Section */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="text-sm font-medium mb-3">Configuração da API (STEVO)</h4>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-api-url">URL da API</Label>
+                  <Input
+                    id="edit-api-url"
+                    type="url"
+                    value={newApiUrl}
+                    onChange={(e) => setNewApiUrl(e.target.value)}
+                    placeholder="https://evo13.stevo.chat"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-api-key">API Key</Label>
+                  <div className="relative">
+                    <Input
+                      id="edit-api-key"
+                      type={showApiKey ? "text" : "password"}
+                      value={newApiKey}
+                      onChange={(e) => setNewApiKey(e.target.value)}
+                      placeholder="Sua API Key do STEVO"
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                    >
+                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>
