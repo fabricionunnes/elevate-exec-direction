@@ -24,11 +24,13 @@ import {
   Star,
   History,
   LogOut,
-  RotateCcw
+  RotateCcw,
+  Download
 } from "lucide-react";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { WhatsAppQRCodeModal } from "@/components/onboarding-tasks/WhatsAppQRCodeModal";
 import { WhatsAppMessageDialog } from "@/components/onboarding-tasks/WhatsAppMessageDialog";
+import { ImportFromStevoModal } from "@/components/crm/service-config/ImportFromStevoModal";
 import { formatPhone } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -99,6 +101,7 @@ const WhatsAppAdminPage = () => {
   const [qrModalInstance, setQrModalInstance] = useState<WhatsAppInstance | null>(null);
   const [deleteInstance, setDeleteInstance] = useState<WhatsAppInstance | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Auth state listener - redirect to login if session expires
   useEffect(() => {
@@ -630,12 +633,33 @@ const WhatsAppAdminPage = () => {
 
           {/* Instances Tab */}
           <TabsContent value="instances" className="space-y-4">
+            {/* Import from STEVO */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Download className="h-5 w-5 text-green-500" />
+                  Importar do STEVO
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Importe instâncias já criadas e conectadas no Evolution Manager (STEVO) para usar no sistema.
+                  </p>
+                  <Button onClick={() => setShowImportModal(true)} variant="outline" className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Importar do STEVO
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Create Instance Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Plus className="h-5 w-5" />
-                  Nova Instância
+                  Nova Instância (Manual)
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -962,6 +986,14 @@ const WhatsAppAdminPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import from STEVO Modal */}
+      <ImportFromStevoModal
+        open={showImportModal}
+        onOpenChange={setShowImportModal}
+        existingInstanceNames={instances.map((i) => i.instance_name)}
+        onImported={fetchInstances}
+      />
     </div>
   );
 };
