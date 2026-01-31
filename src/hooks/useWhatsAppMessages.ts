@@ -81,30 +81,35 @@ export function useWhatsAppMessages(conversationId: string | null) {
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          console.log('Message change:', payload);
+          const payloadNew = payload.new as Record<string, any>;
+          const payloadOld = payload.old as Record<string, any>;
+          console.log('Message realtime event:', payload.eventType, payloadNew?.id || payloadOld?.id);
           
           if (payload.eventType === 'INSERT') {
-            // Check if message already exists (optimistic update may have added it)
             setMessages((prev) => {
-              const exists = prev.some(m => m.id === payload.new.id);
-              if (exists) return prev;
+              const exists = prev.some(m => m.id === payloadNew.id);
+              if (exists) {
+                console.log('Message already exists, skipping:', payloadNew.id);
+                return prev;
+              }
               
-              // Cast and format the realtime payload
               const newMsg = {
-                ...payload.new,
-                direction: payload.new.direction as 'inbound' | 'outbound',
+                ...payloadNew,
+                direction: payloadNew.direction as 'inbound' | 'outbound',
               } as WhatsAppMessage;
               
+              console.log('Adding message via realtime:', newMsg.id, newMsg.direction, newMsg.content?.substring(0, 20));
               return [...prev, newMsg];
             });
           } else if (payload.eventType === 'UPDATE') {
+            console.log('Updating message status:', payloadNew.id, '->', payloadNew.status);
             setMessages((prev) =>
               prev.map((m) => {
-                if (m.id === payload.new.id) {
+                if (m.id === payloadNew.id) {
                   return { 
                     ...m, 
-                    ...payload.new,
-                    direction: payload.new.direction as 'inbound' | 'outbound',
+                    ...payloadNew,
+                    direction: payloadNew.direction as 'inbound' | 'outbound',
                   };
                 }
                 return m;
@@ -112,12 +117,14 @@ export function useWhatsAppMessages(conversationId: string | null) {
             );
           } else if (payload.eventType === 'DELETE') {
             setMessages((prev) =>
-              prev.filter((m) => m.id !== payload.old.id)
+              prev.filter((m) => m.id !== payloadOld.id)
             );
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status, 'for conversation:', conversationId);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -168,7 +175,7 @@ export function useWhatsAppMessages(conversationId: string | null) {
       setMessages((prev) => [...prev, optimisticMessage]);
 
       // Then, send via Evolution API
-      const { error: sendError } = await supabase.functions.invoke('evolution-api', {
+      const { data: sendData, error: sendError } = await supabase.functions.invoke('evolution-api', {
         body: {
           action: 'sendText',
           instanceId,
@@ -176,6 +183,9 @@ export function useWhatsAppMessages(conversationId: string | null) {
           message: content.trim(),
         },
       });
+
+      // Extract remote_id from Evolution API response
+      const remoteId = sendData?.key?.id;
 
       if (sendError) {
         // Update message status to failed
@@ -186,11 +196,25 @@ export function useWhatsAppMessages(conversationId: string | null) {
         throw sendError;
       }
 
-      // Update message status to sent
+      // Update message status to sent and store remote_id for status tracking
       await supabase
         .from('crm_whatsapp_messages')
-        .update({ status: 'sent' })
+        .update({ 
+          status: 'sent',
+          remote_id: remoteId || null 
+        })
         .eq('id', newMessage.id);
+
+      // Update optimistic message with remote_id
+      if (remoteId) {
+        setMessages((prev) =>
+          prev.map((m) => 
+            m.id === newMessage.id 
+              ? { ...m, status: 'sent', remote_id: remoteId } 
+              : m
+          )
+        );
+      }
 
       // Update conversation
       await supabase
