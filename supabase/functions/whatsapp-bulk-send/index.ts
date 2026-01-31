@@ -5,8 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL') || '';
-const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY') || '';
+// Default Evolution API credentials (fallback)
+const DEFAULT_EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL') || '';
+const DEFAULT_EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY') || '';
 
 interface Campaign {
   id: string;
@@ -34,6 +35,8 @@ interface Instance {
   id: string;
   instance_name: string;
   status: string;
+  api_url: string | null;
+  api_key: string | null;
 }
 
 // Replace variables in message template
@@ -60,9 +63,19 @@ function processMessage(template: string, recipient: Recipient): string {
   return message.trim();
 }
 
-// Send message via Evolution API
-async function sendMessage(instanceName: string, phone: string, text: string): Promise<{ success: boolean; error?: string }> {
+// Send message via Evolution API using instance-specific credentials
+async function sendMessage(
+  instanceName: string, 
+  phone: string, 
+  text: string,
+  apiUrl: string,
+  apiKey: string
+): Promise<{ success: boolean; error?: string }> {
   try {
+    if (!apiUrl || !apiKey) {
+      return { success: false, error: 'Credenciais da API não configuradas para esta instância' };
+    }
+
     // Format phone number
     let formattedPhone = phone.replace(/\D/g, '');
     if (formattedPhone.length === 11 && formattedPhone.startsWith('0')) {
@@ -71,11 +84,13 @@ async function sendMessage(instanceName: string, phone: string, text: string): P
       formattedPhone = '55' + formattedPhone;
     }
     
-    const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
+    console.log(`[bulk-send] Sending to ${formattedPhone} via ${instanceName} using API: ${apiUrl}`);
+    
+    const response = await fetch(`${apiUrl}/message/sendText/${instanceName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': EVOLUTION_API_KEY,
+        'apikey': apiKey,
       },
       body: JSON.stringify({
         number: formattedPhone,
@@ -100,6 +115,7 @@ async function sendMessage(instanceName: string, phone: string, text: string): P
         errorMessage = responseData.message;
       }
       
+      console.error(`[bulk-send] API error for ${formattedPhone}: ${errorMessage}`);
       return { success: false, error: errorMessage };
     }
 
@@ -119,9 +135,10 @@ async function sendMessage(instanceName: string, phone: string, text: string): P
       };
     }
 
+    console.log(`[bulk-send] Successfully sent to ${formattedPhone}`);
     return { success: true };
   } catch (error: any) {
-    console.error('Send message error:', error);
+    console.error('[bulk-send] Send message error:', error);
     return { success: false, error: error.message || 'Erro de conexão' };
   }
 }
@@ -220,6 +237,29 @@ Deno.serve(async (req) => {
       })
       .eq('id', campaignId);
 
+    // Get instance credentials - use instance-specific or fallback to global
+    const instanceApiUrl = instance.api_url || DEFAULT_EVOLUTION_API_URL;
+    const instanceApiKey = instance.api_key || DEFAULT_EVOLUTION_API_KEY;
+
+    console.log(`[bulk-send] Starting campaign ${campaignId} using instance ${instance.instance_name}`);
+    console.log(`[bulk-send] API URL: ${instanceApiUrl ? 'configured' : 'MISSING'}`);
+
+    if (!instanceApiUrl || !instanceApiKey) {
+      return new Response(
+        JSON.stringify({ error: 'Credenciais da API não configuradas para esta instância' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Update campaign status to running
+    await supabase
+      .from('whatsapp_campaigns')
+      .update({ 
+        status: 'running',
+        started_at: campaign.started_at || new Date().toISOString()
+      })
+      .eq('id', campaignId);
+
     // Process in background
     EdgeRuntime.waitUntil((async () => {
       const serviceSupabase = createClient(
@@ -266,8 +306,14 @@ Deno.serve(async (req) => {
         // Process message
         const message = processMessage(campaign.message_template, recipient);
 
-        // Send message
-        const result = await sendMessage(instance.instance_name, recipient.phone_number, message);
+        // Send message with instance-specific credentials
+        const result = await sendMessage(
+          instance.instance_name, 
+          recipient.phone_number, 
+          message,
+          instanceApiUrl,
+          instanceApiKey
+        );
 
         if (result.success) {
           sentCount++;
