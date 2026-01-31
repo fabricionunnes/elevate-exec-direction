@@ -110,10 +110,13 @@ export const CRMInboxPage = () => {
   const conversations = allConversations.filter((conv) => {
     // Master has access to all
     if (staffRole === "master") return true;
+    // If still loading access, don't filter yet - will re-render when loaded
+    if (loadingAccess) return false;
     // If no instance_id, show to all (orphan conversations)
     if (!conv.instance_id) return true;
     // Check if user has access to this instance
-    return allowedInstanceIds.includes(conv.instance_id);
+    const hasAccess = allowedInstanceIds.includes(conv.instance_id);
+    return hasAccess;
   });
 
   const { 
@@ -128,25 +131,39 @@ export const CRMInboxPage = () => {
   // Fetch allowed instances for this user
   useEffect(() => {
     const fetchAllowedInstances = async () => {
-      if (!staffId) return;
+      // Wait for staffId to be loaded
+      if (!staffId) {
+        console.log('[Inbox] Waiting for staffId...');
+        return;
+      }
 
       setLoadingAccess(true);
       try {
+        console.log('[Inbox] Fetching allowed instances for staffId:', staffId, 'role:', staffRole);
+        
         // Master has access to all instances
         if (staffRole === "master") {
           const { data: allInstances } = await supabase
             .from("whatsapp_instances")
             .select("id");
-          setAllowedInstanceIds((allInstances || []).map((i: any) => i.id));
+          const ids = (allInstances || []).map((i: any) => i.id);
+          console.log('[Inbox] Master - all instances:', ids.length);
+          setAllowedInstanceIds(ids);
         } else {
-          // Get instances this user has explicit access to
-          const { data: accessData } = await supabase
+          // Get instances this user has explicit access to (regardless of role)
+          const { data: accessData, error } = await supabase
             .from("whatsapp_instance_access")
             .select("instance_id")
             .eq("staff_id", staffId)
             .eq("can_view", true);
           
-          setAllowedInstanceIds((accessData || []).map((a: any) => a.instance_id));
+          if (error) {
+            console.error('[Inbox] Error fetching access:', error);
+          }
+          
+          const ids = (accessData || []).map((a: any) => a.instance_id);
+          console.log('[Inbox] Non-master - allowed instances:', ids);
+          setAllowedInstanceIds(ids);
         }
       } catch (error) {
         console.error("Error fetching allowed instances:", error);
