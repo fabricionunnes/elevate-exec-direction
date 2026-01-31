@@ -1073,6 +1073,137 @@ serve(async (req) => {
         );
       }
 
+      case 'fetchGroups': {
+        // Fetch all groups from a WhatsApp instance
+        const { instanceId } = body;
+        
+        if (!instanceId) {
+          return new Response(
+            JSON.stringify({ error: 'instanceId is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get instance credentials from database
+        const supabaseService = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+
+        const { data: instance, error: instanceError } = await supabaseService
+          .from('whatsapp_instances')
+          .select('instance_name, api_url, api_key')
+          .eq('id', instanceId)
+          .single();
+
+        if (instanceError || !instance) {
+          return new Response(
+            JSON.stringify({ error: 'Instance not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Use instance-specific API credentials if available
+        const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
+        const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
+
+        console.log(`[evolution-api] fetchGroups using ${instance.api_url ? 'custom' : 'global'} credentials for instance ${instance.instance_name}`);
+
+        // Try different endpoints for fetching groups
+        const endpoints = [
+          `/group/fetchAllGroups/${encodeURIComponent(instance.instance_name)}`,
+          `/chat/fetchGroups/${encodeURIComponent(instance.instance_name)}`,
+          `/group/list/${encodeURIComponent(instance.instance_name)}`,
+        ];
+
+        let lastRes: Response | null = null;
+        let lastData: any = null;
+
+        for (const endpoint of endpoints) {
+          try {
+            const response = await fetch(`${apiBaseUrl}${endpoint}`, {
+              method: 'GET',
+              headers: apiHeaders,
+            });
+
+            lastRes = response;
+            lastData = await response.json();
+
+            if (response.ok) {
+              console.log(`[evolution-api] fetchGroups succeeded with endpoint: ${endpoint}`);
+              break;
+            }
+            console.log(`[evolution-api] fetchGroups failed with endpoint ${endpoint}: ${response.status}`, lastData);
+          } catch (err) {
+            console.error(`[evolution-api] fetchGroups network error for ${endpoint}:`, err);
+          }
+        }
+
+        console.log('[evolution-api] fetchGroups response:', JSON.stringify(lastData).substring(0, 500));
+
+        return new Response(
+          JSON.stringify(lastData || { error: 'Failed to fetch groups' }),
+          { status: lastRes?.status || 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'sendGroupText': {
+        // Send text message to a WhatsApp group
+        const { instanceId, groupJid, message } = body;
+        
+        if (!instanceId || !groupJid || !message) {
+          return new Response(
+            JSON.stringify({ error: 'instanceId, groupJid, and message are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get instance credentials from database
+        const supabaseService = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+
+        const { data: instance, error: instanceError } = await supabaseService
+          .from('whatsapp_instances')
+          .select('instance_name, api_url, api_key')
+          .eq('id', instanceId)
+          .single();
+
+        if (instanceError || !instance) {
+          return new Response(
+            JSON.stringify({ error: 'Instance not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Use instance-specific API credentials if available
+        const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
+        const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
+
+        console.log(`[evolution-api] sendGroupText to ${groupJid} using ${instance.api_url ? 'custom' : 'global'} credentials`);
+
+        // Format groupJid - ensure it has @g.us suffix
+        const formattedJid = groupJid.includes('@') ? groupJid : `${groupJid}@g.us`;
+
+        const response = await fetch(`${apiBaseUrl}/message/sendText/${instance.instance_name}`, {
+          method: 'POST',
+          headers: apiHeaders,
+          body: JSON.stringify({
+            number: formattedJid,
+            text: message,
+          }),
+        });
+
+        const data = await response.json();
+        console.log('[evolution-api] sendGroupText response:', data);
+
+        return new Response(
+          JSON.stringify(data),
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ 
@@ -1092,7 +1223,9 @@ serve(async (req) => {
               'delete-instance',
               'logout',
               'restart',
-              'diagnose'
+              'diagnose',
+              'fetchGroups',
+              'sendGroupText'
             ],
             _version: EVOLUTION_API_FUNC_VERSION
           }),
