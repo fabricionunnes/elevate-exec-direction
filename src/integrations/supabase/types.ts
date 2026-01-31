@@ -18799,6 +18799,7 @@ export type Database = {
           instance_id: string | null
           message_template: string
           name: string
+          project_id: string | null
           scheduled_at: string | null
           sent_count: number | null
           started_at: string | null
@@ -18816,6 +18817,7 @@ export type Database = {
           instance_id?: string | null
           message_template: string
           name: string
+          project_id?: string | null
           scheduled_at?: string | null
           sent_count?: number | null
           started_at?: string | null
@@ -18833,6 +18835,7 @@ export type Database = {
           instance_id?: string | null
           message_template?: string
           name?: string
+          project_id?: string | null
           scheduled_at?: string | null
           sent_count?: number | null
           started_at?: string | null
@@ -18853,6 +18856,13 @@ export type Database = {
             columns: ["instance_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_campaigns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -18918,6 +18928,7 @@ export type Database = {
           instance_name: string
           is_default: boolean | null
           phone_number: string | null
+          project_id: string | null
           qr_code: string | null
           sector_id: string | null
           status: string | null
@@ -18931,6 +18942,7 @@ export type Database = {
           instance_name: string
           is_default?: boolean | null
           phone_number?: string | null
+          project_id?: string | null
           qr_code?: string | null
           sector_id?: string | null
           status?: string | null
@@ -18944,6 +18956,7 @@ export type Database = {
           instance_name?: string
           is_default?: boolean | null
           phone_number?: string | null
+          project_id?: string | null
           qr_code?: string | null
           sector_id?: string | null
           status?: string | null
@@ -18955,6 +18968,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_instances_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
             referencedColumns: ["id"]
           },
           {

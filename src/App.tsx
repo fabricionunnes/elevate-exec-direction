@@ -114,6 +114,7 @@ import CultureFormPage from "./pages/hr-recruitment/CultureFormPage";
 import HealthScorePage from "./pages/onboarding-tasks/HealthScorePage";
 import FinancialModulePage from "./pages/onboarding-tasks/FinancialModulePage";
 import WhatsAppAdminPage from "./pages/onboarding-tasks/WhatsAppAdminPage";
+import ClientDisparadorPage from "./pages/disparador/ClientDisparadorPage";
 import ChurnPredictionPage from "./pages/onboarding-tasks/ChurnPredictionPage";
 import CohortRetentionPage from "./pages/onboarding-tasks/CohortRetentionPage";
 import ConsultantEngagementPage from "./pages/onboarding-tasks/ConsultantEngagementPage";
@@ -288,6 +289,7 @@ const App = () => (
             <Route path="/hotseat" element={<HotseatFormPage />} />
             
             <Route path="/onboarding-client/:projectId" element={<ClientOnboardingPage />} />
+            <Route path="/disparador/:projectId" element={<ClientDisparadorPage />} />
             <Route path="/cac-form/:projectId" element={<CACFormPage />} />
             <Route path="/kickoff/:companyId" element={<KickoffFormPage />} />
             <Route path="/nps" element={<NPSSurveyPage />} />
