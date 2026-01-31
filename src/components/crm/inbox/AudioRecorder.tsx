@@ -30,11 +30,17 @@ export function AudioRecorder({ onSend, disabled }: AudioRecorderProps) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported("audio/webm") 
-          ? "audio/webm" 
-          : "audio/mp4"
-      });
+      // Use audio/ogg with opus codec (supported by Supabase Storage and WhatsApp)
+      // Fallback to mp4 for Safari/iOS
+      let mimeType = "audio/ogg; codecs=opus";
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = "audio/mp4";
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = "audio/webm"; // Last resort fallback
+        }
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
@@ -92,7 +98,14 @@ export function AudioRecorder({ onSend, disabled }: AudioRecorderProps) {
     
     setIsSending(true);
     try {
-      const extension = audioBlob.type.includes("webm") ? "webm" : "m4a";
+      // Determine extension based on mime type
+      let extension = "ogg";
+      if (audioBlob.type.includes("mp4")) {
+        extension = "m4a";
+      } else if (audioBlob.type.includes("webm")) {
+        extension = "webm";
+      }
+      
       const file = new File([audioBlob], `audio_${Date.now()}.${extension}`, {
         type: audioBlob.type
       });
