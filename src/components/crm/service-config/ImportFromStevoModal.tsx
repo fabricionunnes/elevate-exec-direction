@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -11,15 +13,25 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, MessageCircle, Eye, EyeOff, Plus, CheckCircle2 } from "lucide-react";
+import { Loader2, RefreshCw, MessageCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+
+interface StevoInstance {
+  instanceName: string;
+  instanceId?: string;
+  status?: string;
+  owner?: string;
+  profileName?: string;
+  profilePictureUrl?: string;
+  number?: string;
+}
 
 interface ImportFromStevoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   existingInstanceNames?: string[];
   onImported: () => void;
-  projectId?: string;
+  projectId?: string; // Optional: for client mode, instances will be linked to this project
 }
 
 export const ImportFromStevoModal = ({
@@ -29,102 +41,122 @@ export const ImportFromStevoModal = ({
   onImported,
   projectId,
 }: ImportFromStevoModalProps) => {
+  const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [showApiKey, setShowApiKey] = useState(false);
-
-  // Manual entry fields
-  const [instanceName, setInstanceName] = useState("");
+  const [instances, setInstances] = useState<StevoInstance[]>([]);
+  const [selectedInstance, setSelectedInstance] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [apiUrl, setApiUrl] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) {
-      // Reset form when modal closes
-      setInstanceName("");
+    if (open) {
+      loadInstances();
+    } else {
+      setInstances([]);
+      setSelectedInstance(null);
       setDisplayName("");
-      setApiKey("");
-      setApiUrl("");
-      setPhoneNumber("");
-      setShowApiKey(false);
+      setError(null);
     }
   }, [open]);
 
-  // Auto-generate display name from instance name
-  useEffect(() => {
-    if (instanceName && !displayName) {
+  const loadInstances = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("evolution-api", {
+        body: { action: "list-instances" },
+      });
+
+      if (fnError) throw fnError;
+      if (data?.error) throw new Error(data.error);
+
+      // The API returns instances directly in data.instances or as the array itself
+      let rawInstances = data?.instances || data || [];
+      if (!Array.isArray(rawInstances)) rawInstances = [];
+
+      // Map Evolution API response to our interface
+      const allInstances: StevoInstance[] = rawInstances.map((inst: any) => ({
+        instanceName: inst.name || inst.instanceName,
+        instanceId: inst.id,
+        status: inst.connectionStatus || inst.status,
+        owner: inst.ownerJid,
+        profileName: inst.profileName,
+        profilePictureUrl: inst.profilePicUrl,
+        number: inst.number || (inst.ownerJid ? inst.ownerJid.split("@")[0] : null),
+      }));
+      
+      // Filter out instances that are already imported
+      const availableInstances = allInstances.filter(
+        (inst) => !existingInstanceNames.includes(inst.instanceName)
+      );
+
+      setInstances(availableInstances);
+      
+      if (availableInstances.length === 0 && allInstances.length > 0) {
+        setError("Todas as instâncias do STEVO já foram importadas.");
+      } else if (allInstances.length === 0) {
+        setError("Nenhuma instância encontrada no STEVO. Crie uma instância primeiro no Evolution Manager.");
+      }
+    } catch (err: any) {
+      console.error("Error loading instances:", err);
+      setError(err.message || "Erro ao carregar instâncias do STEVO");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelectInstance = (instanceName: string) => {
+    if (selectedInstance === instanceName) {
+      setSelectedInstance(null);
+      setDisplayName("");
+    } else {
+      setSelectedInstance(instanceName);
+      // Pre-fill display name with a friendly version
       setDisplayName(instanceName.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()));
     }
-  }, [instanceName]);
+  };
 
   const handleImport = async () => {
-    if (!instanceName.trim()) {
-      toast.error("Preencha o nome da instância");
+    if (!selectedInstance) {
+      toast.error("Selecione uma instância para importar");
       return;
     }
 
-    if (!apiKey.trim()) {
-      toast.error("Preencha a API Key");
-      return;
-    }
-
-    if (!apiUrl.trim()) {
-      toast.error("Preencha a URL da API");
-      return;
-    }
-
-    // Check if instance already exists
-    if (existingInstanceNames.includes(instanceName.trim())) {
-      toast.error("Esta instância já foi importada");
-      return;
-    }
+    const selectedInst = instances.find((i) => i.instanceName === selectedInstance);
+    if (!selectedInst) return;
 
     setImporting(true);
     try {
-      const cleanApiUrl = apiUrl.trim().replace(/\/$/, "");
+      // First, configure webhook for this instance
       const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`;
+      
+      await supabase.functions.invoke("evolution-api", {
+        body: {
+          action: "set-webhook",
+          instanceName: selectedInstance,
+          webhookUrl,
+        },
+      });
 
-      // Insert into local database first
+      // Determine status based on STEVO data
+      let status = "disconnected";
+      if (selectedInst.status === "open" || selectedInst.status === "connected") {
+        status = "connected";
+      }
+
+      // Insert into local database
       const { error: insertError } = await supabase.from("whatsapp_instances").insert({
-        instance_name: instanceName.trim(),
-        display_name: displayName.trim() || instanceName.trim(),
-        phone_number: phoneNumber.trim() || null,
-        status: "connected",
+        instance_name: selectedInstance,
+        display_name: displayName.trim() || selectedInstance,
+        phone_number: selectedInst.number || null,
+        status,
         is_default: false,
-        project_id: projectId || null,
+        project_id: projectId || null, // Link to project if provided (client mode)
       });
 
       if (insertError) throw insertError;
 
-      // Configure webhook via Edge Function (avoids CORS issues)
-      const { data: webhookResult, error: webhookError } = await supabase.functions.invoke("evolution-api", {
-        body: {
-          action: "set-webhook-custom",
-          apiUrl: cleanApiUrl,
-          apiKey: apiKey.trim(),
-          instanceName: instanceName.trim(),
-          webhookUrl: webhookUrl,
-          events: [
-            "MESSAGES_UPSERT",
-            "MESSAGES_UPDATE",
-            "CONNECTION_UPDATE",
-            "QRCODE_UPDATED",
-          ],
-        },
-      });
-
-      if (webhookError) {
-        console.warn("Webhook config via edge function failed:", webhookError);
-        toast.warning("Instância importada, mas o webhook não foi configurado automaticamente.");
-      } else if (webhookResult?.ok) {
-        console.log("Webhook configured successfully:", webhookResult);
-      } else {
-        console.warn("Webhook config returned non-ok:", webhookResult);
-        toast.warning("Instância importada, mas o webhook pode precisar de configuração manual.");
-      }
-
-      toast.success(`Instância "${displayName || instanceName}" importada com sucesso!`);
+      toast.success(`Instância "${displayName || selectedInstance}" importada com sucesso!`);
       onOpenChange(false);
       onImported();
     } catch (err: any) {
@@ -135,7 +167,12 @@ export const ImportFromStevoModal = ({
     }
   };
 
-  const isFormValid = instanceName.trim() && apiKey.trim() && apiUrl.trim();
+  const getStatusBadge = (status?: string) => {
+    if (status === "open" || status === "connected") {
+      return <Badge className="bg-green-500 text-white">Conectado</Badge>;
+    }
+    return <Badge variant="destructive">Desconectado</Badge>;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -143,112 +180,77 @@ export const ImportFromStevoModal = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-green-500" />
-            Adicionar Instância STEVO
+            Importar do STEVO
           </DialogTitle>
           <DialogDescription>
-            Preencha os dados fornecidos pelo painel STEVO para conectar sua instância.
+            Selecione uma instância existente no Evolution Manager para importar ao sistema.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Instance Name */}
-          <div className="space-y-2">
-            <Label htmlFor="instanceName">
-              Nome da Instância <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="instanceName"
-              value={instanceName}
-              onChange={(e) => setInstanceName(e.target.value)}
-              placeholder="Ex: fabricio-nunnes"
-            />
-            <p className="text-xs text-muted-foreground">
-              Copie o "Nome da Instância" exatamente como aparece no STEVO
-            </p>
-          </div>
-
-          {/* API Key */}
-          <div className="space-y-2">
-            <Label htmlFor="apiKey">
-              API Key <span className="text-destructive">*</span>
-            </Label>
-            <div className="relative">
-              <Input
-                id="apiKey"
-                type={showApiKey ? "text" : "password"}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Sua chave de API"
-                className="pr-10"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full"
-                onClick={() => setShowApiKey(!showApiKey)}
-              >
-                {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">Carregando instâncias...</span>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <AlertCircle className="h-8 w-8 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">{error}</p>
+              <Button variant="outline" size="sm" onClick={loadInstances} className="mt-4">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Tentar novamente
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Copie a "API Key" do painel do STEVO
-            </p>
-          </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Instâncias disponíveis</Label>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {instances.map((instance) => (
+                    <div
+                      key={instance.instanceName}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        selectedInstance === instance.instanceName
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:bg-muted/50"
+                      }`}
+                      onClick={() => handleSelectInstance(instance.instanceName)}
+                    >
+                      <Checkbox
+                        checked={selectedInstance === instance.instanceName}
+                        onCheckedChange={() => handleSelectInstance(instance.instanceName)}
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium">{instance.instanceName}</p>
+                        {instance.number && (
+                          <p className="text-sm text-muted-foreground">{instance.number}</p>
+                        )}
+                        {instance.profileName && (
+                          <p className="text-sm text-muted-foreground">{instance.profileName}</p>
+                        )}
+                      </div>
+                      {getStatusBadge(instance.status)}
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-          {/* API URL */}
-          <div className="space-y-2">
-            <Label htmlFor="apiUrl">
-              URL SM v2 <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="apiUrl"
-              type="url"
-              value={apiUrl}
-              onChange={(e) => setApiUrl(e.target.value)}
-              placeholder="https://sm-exemplo.stevo.chat"
-            />
-            <p className="text-xs text-muted-foreground">
-              Copie a "URL SM v2" do painel do STEVO
-            </p>
-          </div>
-
-          {/* Phone Number (optional) */}
-          <div className="space-y-2">
-            <Label htmlFor="phoneNumber">Número do WhatsApp</Label>
-            <Input
-              id="phoneNumber"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="Ex: 5531994622556"
-            />
-            <p className="text-xs text-muted-foreground">
-              Opcional - O número conectado à instância
-            </p>
-          </div>
-
-          {/* Display Name (optional) */}
-          <div className="space-y-2">
-            <Label htmlFor="displayName">Nome de Exibição</Label>
-            <Input
-              id="displayName"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Ex: Comercial, Suporte..."
-            />
-            <p className="text-xs text-muted-foreground">
-              Opcional - Nome amigável para identificar a instância
-            </p>
-          </div>
-
-          {/* Validation indicator */}
-          {isFormValid && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-              <span className="text-sm text-green-600 dark:text-green-400">
-                Dados preenchidos corretamente
-              </span>
-            </div>
+              {selectedInstance && (
+                <div className="space-y-2 pt-2 border-t">
+                  <Label htmlFor="displayName">Nome de exibição</Label>
+                  <Input
+                    id="displayName"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Ex: Comercial, Suporte..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Este nome será exibido no sistema. O nome técnico "{selectedInstance}" será mantido internamente.
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -258,7 +260,7 @@ export const ImportFromStevoModal = ({
           </Button>
           <Button
             onClick={handleImport}
-            disabled={!isFormValid || importing}
+            disabled={!selectedInstance || importing || loading}
           >
             {importing ? (
               <>
@@ -266,10 +268,7 @@ export const ImportFromStevoModal = ({
                 Importando...
               </>
             ) : (
-              <>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Instância
-              </>
+              "Importar"
             )}
           </Button>
         </DialogFooter>
