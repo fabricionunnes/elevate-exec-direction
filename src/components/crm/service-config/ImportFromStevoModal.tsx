@@ -13,7 +13,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, RefreshCw, MessageCircle, AlertCircle } from "lucide-react";
+import { Loader2, RefreshCw, MessageCircle, AlertCircle, Eye, EyeOff, Search } from "lucide-react";
 import { toast } from "sonner";
 
 interface StevoInstance {
@@ -47,21 +47,36 @@ export const ImportFromStevoModal = ({
   const [selectedInstance, setSelectedInstance] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  
+  // Custom credentials for searching different Evolution APIs
+  const [customApiUrl, setCustomApiUrl] = useState("");
+  const [customApiKey, setCustomApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [useDefaultApi, setUseDefaultApi] = useState(true);
 
   useEffect(() => {
     if (open) {
-      loadInstances();
+      // Load default instances on open
+      loadDefaultInstances();
     } else {
       setInstances([]);
       setSelectedInstance(null);
       setDisplayName("");
       setError(null);
+      setCustomApiUrl("");
+      setCustomApiKey("");
+      setHasSearched(false);
+      setUseDefaultApi(true);
     }
   }, [open]);
 
-  const loadInstances = async () => {
+  const loadDefaultInstances = async () => {
     setLoading(true);
     setError(null);
+    setUseDefaultApi(true);
+    setHasSearched(true);
+    
     try {
       const { data, error: fnError } = await supabase.functions.invoke("evolution-api", {
         body: { action: "list-instances" },
@@ -95,11 +110,68 @@ export const ImportFromStevoModal = ({
       if (availableInstances.length === 0 && allInstances.length > 0) {
         setError("Todas as instâncias do STEVO já foram importadas.");
       } else if (allInstances.length === 0) {
-        setError("Nenhuma instância encontrada no STEVO. Crie uma instância primeiro no Evolution Manager.");
+        setError("Nenhuma instância encontrada no STEVO padrão.");
       }
     } catch (err: any) {
       console.error("Error loading instances:", err);
       setError(err.message || "Erro ao carregar instâncias do STEVO");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearchCustomApi = async () => {
+    if (!customApiUrl.trim() || !customApiKey.trim()) {
+      toast.error("Preencha a URL e API Key para buscar");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setHasSearched(true);
+    setUseDefaultApi(false);
+
+    try {
+      const apiUrl = customApiUrl.trim().replace(/\/$/, "");
+      const response = await fetch(`${apiUrl}/instance/fetchInstances`, {
+        method: "GET",
+        headers: {
+          "apikey": customApiKey.trim(),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status}: Verifique suas credenciais`);
+      }
+
+      const rawInstances = await response.json();
+
+      // Map Evolution API response to our interface
+      const allInstances: StevoInstance[] = (Array.isArray(rawInstances) ? rawInstances : []).map((inst: any) => ({
+        instanceName: inst.name || inst.instanceName,
+        instanceId: inst.id,
+        status: inst.connectionStatus || inst.status,
+        owner: inst.ownerJid,
+        profileName: inst.profileName,
+        profilePictureUrl: inst.profilePicUrl,
+        number: inst.number || (inst.ownerJid ? inst.ownerJid.split("@")[0] : null),
+      }));
+
+      // Filter out instances that are already imported
+      const availableInstances = allInstances.filter(
+        (inst) => !existingInstanceNames.includes(inst.instanceName)
+      );
+
+      setInstances(availableInstances);
+
+      if (availableInstances.length === 0 && allInstances.length > 0) {
+        setError("Todas as instâncias já foram importadas.");
+      } else if (allInstances.length === 0) {
+        setError("Nenhuma instância encontrada nesta API.");
+      }
+    } catch (err: any) {
+      console.error("Error loading instances:", err);
+      setError(err.message || "Erro ao carregar instâncias");
     } finally {
       setLoading(false);
     }
@@ -127,16 +199,38 @@ export const ImportFromStevoModal = ({
 
     setImporting(true);
     try {
-      // First, configure webhook for this instance
       const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`;
       
-      await supabase.functions.invoke("evolution-api", {
-        body: {
-          action: "set-webhook",
-          instanceName: selectedInstance,
-          webhookUrl,
-        },
-      });
+      // If using custom API, set webhook directly
+      if (!useDefaultApi && customApiUrl && customApiKey) {
+        await fetch(`${customApiUrl.trim().replace(/\/$/, "")}/webhook/set/${selectedInstance}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": customApiKey.trim(),
+          },
+          body: JSON.stringify({
+            url: webhookUrl,
+            webhook_by_events: false,
+            webhook_base64: true,
+            events: [
+              "MESSAGES_UPSERT",
+              "MESSAGES_UPDATE",
+              "CONNECTION_UPDATE",
+              "QRCODE_UPDATED",
+            ],
+          }),
+        });
+      } else {
+        // Use default API via edge function
+        await supabase.functions.invoke("evolution-api", {
+          body: {
+            action: "set-webhook",
+            instanceName: selectedInstance,
+            webhookUrl,
+          },
+        });
+      }
 
       // Determine status based on STEVO data
       let status = "disconnected";
@@ -151,7 +245,7 @@ export const ImportFromStevoModal = ({
         phone_number: selectedInst.number || null,
         status,
         is_default: false,
-        project_id: projectId || null, // Link to project if provided (client mode)
+        project_id: projectId || null,
       });
 
       if (insertError) throw insertError;
@@ -176,37 +270,103 @@ export const ImportFromStevoModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-green-500" />
             Importar do STEVO
           </DialogTitle>
           <DialogDescription>
-            Selecione uma instância existente no Evolution Manager para importar ao sistema.
+            Busque instâncias da API padrão ou insira credenciais de outra Evolution API.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Custom API credentials section */}
+          <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
+            <p className="text-sm font-medium">Buscar em outra Evolution API</p>
+            <div className="space-y-2">
+              <Label htmlFor="customApiUrl" className="text-sm">URL da API</Label>
+              <Input
+                id="customApiUrl"
+                type="url"
+                value={customApiUrl}
+                onChange={(e) => setCustomApiUrl(e.target.value)}
+                placeholder="https://sua-evolution-api.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customApiKey" className="text-sm">API Key</Label>
+              <div className="relative">
+                <Input
+                  id="customApiKey"
+                  type={showApiKey ? "text" : "password"}
+                  value={customApiKey}
+                  onChange={(e) => setCustomApiKey(e.target.value)}
+                  placeholder="Sua chave de API"
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                >
+                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleSearchCustomApi} 
+                disabled={loading || !customApiUrl || !customApiKey}
+                variant="secondary"
+                size="sm"
+              >
+                {loading && !useDefaultApi ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Buscando...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4 mr-2" />
+                    Buscar nesta API
+                  </>
+                )}
+              </Button>
+              <Button 
+                onClick={loadDefaultInstances} 
+                disabled={loading}
+                variant="outline"
+                size="sm"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading && useDefaultApi ? 'animate-spin' : ''}`} />
+                API Padrão
+              </Button>
+            </div>
+          </div>
+
+          {/* Results section */}
           {loading ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex items-center justify-center py-6">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               <span className="ml-2 text-muted-foreground">Carregando instâncias...</span>
             </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center py-6 text-center">
-              <AlertCircle className="h-8 w-8 text-muted-foreground mb-2" />
+          ) : error && hasSearched ? (
+            <div className="flex flex-col items-center justify-center py-4 text-center">
+              <AlertCircle className="h-6 w-6 text-destructive mb-2" />
               <p className="text-sm text-muted-foreground">{error}</p>
-              <Button variant="outline" size="sm" onClick={loadInstances} className="mt-4">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Tentar novamente
-              </Button>
             </div>
-          ) : (
+          ) : instances.length > 0 ? (
             <>
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Instâncias disponíveis</Label>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
+                <Label className="text-sm font-medium">
+                  Instâncias disponíveis ({instances.length})
+                  {!useDefaultApi && <span className="text-muted-foreground ml-1">(API customizada)</span>}
+                </Label>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
                   {instances.map((instance) => (
                     <div
                       key={instance.instanceName}
@@ -251,7 +411,14 @@ export const ImportFromStevoModal = ({
                 </div>
               )}
             </>
-          )}
+          ) : hasSearched ? (
+            <div className="flex flex-col items-center justify-center py-4 text-center">
+              <AlertCircle className="h-6 w-6 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
+                Nenhuma instância disponível encontrada.
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <DialogFooter>
