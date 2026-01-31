@@ -25,13 +25,15 @@ import {
   History,
   LogOut,
   RotateCcw,
-  Download
+  Download,
+  Users
 } from "lucide-react";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { WhatsAppQRCodeModal } from "@/components/onboarding-tasks/WhatsAppQRCodeModal";
 import { WhatsAppMessageDialog } from "@/components/onboarding-tasks/WhatsAppMessageDialog";
 import { ImportFromStevoModal } from "@/components/crm/service-config/ImportFromStevoModal";
 import { BulkMessageCampaign } from "@/components/whatsapp/BulkMessageCampaign";
+import { InstanceUsersDialog } from "@/components/whatsapp/InstanceUsersDialog";
 import { formatPhone } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -103,6 +105,7 @@ const WhatsAppAdminPage = () => {
   const [deleteInstance, setDeleteInstance] = useState<WhatsAppInstance | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [usersDialogInstance, setUsersDialogInstance] = useState<WhatsAppInstance | null>(null);
 
   // Auth state listener - redirect to login if session expires
   useEffect(() => {
@@ -866,6 +869,15 @@ const WhatsAppAdminPage = () => {
                           )}
                           
                           <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setUsersDialogInstance(instance)}
+                            title="Gerenciar Usuários"
+                          >
+                            <Users className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setDeleteInstance(instance)}
@@ -1042,6 +1054,17 @@ const WhatsAppAdminPage = () => {
         existingInstanceNames={instances.map((i) => i.instance_name)}
         onImported={fetchInstances}
       />
+
+      {/* Instance Users Dialog */}
+      {usersDialogInstance && (
+        <InstanceUsersDialog
+          open={!!usersDialogInstance}
+          onOpenChange={(open) => !open && setUsersDialogInstance(null)}
+          instanceId={usersDialogInstance.id}
+          instanceName={usersDialogInstance.display_name}
+          onAccessUpdated={fetchInstances}
+        />
+      )}
     </div>
   );
 };
