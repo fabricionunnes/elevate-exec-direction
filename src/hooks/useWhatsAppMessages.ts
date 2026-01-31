@@ -240,12 +240,149 @@ export function useWhatsAppMessages(conversationId: string | null) {
     }
   };
 
+  const sendMedia = async (
+    file: File,
+    mediaType: 'image' | 'video' | 'audio' | 'document',
+    instanceId: string,
+    contactPhone: string,
+    staffId?: string,
+    caption?: string
+  ) => {
+    if (!conversationId) return;
+
+    setSending(true);
+    try {
+      // Upload file to Supabase storage first
+      const fileExt = file.name.split('.').pop() || 'bin';
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const storagePath = `outbound/${mediaType}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('whatsapp-media')
+        .upload(storagePath, file, {
+          contentType: file.type,
+          upsert: false,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('whatsapp-media')
+        .getPublicUrl(storagePath);
+
+      const mediaUrl = urlData.publicUrl;
+
+      // Determine content label
+      const contentLabels: Record<string, string> = {
+        image: '[Imagem]',
+        video: '[Vídeo]',
+        audio: '[Áudio]',
+        document: file.name,
+      };
+      const content = caption || contentLabels[mediaType];
+
+      // Insert message in database
+      const { data: newMessage, error: insertError } = await supabase
+        .from('crm_whatsapp_messages')
+        .insert({
+          conversation_id: conversationId,
+          content,
+          type: mediaType,
+          direction: 'outbound',
+          status: 'pending',
+          sent_by: staffId,
+          media_url: mediaUrl,
+          media_mimetype: file.type,
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Optimistic update
+      const optimisticMessage: WhatsAppMessage = {
+        id: newMessage.id,
+        conversation_id: newMessage.conversation_id,
+        remote_id: null,
+        content,
+        type: mediaType,
+        direction: 'outbound',
+        status: 'pending',
+        media_url: mediaUrl,
+        media_mimetype: file.type,
+        quoted_message_id: null,
+        sent_by: staffId || null,
+        created_at: newMessage.created_at,
+      };
+      setMessages((prev) => [...prev, optimisticMessage]);
+
+      // Send via Evolution API
+      const { data: sendData, error: sendError } = await supabase.functions.invoke('evolution-api', {
+        body: {
+          action: 'sendMedia',
+          instanceId,
+          phone: contactPhone,
+          mediaType,
+          mediaUrl,
+          caption: caption || '',
+          fileName: file.name,
+        },
+      });
+
+      const remoteId = sendData?.key?.id;
+
+      if (sendError) {
+        await supabase
+          .from('crm_whatsapp_messages')
+          .update({ status: 'failed' })
+          .eq('id', newMessage.id);
+        throw sendError;
+      }
+
+      // Update status
+      await supabase
+        .from('crm_whatsapp_messages')
+        .update({ 
+          status: 'sent',
+          remote_id: remoteId || null,
+        })
+        .eq('id', newMessage.id);
+
+      if (remoteId) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === newMessage.id
+              ? { ...m, status: 'sent', remote_id: remoteId }
+              : m
+          )
+        );
+      }
+
+      // Update conversation
+      await supabase
+        .from('crm_whatsapp_conversations')
+        .update({
+          last_message: content,
+          last_message_at: new Date().toISOString(),
+        })
+        .eq('id', conversationId);
+
+    } catch (err) {
+      console.error('Error sending media:', err);
+      throw err;
+    } finally {
+      setSending(false);
+    }
+  };
+
   return {
     messages,
     loading,
     error,
     sending,
     sendMessage,
+    sendMedia,
     refetch: fetchMessages,
   };
 }

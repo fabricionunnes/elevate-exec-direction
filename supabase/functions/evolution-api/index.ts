@@ -399,6 +399,71 @@ serve(async (req) => {
         );
       }
 
+      case 'sendMedia': {
+        // Send media message (image, video, audio, document) - uses instance-specific credentials
+        const { instanceId, phone, mediaType, mediaUrl, caption, fileName } = body;
+        
+        if (!instanceId || !phone || !mediaType || !mediaUrl) {
+          return new Response(
+            JSON.stringify({ error: 'instanceId, phone, mediaType, and mediaUrl are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get instance name AND custom API credentials from database
+        const supabaseService = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+
+        const { data: instance, error: instanceError } = await supabaseService
+          .from('whatsapp_instances')
+          .select('instance_name, api_url, api_key')
+          .eq('id', instanceId)
+          .single();
+
+        if (instanceError || !instance) {
+          return new Response(
+            JSON.stringify({ error: 'Instance not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Use instance-specific API credentials if available
+        const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
+        const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
+
+        console.log(`[evolution-api] sendMedia using ${instance.api_url ? 'custom' : 'global'} credentials for instance ${instance.instance_name}`);
+
+        // Map mediaType to Evolution API mediatype
+        const mediatypeMap: Record<string, string> = {
+          image: 'image',
+          video: 'video',
+          audio: 'audio',
+          document: 'document',
+        };
+
+        const response = await fetch(`${apiBaseUrl}/message/sendMedia/${instance.instance_name}`, {
+          method: 'POST',
+          headers: apiHeaders,
+          body: JSON.stringify({
+            number: phone.includes('@') ? phone : `${phone}@s.whatsapp.net`,
+            mediatype: mediatypeMap[mediaType] || 'document',
+            media: mediaUrl,
+            caption: caption || '',
+            fileName: fileName || '',
+          }),
+        });
+
+        const data = await response.json();
+        console.log('[evolution-api] sendMedia response:', data);
+
+        return new Response(
+          JSON.stringify(data),
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'connect':
       case 'qr-code': {
         // Generate and return QR/pairing payload for WhatsApp connection.
