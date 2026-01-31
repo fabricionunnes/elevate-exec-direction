@@ -1570,7 +1570,7 @@ const OnboardingTasksPage = () => {
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
                         <MessageSquare className="h-4 w-4 mr-2" />
-                        WhatsApp Admin
+                        UNV Disparador
                       </DropdownMenuItem>
                       {currentUserEmail === "fabricio@universidadevendas.com.br" && (
                         <>
@@ -1961,7 +1961,7 @@ const OnboardingTasksPage = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
                             <MessageSquare className="h-4 w-4 mr-2" />
-                            WhatsApp Admin
+                            UNV Disparador
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setShowAnnouncementDialog(true)}>
                             <Megaphone className="h-4 w-4 mr-2" />
