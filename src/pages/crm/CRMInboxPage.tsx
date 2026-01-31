@@ -44,7 +44,6 @@ import {
   Send,
   Paperclip,
   Smile,
-  Mic,
   Image,
   Clock,
   CheckCheck,
@@ -70,6 +69,7 @@ import { ConversationSidebar } from "@/components/crm/inbox/ConversationSidebar"
 import { ConversationFilters, ConversationFiltersData, defaultFilters } from "@/components/crm/inbox/ConversationFilters";
 import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
 import { MediaUploadButton } from "@/components/crm/inbox/MediaUploadButton";
+import { AudioRecorder } from "@/components/crm/inbox/AudioRecorder";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const CRMInboxPage = () => {
@@ -770,16 +770,9 @@ export const CRMInboxPage = () => {
           {/* Message Input */}
           <div className="border-t border-border p-2 sm:p-3 bg-card">
             <div className="flex items-center gap-1 sm:gap-2 max-w-3xl mx-auto">
-              <div className="hidden sm:flex gap-1">
-                <Button variant="ghost" size="icon" className="h-9 w-9">
-                  <Smile className="h-5 w-5" />
-                </Button>
-                <MediaUploadButton
-                  onUpload={handleSendMedia}
-                  disabled={sending}
-                />
-              </div>
-              {/* Mobile attachment button */}
+              <Button variant="ghost" size="icon" className="h-9 w-9 hidden sm:flex">
+                <Smile className="h-5 w-5" />
+              </Button>
               <MediaUploadButton
                 onUpload={handleSendMedia}
                 disabled={sending}
@@ -790,6 +783,23 @@ export const CRMInboxPage = () => {
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
                 className="flex-1"
+                disabled={sending}
+              />
+              <AudioRecorder
+                onSend={async (file) => {
+                  if (!selectedConversation?.instance_id) {
+                    toast.error("Conversa sem dispositivo associado");
+                    return;
+                  }
+                  await sendMedia(
+                    file,
+                    "audio",
+                    selectedConversation.instance_id,
+                    selectedConversation.contact?.phone || "",
+                    staffId
+                  );
+                  toast.success("Áudio enviado!");
+                }}
                 disabled={sending}
               />
               <Button 
