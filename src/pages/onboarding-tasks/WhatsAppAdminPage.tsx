@@ -611,7 +611,7 @@ const WhatsAppAdminPage = () => {
             <NexusHeader />
             <div className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-green-500" />
-              <h1 className="text-xl font-bold">WhatsApp Admin</h1>
+              <h1 className="text-xl font-bold">UNV Disparador</h1>
             </div>
           </div>
         </div>

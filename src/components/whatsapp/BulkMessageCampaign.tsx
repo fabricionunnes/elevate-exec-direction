@@ -108,7 +108,12 @@ interface CRMContact {
   company_name?: string;
 }
 
-export const BulkMessageCampaign = () => {
+interface BulkMessageCampaignProps {
+  projectId?: string;
+  isClientMode?: boolean;
+}
+
+export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMessageCampaignProps) => {
   const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,21 +180,40 @@ export const BulkMessageCampaign = () => {
   };
 
   const loadInstances = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from("whatsapp_instances")
       .select("id, instance_name, display_name, status")
       .eq("status", "connected");
+    
+    // Filter by project in client mode
+    if (projectId) {
+      query = query.eq("project_id", projectId);
+    } else if (!isClientMode) {
+      // Admin sees global instances (project_id is null)
+      query = query.is("project_id", null);
+    }
+    
+    const { data } = await query;
     setInstances(data || []);
   };
 
   const loadCampaigns = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from("whatsapp_campaigns")
       .select(`
         *,
         instance:whatsapp_instances(display_name)
-      `)
-      .order("created_at", { ascending: false });
+      `);
+    
+    // Filter by project in client mode
+    if (projectId) {
+      query = query.eq("project_id", projectId);
+    } else if (!isClientMode) {
+      // Admin sees global campaigns (project_id is null)
+      query = query.is("project_id", null);
+    }
+    
+    const { data } = await query.order("created_at", { ascending: false });
     setCampaigns((data as Campaign[]) || []);
   };
 
@@ -322,13 +346,18 @@ export const BulkMessageCampaign = () => {
 
     setSaving(true);
     try {
-      // Get current staff
+      // Get current user info (staff or client)
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: staff } = await supabase
-        .from("onboarding_staff")
-        .select("id")
-        .eq("user_id", user?.id)
-        .single();
+      let createdBy: string | null = null;
+      
+      if (!isClientMode) {
+        const { data: staff } = await supabase
+          .from("onboarding_staff")
+          .select("id")
+          .eq("user_id", user?.id)
+          .single();
+        createdBy = staff?.id || null;
+      }
 
       // Create campaign
       const { data: campaign, error: campaignError } = await supabase
@@ -341,7 +370,8 @@ export const BulkMessageCampaign = () => {
           scheduled_at: newCampaign.scheduled_at || null,
           status: newCampaign.scheduled_at ? "scheduled" : "draft",
           total_recipients: importedContacts.length,
-          created_by: staff?.id,
+          created_by: createdBy,
+          project_id: projectId || null,
         })
         .select()
         .single();

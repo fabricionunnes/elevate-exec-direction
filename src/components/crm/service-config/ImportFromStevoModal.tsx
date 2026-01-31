@@ -29,15 +29,17 @@ interface StevoInstance {
 interface ImportFromStevoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  existingInstanceNames: string[];
+  existingInstanceNames?: string[];
   onImported: () => void;
+  projectId?: string; // Optional: for client mode, instances will be linked to this project
 }
 
 export const ImportFromStevoModal = ({
   open,
   onOpenChange,
-  existingInstanceNames,
+  existingInstanceNames = [],
   onImported,
+  projectId,
 }: ImportFromStevoModalProps) => {
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -149,6 +151,7 @@ export const ImportFromStevoModal = ({
         phone_number: selectedInst.number || null,
         status,
         is_default: false,
+        project_id: projectId || null, // Link to project if provided (client mode)
       });
 
       if (insertError) throw insertError;
