@@ -126,8 +126,7 @@ const WhatsAppAdminPage = () => {
         return;
       }
       
-      checkPermissions();
-      fetchInstances();
+      await checkPermissions();
       fetchMessageLogs();
     };
     
@@ -137,7 +136,9 @@ const WhatsAppAdminPage = () => {
     const instancesChannel = supabase
       .channel('whatsapp-instances')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_instances' }, () => {
-        fetchInstances();
+        if (currentStaffId || currentUserRole === "master" || currentUserRole === "admin") {
+          fetchInstances();
+        }
       })
       .subscribe();
       
@@ -153,6 +154,13 @@ const WhatsAppAdminPage = () => {
       supabase.removeChannel(logsChannel);
     };
   }, [navigate]);
+
+  // Re-fetch instances when staff/role is loaded
+  useEffect(() => {
+    if (currentStaffId || currentUserRole) {
+      fetchInstances();
+    }
+  }, [currentStaffId, currentUserRole]);
 
   const checkPermissions = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -183,14 +191,44 @@ const WhatsAppAdminPage = () => {
 
   const fetchInstances = async () => {
     try {
-      const { data, error } = await supabase
-        .from("whatsapp_instances")
-        .select("*")
-        .order("is_default", { ascending: false })
-        .order("created_at", { ascending: false });
-      
-      if (error) throw error;
-      setInstances(data || []);
+      // Master/admin users see all instances, others see only their authorized instances
+      if (currentUserRole === "master" || currentUserRole === "admin") {
+        const { data, error } = await supabase
+          .from("whatsapp_instances")
+          .select("*")
+          .order("is_default", { ascending: false })
+          .order("created_at", { ascending: false });
+        
+        if (error) throw error;
+        setInstances(data || []);
+      } else if (currentStaffId) {
+        // Get instances the user has access to
+        const { data: accessData, error: accessError } = await supabase
+          .from("whatsapp_instance_access")
+          .select("instance_id")
+          .eq("staff_id", currentStaffId)
+          .eq("can_view", true);
+        
+        if (accessError) throw accessError;
+        
+        const instanceIds = (accessData || []).map(a => a.instance_id);
+        
+        if (instanceIds.length === 0) {
+          setInstances([]);
+        } else {
+          const { data, error } = await supabase
+            .from("whatsapp_instances")
+            .select("*")
+            .in("id", instanceIds)
+            .order("is_default", { ascending: false })
+            .order("created_at", { ascending: false });
+          
+          if (error) throw error;
+          setInstances(data || []);
+        }
+      } else {
+        setInstances([]);
+      }
     } catch (error: any) {
       console.error("Error fetching instances:", error);
       toast.error("Erro ao carregar instâncias");
