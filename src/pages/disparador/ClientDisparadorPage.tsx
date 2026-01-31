@@ -24,6 +24,7 @@ import {
   Star,
   LogOut,
   RotateCcw,
+  Settings,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -37,7 +38,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { BulkMessageCampaign } from "@/components/whatsapp/BulkMessageCampaign";
 import { WhatsAppQRCodeModal } from "@/components/onboarding-tasks/WhatsAppQRCodeModal";
-import { ImportFromStevoModal } from "@/components/crm/service-config/ImportFromStevoModal";
+import { ClientImportInstanceModal } from "@/components/disparador/ClientImportInstanceModal";
+import { EvolutionConfigForm } from "@/components/disparador/EvolutionConfigForm";
 import { formatPhone } from "@/lib/utils";
 
 interface WhatsAppInstance {
@@ -63,6 +65,7 @@ const ClientDisparadorPage = () => {
   const [deleteInstance, setDeleteInstance] = useState<WhatsAppInstance | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string>("");
+  const [hasEvolutionConfig, setHasEvolutionConfig] = useState(false);
 
   useEffect(() => {
     checkAuthAndLoad();
@@ -98,6 +101,7 @@ const ClientDisparadorPage = () => {
         "Empresa"
       );
       
+      await checkEvolutionConfig();
       await fetchInstances();
     } catch (error) {
       console.error("Auth error:", error);
@@ -105,6 +109,16 @@ const ClientDisparadorPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const checkEvolutionConfig = async () => {
+    const { data } = await supabase
+      .from("client_evolution_config")
+      .select("id")
+      .eq("project_id", projectId)
+      .maybeSingle();
+    
+    setHasEvolutionConfig(!!data);
   };
 
   const fetchInstances = async () => {
@@ -122,28 +136,35 @@ const ClientDisparadorPage = () => {
     setInstances(data || []);
   };
 
-  const callEvolutionAPI = async (
-    action: string,
-    body?: any,
-    queryParams?: Record<string, string>
-  ) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      toast.error("Sessão expirada");
-      throw new Error("Não autenticado");
+  // Get client's Evolution API config
+  const getClientConfig = async () => {
+    const { data } = await supabase
+      .from("client_evolution_config")
+      .select("api_url, api_key")
+      .eq("project_id", projectId)
+      .maybeSingle();
+    
+    if (!data) {
+      throw new Error("Configure sua Evolution API primeiro");
     }
+    return data;
+  };
 
-    const params = new URLSearchParams({ action, ...queryParams });
-    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?${params.toString()}`;
-
-    const response = await fetch(functionUrl, {
-      method: 'POST',
+  // Call client's own Evolution API directly
+  const callClientEvolutionAPI = async (
+    endpoint: string,
+    method: "GET" | "POST" | "DELETE" = "GET",
+    body?: any
+  ) => {
+    const config = await getClientConfig();
+    
+    const response = await fetch(`${config.api_url}${endpoint}`, {
+      method,
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        "Content-Type": "application/json",
+        "apikey": config.api_key,
       },
-      body: JSON.stringify(body || {}),
+      ...(body ? { body: JSON.stringify(body) } : {}),
     });
 
     const data = await response.json().catch(() => ({ error: 'Resposta inválida' }));
@@ -181,10 +202,9 @@ const ClientDisparadorPage = () => {
 
     setActionLoading(instance.id);
     try {
-      const result = await callEvolutionAPI(
-        "connect",
-        { instanceName: instance.instance_name },
-        { number: phone }
+      const result = await callClientEvolutionAPI(
+        `/instance/connect/${instance.instance_name}?number=${phone}`,
+        "GET"
       );
 
       const base64 = extractQrBase64(result);
@@ -210,9 +230,10 @@ const ClientDisparadorPage = () => {
   const handleCheckStatus = async (instance: WhatsAppInstance) => {
     setActionLoading(instance.id);
     try {
-      const result = await callEvolutionAPI("status", {}, {
-        instanceName: instance.instance_name,
-      });
+      const result = await callClientEvolutionAPI(
+        `/instance/connectionState/${instance.instance_name}`,
+        "GET"
+      );
 
       const inst = result?.instance ?? result;
       const state = inst?.state;
@@ -260,7 +281,10 @@ const ClientDisparadorPage = () => {
   const handleLogout = async (instance: WhatsAppInstance) => {
     setActionLoading(instance.id);
     try {
-      await callEvolutionAPI("logout", { instanceName: instance.instance_name });
+      await callClientEvolutionAPI(
+        `/instance/logout/${instance.instance_name}`,
+        "DELETE"
+      );
       
       await supabase
         .from("whatsapp_instances")
@@ -279,7 +303,10 @@ const ClientDisparadorPage = () => {
   const handleRestart = async (instance: WhatsAppInstance) => {
     setActionLoading(instance.id);
     try {
-      await callEvolutionAPI("restart", { instanceName: instance.instance_name });
+      await callClientEvolutionAPI(
+        `/instance/restart/${instance.instance_name}`,
+        "POST"
+      );
       
       await supabase
         .from("whatsapp_instances")
@@ -300,9 +327,10 @@ const ClientDisparadorPage = () => {
 
     setActionLoading(deleteInstance.id);
     try {
-      await callEvolutionAPI("delete-instance", {
-        instanceName: deleteInstance.instance_name,
-      });
+      await callClientEvolutionAPI(
+        `/instance/delete/${deleteInstance.instance_name}`,
+        "DELETE"
+      );
 
       await supabase
         .from("whatsapp_instances")
@@ -394,21 +422,36 @@ const ClientDisparadorPage = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="instances" className="space-y-4">
+        <Tabs defaultValue={hasEvolutionConfig ? "instances" : "config"} className="space-y-4">
           <TabsList>
-            <TabsTrigger value="instances" className="gap-2">
+            <TabsTrigger value="config" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Configuração
+            </TabsTrigger>
+            <TabsTrigger value="instances" className="gap-2" disabled={!hasEvolutionConfig}>
               <Phone className="h-4 w-4" />
               Instâncias
             </TabsTrigger>
-            <TabsTrigger value="bulk" className="gap-2">
+            <TabsTrigger value="bulk" className="gap-2" disabled={!hasEvolutionConfig}>
               <Send className="h-4 w-4" />
               Disparo em Massa
             </TabsTrigger>
           </TabsList>
 
+          {/* Config Tab */}
+          <TabsContent value="config" className="space-y-4">
+            <EvolutionConfigForm 
+              projectId={projectId!} 
+              onConfigured={() => {
+                setHasEvolutionConfig(true);
+                checkEvolutionConfig();
+              }} 
+            />
+          </TabsContent>
+
           {/* Instances Tab */}
           <TabsContent value="instances" className="space-y-4">
-            {/* Import from STEVO */}
+            {/* Import from Evolution */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -416,13 +459,13 @@ const ClientDisparadorPage = () => {
                   Conectar WhatsApp
                 </CardTitle>
                 <CardDescription>
-                  Importe uma instância já configurada no STEVO para usar no disparador
+                  Importe uma instância da sua Evolution API para usar no disparador
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button onClick={() => setShowImportModal(true)} className="gap-2">
                   <Download className="h-4 w-4" />
-                  Importar do STEVO
+                  Importar Instância
                 </Button>
               </CardContent>
             </Card>
@@ -578,11 +621,12 @@ const ClientDisparadorPage = () => {
       )}
 
       {/* Import Modal */}
-      <ImportFromStevoModal
+      <ClientImportInstanceModal
         open={showImportModal}
         onOpenChange={setShowImportModal}
+        projectId={projectId!}
+        existingInstanceNames={instances.map(i => i.instance_name)}
         onImported={handleImportSuccess}
-        projectId={projectId}
       />
 
       {/* Delete Confirmation */}
