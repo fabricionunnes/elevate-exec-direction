@@ -181,11 +181,7 @@ const WhatsAppAdminPage = () => {
     if (staff) {
       setCurrentUserRole(staff.role);
       setCurrentStaffId(staff.id);
-      
-      if (staff.role !== "admin" && staff.role !== "master") {
-        toast.error("Acesso restrito a administradores");
-        navigate("/onboarding-tasks");
-      }
+      // All staff members can access - instances are filtered by permissions
     } else {
       toast.error("Usuário não encontrado no sistema");
       navigate("/onboarding-tasks/login");
@@ -679,84 +675,88 @@ const WhatsAppAdminPage = () => {
 
           {/* Instances Tab */}
           <TabsContent value="instances" className="space-y-4">
-            {/* Import from STEVO */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Download className="h-5 w-5 text-green-500" />
-                  Importar do STEVO
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    Importe instâncias já criadas e conectadas no Evolution Manager (STEVO) para usar no sistema.
-                  </p>
-                  <Button onClick={() => setShowImportModal(true)} variant="outline" className="gap-2">
-                    <Download className="h-4 w-4" />
+            {/* Import from STEVO - Only for Master */}
+            {currentUserRole === "master" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Download className="h-5 w-5 text-green-500" />
                     Importar do STEVO
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Create Instance Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Plus className="h-5 w-5" />
-                  Nova Instância (Manual)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="instanceName">Nome Técnico</Label>
-                    <Input
-                      id="instanceName"
-                      placeholder="minha-instancia"
-                      value={newInstanceName}
-                      onChange={(e) => setNewInstanceName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Apenas letras minúsculas, números e hífen
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Importe instâncias já criadas e conectadas no Evolution Manager (STEVO) para usar no sistema.
                     </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="displayName">Nome de Exibição</Label>
-                    <Input
-                      id="displayName"
-                      placeholder="WhatsApp Principal"
-                      value={newDisplayName}
-                      onChange={(e) => setNewDisplayName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="instancePhone">Número (com DDI)</Label>
-                    <Input
-                      id="instancePhone"
-                      placeholder="5511999999999"
-                      inputMode="numeric"
-                      value={newInstancePhone}
-                      onChange={(e) => setNewInstancePhone(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Use só números (ex: 55 + DDD + número)
-                    </p>
-                  </div>
-                  <div className="flex items-end">
-                    <Button onClick={handleCreateInstance} disabled={creating} className="w-full">
-                      {creating ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Plus className="h-4 w-4 mr-2" />
-                      )}
-                      Criar Instância
+                    <Button onClick={() => setShowImportModal(true)} variant="outline" className="gap-2">
+                      <Download className="h-4 w-4" />
+                      Importar do STEVO
                     </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Create Instance Card - Only for Master */}
+            {currentUserRole === "master" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Plus className="h-5 w-5" />
+                    Nova Instância (Manual)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="instanceName">Nome Técnico</Label>
+                      <Input
+                        id="instanceName"
+                        placeholder="minha-instancia"
+                        value={newInstanceName}
+                        onChange={(e) => setNewInstanceName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Apenas letras minúsculas, números e hífen
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="displayName">Nome de Exibição</Label>
+                      <Input
+                        id="displayName"
+                        placeholder="WhatsApp Principal"
+                        value={newDisplayName}
+                        onChange={(e) => setNewDisplayName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="instancePhone">Número (com DDI)</Label>
+                      <Input
+                        id="instancePhone"
+                        placeholder="5511999999999"
+                        inputMode="numeric"
+                        value={newInstancePhone}
+                        onChange={(e) => setNewInstancePhone(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use só números (ex: 55 + DDD + número)
+                      </p>
+                    </div>
+                    <div className="flex items-end">
+                      <Button onClick={handleCreateInstance} disabled={creating} className="w-full">
+                        {creating ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4 mr-2" />
+                        )}
+                        Criar Instância
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Instances List */}
             <Card>
@@ -868,24 +868,30 @@ const WhatsAppAdminPage = () => {
                             </Button>
                           )}
                           
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setUsersDialogInstance(instance)}
-                            title="Gerenciar Usuários"
-                          >
-                            <Users className="h-4 w-4" />
-                          </Button>
+                          {/* Manage Users - Only for Master */}
+                          {currentUserRole === "master" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setUsersDialogInstance(instance)}
+                              title="Gerenciar Usuários"
+                            >
+                              <Users className="h-4 w-4" />
+                            </Button>
+                          )}
                           
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleteInstance(instance)}
-                            className="text-destructive hover:text-destructive"
-                            title="Excluir Instância"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {/* Delete - Only for Master */}
+                          {currentUserRole === "master" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteInstance(instance)}
+                              className="text-destructive hover:text-destructive"
+                              title="Excluir Instância"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
