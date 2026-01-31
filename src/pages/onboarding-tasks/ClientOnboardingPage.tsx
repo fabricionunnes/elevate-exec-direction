@@ -29,6 +29,7 @@ import {
   ChevronRight,
   GraduationCap,
   ExternalLink,
+  Send,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -607,6 +608,16 @@ const ClientOnboardingPage = () => {
               >
                 <Users className="h-4 w-4" />
                 <span>UNV Circle</span>
+              </Button>
+
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="hidden md:flex gap-2 text-muted-foreground hover:text-primary"
+                onClick={() => navigate(`/disparador/${projectId}`)}
+              >
+                <Send className="h-4 w-4" />
+                <span>UNV Disparador</span>
               </Button>
 
               {currentUser?.role === "client" && (
