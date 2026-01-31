@@ -83,17 +83,46 @@ async function sendMessage(instanceName: string, phone: string, text: string): P
       }),
     });
 
+    const responseData = await response.json().catch(() => ({}));
+    
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      // Parse error message from Evolution API
+      let errorMessage = `HTTP ${response.status}`;
+      
+      if (responseData?.response?.message) {
+        const msg = responseData.response.message;
+        if (Array.isArray(msg)) {
+          errorMessage = msg[0];
+        } else if (typeof msg === 'string') {
+          errorMessage = msg;
+        }
+      } else if (responseData?.message) {
+        errorMessage = responseData.message;
+      }
+      
+      return { success: false, error: errorMessage };
+    }
+
+    // Check if the number exists on WhatsApp (Evolution API v2 response)
+    if (responseData?.jid && responseData?.exists === false) {
       return { 
         success: false, 
-        error: errorData?.response?.message?.[0] || `HTTP ${response.status}` 
+        error: `Número não está no WhatsApp: ${formattedPhone}` 
+      };
+    }
+    
+    // Some error responses come with 200 status but have error info
+    if (responseData?.error || responseData?.status === 'error') {
+      return { 
+        success: false, 
+        error: responseData?.message || responseData?.error || 'Erro desconhecido' 
       };
     }
 
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    console.error('Send message error:', error);
+    return { success: false, error: error.message || 'Erro de conexão' };
   }
 }
 
