@@ -133,15 +133,29 @@ export const ImportFromStevoModal = ({
 
     try {
       const apiUrl = customApiUrl.trim().replace(/\/$/, "");
-      const response = await fetch(`${apiUrl}/instance/fetchInstances`, {
+      const fetchUrl = `${apiUrl}/instance/fetchInstances`;
+      
+      console.log("Tentando buscar instâncias de:", fetchUrl);
+      
+      const response = await fetch(fetchUrl, {
         method: "GET",
         headers: {
           "apikey": customApiKey.trim(),
+          "Content-Type": "application/json",
         },
       });
 
       if (!response.ok) {
-        throw new Error(`Erro ${response.status}: Verifique suas credenciais`);
+        const errorText = await response.text().catch(() => "");
+        console.error("Erro na resposta:", response.status, errorText);
+        
+        if (response.status === 404) {
+          throw new Error(`Endpoint não encontrado (404). Verifique se a URL está correta: ${apiUrl}`);
+        } else if (response.status === 401 || response.status === 403) {
+          throw new Error(`Credenciais inválidas (${response.status}). Verifique sua API Key.`);
+        } else {
+          throw new Error(`Erro ${response.status}: ${errorText || "Verifique suas credenciais"}`);
+        }
       }
 
       const rawInstances = await response.json();
