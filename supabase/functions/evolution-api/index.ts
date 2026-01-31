@@ -1110,10 +1110,11 @@ serve(async (req) => {
         console.log(`[evolution-api] fetchGroups using ${instance.api_url ? 'custom' : 'global'} credentials for instance ${instance.instance_name}`);
 
         // Try different endpoints for fetching groups
+        // Note: fetchAllGroups requires getParticipants query param
         const endpoints = [
-          `/group/fetchAllGroups/${encodeURIComponent(instance.instance_name)}`,
-          `/chat/fetchGroups/${encodeURIComponent(instance.instance_name)}`,
+          `/group/fetchAllGroups/${encodeURIComponent(instance.instance_name)}?getParticipants=false`,
           `/group/list/${encodeURIComponent(instance.instance_name)}`,
+          `/chat/fetchGroups/${encodeURIComponent(instance.instance_name)}`,
         ];
 
         let lastRes: Response | null = null;
