@@ -13,7 +13,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, RefreshCw, MessageCircle, AlertCircle } from "lucide-react";
+import { Loader2, RefreshCw, MessageCircle, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 interface StevoInstance {
@@ -47,6 +47,9 @@ export const ImportFromStevoModal = ({
   const [selectedInstance, setSelectedInstance] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [apiUrl, setApiUrl] = useState(() => localStorage.getItem("stevo_api_url") || "");
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem("stevo_api_key") || "");
+  const [showApiKey, setShowApiKey] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -56,6 +59,7 @@ export const ImportFromStevoModal = ({
       setSelectedInstance(null);
       setDisplayName("");
       setError(null);
+      setShowApiKey(false);
     }
   }, [open]);
 
@@ -63,14 +67,24 @@ export const ImportFromStevoModal = ({
     setLoading(true);
     setError(null);
     try {
+      if (!apiUrl.trim() || !apiKey.trim()) {
+        setError("Informe a URL da API e a API Key para buscar suas instâncias.");
+        setInstances([]);
+        return;
+      }
+
+      const cleanApiUrl = apiUrl.trim().replace(/\/+$/g, "");
+      localStorage.setItem("stevo_api_url", cleanApiUrl);
+      localStorage.setItem("stevo_api_key", apiKey.trim());
+
       const { data, error: fnError } = await supabase.functions.invoke("evolution-api", {
-        body: { action: "list-instances" },
+        body: { action: "list-instances-custom", apiUrl: cleanApiUrl, apiKey: apiKey.trim() },
       });
 
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
 
-      // The API returns instances directly in data.instances or as the array itself
+      // The API returns { instances: [...] } for custom listing
       let rawInstances = data?.instances || data || [];
       if (!Array.isArray(rawInstances)) rawInstances = [];
 
@@ -122,6 +136,11 @@ export const ImportFromStevoModal = ({
       return;
     }
 
+    if (!apiUrl.trim() || !apiKey.trim()) {
+      toast.error("Informe a URL da API e a API Key");
+      return;
+    }
+
     const selectedInst = instances.find((i) => i.instanceName === selectedInstance);
     if (!selectedInst) return;
 
@@ -130,13 +149,19 @@ export const ImportFromStevoModal = ({
       // First, configure webhook for this instance
       const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`;
       
-      await supabase.functions.invoke("evolution-api", {
+      const cleanApiUrl = apiUrl.trim().replace(/\/+$/g, "");
+      const { data: hookData, error: hookError } = await supabase.functions.invoke("evolution-api", {
         body: {
-          action: "set-webhook",
+          action: "set-webhook-custom",
+          apiUrl: cleanApiUrl,
+          apiKey: apiKey.trim(),
           instanceName: selectedInstance,
           webhookUrl,
         },
       });
+
+      if (hookError) throw hookError;
+      if (hookData?.error) throw new Error(hookData.error);
 
       // Determine status based on STEVO data
       let status = "disconnected";
@@ -152,6 +177,8 @@ export const ImportFromStevoModal = ({
         status,
         is_default: false,
         project_id: projectId || null, // Link to project if provided (client mode)
+        api_url: cleanApiUrl,
+        api_key: apiKey.trim(),
       });
 
       if (insertError) throw insertError;
@@ -188,6 +215,51 @@ export const ImportFromStevoModal = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* API config */}
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="stevo-api-url">URL da API</Label>
+              <Input
+                id="stevo-api-url"
+                type="url"
+                value={apiUrl}
+                onChange={(e) => setApiUrl(e.target.value)}
+                placeholder="https://evo13.stevo.chat"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="stevo-api-key">API Key</Label>
+              <div className="relative">
+                <Input
+                  id="stevo-api-key"
+                  type={showApiKey ? "text" : "password"}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="Cole sua API Key"
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3"
+                  onClick={() => setShowApiKey((v) => !v)}
+                >
+                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadInstances}
+              disabled={loading || !apiUrl.trim() || !apiKey.trim()}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Buscar instâncias
+            </Button>
+          </div>
+
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
