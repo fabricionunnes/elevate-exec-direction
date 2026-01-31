@@ -86,6 +86,7 @@ export const ClientImportInstanceModal = ({
     try {
       // Save the Evolution API config for this project
       const cleanApiUrl = apiUrl.trim().replace(/\/$/, "");
+      const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`;
       
       const { error: configError } = await supabase
         .from("client_evolution_config")
@@ -102,44 +103,44 @@ export const ClientImportInstanceModal = ({
         // Continue anyway, the instance data is more important
       }
 
-      // Configure webhook for this instance
-      const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`;
-
-      try {
-        await fetch(`${cleanApiUrl}/webhook/set/${instanceName.trim()}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": apiKey.trim(),
-          },
-          body: JSON.stringify({
-            url: webhookUrl,
-            webhook_by_events: false,
-            webhook_base64: true,
-            events: [
-              "MESSAGES_UPSERT",
-              "MESSAGES_UPDATE",
-              "CONNECTION_UPDATE",
-              "QRCODE_UPDATED",
-            ],
-          }),
-        });
-      } catch (webhookErr) {
-        console.warn("Could not configure webhook:", webhookErr);
-        // Continue anyway - webhook config is optional
-      }
-
-      // Insert into local database
+      // Insert into local database first
       const { error: insertError } = await supabase.from("whatsapp_instances").insert({
         instance_name: instanceName.trim(),
         display_name: displayName.trim() || instanceName.trim(),
         phone_number: phoneNumber.trim() || null,
-        status: "connected", // Assume connected since STEVO shows it
+        status: "connected",
         is_default: false,
         project_id: projectId,
       });
 
       if (insertError) throw insertError;
+
+      // Configure webhook via Edge Function (avoids CORS issues)
+      const { data: webhookResult, error: webhookError } = await supabase.functions.invoke("evolution-api", {
+        body: {
+          action: "set-webhook-custom",
+          apiUrl: cleanApiUrl,
+          apiKey: apiKey.trim(),
+          instanceName: instanceName.trim(),
+          webhookUrl: webhookUrl,
+          events: [
+            "MESSAGES_UPSERT",
+            "MESSAGES_UPDATE",
+            "CONNECTION_UPDATE",
+            "QRCODE_UPDATED",
+          ],
+        },
+      });
+
+      if (webhookError) {
+        console.warn("Webhook config via edge function failed:", webhookError);
+        toast.warning("Instância importada, mas o webhook não foi configurado automaticamente.");
+      } else if (webhookResult?.ok) {
+        console.log("Webhook configured successfully:", webhookResult);
+      } else {
+        console.warn("Webhook config returned non-ok:", webhookResult);
+        toast.warning("Instância importada, mas o webhook pode precisar de configuração manual.");
+      }
 
       toast.success(`Instância "${displayName || instanceName}" importada com sucesso!`);
       onOpenChange(false);
