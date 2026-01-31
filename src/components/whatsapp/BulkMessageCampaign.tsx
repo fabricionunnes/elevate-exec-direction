@@ -58,6 +58,7 @@ import {
   Eye,
   RefreshCw,
   Database,
+  Edit3,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -143,6 +144,10 @@ export const BulkMessageCampaign = () => {
   const [crmContacts, setCrmContacts] = useState<CRMContact[]>([]);
   const [selectedCRMContacts, setSelectedCRMContacts] = useState<Set<string>>(new Set());
   const [loadingCRM, setLoadingCRM] = useState(false);
+  
+  // Manual contacts input
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualContactsText, setManualContactsText] = useState("");
   
   // Delete confirmation
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
@@ -259,6 +264,45 @@ export const BulkMessageCampaign = () => {
     setImportedContacts([...importedContacts, ...uniqueNew]);
     setShowCRMContacts(false);
     setSelectedCRMContacts(new Set());
+    toast.success(`${uniqueNew.length} contatos adicionados`);
+  };
+
+  const handleAddManualContacts = () => {
+    if (!manualContactsText.trim()) {
+      toast.error("Digite pelo menos um contato");
+      return;
+    }
+
+    const lines = manualContactsText.trim().split("\n").filter(line => line.trim());
+    const newContacts: Array<{ phone_number: string; name: string; company: string }> = [];
+    
+    for (const line of lines) {
+      // Formato esperado: telefone | nome | empresa (nome e empresa são opcionais)
+      // ou apenas: telefone
+      const parts = line.split(/[|;,\t]/).map(p => p.trim());
+      const phone = parts[0]?.replace(/\D/g, "") || "";
+      
+      if (phone.length >= 10) {
+        newContacts.push({
+          phone_number: phone,
+          name: parts[1] || "",
+          company: parts[2] || "",
+        });
+      }
+    }
+
+    if (newContacts.length === 0) {
+      toast.error("Nenhum telefone válido encontrado. Verifique o formato (mínimo 10 dígitos).");
+      return;
+    }
+
+    // Merge with existing, avoiding duplicates
+    const existingPhones = new Set(importedContacts.map(c => c.phone_number));
+    const uniqueNew = newContacts.filter(c => !existingPhones.has(c.phone_number));
+    
+    setImportedContacts([...importedContacts, ...uniqueNew]);
+    setShowManualInput(false);
+    setManualContactsText("");
     toast.success(`${uniqueNew.length} contatos adicionados`);
   };
 
@@ -738,10 +782,18 @@ export const BulkMessageCampaign = () => {
                   <Database className="h-4 w-4 mr-2" />
                   Do CRM
                 </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => setShowManualInput(true)}
+                >
+                  <Edit3 className="h-4 w-4 mr-2" />
+                  Digitar
+                </Button>
               </div>
               
               <p className="text-xs text-muted-foreground">
-                O arquivo deve ter colunas: telefone (ou phone), nome (opcional), empresa (opcional)
+                Importe via CSV, selecione do CRM ou digite manualmente os contatos
               </p>
               
               {importedContacts.length > 0 && (
@@ -1006,6 +1058,46 @@ export const BulkMessageCampaign = () => {
             </Button>
             <Button onClick={handleAddCRMContacts} disabled={selectedCRMContacts.size === 0}>
               Adicionar {selectedCRMContacts.size} contatos
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Contacts Input Modal */}
+      <Dialog open={showManualInput} onOpenChange={setShowManualInput}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit3 className="h-5 w-5" />
+              Digitar Contatos
+            </DialogTitle>
+            <DialogDescription>
+              Digite os contatos manualmente, um por linha
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Contatos</Label>
+              <Textarea
+                value={manualContactsText}
+                onChange={(e) => setManualContactsText(e.target.value)}
+                placeholder={`Formato: telefone | nome | empresa (nome e empresa são opcionais)\n\nExemplos:\n11999998888\n11988887777 | João Silva\n11977776666 | Maria Santos | Empresa XYZ`}
+                rows={10}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Separadores aceitos: | ; , ou Tab
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowManualInput(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAddManualContacts}>
+              Adicionar Contatos
             </Button>
           </DialogFooter>
         </DialogContent>
