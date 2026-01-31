@@ -84,12 +84,28 @@ export function useWhatsAppMessages(conversationId: string | null) {
           console.log('Message change:', payload);
           
           if (payload.eventType === 'INSERT') {
-            setMessages((prev) => [...prev, payload.new as WhatsAppMessage]);
+            // Check if message already exists (optimistic update may have added it)
+            setMessages((prev) => {
+              const exists = prev.some(m => m.id === payload.new.id);
+              if (exists) return prev;
+              
+              // Cast and format the realtime payload
+              const newMsg = {
+                ...payload.new,
+                direction: payload.new.direction as 'inbound' | 'outbound',
+              } as WhatsAppMessage;
+              
+              return [...prev, newMsg];
+            });
           } else if (payload.eventType === 'UPDATE') {
             setMessages((prev) =>
               prev.map((m) => {
                 if (m.id === payload.new.id) {
-                  return { ...m, ...payload.new };
+                  return { 
+                    ...m, 
+                    ...payload.new,
+                    direction: payload.new.direction as 'inbound' | 'outbound',
+                  };
                 }
                 return m;
               })
@@ -133,6 +149,23 @@ export function useWhatsAppMessages(conversationId: string | null) {
         .single();
 
       if (insertError) throw insertError;
+
+      // Optimistically add the message to local state immediately
+      const optimisticMessage: WhatsAppMessage = {
+        id: newMessage.id,
+        conversation_id: newMessage.conversation_id,
+        remote_id: newMessage.remote_id,
+        content: newMessage.content,
+        type: newMessage.type,
+        direction: 'outbound',
+        status: 'pending',
+        media_url: newMessage.media_url,
+        media_mimetype: newMessage.media_mimetype,
+        quoted_message_id: newMessage.quoted_message_id,
+        sent_by: newMessage.sent_by,
+        created_at: newMessage.created_at,
+      };
+      setMessages((prev) => [...prev, optimisticMessage]);
 
       // Then, send via Evolution API
       const { error: sendError } = await supabase.functions.invoke('evolution-api', {
