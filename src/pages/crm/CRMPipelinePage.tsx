@@ -411,14 +411,69 @@ export const CRMPipelinePage = () => {
           navigate(`/crm/inbox?conversation=${conversation.id}`);
           return;
         }
+        
+        // No conversation exists for this contact - create one
+        const { data: newConversation, error: convError } = await supabase
+          .from("crm_whatsapp_conversations")
+          .insert({
+            contact_id: contact.id,
+            status: "open",
+            unread_count: 0,
+          })
+          .select("id")
+          .single();
+        
+        if (convError) {
+          console.error("Error creating conversation:", convError);
+          toast.error("Erro ao criar conversa");
+          return;
+        }
+        
+        toast.success("Nova conversa iniciada");
+        navigate(`/crm/inbox?conversation=${newConversation.id}`);
+        return;
       }
       
-      // No existing conversation found - navigate to inbox anyway
-      toast.info("Nenhuma conversa encontrada para este contato");
-      navigate("/crm/inbox");
+      // No contact exists - create contact and conversation
+      const { data: newContact, error: contactError } = await supabase
+        .from("crm_whatsapp_contacts")
+        .insert({
+          phone: cleanPhone,
+          name: lead.name,
+          lead_id: lead.id,
+        })
+        .select("id")
+        .single();
+      
+      if (contactError) {
+        console.error("Error creating contact:", contactError);
+        toast.error("Erro ao criar contato");
+        return;
+      }
+      
+      // Create conversation for the new contact
+      const { data: newConversation, error: convError } = await supabase
+        .from("crm_whatsapp_conversations")
+        .insert({
+          contact_id: newContact.id,
+          lead_id: lead.id,
+          status: "open",
+          unread_count: 0,
+        })
+        .select("id")
+        .single();
+      
+      if (convError) {
+        console.error("Error creating conversation:", convError);
+        toast.error("Erro ao criar conversa");
+        return;
+      }
+      
+      toast.success("Nova conversa iniciada");
+      navigate(`/crm/inbox?conversation=${newConversation.id}`);
     } catch (error) {
-      console.error("Error finding conversation:", error);
-      navigate("/crm/inbox");
+      console.error("Error finding/creating conversation:", error);
+      toast.error("Erro ao abrir conversa");
     }
   };
 
