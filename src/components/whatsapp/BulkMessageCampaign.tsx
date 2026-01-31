@@ -59,11 +59,13 @@ import {
   RefreshCw,
   Database,
   Edit3,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Papa from "papaparse";
+import { GroupSelector } from "./GroupSelector";
 
 interface WhatsAppInstance {
   id: string;
@@ -153,6 +155,14 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
   // Manual contacts input
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualContactsText, setManualContactsText] = useState("");
+  
+  // Group selection
+  const [showGroupSelector, setShowGroupSelector] = useState(false);
+  const [selectedGroups, setSelectedGroups] = useState<Array<{
+    id: string;
+    name: string;
+    size: number;
+  }>>([]);
   
   // Delete confirmation
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
@@ -339,8 +349,9 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
       toast.error("Selecione uma instância do WhatsApp");
       return;
     }
-    if (importedContacts.length === 0) {
-      toast.error("Importe pelo menos um contato");
+    // Allow either contacts OR groups (or both)
+    if (importedContacts.length === 0 && selectedGroups.length === 0) {
+      toast.error("Importe pelo menos um contato ou selecione um grupo");
       return;
     }
 
@@ -359,6 +370,9 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
         createdBy = staff?.id || null;
       }
 
+      // Combine contacts + groups as recipients
+      const totalRecipients = importedContacts.length + selectedGroups.length;
+
       // Create campaign
       const { data: campaign, error: campaignError } = await supabase
         .from("whatsapp_campaigns")
@@ -369,7 +383,7 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
           delay_between_messages: newCampaign.delay_between_messages,
           scheduled_at: newCampaign.scheduled_at || null,
           status: newCampaign.scheduled_at ? "scheduled" : "draft",
-          total_recipients: importedContacts.length,
+          total_recipients: totalRecipients,
           created_by: createdBy,
           project_id: projectId || null,
         })
@@ -378,16 +392,41 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
 
       if (campaignError) throw campaignError;
 
-      // Insert recipients
-      const recipientsToInsert = importedContacts.map(c => ({
-        campaign_id: campaign.id,
-        phone_number: c.phone_number,
-        name: c.name || null,
-        company: c.company || null,
-        custom_vars: Object.fromEntries(
-          Object.entries(c).filter(([k]) => !["phone_number", "name", "company"].includes(k))
-        ),
-      }));
+      // Insert contact recipients
+      const recipientsToInsert: Array<{
+        campaign_id: string;
+        phone_number: string;
+        name: string | null;
+        company: string | null;
+        custom_vars: Record<string, any>;
+      }> = [];
+
+      // Add individual contacts
+      for (const c of importedContacts) {
+        recipientsToInsert.push({
+          campaign_id: campaign.id,
+          phone_number: c.phone_number,
+          name: c.name || null,
+          company: c.company || null,
+          custom_vars: Object.fromEntries(
+            Object.entries(c).filter(([k]) => !["phone_number", "name", "company"].includes(k))
+          ),
+        });
+      }
+
+      // Add groups as recipients (using JID as phone_number with @g.us suffix)
+      for (const group of selectedGroups) {
+        recipientsToInsert.push({
+          campaign_id: campaign.id,
+          phone_number: group.id, // JID like "120363XXX@g.us"
+          name: group.name,
+          company: null,
+          custom_vars: { 
+            is_group: "true", 
+            group_size: String(group.size) 
+          },
+        });
+      }
 
       const { error: recipientsError } = await supabase
         .from("whatsapp_campaign_recipients")
@@ -405,6 +444,7 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
         scheduled_at: "",
       });
       setImportedContacts([]);
+      setSelectedGroups([]);
       loadCampaigns();
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar campanha");
@@ -820,12 +860,73 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
                   <Edit3 className="h-4 w-4 mr-2" />
                   Digitar
                 </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!newCampaign.instance_id) {
+                      toast.error("Selecione uma instância do WhatsApp primeiro");
+                      return;
+                    }
+                    setShowGroupSelector(true);
+                  }}
+                  className="border-green-500 text-green-700 hover:bg-green-50"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Grupos
+                </Button>
               </div>
               
               <p className="text-xs text-muted-foreground">
-                Importe via CSV, selecione do CRM ou digite manualmente os contatos
+                Importe via CSV, selecione do CRM, digite manualmente ou escolha grupos do WhatsApp
               </p>
               
+              {/* Selected Groups Display */}
+              {selectedGroups.length > 0 && (
+                <div className="border rounded-lg border-green-500/50 bg-green-50/50 dark:bg-green-950/20">
+                  <div className="flex items-center justify-between p-2 border-b border-green-500/30 bg-green-100/50 dark:bg-green-900/20">
+                    <span className="text-sm font-medium flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-green-600" />
+                      {selectedGroups.length} grupo(s) selecionado(s)
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedGroups([])}
+                      className="text-destructive"
+                    >
+                      Limpar
+                    </Button>
+                  </div>
+                  <div className="p-2 space-y-2">
+                    {selectedGroups.map((group) => (
+                      <div
+                        key={group.id}
+                        className="flex items-center justify-between p-2 bg-white dark:bg-background rounded border"
+                      >
+                        <div>
+                          <p className="font-medium text-sm">{group.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {group.size} participantes
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            setSelectedGroups((prev) =>
+                              prev.filter((g) => g.id !== group.id)
+                            )
+                          }
+                          className="h-8 w-8 text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {importedContacts.length > 0 && (
                 <div className="border rounded-lg">
                   <div className="flex items-center justify-between p-2 border-b bg-muted">
@@ -1150,6 +1251,20 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Group Selector Modal */}
+      <GroupSelector
+        open={showGroupSelector}
+        onOpenChange={setShowGroupSelector}
+        instanceId={newCampaign.instance_id}
+        onSelectGroups={(groups) => {
+          // Merge with existing, avoiding duplicates
+          const existingIds = new Set(selectedGroups.map((g) => g.id));
+          const uniqueNew = groups.filter((g) => !existingIds.has(g.id));
+          setSelectedGroups([...selectedGroups, ...uniqueNew]);
+          toast.success(`${uniqueNew.length} grupo(s) adicionado(s)`);
+        }}
+      />
     </div>
   );
 };

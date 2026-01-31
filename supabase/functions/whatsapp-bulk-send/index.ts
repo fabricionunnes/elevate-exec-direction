@@ -64,27 +64,37 @@ function processMessage(template: string, recipient: Recipient): string {
 }
 
 // Send message via Evolution API using instance-specific credentials
+// Supports both individual contacts and groups (detected by @g.us suffix)
 async function sendMessage(
   instanceName: string, 
   phone: string, 
   text: string,
   apiUrl: string,
-  apiKey: string
+  apiKey: string,
+  isGroup: boolean = false
 ): Promise<{ success: boolean; error?: string }> {
   try {
     if (!apiUrl || !apiKey) {
       return { success: false, error: 'Credenciais da API não configuradas para esta instância' };
     }
 
-    // Format phone number
-    let formattedPhone = phone.replace(/\D/g, '');
-    if (formattedPhone.length === 11 && formattedPhone.startsWith('0')) {
-      formattedPhone = '55' + formattedPhone.substring(1);
-    } else if (formattedPhone.length === 10 || formattedPhone.length === 11) {
-      formattedPhone = '55' + formattedPhone;
-    }
+    let formattedNumber: string;
     
-    console.log(`[bulk-send] Sending to ${formattedPhone} via ${instanceName} using API: ${apiUrl}`);
+    // Check if this is a group message (JID contains @g.us)
+    if (isGroup || phone.includes('@g.us')) {
+      // Group JID - use as-is or ensure it has @g.us suffix
+      formattedNumber = phone.includes('@') ? phone : `${phone}@g.us`;
+      console.log(`[bulk-send] Sending to GROUP ${formattedNumber} via ${instanceName}`);
+    } else {
+      // Individual contact - format phone number
+      formattedNumber = phone.replace(/\D/g, '');
+      if (formattedNumber.length === 11 && formattedNumber.startsWith('0')) {
+        formattedNumber = '55' + formattedNumber.substring(1);
+      } else if (formattedNumber.length === 10 || formattedNumber.length === 11) {
+        formattedNumber = '55' + formattedNumber;
+      }
+      console.log(`[bulk-send] Sending to ${formattedNumber} via ${instanceName} using API: ${apiUrl}`);
+    }
     
     const response = await fetch(`${apiUrl}/message/sendText/${instanceName}`, {
       method: 'POST',
@@ -93,7 +103,7 @@ async function sendMessage(
         'apikey': apiKey,
       },
       body: JSON.stringify({
-        number: formattedPhone,
+        number: formattedNumber,
         text: text,
       }),
     });
@@ -115,15 +125,16 @@ async function sendMessage(
         errorMessage = responseData.message;
       }
       
-      console.error(`[bulk-send] API error for ${formattedPhone}: ${errorMessage}`);
+      console.error(`[bulk-send] API error for ${formattedNumber}: ${errorMessage}`);
       return { success: false, error: errorMessage };
     }
 
     // Check if the number exists on WhatsApp (Evolution API v2 response)
-    if (responseData?.jid && responseData?.exists === false) {
+    // Note: This check doesn't apply to groups
+    if (!isGroup && responseData?.jid && responseData?.exists === false) {
       return { 
         success: false, 
-        error: `Número não está no WhatsApp: ${formattedPhone}` 
+        error: `Número não está no WhatsApp: ${formattedNumber}` 
       };
     }
     
@@ -135,7 +146,7 @@ async function sendMessage(
       };
     }
 
-    console.log(`[bulk-send] Successfully sent to ${formattedPhone}`);
+    console.log(`[bulk-send] Successfully sent to ${formattedNumber}`);
     return { success: true };
   } catch (error: any) {
     console.error('[bulk-send] Send message error:', error);
@@ -303,8 +314,12 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Process message
+        // Process message (for groups, we don't replace {{nome}} with contact name)
         const message = processMessage(campaign.message_template, recipient);
+
+        // Detect if this is a group (JID contains @g.us or custom_vars.is_group === "true")
+        const isGroup = recipient.phone_number.includes('@g.us') || 
+                        recipient.custom_vars?.is_group === 'true';
 
         // Send message with instance-specific credentials
         const result = await sendMessage(
@@ -312,7 +327,8 @@ Deno.serve(async (req) => {
           recipient.phone_number, 
           message,
           instanceApiUrl,
-          instanceApiKey
+          instanceApiKey,
+          isGroup
         );
 
         if (result.success) {
