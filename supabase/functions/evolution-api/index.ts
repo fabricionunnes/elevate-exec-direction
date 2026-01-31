@@ -722,22 +722,28 @@ serve(async (req) => {
           },
         };
 
-        const endpoints = [
-          `/webhook/set/${encodeURIComponent(instanceName)}`,
-          `/instance/update/${encodeURIComponent(instanceName)}`,
+        // Evolution API v2 uses PUT for webhook/set, some versions use POST
+        // Try multiple endpoint patterns and HTTP methods
+        const endpointConfigs = [
+          { path: `/webhook/set/${encodeURIComponent(instanceName)}`, method: 'PUT' },
+          { path: `/webhook/set/${encodeURIComponent(instanceName)}`, method: 'POST' },
+          { path: `/instance/update/${encodeURIComponent(instanceName)}`, method: 'PUT' },
+          { path: `/instance/update/${encodeURIComponent(instanceName)}`, method: 'POST' },
+          { path: `/webhook/${encodeURIComponent(instanceName)}`, method: 'PUT' },
+          { path: `/webhook/${encodeURIComponent(instanceName)}`, method: 'POST' },
         ];
 
-        const tried: Array<{ url: string; status?: number }> = [];
+        const tried: Array<{ url: string; method: string; status?: number }> = [];
         let lastStatus: number | undefined;
         let lastBodyPreview: any = null;
 
         for (const prefix of ROUTE_PREFIXES) {
-          for (const endpoint of endpoints) {
-            const fullUrl = `${baseUrl}${prefix}${endpoint}`;
-            console.log(`[evolution-api] [custom] POST ${fullUrl}`);
+          for (const { path, method } of endpointConfigs) {
+            const fullUrl = `${baseUrl}${prefix}${path}`;
+            console.log(`[evolution-api] [custom] ${method} ${fullUrl}`);
             try {
               const res = await fetch(fullUrl, {
-                method: 'POST',
+                method,
                 headers: customHeaders,
                 body: JSON.stringify(webhookPayload),
               });
@@ -750,7 +756,7 @@ serve(async (req) => {
                 parsed = text;
               }
 
-              tried.push({ url: fullUrl, status: res.status });
+              tried.push({ url: fullUrl, method, status: res.status });
               lastStatus = res.status;
               lastBodyPreview = typeof parsed === 'string' ? parsed.substring(0, 200) : parsed;
 
@@ -765,7 +771,7 @@ serve(async (req) => {
               if (res.status === 404 || res.status === 405) continue;
             } catch (e) {
               console.error('[evolution-api] [custom] Network error:', e);
-              tried.push({ url: fullUrl });
+              tried.push({ url: fullUrl, method });
               lastBodyPreview = String(e);
             }
           }
