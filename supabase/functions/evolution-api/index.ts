@@ -9,8 +9,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Route prefixes to try (Evolution API v2.x sometimes uses different base paths)
-const ROUTE_PREFIXES = ['', '/api/v1', '/api/v2', '/v1', '/v2'];
+// Route prefixes to try (Evolution API installs often sit behind /api, and some use versioned prefixes)
+const ROUTE_PREFIXES = ['', '/api', '/api/v1', '/api/v2', '/v1', '/v2'];
 
 serve(async (req) => {
   console.log(`[evolution-api] Version: ${EVOLUTION_API_FUNC_VERSION}`);
@@ -658,10 +658,12 @@ serve(async (req) => {
           return null;
         };
 
-        // Try the standard endpoint first, then fallback alternatives.
+        // Try the standard endpoints first, then fallback alternatives.
+        // Some providers expose instance management at /api/instances.
         const instances =
           (await tryGetArray('/instance/fetchInstances')) ||
-          (await tryGetArray('/instance/list'));
+          (await tryGetArray('/instance/list')) ||
+          (await tryGetArray('/instances'));
 
         if (instances) {
           return new Response(
