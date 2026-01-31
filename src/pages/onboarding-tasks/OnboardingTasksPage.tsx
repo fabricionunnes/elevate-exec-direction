@@ -1794,6 +1794,18 @@ const OnboardingTasksPage = () => {
                 Vagas (RH)
               </Button>
             )}
+            {/* UNV Disparador button - visible for all staff */}
+            {currentUserRole && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/onboarding-tasks/whatsapp")}
+                className="gap-2"
+              >
+                <MessageSquare className="h-4 w-4" />
+                UNV Disparador
+              </Button>
+            )}
             {/* CRM Comercial button - visible for admin, head_comercial, closer, sdr */}
             {canAccessCRM && (
               <Button 
