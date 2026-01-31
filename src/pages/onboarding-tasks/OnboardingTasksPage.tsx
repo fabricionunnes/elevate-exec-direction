@@ -1520,6 +1520,10 @@ const OnboardingTasksPage = () => {
                     <Video className="h-4 w-4 mr-2" />
                     Escritório UNV
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    UNV Disparador
+                  </DropdownMenuItem>
                   {isAdmin && (
                     <>
                       <DropdownMenuSeparator />
@@ -1567,10 +1571,6 @@ const OnboardingTasksPage = () => {
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cohort-retention")}>
                         <Users2 className="h-4 w-4 mr-2" />
                         Análise de Cohort
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        UNV Disparador
                       </DropdownMenuItem>
                       {currentUserEmail === "fabricio@universidadevendas.com.br" && (
                         <>
@@ -1950,7 +1950,10 @@ const OnboardingTasksPage = () => {
                         <Users className="h-4 w-4 mr-2" />
                         UNV Circle
                       </DropdownMenuItem>
-
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        UNV Disparador
+                      </DropdownMenuItem>
 
                       {isAdmin && (
                         <>
@@ -1958,10 +1961,6 @@ const OnboardingTasksPage = () => {
                           <DropdownMenuItem onClick={() => setActiveDashboardTab("referrals")}>
                             <Gift className="h-4 w-4 mr-2" />
                             Indicações
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            UNV Disparador
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setShowAnnouncementDialog(true)}>
                             <Megaphone className="h-4 w-4 mr-2" />
