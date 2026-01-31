@@ -113,7 +113,16 @@ export const ImportFromStevoModal = ({
       }
     } catch (err: any) {
       console.error("Error loading instances:", err);
-      setError(err.message || "Erro ao carregar instâncias do STEVO");
+      
+      // Check if error indicates 404 - likely wrong URL (dashboard instead of API)
+      const errorMsg = err.message || "";
+      if (errorMsg.includes("404") || errorMsg.includes("Unable to list instances")) {
+        setError(
+          "Não foi possível conectar à API. Verifique se você está usando a URL da API Evolution (ex: https://evo13.stevo.chat) e não a URL do dashboard (ex: https://sm-xyz.stevo.chat). A URL da API geralmente começa com 'evo' ou 'api'."
+        );
+      } else {
+        setError(err.message || "Erro ao carregar instâncias do STEVO");
+      }
     } finally {
       setLoading(false);
     }
