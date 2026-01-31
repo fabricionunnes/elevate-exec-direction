@@ -13,7 +13,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, RefreshCw, MessageCircle, AlertCircle, Settings } from "lucide-react";
+import { Loader2, RefreshCw, MessageCircle, AlertCircle, Settings, Eye, EyeOff, Search } from "lucide-react";
 import { toast } from "sonner";
 
 interface StevoInstance {
@@ -48,6 +48,12 @@ export const ClientImportInstanceModal = ({
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [config, setConfig] = useState<{ api_url: string; api_key: string } | null>(null);
+  
+  // Inline credentials for custom searches
+  const [customApiUrl, setCustomApiUrl] = useState("");
+  const [customApiKey, setCustomApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -57,6 +63,7 @@ export const ClientImportInstanceModal = ({
       setSelectedInstance(null);
       setDisplayName("");
       setError(null);
+      setHasSearched(false);
     }
   }, [open]);
 
@@ -74,19 +81,36 @@ export const ClientImportInstanceModal = ({
 
       if (configError) throw configError;
 
-      if (!configData) {
-        setError("Configure sua Evolution API primeiro antes de importar instâncias.");
-        setLoading(false);
-        return;
+      if (configData) {
+        setConfig(configData);
+        setCustomApiUrl(configData.api_url);
+        setCustomApiKey(configData.api_key);
       }
-
-      setConfig(configData);
-      await loadInstancesFromConfig(configData);
+      
+      setLoading(false);
     } catch (err: any) {
       console.error("Error loading config:", err);
       setError(err.message || "Erro ao carregar configuração");
       setLoading(false);
     }
+  };
+
+  const handleSearch = async () => {
+    if (!customApiUrl.trim() || !customApiKey.trim()) {
+      toast.error("Preencha a URL e API Key para buscar");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setHasSearched(true);
+    
+    const searchConfig = {
+      api_url: customApiUrl.trim().replace(/\/$/, ""),
+      api_key: customApiKey.trim(),
+    };
+
+    await loadInstancesFromConfig(searchConfig);
   };
 
   const loadInstancesFromConfig = async (cfg: { api_url: string; api_key: string }) => {
@@ -146,8 +170,19 @@ export const ClientImportInstanceModal = ({
   };
 
   const handleImport = async () => {
-    if (!selectedInstance || !config) {
+    if (!selectedInstance) {
       toast.error("Selecione uma instância para importar");
+      return;
+    }
+
+    // Use custom credentials for import
+    const importConfig = {
+      api_url: customApiUrl.trim().replace(/\/$/, ""),
+      api_key: customApiKey.trim(),
+    };
+
+    if (!importConfig.api_url || !importConfig.api_key) {
+      toast.error("Credenciais inválidas");
       return;
     }
 
@@ -156,14 +191,14 @@ export const ClientImportInstanceModal = ({
 
     setImporting(true);
     try {
-      // Configure webhook for this instance using client's own API
+      // Configure webhook for this instance using the credentials used to search
       const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`;
 
-      await fetch(`${config.api_url}/webhook/set/${selectedInstance}`, {
+      await fetch(`${importConfig.api_url}/webhook/set/${selectedInstance}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "apikey": config.api_key,
+          "apikey": importConfig.api_key,
         },
         body: JSON.stringify({
           url: webhookUrl,
@@ -228,31 +263,86 @@ export const ClientImportInstanceModal = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">Carregando instâncias...</span>
+          {/* Inline API credentials */}
+          <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
+            <div className="space-y-2">
+              <Label htmlFor="customApiUrl" className="text-sm">URL da API</Label>
+              <Input
+                id="customApiUrl"
+                type="url"
+                value={customApiUrl}
+                onChange={(e) => setCustomApiUrl(e.target.value)}
+                placeholder="https://sua-evolution-api.com"
+              />
             </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center py-6 text-center">
-              <AlertCircle className="h-8 w-8 text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">{error}</p>
-              {error.includes("Configure") ? (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Vá até a aba "Configuração" e insira suas credenciais da Evolution API.
-                </p>
-              ) : (
-                <Button variant="outline" size="sm" onClick={loadConfig} className="mt-4">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Tentar novamente
+            <div className="space-y-2">
+              <Label htmlFor="customApiKey" className="text-sm">API Key</Label>
+              <div className="relative">
+                <Input
+                  id="customApiKey"
+                  type={showApiKey ? "text" : "password"}
+                  value={customApiKey}
+                  onChange={(e) => setCustomApiKey(e.target.value)}
+                  placeholder="Sua chave de API"
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                >
+                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
-              )}
+              </div>
             </div>
-          ) : (
+            <Button 
+              onClick={handleSearch} 
+              disabled={loading || !customApiUrl || !customApiKey}
+              className="w-full"
+              variant="secondary"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Buscando...
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4 mr-2" />
+                  Buscar Instâncias
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Results section */}
+          {error && hasSearched && (
+            <div className="flex flex-col items-center justify-center py-4 text-center">
+              <AlertCircle className="h-6 w-6 text-destructive mb-2" />
+              <p className="text-sm text-muted-foreground">{error}</p>
+              <Button variant="outline" size="sm" onClick={handleSearch} className="mt-3">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Tentar novamente
+              </Button>
+            </div>
+          )}
+
+          {hasSearched && !error && instances.length === 0 && !loading && (
+            <div className="flex flex-col items-center justify-center py-4 text-center">
+              <AlertCircle className="h-6 w-6 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
+                Nenhuma instância disponível encontrada.
+              </p>
+            </div>
+          )}
+
+          {instances.length > 0 && (
             <>
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Instâncias disponíveis</Label>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
+                <Label className="text-sm font-medium">Instâncias disponíveis ({instances.length})</Label>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
                   {instances.map((instance) => (
                     <div
                       key={instance.instanceName}
