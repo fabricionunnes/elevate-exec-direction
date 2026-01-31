@@ -124,6 +124,13 @@ export function useWhatsAppMessages(conversationId: string | null) {
       )
       .subscribe((status) => {
         console.log('Realtime subscription status:', status, 'for conversation:', conversationId);
+        // When subscription reconnects after timeout, refetch to catch missed messages
+        if (status === 'SUBSCRIBED') {
+          // Small delay to ensure we don't refetch immediately on initial subscribe
+          setTimeout(() => {
+            fetchMessages();
+          }, 500);
+        }
       });
 
     return () => {
