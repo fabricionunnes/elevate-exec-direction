@@ -12,6 +12,21 @@ const corsHeaders = {
 // Route prefixes to try (Evolution API v2.x sometimes uses different base paths)
 const ROUTE_PREFIXES = ['', '/api/v1', '/api/v2', '/v1', '/v2'];
 
+function normalizeBaseUrl(input: string) {
+  return input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
+}
+
+// Build headers that work across different Evolution/STEVO installs.
+// Some expect "apikey", others expect "Authorization: Bearer <key>".
+function buildEvolutionHeaders(apiKey: string) {
+  return {
+    'Content-Type': 'application/json',
+    apikey: apiKey,
+    Authorization: `Bearer ${apiKey}`,
+    'x-api-key': apiKey,
+  };
+}
+
 serve(async (req) => {
   console.log(`[evolution-api] Version: ${EVOLUTION_API_FUNC_VERSION}`);
 
@@ -36,9 +51,7 @@ serve(async (req) => {
     // Some installs expose the web UI under "/manager" (e.g. http://host:8080/manager),
     // but the HTTP API base should be http://host:8080.
     // To avoid misconfiguration breaking everything, normalize the base URL here.
-    const evolutionBaseUrl = EVOLUTION_API_URL
-      .replace(/\/manager\/?$/i, '')
-      .replace(/\/+$/g, '');
+    const evolutionBaseUrl = normalizeBaseUrl(EVOLUTION_API_URL);
 
     if (evolutionBaseUrl !== EVOLUTION_API_URL) {
       console.log(`[evolution-api] Normalized EVOLUTION_API_URL from "${EVOLUTION_API_URL}" to "${evolutionBaseUrl}"`);
@@ -72,10 +85,7 @@ serve(async (req) => {
     // Action can come from query param OR from body (frontend sends in body)
     let action = url.searchParams.get('action');
 
-    const evolutionHeaders = {
-      'Content-Type': 'application/json',
-      'apikey': EVOLUTION_API_KEY,
-    };
+    const evolutionHeaders = buildEvolutionHeaders(EVOLUTION_API_KEY);
 
     // Make a raw fetch to any URL with Evolution headers
     const fetchEvolutionRaw = async (fullUrl: string, init?: RequestInit) => {
@@ -123,6 +133,56 @@ serve(async (req) => {
     const fetchEvolutionJson = async (endpoint: string, init?: RequestInit) => {
       const fullUrl = `${evolutionBaseUrl}${endpoint}`;
       return fetchEvolutionRaw(fullUrl, init);
+    };
+
+    // Custom API helpers (user-provided baseUrl/apiKey) ----------------------
+    const fetchCustomWithPrefixes = async (
+      baseUrl: string,
+      path: string,
+      apiKey: string,
+      init?: RequestInit
+    ): Promise<{ res: Response; json: any; prefix: string; tried: Array<{ url: string; method: string; status?: number }> }> => {
+      const cleanBaseUrl = normalizeBaseUrl(baseUrl);
+      const customHeaders = buildEvolutionHeaders(apiKey);
+      const tried: Array<{ url: string; method: string; status?: number }> = [];
+
+      for (const prefix of ROUTE_PREFIXES) {
+        const endpoint = `${prefix}${path}`;
+        const fullUrl = `${cleanBaseUrl}${endpoint}`;
+        const method = (init?.method || 'GET').toUpperCase();
+
+        console.log(`[evolution-api] [custom] Calling: ${method} ${fullUrl}`);
+        try {
+          const res = await fetch(fullUrl, {
+            ...init,
+            headers: { ...customHeaders, ...(init?.headers || {}) },
+          });
+
+          const text = await res.text();
+          let json: any = null;
+          try {
+            json = text ? JSON.parse(text) : null;
+          } catch {
+            json = { raw: text };
+          }
+
+          tried.push({ url: fullUrl, method, status: res.status });
+          // For prefix discovery: stop on success or on non-(404/405) so we can surface auth errors (401) quickly.
+          if (res.ok || (res.status !== 404 && res.status !== 405)) {
+            return { res, json, prefix, tried };
+          }
+        } catch (err) {
+          console.error('[evolution-api] [custom] Network error calling Evolution API:', err);
+          tried.push({ url: fullUrl, method });
+        }
+      }
+
+      // If all prefixes were 404/405, return a synthetic 404 with tried list
+      const res = new Response(JSON.stringify({ error: 'Not Found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+      return { res, json: { error: 'Not Found' }, prefix: '', tried };
     };
 
     // Try multiple route prefixes to find the working one
@@ -597,6 +657,107 @@ serve(async (req) => {
         );
       }
 
+      case 'list-instances-custom': {
+        const { apiUrl, apiKey } = body;
+        if (!apiUrl || !apiKey) {
+          return new Response(
+            JSON.stringify({ error: 'apiUrl and apiKey are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { res, json, prefix, tried } = await fetchCustomWithPrefixes(
+          apiUrl,
+          '/instance/fetchInstances',
+          apiKey,
+          { method: 'GET' }
+        );
+
+        if (!res.ok) {
+          return new Response(
+            JSON.stringify({
+              error: 'Unable to list instances on custom Evolution API',
+              status: res.status,
+              details: json,
+              tried,
+              prefix,
+              _version: EVOLUTION_API_FUNC_VERSION,
+            }),
+            { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Some installs return { instances: [...] }
+        const instances = Array.isArray(json) ? json : (Array.isArray(json?.instances) ? json.instances : []);
+        return new Response(
+          JSON.stringify({ instances, prefix, _version: EVOLUTION_API_FUNC_VERSION }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'set-webhook-custom': {
+        const { apiUrl, apiKey, instanceName, webhookUrl, events } = body;
+        if (!apiUrl || !apiKey || !instanceName || !webhookUrl) {
+          return new Response(
+            JSON.stringify({ error: 'apiUrl, apiKey, instanceName and webhookUrl are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const webhookPayload = {
+          webhook: {
+            enabled: true,
+            url: webhookUrl,
+            webhookByEvents: true,
+            webhookBase64: false,
+            events: events || [
+              'MESSAGES_UPSERT',
+              'MESSAGES_UPDATE',
+              'CONNECTION_UPDATE',
+              'QRCODE_UPDATED',
+            ],
+          },
+        };
+
+        const encName = encodeURIComponent(instanceName);
+
+        // Different installs expose different endpoints; try a small, safe set.
+        // NOTE: We keep POST as default and fallback to PUT for v2 installs.
+        const attempts: Array<{ path: string; method: 'POST' | 'PUT' }> = [
+          { path: `/webhook/set/${encName}`, method: 'POST' },
+          { path: `/webhook/set/${encName}`, method: 'PUT' },
+          { path: `/instance/update/${encName}`, method: 'POST' },
+          { path: `/instance/update/${encName}`, method: 'PUT' },
+        ];
+
+        let last: { res: Response; json: any; prefix: string; tried: any[] } | null = null;
+        for (const a of attempts) {
+          const result = await fetchCustomWithPrefixes(apiUrl, a.path, apiKey, {
+            method: a.method,
+            body: JSON.stringify(webhookPayload),
+          });
+
+          last = result;
+          if (result.res.ok) {
+            return new Response(
+              JSON.stringify({ success: true, prefix: result.prefix, _version: EVOLUTION_API_FUNC_VERSION }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+
+        return new Response(
+          JSON.stringify({
+            error: 'Unable to set webhook on custom Evolution API',
+            lastStatus: last?.res.status,
+            lastBodyPreview: last?.json,
+            tried: last?.tried,
+            _version: EVOLUTION_API_FUNC_VERSION,
+          }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'diagnose': {
         // Diagnose Evolution API configuration by testing multiple endpoints and prefixes
         console.log(`[evolution-api] Running diagnostics on ${evolutionBaseUrl}`);
@@ -851,6 +1012,8 @@ serve(async (req) => {
               'qr-code',
               'status',
               'list-instances',
+              'list-instances-custom',
+              'set-webhook-custom',
               'send-text',
               'sendText',
               'send-media',
