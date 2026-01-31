@@ -6,32 +6,70 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Evolution API v2.x sometimes uses different base paths.
+const ROUTE_PREFIXES = ['', '/api/v1', '/api/v2', '/v1', '/v2'];
+
+function normalizeBaseUrl(input: string) {
+  return input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
+}
+
+// Some installs expect "apikey", others expect "Authorization: Bearer <key>".
+function buildEvolutionHeaders(apiKey: string) {
+  return {
+    'Content-Type': 'application/json',
+    apikey: apiKey,
+    Authorization: `Bearer ${apiKey}`,
+    'x-api-key': apiKey,
+  };
+}
+
 // Helper to download media from Evolution API and upload to Supabase Storage
 async function downloadAndStoreMedia(
   supabase: any,
   instanceName: string,
   messageId: string,
   mediaType: string,
-  mimetype: string
+  mimetype: string,
+  evolutionBaseUrlOverride?: string | null,
+  evolutionApiKeyOverride?: string | null,
 ): Promise<string | null> {
   try {
     const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL');
     const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY');
 
-    if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
+    const apiBaseUrlRaw = (evolutionBaseUrlOverride || EVOLUTION_API_URL) ?? '';
+    const apiKey = (evolutionApiKeyOverride || EVOLUTION_API_KEY) ?? '';
+
+    if (!apiBaseUrlRaw || !apiKey) {
       console.error('Evolution API credentials not configured for media download');
       return null;
     }
 
-    const baseUrl = EVOLUTION_API_URL.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
+    const baseUrl = normalizeBaseUrl(apiBaseUrlRaw);
+    const headers = buildEvolutionHeaders(apiKey);
+
+    const fetchWithPrefixes = async (path: string, init?: RequestInit) => {
+      for (const prefix of ROUTE_PREFIXES) {
+        const url = `${baseUrl}${prefix}${path}`;
+        const response = await fetch(url, {
+          ...init,
+          headers: { ...headers, ...(init?.headers || {}) },
+        });
+        // Stop early on success OR on non-404/405 to surface auth errors quickly.
+        if (response.ok || (response.status !== 404 && response.status !== 405)) {
+          return response;
+        }
+      }
+      // fallback
+      return fetch(`${baseUrl}${ROUTE_PREFIXES[0]}${path}`, {
+        ...init,
+        headers: { ...headers, ...(init?.headers || {}) },
+      });
+    };
 
     // Call Evolution API to get base64 media
-    const response = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${instanceName}`, {
+    const response = await fetchWithPrefixes(`/chat/getBase64FromMediaMessage/${instanceName}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': EVOLUTION_API_KEY,
-      },
       body: JSON.stringify({
         message: { key: { id: messageId } },
         convertToMp4: mediaType === 'audio', // Convert audio to mp4 for better compatibility
@@ -44,7 +82,12 @@ async function downloadAndStoreMedia(
     }
 
     const data = await response.json();
-    const base64Data = data.base64;
+    let base64Data: string | null = data.base64 || null;
+
+    // Some providers return "data:<mime>;base64,<...>".
+    if (base64Data?.includes('base64,')) {
+      base64Data = base64Data.split('base64,').pop() || null;
+    }
 
     if (!base64Data) {
       console.error('No base64 data returned from Evolution API');
@@ -121,10 +164,10 @@ serve(async (req) => {
     const instanceName = body.instance;
     const data = body.data;
 
-    // Get instance from database
+    // Get instance from database (also fetch instance-specific API credentials)
     const { data: instance } = await supabase
       .from('whatsapp_instances')
-      .select('id, status')
+      .select('id, status, api_url, api_key')
       .eq('instance_name', instanceName)
       .single();
 
@@ -138,7 +181,14 @@ serve(async (req) => {
 
     switch (event) {
       case 'messages.upsert':
-        await handleIncomingMessage(supabase, instance.id, instanceName, data);
+        await handleIncomingMessage(
+          supabase,
+          instance.id,
+          instanceName,
+          data,
+          instance.api_url ?? null,
+          instance.api_key ?? null,
+        );
         break;
       
       case 'messages.update':
@@ -171,7 +221,14 @@ serve(async (req) => {
   }
 });
 
-async function handleIncomingMessage(supabase: any, instanceId: string, instanceName: string, data: any) {
+async function handleIncomingMessage(
+  supabase: any,
+  instanceId: string,
+  instanceName: string,
+  data: any,
+  instanceApiUrl: string | null,
+  instanceApiKey: string | null,
+) {
   console.log('Processing incoming message:', JSON.stringify(data, null, 2));
 
   const message = data.message || data;
@@ -328,7 +385,10 @@ async function handleIncomingMessage(supabase: any, instanceId: string, instance
       instanceName,
       messageId,
       type,
-      mediaMimetype || 'application/octet-stream'
+      mediaMimetype || 'application/octet-stream',
+      // IMPORTANT: instance can override API URL/key (per-connection credentials)
+      instanceApiUrl,
+      instanceApiKey,
     );
     if (downloadedUrl) {
       storedMediaUrl = downloadedUrl;
