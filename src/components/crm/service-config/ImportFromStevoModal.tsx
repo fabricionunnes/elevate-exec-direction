@@ -133,32 +133,20 @@ export const ImportFromStevoModal = ({
 
     try {
       const apiUrl = customApiUrl.trim().replace(/\/$/, "");
-      const fetchUrl = `${apiUrl}/instance/fetchInstances`;
-      
-      console.log("Tentando buscar instâncias de:", fetchUrl);
-      
-      const response = await fetch(fetchUrl, {
-        method: "GET",
-        headers: {
-          "apikey": customApiKey.trim(),
-          "Content-Type": "application/json",
+      const apiKey = customApiKey.trim();
+
+      const { data, error: fnError } = await supabase.functions.invoke("evolution-api", {
+        body: {
+          action: "list-instances-custom",
+          apiUrl,
+          apiKey,
         },
       });
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => "");
-        console.error("Erro na resposta:", response.status, errorText);
-        
-        if (response.status === 404) {
-          throw new Error(`Endpoint não encontrado (404). Verifique se a URL está correta: ${apiUrl}`);
-        } else if (response.status === 401 || response.status === 403) {
-          throw new Error(`Credenciais inválidas (${response.status}). Verifique sua API Key.`);
-        } else {
-          throw new Error(`Erro ${response.status}: ${errorText || "Verifique suas credenciais"}`);
-        }
-      }
+      if (fnError) throw fnError;
+      if (data?.error) throw new Error(data.error);
 
-      const rawInstances = await response.json();
+      const rawInstances = data;
 
       // Map Evolution API response to our interface
       const allInstances: StevoInstance[] = (Array.isArray(rawInstances) ? rawInstances : []).map((inst: any) => ({
@@ -217,24 +205,27 @@ export const ImportFromStevoModal = ({
       
       // If using custom API, set webhook directly
       if (!useDefaultApi && customApiUrl && customApiKey) {
-        await fetch(`${customApiUrl.trim().replace(/\/$/, "")}/webhook/set/${selectedInstance}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": customApiKey.trim(),
-          },
-          body: JSON.stringify({
-            url: webhookUrl,
-            webhook_by_events: false,
-            webhook_base64: true,
+        const apiUrl = customApiUrl.trim().replace(/\/$/, "");
+        const apiKey = customApiKey.trim();
+
+        const { data, error: fnError } = await supabase.functions.invoke("evolution-api", {
+          body: {
+            action: "set-webhook-custom",
+            apiUrl,
+            apiKey,
+            instanceName: selectedInstance,
+            webhookUrl,
             events: [
               "MESSAGES_UPSERT",
               "MESSAGES_UPDATE",
               "CONNECTION_UPDATE",
               "QRCODE_UPDATED",
             ],
-          }),
+          },
         });
+
+        if (fnError) throw fnError;
+        if (data?.error) throw new Error(data.error);
       } else {
         // Use default API via edge function
         await supabase.functions.invoke("evolution-api", {
