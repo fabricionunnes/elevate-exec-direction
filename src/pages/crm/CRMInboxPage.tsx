@@ -69,6 +69,7 @@ import { useWhatsAppMessages, WhatsAppMessage } from "@/hooks/useWhatsAppMessage
 import { ConversationSidebar } from "@/components/crm/inbox/ConversationSidebar";
 import { ConversationFilters, ConversationFiltersData, defaultFilters } from "@/components/crm/inbox/ConversationFilters";
 import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
+import { MediaUploadButton } from "@/components/crm/inbox/MediaUploadButton";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const CRMInboxPage = () => {
@@ -120,6 +121,7 @@ export const CRMInboxPage = () => {
     loading: loadingMessages, 
     sending,
     sendMessage,
+    sendMedia,
     refetch: refetchMessages,
   } = useWhatsAppMessages(selectedConversation?.id || null);
 
@@ -284,6 +286,26 @@ export const CRMInboxPage = () => {
       toast.success("Mensagem enviada!");
     } catch (error) {
       toast.error("Erro ao enviar mensagem");
+    }
+  };
+
+  const handleSendMedia = async (file: File, type: "image" | "video" | "audio" | "document") => {
+    if (!selectedConversation || !selectedConversation.instance_id) {
+      toast.error("Conversa sem dispositivo associado");
+      return;
+    }
+
+    try {
+      await sendMedia(
+        file,
+        type,
+        selectedConversation.instance_id,
+        selectedConversation.contact?.phone || "",
+        staffId
+      );
+      toast.success("Mídia enviada!");
+    } catch (error) {
+      toast.error("Erro ao enviar mídia");
     }
   };
 
@@ -746,17 +768,16 @@ export const CRMInboxPage = () => {
                 <Button variant="ghost" size="icon" className="h-9 w-9">
                   <Smile className="h-5 w-5" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-9 w-9">
-                  <Paperclip className="h-5 w-5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-9 w-9">
-                  <Image className="h-5 w-5" />
-                </Button>
+                <MediaUploadButton
+                  onUpload={handleSendMedia}
+                  disabled={sending}
+                />
               </div>
               {/* Mobile attachment button */}
-              <Button variant="ghost" size="icon" className="h-9 w-9 sm:hidden shrink-0">
-                <Paperclip className="h-5 w-5" />
-              </Button>
+              <MediaUploadButton
+                onUpload={handleSendMedia}
+                disabled={sending}
+              />
               <Input
                 placeholder="Mensagem"
                 value={newMessage}
