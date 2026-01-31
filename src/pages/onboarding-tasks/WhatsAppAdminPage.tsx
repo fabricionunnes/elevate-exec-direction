@@ -194,8 +194,8 @@ const WhatsAppAdminPage = () => {
 
   const fetchInstances = async () => {
     try {
-      // Master/admin users see all instances, others see only their authorized instances
-      if (currentUserRole === "master" || currentUserRole === "admin") {
+      // Only Master role has unrestricted access to all instances
+      if (currentUserRole === "master") {
         const { data, error } = await supabase
           .from("whatsapp_instances")
           .select("*")
@@ -205,7 +205,7 @@ const WhatsAppAdminPage = () => {
         if (error) throw error;
         setInstances(data || []);
       } else if (currentStaffId) {
-        // Get instances the user has access to
+        // Admin and other roles must have explicit access via whatsapp_instance_access
         const { data: accessData, error: accessError } = await supabase
           .from("whatsapp_instance_access")
           .select("instance_id")
