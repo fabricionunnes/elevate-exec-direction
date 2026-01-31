@@ -9,6 +9,12 @@ export interface WhatsAppContact {
   profile_picture_url: string | null;
 }
 
+export interface WhatsAppInstance {
+  id: string;
+  instance_name: string;
+  display_name: string | null;
+}
+
 export interface WhatsAppConversation {
   id: string;
   instance_id: string | null;
@@ -28,6 +34,7 @@ export interface WhatsAppConversation {
     name: string;
     avatar_url: string | null;
   };
+  instance?: WhatsAppInstance;
 }
 
 interface UseWhatsAppConversationsOptions {
@@ -50,7 +57,8 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
         .select(`
           *,
           contact:crm_whatsapp_contacts(*),
-          assigned_staff:onboarding_staff(id, name, avatar_url)
+          assigned_staff:onboarding_staff(id, name, avatar_url),
+          instance:whatsapp_instances(id, instance_name, display_name)
         `)
         .order('last_message_at', { ascending: false, nullsFirst: false });
 
@@ -138,7 +146,8 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
       .select(`
         *,
         contact:crm_whatsapp_contacts(*),
-        assigned_staff:onboarding_staff(id, name, avatar_url)
+        assigned_staff:onboarding_staff(id, name, avatar_url),
+        instance:whatsapp_instances(id, instance_name, display_name)
       `)
       .eq('id', id)
       .single();

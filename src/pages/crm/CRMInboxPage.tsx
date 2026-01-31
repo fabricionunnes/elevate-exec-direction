@@ -554,6 +554,11 @@ export const CRMInboxPage = () => {
                         <MessageSquare className="h-3 w-3 mr-0.5" />
                       </Badge>
                     )}
+                    {conv.instance && (
+                      <Badge variant="outline" className="h-4 px-1 text-[9px] shrink-0 bg-green-500/10 text-green-600 border-green-500/30">
+                        {conv.instance.display_name || conv.instance.instance_name}
+                      </Badge>
+                    )}
                     <p className="text-xs text-muted-foreground truncate">
                       {conv.last_message || "Sem mensagens"}
                     </p>
@@ -600,12 +605,14 @@ export const CRMInboxPage = () => {
                 <p className="font-medium text-sm truncate">
                   {selectedConversation.contact?.name || selectedConversation.contact?.phone}
                 </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {selectedConversation.contact?.phone}
-                  {selectedConversation.instance_id && (
-                    <span className="text-green-500 ml-2 hidden sm:inline">● WhatsApp</span>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="truncate">{selectedConversation.contact?.phone}</span>
+                  {selectedConversation.instance && (
+                    <Badge variant="outline" className="h-4 px-1.5 text-[10px] bg-green-500/10 text-green-600 border-green-500/30 shrink-0">
+                      {selectedConversation.instance.display_name || selectedConversation.instance.instance_name}
+                    </Badge>
                   )}
-                </p>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-0.5 sm:gap-1">
