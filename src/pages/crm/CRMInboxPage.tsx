@@ -519,7 +519,13 @@ export const CRMInboxPage = () => {
             filteredConversations.map((conv) => (
               <button
                 key={conv.id}
-                onClick={() => setSelectedConversation(conv)}
+                onClick={() => {
+                  setSelectedConversation(conv);
+                  // Mark as read immediately on click
+                  if (conv.unread_count > 0) {
+                    markAsRead(conv.id);
+                  }
+                }}
                 className={cn(
                   "w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors text-left border-b border-border",
                   selectedConversation?.id === conv.id && "bg-muted"
