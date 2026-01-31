@@ -167,3 +167,6 @@ verify_jwt = false
 
 [functions.instagram-oauth]
 verify_jwt = false
+
+[functions.whatsapp-bulk-send]
+verify_jwt = false

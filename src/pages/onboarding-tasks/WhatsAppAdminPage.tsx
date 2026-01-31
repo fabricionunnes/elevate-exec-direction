@@ -31,6 +31,7 @@ import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { WhatsAppQRCodeModal } from "@/components/onboarding-tasks/WhatsAppQRCodeModal";
 import { WhatsAppMessageDialog } from "@/components/onboarding-tasks/WhatsAppMessageDialog";
 import { ImportFromStevoModal } from "@/components/crm/service-config/ImportFromStevoModal";
+import { BulkMessageCampaign } from "@/components/whatsapp/BulkMessageCampaign";
 import { formatPhone } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -621,9 +622,13 @@ const WhatsAppAdminPage = () => {
               <Phone className="h-4 w-4" />
               Instâncias
             </TabsTrigger>
-            <TabsTrigger value="send" className="gap-2">
+            <TabsTrigger value="bulk" className="gap-2">
               <Send className="h-4 w-4" />
-              Enviar Mensagem
+              Disparo em Massa
+            </TabsTrigger>
+            <TabsTrigger value="send" className="gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Enviar Teste
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-2">
               <History className="h-4 w-4" />
@@ -838,6 +843,11 @@ const WhatsAppAdminPage = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Bulk Message Tab */}
+          <TabsContent value="bulk" className="space-y-4">
+            <BulkMessageCampaign />
           </TabsContent>
 
           {/* Send Message Tab */}
