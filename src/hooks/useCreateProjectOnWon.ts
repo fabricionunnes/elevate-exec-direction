@@ -89,28 +89,16 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
       return { success: false, error: "Lead não tem produto/serviço definido" };
     }
 
-    // Buscar produto do CRM
-    const { data: productData } = await supabase
-      .from("crm_products")
-      .select("id, name")
-      .eq("id", lead.product_id)
-      .single();
-
-    if (!productData) {
-      console.warn("Produto não encontrado:", lead.product_id);
-      return { success: false, error: "Produto não encontrado" };
-    }
-
-    // Buscar serviço correspondente em onboarding_services pelo nome
+    // Buscar serviço diretamente de onboarding_services (product_id agora referencia onboarding_services)
     const { data: serviceData } = await supabase
       .from("onboarding_services")
       .select("id, name, slug")
-      .ilike("name", productData.name)
+      .eq("id", lead.product_id)
       .single();
 
     if (!serviceData) {
-      console.warn("Serviço não encontrado para o produto:", productData.name);
-      return { success: false, error: `Serviço "${productData.name}" não encontrado no sistema de onboarding` };
+      console.warn("Serviço não encontrado:", lead.product_id);
+      return { success: false, error: "Serviço/Produto não encontrado" };
     }
 
     // Buscar nome do plano
