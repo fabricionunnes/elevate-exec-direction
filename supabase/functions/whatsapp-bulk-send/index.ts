@@ -19,7 +19,7 @@ interface Campaign {
   total_recipients: number;
   sent_count: number;
   failed_count: number;
-  media_type: 'image' | 'video' | null;
+  media_type: 'image' | 'video' | 'audio' | 'document' | null;
   media_url: string | null;
   media_caption: string | null;
 }
@@ -103,11 +103,11 @@ async function sendTextMessage(
   }
 }
 
-// Send media message via Evolution API
+// Send media message via Evolution API (image, video, audio, document)
 async function sendMediaMessage(
   instanceName: string, 
   phone: string, 
-  mediaType: 'image' | 'video',
+  mediaType: 'image' | 'video' | 'audio' | 'document',
   mediaUrl: string,
   caption: string,
   apiUrl: string,
@@ -122,18 +122,31 @@ async function sendMediaMessage(
     const formattedNumber = formatPhoneNumber(phone, isGroup);
     console.log(`[bulk-send] Sending ${mediaType.toUpperCase()} to ${formattedNumber} via ${instanceName}`);
     
-    const response = await fetch(`${apiUrl}/message/sendMedia/${instanceName}`, {
+    // For audio, use sendWhatsAppAudio endpoint; for document, use sendMedia with document type
+    let endpoint = `${apiUrl}/message/sendMedia/${instanceName}`;
+    let body: Record<string, any> = {
+      number: formattedNumber,
+      mediatype: mediaType,
+      media: mediaUrl,
+      caption: caption || '',
+    };
+
+    // Audio messages don't support captions in WhatsApp
+    if (mediaType === 'audio') {
+      endpoint = `${apiUrl}/message/sendWhatsAppAudio/${instanceName}`;
+      body = {
+        number: formattedNumber,
+        audio: mediaUrl,
+      };
+    }
+
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': apiKey,
       },
-      body: JSON.stringify({
-        number: formattedNumber,
-        mediatype: mediaType,
-        media: mediaUrl,
-        caption: caption || '',
-      }),
+      body: JSON.stringify(body),
     });
 
     return handleEvolutionResponse(response, formattedNumber, isGroup);
