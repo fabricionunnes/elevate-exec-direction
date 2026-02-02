@@ -844,19 +844,97 @@ export const SalesIndicatorsTab = () => {
       {/* Evolution chart - Cumulative Revenue */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Evolução de Receita (Cumulativo)</CardTitle>
+          <CardTitle className="text-base font-semibold text-center">EVOLUÇÃO DE RECEITA</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[250px]">
+          {/* Legend at top */}
+          <div className="flex items-center justify-center gap-6 mb-4 text-xs flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <div className="w-6 h-0.5 bg-red-500" />
+              <span>Meta Receita</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-6 h-0.5 bg-green-600" />
+              <span>Receita</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-6 h-0.5 bg-orange-400" style={{ borderTop: "2px dashed" }} />
+              <span>Super Meta Receita</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-6 h-0.5 bg-blue-500" style={{ borderTop: "2px dashed" }} />
+              <span>Hiper Meta Receita</span>
+            </div>
+          </div>
+          <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueEvolution}>
-                <XAxis dataKey="day" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                <Legend />
-                <Area type="monotone" dataKey="meta" name="Meta Acumulada" stroke="#EF4444" fill="#EF4444" fillOpacity={0.1} strokeDasharray="5 5" />
-                <Area type="monotone" dataKey="receita" name="Receita Acumulada" stroke="#10B981" fill="#10B981" fillOpacity={0.3} connectNulls={false} />
-              </AreaChart>
+              <LineChart data={revenueEvolution} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                <XAxis 
+                  dataKey="day" 
+                  tick={{ fontSize: 10 }} 
+                  tickFormatter={(v) => String(v).padStart(2, '0')}
+                  interval={0}
+                />
+                <YAxis 
+                  tick={{ fontSize: 10 }} 
+                  tickFormatter={(v) => {
+                    if (v >= 1000) return `${(v / 1000).toFixed(0)} mil`;
+                    return v.toString();
+                  }} 
+                  domain={[0, 'auto']}
+                />
+                <Tooltip 
+                  formatter={(value: number | null, name: string) => {
+                    if (value === null) return ["-", name];
+                    return [formatCurrency(value), name];
+                  }}
+                  labelFormatter={(day) => `Dia ${day}`}
+                  contentStyle={{ fontSize: 12 }}
+                />
+                {/* Meta Receita - Red solid line */}
+                <Line 
+                  type="linear" 
+                  dataKey="meta" 
+                  name="Meta Receita" 
+                  stroke="#EF4444" 
+                  strokeWidth={2} 
+                  dot={false}
+                  activeDot={{ r: 4, fill: "#EF4444" }}
+                />
+                {/* Receita - Green solid line */}
+                <Line 
+                  type="linear" 
+                  dataKey="receita" 
+                  name="Receita" 
+                  stroke="#16A34A" 
+                  strokeWidth={2.5} 
+                  dot={false}
+                  activeDot={{ r: 5, fill: "#16A34A" }}
+                  connectNulls={false}
+                />
+                {/* Super Meta - Orange dashed line */}
+                <Line 
+                  type="linear" 
+                  dataKey="super" 
+                  name="Super Meta Receita" 
+                  stroke="#F59E0B" 
+                  strokeWidth={2} 
+                  strokeDasharray="8 4"
+                  dot={false}
+                  activeDot={{ r: 4, fill: "#F59E0B" }}
+                />
+                {/* Hiper Meta - Blue dashed line */}
+                <Line 
+                  type="linear" 
+                  dataKey="hiper" 
+                  name="Hiper Meta Receita" 
+                  stroke="#3B82F6" 
+                  strokeWidth={2} 
+                  strokeDasharray="8 4"
+                  dot={false}
+                  activeDot={{ r: 4, fill: "#3B82F6" }}
+                />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </CardContent>
