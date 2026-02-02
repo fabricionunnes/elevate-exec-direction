@@ -120,6 +120,7 @@ export const CRMLeadDetailPage = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [lossReasons, setLossReasons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [linkedProject, setLinkedProject] = useState<{ id: string; product_name: string | null } | null>(null);
   const [wonDialogOpen, setWonDialogOpen] = useState(false);
   const [lostDialogOpen, setLostDialogOpen] = useState(false);
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
@@ -146,6 +147,37 @@ export const CRMLeadDetailPage = () => {
 
       if (error) throw error;
       setLead(data);
+
+        // If the lead is won, try to find the operational project created for this company
+        // (The automation creates onboarding_projects but CRM didn't have a place to display it.)
+        try {
+          if (data?.stage?.final_type === "won" && data.company) {
+            const { data: company } = await supabase
+              .from("onboarding_companies")
+              .select("id")
+              .eq("name", data.company)
+              .maybeSingle();
+
+            if (company?.id) {
+              const { data: project } = await supabase
+                .from("onboarding_projects")
+                .select("id, product_name")
+                .eq("onboarding_company_id", company.id)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              setLinkedProject(project ? { id: project.id, product_name: project.product_name } : null);
+            } else {
+              setLinkedProject(null);
+            }
+          } else {
+            setLinkedProject(null);
+          }
+        } catch (e) {
+          // Non-blocking
+          setLinkedProject(null);
+        }
 
       // Load stages for this pipeline
       if (data.pipeline_id) {
@@ -254,6 +286,8 @@ export const CRMLeadDetailPage = () => {
       const projectResult = await createProjectFromWonLead(lead.id);
       if (projectResult.success) {
         toast.success("🎉 Lead marcado como GANHO e projeto criado!");
+        // Force refresh of the linked project badge
+        setLinkedProject(projectResult.projectId ? { id: projectResult.projectId, product_name: null } : null);
       } else {
         toast.success("🎉 Lead marcado como GANHO!");
         if (projectResult.error && !projectResult.error.includes("não tem")) {
@@ -539,6 +573,21 @@ export const CRMLeadDetailPage = () => {
           <Button variant="ghost" size="sm" className="h-6 px-2 text-muted-foreground">
             <Plus className="h-3 w-3" />
           </Button>
+
+        {lead.stage?.final_type === "won" && linkedProject?.id && (
+          <Link
+            to={`/onboarding/projects/${linkedProject.id}`}
+            className="ml-auto"
+            title="Abrir projeto"
+          >
+            <Badge variant="secondary" className="gap-1">
+              Projeto
+              <span className="text-muted-foreground">
+                {linkedProject.product_name ? `• ${linkedProject.product_name}` : "• abrir"}
+              </span>
+            </Badge>
+          </Link>
+        )}
         </div>
       </div>
 
