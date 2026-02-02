@@ -578,58 +578,56 @@ export const CRMDashboardPage = () => {
       </div>
 
       {/* Daily Goal Card */}
-      {dailyGoal && dailyGoal.monthlyTarget > 0 && (
-        <Card className="bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-purple-500/10 border-blue-500/20">
-          <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                  <CalendarDays className="h-8 w-8 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-400">Meta Diária</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {dailyGoal.businessDaysLeft} dia{dailyGoal.businessDaysLeft !== 1 ? 's' : ''} útil{dailyGoal.businessDaysLeft !== 1 ? 'eis' : ''} restante{dailyGoal.businessDaysLeft !== 1 ? 's' : ''} no mês
-                  </p>
-                </div>
+      <Card className="bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-purple-500/10 border-blue-500/20">
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                <CalendarDays className="h-8 w-8 text-blue-600" />
               </div>
-              
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-                <div className="text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Meta do Mês</p>
-                  <p className="text-lg font-bold">{formatCurrency(dailyGoal.monthlyTarget)}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Realizado</p>
-                  <p className="text-lg font-bold text-emerald-600">{formatCurrency(dailyGoal.achieved)}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Falta</p>
-                  <p className="text-lg font-bold text-amber-600">{formatCurrency(dailyGoal.remaining)}</p>
-                </div>
-                <div className="text-center bg-blue-500/10 rounded-lg p-2">
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mb-1 font-medium">Vender/Dia</p>
-                  <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(dailyGoal.dailyTarget)}</p>
-                </div>
+              <div>
+                <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-400">Meta Diária</h3>
+                <p className="text-sm text-muted-foreground">
+                  {dailyGoal?.businessDaysLeft ?? 0} dia{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''} útil{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 'eis' : ''} restante{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''} no mês
+                </p>
               </div>
             </div>
             
-            {/* Progress bar */}
-            <div className="mt-4">
-              <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                <span>Progresso</span>
-                <span>{dailyGoal.monthlyTarget > 0 ? Math.round((dailyGoal.achieved / dailyGoal.monthlyTarget) * 100) : 0}%</span>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground mb-1">Meta do Mês</p>
+                <p className="text-lg font-bold">{formatCurrency(dailyGoal?.monthlyTarget ?? 0)}</p>
               </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all"
-                  style={{ width: `${Math.min(100, dailyGoal.monthlyTarget > 0 ? (dailyGoal.achieved / dailyGoal.monthlyTarget) * 100 : 0)}%` }}
-                />
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground mb-1">Realizado</p>
+                <p className="text-lg font-bold text-emerald-600">{formatCurrency(dailyGoal?.achieved ?? 0)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground mb-1">Falta</p>
+                <p className="text-lg font-bold text-amber-600">{formatCurrency(dailyGoal?.remaining ?? 0)}</p>
+              </div>
+              <div className="text-center bg-blue-500/10 rounded-lg p-2">
+                <p className="text-xs text-blue-600 dark:text-blue-400 mb-1 font-medium">Vender/Dia</p>
+                <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(dailyGoal?.dailyTarget ?? 0)}</p>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+          
+          {/* Progress bar */}
+          <div className="mt-4">
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>Progresso</span>
+              <span>{(dailyGoal?.monthlyTarget ?? 0) > 0 ? Math.round(((dailyGoal?.achieved ?? 0) / (dailyGoal?.monthlyTarget ?? 1)) * 100) : 0}%</span>
+            </div>
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all"
+                style={{ width: `${Math.min(100, (dailyGoal?.monthlyTarget ?? 0) > 0 ? ((dailyGoal?.achieved ?? 0) / (dailyGoal?.monthlyTarget ?? 1)) * 100 : 0)}%` }}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-6">
