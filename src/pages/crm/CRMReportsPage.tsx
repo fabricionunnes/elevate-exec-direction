@@ -98,7 +98,15 @@ export const CRMReportsPage = () => {
     }
   };
 
+  // Only trigger fetch when custom date range is complete (both from and to selected)
+  const isCustomRangeComplete = period !== "custom" || (customDateRange.from && customDateRange.to);
+
   useEffect(() => {
+    // Don't fetch if custom period is selected but range is incomplete
+    if (period === "custom" && (!customDateRange.from || !customDateRange.to)) {
+      return;
+    }
+
     const loadReports = async () => {
       setLoading(true);
       try {
@@ -241,7 +249,7 @@ export const CRMReportsPage = () => {
     };
 
     loadReports();
-  }, [period, isAdmin, customDateRange]);
+  }, [period, isAdmin, customDateRange.from?.getTime(), customDateRange.to?.getTime()]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
