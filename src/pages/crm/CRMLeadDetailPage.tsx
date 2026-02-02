@@ -69,6 +69,9 @@ interface Lead {
   origin: string | null;
   origin_id: string | null;
   owner_staff_id: string | null;
+  closer_staff_id: string | null;
+  sdr_staff_id: string | null;
+  product_id: string | null;
   pipeline_id: string | null;
   stage_id: string | null;
   opportunity_value: number | null;
@@ -154,6 +157,45 @@ export const CRMLeadDetailPage = () => {
 
       if (error) throw error;
       setLead(data);
+
+      // Backfill: se o lead já está GANHO e não existe venda registrada,
+      // cria um registro em crm_sales para refletir faturamento/receita no dashboard.
+      try {
+        if (data?.stage?.final_type === "won") {
+          const { data: existingSale, error: existingSaleError } = await supabase
+            .from("crm_sales")
+            .select("id")
+            .eq("lead_id", data.id)
+            .limit(1)
+            .maybeSingle();
+
+          if (existingSaleError) throw existingSaleError;
+
+          if (!existingSale?.id) {
+            const closerId = (data as any).closer_staff_id || data.owner_staff_id;
+            const sdrId = (data as any).sdr_staff_id || null;
+            const value = (data as any).opportunity_value || 0;
+            const closedAt = (data as any).closed_at ? new Date((data as any).closed_at) : new Date();
+            const saleDateStr = closedAt.toISOString().slice(0, 10);
+
+            await supabase.from("crm_sales").insert({
+              lead_id: data.id,
+              closer_staff_id: closerId,
+              sdr_staff_id: sdrId,
+              pipeline_id: data.pipeline_id,
+              // product_id pode estar inconsistente; não bloquear a criação da venda
+              product_id: null,
+              billing_value: value,
+              revenue_value: value,
+              sale_date: saleDateStr,
+              payment_status: "pending",
+            });
+          }
+        }
+      } catch (e) {
+        // Não bloquear carregamento do lead
+        console.warn("Backfill de venda falhou:", e);
+      }
 
         // If the lead is won, try to find the operational project created for this company
         // (The automation creates onboarding_projects but CRM didn't have a place to display it.)
@@ -296,6 +338,47 @@ export const CRMLeadDetailPage = () => {
         .eq("id", lead.id);
 
       if (error) throw error;
+
+      // Registrar a venda para aparecer em indicadores (Pré-vendas / receita por closer)
+      // (idempotente: se já existir venda para o lead, não cria outra)
+      try {
+        const { data: existingSale, error: existingSaleError } = await supabase
+          .from("crm_sales")
+          .select("id")
+          .eq("lead_id", lead.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingSaleError) throw existingSaleError;
+
+        if (!existingSale?.id) {
+          const saleDate = new Date();
+          const saleDateStr = saleDate.toISOString().slice(0, 10); // yyyy-mm-dd
+
+          const closerId = lead.closer_staff_id || lead.owner_staff_id;
+          const sdrId = lead.sdr_staff_id || null;
+          const value = lead.opportunity_value || 0;
+
+          const { error: insertSaleError } = await supabase
+            .from("crm_sales")
+            .insert({
+              lead_id: lead.id,
+              closer_staff_id: closerId,
+              sdr_staff_id: sdrId,
+              pipeline_id: lead.pipeline_id,
+              // product_id pode estar inconsistente; não bloquear a criação da venda
+              product_id: null,
+              billing_value: value,
+              revenue_value: value,
+              sale_date: saleDateStr,
+              payment_status: "pending",
+            });
+
+          if (insertSaleError) throw insertSaleError;
+        }
+      } catch (e) {
+        console.warn("Não foi possível registrar a venda automaticamente:", e);
+      }
 
       // Criar projeto automaticamente
       const projectResult = await createProjectFromWonLead(lead.id);
