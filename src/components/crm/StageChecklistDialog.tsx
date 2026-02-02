@@ -5,12 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Plus, 
   Trash2, 
   Loader2, 
   GripVertical,
-  ListChecks
+  ListChecks,
+  ChevronUp,
+  ChevronDown,
+  Phone,
+  MessageCircle,
+  FileText
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,6 +27,8 @@ interface ChecklistItem {
   description: string | null;
   sort_order: number;
   is_active: boolean;
+  item_type: string;
+  whatsapp_template: string | null;
 }
 
 interface StageChecklistDialogProps {
@@ -29,6 +37,19 @@ interface StageChecklistDialogProps {
   stageId: string;
   stageName: string;
 }
+
+const ITEM_TYPES = [
+  { value: 'instruction', label: 'Instrução', icon: FileText },
+  { value: 'call', label: 'Ligação', icon: Phone },
+  { value: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+];
+
+const AVAILABLE_VARIABLES = [
+  { key: '{{nome_cliente}}', label: 'Nome do Cliente' },
+  { key: '{{empresa}}', label: 'Empresa' },
+  { key: '{{email}}', label: 'E-mail' },
+  { key: '{{telefone}}', label: 'Telefone' },
+];
 
 export function StageChecklistDialog({ 
   open, 
@@ -43,6 +64,8 @@ export function StageChecklistDialog({
   // New item form
   const [newItemTitle, setNewItemTitle] = useState("");
   const [newItemDescription, setNewItemDescription] = useState("");
+  const [newItemType, setNewItemType] = useState("instruction");
+  const [newWhatsAppTemplate, setNewWhatsAppTemplate] = useState("");
   const [showNewForm, setShowNewForm] = useState(false);
 
   useEffect(() => {
@@ -91,6 +114,8 @@ export function StageChecklistDialog({
           description: newItemDescription || null,
           sort_order: maxOrder,
           is_active: true,
+          item_type: newItemType,
+          whatsapp_template: newItemType === 'whatsapp' ? newWhatsAppTemplate : null,
         });
 
       if (error) throw error;
@@ -121,10 +146,61 @@ export function StageChecklistDialog({
     }
   };
 
+  const handleMoveItem = async (itemId: string, direction: 'up' | 'down') => {
+    const currentIndex = items.findIndex(i => i.id === itemId);
+    if (currentIndex === -1) return;
+    
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+
+    const newItems = [...items];
+    const temp = newItems[currentIndex];
+    newItems[currentIndex] = newItems[targetIndex];
+    newItems[targetIndex] = temp;
+
+    // Update sort_order values
+    const updates = newItems.map((item, index) => ({
+      id: item.id,
+      sort_order: index,
+    }));
+
+    try {
+      for (const update of updates) {
+        await supabase
+          .from("crm_stage_checklists")
+          .update({ sort_order: update.sort_order })
+          .eq("id", update.id);
+      }
+      
+      setItems(newItems.map((item, index) => ({ ...item, sort_order: index })));
+    } catch (error: any) {
+      toast.error("Erro ao reordenar itens");
+      loadItems();
+    }
+  };
+
+  const insertVariable = (variable: string) => {
+    setNewWhatsAppTemplate(prev => prev + variable);
+  };
+
   const resetForm = () => {
     setNewItemTitle("");
     setNewItemDescription("");
+    setNewItemType("instruction");
+    setNewWhatsAppTemplate("");
     setShowNewForm(false);
+  };
+
+  const getItemIcon = (type: string) => {
+    switch (type) {
+      case 'call': return <Phone className="h-4 w-4 text-green-600" />;
+      case 'whatsapp': return <MessageCircle className="h-4 w-4 text-emerald-600" />;
+      default: return <FileText className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
+  const getItemTypeLabel = (type: string) => {
+    return ITEM_TYPES.find(t => t.value === type)?.label || 'Instrução';
   };
 
   return (
@@ -155,20 +231,57 @@ export function StageChecklistDialog({
                     Nenhum item de checklist configurado
                   </p>
                 ) : (
-                  items.map((item) => (
+                  items.map((item, index) => (
                     <div
                       key={item.id}
-                      className="p-3 rounded-lg border border-border flex items-start gap-3"
+                      className="p-3 rounded-lg border border-border flex items-start gap-2"
                     >
-                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-move mt-0.5" />
+                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-move mt-0.5 shrink-0" />
+                      
+                      <div className="shrink-0 mt-0.5">
+                        {getItemIcon(item.item_type)}
+                      </div>
+                      
                       <div className="flex-1 min-w-0">
-                        <span className="font-medium text-sm">{item.title}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{item.title}</span>
+                          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                            {getItemTypeLabel(item.item_type)}
+                          </span>
+                        </div>
                         {item.description && (
                           <p className="text-xs text-muted-foreground mt-1">
                             {item.description}
                           </p>
                         )}
+                        {item.item_type === 'whatsapp' && item.whatsapp_template && (
+                          <p className="text-xs text-emerald-600 mt-1 bg-emerald-50 dark:bg-emerald-950/30 p-2 rounded">
+                            📝 {item.whatsapp_template}
+                          </p>
+                        )}
                       </div>
+
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleMoveItem(item.id, 'up')}
+                          disabled={index === 0}
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleMoveItem(item.id, 'down')}
+                          disabled={index === items.length - 1}
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+
                       <Button
                         variant="ghost"
                         size="icon"
@@ -186,11 +299,34 @@ export function StageChecklistDialog({
               {showNewForm ? (
                 <div className="p-4 rounded-lg border-2 border-dashed border-primary/50 bg-muted/30 space-y-4">
                   <div>
+                    <Label>Tipo do Item</Label>
+                    <Select value={newItemType} onValueChange={setNewItemType}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ITEM_TYPES.map(type => (
+                          <SelectItem key={type.value} value={type.value}>
+                            <div className="flex items-center gap-2">
+                              <type.icon className="h-4 w-4" />
+                              {type.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
                     <Label>Título do Item *</Label>
                     <Input
                       value={newItemTitle}
                       onChange={(e) => setNewItemTitle(e.target.value)}
-                      placeholder="Ex: Confirmar dados de contato"
+                      placeholder={
+                        newItemType === 'call' ? "Ex: Ligar para confirmar interesse" :
+                        newItemType === 'whatsapp' ? "Ex: Enviar mensagem de boas-vindas" :
+                        "Ex: Confirmar dados de contato"
+                      }
                     />
                   </div>
 
@@ -204,6 +340,36 @@ export function StageChecklistDialog({
                       className="resize-none"
                     />
                   </div>
+
+                  {newItemType === 'whatsapp' && (
+                    <div className="space-y-2">
+                      <Label>Mensagem Padrão do WhatsApp</Label>
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {AVAILABLE_VARIABLES.map(v => (
+                          <Button
+                            key={v.key}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-7"
+                            onClick={() => insertVariable(v.key)}
+                          >
+                            {v.label}
+                          </Button>
+                        ))}
+                      </div>
+                      <Textarea
+                        value={newWhatsAppTemplate}
+                        onChange={(e) => setNewWhatsAppTemplate(e.target.value)}
+                        placeholder="Olá {{nome_cliente}}, tudo bem? Aqui é da empresa..."
+                        rows={3}
+                        className="resize-none"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use as variáveis acima para personalizar a mensagem automaticamente.
+                      </p>
+                    </div>
+                  )}
                   
                   <div className="flex gap-2">
                     <Button
