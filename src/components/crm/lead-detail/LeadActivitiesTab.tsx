@@ -294,8 +294,8 @@ export const LeadActivitiesTab = ({
 
   return (
     <div className="flex h-full">
-      {/* Left side - Activities */}
-      <div className="flex-1 min-w-0">
+      {/* Left side - Activities (narrower) */}
+      <div className="w-[350px] min-w-[300px] shrink-0 border-r border-border">
         {/* Stage Progress Bar */}
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
@@ -418,8 +418,8 @@ export const LeadActivitiesTab = ({
         </ScrollArea>
       </div>
 
-      {/* Right side - Selected Checklist Item Details */}
-      <div className="w-[400px] border-l border-border bg-card flex flex-col">
+      {/* Right side - Selected Checklist Item Details (wider) */}
+      <div className="flex-1 min-w-0 bg-card flex flex-col">
         {selectedChecklistItem ? (
           <div className="flex flex-col h-full">
             <div className="p-4 border-b border-border flex items-center gap-2">
