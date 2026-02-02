@@ -24,6 +24,7 @@ import {
   Plus,
   Settings,
   Send,
+  Loader2,
 } from "lucide-react";
 import { format, startOfDay, addDays, isSameDay, isAfter, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -114,6 +115,60 @@ export const LeadActivitiesTab = ({
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [checklistLoading, setChecklistLoading] = useState(true);
   const [selectedChecklistItem, setSelectedChecklistItem] = useState<ChecklistItem | null>(null);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [userInstanceId, setUserInstanceId] = useState<string | null>(null);
+
+  // Fetch user's WhatsApp instance with send permission
+  useEffect(() => {
+    const fetchUserInstance = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Get staff member
+        const { data: staff } = await supabase
+          .from("onboarding_staff")
+          .select("id, role")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (!staff) return;
+
+        if (staff.role === "master") {
+          // Master gets any connected instance
+          const { data: instances } = await supabase
+            .from("whatsapp_instances")
+            .select("id")
+            .eq("status", "connected")
+            .limit(1);
+          
+          if (instances && instances.length > 0) {
+            setUserInstanceId(instances[0].id);
+          }
+        } else {
+          // Others get instance with can_send permission
+          const { data: access } = await supabase
+            .from("whatsapp_instance_access")
+            .select("instance_id, instance:whatsapp_instances(id, status)")
+            .eq("staff_id", staff.id)
+            .eq("can_send", true);
+
+          const connectedAccess = (access || []).find(
+            (a: any) => a.instance?.status === "connected"
+          );
+          
+          if (connectedAccess) {
+            setUserInstanceId(connectedAccess.instance_id);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user instance:", error);
+      }
+    };
+
+    fetchUserInstance();
+  }, []);
 
   // Load checklist items from database
   useEffect(() => {
@@ -391,16 +446,54 @@ export const LeadActivitiesTab = ({
               <div className="p-4 border-t border-border flex items-center gap-2">
                 <Button
                   className="flex-1 bg-emerald-500 hover:bg-emerald-600"
-                  onClick={() => {
-                    const message = processWhatsAppTemplate(selectedChecklistItem.whatsapp_template);
-                    const phone = leadPhone.replace(/\D/g, '');
-                    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
-                    toggleChecklist(selectedChecklistItem.id);
-                    setSelectedChecklistItem({ ...selectedChecklistItem, completed: true });
+                  disabled={sendingMessage || !userInstanceId}
+                  onClick={async () => {
+                    if (!userInstanceId) {
+                      toast.error("Você não tem uma conexão WhatsApp configurada. Solicite acesso ao administrador.");
+                      return;
+                    }
+
+                    setSendingMessage(true);
+                    try {
+                      const message = processWhatsAppTemplate(selectedChecklistItem.whatsapp_template);
+                      const phone = leadPhone.replace(/\D/g, '');
+                      
+                      // Ensure phone is in correct format (add country code if needed)
+                      const formattedPhone = phone.startsWith('55') ? phone : `55${phone}`;
+
+                      const { data, error } = await supabase.functions.invoke('evolution-api', {
+                        body: {
+                          action: 'sendText',
+                          instanceId: userInstanceId,
+                          phone: formattedPhone,
+                          message: message,
+                        },
+                      });
+
+                      if (error) throw error;
+                      
+                      // Check for Evolution API error in response
+                      if (data?.error) {
+                        throw new Error(data.error);
+                      }
+
+                      toast.success("Mensagem enviada com sucesso!");
+                      toggleChecklist(selectedChecklistItem.id);
+                      setSelectedChecklistItem({ ...selectedChecklistItem, completed: true });
+                    } catch (error: any) {
+                      console.error("Error sending WhatsApp:", error);
+                      toast.error(error.message || "Erro ao enviar mensagem");
+                    } finally {
+                      setSendingMessage(false);
+                    }
                   }}
                 >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Enviar mensagem
+                  {sendingMessage ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                  )}
+                  {sendingMessage ? "Enviando..." : "Enviar mensagem"}
                 </Button>
               </div>
             )}
