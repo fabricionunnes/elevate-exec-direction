@@ -400,69 +400,67 @@ export function ChecklistMeetingScheduler({
 
           {/* Date and Time Picker */}
           {selectedStaffUserId && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label className="text-sm font-medium">Escolha uma data e horário</Label>
-              <div className="flex gap-4">
-                {/* Calendar */}
-                <div className="bg-background rounded-lg border border-border">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => {
-                      setSelectedDate(date);
-                      setSelectedSlot(null);
-                    }}
-                    disabled={(date) => {
-                      const isPast = isBefore(date, startOfDay(new Date()));
-                      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                      return isPast || (!allowWeekends && isWeekend);
-                    }}
-                    locale={ptBR}
-                    className="rounded-md"
-                  />
-                </div>
+              
+              {/* Calendar - Full width */}
+              <div className="bg-background rounded-lg border border-border p-1">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => {
+                    setSelectedDate(date);
+                    setSelectedSlot(null);
+                  }}
+                  disabled={(date) => {
+                    const isPast = isBefore(date, startOfDay(new Date()));
+                    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                    return isPast || (!allowWeekends && isWeekend);
+                  }}
+                  locale={ptBR}
+                  className="rounded-md w-full"
+                />
+              </div>
 
-                {/* Time slots */}
-                <div className="flex-1 min-w-[120px]">
-                  {selectedDate && (
-                    <>
-                      <p className="text-sm font-medium mb-2">
-                        {format(selectedDate, "EEEE, d", { locale: ptBR })}
-                      </p>
-                      {loadingSlots ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                        </div>
-                      ) : availableSlots.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-4">
-                          Nenhum horário disponível
-                        </p>
-                      ) : (
-                        <div className="space-y-2 max-h-[280px] overflow-y-auto pr-2">
-                          {availableSlots.map((slot) => (
-                            <button
-                              key={slot}
-                              onClick={() => setSelectedSlot(slot)}
-                              className={cn(
-                                "w-full py-2 px-3 text-sm rounded-lg border transition-colors",
-                                selectedSlot === slot
-                                  ? "border-primary bg-primary/10 text-primary font-medium"
-                                  : "border-border hover:border-primary/50"
-                              )}
-                            >
-                              {slot}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {!selectedDate && (
-                    <p className="text-sm text-muted-foreground py-4">
-                      Selecione uma data
+              {/* Time slots - Below calendar */}
+              <div className="space-y-2">
+                {selectedDate ? (
+                  <>
+                    <p className="text-sm font-medium text-center">
+                      {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
                     </p>
-                  )}
-                </div>
+                    {loadingSlots ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : availableSlots.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nenhum horário disponível
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        {availableSlots.map((slot) => (
+                          <button
+                            key={slot}
+                            onClick={() => setSelectedSlot(slot)}
+                            className={cn(
+                              "py-2.5 px-3 text-sm rounded-lg border transition-colors font-medium",
+                              selectedSlot === slot
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border hover:border-primary/50 hover:bg-muted/50"
+                            )}
+                          >
+                            {slot}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Selecione uma data acima
+                  </p>
+                )}
               </div>
             </div>
           )}
