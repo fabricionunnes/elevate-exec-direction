@@ -122,7 +122,8 @@ export const CRMReportsPage = () => {
           .select(`
             *,
             stage:crm_stages(name, color, is_final, final_type),
-            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(id, name)
+            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(id, name),
+            closer:onboarding_staff!crm_leads_closer_staff_id_fkey(id, name)
           `)
           .not("closed_at", "is", null)
           .gte("closed_at", start.toISOString())
@@ -167,7 +168,7 @@ export const CRMReportsPage = () => {
           totalValue: wonLeadsInPeriod.reduce((sum, l) => sum + (l.opportunity_value || 0), 0), // Revenue from leads won in period
         });
 
-        // Calculate productivity by user - use leads WON in period
+        // Calculate productivity by user - attribute wins/revenue to the lead's closer
         if (isAdmin) {
           const userGroups: Record<string, { name: string; leads: number; won: number; value: number }> = {};
           
@@ -182,12 +183,12 @@ export const CRMReportsPage = () => {
           
           // Count wins and revenue from leads WON in the period (based on closed_at)
           wonLeadsInPeriod.forEach(lead => {
-            const ownerName = lead.owner?.name || "Sem Responsável";
-            if (!userGroups[ownerName]) {
-              userGroups[ownerName] = { name: ownerName, leads: 0, won: 0, value: 0 };
+            const closerName = (lead as any).closer?.name || lead.owner?.name || "Sem Responsável";
+            if (!userGroups[closerName]) {
+              userGroups[closerName] = { name: closerName, leads: 0, won: 0, value: 0 };
             }
-            userGroups[ownerName].won++;
-            userGroups[ownerName].value += lead.opportunity_value || 0;
+            userGroups[closerName].won++;
+            userGroups[closerName].value += lead.opportunity_value || 0;
           });
           
           setProductivityData(Object.values(userGroups));
