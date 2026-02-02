@@ -19021,13 +19021,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "whatsapp_campaigns_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "onboarding_staff"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "whatsapp_campaigns_instance_id_fkey"
             columns: ["instance_id"]
             isOneToOne: false
