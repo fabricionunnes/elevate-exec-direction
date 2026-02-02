@@ -66,6 +66,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Papa from "papaparse";
 import { GroupSelector } from "./GroupSelector";
+import { SavedListsManager } from "./SavedListsManager";
 
 interface WhatsAppInstance {
   id: string;
@@ -824,6 +825,28 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
             </TabsContent>
             
             <TabsContent value="contacts" className="space-y-4 mt-4">
+              {/* Saved Lists Manager */}
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Importe via CSV, selecione do CRM, digite manualmente ou escolha grupos do WhatsApp
+                </p>
+                <SavedListsManager
+                  instanceId={newCampaign.instance_id}
+                  currentContacts={importedContacts}
+                  currentGroups={selectedGroups}
+                  onLoadContacts={(contacts) => {
+                    const existingPhones = new Set(importedContacts.map(c => c.phone_number));
+                    const uniqueNew = contacts.filter(c => !existingPhones.has(c.phone_number));
+                    setImportedContacts([...importedContacts, ...uniqueNew]);
+                  }}
+                  onLoadGroups={(groups) => {
+                    const existingIds = new Set(selectedGroups.map(g => g.id));
+                    const uniqueNew = groups.filter(g => !existingIds.has(g.id));
+                    setSelectedGroups([...selectedGroups, ...uniqueNew]);
+                  }}
+                />
+              </div>
+
               <div className="flex gap-2">
                 <div className="flex-1">
                   <Label
@@ -876,10 +899,6 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
                   Grupos
                 </Button>
               </div>
-              
-              <p className="text-xs text-muted-foreground">
-                Importe via CSV, selecione do CRM, digite manualmente ou escolha grupos do WhatsApp
-              </p>
               
               {/* Selected Groups Display */}
               {selectedGroups.length > 0 && (
