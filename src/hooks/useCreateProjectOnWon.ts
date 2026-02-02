@@ -84,21 +84,15 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
       return { success: false, error: "Lead não tem empresa definida" };
     }
 
-    if (!lead.product_id) {
-      console.warn("Lead sem produto/serviço definido, pulando criação de projeto");
-      return { success: false, error: "Lead não tem produto/serviço definido" };
-    }
-
-    // Buscar serviço diretamente de onboarding_services (product_id agora referencia onboarding_services)
-    const { data: serviceData } = await supabase
-      .from("onboarding_services")
-      .select("id, name, slug")
-      .eq("id", lead.product_id)
-      .single();
-
-    if (!serviceData) {
-      console.warn("Serviço não encontrado:", lead.product_id);
-      return { success: false, error: "Serviço/Produto não encontrado" };
+    // Buscar serviço se product_id existir (opcional para criação de empresa)
+    let serviceData: { id: string; name: string; slug: string } | null = null;
+    if (lead.product_id) {
+      const { data: service } = await supabase
+        .from("onboarding_services")
+        .select("id, name, slug")
+        .eq("id", lead.product_id)
+        .single();
+      serviceData = service;
     }
 
     // Buscar nome do plano
@@ -120,7 +114,7 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
     if (lead.document && lead.document.trim()) {
       const { data: companyByDoc } = await supabase
         .from("onboarding_companies")
-        .select("id, tags")
+        .select("id")
         .eq("cnpj", lead.document.trim())
         .maybeSingle();
       existingCompany = companyByDoc;
@@ -129,15 +123,9 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
     let companyId: string;
 
     if (existingCompany) {
-      // Usar empresa existente e marcar como "Empresa Nova" para ir ao topo
+      // Usar empresa existente e atualizar dados
       companyId = existingCompany.id;
       console.log("Usando empresa existente (por CNPJ):", companyId);
-      
-      // Atualizar a empresa com a tag "Empresa Nova" e atualizar dados
-      const currentTags = existingCompany.tags || [];
-      const newTags = currentTags.includes("Empresa Nova") 
-        ? currentTags 
-        : ["Empresa Nova", ...currentTags];
       
       await supabase
         .from("onboarding_companies")
@@ -150,11 +138,10 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
           payment_method: paymentMethod,
           status: "active",
           contract_start_date: new Date().toISOString().split("T")[0],
-          tags: newTags,
         })
         .eq("id", companyId);
     } else {
-      // Criar nova empresa com tag "Empresa Nova"
+      // Criar nova empresa
       const { data: newCompany, error: companyError } = await supabase
         .from("onboarding_companies")
         .insert({
@@ -167,7 +154,6 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
           payment_method: paymentMethod,
           status: "active",
           contract_start_date: new Date().toISOString().split("T")[0],
-          tags: ["Empresa Nova"],
         })
         .select("id")
         .single();
@@ -205,6 +191,26 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
         .from("onboarding_companies")
         .update({ contract_end_date: contractEndDate })
         .eq("id", companyId);
+    }
+
+    // Se não tem serviço definido, retornar sucesso com apenas a empresa criada
+    if (!serviceData) {
+      console.log("Empresa criada/atualizada, mas sem produto definido para criar projeto");
+      
+      // Registrar no histórico do lead
+      await supabase
+        .from("crm_lead_history")
+        .insert({
+          lead_id: leadId,
+          action: "company_created",
+          notes: `Empresa "${lead.company}" criada/atualizada automaticamente (sem projeto - produto não definido)`,
+          new_value: companyId,
+        });
+
+      return {
+        success: true,
+        companyId: companyId,
+      };
     }
 
     // Criar projeto
